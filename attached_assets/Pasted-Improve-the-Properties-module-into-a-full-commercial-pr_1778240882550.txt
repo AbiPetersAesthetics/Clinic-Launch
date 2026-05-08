@@ -1,0 +1,485 @@
+Improve the Properties module into a full commercial property acquisition and clinic intelligence engine for aesthetics clinic expansion planning.
+
+The Properties section should no longer feel like a static card list. It should feel like a strategic command centre used to source, evaluate, compare, score, negotiate and select commercial clinic premises.
+
+CORE OBJECTIVE:
+Allow the user to search for, import, analyse, compare and select commercial properties, then automatically feed the chosen property into the wider Clinic Launch OS financial and project systems.
+
+-----------------------------------
+1. SIDE-BY-SIDE PROPERTY COMPARISON
+-----------------------------------
+
+Add a dedicated comparison mode where the user can select between 2 and 4 properties and compare them side-by-side in a structured comparison table.
+
+Compare:
+- Monthly rent
+- Annual rent
+- Rent per sq ft
+- Business rates
+- Service charge
+- Total monthly occupancy cost
+- Square footage
+- Parking spaces
+- Frontage width
+- Use class
+- Lease terms
+- Availability date
+- VAT status
+- Fit-out complexity
+- Estimated fit-out cost
+- Estimated plumbing/electrics difficulty
+- Location score
+- Viability score
+- Clinic suitability score
+- Competition score
+- Demographic score
+- Estimated break-even revenue
+- Estimated monthly revenue ceiling
+- Estimated first-year cash requirement
+- Risk rating
+- AI confidence level
+- Recommended clinic model
+- Suggested positioning
+- Launch timeline estimate
+
+Add summary recommendations:
+- Best low-risk option
+- Best premium location
+- Best long-term upside
+- Best cash-efficient launch
+- Best overall property
+
+Use colour coding and clear visual hierarchy.
+
+-----------------------------------
+2. ACTIVE PROJECT PROPERTY SELECTION
+-----------------------------------
+
+Add a button on each property:
+
+“Use this property for project”
+
+When selected:
+- set this as the active project property
+- sync all relevant property data automatically into:
+  - Dashboard
+  - Financials
+  - Cost Variance
+  - Project Plan
+  - Risk Register
+  - Decision Log
+  - Optimisation section
+
+Automatically pull through:
+- address
+- rent
+- rates
+- VAT status
+- lease details
+- sq footage
+- parking
+- frontage
+- agent info
+- estimated occupancy cost
+- AI scores
+- identified risks
+- suggested tasks
+
+Create a Decision Log entry automatically:
+“[Property Name] selected as active project property.”
+
+Changing active property should update financial assumptions globally.
+
+-----------------------------------
+3. PROPERTY IMPORT VIA PDF UPLOAD
+-----------------------------------
+
+Add:
+“Upload Property Brochure PDF”
+
+The system should:
+- parse the PDF
+- extract commercial property information automatically
+
+Attempt to extract:
+- address
+- postcode
+- rent
+- annual rent
+- business rates
+- VAT status
+- service charge
+- square footage
+- frontage
+- parking
+- use class
+- lease terms
+- EPC
+- availability
+- agent details
+- phone/email
+- floorplan references
+- existing utilities/features
+- nearby occupiers
+- brochure images
+- floorplans
+
+Then show:
+“Review Extracted Data”
+
+User can edit/confirm fields before saving.
+
+Do not auto-save extracted data without review.
+
+Store uploaded brochures against the property record permanently.
+
+-----------------------------------
+4. PROPERTY IMPORT VIA URL
+-----------------------------------
+
+Add:
+“Paste Listing URL”
+
+User can paste:
+- Rightmove Commercial
+- EG Propertylink
+- Zoopla Commercial
+- NovaLoca
+- commercial agent URLs
+- other supported listing sites
+
+System attempts to extract:
+- property details
+- brochure PDF
+- images
+- floorplans
+- rent
+- sq footage
+- lease terms
+- agent contact
+- map location
+
+If extraction fails:
+show graceful fallback:
+“Could not fully extract this listing. Please upload brochure or complete manually.”
+
+-----------------------------------
+5. PROPERTY SEARCH ENGINE
+-----------------------------------
+
+Add a property sourcing/search feature.
+
+User inputs:
+- search geography
+- counties
+- towns/cities
+- radius
+- size range
+- rent range
+- use class
+- parking requirement
+- high street only toggle
+- affluent area weighting
+- visible frontage requirement
+- target demographics
+- max distance from existing clinic
+- launch budget
+- availability window
+
+Examples:
+- Hampshire
+- West Sussex
+- Winchester
+- Chichester
+- Petersfield
+- Waterlooville
+- Havant
+- Portsmouth
+- Fareham
+- Southampton
+- Emsworth
+
+Return:
+- shortlist of potential properties
+- estimated suitability scores
+- quick AI summary
+- links to listings
+- map pins
+
+Search system should support future integrations/APIs.
+
+-----------------------------------
+6. PROPERTY PIPELINE / CRM
+-----------------------------------
+
+Add property workflow statuses:
+
+- Found
+- Interesting
+- Requested Brochure
+- Viewing Booked
+- Viewed
+- Under Review
+- Due Diligence
+- Heads of Terms
+- Negotiating
+- Rejected
+- Selected
+
+Allow:
+- notes
+- viewing feedback
+- negotiation notes
+- landlord concessions
+- timeline tracking
+- reminders/tasks
+
+This should function like a commercial property acquisition CRM.
+
+-----------------------------------
+7. ADVANCED AI PROPERTY INTELLIGENCE
+-----------------------------------
+
+Current AI reports are good but need deeper strategic analysis.
+
+Expand AI analysis into multiple sections:
+
+EXECUTIVE SUMMARY
+- overall recommendation
+- strategic fit
+- launch suitability
+- premium potential
+- risk profile
+
+LOCATION ANALYSIS
+- demographics
+- affluence
+- commuter profile
+- visibility
+- footfall
+- transport
+- parking
+- nearby anchors
+- premium positioning potential
+
+COMMERCIAL VIABILITY
+- occupancy cost analysis
+- likely treatment mix
+- realistic revenue expectations
+- break-even estimate
+- rent pressure
+- scalability
+
+CLINIC SUITABILITY
+- room layout suitability
+- reception suitability
+- plumbing/electrics implications
+- branding potential
+- fit-out complexity
+- compliance implications
+
+COMPETITION ANALYSIS
+- nearby aesthetics clinics
+- saturation estimate
+- opportunity gaps
+- positioning opportunities
+
+RISK ANALYSIS
+- commercial risk
+- operational risk
+- planning/compliance risk
+- lease risk
+- landlord risk
+- hidden cost risk
+
+NEGOTIATION LEVERAGE
+- likely landlord motivations
+- estimated negotiable items
+- suggested offer
+- rent-free suggestions
+- break clause guidance
+
+LAUNCH STRATEGY
+- ideal clinic model
+- staffing suggestion
+- launch phase recommendation
+- suggested positioning
+
+-----------------------------------
+8. MAP VIEW
+-----------------------------------
+
+Add interactive map mode.
+
+Display:
+- property pins
+- competitors
+- train stations
+- parking
+- affluent catchments
+- drive-time areas
+- current clinic locations
+- nearby retail anchors
+- demographic overlays
+
+Optional overlays:
+- income levels
+- age ranges
+- commuter density
+- premium retail zones
+
+-----------------------------------
+9. SCORING WEIGHT CUSTOMISATION
+-----------------------------------
+
+Allow the user to change score priorities.
+
+Examples:
+- low-risk launch
+- premium flagship clinic
+- maximum profitability
+- cash-efficient startup
+- long-term expansion
+
+User can weight:
+- parking
+- visibility
+- rent
+- demographics
+- frontage
+- competition
+- fit-out complexity
+- footfall
+- commuter traffic
+
+Scores should dynamically update.
+
+-----------------------------------
+10. AI PROPERTY ADVISOR ACTIONS
+-----------------------------------
+
+Add AI action buttons:
+
+- Compare against selected property
+- Suggest offer amount
+- Identify hidden risks
+- Recommend layout
+- Estimate fit-out complexity
+- Estimate first-year revenue
+- Suggest ideal clinic model
+- Suggest negotiation strategy
+- Suggest launch strategy
+
+Allow conversational AI prompts:
+- “Could this work as a two-room clinic?”
+- “Is this over-rented?”
+- “What are the biggest hidden risks?”
+- “How would you fit this out?”
+- “Compare this against Waterlooville.”
+
+-----------------------------------
+11. PERSISTENT AI ANALYSIS HISTORY
+-----------------------------------
+
+AI analysis results must persist in the database.
+
+Do NOT regenerate analysis every time automatically.
+
+When AI analysis runs:
+save:
+- full analysis output
+- timestamp
+- confidence level
+- source data
+- analysis version
+
+Display:
+- Last analysed
+- Analysis freshness
+- Re-run analysis button
+- View previous analyses
+- Compare analysis versions
+
+If property details change:
+show warning:
+“Property details changed since last AI analysis.”
+
+Allow:
+- overwrite analysis
+- save new version
+- archive old analyses
+
+Keep historical analysis snapshots permanently for decision tracking.
+
+-----------------------------------
+12. ANALYSIS FRESHNESS LOGIC
+-----------------------------------
+
+Add stale-analysis logic.
+
+If analysis older than configurable threshold:
+show:
+“Analysis may be outdated.”
+
+Prompt re-analysis if:
+- rent changes
+- lease changes
+- competition changes
+- listing updated
+- market conditions updated
+
+-----------------------------------
+13. PROPERTY MEDIA & DOCUMENT STORAGE
+-----------------------------------
+
+Each property should support:
+- brochure PDFs
+- floorplans
+- photos
+- fit-out inspiration images
+- videos
+- agent emails
+- notes
+- viewing documents
+
+Create media gallery.
+
+-----------------------------------
+14. DASHBOARD INTEGRATION
+-----------------------------------
+
+Dashboard should reflect active property:
+- property name
+- launch readiness
+- estimated launch date
+- estimated setup cost
+- current risk profile
+- break-even projection
+- occupancy costs
+- negotiation status
+
+-----------------------------------
+15. UX / UI REQUIREMENTS
+-----------------------------------
+
+The Properties section should feel:
+- premium
+- strategic
+- executive-level
+- data-rich
+- clean and modern
+- visually calm
+- not cluttered
+
+Use:
+- expandable analysis panels
+- comparison tables
+- scoring bars
+- map overlays
+- visual confidence indicators
+- risk indicators
+- colour-coded severity
+- sticky action buttons
+
+The goal is to create something that feels like:
+“Clinic Launch Operating System meets commercial property intelligence platform.”
