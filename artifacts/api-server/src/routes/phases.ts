@@ -48,7 +48,7 @@ router.put("/phases/:id", async (req, res) => {
   const totalCostMid = tasks.reduce((sum, t) => sum + t.costMid, 0);
   const totalCostHigh = tasks.reduce((sum, t) => sum + t.costHigh, 0);
   const completedTaskCount = tasks.filter(t => t.status === "complete").length;
-  res.json({ ...phase, totalCostLow, totalCostMid, totalCostHigh, taskCount: tasks.length, completedTaskCount });
+  return res.json({ ...phase, totalCostLow, totalCostMid, totalCostHigh, taskCount: tasks.length, completedTaskCount });
 });
 
 router.delete("/phases/:id", async (req, res) => {

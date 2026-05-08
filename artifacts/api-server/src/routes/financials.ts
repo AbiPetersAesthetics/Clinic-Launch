@@ -9,7 +9,7 @@ router.get("/projects/:projectId/financial", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
-  res.json(model);
+  return res.json(model);
 });
 
 router.put("/projects/:projectId/financial", async (req, res) => {
@@ -94,7 +94,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     monthsUntilProfitable = 0;
   }
 
-  res.json({
+  return res.json({
     scenario,
     monthlyRevenue,
     annualRevenue,
@@ -160,7 +160,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     };
   });
 
-  res.json(cashflow);
+  return res.json(cashflow);
 });
 
 export default router;

@@ -27,7 +27,7 @@ router.get("/projects/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, id));
   if (!project) return res.status(404).json({ error: "Not found" });
-  res.json(project);
+  return res.json(project);
 });
 
 router.put("/projects/:id", async (req, res) => {
@@ -38,7 +38,7 @@ router.put("/projects/:id", async (req, res) => {
     .where(eq(projectsTable.id, id))
     .returning();
   if (!project) return res.status(404).json({ error: "Not found" });
-  res.json(project);
+  return res.json(project);
 });
 
 router.delete("/projects/:id", async (req, res) => {

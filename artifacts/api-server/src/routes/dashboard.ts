@@ -49,7 +49,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     const monthlyFixed = financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp;
     const monthlyVariable = monthlyRevenue * ((financial.stockPercent + financial.commissionsPercent) / 100) + financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
     monthlyBurnRate = monthlyFixed + monthlyVariable;
-    projectedFirstYearProfit = (monthlyRevenue - monthlyBurnRate) * 12;
+    projectedFirstYearProfit = (monthlyRevenue - (monthlyBurnRate ?? 0)) * 12;
     const monthlyCashDrain = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp - financial.existingClinicRevenueGbp;
     cashRunwayMonths = monthlyCashDrain > 0 ? financial.runwaySavingsGbp / monthlyCashDrain : 99;
   }
@@ -76,7 +76,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     };
   }));
 
-  res.json({
+  return res.json({
     projectId,
     projectName: project.name,
     status: project.status,

@@ -26,7 +26,7 @@ router.get("/properties/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [prop] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!prop) return res.status(404).json({ error: "Not found" });
-  res.json(prop);
+  return res.json(prop);
 });
 
 router.put("/properties/:id", async (req, res) => {
@@ -36,7 +36,7 @@ router.put("/properties/:id", async (req, res) => {
     .where(eq(propertiesTable.id, id))
     .returning();
   if (!prop) return res.status(404).json({ error: "Not found" });
-  res.json(prop);
+  return res.json(prop);
 });
 
 router.delete("/properties/:id", async (req, res) => {

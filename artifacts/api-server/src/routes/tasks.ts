@@ -61,21 +61,27 @@ router.get("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   const [task] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
   if (!task) return res.status(404).json({ error: "Not found" });
-  res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
+  return res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
 });
 
 router.put("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
+
+  // Fetch existing record first so partial updates always have full cost context
+  const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Not found" });
+
   const body = req.body;
-  const costTier = body.costTier;
-  const costLow = body.costLow;
-  const costMid = body.costMid;
-  const costHigh = body.costHigh;
+
+  // Merge incoming values over existing ones for cost fields
+  const tier = body.costTier ?? existing.costTier;
+  const low = body.costLow ?? existing.costLow;
+  const mid = body.costMid ?? existing.costMid;
+  const high = body.costHigh ?? existing.costHigh;
 
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
-  if (costTier && costLow !== undefined && costMid !== undefined && costHigh !== undefined) {
-    updates.selectedCost = getSelectedCost(costTier, costLow, costMid, costHigh);
-  }
+  updates.selectedCost = getSelectedCost(tier, low, mid, high);
+
   if (body.dependencies !== undefined) {
     updates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
   }
@@ -85,7 +91,7 @@ router.put("/tasks/:id", async (req, res) => {
     .where(eq(tasksTable.id, id))
     .returning();
   if (!task) return res.status(404).json({ error: "Not found" });
-  res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
+  return res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
 });
 
 router.delete("/tasks/:id", async (req, res) => {
