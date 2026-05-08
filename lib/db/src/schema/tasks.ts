@@ -21,6 +21,7 @@ export const tasksTable = pgTable("launch_tasks", {
   durationDays: integer("duration_days"),
   dependencies: text("dependencies"), // JSON array of task IDs
   notes: text("notes"),
+  files: text("files"), // JSON array of {name, url, type}
   isNonNegotiable: boolean("is_non_negotiable").notNull().default(false),
   isCriticalRisk: boolean("is_critical_risk").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),

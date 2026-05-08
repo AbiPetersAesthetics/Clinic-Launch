@@ -18,6 +18,10 @@ tags:
     description: Project phases
   - name: tasks
     description: Project tasks within phases
+  - name: cost_items
+    description: Line-item cost breakdowns per task
+  - name: scenario_configs
+    description: Named financial scenario configurations per project
   - name: financials
     description: Financial models
   - name: dashboard
@@ -398,6 +402,172 @@ paths:
       operationId: deleteTask
       tags: [tasks]
       summary: Delete a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Cost Items
+  /tasks/{taskId}/cost-items:
+    get:
+      operationId: listCostItems
+      tags: [cost_items]
+      summary: List cost items for a task
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cost items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CostItem"
+    post:
+      operationId: createCostItem
+      tags: [cost_items]
+      summary: Create a cost item
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCostItemBody"
+      responses:
+        "201":
+          description: Created cost item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostItem"
+
+  /cost-items/{id}:
+    put:
+      operationId: updateCostItem
+      tags: [cost_items]
+      summary: Update a cost item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCostItemBody"
+      responses:
+        "200":
+          description: Updated cost item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostItem"
+    delete:
+      operationId: deleteCostItem
+      tags: [cost_items]
+      summary: Delete a cost item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Scenario Configs
+  /projects/{projectId}/scenario-configs:
+    get:
+      operationId: listScenarioConfigs
+      tags: [scenario_configs]
+      summary: List scenario configs for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of scenario configs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScenarioConfig"
+    post:
+      operationId: createScenarioConfig
+      tags: [scenario_configs]
+      summary: Create a scenario config
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScenarioConfigBody"
+      responses:
+        "201":
+          description: Created scenario config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioConfig"
+
+  /scenario-configs/{id}:
+    put:
+      operationId: updateScenarioConfig
+      tags: [scenario_configs]
+      summary: Update a scenario config
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScenarioConfigBody"
+      responses:
+        "200":
+          description: Updated scenario config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScenarioConfig"
+    delete:
+      operationId: deleteScenarioConfig
+      tags: [scenario_configs]
+      summary: Delete a scenario config
       parameters:
         - name: id
           in: path
@@ -961,6 +1131,10 @@ components:
         notes:
           type: string
           nullable: true
+        files:
+          type: string
+          nullable: true
+          description: JSON array of file references [{name, url, type}]
         isNonNegotiable:
           type: boolean
         isCriticalRisk:
@@ -1034,6 +1208,9 @@ components:
         notes:
           type: string
           nullable: true
+        files:
+          type: string
+          nullable: true
         isNonNegotiable:
           type: boolean
         isCriticalRisk:
@@ -1090,6 +1267,9 @@ components:
             type: integer
           nullable: true
         notes:
+          type: string
+          nullable: true
+        files:
           type: string
           nullable: true
         isNonNegotiable:
@@ -1484,3 +1664,160 @@ components:
         - netCashflow
         - cumulativeCashflow
         - isBreakevenMonth
+
+    CostItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        taskId:
+          type: integer
+        label:
+          type: string
+        category:
+          type: string
+          nullable: true
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - taskId
+        - label
+        - costLow
+        - costMid
+        - costHigh
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateCostItemBody:
+      type: object
+      properties:
+        label:
+          type: string
+        category:
+          type: string
+          nullable: true
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - label
+        - costLow
+        - costMid
+        - costHigh
+
+    UpdateCostItemBody:
+      type: object
+      properties:
+        label:
+          type: string
+        category:
+          type: string
+          nullable: true
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+
+    ScenarioConfig:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        occupancyPercent:
+          type: number
+        revenueMultiplier:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - name
+        - occupancyPercent
+        - revenueMultiplier
+        - isDefault
+        - createdAt
+        - updatedAt
+
+    CreateScenarioConfigBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        occupancyPercent:
+          type: number
+        revenueMultiplier:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean
+      required:
+        - name
+        - occupancyPercent
+
+    UpdateScenarioConfigBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        occupancyPercent:
+          type: number
+        revenueMultiplier:
+          type: number
+        notes:
+          type: string
+          nullable: true
+        isDefault:
+          type: boolean

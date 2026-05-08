@@ -397,6 +397,10 @@ export const ListTasksResponseItem = zod.object({
   durationDays: zod.number().nullish(),
   dependencies: zod.array(zod.number()).nullish(),
   notes: zod.string().nullish(),
+  files: zod
+    .string()
+    .nullish()
+    .describe("JSON array of file references [{name, url, type}]"),
   isNonNegotiable: zod.boolean(),
   isCriticalRisk: zod.boolean(),
   sortOrder: zod.number(),
@@ -430,6 +434,7 @@ export const CreateTaskBody = zod.object({
   durationDays: zod.number().nullish(),
   dependencies: zod.array(zod.number()).nullish(),
   notes: zod.string().nullish(),
+  files: zod.string().nullish(),
   isNonNegotiable: zod.boolean().optional(),
   isCriticalRisk: zod.boolean().optional(),
   sortOrder: zod.number().optional(),
@@ -467,6 +472,10 @@ export const GetTaskResponse = zod.object({
   durationDays: zod.number().nullish(),
   dependencies: zod.array(zod.number()).nullish(),
   notes: zod.string().nullish(),
+  files: zod
+    .string()
+    .nullish()
+    .describe("JSON array of file references [{name, url, type}]"),
   isNonNegotiable: zod.boolean(),
   isCriticalRisk: zod.boolean(),
   sortOrder: zod.number(),
@@ -499,6 +508,7 @@ export const UpdateTaskBody = zod.object({
   durationDays: zod.number().nullish(),
   dependencies: zod.array(zod.number()).nullish(),
   notes: zod.string().nullish(),
+  files: zod.string().nullish(),
   isNonNegotiable: zod.boolean().optional(),
   isCriticalRisk: zod.boolean().optional(),
   sortOrder: zod.number().optional(),
@@ -529,6 +539,10 @@ export const UpdateTaskResponse = zod.object({
   durationDays: zod.number().nullish(),
   dependencies: zod.array(zod.number()).nullish(),
   notes: zod.string().nullish(),
+  files: zod
+    .string()
+    .nullish()
+    .describe("JSON array of file references [{name, url, type}]"),
   isNonNegotiable: zod.boolean(),
   isCriticalRisk: zod.boolean(),
   sortOrder: zod.number(),
@@ -540,6 +554,158 @@ export const UpdateTaskResponse = zod.object({
  * @summary Delete a task
  */
 export const DeleteTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List cost items for a task
+ */
+export const ListCostItemsParams = zod.object({
+  taskId: zod.coerce.number(),
+});
+
+export const ListCostItemsResponseItem = zod.object({
+  id: zod.number(),
+  taskId: zod.number(),
+  label: zod.string(),
+  category: zod.string().nullish(),
+  costLow: zod.number(),
+  costMid: zod.number(),
+  costHigh: zod.number(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListCostItemsResponse = zod.array(ListCostItemsResponseItem);
+
+/**
+ * @summary Create a cost item
+ */
+export const CreateCostItemParams = zod.object({
+  taskId: zod.coerce.number(),
+});
+
+export const CreateCostItemBody = zod.object({
+  label: zod.string(),
+  category: zod.string().nullish(),
+  costLow: zod.number(),
+  costMid: zod.number(),
+  costHigh: zod.number(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a cost item
+ */
+export const UpdateCostItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCostItemBody = zod.object({
+  label: zod.string().optional(),
+  category: zod.string().nullish(),
+  costLow: zod.number().optional(),
+  costMid: zod.number().optional(),
+  costHigh: zod.number().optional(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateCostItemResponse = zod.object({
+  id: zod.number(),
+  taskId: zod.number(),
+  label: zod.string(),
+  category: zod.string().nullish(),
+  costLow: zod.number(),
+  costMid: zod.number(),
+  costHigh: zod.number(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a cost item
+ */
+export const DeleteCostItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List scenario configs for a project
+ */
+export const ListScenarioConfigsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListScenarioConfigsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  occupancyPercent: zod.number(),
+  revenueMultiplier: zod.number(),
+  notes: zod.string().nullish(),
+  isDefault: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListScenarioConfigsResponse = zod.array(
+  ListScenarioConfigsResponseItem,
+);
+
+/**
+ * @summary Create a scenario config
+ */
+export const CreateScenarioConfigParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateScenarioConfigBody = zod.object({
+  name: zod.string(),
+  description: zod.string().nullish(),
+  occupancyPercent: zod.number(),
+  revenueMultiplier: zod.number().optional(),
+  notes: zod.string().nullish(),
+  isDefault: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a scenario config
+ */
+export const UpdateScenarioConfigParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateScenarioConfigBody = zod.object({
+  name: zod.string().optional(),
+  description: zod.string().nullish(),
+  occupancyPercent: zod.number().optional(),
+  revenueMultiplier: zod.number().optional(),
+  notes: zod.string().nullish(),
+  isDefault: zod.boolean().optional(),
+});
+
+export const UpdateScenarioConfigResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  description: zod.string().nullish(),
+  occupancyPercent: zod.number(),
+  revenueMultiplier: zod.number(),
+  notes: zod.string().nullish(),
+  isDefault: zod.boolean(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a scenario config
+ */
+export const DeleteScenarioConfigParams = zod.object({
   id: zod.coerce.number(),
 });
 
@@ -792,6 +958,10 @@ export const GetPhasesWithTasksResponseItem = zod.object({
       durationDays: zod.number().nullish(),
       dependencies: zod.array(zod.number()).nullish(),
       notes: zod.string().nullish(),
+      files: zod
+        .string()
+        .nullish()
+        .describe("JSON array of file references [{name, url, type}]"),
       isNonNegotiable: zod.boolean(),
       isCriticalRisk: zod.boolean(),
       sortOrder: zod.number(),

@@ -20,9 +20,12 @@ import type {
   CalculateFinancialsBody,
   CashflowMonth,
   ClinicProperty,
+  CostItem,
+  CreateCostItemBody,
   CreatePhaseBody,
   CreateProjectBody,
   CreatePropertyBody,
+  CreateScenarioConfigBody,
   CreateTaskBody,
   DashboardSummary,
   FinancialCalculation,
@@ -34,9 +37,12 @@ import type {
   PhaseWithTasks,
   Project,
   RiskFlag,
+  ScenarioConfig,
+  UpdateCostItemBody,
   UpdatePhaseBody,
   UpdateProjectBody,
   UpdatePropertyBody,
+  UpdateScenarioConfigBody,
   UpdateTaskBody,
   UpsertFinancialModelBody,
 } from "./api.schemas";
@@ -1740,6 +1746,700 @@ export const useDeleteTask = <
   TContext
 > => {
   return useMutation(getDeleteTaskMutationOptions(options));
+};
+
+/**
+ * @summary List cost items for a task
+ */
+export const getListCostItemsUrl = (taskId: number) => {
+  return `/api/tasks/${taskId}/cost-items`;
+};
+
+export const listCostItems = async (
+  taskId: number,
+  options?: RequestInit,
+): Promise<CostItem[]> => {
+  return customFetch<CostItem[]>(getListCostItemsUrl(taskId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCostItemsQueryKey = (taskId: number) => {
+  return [`/api/tasks/${taskId}/cost-items`] as const;
+};
+
+export const getListCostItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCostItems>>,
+  TError = ErrorType<unknown>,
+>(
+  taskId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCostItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCostItemsQueryKey(taskId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCostItems>>> = ({
+    signal,
+  }) => listCostItems(taskId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!taskId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCostItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCostItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCostItems>>
+>;
+export type ListCostItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List cost items for a task
+ */
+
+export function useListCostItems<
+  TData = Awaited<ReturnType<typeof listCostItems>>,
+  TError = ErrorType<unknown>,
+>(
+  taskId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCostItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCostItemsQueryOptions(taskId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a cost item
+ */
+export const getCreateCostItemUrl = (taskId: number) => {
+  return `/api/tasks/${taskId}/cost-items`;
+};
+
+export const createCostItem = async (
+  taskId: number,
+  createCostItemBody: CreateCostItemBody,
+  options?: RequestInit,
+): Promise<CostItem> => {
+  return customFetch<CostItem>(getCreateCostItemUrl(taskId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCostItemBody),
+  });
+};
+
+export const getCreateCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCostItem>>,
+    TError,
+    { taskId: number; data: BodyType<CreateCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCostItem>>,
+  TError,
+  { taskId: number; data: BodyType<CreateCostItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCostItem>>,
+    { taskId: number; data: BodyType<CreateCostItemBody> }
+  > = (props) => {
+    const { taskId, data } = props ?? {};
+
+    return createCostItem(taskId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCostItem>>
+>;
+export type CreateCostItemMutationBody = BodyType<CreateCostItemBody>;
+export type CreateCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a cost item
+ */
+export const useCreateCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCostItem>>,
+    TError,
+    { taskId: number; data: BodyType<CreateCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCostItem>>,
+  TError,
+  { taskId: number; data: BodyType<CreateCostItemBody> },
+  TContext
+> => {
+  return useMutation(getCreateCostItemMutationOptions(options));
+};
+
+/**
+ * @summary Update a cost item
+ */
+export const getUpdateCostItemUrl = (id: number) => {
+  return `/api/cost-items/${id}`;
+};
+
+export const updateCostItem = async (
+  id: number,
+  updateCostItemBody: UpdateCostItemBody,
+  options?: RequestInit,
+): Promise<CostItem> => {
+  return customFetch<CostItem>(getUpdateCostItemUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCostItemBody),
+  });
+};
+
+export const getUpdateCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCostItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCostItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateCostItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCostItem>>,
+    { id: number; data: BodyType<UpdateCostItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCostItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCostItem>>
+>;
+export type UpdateCostItemMutationBody = BodyType<UpdateCostItemBody>;
+export type UpdateCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a cost item
+ */
+export const useUpdateCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCostItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCostItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateCostItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCostItemMutationOptions(options));
+};
+
+/**
+ * @summary Delete a cost item
+ */
+export const getDeleteCostItemUrl = (id: number) => {
+  return `/api/cost-items/${id}`;
+};
+
+export const deleteCostItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCostItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCostItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCostItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCostItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCostItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCostItem>>
+>;
+
+export type DeleteCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a cost item
+ */
+export const useDeleteCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCostItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCostItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCostItemMutationOptions(options));
+};
+
+/**
+ * @summary List scenario configs for a project
+ */
+export const getListScenarioConfigsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/scenario-configs`;
+};
+
+export const listScenarioConfigs = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ScenarioConfig[]> => {
+  return customFetch<ScenarioConfig[]>(getListScenarioConfigsUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListScenarioConfigsQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/scenario-configs`] as const;
+};
+
+export const getListScenarioConfigsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScenarioConfigs>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listScenarioConfigs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScenarioConfigsQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScenarioConfigs>>
+  > = ({ signal }) =>
+    listScenarioConfigs(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScenarioConfigs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListScenarioConfigsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScenarioConfigs>>
+>;
+export type ListScenarioConfigsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List scenario configs for a project
+ */
+
+export function useListScenarioConfigs<
+  TData = Awaited<ReturnType<typeof listScenarioConfigs>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listScenarioConfigs>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListScenarioConfigsQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a scenario config
+ */
+export const getCreateScenarioConfigUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/scenario-configs`;
+};
+
+export const createScenarioConfig = async (
+  projectId: number,
+  createScenarioConfigBody: CreateScenarioConfigBody,
+  options?: RequestInit,
+): Promise<ScenarioConfig> => {
+  return customFetch<ScenarioConfig>(getCreateScenarioConfigUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createScenarioConfigBody),
+  });
+};
+
+export const getCreateScenarioConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createScenarioConfig>>,
+    TError,
+    { projectId: number; data: BodyType<CreateScenarioConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createScenarioConfig>>,
+  TError,
+  { projectId: number; data: BodyType<CreateScenarioConfigBody> },
+  TContext
+> => {
+  const mutationKey = ["createScenarioConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createScenarioConfig>>,
+    { projectId: number; data: BodyType<CreateScenarioConfigBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createScenarioConfig(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateScenarioConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createScenarioConfig>>
+>;
+export type CreateScenarioConfigMutationBody =
+  BodyType<CreateScenarioConfigBody>;
+export type CreateScenarioConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a scenario config
+ */
+export const useCreateScenarioConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createScenarioConfig>>,
+    TError,
+    { projectId: number; data: BodyType<CreateScenarioConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createScenarioConfig>>,
+  TError,
+  { projectId: number; data: BodyType<CreateScenarioConfigBody> },
+  TContext
+> => {
+  return useMutation(getCreateScenarioConfigMutationOptions(options));
+};
+
+/**
+ * @summary Update a scenario config
+ */
+export const getUpdateScenarioConfigUrl = (id: number) => {
+  return `/api/scenario-configs/${id}`;
+};
+
+export const updateScenarioConfig = async (
+  id: number,
+  updateScenarioConfigBody: UpdateScenarioConfigBody,
+  options?: RequestInit,
+): Promise<ScenarioConfig> => {
+  return customFetch<ScenarioConfig>(getUpdateScenarioConfigUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateScenarioConfigBody),
+  });
+};
+
+export const getUpdateScenarioConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateScenarioConfig>>,
+    TError,
+    { id: number; data: BodyType<UpdateScenarioConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateScenarioConfig>>,
+  TError,
+  { id: number; data: BodyType<UpdateScenarioConfigBody> },
+  TContext
+> => {
+  const mutationKey = ["updateScenarioConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateScenarioConfig>>,
+    { id: number; data: BodyType<UpdateScenarioConfigBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateScenarioConfig(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateScenarioConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateScenarioConfig>>
+>;
+export type UpdateScenarioConfigMutationBody =
+  BodyType<UpdateScenarioConfigBody>;
+export type UpdateScenarioConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a scenario config
+ */
+export const useUpdateScenarioConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateScenarioConfig>>,
+    TError,
+    { id: number; data: BodyType<UpdateScenarioConfigBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateScenarioConfig>>,
+  TError,
+  { id: number; data: BodyType<UpdateScenarioConfigBody> },
+  TContext
+> => {
+  return useMutation(getUpdateScenarioConfigMutationOptions(options));
+};
+
+/**
+ * @summary Delete a scenario config
+ */
+export const getDeleteScenarioConfigUrl = (id: number) => {
+  return `/api/scenario-configs/${id}`;
+};
+
+export const deleteScenarioConfig = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteScenarioConfigUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteScenarioConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScenarioConfig>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteScenarioConfig>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteScenarioConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteScenarioConfig>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteScenarioConfig(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteScenarioConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteScenarioConfig>>
+>;
+
+export type DeleteScenarioConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a scenario config
+ */
+export const useDeleteScenarioConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScenarioConfig>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteScenarioConfig>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteScenarioConfigMutationOptions(options));
 };
 
 /**

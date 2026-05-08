@@ -278,6 +278,8 @@ export interface LaunchTask {
   durationDays?: number | null;
   dependencies?: number[] | null;
   notes?: string | null;
+  /** JSON array of file references [{name, url, type}] */
+  files?: string | null;
   isNonNegotiable: boolean;
   isCriticalRisk: boolean;
   sortOrder: number;
@@ -331,6 +333,7 @@ export interface CreateTaskBody {
   durationDays?: number | null;
   dependencies?: number[] | null;
   notes?: string | null;
+  files?: string | null;
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
@@ -382,6 +385,7 @@ export interface UpdateTaskBody {
   durationDays?: number | null;
   dependencies?: number[] | null;
   notes?: string | null;
+  files?: string | null;
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
@@ -568,6 +572,71 @@ export interface CashflowMonth {
   netCashflow: number;
   cumulativeCashflow: number;
   isBreakevenMonth: boolean;
+}
+
+export interface CostItem {
+  id: number;
+  taskId: number;
+  label: string;
+  category?: string | null;
+  costLow: number;
+  costMid: number;
+  costHigh: number;
+  notes?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCostItemBody {
+  label: string;
+  category?: string | null;
+  costLow: number;
+  costMid: number;
+  costHigh: number;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateCostItemBody {
+  label?: string;
+  category?: string | null;
+  costLow?: number;
+  costMid?: number;
+  costHigh?: number;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export interface ScenarioConfig {
+  id: number;
+  projectId: number;
+  name: string;
+  description?: string | null;
+  occupancyPercent: number;
+  revenueMultiplier: number;
+  notes?: string | null;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateScenarioConfigBody {
+  name: string;
+  description?: string | null;
+  occupancyPercent: number;
+  revenueMultiplier?: number;
+  notes?: string | null;
+  isDefault?: boolean;
+}
+
+export interface UpdateScenarioConfigBody {
+  name?: string;
+  description?: string | null;
+  occupancyPercent?: number;
+  revenueMultiplier?: number;
+  notes?: string | null;
+  isDefault?: boolean;
 }
 
 export type GetProjectCashflowParams = {

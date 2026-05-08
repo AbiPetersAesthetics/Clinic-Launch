@@ -28,6 +28,8 @@ export interface LaunchTask {
   durationDays?: number | null;
   dependencies?: number[] | null;
   notes?: string | null;
+  /** JSON array of file references [{name, url, type}] */
+  files?: string | null;
   isNonNegotiable: boolean;
   isCriticalRisk: boolean;
   sortOrder: number;

@@ -25,6 +25,7 @@ export interface UpdateTaskBody {
   durationDays?: number | null;
   dependencies?: number[] | null;
   notes?: string | null;
+  files?: string | null;
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
