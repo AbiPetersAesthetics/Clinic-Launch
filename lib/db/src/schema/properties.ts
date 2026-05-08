@@ -1,6 +1,12 @@
-import { pgTable, serial, integer, text, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+export type ManualCompetitor = {
+  name: string;
+  type: string;
+  notes?: string | null;
+};
 
 export const propertiesTable = pgTable("clinic_properties", {
   id: serial("id").primaryKey(),
@@ -23,6 +29,7 @@ export const propertiesTable = pgTable("clinic_properties", {
   agentEmail: text("agent_email"),
   status: text("status").notNull().default("viewing"),
   notes: text("notes"),
+  manualCompetitors: jsonb("manual_competitors").$type<ManualCompetitor[]>().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

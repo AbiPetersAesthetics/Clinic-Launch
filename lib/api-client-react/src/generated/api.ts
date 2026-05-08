@@ -35,6 +35,7 @@ import type {
   HealthStatus,
   LaunchPhase,
   LaunchTask,
+  ManualCompetitor,
   PhaseWithTasks,
   Project,
   PropertyExtraction,
@@ -3152,6 +3153,93 @@ export const useUploadPropertyDocument = <
   TContext
 > => {
   return useMutation(getUploadPropertyDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Replace the full list of manually-entered competitors for a property
+ */
+export const getSetPropertyCompetitorsUrl = (id: number) => {
+  return `/api/properties/${id}/competitors`;
+};
+
+export const setPropertyCompetitors = async (
+  id: number,
+  manualCompetitor: ManualCompetitor[],
+  options?: RequestInit,
+): Promise<ManualCompetitor[]> => {
+  return customFetch<ManualCompetitor[]>(getSetPropertyCompetitorsUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(manualCompetitor),
+  });
+};
+
+export const getSetPropertyCompetitorsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPropertyCompetitors>>,
+    TError,
+    { id: number; data: BodyType<ManualCompetitor[]> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setPropertyCompetitors>>,
+  TError,
+  { id: number; data: BodyType<ManualCompetitor[]> },
+  TContext
+> => {
+  const mutationKey = ["setPropertyCompetitors"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setPropertyCompetitors>>,
+    { id: number; data: BodyType<ManualCompetitor[]> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return setPropertyCompetitors(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetPropertyCompetitorsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPropertyCompetitors>>
+>;
+export type SetPropertyCompetitorsMutationBody = BodyType<ManualCompetitor[]>;
+export type SetPropertyCompetitorsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Replace the full list of manually-entered competitors for a property
+ */
+export const useSetPropertyCompetitors = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPropertyCompetitors>>,
+    TError,
+    { id: number; data: BodyType<ManualCompetitor[]> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setPropertyCompetitors>>,
+  TError,
+  { id: number; data: BodyType<ManualCompetitor[]> },
+  TContext
+> => {
+  return useMutation(getSetPropertyCompetitorsMutationOptions(options));
 };
 
 /**

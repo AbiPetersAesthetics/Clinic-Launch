@@ -129,6 +129,15 @@ export const ListPropertiesResponseItem = zod.object({
     "active",
   ]),
   notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -206,6 +215,15 @@ export const GetPropertyResponse = zod.object({
     "active",
   ]),
   notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -275,6 +293,15 @@ export const UpdatePropertyResponse = zod.object({
     "active",
   ]),
   notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
 });
@@ -969,6 +996,31 @@ export const UploadPropertyDocumentResponse = zod.object({
   rawText: zod.string().nullish(),
   flags: zod.array(zod.string()),
 });
+
+/**
+ * @summary Replace the full list of manually-entered competitors for a property
+ */
+export const SetPropertyCompetitorsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetPropertyCompetitorsBodyItem = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  notes: zod.string().nullish(),
+});
+export const SetPropertyCompetitorsBody = zod.array(
+  SetPropertyCompetitorsBodyItem,
+);
+
+export const SetPropertyCompetitorsResponseItem = zod.object({
+  name: zod.string(),
+  type: zod.string(),
+  notes: zod.string().nullish(),
+});
+export const SetPropertyCompetitorsResponse = zod.array(
+  SetPropertyCompetitorsResponseItem,
+);
 
 /**
  * @summary Run full AI property intelligence analysis

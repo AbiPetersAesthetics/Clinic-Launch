@@ -164,6 +164,27 @@ async function findNearbyCompetitors(lat: number, lng: number, apiKey: string): 
   return competitors.slice(0, 10).sort((a, b) => (a.distanceMeters ?? 9999) - (b.distanceMeters ?? 9999));
 }
 
+// ─── Manual Competitors CRUD ──────────────────────────────────────────────────
+
+router.put("/properties/:id/competitors", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!property) return res.status(404).json({ error: "Property not found" });
+
+  const body = req.body as unknown;
+  if (!Array.isArray(body)) return res.status(400).json({ error: "Expected an array of competitors" });
+
+  const ManualCompetitorSchema = z.object({ name: z.string().min(1), type: z.string().min(1), notes: z.string().nullable().optional() });
+  const parsed = z.array(ManualCompetitorSchema).safeParse(body);
+  if (!parsed.success) return res.status(400).json({ error: "Invalid competitor data", details: parsed.error.issues });
+
+  await db.update(propertiesTable)
+    .set({ manualCompetitors: parsed.data, updatedAt: new Date() })
+    .where(eq(propertiesTable.id, id));
+
+  return res.json(parsed.data);
+});
+
 // ─── Document Upload / Extraction ────────────────────────────────────────────
 
 router.post("/properties/:id/upload-document", upload.single("file"), async (req, res) => {
@@ -262,7 +283,7 @@ Parking Spaces: ${property.parkingSpaces ?? "Unknown"}
 Frontage: ${property.frontageMeters || "Unknown"}m
 Notes: ${property.notes || "None"}`;
 
-  // ── Competition: real Google Places data OR empty list (no LLM fabrication) ──
+  // ── Competition: Google Places → manual entries → empty (no LLM fabrication) ──
   const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
   let realCompetitors: PlacesCompetitor[] | null = null;
   let competitionDataSource: "google_places" | "ai_estimate" = "ai_estimate";
@@ -275,15 +296,22 @@ Notes: ${property.notes || "None"}`;
         competitionDataSource = "google_places";
       }
     } catch {
-      // Fall through — competition will be scored without real competitor list
+      // Fall through — will use manual competitors or empty list
     }
   }
+
+  // When no Places data, use manually-entered competitors for scoring context
+  const manualCompetitorsList = Array.isArray(property.manualCompetitors) ? property.manualCompetitors : [];
 
   const competitorContext = realCompetitors !== null
     ? `Real competitor data from Google Places (within 600m of ${property.postcode}):
 ${JSON.stringify(realCompetitors, null, 2)}
 Score saturation/opportunity based on this real data. Return the competitors array exactly as given above.`
-    : `No Google Places API key is configured. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
+    : manualCompetitorsList.length > 0
+      ? `Manually-entered nearby competitors provided by the user:
+${JSON.stringify(manualCompetitorsList, null, 2)}
+Score saturation/opportunity based on this known competitor list. Return the competitors array exactly as given above (add distanceMeters: null, rating: null, reviewCount: null for each).`
+      : `No competitor data available. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
 
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Analyse this property for use as a premium aesthetics clinic.
 
@@ -358,7 +386,11 @@ Return a JSON object with this exact structure (no markdown):
     });
     const content = response.choices[0]?.message?.content ?? "{}";
     rawAnalysis = parseLLMJson(content);
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
+      return res.status(503).json({ error: "AI service is not configured. Please provision the OpenAI AI integration." });
+    }
     return res.status(500).json({ error: "AI analysis failed. Please try again." });
   }
 
@@ -369,8 +401,8 @@ Return a JSON object with this exact structure (no markdown):
 
   const analysis = validated.data;
 
-  // Overwrite competitors with real Places data when available
-  const finalCompetitors = realCompetitors ?? [];
+  // Final competitors: Places data > manual entries > empty
+  const finalCompetitors = realCompetitors ?? manualCompetitorsList;
 
   return res.json({
     propertyId: id,

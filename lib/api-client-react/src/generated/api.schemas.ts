@@ -78,6 +78,12 @@ export const ClinicPropertyStatus = {
   active: "active",
 } as const;
 
+export interface ManualCompetitor {
+  name: string;
+  type: string;
+  notes?: string | null;
+}
+
 export interface ClinicProperty {
   id: number;
   projectId: number;
@@ -99,6 +105,7 @@ export interface ClinicProperty {
   agentEmail?: string | null;
   status: ClinicPropertyStatus;
   notes?: string | null;
+  manualCompetitors?: ManualCompetitor[] | null;
   createdAt: string;
   updatedAt: string;
 }

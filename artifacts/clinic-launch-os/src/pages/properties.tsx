@@ -8,12 +8,14 @@ import {
   useDeleteProperty,
   useUploadPropertyDocument,
   useAnalyseProperty,
+  useSetPropertyCompetitors,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
   UpdatePropertyBodyStatus,
   PropertyIntelligenceResult,
   PropertyExtraction,
+  ManualCompetitor,
 } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
@@ -148,7 +150,76 @@ function ScoreCard({ score, title, icon }: { score: { total: number; maxTotal: n
   );
 }
 
-function IntelligencePanel({ result, property }: { result: PropertyIntelligenceResult; property: ClinicProperty }) {
+function ManualCompetitorForm({
+  propertyId,
+  initialCompetitors,
+  onSaved,
+}: {
+  propertyId: number;
+  initialCompetitors: ManualCompetitor[];
+  onSaved: (updated: ManualCompetitor[]) => void;
+}) {
+  const [competitors, setCompetitors] = useState<ManualCompetitor[]>(initialCompetitors);
+  const [name, setName] = useState("");
+  const [type, setType] = useState("aesthetics clinic");
+  const [notes, setNotes] = useState("");
+  const setPropertyCompetitors = useSetPropertyCompetitors();
+
+  const handleAdd = () => {
+    if (!name.trim()) return;
+    const updated = [...competitors, { name: name.trim(), type, notes: notes.trim() || null }];
+    setCompetitors(updated);
+    setName(""); setType("aesthetics clinic"); setNotes("");
+    setPropertyCompetitors.mutate({ id: propertyId, data: updated }, { onSuccess: onSaved });
+  };
+
+  const handleRemove = (idx: number) => {
+    const updated = competitors.filter((_, i) => i !== idx);
+    setCompetitors(updated);
+    setPropertyCompetitors.mutate({ id: propertyId, data: updated }, { onSuccess: onSaved });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+      <h5 className="text-sm font-semibold flex items-center gap-2">
+        <Building className="w-4 h-4 text-primary" />
+        Add Known Competitors
+      </h5>
+      <p className="text-xs text-muted-foreground">Manually enter nearby competitors. They'll be used to score competition when AI Analysis is re-run.</p>
+
+      {competitors.length > 0 && (
+        <ul className="space-y-1.5">
+          {competitors.map((c, i) => (
+            <li key={i} className="flex items-center justify-between gap-2 text-sm p-2 rounded bg-card border">
+              <span className="flex-1 min-w-0 truncate font-medium">{c.name}<span className="text-muted-foreground font-normal ml-2 text-xs capitalize">{c.type}</span></span>
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0" onClick={() => handleRemove(i)}>
+                <XCircle className="w-3.5 h-3.5" />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Competitor name" className="text-xs h-8" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+        <select value={type} onChange={e => setType(e.target.value)} className="text-xs h-8 rounded-md border bg-background px-2">
+          <option value="aesthetics clinic">Aesthetics clinic</option>
+          <option value="beauty salon">Beauty salon</option>
+          <option value="medispa">Medispa</option>
+          <option value="skin clinic">Skin clinic</option>
+          <option value="cosmetic clinic">Cosmetic clinic</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div className="flex gap-2">
+        <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes" className="text-xs h-8 flex-1" />
+        <Button size="sm" onClick={handleAdd} disabled={!name.trim() || setPropertyCompetitors.isPending} className="h-8 shrink-0">Add</Button>
+      </div>
+    </div>
+  );
+}
+
+function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: PropertyIntelligenceResult; property: ClinicProperty; onCompetitorsSaved: (updated: ManualCompetitor[]) => void }) {
   const overallScore = Math.round(
     (result.locationScore.total + result.commercialViabilityScore.total + result.clinicSuitabilityScore.total) / 3
   );
@@ -329,38 +400,39 @@ function IntelligencePanel({ result, property }: { result: PropertyIntelligenceR
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h5 className="text-sm font-semibold">Nearby Competitors</h5>
-            {result.competition.competitors.length === 0 ? (
-              <div className="rounded-lg border border-dashed p-6 text-center">
-                {result.competition.dataSource === "google_places"
-                  ? <p className="text-sm text-muted-foreground">No competitors found within 600m via Google Places.</p>
-                  : <>
-                      <MapPin className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm font-medium mb-1">Real competitor data not available</p>
-                      <p className="text-xs text-muted-foreground">Connect a Google Places API key to map real competitors near this location.</p>
-                    </>
-                }
-              </div>
-            ) : (
-              result.competition.competitors.map((c, i) => (
+          {result.competition.competitors.length > 0 && (
+            <div className="space-y-3">
+              <h5 className="text-sm font-semibold">Nearby Competitors</h5>
+              {result.competition.competitors.map((c, i) => (
                 <div key={i} className="flex items-start justify-between p-3 rounded-lg border bg-card gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground capitalize">{c.type}{c.distanceMeters ? ` · ${Math.round(c.distanceMeters)}m away` : ""}</p>
                     {c.notes && <p className="text-xs text-muted-foreground mt-1">{c.notes}</p>}
                   </div>
-                  {c.rating != null && (
+                  {"rating" in c && c.rating != null && (
                     <div className="flex items-center gap-1 shrink-0">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="text-xs font-medium">{c.rating}</span>
-                      {c.reviewCount != null && <span className="text-xs text-muted-foreground">({c.reviewCount})</span>}
+                      {"reviewCount" in c && c.reviewCount != null && <span className="text-xs text-muted-foreground">({c.reviewCount})</span>}
                     </div>
                   )}
                 </div>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
+
+          {result.competition.dataSource === "ai_estimate" && (
+            <ManualCompetitorForm
+              propertyId={property.id}
+              initialCompetitors={(property.manualCompetitors as ManualCompetitor[] | null) ?? []}
+              onSaved={onCompetitorsSaved}
+            />
+          )}
+
+          {result.competition.competitors.length === 0 && result.competition.dataSource === "google_places" && (
+            <p className="text-sm text-muted-foreground text-center py-4">No competitors found within 600m via Google Places.</p>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -688,7 +760,15 @@ export default function PropertiesPage() {
           )}
 
           {intelligenceResult && intelligenceTarget && (
-            <IntelligencePanel result={intelligenceResult} property={intelligenceTarget} />
+            <IntelligencePanel
+              result={intelligenceResult}
+              property={intelligenceTarget}
+              onCompetitorsSaved={(updated) => {
+                setIntelligenceTarget(prev =>
+                  prev ? { ...prev, manualCompetitors: updated } : prev
+                );
+              }}
+            />
           )}
         </SheetContent>
       </Sheet>

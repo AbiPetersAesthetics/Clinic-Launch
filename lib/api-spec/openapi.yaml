@@ -753,6 +753,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/PropertyExtraction"
 
+  /properties/{id}/competitors:
+    put:
+      operationId: setPropertyCompetitors
+      tags: [intelligence]
+      summary: Replace the full list of manually-entered competitors for a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/ManualCompetitor"
+      responses:
+        "200":
+          description: Updated competitors list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ManualCompetitor"
+
   /properties/{id}/analyse:
     post:
       operationId: analyseProperty
@@ -962,6 +991,11 @@ components:
         notes:
           type: string
           nullable: true
+        manualCompetitors:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ManualCompetitor"
         createdAt:
           type: string
         updatedAt:
@@ -2032,6 +2066,20 @@ components:
         - grade
         - summary
         - factors
+
+    ManualCompetitor:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - type
 
     CompetitorItem:
       type: object
