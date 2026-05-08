@@ -1617,6 +1617,40 @@ export const AnalysePropertyResponse = zod.object({
     suggestedPositioning: zod.string(),
     overallVerdict: zod.string(),
   }),
+  riskAnalysis: zod
+    .object({
+      overall: zod.enum(["low", "medium", "high"]),
+      verdict: zod.string(),
+      risks: zod.array(
+        zod.object({
+          risk: zod.string(),
+          severity: zod.enum(["low", "medium", "high"]),
+          mitigation: zod.string(),
+        }),
+      ),
+    })
+    .nullish(),
+  negotiationLeverage: zod
+    .object({
+      verdict: zod.string(),
+      landlordMotivators: zod.array(zod.string()),
+      strengths: zod.array(zod.string()),
+      tactics: zod.array(zod.string()),
+      suggestedOpeningOffer: zod.string(),
+      redLines: zod.array(zod.string()),
+    })
+    .nullish(),
+  launchStrategy: zod
+    .object({
+      estimatedTimeToLaunch: zod.string(),
+      firstYearRevenueForecast: zod.string(),
+      phase1: zod.string(),
+      phase2: zod.string(),
+      phase3: zod.string(),
+      keyMilestones: zod.array(zod.string()),
+      criticalSuccessFactors: zod.array(zod.string()),
+    })
+    .nullish(),
   generatedAt: zod.string(),
   analysisId: zod.number().nullish(),
   version: zod.number().nullish(),

@@ -15,6 +15,10 @@ import {
   usePropertyAdvisorAction,
   useImportPropertyFromUrl,
   useConfirmPropertyUpload,
+  useGetProjectScoringWeights,
+  useUpdateProjectScoringWeights,
+  useComparePropertyAnalyses,
+  getGetProjectScoringWeightsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
@@ -25,6 +29,10 @@ import type {
   PropertyRankingItem,
   AdvisorActionBodyAction,
   CreatePropertyBodyPipelineStatus,
+  ScoringWeights,
+  RiskAnalysis,
+  NegotiationLeverage,
+  LaunchStrategy,
 } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
@@ -36,6 +44,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
+import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -254,12 +263,15 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: {
       </div>
 
       <Tabs defaultValue="summary">
-        <TabsList className="w-full">
-          <TabsTrigger value="summary" className="flex-1 text-xs">Summary</TabsTrigger>
-          <TabsTrigger value="location" className="flex-1 text-xs">Location</TabsTrigger>
-          <TabsTrigger value="viability" className="flex-1 text-xs">Viability</TabsTrigger>
-          <TabsTrigger value="clinic" className="flex-1 text-xs">Clinic Fit</TabsTrigger>
-          <TabsTrigger value="competition" className="flex-1 text-xs">Competition</TabsTrigger>
+        <TabsList className="w-full flex-wrap h-auto gap-1 p-1">
+          <TabsTrigger value="summary" className="text-xs px-2 py-1">Summary</TabsTrigger>
+          <TabsTrigger value="location" className="text-xs px-2 py-1">Location</TabsTrigger>
+          <TabsTrigger value="viability" className="text-xs px-2 py-1">Viability</TabsTrigger>
+          <TabsTrigger value="clinic" className="text-xs px-2 py-1">Clinic Fit</TabsTrigger>
+          <TabsTrigger value="competition" className="text-xs px-2 py-1">Competition</TabsTrigger>
+          {result.riskAnalysis && <TabsTrigger value="risk" className="text-xs px-2 py-1">Risk</TabsTrigger>}
+          {result.negotiationLeverage && <TabsTrigger value="negotiation" className="text-xs px-2 py-1">Negotiation</TabsTrigger>}
+          {result.launchStrategy && <TabsTrigger value="launch" className="text-xs px-2 py-1">Launch Plan</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="summary" className="space-y-5 mt-4">
@@ -317,6 +329,111 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: {
         <TabsContent value="clinic" className="mt-4">
           <ScoreCard score={result.clinicSuitabilityScore} title="Clinic Suitability" icon={<Building className="w-4 h-4 text-primary" />} />
         </TabsContent>
+
+        {result.riskAnalysis && (
+        <TabsContent value="risk" className="mt-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wide ${
+              result.riskAnalysis.overall === "low" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+              result.riskAnalysis.overall === "medium" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" :
+              "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+            }`}>{result.riskAnalysis.overall} risk</div>
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">{result.riskAnalysis.verdict}</p>
+          <div className="space-y-3">
+            {result.riskAnalysis.risks.map((r, i) => (
+              <div key={i} className="rounded-lg border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">{r.risk}</p>
+                  <Badge className={`text-xs shrink-0 ${
+                    r.severity === "low" ? "bg-green-100 text-green-700" :
+                    r.severity === "medium" ? "bg-amber-100 text-amber-700" :
+                    "bg-red-100 text-red-700"
+                  }`}>{r.severity}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">{r.mitigation}</p>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+        )}
+
+        {result.negotiationLeverage && (
+        <TabsContent value="negotiation" className="mt-4 space-y-4">
+          <div className="rounded-lg border bg-primary/5 border-primary/20 p-4">
+            <p className="text-sm leading-relaxed">{result.negotiationLeverage.verdict}</p>
+          </div>
+          <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 border-amber-500/30 p-3 space-y-1">
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Suggested Opening Offer</p>
+            <p className="text-sm font-medium">{result.negotiationLeverage.suggestedOpeningOffer}</p>
+          </div>
+          {[
+            { label: "Your Strengths", items: result.negotiationLeverage.strengths, cls: "text-primary" },
+            { label: "Landlord Motivators", items: result.negotiationLeverage.landlordMotivators, cls: "text-amber-600 dark:text-amber-400" },
+            { label: "Tactics", items: result.negotiationLeverage.tactics, cls: "text-blue-600 dark:text-blue-400" },
+            { label: "Red Lines", items: result.negotiationLeverage.redLines, cls: "text-destructive" },
+          ].map(({ label, items, cls }) => (
+            <div key={label}>
+              <h5 className={`text-sm font-semibold mb-2 ${cls}`}>{label}</h5>
+              <ul className="space-y-1">
+                {items.map((item, i) => (
+                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0" />{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </TabsContent>
+        )}
+
+        {result.launchStrategy && (
+        <TabsContent value="launch" className="mt-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg border bg-card p-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Time to Launch</p>
+              <p className="font-semibold text-sm">{result.launchStrategy.estimatedTimeToLaunch}</p>
+            </div>
+            <div className="rounded-lg border bg-card p-3">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Year 1 Revenue</p>
+              <p className="font-semibold text-sm">{result.launchStrategy.firstYearRevenueForecast}</p>
+            </div>
+          </div>
+          <div className="space-y-3">
+            {[
+              { label: "Phase 1", text: result.launchStrategy.phase1 },
+              { label: "Phase 2", text: result.launchStrategy.phase2 },
+              { label: "Phase 3", text: result.launchStrategy.phase3 },
+            ].map(({ label, text }) => (
+              <div key={label} className="rounded-lg border bg-card p-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+                <p className="text-sm text-muted-foreground">{text}</p>
+              </div>
+            ))}
+          </div>
+          <div>
+            <h5 className="text-sm font-semibold mb-2">Key Milestones</h5>
+            <ol className="space-y-1.5">
+              {result.launchStrategy.keyMilestones.map((m, i) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
+                  {m}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <div>
+            <h5 className="text-sm font-semibold mb-2">Critical Success Factors</h5>
+            <ul className="space-y-1">
+              {result.launchStrategy.criticalSuccessFactors.map((f, i) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <CheckCircle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-primary" />{f}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </TabsContent>
+        )}
 
         <TabsContent value="competition" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -463,12 +580,38 @@ function AdvisorPanel({ property }: { property: ClinicProperty }) {
 
 // ─── Analysis History Panel ───────────────────────────────────────────────────
 
+type ScoreSummary = { total: number; grade: string };
+
+function VersionScoreDiff({ a, b, label }: { a?: ScoreSummary; b?: ScoreSummary; label: string }) {
+  if (!a || !b) return null;
+  const diff = b.total - a.total;
+  return (
+    <div className="text-center">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="font-bold text-sm">{b.total} <span className={gradeColor(b.grade)}>{b.grade}</span></p>
+      {diff !== 0 && (
+        <p className={`text-xs font-medium ${diff > 0 ? "text-green-600" : "text-red-500"}`}>
+          {diff > 0 ? `+${diff}` : diff}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function HistoryPanel({ propertyId, currentResult, onSelect }: {
   propertyId: number;
   currentResult: PropertyIntelligenceResult | null;
   onSelect: (analysis: PropertyAiAnalysis) => void;
 }) {
   const { data: analyses, isLoading } = useListPropertyAnalyses(propertyId);
+  const [compareA, setCompareA] = useState<number | null>(null);
+  const [compareB, setCompareB] = useState<number | null>(null);
+  const [showDiff, setShowDiff] = useState(false);
+  const { data: diffResult, isFetching: isDiffLoading } = useComparePropertyAnalyses(
+    propertyId,
+    { v1: compareA ?? 1, v2: compareB ?? 1 },
+    { query: { enabled: showDiff && compareA != null && compareB != null, queryKey: ["compare-analyses", propertyId, compareA, compareB] } }
+  );
 
   if (isLoading) return <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
   if (!analyses || analyses.length === 0) return (
@@ -478,15 +621,79 @@ function HistoryPanel({ propertyId, currentResult, onSelect }: {
     </div>
   );
 
+  const canCompare = analyses.length >= 2;
+
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">{analyses.length} analysis version{analyses.length !== 1 ? "s" : ""} saved.</p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{analyses.length} version{analyses.length !== 1 ? "s" : ""} saved.</p>
+        {canCompare && !showDiff && (
+          <Button size="sm" variant="outline" className="text-xs h-7 gap-1.5"
+            onClick={() => {
+              setCompareA(analyses[0].version);
+              setCompareB(analyses[1].version);
+              setShowDiff(true);
+            }}>
+            <ArrowLeftRight className="w-3.5 h-3.5" />Compare Versions
+          </Button>
+        )}
+        {showDiff && (
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setShowDiff(false)}>
+            <X className="w-3.5 h-3.5" />Close Diff
+          </Button>
+        )}
+      </div>
+
+      {showDiff && (
+        <div className="rounded-xl border bg-card p-4 space-y-4">
+          <h5 className="text-sm font-semibold flex items-center gap-2"><ArrowLeftRight className="w-4 h-4 text-primary" />Version Comparison</h5>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-muted-foreground">Version A (baseline)</Label>
+              <Select value={String(compareA)} onValueChange={v => setCompareA(Number(v))}>
+                <SelectTrigger className="mt-1 text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {analyses.map(a => (
+                    <SelectItem key={a.version} value={String(a.version)}>v{a.version} — {new Date(a.createdAt).toLocaleDateString("en-GB")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground">Version B (compare to)</Label>
+              <Select value={String(compareB)} onValueChange={v => setCompareB(Number(v))}>
+                <SelectTrigger className="mt-1 text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {analyses.map(a => (
+                    <SelectItem key={a.version} value={String(a.version)}>v{a.version} — {new Date(a.createdAt).toLocaleDateString("en-GB")}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {isDiffLoading && <div className="flex items-center justify-center py-4"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>}
+          {diffResult && !isDiffLoading && (() => {
+            const a1 = diffResult.v1?.analysisJson as { locationScore?: ScoreSummary; commercialViabilityScore?: ScoreSummary; clinicSuitabilityScore?: ScoreSummary } | null;
+            const a2 = diffResult.v2?.analysisJson as { locationScore?: ScoreSummary; commercialViabilityScore?: ScoreSummary; clinicSuitabilityScore?: ScoreSummary } | null;
+            return (
+              <div className="space-y-3">
+                <div className="flex gap-6 justify-around">
+                  <VersionScoreDiff a={a1?.locationScore} b={a2?.locationScore} label="Location" />
+                  <VersionScoreDiff a={a1?.commercialViabilityScore} b={a2?.commercialViabilityScore} label="Viability" />
+                  <VersionScoreDiff a={a1?.clinicSuitabilityScore} b={a2?.clinicSuitabilityScore} label="Clinic Fit" />
+                </div>
+                <p className="text-xs text-center text-muted-foreground">Numbers and arrows show change from v{compareA} → v{compareB}</p>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {analyses.map((analysis) => {
         const aj = analysis.analysisJson as {
-          locationScore?: { total: number; grade: string };
-          commercialViabilityScore?: { total: number; grade: string };
-          clinicSuitabilityScore?: { total: number; grade: string };
-          generatedAt?: string;
+          locationScore?: ScoreSummary;
+          commercialViabilityScore?: ScoreSummary;
+          clinicSuitabilityScore?: ScoreSummary;
         };
         const snap = analysis.sourceDataSnapshot as { address?: string; competitorCount?: number } | null;
         return (
@@ -1448,9 +1655,37 @@ function ComparisonDialog({
     const wid = getWinnerId(row);
     if (wid != null) winCounts.set(wid, (winCounts.get(wid) ?? 0) + 1);
   }
-  const overallWinnerId = winCounts.size > 0
-    ? [...winCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
-    : null;
+  const sortedByWins = [...winCounts.entries()].sort((a, b) => b[1] - a[1]);
+  const overallWinnerId = sortedByWins.length > 0 ? sortedByWins[0][0] : null;
+
+  // Derive recommendation summaries
+  const lowestRentId = (() => {
+    const vals = selected.map(p => ({ id: p.id, v: p.annualRentGbp ?? p.monthlyRentGbp ?? null })).filter(x => x.v != null) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.min(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+  const largestId = (() => {
+    const vals = selected.map(p => ({ id: p.id, v: p.sqFootage ?? null })).filter(x => x.v != null) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.max(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+  const mostParkingId = (() => {
+    const vals = selected.map(p => ({ id: p.id, v: p.parkingSpaces ?? null })).filter(x => x.v != null) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.max(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+
+  const recommendations: { label: string; icon: React.ReactNode; text: string }[] = [];
+  if (overallWinnerId) recommendations.push({ label: "Best Overall", icon: <Trophy className="w-4 h-4 text-amber-500" />, text: selected.find(p => p.id === overallWinnerId)?.address ?? "Unnamed" });
+  if (lowestRentId) recommendations.push({ label: "Lowest Cost", icon: <PoundSterling className="w-4 h-4 text-green-500" />, text: selected.find(p => p.id === lowestRentId)?.address ?? "Unnamed" });
+  if (largestId) recommendations.push({ label: "Biggest Space", icon: <Maximize2 className="w-4 h-4 text-blue-500" />, text: selected.find(p => p.id === largestId)?.address ?? "Unnamed" });
+  if (mostParkingId) recommendations.push({ label: "Best Parking", icon: <Car className="w-4 h-4 text-violet-500" />, text: selected.find(p => p.id === mostParkingId)?.address ?? "Unnamed" });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -1460,19 +1695,18 @@ function ComparisonDialog({
             <ArrowLeftRight className="w-5 h-5 text-primary" />
             Comparing {selected.length} Properties
           </DialogTitle>
-          <DialogDescription>Green highlights show the winner for each comparable metric.</DialogDescription>
+          <DialogDescription>Green highlights show the winner for each comparable metric. Select 2–4 properties to compare.</DialogDescription>
         </DialogHeader>
 
-        {/* Summary row */}
-        {overallWinnerId != null && (
-          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
-            <Trophy className="w-5 h-5 text-amber-500 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold">Overall Leader</p>
-              <p className="text-sm text-muted-foreground">
-                {selected.find(p => p.id === overallWinnerId)?.address ?? "Unnamed"} wins {winCounts.get(overallWinnerId)} of {rows.filter(r => !!r.numericValue).length} comparable metrics.
-              </p>
-            </div>
+        {/* Recommendation summaries */}
+        {recommendations.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {recommendations.map(rec => (
+              <div key={rec.label} className="rounded-lg border bg-card p-3 flex flex-col gap-1">
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">{rec.icon}{rec.label}</div>
+                <p className="text-xs font-semibold leading-snug">{rec.text}</p>
+              </div>
+            ))}
           </div>
         )}
 
@@ -1534,31 +1768,144 @@ function ComparisonDialog({
 
 // ─── Rankings View ────────────────────────────────────────────────────────────
 
+const WEIGHT_LABELS: { key: keyof ScoringWeights; label: string }[] = [
+  { key: "affordability", label: "Affordability" },
+  { key: "size", label: "Size" },
+  { key: "parking", label: "Parking" },
+  { key: "frontage", label: "Frontage" },
+  { key: "location", label: "Location Score" },
+  { key: "competition", label: "Competition" },
+  { key: "fitoutComplexity", label: "Fit-Out Simplicity" },
+  { key: "demographics", label: "Demographics" },
+];
+
+function ScoringWeightsPanel() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const { data: weights } = useGetProjectScoringWeights(PROJECT_ID, {
+    query: { queryKey: getGetProjectScoringWeightsQueryKey(PROJECT_ID) },
+  });
+  const updateWeights = useUpdateProjectScoringWeights();
+  const [local, setLocal] = useState<ScoringWeights | null>(null);
+
+  useEffect(() => { if (weights && !local) setLocal(weights); }, [weights]);
+
+  const handleSave = () => {
+    if (!local) return;
+    updateWeights.mutate(
+      { projectId: PROJECT_ID, data: local },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectScoringWeightsQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: ["property-ranking"] });
+          toast({ title: "Scoring weights saved", description: "Rankings will update on next load." });
+          setOpen(false);
+        },
+      }
+    );
+  };
+
+  const handleReset = () => {
+    const defaults: ScoringWeights = { affordability: 1, size: 1, parking: 1, frontage: 1, location: 1, competition: 1, fitoutComplexity: 1, demographics: 1 };
+    setLocal(defaults);
+  };
+
+  if (!open) {
+    return (
+      <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7" onClick={() => setOpen(true)}>
+        <Sparkles className="w-3.5 h-3.5" />Scoring Weights
+      </Button>
+    );
+  }
+
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Scoring Weights</h4>
+        <div className="flex gap-2">
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={handleReset}>Reset</Button>
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setOpen(false)}><X className="w-3.5 h-3.5" /></Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Adjust how much each dimension influences the overall ranking score. Higher = more impact.</p>
+      {local && (
+        <div className="space-y-3">
+          {WEIGHT_LABELS.map(({ key, label }) => (
+            <div key={key} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground font-medium">{label}</span>
+                <span className="font-semibold w-8 text-right">{((local[key] ?? 1) * 100).toFixed(0)}%</span>
+              </div>
+              <Slider
+                min={0}
+                max={3}
+                step={0.1}
+                value={[local[key] ?? 1]}
+                onValueChange={([v]) => setLocal(l => l ? { ...l, [key]: v } : l)}
+                className="w-full"
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex justify-end">
+        <Button size="sm" className="text-xs gap-1.5" onClick={handleSave} disabled={updateWeights.isPending}>
+          {updateWeights.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
+          Save & Rerank
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function RankingsView({ properties, onOpen }: { properties: ClinicProperty[]; onOpen: (p: ClinicProperty) => void }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [mode, setMode] = useState<"overall" | "safest" | "highest-revenue" | "premium-brand" | "lowest-risk" | "fastest-launch">("overall");
+  const [overridePropertyId, setOverridePropertyId] = useState<number | null>(null);
+  const [overrideRank, setOverrideRank] = useState<string>("");
   const { data: ranking, isLoading } = useGetPropertyRanking(PROJECT_ID, { mode }, {
     query: { enabled: true, queryKey: ["property-ranking", PROJECT_ID, mode] },
   });
+  const updateProperty = useUpdateProperty();
 
   const findProperty = (id: number) => properties.find(p => p.id === id);
 
+  const handleSetOverride = (propertyId: number, rank: number | null) => {
+    updateProperty.mutate(
+      { id: propertyId, data: { manualRankOverride: rank } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ["property-ranking"] });
+          toast({ title: rank != null ? `Manual rank #${rank} set` : "Override cleared" });
+          setOverridePropertyId(null);
+          setOverrideRank("");
+        },
+      }
+    );
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-sm text-muted-foreground font-medium">Ranking mode:</span>
-        <div className="flex flex-wrap gap-2">
-          {RANKING_MODES.map(({ key, label, icon }) => (
-            <Button
-              key={key}
-              size="sm"
-              variant={mode === key ? "default" : "outline"}
-              className="gap-1.5 text-xs h-7"
-              onClick={() => setMode(key as typeof mode)}
-            >
-              {icon}{label}
-            </Button>
-          ))}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-sm text-muted-foreground font-medium">Ranking mode:</span>
+          <div className="flex flex-wrap gap-2">
+            {RANKING_MODES.map(({ key, label, icon }) => (
+              <Button
+                key={key}
+                size="sm"
+                variant={mode === key ? "default" : "outline"}
+                className="gap-1.5 text-xs h-7"
+                onClick={() => setMode(key as typeof mode)}
+              >
+                {icon}{label}
+              </Button>
+            ))}
+          </div>
         </div>
+        <ScoringWeightsPanel />
       </div>
 
       {isLoading && (
@@ -1572,26 +1919,30 @@ function RankingsView({ properties, onOpen }: { properties: ClinicProperty[]; on
           {ranking.rankings.map((item: PropertyRankingItem) => {
             const prop = findProperty(item.propertyId);
             const stage = pipelineStageInfo(item.pipelineStatus ?? "found");
+            const isSettingOverride = overridePropertyId === item.propertyId;
             return (
               <div
                 key={item.propertyId}
-                className={`rounded-xl border bg-card p-4 space-y-3 transition-all hover:border-primary/40 hover:shadow-sm cursor-pointer ${item.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
-                onClick={() => prop && onOpen(prop)}
+                className={`rounded-xl border bg-card p-4 space-y-3 transition-all hover:border-primary/40 hover:shadow-sm ${item.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ${
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0 cursor-pointer ${
                     item.rank === 1 ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" :
                     item.rank === 2 ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" :
                     item.rank === 3 ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" :
                     "bg-muted text-muted-foreground"
-                  }`}>
+                  }`}
+                    title="Click to set manual rank override"
+                    onClick={e => { e.stopPropagation(); setOverridePropertyId(isSettingOverride ? null : item.propertyId); setOverrideRank(""); }}
+                  >
                     {item.manualRankOverride != null ? "★" : `#${item.rank}`}
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => prop && onOpen(prop)}>
                     <div className="flex items-center gap-2 mb-0.5 flex-wrap">
                       <p className="text-sm font-semibold truncate">{item.address ?? "Unnamed"}</p>
                       {item.isFavourited && <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />}
                       {item.isActiveForProject && <Badge className="text-xs bg-primary/15 text-primary shrink-0 gap-1"><Target className="w-2.5 h-2.5" />Active</Badge>}
+                      {item.manualRankOverride != null && <Badge className="text-xs bg-amber-100 text-amber-700 shrink-0">Manual #{ item.manualRankOverride}</Badge>}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       {item.postcode && <span className="text-xs text-muted-foreground">{item.postcode}</span>}
@@ -1604,6 +1955,31 @@ function RankingsView({ properties, onOpen }: { properties: ClinicProperty[]; on
                     <p className="text-xs text-muted-foreground">score</p>
                   </div>
                 </div>
+                {isSettingOverride && (
+                  <div className="flex items-center gap-2 pt-1 border-t" onClick={e => e.stopPropagation()}>
+                    <p className="text-xs text-muted-foreground shrink-0">Manual rank:</p>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={overrideRank}
+                      onChange={e => setOverrideRank(e.target.value)}
+                      placeholder={`Current: #${item.rank}`}
+                      className="h-7 text-xs w-28"
+                    />
+                    <Button size="sm" className="h-7 text-xs" disabled={updateProperty.isPending} onClick={() => handleSetOverride(item.propertyId, overrideRank ? parseInt(overrideRank) : null)}>
+                      Set
+                    </Button>
+                    {item.manualRankOverride != null && (
+                      <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => handleSetOverride(item.propertyId, null)}>
+                        Clear
+                      </Button>
+                    )}
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setOverridePropertyId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                )}
                 <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
                     className={`h-full rounded-full ${item.rank === 1 ? "bg-primary" : item.rank <= 3 ? "bg-primary/70" : "bg-muted-foreground/40"}`}
@@ -1636,11 +2012,16 @@ export default function PropertiesPage() {
   const [compareSelected, setCompareSelected] = useState<Set<number>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
 
+  const MAX_COMPARE = 4;
+
   const toggleCompareSelect = (id: number) => {
     setCompareSelected(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < MAX_COMPARE) {
+        next.add(id);
+      }
       return next;
     });
   };

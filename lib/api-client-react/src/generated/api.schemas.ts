@@ -823,6 +823,55 @@ export interface AIExecutiveSummary {
   overallVerdict: string;
 }
 
+export type RiskItemSeverity =
+  (typeof RiskItemSeverity)[keyof typeof RiskItemSeverity];
+
+export const RiskItemSeverity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface RiskItem {
+  risk: string;
+  severity: RiskItemSeverity;
+  mitigation: string;
+}
+
+export type RiskAnalysisOverall =
+  (typeof RiskAnalysisOverall)[keyof typeof RiskAnalysisOverall];
+
+export const RiskAnalysisOverall = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export interface RiskAnalysis {
+  overall: RiskAnalysisOverall;
+  verdict: string;
+  risks: RiskItem[];
+}
+
+export interface NegotiationLeverage {
+  verdict: string;
+  landlordMotivators: string[];
+  strengths: string[];
+  tactics: string[];
+  suggestedOpeningOffer: string;
+  redLines: string[];
+}
+
+export interface LaunchStrategy {
+  estimatedTimeToLaunch: string;
+  firstYearRevenueForecast: string;
+  phase1: string;
+  phase2: string;
+  phase3: string;
+  keyMilestones: string[];
+  criticalSuccessFactors: string[];
+}
+
 export interface PropertyIntelligenceResult {
   propertyId: number;
   locationScore: PropertyScore;
@@ -830,6 +879,9 @@ export interface PropertyIntelligenceResult {
   clinicSuitabilityScore: PropertyScore;
   competition: CompetitionAnalysis;
   executiveSummary: AIExecutiveSummary;
+  riskAnalysis?: RiskAnalysis | null;
+  negotiationLeverage?: NegotiationLeverage | null;
+  launchStrategy?: LaunchStrategy | null;
   generatedAt: string;
   analysisId?: number | null;
   version?: number | null;

@@ -2697,6 +2697,99 @@ components:
         - suggestedPositioning
         - overallVerdict
 
+    RiskItem:
+      type: object
+      properties:
+        risk:
+          type: string
+        severity:
+          type: string
+          enum: [low, medium, high]
+        mitigation:
+          type: string
+      required:
+        - risk
+        - severity
+        - mitigation
+
+    RiskAnalysis:
+      type: object
+      properties:
+        overall:
+          type: string
+          enum: [low, medium, high]
+        verdict:
+          type: string
+        risks:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskItem"
+      required:
+        - overall
+        - verdict
+        - risks
+
+    NegotiationLeverage:
+      type: object
+      properties:
+        verdict:
+          type: string
+        landlordMotivators:
+          type: array
+          items:
+            type: string
+        strengths:
+          type: array
+          items:
+            type: string
+        tactics:
+          type: array
+          items:
+            type: string
+        suggestedOpeningOffer:
+          type: string
+        redLines:
+          type: array
+          items:
+            type: string
+      required:
+        - verdict
+        - landlordMotivators
+        - strengths
+        - tactics
+        - suggestedOpeningOffer
+        - redLines
+
+    LaunchStrategy:
+      type: object
+      properties:
+        estimatedTimeToLaunch:
+          type: string
+        firstYearRevenueForecast:
+          type: string
+        phase1:
+          type: string
+        phase2:
+          type: string
+        phase3:
+          type: string
+        keyMilestones:
+          type: array
+          items:
+            type: string
+        criticalSuccessFactors:
+          type: array
+          items:
+            type: string
+      required:
+        - estimatedTimeToLaunch
+        - firstYearRevenueForecast
+        - phase1
+        - phase2
+        - phase3
+        - keyMilestones
+        - criticalSuccessFactors
+
     PropertyIntelligenceResult:
       type: object
       properties:
@@ -2712,6 +2805,15 @@ components:
           $ref: "#/components/schemas/CompetitionAnalysis"
         executiveSummary:
           $ref: "#/components/schemas/AIExecutiveSummary"
+        riskAnalysis:
+          $ref: "#/components/schemas/RiskAnalysis"
+          nullable: true
+        negotiationLeverage:
+          $ref: "#/components/schemas/NegotiationLeverage"
+          nullable: true
+        launchStrategy:
+          $ref: "#/components/schemas/LaunchStrategy"
+          nullable: true
         generatedAt:
           type: string
         analysisId:
