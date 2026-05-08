@@ -928,4 +928,96 @@ Agent: ${property.agentName || "Unknown"} | Notes: ${property.notes || "None"}`;
   }
 });
 
+// ─── Property Location Search ─────────────────────────────────────────────────
+
+const PropertySearchBodySchema = z.object({
+  location: z.string().min(1),
+  radiusKm: z.number().optional().default(5),
+  minSqft: z.number().optional(),
+  maxSqft: z.number().optional(),
+  minRentGbp: z.number().optional(),
+  maxRentGbp: z.number().optional(),
+  useClass: z.string().optional(),
+  parkingRequired: z.boolean().optional(),
+  highStreetOnly: z.boolean().optional(),
+});
+
+const SearchResultItemAISchema = z.object({
+  address: z.string(),
+  postcode: z.string(),
+  lat: z.number(),
+  lng: z.number(),
+  estimatedMonthlyRentGbp: z.number().nullable().optional(),
+  estimatedSqft: z.number().nullable().optional(),
+  suitabilityScore: z.number(),
+  rationale: z.string(),
+  listingUrl: z.string().nullable().optional(),
+  useClass: z.string().nullable().optional(),
+  strengths: z.array(z.string()).default([]),
+  concerns: z.array(z.string()).default([]),
+});
+
+const SearchResultAISchema = z.object({
+  results: z.array(SearchResultItemAISchema),
+});
+
+router.post("/projects/:projectId/properties/search", async (req, res) => {
+  const bodyParse = PropertySearchBodySchema.safeParse(req.body);
+  if (!bodyParse.success) {
+    return res.status(400).json({ error: "Invalid search criteria", details: bodyParse.error.issues });
+  }
+  const body = bodyParse.data;
+
+  const criteria: string[] = [`Location: ${body.location}`];
+  if (body.radiusKm) criteria.push(`Within ${body.radiusKm} km radius`);
+  if (body.minSqft || body.maxSqft) criteria.push(`Size: ${body.minSqft ?? 0}–${body.maxSqft ?? "unlimited"} sq ft`);
+  if (body.minRentGbp || body.maxRentGbp) criteria.push(`Monthly rent: £${body.minRentGbp ?? 0}–£${body.maxRentGbp ?? "unlimited"}`);
+  if (body.useClass) criteria.push(`Use class: ${body.useClass}`);
+  if (body.parkingRequired) criteria.push("Parking required");
+  if (body.highStreetOnly) criteria.push("High street or main retail area only");
+
+  const prompt = `You are a UK commercial property sourcing expert for an aesthetics clinic business. Generate a shortlist of 6 specific real UK commercial property locations matching the search criteria below. Each result must be a plausible, real-world address in the specified area.
+
+Search criteria:
+${criteria.join("\n")}
+
+For each result provide these fields exactly:
+- address: specific street address (e.g. "12 High Street, Guildford")
+- postcode: valid UK postcode for that location (e.g. "GU1 3DP")
+- lat: approximate latitude as a decimal number accurate to 3 decimal places
+- lng: approximate longitude as a decimal number accurate to 3 decimal places
+- estimatedMonthlyRentGbp: estimated monthly rent in GBP as integer, or null if unknown
+- estimatedSqft: estimated floor area in sq ft as integer, or null if unknown
+- suitabilityScore: integer 0-100 rating for aesthetics clinic suitability given the criteria
+- rationale: 1-2 sentence explanation of why this location suits an aesthetics clinic
+- listingUrl: null (placeholder — live listing data requires a commercial API)
+- useClass: likely planning use class (e.g. "E", "A1", "D1"), or null
+- strengths: array of 2-3 brief bullet points on strengths of this location
+- concerns: array of 1-2 brief bullet points on concerns or risks
+
+Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: AI_MODEL,
+      max_completion_tokens: 3000,
+      messages: [{ role: "user", content: prompt }],
+    });
+    const raw = response.choices[0]?.message?.content ?? '{"results":[]}';
+    const parsed = parseLLMJson(raw);
+    const validated = SearchResultAISchema.safeParse(parsed);
+    if (!validated.success) {
+      return res.status(500).json({ error: "Search returned unexpected format. Please try again." });
+    }
+    return res.json({ results: validated.data.results, location: body.location, criteria: body });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
+      return res.status(503).json({ error: "AI service is not configured. Please set up the OpenAI integration." });
+    }
+    return res.status(500).json({ error: "Property search failed. Please try again." });
+  }
+});
+
 export default router;
+

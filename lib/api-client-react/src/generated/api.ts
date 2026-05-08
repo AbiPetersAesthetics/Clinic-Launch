@@ -57,6 +57,8 @@ import type {
   PropertyExtraction,
   PropertyIntelligenceResult,
   PropertyRankingResult,
+  PropertySearchBody,
+  PropertySearchResult,
   RiskFlag,
   ScenarioConfig,
   ScoringWeights,
@@ -5305,6 +5307,93 @@ export function useGetPropertyRanking<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary AI-powered property location search — generates a shortlist of plausible UK commercial locations
+ */
+export const getSearchPropertiesUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/properties/search`;
+};
+
+export const searchProperties = async (
+  projectId: number,
+  propertySearchBody: PropertySearchBody,
+  options?: RequestInit,
+): Promise<PropertySearchResult> => {
+  return customFetch<PropertySearchResult>(getSearchPropertiesUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(propertySearchBody),
+  });
+};
+
+export const getSearchPropertiesMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchProperties>>,
+    TError,
+    { projectId: number; data: BodyType<PropertySearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof searchProperties>>,
+  TError,
+  { projectId: number; data: BodyType<PropertySearchBody> },
+  TContext
+> => {
+  const mutationKey = ["searchProperties"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof searchProperties>>,
+    { projectId: number; data: BodyType<PropertySearchBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return searchProperties(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SearchPropertiesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof searchProperties>>
+>;
+export type SearchPropertiesMutationBody = BodyType<PropertySearchBody>;
+export type SearchPropertiesMutationError = ErrorType<void>;
+
+/**
+ * @summary AI-powered property location search — generates a shortlist of plausible UK commercial locations
+ */
+export const useSearchProperties = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof searchProperties>>,
+    TError,
+    { projectId: number; data: BodyType<PropertySearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof searchProperties>>,
+  TError,
+  { projectId: number; data: BodyType<PropertySearchBody> },
+  TContext
+> => {
+  return useMutation(getSearchPropertiesMutationOptions(options));
+};
 
 /**
  * @summary Get all phases with their tasks for a project

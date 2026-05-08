@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProperties,
@@ -121,8 +121,11 @@ import {
   Gavel,
   LayoutGrid,
   ListFilter,
+  Map,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const PropertyMapView = lazy(() => import("@/components/property-map-view"));
 
 const PROJECT_ID = 1;
 
@@ -1752,13 +1755,13 @@ function ComparisonDialog({
   }
 
   // Summary: count wins per property
-  const winCounts = new Map<number, number>();
+  const winCounts: Record<number, number> = {};
   for (const row of rows) {
     const wid = getWinnerId(row);
-    if (wid != null) winCounts.set(wid, (winCounts.get(wid) ?? 0) + 1);
+    if (wid != null) winCounts[wid] = (winCounts[wid] ?? 0) + 1;
   }
-  const sortedByWins = [...winCounts.entries()].sort((a, b) => b[1] - a[1]);
-  const overallWinnerId = sortedByWins.length > 0 ? sortedByWins[0][0] : null;
+  const sortedByWins = (Object.entries(winCounts) as [string, number][]).sort((a, b) => b[1] - a[1]);
+  const overallWinnerId = sortedByWins.length > 0 ? parseInt(sortedByWins[0][0]) : null;
 
   // Derive recommendation summaries
   const lowestRentId = (() => {
@@ -2293,8 +2296,8 @@ export default function PropertiesPage() {
   const { data: overallRanking } = useGetPropertyRanking(PROJECT_ID, { mode: "overall" }, {
     query: { queryKey: ["property-ranking", PROJECT_ID, "overall"] },
   });
-  const rankMap = new Map<number, number>();
-  overallRanking?.rankings.forEach((item: PropertyRankingItem) => rankMap.set(item.propertyId, item.rank));
+  const rankMap: Record<number, number> = {};
+  overallRanking?.rankings.forEach((item: PropertyRankingItem) => { rankMap[item.propertyId] = item.rank; });
 
   const createProperty = useCreateProperty();
 
@@ -2402,6 +2405,7 @@ export default function PropertiesPage() {
           <TabsTrigger value="pipeline" className="gap-1.5 text-xs"><ListFilter className="w-3.5 h-3.5" />Pipeline</TabsTrigger>
           <TabsTrigger value="rankings" className="gap-1.5 text-xs"><Trophy className="w-3.5 h-3.5" />Rankings</TabsTrigger>
           <TabsTrigger value="all" className="gap-1.5 text-xs"><LayoutGrid className="w-3.5 h-3.5" />All Properties</TabsTrigger>
+          <TabsTrigger value="map" className="gap-1.5 text-xs"><Map className="w-3.5 h-3.5" />Map View</TabsTrigger>
         </TabsList>
 
         {/* Pipeline Tab */}
@@ -2435,7 +2439,7 @@ export default function PropertiesPage() {
                         compareMode={compareMode}
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
-                        rank={rankMap.get(prop.id)}
+                        rank={rankMap[prop.id]}
                       />
                     ))}
                   </div>
@@ -2457,7 +2461,7 @@ export default function PropertiesPage() {
                         compareMode={compareMode}
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
-                        rank={rankMap.get(prop.id)}
+                        rank={rankMap[prop.id]}
                       />
                     ))}
                   </div>
@@ -2494,11 +2498,25 @@ export default function PropertiesPage() {
                   compareMode={compareMode}
                   isSelected={compareSelected.has(prop.id)}
                   onToggleSelect={() => toggleCompareSelect(prop.id)}
-                  rank={rankMap.get(prop.id)}
+                  rank={rankMap[prop.id]}
                 />
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Map View Tab */}
+        <TabsContent value="map" className="mt-4">
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-64 text-muted-foreground gap-2">
+              <Loader2 className="w-5 h-5 animate-spin" />Loading map…
+            </div>
+          }>
+            <PropertyMapView
+              properties={properties ?? []}
+              onOpen={setSelectedProperty}
+            />
+          </Suspense>
         </TabsContent>
       </Tabs>
 

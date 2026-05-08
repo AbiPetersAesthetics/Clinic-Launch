@@ -1246,6 +1246,43 @@ export interface ImportUrlResult {
   extractable?: boolean | null;
 }
 
+export interface PropertySearchBody {
+  /** County, town, or city to search in (e.g. "Guildford, Surrey") */
+  location: string;
+  radiusKm?: number | null;
+  minSqft?: number | null;
+  maxSqft?: number | null;
+  minRentGbp?: number | null;
+  maxRentGbp?: number | null;
+  useClass?: string | null;
+  parkingRequired?: boolean | null;
+  highStreetOnly?: boolean | null;
+}
+
+export interface PropertySearchResultItem {
+  address: string;
+  postcode: string;
+  lat: number;
+  lng: number;
+  estimatedMonthlyRentGbp?: number | null;
+  estimatedSqft?: number | null;
+  /** 0-100 suitability score for aesthetics clinic */
+  suitabilityScore: number;
+  rationale: string;
+  listingUrl?: string | null;
+  useClass?: string | null;
+  strengths: string[];
+  concerns: string[];
+}
+
+export type PropertySearchResultCriteria = { [key: string]: unknown };
+
+export interface PropertySearchResult {
+  results: PropertySearchResultItem[];
+  location: string;
+  criteria: PropertySearchResultCriteria;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
 };

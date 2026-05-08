@@ -1303,6 +1303,35 @@ paths:
               schema:
                 $ref: "#/components/schemas/PropertyRankingResult"
 
+  /projects/{projectId}/properties/search:
+    post:
+      operationId: searchProperties
+      tags: [properties]
+      summary: AI-powered property location search — generates a shortlist of plausible UK commercial locations
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropertySearchBody"
+      responses:
+        "200":
+          description: Search results with AI-estimated suitability scores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertySearchResult"
+        "400":
+          description: Invalid search criteria
+        "503":
+          description: AI service not configured
+
   /projects/{projectId}/phases-with-tasks:
     get:
       operationId: getPhasesWithTasks
@@ -3483,3 +3512,100 @@ components:
         - flags
         - sourceUrl
         - projectId
+
+    PropertySearchBody:
+      type: object
+      properties:
+        location:
+          type: string
+          description: County, town, or city to search in (e.g. "Guildford, Surrey")
+        radiusKm:
+          type: number
+          nullable: true
+          default: 5
+        minSqft:
+          type: number
+          nullable: true
+        maxSqft:
+          type: number
+          nullable: true
+        minRentGbp:
+          type: number
+          nullable: true
+        maxRentGbp:
+          type: number
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        parkingRequired:
+          type: boolean
+          nullable: true
+        highStreetOnly:
+          type: boolean
+          nullable: true
+      required:
+        - location
+
+    PropertySearchResultItem:
+      type: object
+      properties:
+        address:
+          type: string
+        postcode:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        estimatedMonthlyRentGbp:
+          type: number
+          nullable: true
+        estimatedSqft:
+          type: number
+          nullable: true
+        suitabilityScore:
+          type: integer
+          description: 0-100 suitability score for aesthetics clinic
+        rationale:
+          type: string
+        listingUrl:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        strengths:
+          type: array
+          items:
+            type: string
+        concerns:
+          type: array
+          items:
+            type: string
+      required:
+        - address
+        - postcode
+        - lat
+        - lng
+        - suitabilityScore
+        - rationale
+        - strengths
+        - concerns
+
+    PropertySearchResult:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertySearchResultItem"
+        location:
+          type: string
+        criteria:
+          type: object
+          additionalProperties: true
+      required:
+        - results
+        - location
+        - criteria

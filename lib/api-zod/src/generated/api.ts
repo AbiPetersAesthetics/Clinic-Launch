@@ -2274,6 +2274,54 @@ export const GetPropertyRankingResponse = zod.object({
 });
 
 /**
+ * @summary AI-powered property location search — generates a shortlist of plausible UK commercial locations
+ */
+export const SearchPropertiesParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const searchPropertiesBodyRadiusKmDefault = 5;
+
+export const SearchPropertiesBody = zod.object({
+  location: zod
+    .string()
+    .describe(
+      'County, town, or city to search in (e.g. \"Guildford, Surrey\")',
+    ),
+  radiusKm: zod.number().nullish().default(searchPropertiesBodyRadiusKmDefault),
+  minSqft: zod.number().nullish(),
+  maxSqft: zod.number().nullish(),
+  minRentGbp: zod.number().nullish(),
+  maxRentGbp: zod.number().nullish(),
+  useClass: zod.string().nullish(),
+  parkingRequired: zod.boolean().nullish(),
+  highStreetOnly: zod.boolean().nullish(),
+});
+
+export const SearchPropertiesResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      address: zod.string(),
+      postcode: zod.string(),
+      lat: zod.number(),
+      lng: zod.number(),
+      estimatedMonthlyRentGbp: zod.number().nullish(),
+      estimatedSqft: zod.number().nullish(),
+      suitabilityScore: zod
+        .number()
+        .describe("0-100 suitability score for aesthetics clinic"),
+      rationale: zod.string(),
+      listingUrl: zod.string().nullish(),
+      useClass: zod.string().nullish(),
+      strengths: zod.array(zod.string()),
+      concerns: zod.array(zod.string()),
+    }),
+  ),
+  location: zod.string(),
+  criteria: zod.record(zod.string(), zod.unknown()),
+});
+
+/**
  * @summary Get all phases with their tasks for a project
  */
 export const GetPhasesWithTasksParams = zod.object({
