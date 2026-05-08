@@ -15,7 +15,10 @@ router.get("/projects/:projectId/cost-optimisation-rules", async (req, res) => {
 
 router.post("/projects/:projectId/cost-optimisation-rules", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
-  const { keyword, forceCategory, isAbsenceCheck, severityIfAbsent, rationale, isActive } = req.body;
+  const {
+    keyword, itemTag, forceCategory, safeThreshold, dangerThreshold, notes,
+    isAbsenceCheck, severityIfAbsent, rationale, isActive,
+  } = req.body;
 
   if (!keyword || !rationale) {
     return res.status(400).json({ error: "keyword and rationale are required" });
@@ -24,7 +27,11 @@ router.post("/projects/:projectId/cost-optimisation-rules", async (req, res) => 
   const [rule] = await db.insert(costOptimisationRulesTable).values({
     projectId,
     keyword,
+    itemTag: itemTag ?? null,
     forceCategory: forceCategory ?? null,
+    safeThreshold: safeThreshold != null ? Number(safeThreshold) : null,
+    dangerThreshold: dangerThreshold != null ? Number(dangerThreshold) : null,
+    notes: notes ?? null,
     isAbsenceCheck: isAbsenceCheck ?? false,
     severityIfAbsent: severityIfAbsent ?? "critical",
     rationale,
@@ -35,10 +42,24 @@ router.post("/projects/:projectId/cost-optimisation-rules", async (req, res) => 
 
 router.put("/cost-optimisation-rules/:id", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
-  const { keyword, forceCategory, isAbsenceCheck, severityIfAbsent, rationale, isActive } = req.body;
+  const {
+    keyword, itemTag, forceCategory, safeThreshold, dangerThreshold, notes,
+    isAbsenceCheck, severityIfAbsent, rationale, isActive,
+  } = req.body;
 
   const [rule] = await db.update(costOptimisationRulesTable)
-    .set({ keyword, forceCategory, isAbsenceCheck, severityIfAbsent, rationale, isActive })
+    .set({
+      keyword,
+      itemTag: itemTag ?? null,
+      forceCategory: forceCategory ?? null,
+      safeThreshold: safeThreshold != null ? Number(safeThreshold) : null,
+      dangerThreshold: dangerThreshold != null ? Number(dangerThreshold) : null,
+      notes: notes ?? null,
+      isAbsenceCheck,
+      severityIfAbsent,
+      rationale,
+      isActive,
+    })
     .where(eq(costOptimisationRulesTable.id, id))
     .returning();
   if (!rule) return res.status(404).json({ error: "Rule not found" });
