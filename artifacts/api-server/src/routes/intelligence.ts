@@ -394,18 +394,22 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
 
   const resolvedType = fileType === "image" ? "image" : "pdf";
 
-  if (tempFileName) {
-    const tempPath = path.join(propertyUploadsDir, tempFileName);
-    try {
-      await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
-      await fs.promises.rename(tempPath, finalPath);
-    } catch {
-      // Temp file could not be moved — reject the request so we don't record a broken URL.
-      return res.status(500).json({ error: "Could not finalise file — the uploaded file may have expired. Please re-upload." });
-    }
+  // tempFileName is required to add a media entry — without it we cannot guarantee
+  // the file exists on disk, so reject rather than persist a broken URL.
+  if (!tempFileName) {
+    return res.status(400).json({ error: "tempFileName is required to finalise a media upload." });
   }
 
-  // Add media file reference (only reached when file is confirmed on disk, or no temp file provided)
+  const tempPath = path.join(propertyUploadsDir, tempFileName);
+  try {
+    await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
+    await fs.promises.rename(tempPath, finalPath);
+  } catch {
+    // Temp file could not be moved — reject so we never record a broken URL.
+    return res.status(500).json({ error: "Could not finalise file — the uploaded file may have expired. Please re-upload." });
+  }
+
+  // Add media file reference — only reached once file is confirmed on disk.
   const existingMedia = Array.isArray(property.mediaFiles) ? property.mediaFiles : [];
   const newMediaFile = {
     id: `${resolvedType}_${Date.now()}`,
