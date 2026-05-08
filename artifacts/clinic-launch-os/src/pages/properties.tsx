@@ -306,6 +306,16 @@ function IntelligencePanel({ result, property }: { result: PropertyIntelligenceR
         </TabsContent>
 
         <TabsContent value="competition" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold">Competition Analysis</h4>
+            <Badge variant="outline" className={`text-xs gap-1.5 ${result.competition.dataSource === "google_places" ? "border-primary/40 text-primary" : "border-muted-foreground/40 text-muted-foreground"}`}>
+              {result.competition.dataSource === "google_places"
+                ? <><MapPin className="w-3 h-3" /> Live Google Places data</>
+                : <><Brain className="w-3 h-3" /> AI estimate</>
+              }
+            </Badge>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border p-4 text-center">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Saturation</p>

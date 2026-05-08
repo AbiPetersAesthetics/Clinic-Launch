@@ -1,12 +1,92 @@
-import { Router } from "express";
-import multer from "multer";
+import { Router, type Request } from "express";
+import multer, { type FileFilterCallback } from "multer";
 import { db } from "@workspace/db";
 import { propertiesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
+    if (file.mimetype === "application/pdf") {
+      cb(null, true);
+    } else {
+      cb(new Error("Only PDF files are accepted"));
+    }
+  },
+});
+
+// ─── Google Places helpers ────────────────────────────────────────────────────
+
+type PlacesCompetitor = {
+  name: string;
+  type: string;
+  distanceMeters: number | null;
+  rating: number | null;
+  reviewCount: number | null;
+  notes: string | null;
+};
+
+async function geocodePostcode(postcode: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(postcode + " UK")}&key=${apiKey}`;
+  const res = await fetch(url);
+  const json = await res.json() as { status: string; results: Array<{ geometry: { location: { lat: number; lng: number } } }> };
+  if (json.status !== "OK" || !json.results[0]) return null;
+  return json.results[0].geometry.location;
+}
+
+async function findNearbyCompetitors(lat: number, lng: number, apiKey: string): Promise<PlacesCompetitor[]> {
+  const keywords = ["aesthetics clinic", "beauty salon", "medispa", "skin clinic", "cosmetic clinic"];
+  const seen = new Set<string>();
+  const competitors: PlacesCompetitor[] = [];
+
+  for (const keyword of keywords) {
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=600&keyword=${encodeURIComponent(keyword)}&key=${apiKey}`;
+    const res = await fetch(url);
+    const json = await res.json() as {
+      status: string;
+      results: Array<{
+        name: string;
+        types: string[];
+        rating?: number;
+        user_ratings_total?: number;
+        geometry: { location: { lat: number; lng: number } };
+        business_status?: string;
+      }>;
+    };
+    if (json.status !== "OK" && json.status !== "ZERO_RESULTS") continue;
+    for (const place of json.results ?? []) {
+      if (seen.has(place.name)) continue;
+      if (place.business_status === "CLOSED_PERMANENTLY") continue;
+      seen.add(place.name);
+
+      const dLat = place.geometry.location.lat - lat;
+      const dLng = place.geometry.location.lng - lng;
+      const distM = Math.round(Math.sqrt(dLat * dLat + dLng * dLng) * 111_000);
+
+      const primaryType = place.types.includes("spa") ? "medispa"
+        : place.types.includes("beauty_salon") ? "beauty salon"
+        : place.types.includes("hair_care") ? "hair salon"
+        : "aesthetics clinic";
+
+      competitors.push({
+        name: place.name,
+        type: primaryType,
+        distanceMeters: distM,
+        rating: place.rating ?? null,
+        reviewCount: place.user_ratings_total ?? null,
+        notes: null,
+      });
+    }
+    if (competitors.length >= 10) break;
+  }
+
+  return competitors.slice(0, 10).sort((a, b) => (a.distanceMeters ?? 9999) - (b.distanceMeters ?? 9999));
+}
+
+// ─── Document Upload / Extraction ────────────────────────────────────────────
 
 router.post("/properties/:id/upload-document", upload.single("file"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
@@ -95,6 +175,8 @@ Return JSON object only, no markdown, no explanation.`;
   });
 });
 
+// ─── Full AI Property Analysis ────────────────────────────────────────────────
+
 router.post("/properties/:id/analyse", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
@@ -114,13 +196,52 @@ Use Class: ${property.useClass || "Unknown"}
 Availability: ${property.availabilityDate || "Unknown"}
 Parking Spaces: ${property.parkingSpaces ?? "Unknown"}
 Frontage: ${property.frontageMeters || "Unknown"}m
-Notes: ${property.notes || "None"}
-`.trim();
+Notes: ${property.notes || "None"}`.trim();
+
+  // ── Competition mapping: try Google Places first, fall back to LLM ──────────
+  const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
+  let realCompetitors: PlacesCompetitor[] | null = null;
+  let competitionDataSource: "google_places" | "ai_estimate" = "ai_estimate";
+
+  if (placesApiKey && property.postcode) {
+    try {
+      const coords = await geocodePostcode(property.postcode, placesApiKey);
+      if (coords) {
+        realCompetitors = await findNearbyCompetitors(coords.lat, coords.lng, placesApiKey);
+        competitionDataSource = "google_places";
+      }
+    } catch {
+      // Fall through to AI estimate
+    }
+  }
+
+  // Build the competition section of the prompt
+  const competitionContext = realCompetitors
+    ? `
+REAL competitor data retrieved from Google Places (within 600m of ${property.postcode}):
+${JSON.stringify(realCompetitors, null, 2)}
+
+Using this real data, provide:
+- saturationScore (0–100, higher = more saturated market)
+- opportunityScore (0–100, higher = better opportunity gap)
+- saturationVerdict: 1–2 sentence interpretation of competitive density
+- opportunityVerdict: 1–2 sentence interpretation of the market gap
+- competitors: use the provided list exactly (do NOT fabricate extra competitors)`
+    : `
+No Google Places API key configured. Generate a realistic competition analysis for the area around ${property.postcode || property.address || "this location"} based on your knowledge of UK aesthetics market demographics.
+Provide:
+- saturationScore (0–100)
+- opportunityScore (0–100)
+- saturationVerdict
+- opportunityVerdict
+- competitors: up to 5 plausible named competitors (clearly estimated)`;
 
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Analyse this property for use as a premium aesthetics clinic.
 
 Property details:
 ${propertyContext}
+
+${competitionContext}
 
 Return a comprehensive JSON analysis with this EXACT structure (no markdown, valid JSON only):
 
@@ -172,10 +293,10 @@ Return a comprehensive JSON analysis with this EXACT structure (no markdown, val
   "competition": {
     "saturationScore": <number 0-100, higher = more saturated>,
     "opportunityScore": <number 0-100, higher = better opportunity>,
-    "saturationVerdict": "<brief assessment of local competition density>",
-    "opportunityVerdict": "<brief assessment of market gap opportunity>",
+    "saturationVerdict": "<brief assessment>",
+    "opportunityVerdict": "<brief assessment>",
     "competitors": [
-      {"name": "<name>", "type": "<aesthetics clinic|beauty salon|medispa|dentist|skin clinic>", "distanceMeters": <number or null>, "rating": <number or null>, "reviewCount": <number or null>, "notes": "<brief>"}
+      {"name": "<name>", "type": "<type>", "distanceMeters": <number or null>, "rating": <number or null>, "reviewCount": <number or null>, "notes": "<brief or null>"}
     ]
   },
   "executiveSummary": {
@@ -204,9 +325,17 @@ Return a comprehensive JSON analysis with this EXACT structure (no markdown, val
     return res.status(500).json({ error: "AI analysis failed. Please try again." });
   }
 
+  // Ensure competition data is from the correct source
+  const competitionResult = result.competition as Record<string, unknown> | undefined ?? {};
+  if (realCompetitors !== null) {
+    competitionResult.competitors = realCompetitors;
+  }
+  competitionResult.dataSource = competitionDataSource;
+
   return res.json({
     propertyId: id,
     ...result,
+    competition: competitionResult,
     generatedAt: new Date().toISOString(),
   });
 });

@@ -694,12 +694,21 @@ export interface CompetitorItem {
   notes?: string | null;
 }
 
+export type CompetitionAnalysisDataSource =
+  (typeof CompetitionAnalysisDataSource)[keyof typeof CompetitionAnalysisDataSource];
+
+export const CompetitionAnalysisDataSource = {
+  google_places: "google_places",
+  ai_estimate: "ai_estimate",
+} as const;
+
 export interface CompetitionAnalysis {
   saturationScore: number;
   opportunityScore: number;
   saturationVerdict: string;
   opportunityVerdict: string;
   competitors: CompetitorItem[];
+  dataSource: CompetitionAnalysisDataSource;
 }
 
 export interface AIExecutiveSummary {

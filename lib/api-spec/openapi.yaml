@@ -2071,12 +2071,16 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CompetitorItem"
+        dataSource:
+          type: string
+          enum: [google_places, ai_estimate]
       required:
         - saturationScore
         - opportunityScore
         - saturationVerdict
         - opportunityVerdict
         - competitors
+        - dataSource
 
     AIExecutiveSummary:
       type: object

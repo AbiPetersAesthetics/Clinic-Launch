@@ -1039,6 +1039,7 @@ export const AnalysePropertyResponse = zod.object({
         notes: zod.string().nullish(),
       }),
     ),
+    dataSource: zod.enum(["google_places", "ai_estimate"]),
   }),
   executiveSummary: zod.object({
     strengths: zod.array(zod.string()),
