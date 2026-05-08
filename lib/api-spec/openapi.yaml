@@ -2134,7 +2134,7 @@ components:
             $ref: "#/components/schemas/CompetitorItem"
         dataSource:
           type: string
-          enum: [google_places, ai_estimate]
+          enum: [google_places, manual, ai_estimate]
       required:
         - saturationScore
         - opportunityScore

@@ -379,10 +379,18 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: P
         <TabsContent value="competition" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">Competition Analysis</h4>
-            <Badge variant="outline" className={`text-xs gap-1.5 ${result.competition.dataSource === "google_places" ? "border-primary/40 text-primary" : "border-muted-foreground/40 text-muted-foreground"}`}>
+            <Badge variant="outline" className={`text-xs gap-1.5 ${
+              result.competition.dataSource === "google_places"
+                ? "border-primary/40 text-primary"
+                : result.competition.dataSource === "manual"
+                  ? "border-amber-500/40 text-amber-600"
+                  : "border-muted-foreground/40 text-muted-foreground"
+            }`}>
               {result.competition.dataSource === "google_places"
                 ? <><MapPin className="w-3 h-3" /> Live Google Places data</>
-                : <><Brain className="w-3 h-3" /> AI estimate</>
+                : result.competition.dataSource === "manual"
+                  ? <><Building className="w-3 h-3" /> Manual competitor data</>
+                  : <><Brain className="w-3 h-3" /> AI estimate</>
               }
             </Badge>
           </div>
@@ -422,7 +430,7 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: P
             </div>
           )}
 
-          {result.competition.dataSource === "ai_estimate" && (
+          {(result.competition.dataSource === "ai_estimate" || result.competition.dataSource === "manual") && (
             <ManualCompetitorForm
               propertyId={property.id}
               initialCompetitors={(property.manualCompetitors as ManualCompetitor[] | null) ?? []}
@@ -431,7 +439,7 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: P
           )}
 
           {result.competition.competitors.length === 0 && result.competition.dataSource === "google_places" && (
-            <p className="text-sm text-muted-foreground text-center py-4">No competitors found within 600m via Google Places.</p>
+            <p className="text-sm text-muted-foreground text-center py-4">No competitors found within the search radius via Google Places.</p>
           )}
         </TabsContent>
       </Tabs>

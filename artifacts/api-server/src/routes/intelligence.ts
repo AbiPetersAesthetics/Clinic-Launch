@@ -291,7 +291,7 @@ Notes: ${property.notes || "None"}`;
   // ── Competition: Google Places → manual entries → empty (no LLM fabrication) ──
   const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
   let realCompetitors: PlacesCompetitor[] | null = null;
-  let competitionDataSource: "google_places" | "ai_estimate" = "ai_estimate";
+  let competitionDataSource: "google_places" | "manual" | "ai_estimate" = "ai_estimate";
 
   if (placesApiKey && property.postcode) {
     try {
@@ -307,6 +307,10 @@ Notes: ${property.notes || "None"}`;
 
   // When no Places data, use manually-entered competitors for scoring context
   const manualCompetitorsList = Array.isArray(property.manualCompetitors) ? property.manualCompetitors : [];
+
+  if (manualCompetitorsList.length > 0 && realCompetitors === null) {
+    competitionDataSource = "manual";
+  }
 
   const competitorContext = realCompetitors !== null
     ? `Real competitor data from Google Places (within ${searchRadius}m of ${property.postcode}):

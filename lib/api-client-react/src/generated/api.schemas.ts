@@ -706,6 +706,7 @@ export type CompetitionAnalysisDataSource =
 
 export const CompetitionAnalysisDataSource = {
   google_places: "google_places",
+  manual: "manual",
   ai_estimate: "ai_estimate",
 } as const;
 
