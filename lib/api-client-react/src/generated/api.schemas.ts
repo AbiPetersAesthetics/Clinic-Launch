@@ -862,6 +862,8 @@ export interface OptimisationAnalysis {
   currentCashRequirement: number;
   cashRequirementWithSavings: number;
   operationalRiskScore: number;
+  runwayMonths?: number | null;
+  runwayMonthsWithSavings?: number | null;
   smartRiskFlags: OptimisationSmartRiskFlag[];
   totalItems: number;
   generatedAt: string;
@@ -879,7 +881,11 @@ export interface CostOptimisationRule {
   id: number;
   projectId: number;
   keyword: string;
+  itemTag?: string | null;
   forceCategory?: string | null;
+  safeThreshold?: number | null;
+  dangerThreshold?: number | null;
+  notes?: string | null;
   isAbsenceCheck: boolean;
   severityIfAbsent: CostOptimisationRuleSeverityIfAbsent;
   rationale: string;
@@ -897,7 +903,11 @@ export const CreateCostOptimisationRuleBodySeverityIfAbsent = {
 
 export interface CreateCostOptimisationRuleBody {
   keyword: string;
+  itemTag?: string | null;
   forceCategory?: string | null;
+  safeThreshold?: number | null;
+  dangerThreshold?: number | null;
+  notes?: string | null;
   isAbsenceCheck?: boolean;
   severityIfAbsent?: CreateCostOptimisationRuleBodySeverityIfAbsent;
   rationale: string;
@@ -914,7 +924,11 @@ export const UpdateCostOptimisationRuleBodySeverityIfAbsent = {
 
 export interface UpdateCostOptimisationRuleBody {
   keyword?: string;
+  itemTag?: string | null;
   forceCategory?: string | null;
+  safeThreshold?: number | null;
+  dangerThreshold?: number | null;
+  notes?: string | null;
   isAbsenceCheck?: boolean;
   severityIfAbsent?: UpdateCostOptimisationRuleBodySeverityIfAbsent;
   rationale?: string;

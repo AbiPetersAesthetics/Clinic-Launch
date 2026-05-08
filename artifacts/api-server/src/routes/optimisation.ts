@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { phasesTable, tasksTable, costOptimisationRulesTable } from "@workspace/db";
+import { phasesTable, tasksTable, costOptimisationRulesTable, financialsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { LaunchTask, CostOptimisationRule } from "@workspace/db";
 
@@ -39,7 +39,11 @@ interface SmartRiskFlag {
 const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId">[] = [
   {
     keyword: "solicitor",
+    itemTag: "legal",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
     isAbsenceCheck: true,
     severityIfAbsent: "critical",
     rationale: "No solicitor provision detected — legal risk is unacceptable for a commercial lease. A solicitor is required for lease review and negotiation.",
@@ -47,7 +51,11 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
   },
   {
     keyword: "clinical waste",
+    itemTag: "compliance",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
     isAbsenceCheck: true,
     severityIfAbsent: "critical",
     rationale: "No clinical waste contract detected — CQC compliance requires a registered clinical waste disposal contract before registration.",
@@ -55,7 +63,11 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
   },
   {
     keyword: "fire risk",
+    itemTag: "compliance",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
     isAbsenceCheck: true,
     severityIfAbsent: "critical",
     rationale: "No fire risk assessment detected — HSE statutory requirement for all clinical premises.",
@@ -63,7 +75,11 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
   },
   {
     keyword: "insurance",
+    itemTag: "insurance",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: 2000,
+    dangerThreshold: 500,
+    notes: null,
     isAbsenceCheck: false,
     severityIfAbsent: "critical",
     rationale: "Insurance on LOW cost tier — inadequate professional indemnity and public liability cover is not acceptable for a clinical business.",
@@ -71,7 +87,11 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
   },
   {
     keyword: "electrical",
+    itemTag: "fitout",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
     isAbsenceCheck: false,
     severityIfAbsent: "critical",
     rationale: "Electrical work on LOW cost tier — unsafe installation in a clinical environment creates serious liability and CQC risk.",
@@ -79,7 +99,11 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
   },
   {
     keyword: "compliance",
+    itemTag: "compliance",
     forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
     isAbsenceCheck: false,
     severityIfAbsent: "warning",
     rationale: "Compliance consultant on LOW cost tier — regulatory shortcuts before CQC registration create unacceptable business risk.",
@@ -189,8 +213,12 @@ function applyRuleOverrides(
 router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
 
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const [phases, financialsRows] = await Promise.all([
+    db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
+    db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
+  ]);
   const phaseMap = new Map(phases.map(p => [p.id, p.name]));
+  const fin = financialsRows[0] ?? null;
 
   const allTasks = (await Promise.all(
     phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id)))
@@ -204,6 +232,30 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const items: OptimisationItem[] = incompleteTasks.map(task => {
     const derived = deriveCategory(task);
     const final = applyRuleOverrides(task, derived, activeRules);
+
+    // Threshold-based override: if dangerThreshold is set and selectedCost < dangerThreshold, escalate
+    const titleLower = task.title.toLowerCase();
+    for (const rule of activeRules) {
+      if (!rule.isActive || rule.isAbsenceCheck) continue;
+      if (!titleLower.includes(rule.keyword.toLowerCase())) continue;
+      if (rule.dangerThreshold !== null && rule.dangerThreshold !== undefined && task.selectedCost < rule.dangerThreshold) {
+        return {
+          taskId: task.id,
+          taskTitle: task.title,
+          phaseId: task.phaseId,
+          phaseName: phaseMap.get(task.phaseId) ?? "Unknown",
+          costTier: task.costTier,
+          selectedCost: task.selectedCost,
+          costLow: task.costLow,
+          costMid: task.costMid,
+          costHigh: task.costHigh,
+          category: (rule.forceCategory ?? "dangerous_to_cut") as OptimisationCategory,
+          potentialSavingGbp: 0,
+          rationale: rule.notes ?? `${task.title} budget (£${task.selectedCost.toLocaleString()}) is below the safe minimum of £${rule.dangerThreshold.toLocaleString()}. ${rule.rationale}`,
+        };
+      }
+    }
+
     return {
       taskId: task.id,
       taskTitle: task.title,
@@ -243,9 +295,32 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     dangerousCount * 15 + highRiskCount * 5 + criticalCount * 8
   ));
 
+  // Runway calculation from financial model
+  let runwayMonths: number | null = null;
+  let runwayMonthsWithSavings: number | null = null;
+  if (fin) {
+    const monthlyFixedCosts =
+      fin.rentGbp + fin.ratesGbp + fin.utilitiesGbp + fin.internetGbp +
+      fin.insuranceGbp + fin.accountantGbp + fin.softwareGbp +
+      fin.wasteContractGbp + fin.cleanerGbp + fin.subscriptionsGbp +
+      fin.financeRepaymentsGbp;
+    const monthlyVariableCosts =
+      fin.marketingGbp + fin.staffingGbp + fin.consumablesGbp;
+    const monthlyPersonalNeeds = fin.personalSalaryNeedsGbp + fin.ownerDrawingsGbp;
+    const monthlyIncome = fin.existingClinicRevenueGbp;
+    const monthlyBurn = monthlyFixedCosts + monthlyVariableCosts + monthlyPersonalNeeds - monthlyIncome;
+
+    if (monthlyBurn > 0) {
+      const savingsAfterLaunch = fin.runwaySavingsGbp - currentCashRequirement;
+      const savingsAfterLaunchOptimised = fin.runwaySavingsGbp - cashRequirementWithSavings;
+      runwayMonths = Math.max(0, Math.round((savingsAfterLaunch / monthlyBurn) * 10) / 10);
+      runwayMonthsWithSavings = Math.max(0, Math.round((savingsAfterLaunchOptimised / monthlyBurn) * 10) / 10);
+    }
+  }
+
   const smartRiskFlags: SmartRiskFlag[] = [];
 
-  // Dangerous-to-cut items
+  // Dangerous-to-cut items become smart risk flags
   for (const item of categorised.dangerous_to_cut) {
     smartRiskFlags.push({
       level: "critical",
@@ -255,11 +330,12 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     });
   }
 
-  // Absence checks: for each absence rule, flag if NO incomplete task matches the keyword
-  const incompleteTitles = incompleteTasks.map(t => t.title.toLowerCase());
+  // Absence checks: flag if NO task (including completed) matches the keyword
+  // Completed tasks indicate provision is already in place — do not false-flag them
+  const allTaskTitles = allTasks.map(t => t.title.toLowerCase());
   for (const rule of activeRules) {
     if (!rule.isAbsenceCheck) continue;
-    const found = incompleteTitles.some(title => title.includes(rule.keyword.toLowerCase()));
+    const found = allTaskTitles.some(title => title.includes(rule.keyword.toLowerCase()));
     if (!found) {
       smartRiskFlags.push({
         level: rule.severityIfAbsent as "warning" | "critical",
@@ -275,6 +351,8 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     currentCashRequirement,
     cashRequirementWithSavings,
     operationalRiskScore,
+    runwayMonths,
+    runwayMonthsWithSavings,
     smartRiskFlags,
     totalItems: items.length,
     generatedAt: new Date().toISOString(),

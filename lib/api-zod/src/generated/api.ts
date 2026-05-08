@@ -1139,7 +1139,11 @@ export const ListCostOptimisationRulesResponseItem = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   keyword: zod.string(),
+  itemTag: zod.string().nullish(),
   forceCategory: zod.string().nullish(),
+  safeThreshold: zod.number().nullish(),
+  dangerThreshold: zod.number().nullish(),
+  notes: zod.string().nullish(),
   isAbsenceCheck: zod.boolean(),
   severityIfAbsent: zod.enum(["warning", "critical"]),
   rationale: zod.string(),
@@ -1159,7 +1163,11 @@ export const CreateCostOptimisationRuleParams = zod.object({
 
 export const CreateCostOptimisationRuleBody = zod.object({
   keyword: zod.string(),
+  itemTag: zod.string().nullish(),
   forceCategory: zod.string().nullish(),
+  safeThreshold: zod.number().nullish(),
+  dangerThreshold: zod.number().nullish(),
+  notes: zod.string().nullish(),
   isAbsenceCheck: zod.boolean().optional(),
   severityIfAbsent: zod.enum(["warning", "critical"]).optional(),
   rationale: zod.string(),
@@ -1175,7 +1183,11 @@ export const UpdateCostOptimisationRuleParams = zod.object({
 
 export const UpdateCostOptimisationRuleBody = zod.object({
   keyword: zod.string().optional(),
+  itemTag: zod.string().nullish(),
   forceCategory: zod.string().nullish(),
+  safeThreshold: zod.number().nullish(),
+  dangerThreshold: zod.number().nullish(),
+  notes: zod.string().nullish(),
   isAbsenceCheck: zod.boolean().optional(),
   severityIfAbsent: zod.enum(["warning", "critical"]).optional(),
   rationale: zod.string().optional(),
@@ -1186,7 +1198,11 @@ export const UpdateCostOptimisationRuleResponse = zod.object({
   id: zod.number(),
   projectId: zod.number(),
   keyword: zod.string(),
+  itemTag: zod.string().nullish(),
   forceCategory: zod.string().nullish(),
+  safeThreshold: zod.number().nullish(),
+  dangerThreshold: zod.number().nullish(),
+  notes: zod.string().nullish(),
   isAbsenceCheck: zod.boolean(),
   severityIfAbsent: zod.enum(["warning", "critical"]),
   rationale: zod.string(),
@@ -1354,6 +1370,8 @@ export const GetOptimisationAnalysisResponse = zod.object({
   currentCashRequirement: zod.number(),
   cashRequirementWithSavings: zod.number(),
   operationalRiskScore: zod.number(),
+  runwayMonths: zod.number().nullish(),
+  runwayMonthsWithSavings: zod.number().nullish(),
   smartRiskFlags: zod.array(
     zod.object({
       level: zod.enum(["warning", "critical"]),

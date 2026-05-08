@@ -2586,6 +2586,12 @@ components:
           type: number
         operationalRiskScore:
           type: integer
+        runwayMonths:
+          type: number
+          nullable: true
+        runwayMonthsWithSavings:
+          type: number
+          nullable: true
         smartRiskFlags:
           type: array
           items:
@@ -2614,7 +2620,19 @@ components:
           type: integer
         keyword:
           type: string
+        itemTag:
+          type: string
+          nullable: true
         forceCategory:
+          type: string
+          nullable: true
+        safeThreshold:
+          type: number
+          nullable: true
+        dangerThreshold:
+          type: number
+          nullable: true
+        notes:
           type: string
           nullable: true
         isAbsenceCheck:
@@ -2643,7 +2661,19 @@ components:
       properties:
         keyword:
           type: string
+        itemTag:
+          type: string
+          nullable: true
         forceCategory:
+          type: string
+          nullable: true
+        safeThreshold:
+          type: number
+          nullable: true
+        dangerThreshold:
+          type: number
+          nullable: true
+        notes:
           type: string
           nullable: true
         isAbsenceCheck:
@@ -2664,7 +2694,19 @@ components:
       properties:
         keyword:
           type: string
+        itemTag:
+          type: string
+          nullable: true
         forceCategory:
+          type: string
+          nullable: true
+        safeThreshold:
+          type: number
+          nullable: true
+        dangerThreshold:
+          type: number
+          nullable: true
+        notes:
           type: string
           nullable: true
         isAbsenceCheck:

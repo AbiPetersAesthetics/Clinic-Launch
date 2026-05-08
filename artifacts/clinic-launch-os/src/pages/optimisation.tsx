@@ -295,6 +295,30 @@ export default function OptimisationPage() {
             </Card>
           </div>
 
+          {/* Runway KPIs — only shown when financial model is populated */}
+          {(analysis.runwayMonths !== null && analysis.runwayMonths !== undefined) && (
+            <div className="grid grid-cols-2 gap-4">
+              <Card className={analysis.runwayMonths < 3 ? "border-destructive/50" : analysis.runwayMonths < 6 ? "border-yellow-500/50" : "border-primary/40"}>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Post-Launch Runway (Current Plan)</p>
+                  <p className={`text-xl font-semibold mt-1 ${analysis.runwayMonths < 3 ? "text-destructive" : analysis.runwayMonths < 6 ? "text-yellow-600 dark:text-yellow-400" : "text-primary"}`}>
+                    {analysis.runwayMonths < 0 ? "Underfunded" : `${analysis.runwayMonths} months`}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">After launch spend at current cost tiers</p>
+                </CardContent>
+              </Card>
+              <Card className={(analysis.runwayMonthsWithSavings ?? 0) < 3 ? "border-destructive/50" : (analysis.runwayMonthsWithSavings ?? 0) < 6 ? "border-yellow-500/50" : "border-primary/40"}>
+                <CardContent className="pt-4 pb-4">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Post-Launch Runway (Optimised)</p>
+                  <p className={`text-xl font-semibold mt-1 ${(analysis.runwayMonthsWithSavings ?? 0) < 3 ? "text-destructive" : (analysis.runwayMonthsWithSavings ?? 0) < 6 ? "text-yellow-600 dark:text-yellow-400" : "text-primary"}`}>
+                    {(analysis.runwayMonthsWithSavings ?? 0) < 0 ? "Underfunded" : `${analysis.runwayMonthsWithSavings} months`}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">After launch spend with all savings applied</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
           {/* Risk Score */}
           <Card>
             <CardContent className="pt-4 pb-4">
