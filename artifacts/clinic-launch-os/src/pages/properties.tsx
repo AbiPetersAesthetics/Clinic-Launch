@@ -927,7 +927,7 @@ function ExtractionReviewDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileId?: string; fileType?: "pdf" | "image" } | null;
+  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileId?: string; tempFileName?: string; fileType?: "pdf" | "image" } | null;
   propertyId: number | null;
   onConfirmed: () => void;
 }) {
@@ -951,7 +951,7 @@ function ExtractionReviewDialog({
   const handleConfirm = () => {
     if (!propertyId) return;
     confirmUpload.mutate(
-      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes, tempFileId: extraction?.tempFileId, fileType: extraction?.fileType ?? "pdf" } },
+      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes, tempFileId: extraction?.tempFileId, tempFileName: extraction?.tempFileName, fileType: extraction?.fileType ?? "pdf" } },
       {
         onSuccess: () => {
           toast({ title: "Document saved", description: "Property details have been updated from the brochure." });
@@ -1171,7 +1171,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showActiveConfirm, setShowActiveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; fileType?: "pdf" | "image" }) | null>(null);
+  const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileName?: string; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
 
   const updateProperty = useUpdateProperty();
@@ -1271,7 +1271,8 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
       {
         onSuccess: (data) => {
           const fileType = (data as { fileType?: "pdf" | "image" }).fileType ?? "pdf";
-          setExtraction({ ...data, fileName: file.name, fileSizeBytes: file.size, fileType });
+          const tempFileName = (data as { tempFileName?: string }).tempFileName;
+          setExtraction({ ...data, fileName: file.name, fileSizeBytes: file.size, fileType, tempFileName });
           setShowExtractionReview(true);
         },
         onError: () => toast({ title: "Upload failed", description: "Could not process file.", variant: "destructive" }),

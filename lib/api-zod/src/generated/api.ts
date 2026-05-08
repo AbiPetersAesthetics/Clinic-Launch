@@ -1853,7 +1853,13 @@ export const ConfirmPropertyUploadBody = zod.object({
     .string()
     .nullish()
     .describe(
-      "Temporary file ID returned by upload-document to finalize the file on disk",
+      "Temporary file ID returned by upload-document (legacy — prefer tempFileName)",
+    ),
+  tempFileName: zod
+    .string()
+    .nullish()
+    .describe(
+      "Exact temp filename (with MIME-derived extension) returned by upload-document — used to locate the temp file reliably",
     ),
   fileType: zod
     .enum(["pdf", "image"])

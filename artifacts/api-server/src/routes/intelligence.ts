@@ -261,15 +261,21 @@ router.post("/properties/:id/upload-document", upload.single("file"), async (req
   const isImage = req.file.mimetype.startsWith("image/");
   const isPdf = req.file.mimetype === "application/pdf";
 
-  // Save file to disk with a temp ID so confirm-upload can persist it
+  // Save file to disk with a temp ID so confirm-upload can persist it.
+  // We store the EXACT temp filename (with MIME-derived extension) and return it
+  // in the response so confirm-upload can locate the file reliably — no extension
+  // reconstruction needed, avoiding jpeg vs jpg mismatches.
   const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const propertyUploadsDir = path.join(UPLOADS_DIR, String(id));
-  const tempExt = isPdf ? "pdf" : req.file.mimetype.split("/")[1] ?? "bin";
+  const tempExt = isPdf ? "pdf" : (req.file.mimetype.split("/")[1] ?? "bin");
+  const tempFileName = `${tempId}.${tempExt}`;
+  let tempFileSaved = false;
   try {
     await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
-    await fs.promises.writeFile(path.join(propertyUploadsDir, `${tempId}.${tempExt}`), req.file.buffer);
+    await fs.promises.writeFile(path.join(propertyUploadsDir, tempFileName), req.file.buffer);
+    tempFileSaved = true;
   } catch {
-    // Non-fatal — extraction still proceeds; confirm-upload will not have a file to move
+    // Non-fatal — extraction still proceeds; confirm-upload will detect missing file
   }
 
   // For images: skip PDF text extraction, return empty extraction with image flag
@@ -277,6 +283,8 @@ router.post("/properties/:id/upload-document", upload.single("file"), async (req
     return res.json({
       flags: ["Image uploaded — no text extraction available. Fill in property details manually if needed."],
       tempFileId: tempId,
+      tempFileName,
+      tempFileSaved,
       fileName: req.file.originalname,
       fileSizeBytes: req.file.size,
       fileType: "image",
@@ -329,6 +337,8 @@ Return JSON only, no markdown.`;
     ...extraction,
     flags: extraction.flags ?? [],
     tempFileId: tempId,
+    tempFileName,
+    tempFileSaved,
     fileName: req.file.originalname,
     fileSizeBytes: req.file.size,
     fileType: "pdf",
@@ -347,6 +357,9 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
     fileName: z.string().optional(),
     fileSizeBytes: z.number().optional(),
     tempFileId: z.string().optional(),
+    // tempFileName is the exact filename (including MIME-derived extension) as saved
+    // by upload-document — use this directly to locate the temp file.
+    tempFileName: z.string().optional(),
     fileType: z.enum(["pdf", "image"]).optional().default("pdf"),
   });
 
@@ -355,7 +368,7 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
     return res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
   }
 
-  const { fields, fileName, fileSizeBytes, tempFileId, fileType } = parseResult.data;
+  const { fields, fileName, fileSizeBytes, tempFileName, fileType } = parseResult.data;
 
   const updateData: Record<string, unknown> = {};
   const allowedFields = [
@@ -371,30 +384,28 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
     }
   }
 
-  // Move temp file to permanent location
+  // Move temp file to permanent location using the exact tempFileName stored by upload-document.
+  // This avoids any MIME extension vs filename extension mismatch (e.g. jpeg vs jpg).
   const propertyUploadsDir = path.join(UPLOADS_DIR, String(id));
   const safeName = (fileName ?? "document.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
   const finalFileName = `${Date.now()}_${safeName}`;
   const finalPath = path.join(propertyUploadsDir, finalFileName);
-  let fileUrl = `/uploads/properties/${id}/${finalFileName}`;
+  const fileUrl = `/uploads/properties/${id}/${finalFileName}`;
 
   const resolvedType = fileType === "image" ? "image" : "pdf";
-  const tempExt2 = resolvedType === "image"
-    ? (fileName?.split(".").pop() ?? "jpg")
-    : "pdf";
 
-  if (tempFileId) {
-    const tempPath = path.join(propertyUploadsDir, `${tempFileId}.${tempExt2}`);
+  if (tempFileName) {
+    const tempPath = path.join(propertyUploadsDir, tempFileName);
     try {
       await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
       await fs.promises.rename(tempPath, finalPath);
     } catch {
-      // Temp file may have expired or not been saved; still record the reference
-      fileUrl = `/uploads/properties/${id}/${safeName}`;
+      // Temp file could not be moved — reject the request so we don't record a broken URL.
+      return res.status(500).json({ error: "Could not finalise file — the uploaded file may have expired. Please re-upload." });
     }
   }
 
-  // Add media file reference
+  // Add media file reference (only reached when file is confirmed on disk, or no temp file provided)
   const existingMedia = Array.isArray(property.mediaFiles) ? property.mediaFiles : [];
   const newMediaFile = {
     id: `${resolvedType}_${Date.now()}`,

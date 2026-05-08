@@ -3353,7 +3353,11 @@ components:
         tempFileId:
           type: string
           nullable: true
-          description: Temporary file ID returned by upload-document to finalize the file on disk
+          description: Temporary file ID returned by upload-document (legacy — prefer tempFileName)
+        tempFileName:
+          type: string
+          nullable: true
+          description: Exact temp filename (with MIME-derived extension) returned by upload-document — used to locate the temp file reliably
         fileType:
           type: string
           enum: [pdf, image]

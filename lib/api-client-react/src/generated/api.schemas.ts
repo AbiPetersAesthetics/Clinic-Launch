@@ -1190,8 +1190,10 @@ export interface ConfirmUploadBody {
   fields: ConfirmUploadBodyFields;
   fileName?: string | null;
   fileSizeBytes?: number | null;
-  /** Temporary file ID returned by upload-document to finalize the file on disk */
+  /** Temporary file ID returned by upload-document (legacy — prefer tempFileName) */
   tempFileId?: string | null;
+  /** Exact temp filename (with MIME-derived extension) returned by upload-document — used to locate the temp file reliably */
+  tempFileName?: string | null;
   /** Type of file being confirmed — pdf or image */
   fileType?: ConfirmUploadBodyFileType;
 }
