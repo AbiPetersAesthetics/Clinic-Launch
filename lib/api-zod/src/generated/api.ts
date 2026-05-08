@@ -1129,6 +1129,79 @@ export const DeleteDecisionParams = zod.object({
 });
 
 /**
+ * @summary List cost optimisation rules for a project
+ */
+export const ListCostOptimisationRulesParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListCostOptimisationRulesResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  keyword: zod.string(),
+  forceCategory: zod.string().nullish(),
+  isAbsenceCheck: zod.boolean(),
+  severityIfAbsent: zod.enum(["warning", "critical"]),
+  rationale: zod.string(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+});
+export const ListCostOptimisationRulesResponse = zod.array(
+  ListCostOptimisationRulesResponseItem,
+);
+
+/**
+ * @summary Create a cost optimisation rule
+ */
+export const CreateCostOptimisationRuleParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateCostOptimisationRuleBody = zod.object({
+  keyword: zod.string(),
+  forceCategory: zod.string().nullish(),
+  isAbsenceCheck: zod.boolean().optional(),
+  severityIfAbsent: zod.enum(["warning", "critical"]).optional(),
+  rationale: zod.string(),
+  isActive: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a cost optimisation rule
+ */
+export const UpdateCostOptimisationRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCostOptimisationRuleBody = zod.object({
+  keyword: zod.string().optional(),
+  forceCategory: zod.string().nullish(),
+  isAbsenceCheck: zod.boolean().optional(),
+  severityIfAbsent: zod.enum(["warning", "critical"]).optional(),
+  rationale: zod.string().optional(),
+  isActive: zod.boolean().optional(),
+});
+
+export const UpdateCostOptimisationRuleResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  keyword: zod.string(),
+  forceCategory: zod.string().nullish(),
+  isAbsenceCheck: zod.boolean(),
+  severityIfAbsent: zod.enum(["warning", "critical"]),
+  rationale: zod.string(),
+  isActive: zod.boolean(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Delete a cost optimisation rule
+ */
+export const DeleteCostOptimisationRuleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get cost variance optimisation analysis for a project
  */
 export const GetOptimisationAnalysisParams = zod.object({

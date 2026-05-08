@@ -879,6 +879,89 @@ paths:
         "204":
           description: Deleted
 
+  # Cost Optimisation Rules
+  /projects/{projectId}/cost-optimisation-rules:
+    get:
+      operationId: listCostOptimisationRules
+      tags: [optimisation]
+      summary: List cost optimisation rules for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cost optimisation rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CostOptimisationRule"
+    post:
+      operationId: createCostOptimisationRule
+      tags: [optimisation]
+      summary: Create a cost optimisation rule
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCostOptimisationRuleBody"
+      responses:
+        "201":
+          description: Created cost optimisation rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostOptimisationRule"
+
+  /cost-optimisation-rules/{id}:
+    put:
+      operationId: updateCostOptimisationRule
+      tags: [optimisation]
+      summary: Update a cost optimisation rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCostOptimisationRuleBody"
+      responses:
+        "200":
+          description: Updated rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CostOptimisationRule"
+    delete:
+      operationId: deleteCostOptimisationRule
+      tags: [optimisation]
+      summary: Delete a cost optimisation rule
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   # Optimisation
   /projects/{projectId}/optimisation-analysis:
     get:
@@ -2521,3 +2604,75 @@ components:
         - smartRiskFlags
         - totalItems
         - generatedAt
+
+    CostOptimisationRule:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        keyword:
+          type: string
+        forceCategory:
+          type: string
+          nullable: true
+        isAbsenceCheck:
+          type: boolean
+        severityIfAbsent:
+          type: string
+          enum: [warning, critical]
+        rationale:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - keyword
+        - isAbsenceCheck
+        - severityIfAbsent
+        - rationale
+        - isActive
+        - createdAt
+
+    CreateCostOptimisationRuleBody:
+      type: object
+      properties:
+        keyword:
+          type: string
+        forceCategory:
+          type: string
+          nullable: true
+        isAbsenceCheck:
+          type: boolean
+        severityIfAbsent:
+          type: string
+          enum: [warning, critical]
+        rationale:
+          type: string
+        isActive:
+          type: boolean
+      required:
+        - keyword
+        - rationale
+
+    UpdateCostOptimisationRuleBody:
+      type: object
+      properties:
+        keyword:
+          type: string
+        forceCategory:
+          type: string
+          nullable: true
+        isAbsenceCheck:
+          type: boolean
+        severityIfAbsent:
+          type: string
+          enum: [warning, critical]
+        rationale:
+          type: string
+        isActive:
+          type: boolean

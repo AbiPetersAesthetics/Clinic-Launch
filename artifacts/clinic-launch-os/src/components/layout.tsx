@@ -3,8 +3,8 @@ import { Link, useLocation } from "wouter";
 import {
   useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
-  useGetRiskFlags,
-  getGetRiskFlagsQueryKey,
+  useGetOptimisationAnalysis,
+  getGetOptimisationAnalysisQueryKey,
 } from "@workspace/api-client-react";
 import {
   LayoutDashboard,
@@ -34,17 +34,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     },
   });
 
-  const { data: riskFlags = [] } = useGetRiskFlags(PROJECT_ID, {
+  const { data: analysis } = useGetOptimisationAnalysis(PROJECT_ID, {
     query: {
       enabled: !bannerDismissed,
-      queryKey: getGetRiskFlagsQueryKey(PROJECT_ID),
+      queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID),
       refetchInterval: 60_000,
+      staleTime: 0,
     },
   });
 
-  const criticalFlags = riskFlags.filter(f => f.level === "critical");
-  const warningFlags = riskFlags.filter(f => f.level === "warning");
-  const showBanner = !bannerDismissed && riskFlags.length > 0;
+  const smartRiskFlags = analysis?.smartRiskFlags ?? [];
+  const criticalFlags = smartRiskFlags.filter(f => f.level === "critical");
+  const warningFlags = smartRiskFlags.filter(f => f.level === "warning");
+  const showBanner = !bannerDismissed && smartRiskFlags.length > 0;
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -114,10 +116,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <p className="text-sm font-semibold mt-0.5">{formatGBP(dashboard.currentSelectedCost)}</p>
                 </div>
               </div>
-              {dashboard.criticalRiskFlagCount > 0 && (
+              {criticalFlags.length > 0 && (
                 <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-3 py-1.5 rounded-full text-xs font-medium shrink-0 ml-4">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {dashboard.criticalRiskFlagCount} Critical Risk{dashboard.criticalRiskFlagCount !== 1 ? "s" : ""}
+                  {criticalFlags.length} Critical Risk{criticalFlags.length !== 1 ? "s" : ""}
                 </div>
               )}
             </div>
@@ -130,7 +132,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           )}
         </header>
 
-        {/* Smart Risk Banner */}
+        {/* Smart Risk Banner — sourced from optimisation analysis */}
         {showBanner && (
           <div className={`border-b ${criticalFlags.length > 0 ? "bg-destructive/5 border-destructive/30" : "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800/30"}`}>
             <div className="px-6 py-2.5">
@@ -154,7 +156,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       )}
                       {!bannerExpanded && (
                         <span className="text-xs text-muted-foreground truncate">
-                          {riskFlags[0]?.message}
+                          {smartRiskFlags[0]?.message}
                         </span>
                       )}
                     </div>
@@ -176,7 +178,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
               {bannerExpanded && (
                 <div className="mt-2 space-y-1.5 pl-6">
-                  {riskFlags.map((flag, i) => (
+                  {smartRiskFlags.map((flag, i) => (
                     <div key={i} className="flex gap-2 items-start">
                       <span className={`text-[10px] uppercase font-bold tracking-wider shrink-0 mt-0.5 px-1.5 py-0.5 rounded ${
                         flag.level === "critical"
@@ -185,12 +187,22 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       }`}>
                         {flag.level}
                       </span>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{flag.message}</p>
+                      <div className="text-xs text-muted-foreground leading-relaxed">
+                        {flag.taskTitle && (
+                          <Link
+                            href={`/project?taskId=${flag.taskId}`}
+                            className="font-medium text-foreground hover:underline"
+                          >
+                            {flag.taskTitle}:{" "}
+                          </Link>
+                        )}
+                        {flag.message}
+                      </div>
                     </div>
                   ))}
                   <div className="pt-1">
                     <Link href="/optimisation" className="text-xs text-primary underline underline-offset-2 hover:opacity-80">
-                      View Optimisation Analysis →
+                      View full Optimisation Analysis →
                     </Link>
                   </div>
                 </div>

@@ -11,6 +11,7 @@ import dashboardRouter from "./dashboard";
 import intelligenceRouter from "./intelligence";
 import decisionsRouter from "./decisions";
 import optimisationRouter from "./optimisation";
+import costOptimisationRulesRouter from "./cost_optimisation_rules";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(dashboardRouter);
 router.use(intelligenceRouter);
 router.use(decisionsRouter);
 router.use(optimisationRouter);
+router.use(costOptimisationRulesRouter);
 
 export default router;

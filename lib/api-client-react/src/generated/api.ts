@@ -23,7 +23,9 @@ import type {
   CashflowMonth,
   ClinicProperty,
   CostItem,
+  CostOptimisationRule,
   CreateCostItemBody,
+  CreateCostOptimisationRuleBody,
   CreateDecisionBody,
   CreatePhaseBody,
   CreateProjectBody,
@@ -48,6 +50,7 @@ import type {
   RiskFlag,
   ScenarioConfig,
   UpdateCostItemBody,
+  UpdateCostOptimisationRuleBody,
   UpdateDecisionBody,
   UpdatePhaseBody,
   UpdateProjectBody,
@@ -3616,6 +3619,367 @@ export const useDeleteDecision = <
   TContext
 > => {
   return useMutation(getDeleteDecisionMutationOptions(options));
+};
+
+/**
+ * @summary List cost optimisation rules for a project
+ */
+export const getListCostOptimisationRulesUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/cost-optimisation-rules`;
+};
+
+export const listCostOptimisationRules = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<CostOptimisationRule[]> => {
+  return customFetch<CostOptimisationRule[]>(
+    getListCostOptimisationRulesUrl(projectId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCostOptimisationRulesQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/cost-optimisation-rules`] as const;
+};
+
+export const getListCostOptimisationRulesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCostOptimisationRules>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCostOptimisationRules>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCostOptimisationRulesQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCostOptimisationRules>>
+  > = ({ signal }) =>
+    listCostOptimisationRules(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCostOptimisationRules>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCostOptimisationRulesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCostOptimisationRules>>
+>;
+export type ListCostOptimisationRulesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List cost optimisation rules for a project
+ */
+
+export function useListCostOptimisationRules<
+  TData = Awaited<ReturnType<typeof listCostOptimisationRules>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCostOptimisationRules>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCostOptimisationRulesQueryOptions(
+    projectId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a cost optimisation rule
+ */
+export const getCreateCostOptimisationRuleUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/cost-optimisation-rules`;
+};
+
+export const createCostOptimisationRule = async (
+  projectId: number,
+  createCostOptimisationRuleBody: CreateCostOptimisationRuleBody,
+  options?: RequestInit,
+): Promise<CostOptimisationRule> => {
+  return customFetch<CostOptimisationRule>(
+    getCreateCostOptimisationRuleUrl(projectId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createCostOptimisationRuleBody),
+    },
+  );
+};
+
+export const getCreateCostOptimisationRuleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCostOptimisationRule>>,
+    TError,
+    { projectId: number; data: BodyType<CreateCostOptimisationRuleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCostOptimisationRule>>,
+  TError,
+  { projectId: number; data: BodyType<CreateCostOptimisationRuleBody> },
+  TContext
+> => {
+  const mutationKey = ["createCostOptimisationRule"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCostOptimisationRule>>,
+    { projectId: number; data: BodyType<CreateCostOptimisationRuleBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createCostOptimisationRule(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCostOptimisationRuleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCostOptimisationRule>>
+>;
+export type CreateCostOptimisationRuleMutationBody =
+  BodyType<CreateCostOptimisationRuleBody>;
+export type CreateCostOptimisationRuleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a cost optimisation rule
+ */
+export const useCreateCostOptimisationRule = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCostOptimisationRule>>,
+    TError,
+    { projectId: number; data: BodyType<CreateCostOptimisationRuleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCostOptimisationRule>>,
+  TError,
+  { projectId: number; data: BodyType<CreateCostOptimisationRuleBody> },
+  TContext
+> => {
+  return useMutation(getCreateCostOptimisationRuleMutationOptions(options));
+};
+
+/**
+ * @summary Update a cost optimisation rule
+ */
+export const getUpdateCostOptimisationRuleUrl = (id: number) => {
+  return `/api/cost-optimisation-rules/${id}`;
+};
+
+export const updateCostOptimisationRule = async (
+  id: number,
+  updateCostOptimisationRuleBody: UpdateCostOptimisationRuleBody,
+  options?: RequestInit,
+): Promise<CostOptimisationRule> => {
+  return customFetch<CostOptimisationRule>(
+    getUpdateCostOptimisationRuleUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateCostOptimisationRuleBody),
+    },
+  );
+};
+
+export const getUpdateCostOptimisationRuleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCostOptimisationRule>>,
+    TError,
+    { id: number; data: BodyType<UpdateCostOptimisationRuleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCostOptimisationRule>>,
+  TError,
+  { id: number; data: BodyType<UpdateCostOptimisationRuleBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCostOptimisationRule"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCostOptimisationRule>>,
+    { id: number; data: BodyType<UpdateCostOptimisationRuleBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCostOptimisationRule(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCostOptimisationRuleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCostOptimisationRule>>
+>;
+export type UpdateCostOptimisationRuleMutationBody =
+  BodyType<UpdateCostOptimisationRuleBody>;
+export type UpdateCostOptimisationRuleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a cost optimisation rule
+ */
+export const useUpdateCostOptimisationRule = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCostOptimisationRule>>,
+    TError,
+    { id: number; data: BodyType<UpdateCostOptimisationRuleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCostOptimisationRule>>,
+  TError,
+  { id: number; data: BodyType<UpdateCostOptimisationRuleBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCostOptimisationRuleMutationOptions(options));
+};
+
+/**
+ * @summary Delete a cost optimisation rule
+ */
+export const getDeleteCostOptimisationRuleUrl = (id: number) => {
+  return `/api/cost-optimisation-rules/${id}`;
+};
+
+export const deleteCostOptimisationRule = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCostOptimisationRuleUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCostOptimisationRuleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCostOptimisationRule>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCostOptimisationRule>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCostOptimisationRule"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCostOptimisationRule>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCostOptimisationRule(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCostOptimisationRuleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCostOptimisationRule>>
+>;
+
+export type DeleteCostOptimisationRuleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a cost optimisation rule
+ */
+export const useDeleteCostOptimisationRule = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCostOptimisationRule>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCostOptimisationRule>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCostOptimisationRuleMutationOptions(options));
 };
 
 /**

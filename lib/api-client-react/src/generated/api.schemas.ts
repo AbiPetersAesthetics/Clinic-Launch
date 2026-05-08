@@ -867,6 +867,60 @@ export interface OptimisationAnalysis {
   generatedAt: string;
 }
 
+export type CostOptimisationRuleSeverityIfAbsent =
+  (typeof CostOptimisationRuleSeverityIfAbsent)[keyof typeof CostOptimisationRuleSeverityIfAbsent];
+
+export const CostOptimisationRuleSeverityIfAbsent = {
+  warning: "warning",
+  critical: "critical",
+} as const;
+
+export interface CostOptimisationRule {
+  id: number;
+  projectId: number;
+  keyword: string;
+  forceCategory?: string | null;
+  isAbsenceCheck: boolean;
+  severityIfAbsent: CostOptimisationRuleSeverityIfAbsent;
+  rationale: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export type CreateCostOptimisationRuleBodySeverityIfAbsent =
+  (typeof CreateCostOptimisationRuleBodySeverityIfAbsent)[keyof typeof CreateCostOptimisationRuleBodySeverityIfAbsent];
+
+export const CreateCostOptimisationRuleBodySeverityIfAbsent = {
+  warning: "warning",
+  critical: "critical",
+} as const;
+
+export interface CreateCostOptimisationRuleBody {
+  keyword: string;
+  forceCategory?: string | null;
+  isAbsenceCheck?: boolean;
+  severityIfAbsent?: CreateCostOptimisationRuleBodySeverityIfAbsent;
+  rationale: string;
+  isActive?: boolean;
+}
+
+export type UpdateCostOptimisationRuleBodySeverityIfAbsent =
+  (typeof UpdateCostOptimisationRuleBodySeverityIfAbsent)[keyof typeof UpdateCostOptimisationRuleBodySeverityIfAbsent];
+
+export const UpdateCostOptimisationRuleBodySeverityIfAbsent = {
+  warning: "warning",
+  critical: "critical",
+} as const;
+
+export interface UpdateCostOptimisationRuleBody {
+  keyword?: string;
+  forceCategory?: string | null;
+  isAbsenceCheck?: boolean;
+  severityIfAbsent?: UpdateCostOptimisationRuleBodySeverityIfAbsent;
+  rationale?: string;
+  isActive?: boolean;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
 };

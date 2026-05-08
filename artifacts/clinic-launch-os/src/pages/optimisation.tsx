@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { Link } from "wouter";
 import {
   useGetOptimisationAnalysis,
   getGetOptimisationAnalysisQueryKey,
 } from "@workspace/api-client-react";
 import type { OptimisationItem } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,14 +25,14 @@ import {
 } from "@/components/ui/table";
 import {
   AlertTriangle,
-  CheckCircle2,
-  Clock,
   ShieldOff,
   ShieldCheck,
   Sparkles,
   Cpu,
   TrendingDown,
   RefreshCw,
+  Clock,
+  ExternalLink,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -58,7 +59,7 @@ const CATEGORY_CONFIG: Record<
 > = {
   dangerous_to_cut: {
     label: "Dangerous to Cut",
-    description: "These tasks are set to LOW cost tier but carry high or critical risk. Immediate attention required.",
+    description: "These tasks have dangerous cost configurations. Immediate attention required.",
     icon: ShieldOff,
     badgeClass: "bg-destructive/15 text-destructive",
     headerClass: "text-destructive",
@@ -124,12 +125,13 @@ function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSavin
           <TableHead className="text-right">Selected</TableHead>
           {showSaving && <TableHead className="text-right">Saving</TableHead>}
           <TableHead>Rationale</TableHead>
+          <TableHead className="w-[40px]"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {items.map(item => (
           <TableRow key={item.taskId}>
-            <TableCell className="font-medium text-sm max-w-[200px] truncate">{item.taskTitle}</TableCell>
+            <TableCell className="font-medium text-sm max-w-[180px] truncate">{item.taskTitle}</TableCell>
             <TableCell className="text-xs text-muted-foreground">{item.phaseName}</TableCell>
             <TableCell className="text-right">
               <Badge className={`text-[10px] uppercase ${TIER_BADGE[item.costTier] ?? "bg-muted text-muted-foreground"}`}>
@@ -142,7 +144,14 @@ function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSavin
                 {item.potentialSavingGbp > 0 ? `+${formatGBP(item.potentialSavingGbp)}` : "—"}
               </TableCell>
             )}
-            <TableCell className="text-xs text-muted-foreground max-w-[280px]">{item.rationale}</TableCell>
+            <TableCell className="text-xs text-muted-foreground max-w-[260px]">{item.rationale}</TableCell>
+            <TableCell>
+              <Link href={`/project?taskId=${item.taskId}`}>
+                <Button variant="ghost" size="icon" className="h-7 w-7" title="View task in Project Plan">
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                </Button>
+              </Link>
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -175,6 +184,7 @@ export default function OptimisationPage() {
   const { data: analysis, isLoading, isFetching } = useGetOptimisationAnalysis(PROJECT_ID, {
     query: {
       queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID),
+      staleTime: 0,
     },
   });
 
@@ -198,7 +208,9 @@ export default function OptimisationPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Cost Optimisation Engine</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Automated analysis of cost variance across your project tasks
+            Automated analysis of cost variance — click{" "}
+            <ExternalLink className="w-3 h-3 inline-block" />{" "}
+            on any task to jump directly to it in the Project Plan
           </p>
         </div>
         <Button
@@ -221,7 +233,7 @@ export default function OptimisationPage() {
         <Card><CardContent className="py-12 text-center text-muted-foreground">No data available.</CardContent></Card>
       ) : (
         <>
-          {/* Smart Risk Flags */}
+          {/* Smart Risk Flags — derived from optimisation analysis */}
           {analysis.smartRiskFlags.length > 0 && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-2">
               <div className="flex items-center gap-2 mb-3">
@@ -236,9 +248,16 @@ export default function OptimisationPage() {
                     {flag.level === "critical" ? "●" : "◐"}
                   </span>
                   <div>
-                    {flag.taskTitle && (
+                    {flag.taskTitle && flag.taskId ? (
+                      <Link
+                        href={`/project?taskId=${flag.taskId}`}
+                        className="font-medium text-foreground hover:underline"
+                      >
+                        {flag.taskTitle}:{" "}
+                      </Link>
+                    ) : flag.taskTitle ? (
                       <span className="font-medium text-foreground">{flag.taskTitle}: </span>
-                    )}
+                    ) : null}
                     <span className="text-muted-foreground">{flag.message}</span>
                   </div>
                 </div>

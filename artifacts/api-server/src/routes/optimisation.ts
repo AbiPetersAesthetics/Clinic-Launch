@@ -1,8 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { phasesTable, tasksTable } from "@workspace/db";
+import { phasesTable, tasksTable, costOptimisationRulesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import type { LaunchTask } from "@workspace/db";
+import type { LaunchTask, CostOptimisationRule } from "@workspace/db";
 
 const router = Router();
 
@@ -36,13 +36,76 @@ interface SmartRiskFlag {
   taskTitle?: string;
 }
 
-function categoriseTask(task: LaunchTask): { category: OptimisationCategory; potentialSavingGbp: number; rationale: string } {
+const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId">[] = [
+  {
+    keyword: "solicitor",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: true,
+    severityIfAbsent: "critical",
+    rationale: "No solicitor provision detected — legal risk is unacceptable for a commercial lease. A solicitor is required for lease review and negotiation.",
+    isActive: true,
+  },
+  {
+    keyword: "clinical waste",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: true,
+    severityIfAbsent: "critical",
+    rationale: "No clinical waste contract detected — CQC compliance requires a registered clinical waste disposal contract before registration.",
+    isActive: true,
+  },
+  {
+    keyword: "fire risk",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: true,
+    severityIfAbsent: "critical",
+    rationale: "No fire risk assessment detected — HSE statutory requirement for all clinical premises.",
+    isActive: true,
+  },
+  {
+    keyword: "insurance",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: false,
+    severityIfAbsent: "critical",
+    rationale: "Insurance on LOW cost tier — inadequate professional indemnity and public liability cover is not acceptable for a clinical business.",
+    isActive: true,
+  },
+  {
+    keyword: "electrical",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: false,
+    severityIfAbsent: "critical",
+    rationale: "Electrical work on LOW cost tier — unsafe installation in a clinical environment creates serious liability and CQC risk.",
+    isActive: true,
+  },
+  {
+    keyword: "compliance",
+    forceCategory: "dangerous_to_cut",
+    isAbsenceCheck: false,
+    severityIfAbsent: "warning",
+    rationale: "Compliance consultant on LOW cost tier — regulatory shortcuts before CQC registration create unacceptable business risk.",
+    isActive: true,
+  },
+];
+
+async function getOrSeedRules(projectId: number): Promise<CostOptimisationRule[]> {
+  const existing = await db.select().from(costOptimisationRulesTable)
+    .where(eq(costOptimisationRulesTable.projectId, projectId));
+
+  if (existing.length > 0) return existing;
+
+  // Seed defaults for this project
+  const seeded = await db.insert(costOptimisationRulesTable).values(
+    DEFAULT_RULES.map(r => ({ ...r, projectId }))
+  ).returning();
+  return seeded;
+}
+
+function deriveCategory(task: LaunchTask): { category: OptimisationCategory; potentialSavingGbp: number; rationale: string } {
   const isCritical = task.isCriticalRisk;
   const isNonNeg = task.isNonNegotiable;
   const tier = task.costTier;
   const risk = task.riskLevel;
 
-  // Dangerous: critical/non-negotiable task on low tier
   if ((isCritical || isNonNeg) && tier === "low") {
     return {
       category: "dangerous_to_cut",
@@ -53,7 +116,6 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // Non-negotiable at appropriate tier
   if (isNonNeg) {
     return {
       category: "non_negotiable",
@@ -62,7 +124,6 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // High risk item on LOW tier (not non-negotiable) — still dangerous
   if (risk === "high" && tier === "low" && !isCritical) {
     return {
       category: "dangerous_to_cut",
@@ -71,7 +132,6 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // Low risk on HIGH tier — luxury, safe to cut back
   if (risk === "low" && tier === "high" && !isCritical && !isNonNeg) {
     const saving = Math.round(task.selectedCost - task.costLow);
     return {
@@ -81,7 +141,6 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // On HIGH tier, not critical — safe to reduce to MID
   if (tier === "high" && !isCritical && !isNonNeg && risk !== "high") {
     const saving = Math.round(task.selectedCost - task.costMid);
     return {
@@ -91,7 +150,6 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // Not started, low/medium risk — potentially delayable
   if (task.status === "not_started" && risk === "low" && !isCritical && !isNonNeg) {
     return {
       category: "delayable",
@@ -100,12 +158,32 @@ function categoriseTask(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  // Default — operationally critical
   return {
     category: "operationally_critical",
     potentialSavingGbp: 0,
     rationale: "Core operational cost. Required for launch with no safe reduction path.",
   };
+}
+
+function applyRuleOverrides(
+  task: LaunchTask,
+  derived: ReturnType<typeof deriveCategory>,
+  rules: CostOptimisationRule[]
+): ReturnType<typeof deriveCategory> {
+  const titleLower = task.title.toLowerCase();
+  for (const rule of rules) {
+    if (!rule.isActive || rule.isAbsenceCheck) continue;
+    if (!titleLower.includes(rule.keyword.toLowerCase())) continue;
+    // Rule matches — if task is on LOW tier, override category + rationale
+    if (task.costTier === "low" && rule.forceCategory) {
+      return {
+        category: rule.forceCategory as OptimisationCategory,
+        potentialSavingGbp: 0,
+        rationale: rule.rationale,
+      };
+    }
+  }
+  return derived;
 }
 
 router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
@@ -118,25 +196,29 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id)))
   )).flat();
 
-  const items: OptimisationItem[] = allTasks
-    .filter(t => t.status !== "complete")
-    .map(task => {
-      const { category, potentialSavingGbp, rationale } = categoriseTask(task);
-      return {
-        taskId: task.id,
-        taskTitle: task.title,
-        phaseId: task.phaseId,
-        phaseName: phaseMap.get(task.phaseId) ?? "Unknown",
-        costTier: task.costTier,
-        selectedCost: task.selectedCost,
-        costLow: task.costLow,
-        costMid: task.costMid,
-        costHigh: task.costHigh,
-        category,
-        potentialSavingGbp,
-        rationale,
-      };
-    });
+  const rules = await getOrSeedRules(projectId);
+  const activeRules = rules.filter(r => r.isActive);
+
+  const incompleteTasks = allTasks.filter(t => t.status !== "complete");
+
+  const items: OptimisationItem[] = incompleteTasks.map(task => {
+    const derived = deriveCategory(task);
+    const final = applyRuleOverrides(task, derived, activeRules);
+    return {
+      taskId: task.id,
+      taskTitle: task.title,
+      phaseId: task.phaseId,
+      phaseName: phaseMap.get(task.phaseId) ?? "Unknown",
+      costTier: task.costTier,
+      selectedCost: task.selectedCost,
+      costLow: task.costLow,
+      costMid: task.costMid,
+      costHigh: task.costHigh,
+      category: final.category,
+      potentialSavingGbp: final.potentialSavingGbp,
+      rationale: final.rationale,
+    };
+  });
 
   const categorised: Record<OptimisationCategory, OptimisationItem[]> = {
     safe_to_reduce: [],
@@ -151,22 +233,19 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   }
 
   const totalPotentialSaving = items.reduce((sum, i) => sum + i.potentialSavingGbp, 0);
-  const currentCashRequirement = allTasks
-    .filter(t => t.status !== "complete")
-    .reduce((sum, t) => sum + t.selectedCost, 0);
+  const currentCashRequirement = incompleteTasks.reduce((sum, t) => sum + t.selectedCost, 0);
   const cashRequirementWithSavings = Math.max(0, currentCashRequirement - totalPotentialSaving);
 
-  // Operational risk score: 0 (safe) to 100 (dangerous)
   const dangerousCount = categorised.dangerous_to_cut.length;
-  const highRiskCount = allTasks.filter(t => (t.riskLevel === "high" || t.riskLevel === "critical") && t.status !== "complete").length;
-  const criticalCount = allTasks.filter(t => t.isCriticalRisk && t.status !== "complete").length;
+  const highRiskCount = incompleteTasks.filter(t => t.riskLevel === "high" || t.riskLevel === "critical").length;
+  const criticalCount = incompleteTasks.filter(t => t.isCriticalRisk).length;
   const operationalRiskScore = Math.min(100, Math.round(
     dangerousCount * 15 + highRiskCount * 5 + criticalCount * 8
   ));
 
-  // Smart risk flags
   const smartRiskFlags: SmartRiskFlag[] = [];
 
+  // Dangerous-to-cut items
   for (const item of categorised.dangerous_to_cut) {
     smartRiskFlags.push({
       level: "critical",
@@ -176,24 +255,16 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     });
   }
 
-  // Specific keyword checks for critical categories
-  const criticalKeywords = [
-    { keyword: "solicitor", message: "No solicitor provision detected — legal risk is unacceptable for commercial lease." },
-    { keyword: "clinical waste", message: "No clinical waste contract — CQC compliance requirement." },
-    { keyword: "compliance", message: "Compliance consultant at LOW cost — regulatory risk for clinic registration." },
-    { keyword: "fire risk", message: "Fire risk assessment on LOW budget — HSE statutory requirement." },
-    { keyword: "insurance", message: "Insurance on LOW tier — inadequate professional indemnity cover is unacceptable." },
-    { keyword: "electrical", message: "Electrical budget at LOW tier — unsafe installation risk for clinical environment." },
-  ];
-
-  for (const { keyword, message } of criticalKeywords) {
-    const matched = allTasks.filter(
-      t => t.title.toLowerCase().includes(keyword) && t.costTier === "low" && t.status !== "complete"
-    );
-    for (const task of matched) {
-      if (!smartRiskFlags.some(f => f.taskId === task.id)) {
-        smartRiskFlags.push({ level: "critical", message, taskId: task.id, taskTitle: task.title });
-      }
+  // Absence checks: for each absence rule, flag if NO incomplete task matches the keyword
+  const incompleteTitles = incompleteTasks.map(t => t.title.toLowerCase());
+  for (const rule of activeRules) {
+    if (!rule.isAbsenceCheck) continue;
+    const found = incompleteTitles.some(title => title.includes(rule.keyword.toLowerCase()));
+    if (!found) {
+      smartRiskFlags.push({
+        level: rule.severityIfAbsent as "warning" | "critical",
+        message: rule.rationale,
+      });
     }
   }
 

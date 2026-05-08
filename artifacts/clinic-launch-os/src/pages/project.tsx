@@ -8,6 +8,7 @@ import {
   getGetRiskFlagsQueryKey,
   useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
+  getGetOptimisationAnalysisQueryKey,
 } from "@workspace/api-client-react";
 import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
@@ -73,6 +74,13 @@ export default function ProjectPage() {
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<LaunchTask | null>(null);
 
+  // Parse ?taskId= deep-link from optimisation page
+  const highlightedTaskId = (() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get("taskId");
+    return raw ? parseInt(raw) : null;
+  })();
+
   const { data: phases, isLoading: isPhasesLoading } = useGetPhasesWithTasks(PROJECT_ID, {
     query: { queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID), enabled: true },
   });
@@ -81,29 +89,46 @@ export default function ProjectPage() {
     query: { queryKey: getGetRiskFlagsQueryKey(PROJECT_ID), enabled: true },
   });
 
+  const [openPhases, setOpenPhases] = useState<string[]>([]);
+
+  // Once phases load, auto-open the relevant phase and scroll to the task
+  useEffect(() => {
+    if (!highlightedTaskId || !phases) return;
+    const phase = phases.find(p => p.tasks?.some(t => t.id === highlightedTaskId));
+    if (phase) {
+      setOpenPhases(prev => {
+        const key = `phase-${phase.id}`;
+        return prev.includes(key) ? prev : [...prev, key];
+      });
+      // Scroll after accordion opens
+      setTimeout(() => {
+        const el = document.getElementById(`task-${highlightedTaskId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 200);
+    }
+  }, [highlightedTaskId, phases]);
+
   const updateTask = useUpdateTask();
+
+  const invalidateAfterTaskChange = () => {
+    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+  };
 
   const handleCostTierChange = (task: LaunchTask, newTier: "low" | "mid" | "high") => {
     updateTask.mutate(
       { id: task.id, data: { costTier: newTier } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
-          queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
-        },
-      }
+      { onSuccess: invalidateAfterTaskChange }
     );
   };
 
   const handleStatusChange = (task: LaunchTask, newStatus: UpdateTaskBodyStatus) => {
     updateTask.mutate(
       { id: task.id, data: { status: newStatus } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
-          queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
-        },
-      }
+      { onSuccess: invalidateAfterTaskChange }
     );
   };
 
@@ -151,7 +176,12 @@ export default function ProjectPage() {
         </CardContent>
       </Card>
 
-      <Accordion type="multiple" className="space-y-4">
+      <Accordion
+        type="multiple"
+        value={openPhases}
+        onValueChange={setOpenPhases}
+        className="space-y-4"
+      >
         {phases?.map((phase) => (
           <AccordionItem
             key={phase.id}
@@ -201,7 +231,11 @@ export default function ProjectPage() {
                   </TableHeader>
                   <TableBody>
                     {phase.tasks?.map((task) => (
-                      <TableRow key={task.id}>
+                      <TableRow
+                        key={task.id}
+                        id={`task-${task.id}`}
+                        className={highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5 transition-colors" : ""}
+                      >
                         <TableCell>
                           <div className="font-medium text-foreground">{task.title}</div>
                           <div className="flex gap-2 mt-1.5 flex-wrap">
