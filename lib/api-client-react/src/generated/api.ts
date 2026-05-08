@@ -24,6 +24,7 @@ import type {
   CalculateFinancialsBody,
   CashflowMonth,
   ClinicProperty,
+  ComparePropertyAnalysesParams,
   ConfirmUploadBody,
   CostItem,
   CostOptimisationRule,
@@ -52,11 +53,13 @@ import type {
   PhaseWithTasks,
   Project,
   PropertyAiAnalysis,
+  PropertyAnalysisComparison,
   PropertyExtraction,
   PropertyIntelligenceResult,
   PropertyRankingResult,
   RiskFlag,
   ScenarioConfig,
+  ScoringWeights,
   UpdateCostItemBody,
   UpdateCostOptimisationRuleBody,
   UpdateDecisionBody,
@@ -4350,6 +4353,126 @@ export function useGetLatestPropertyAnalysis<
 }
 
 /**
+ * @summary Compare two analysis versions side-by-side
+ */
+export const getComparePropertyAnalysesUrl = (
+  id: number,
+  params: ComparePropertyAnalysesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/properties/${id}/analyses/compare?${stringifiedParams}`
+    : `/api/properties/${id}/analyses/compare`;
+};
+
+export const comparePropertyAnalyses = async (
+  id: number,
+  params: ComparePropertyAnalysesParams,
+  options?: RequestInit,
+): Promise<PropertyAnalysisComparison> => {
+  return customFetch<PropertyAnalysisComparison>(
+    getComparePropertyAnalysesUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getComparePropertyAnalysesQueryKey = (
+  id: number,
+  params?: ComparePropertyAnalysesParams,
+) => {
+  return [
+    `/api/properties/${id}/analyses/compare`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getComparePropertyAnalysesQueryOptions = <
+  TData = Awaited<ReturnType<typeof comparePropertyAnalyses>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params: ComparePropertyAnalysesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof comparePropertyAnalyses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getComparePropertyAnalysesQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof comparePropertyAnalyses>>
+  > = ({ signal }) =>
+    comparePropertyAnalyses(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof comparePropertyAnalyses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ComparePropertyAnalysesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof comparePropertyAnalyses>>
+>;
+export type ComparePropertyAnalysesQueryError = ErrorType<void>;
+
+/**
+ * @summary Compare two analysis versions side-by-side
+ */
+
+export function useComparePropertyAnalyses<
+  TData = Awaited<ReturnType<typeof comparePropertyAnalyses>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  params: ComparePropertyAnalysesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof comparePropertyAnalyses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getComparePropertyAnalysesQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Set a property as the active project property, sync financials, and create decision log entry
  */
 export const getSetPropertyActiveUrl = (id: number) => {
@@ -4605,6 +4728,191 @@ export const usePropertyAdvisorAction = <
   TContext
 > => {
   return useMutation(getPropertyAdvisorActionMutationOptions(options));
+};
+
+/**
+ * @summary Get project-level scoring weight presets used in property ranking
+ */
+export const getGetProjectScoringWeightsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/scoring-weights`;
+};
+
+export const getProjectScoringWeights = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ScoringWeights> => {
+  return customFetch<ScoringWeights>(
+    getGetProjectScoringWeightsUrl(projectId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetProjectScoringWeightsQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/scoring-weights`] as const;
+};
+
+export const getGetProjectScoringWeightsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectScoringWeights>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectScoringWeights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectScoringWeightsQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectScoringWeights>>
+  > = ({ signal }) =>
+    getProjectScoringWeights(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectScoringWeights>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectScoringWeightsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectScoringWeights>>
+>;
+export type GetProjectScoringWeightsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get project-level scoring weight presets used in property ranking
+ */
+
+export function useGetProjectScoringWeights<
+  TData = Awaited<ReturnType<typeof getProjectScoringWeights>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectScoringWeights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectScoringWeightsQueryOptions(
+    projectId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update project-level scoring weight presets
+ */
+export const getUpdateProjectScoringWeightsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/scoring-weights`;
+};
+
+export const updateProjectScoringWeights = async (
+  projectId: number,
+  scoringWeights: ScoringWeights,
+  options?: RequestInit,
+): Promise<ScoringWeights> => {
+  return customFetch<ScoringWeights>(
+    getUpdateProjectScoringWeightsUrl(projectId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(scoringWeights),
+    },
+  );
+};
+
+export const getUpdateProjectScoringWeightsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectScoringWeights>>,
+    TError,
+    { projectId: number; data: BodyType<ScoringWeights> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateProjectScoringWeights>>,
+  TError,
+  { projectId: number; data: BodyType<ScoringWeights> },
+  TContext
+> => {
+  const mutationKey = ["updateProjectScoringWeights"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateProjectScoringWeights>>,
+    { projectId: number; data: BodyType<ScoringWeights> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return updateProjectScoringWeights(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateProjectScoringWeightsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateProjectScoringWeights>>
+>;
+export type UpdateProjectScoringWeightsMutationBody = BodyType<ScoringWeights>;
+export type UpdateProjectScoringWeightsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update project-level scoring weight presets
+ */
+export const useUpdateProjectScoringWeights = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateProjectScoringWeights>>,
+    TError,
+    { projectId: number; data: BodyType<ScoringWeights> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateProjectScoringWeights>>,
+  TError,
+  { projectId: number; data: BodyType<ScoringWeights> },
+  TContext
+> => {
+  return useMutation(getUpdateProjectScoringWeightsMutationOptions(options));
 };
 
 /**

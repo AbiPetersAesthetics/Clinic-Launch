@@ -1048,13 +1048,46 @@ paths:
             type: integer
       responses:
         "200":
-          description: Latest analysis
+          description: Latest analysis with isStale flag
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PropertyAiAnalysis"
         "404":
           description: No analysis found
+
+  /properties/{id}/analyses/compare:
+    get:
+      operationId: comparePropertyAnalyses
+      tags: [intelligence]
+      summary: Compare two analysis versions side-by-side
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: v1
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: First version number to compare
+        - name: v2
+          in: query
+          required: true
+          schema:
+            type: integer
+          description: Second version number to compare
+      responses:
+        "200":
+          description: Two analysis versions for comparison
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyAnalysisComparison"
+        "404":
+          description: One or both versions not found
 
   /properties/{id}/set-active:
     put:
@@ -1124,6 +1157,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AdvisorActionResult"
+
+  /projects/{projectId}/scoring-weights:
+    get:
+      operationId: getProjectScoringWeights
+      tags: [properties]
+      summary: Get project-level scoring weight presets used in property ranking
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Current scoring weights (or defaults)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringWeights"
+    put:
+      operationId: updateProjectScoringWeights
+      tags: [properties]
+      summary: Update project-level scoring weight presets
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoringWeights"
+      responses:
+        "200":
+          description: Updated scoring weights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringWeights"
 
   /projects/{projectId}/properties/import-url:
     post:
@@ -3011,6 +3086,10 @@ components:
           type: object
           nullable: true
           additionalProperties: true
+        isStale:
+          type: boolean
+          nullable: true
+          description: True if property data has been updated since this analysis was created
         createdAt:
           type: string
       required:
@@ -3118,8 +3197,60 @@ components:
         fileSizeBytes:
           type: integer
           nullable: true
+        tempFileId:
+          type: string
+          nullable: true
+          description: Temporary file ID returned by upload-document to finalize the file on disk
       required:
         - fields
+
+    PropertyAnalysisComparison:
+      type: object
+      properties:
+        v1:
+          $ref: "#/components/schemas/PropertyAiAnalysis"
+        v2:
+          $ref: "#/components/schemas/PropertyAiAnalysis"
+      required:
+        - v1
+        - v2
+
+    ScoringWeights:
+      type: object
+      properties:
+        affordability:
+          type: number
+          description: Weight multiplier for affordability/rent efficiency (0-3)
+        size:
+          type: number
+          description: Weight multiplier for property size suitability (0-3)
+        parking:
+          type: number
+          description: Weight multiplier for parking availability (0-3)
+        frontage:
+          type: number
+          description: Weight multiplier for frontage/visibility (0-3)
+        location:
+          type: number
+          description: Weight multiplier for AI location score (0-3)
+        competition:
+          type: number
+          description: Weight multiplier for competition opportunity score (0-3)
+        fitoutComplexity:
+          type: number
+          description: Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)
+        demographics:
+          type: number
+          description: Weight multiplier for AI commercial viability/demographics score (0-3)
+      required:
+        - affordability
+        - size
+        - parking
+        - frontage
+        - location
+        - competition
+        - fitoutComplexity
+        - demographics
 
     ImportUrlResult:
       type: object

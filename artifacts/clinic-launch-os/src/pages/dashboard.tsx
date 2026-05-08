@@ -6,16 +6,33 @@ import {
   useGetRiskFlags,
   getGetRiskFlagsQueryKey,
   useGetProjectBurndown,
-  getGetProjectBurndownQueryKey
+  getGetProjectBurndownQueryKey,
+  useListProperties,
+  getListPropertiesQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, AlertCircle, MapPin, Building } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
 
 const PROJECT_ID = 1;
+
+const PIPELINE_STAGE_LABELS: Record<string, string> = {
+  found: "Found",
+  interesting: "Interesting",
+  brochure_requested: "Brochure Requested",
+  viewing_booked: "Viewing Booked",
+  viewed: "Viewed",
+  under_review: "Under Review",
+  due_diligence: "Due Diligence",
+  heads_of_terms: "Heads of Terms",
+  negotiating: "Negotiating",
+  rejected: "Rejected",
+  selected: "Selected",
+};
 
 export default function DashboardPage() {
   const [scenario, setScenario] = useState<"conservative" | "realistic" | "aggressive">("realistic");
@@ -39,6 +56,12 @@ export default function DashboardPage() {
     query: { enabled: true, queryKey: getGetProjectBurndownQueryKey(PROJECT_ID) }
   });
 
+  const { data: properties } = useListProperties(PROJECT_ID, {
+    query: { enabled: true, queryKey: getListPropertiesQueryKey(PROJECT_ID) }
+  });
+
+  const activeProperty = properties?.find(p => p.isActiveForProject);
+
   if (!dashboard) {
     return <div className="animate-pulse space-y-6">
       <div className="h-32 bg-card rounded-lg"></div>
@@ -54,6 +77,41 @@ export default function DashboardPage() {
           <p className="text-muted-foreground mt-1">High-level overview of project health and financials.</p>
         </div>
       </div>
+
+      {/* Active Property Banner */}
+      {activeProperty && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <Building className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Active Clinic Location</p>
+              <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+                {PIPELINE_STAGE_LABELS[activeProperty.pipelineStatus ?? "selected"] ?? "Selected"}
+              </Badge>
+            </div>
+            <p className="font-semibold truncate">{activeProperty.address ?? "Address not set"}</p>
+            <div className="flex flex-wrap gap-4 mt-1 text-xs text-muted-foreground">
+              {activeProperty.postcode && (
+                <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{activeProperty.postcode}</span>
+              )}
+              {activeProperty.monthlyRentGbp != null && (
+                <span>Rent: <strong className="text-foreground">{formatGBP(activeProperty.monthlyRentGbp)}/mo</strong></span>
+              )}
+              {activeProperty.businessRatesGbp != null && (
+                <span>Rates: <strong className="text-foreground">{formatGBP(activeProperty.businessRatesGbp)}/yr</strong></span>
+              )}
+              {activeProperty.monthlyRentGbp != null && (
+                <span>Annual occupancy cost: <strong className="text-foreground">{formatGBP((activeProperty.monthlyRentGbp + (activeProperty.businessRatesGbp ?? 0) / 12) * 12)}</strong></span>
+              )}
+              {activeProperty.sqFootage != null && (
+                <span>{activeProperty.sqFootage.toFixed(0)} sq ft</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -142,6 +200,42 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Property Pipeline Summary */}
+      {properties && properties.length > 0 && (
+        <Card className="shadow-sm border-border/60">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Property Pipeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(
+                properties.reduce<Record<string, number>>((acc, p) => {
+                  const stage = p.pipelineStatus ?? "found";
+                  acc[stage] = (acc[stage] ?? 0) + 1;
+                  return acc;
+                }, {})
+              )
+                .filter(([, count]) => count > 0)
+                .sort((a, b) => {
+                  const order = ["found","interesting","brochure_requested","viewing_booked","viewed","under_review","due_diligence","heads_of_terms","negotiating","selected","rejected"];
+                  return order.indexOf(a[0]) - order.indexOf(b[0]);
+                })
+                .map(([stage, count]) => (
+                  <div key={stage} className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-card text-xs">
+                    <span className="text-muted-foreground">{PIPELINE_STAGE_LABELS[stage] ?? stage}</span>
+                    <span className="font-bold">{count}</span>
+                  </div>
+                ))
+              }
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/50 text-xs ml-auto">
+                <span className="text-muted-foreground">Total</span>
+                <span className="font-bold">{properties.length}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cashflow Chart */}
       <Card className="shadow-sm border-border/60">

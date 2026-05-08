@@ -1,5 +1,7 @@
 import { Router, type Request } from "express";
 import multer, { type FileFilterCallback } from "multer";
+import fs from "fs";
+import path from "path";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable } from "@workspace/db";
@@ -18,6 +20,9 @@ const upload = multer({
     }
   },
 });
+
+const AI_MODEL = "gpt-5.1";
+const UPLOADS_DIR = path.join(process.cwd(), "uploads", "properties");
 
 // ─── Zod schemas for LLM response validation ─────────────────────────────────
 
@@ -84,12 +89,46 @@ const ExecutiveSummarySchema = z.object({
   overallVerdict: z.string(),
 });
 
+const RiskItemSchema = z.object({
+  risk: z.string(),
+  severity: z.enum(["low", "medium", "high"]),
+  mitigation: z.string(),
+});
+
+const RiskAnalysisSchema = z.object({
+  overall: z.enum(["low", "medium", "high"]),
+  verdict: z.string(),
+  risks: z.array(RiskItemSchema),
+});
+
+const NegotiationLeverageSchema = z.object({
+  verdict: z.string(),
+  landlordMotivators: z.array(z.string()),
+  strengths: z.array(z.string()),
+  tactics: z.array(z.string()),
+  suggestedOpeningOffer: z.string(),
+  redLines: z.array(z.string()),
+});
+
+const LaunchStrategySchema = z.object({
+  estimatedTimeToLaunch: z.string(),
+  firstYearRevenueForecast: z.string(),
+  phase1: z.string(),
+  phase2: z.string(),
+  phase3: z.string(),
+  keyMilestones: z.array(z.string()),
+  criticalSuccessFactors: z.array(z.string()),
+});
+
 const AnalysisSchema = z.object({
   locationScore: PropertyScoreSchema,
   commercialViabilityScore: PropertyScoreSchema,
   clinicSuitabilityScore: PropertyScoreSchema,
   competition: CompetitionScoringSchema,
   executiveSummary: ExecutiveSummarySchema,
+  riskAnalysis: RiskAnalysisSchema,
+  negotiationLeverage: NegotiationLeverageSchema,
+  launchStrategy: LaunchStrategySchema,
 });
 
 const ADVISOR_ACTIONS = [
@@ -102,6 +141,16 @@ const ADVISOR_ACTIONS = [
   "suggest-negotiation",
   "suggest-launch",
 ] as const;
+
+const ALLOWED_IMPORT_HOSTS = [
+  "rightmove.co.uk",
+  "zoopla.co.uk",
+  "novaloca.com",
+  "commercialpeoplelisting.co.uk",
+  "primelocation.com",
+  "onthemarket.com",
+  "costar.com",
+];
 
 function parseLLMJson(raw: string): unknown {
   const cleaned = raw.trim()
@@ -196,13 +245,23 @@ router.put("/properties/:id/competitors", async (req, res) => {
   return res.json(parsed.data);
 });
 
-// ─── Document Upload / Extraction (review mode — no auto-save) ────────────────
+// ─── Document Upload / Extraction (review mode — saves temp file to disk) ─────
 
 router.post("/properties/:id/upload-document", upload.single("file"), async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+
+  // Save file to disk with a temp ID so confirm-upload can persist it
+  const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  const propertyUploadsDir = path.join(UPLOADS_DIR, String(id));
+  try {
+    await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
+    await fs.promises.writeFile(path.join(propertyUploadsDir, `${tempId}.pdf`), req.file.buffer);
+  } catch {
+    // Non-fatal — extraction still proceeds; confirm-upload will not have a file to move
+  }
 
   let rawText = "";
   try {
@@ -230,7 +289,7 @@ Return JSON only, no markdown.`;
   let extraction: z.infer<typeof ExtractionSchema> = { flags: [] };
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: AI_MODEL,
       max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
@@ -242,34 +301,58 @@ Return JSON only, no markdown.`;
     extraction = { flags: ["AI extraction failed — please fill fields manually"] };
   }
 
-  // Return extracted data for user review — do NOT auto-save
   return res.json({
     ...extraction,
     flags: extraction.flags ?? [],
+    tempFileId: tempId,
     fileName: req.file.originalname,
     fileSizeBytes: req.file.size,
   });
 });
 
-// ─── Confirm Upload (saves reviewed extracted data + stores media file ref) ───
+// ─── Confirm Upload (saves reviewed extracted data + finalises stored file) ───
 
 router.post("/properties/:id/confirm-upload", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  const { fields, fileName, fileSizeBytes } = req.body as {
+  const { fields, fileName, fileSizeBytes, tempFileId } = req.body as {
     fields: Record<string, unknown>;
     fileName?: string;
     fileSizeBytes?: number;
+    tempFileId?: string;
   };
 
   const updateData: Record<string, unknown> = {};
-  const allowedFields = ["address", "postcode", "sqFootage", "annualRentGbp", "monthlyRentGbp", "vatOnRent", "businessRatesGbp", "serviceChargeGbp", "leaseLength", "useClass", "availabilityDate", "parkingSpaces", "frontageMeters", "agentName", "agentPhone", "agentEmail"];
+  const allowedFields = [
+    "address", "postcode", "sqFootage", "annualRentGbp", "monthlyRentGbp",
+    "vatOnRent", "businessRatesGbp", "serviceChargeGbp", "leaseLength",
+    "useClass", "availabilityDate", "parkingSpaces", "frontageMeters",
+    "agentName", "agentPhone", "agentEmail",
+  ];
 
   for (const field of allowedFields) {
     if (fields[field] !== undefined && fields[field] !== null && fields[field] !== "") {
       updateData[field] = fields[field];
+    }
+  }
+
+  // Move temp file to permanent location
+  const propertyUploadsDir = path.join(UPLOADS_DIR, String(id));
+  const safeName = (fileName ?? "document.pdf").replace(/[^a-zA-Z0-9._-]/g, "_");
+  const finalFileName = `${Date.now()}_${safeName}`;
+  const finalPath = path.join(propertyUploadsDir, finalFileName);
+  let fileUrl = `/uploads/properties/${id}/${finalFileName}`;
+
+  if (tempFileId) {
+    const tempPath = path.join(propertyUploadsDir, `${tempFileId}.pdf`);
+    try {
+      await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
+      await fs.promises.rename(tempPath, finalPath);
+    } catch {
+      // Temp file may have expired or not been saved; still record the reference
+      fileUrl = `/uploads/properties/${id}/${safeName}`;
     }
   }
 
@@ -279,23 +362,21 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
     id: `pdf_${Date.now()}`,
     name: fileName ?? "brochure.pdf",
     type: "pdf" as const,
-    url: `/uploads/${id}/${fileName ?? "document.pdf"}`,
+    url: fileUrl,
     uploadedAt: new Date().toISOString(),
     sizeBytes: fileSizeBytes ?? null,
   };
   updateData.mediaFiles = [...existingMedia, newMediaFile];
 
-  if (Object.keys(updateData).length > 0) {
-    await db.update(propertiesTable)
-      .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(propertiesTable.id, id));
-  }
+  await db.update(propertiesTable)
+    .set({ ...updateData, updatedAt: new Date() })
+    .where(eq(propertiesTable.id, id));
 
   const [updated] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   return res.json(updated);
 });
 
-// ─── URL Import ───────────────────────────────────────────────────────────────
+// ─── URL Import (SSRF-protected) ──────────────────────────────────────────────
 
 router.post("/projects/:projectId/properties/import-url", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
@@ -313,19 +394,31 @@ router.post("/projects/:projectId/properties/import-url", async (req, res) => {
     return res.status(400).json({ error: "Invalid URL format" });
   }
 
-  const allowedHosts = ["rightmove.co.uk", "zoopla.co.uk", "novaloca.com", "commercialpeoplelisting.co.uk", "primelocation.com", "onthemarket.com", "costar.com"];
-  const hostname = parsedUrl.hostname.replace("www.", "");
-  const isKnownSite = allowedHosts.some(h => hostname.includes(h));
+  // Enforce HTTPS-only
+  if (parsedUrl.protocol !== "https:") {
+    return res.status(400).json({ error: "Only HTTPS URLs are supported for security reasons." });
+  }
+
+  // Strict allowlist enforcement — reject any URL not on the allowlist
+  const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+  const isAllowed = ALLOWED_IMPORT_HOSTS.some(h => hostname === h || hostname.endsWith("." + h));
+  if (!isAllowed) {
+    return res.status(400).json({
+      error: `URL must be from a supported commercial property listing site. Supported sites: ${ALLOWED_IMPORT_HOSTS.join(", ")}`,
+      extractable: false,
+    });
+  }
 
   // Attempt to fetch the page
   let pageText = "";
   try {
-    const response = await fetch(url, {
+    const response = await fetch(parsedUrl.toString(), {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; ClinicLaunchOS/1.0; property data extraction)",
         "Accept": "text/html,application/xhtml+xml",
       },
       signal: AbortSignal.timeout(10000),
+      redirect: "follow",
     });
 
     if (!response.ok) {
@@ -336,7 +429,6 @@ router.post("/projects/:projectId/properties/import-url", async (req, res) => {
     }
 
     const html = await response.text();
-    // Strip HTML tags to get readable text
     pageText = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -353,16 +445,14 @@ router.post("/projects/:projectId/properties/import-url", async (req, res) => {
       });
     }
     return res.status(422).json({
-      error: isKnownSite
-        ? `Could not access ${hostname} — it may require login or block automated requests. Try copying the listing details manually.`
-        : "Could not fetch the listing page. Ensure the URL is publicly accessible.",
+      error: `Could not access ${hostname} — it may require login or block automated requests. Try copying the listing details manually.`,
       extractable: false,
     });
   }
 
   const prompt = `You are a commercial property data extraction specialist. Extract structured commercial property data from this listing page text. Return ONLY valid JSON.
 
-Source URL: ${url}
+Source URL: ${parsedUrl.toString()}
 
 Page content:
 ${pageText}
@@ -377,17 +467,16 @@ flags (string array — any uncertainties, e.g. "Rent quoted as asking price onl
 
 Return JSON only, no markdown.`;
 
-  let extraction: z.infer<typeof ExtractionSchema> & { notes?: string } = { flags: [] };
+  const ExtractWithNotesSchema = ExtractionSchema.extend({ notes: z.string().nullable().optional() });
+  let extraction: z.infer<typeof ExtractWithNotesSchema> = { flags: [] };
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: AI_MODEL,
       max_completion_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
     const raw = response.choices[0]?.message?.content ?? "{}";
     const parsed = parseLLMJson(raw);
-
-    const ExtractWithNotesSchema = ExtractionSchema.extend({ notes: z.string().nullable().optional() });
     const validated = ExtractWithNotesSchema.safeParse(parsed);
     extraction = validated.success ? validated.data : { flags: ["Could not extract property data from this page — please fill fields manually"] };
   } catch {
@@ -396,7 +485,7 @@ Return JSON only, no markdown.`;
 
   return res.json({
     ...extraction,
-    sourceUrl: url,
+    sourceUrl: parsedUrl.toString(),
     projectId,
     flags: extraction.flags ?? [],
   });
@@ -414,7 +503,13 @@ router.get("/properties/:id/analyses", async (req, res) => {
     .where(eq(propertyAiAnalysesTable.propertyId, id))
     .orderBy(desc(propertyAiAnalysesTable.version));
 
-  return res.json(analyses);
+  // Add isStale flag: analysis is stale if property was updated after the analysis was created
+  const withStale = analyses.map(a => ({
+    ...a,
+    isStale: property.updatedAt > new Date(a.createdAt),
+  }));
+
+  return res.json(withStale);
 });
 
 router.get("/properties/:id/analyses/latest", async (req, res) => {
@@ -429,10 +524,42 @@ router.get("/properties/:id/analyses/latest", async (req, res) => {
     .limit(1);
 
   if (!latest) return res.status(404).json({ error: "No analysis found for this property" });
-  return res.json(latest);
+
+  return res.json({
+    ...latest,
+    isStale: property.updatedAt > new Date(latest.createdAt),
+  });
 });
 
-// ─── Full AI Property Analysis (persisted) ────────────────────────────────────
+// ─── Analysis Version Comparison ─────────────────────────────────────────────
+
+router.get("/properties/:id/analyses/compare", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const v1 = parseInt(req.query["v1"] as string);
+  const v2 = parseInt(req.query["v2"] as string);
+
+  if (isNaN(v1) || isNaN(v2)) {
+    return res.status(400).json({ error: "v1 and v2 query params (version numbers) are required" });
+  }
+
+  const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!property) return res.status(404).json({ error: "Property not found" });
+
+  const analyses = await db.select()
+    .from(propertyAiAnalysesTable)
+    .where(eq(propertyAiAnalysesTable.propertyId, id));
+
+  const analysis1 = analyses.find(a => a.version === v1);
+  const analysis2 = analyses.find(a => a.version === v2);
+
+  if (!analysis1 || !analysis2) {
+    return res.status(404).json({ error: "One or both specified versions not found" });
+  }
+
+  return res.json({ v1: analysis1, v2: analysis2 });
+});
+
+// ─── Full AI Property Analysis (persisted, all 8 sections) ───────────────────
 
 router.post("/properties/:id/analyse", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
@@ -459,7 +586,7 @@ Parking Spaces: ${property.parkingSpaces ?? "Unknown"}
 Frontage: ${property.frontageMeters || "Unknown"}m
 Notes: ${property.notes || "None"}`;
 
-  // ── Competition: Google Places → manual entries → empty (no LLM fabrication) ──
+  // ── Competition: Google Places → manual entries → empty ──
   const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
   let realCompetitors: PlacesCompetitor[] | null = null;
   let competitionDataSource: "google_places" | "manual" | "ai_estimate" = "ai_estimate";
@@ -472,7 +599,7 @@ Notes: ${property.notes || "None"}`;
         competitionDataSource = "google_places";
       }
     } catch {
-      // Fall through — will use manual competitors or empty list
+      // Fall through
     }
   }
 
@@ -500,46 +627,46 @@ ${propertyContext}
 Competition context:
 ${competitorContext}
 
-Return a JSON object with this exact structure (no markdown):
+Return a JSON object with EXACTLY this structure (no markdown, all 8 sections required):
 {
   "locationScore": {
-    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
     "factors": [
-      {"name": "Affluence & Demographics", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Footfall & Visibility", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Parking & Accessibility", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Female Demographic Concentration", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Transport Links", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Proximity to Premium Retail", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Local Spending Power", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Growth Area Potential", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
+      {"name": "Affluence & Demographics", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Footfall & Visibility", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Parking & Accessibility", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
+      {"name": "Female Demographic Concentration", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
+      {"name": "Transport Links", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
+      {"name": "Proximity to Premium Retail", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
+      {"name": "Local Spending Power", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Growth Area Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
     ]
   },
   "commercialViabilityScore": {
-    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
     "factors": [
-      {"name": "Rent vs Revenue Potential", "score": <0-25>, "maxScore": 25, "weight": 25, "explanation": "<brief>"},
-      {"name": "Occupancy Demand", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Unit Size Suitability", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Running Cost Risk", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Market Timing", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
+      {"name": "Rent vs Revenue Potential", "score": <integer 0-25>, "maxScore": 25, "weight": 25, "explanation": "<brief>"},
+      {"name": "Occupancy Demand", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
+      {"name": "Unit Size Suitability", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
+      {"name": "Running Cost Risk", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
+      {"name": "Market Timing", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
     ]
   },
   "clinicSuitabilityScore": {
-    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
     "factors": [
-      {"name": "Treatment Room Potential", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Reception & Client Flow", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Frontage & Discretion", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Luxury & Branding Potential", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Compliance Suitability", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Instagrammability", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Plumbing & Infrastructure", "score": <0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"}
+      {"name": "Treatment Room Potential", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
+      {"name": "Reception & Client Flow", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Frontage & Discretion", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Luxury & Branding Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Compliance Suitability", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
+      {"name": "Instagrammability", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
+      {"name": "Plumbing & Infrastructure", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"}
     ]
   },
   "competition": {
-    "saturationScore": <0-100>,
-    "opportunityScore": <0-100>,
+    "saturationScore": <integer 0-100>,
+    "opportunityScore": <integer 0-100>,
     "saturationVerdict": "<assessment>",
     "opportunityVerdict": "<assessment>",
     "competitors": []
@@ -553,14 +680,40 @@ Return a JSON object with this exact structure (no markdown):
     "launchRecommendations": ["<1>", "<2>", "<3>"],
     "suggestedPositioning": "<positioning statement>",
     "overallVerdict": "<2-3 sentence verdict>"
+  },
+  "riskAnalysis": {
+    "overall": "<low|medium|high>",
+    "verdict": "<2 sentence overall risk assessment>",
+    "risks": [
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"}
+    ]
+  },
+  "negotiationLeverage": {
+    "verdict": "<2 sentence overall negotiation position>",
+    "landlordMotivators": ["<reason landlord may be motivated to negotiate>", "<reason 2>"],
+    "strengths": ["<tenant leverage point 1>", "<tenant leverage point 2>"],
+    "tactics": ["<specific negotiation tactic 1>", "<tactic 2>", "<tactic 3>"],
+    "suggestedOpeningOffer": "<specific guidance e.g. '12% below asking at £X/yr with 6 months rent-free'>",
+    "redLines": ["<lease clause to avoid or insist upon>", "<red line 2>"]
+  },
+  "launchStrategy": {
+    "estimatedTimeToLaunch": "<e.g. 9-12 months from lease signing>",
+    "firstYearRevenueForecast": "<e.g. £25k-£40k/month by month 12>",
+    "phase1": "<months 1-3: key activities and focus>",
+    "phase2": "<months 4-6: key activities and focus>",
+    "phase3": "<months 7-12: key activities and focus>",
+    "keyMilestones": ["<milestone 1>", "<milestone 2>", "<milestone 3>", "<milestone 4>"],
+    "criticalSuccessFactors": ["<factor 1>", "<factor 2>", "<factor 3>"]
   }
 }`;
 
   let rawAnalysis: unknown;
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      max_completion_tokens: 4096,
+      model: AI_MODEL,
+      max_completion_tokens: 6000,
       messages: [{ role: "user", content: analysisPrompt }],
     });
     const content = response.choices[0]?.message?.content ?? "{}";
@@ -575,7 +728,10 @@ Return a JSON object with this exact structure (no markdown):
 
   const validated = AnalysisSchema.safeParse(rawAnalysis);
   if (!validated.success) {
-    return res.status(500).json({ error: "AI returned an unexpected response format. Please try again." });
+    return res.status(500).json({
+      error: "AI returned an unexpected response format. Please try again.",
+      details: validated.error.issues.map(i => i.message).join("; "),
+    });
   }
 
   const analysis = validated.data;
@@ -592,6 +748,9 @@ Return a JSON object with this exact structure (no markdown):
       dataSource: competitionDataSource,
     },
     executiveSummary: analysis.executiveSummary,
+    riskAnalysis: analysis.riskAnalysis,
+    negotiationLeverage: analysis.negotiationLeverage,
+    launchStrategy: analysis.launchStrategy,
     generatedAt: new Date().toISOString(),
   };
 
@@ -604,11 +763,17 @@ Return a JSON object with this exact structure (no markdown):
 
   const newVersion = latestExisting ? latestExisting.version + 1 : 1;
 
+  // Determine confidence level based on AI grades
+  const grades = [analysis.locationScore.grade, analysis.commercialViabilityScore.grade, analysis.clinicSuitabilityScore.grade];
+  const aCount = grades.filter(g => g === "A").length;
+  const fCount = grades.filter(g => g === "F" || g === "D").length;
+  const confidenceLevel = aCount >= 2 ? "high" : fCount >= 2 ? "low" : "medium";
+
   const [savedAnalysis] = await db.insert(propertyAiAnalysesTable).values({
     propertyId: id,
     version: newVersion,
     analysisJson: fullResult as unknown as Record<string, unknown>,
-    confidenceLevel: analysis.clinicSuitabilityScore.grade === "A" || analysis.locationScore.grade === "A" ? "high" : "medium",
+    confidenceLevel,
     sourceDataSnapshot: {
       address: property.address,
       postcode: property.postcode,
@@ -670,7 +835,7 @@ Agent: ${property.agentName || "Unknown"} | Notes: ${property.notes || "None"}`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.1",
+      model: AI_MODEL,
       max_completion_tokens: 1500,
       messages: [
         { role: "system", content: systemPrompt },

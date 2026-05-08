@@ -1053,6 +1053,8 @@ export interface PropertyAiAnalysis {
   analysisJson: PropertyAiAnalysisAnalysisJson;
   confidenceLevel: PropertyAiAnalysisConfidenceLevel;
   sourceDataSnapshot?: PropertyAiAnalysisSourceDataSnapshot;
+  /** True if property data has been updated since this analysis was created */
+  isStale?: boolean | null;
   createdAt: string;
 }
 
@@ -1122,6 +1124,32 @@ export interface ConfirmUploadBody {
   fields: ConfirmUploadBodyFields;
   fileName?: string | null;
   fileSizeBytes?: number | null;
+  /** Temporary file ID returned by upload-document to finalize the file on disk */
+  tempFileId?: string | null;
+}
+
+export interface PropertyAnalysisComparison {
+  v1: PropertyAiAnalysis;
+  v2: PropertyAiAnalysis;
+}
+
+export interface ScoringWeights {
+  /** Weight multiplier for affordability/rent efficiency (0-3) */
+  affordability: number;
+  /** Weight multiplier for property size suitability (0-3) */
+  size: number;
+  /** Weight multiplier for parking availability (0-3) */
+  parking: number;
+  /** Weight multiplier for frontage/visibility (0-3) */
+  frontage: number;
+  /** Weight multiplier for AI location score (0-3) */
+  location: number;
+  /** Weight multiplier for competition opportunity score (0-3) */
+  competition: number;
+  /** Weight multiplier for fit-out complexity (0-3, lower = prefer simpler) */
+  fitoutComplexity: number;
+  /** Weight multiplier for AI commercial viability/demographics score (0-3) */
+  demographics: number;
 }
 
 export interface ImportUrlResult {
@@ -1164,6 +1192,17 @@ export type AnalysePropertyBody = {
    * @maximum 2000
    */
   searchRadiusMeters?: number;
+};
+
+export type ComparePropertyAnalysesParams = {
+  /**
+   * First version number to compare
+   */
+  v1: number;
+  /**
+   * Second version number to compare
+   */
+  v2: number;
 };
 
 export type ImportPropertyFromUrlBody = {

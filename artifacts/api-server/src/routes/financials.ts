@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { financialsTable, propertiesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -9,6 +9,25 @@ router.get("/projects/:projectId/financial", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
+
+  // T008: Fallback — if rent/rates are zero in the financial model, populate from the active property
+  if ((model.rentGbp === 0 || model.ratesGbp === 0)) {
+    const [activeProperty] = await db.select()
+      .from(propertiesTable)
+      .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+
+    if (activeProperty) {
+      const fallbackRent = model.rentGbp === 0 && activeProperty.monthlyRentGbp
+        ? activeProperty.monthlyRentGbp
+        : model.rentGbp;
+      const fallbackRates = model.ratesGbp === 0 && activeProperty.businessRatesGbp
+        ? Math.round(activeProperty.businessRatesGbp / 12)
+        : model.ratesGbp;
+
+      return res.json({ ...model, rentGbp: fallbackRent, ratesGbp: fallbackRates });
+    }
+  }
+
   return res.json(model);
 });
 

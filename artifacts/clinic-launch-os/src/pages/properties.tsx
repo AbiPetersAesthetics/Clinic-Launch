@@ -97,6 +97,8 @@ import {
   Target,
   BarChart3,
   History,
+  ArrowLeftRight,
+  X,
   Lightbulb,
   ArrowUpDown,
   Plus,
@@ -713,7 +715,7 @@ function ExtractionReviewDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number } | null;
+  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileId?: string } | null;
   propertyId: number | null;
   onConfirmed: () => void;
 }) {
@@ -737,7 +739,7 @@ function ExtractionReviewDialog({
   const handleConfirm = () => {
     if (!propertyId) return;
     confirmUpload.mutate(
-      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes } },
+      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes, tempFileId: extraction?.tempFileId } },
       {
         onSuccess: () => {
           toast({ title: "Document saved", description: "Property details have been updated from the brochure." });
@@ -1319,16 +1321,39 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
 // ─── Mini Property Card ───────────────────────────────────────────────────────
 
-function PropertyCard({ property, onOpen }: { property: ClinicProperty; onOpen: () => void }) {
+function PropertyCard({
+  property, onOpen, compareMode = false, isSelected = false, onToggleSelect,
+}: {
+  property: ClinicProperty;
+  onOpen: () => void;
+  compareMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
+  const handleClick = () => {
+    if (compareMode) {
+      onToggleSelect?.();
+    } else {
+      onOpen();
+    }
+  };
+
   return (
     <button
-      onClick={onOpen}
-      className={`w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all space-y-3 ${property.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
+      onClick={handleClick}
+      className={`w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all space-y-3 ${
+        property.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""
+      } ${isSelected ? "border-primary ring-2 ring-primary/30 bg-primary/5" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+            {compareMode && (
+              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSelected ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
+                {isSelected && <CheckCircle className="w-3 h-3 text-primary-foreground" />}
+              </div>
+            )}
             {property.isActiveForProject && <Target className="w-3.5 h-3.5 text-primary shrink-0" />}
             {property.isFavourited && <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />}
             <Badge className={`text-xs ${stage.color} shrink-0`}>{stage.label}</Badge>
@@ -1355,6 +1380,155 @@ function PropertyCard({ property, onOpen }: { property: ClinicProperty; onOpen: 
         )}
       </div>
     </button>
+  );
+}
+
+// ─── Comparison Dialog ────────────────────────────────────────────────────────
+
+function ComparisonDialog({
+  properties, selectedIds, open, onClose, onOpen,
+}: {
+  properties: ClinicProperty[];
+  selectedIds: Set<number>;
+  open: boolean;
+  onClose: () => void;
+  onOpen: (p: ClinicProperty) => void;
+}) {
+  const selected = properties.filter(p => selectedIds.has(p.id));
+  if (selected.length < 2) return null;
+
+  type Row = {
+    label: string;
+    getValue: (p: ClinicProperty) => string;
+    numericValue?: (p: ClinicProperty) => number | null;
+    higherIsBetter?: boolean;
+    lowerIsBetter?: boolean;
+  };
+
+  const rows: Row[] = [
+    { label: "Address", getValue: p => p.address ?? "—" },
+    { label: "Postcode", getValue: p => p.postcode ?? "—" },
+    { label: "Pipeline Stage", getValue: p => pipelineStageInfo(p.pipelineStatus ?? "found").label },
+    { label: "Size (sq ft)", getValue: p => p.sqFootage != null ? `${p.sqFootage.toFixed(0)} sq ft` : "—", numericValue: p => p.sqFootage ?? null, higherIsBetter: true },
+    { label: "Monthly Rent", getValue: p => p.monthlyRentGbp != null ? formatGBP(p.monthlyRentGbp) : "—", numericValue: p => p.monthlyRentGbp ?? null, lowerIsBetter: true },
+    { label: "Annual Rent", getValue: p => p.annualRentGbp != null ? formatGBP(p.annualRentGbp) : "—", numericValue: p => p.annualRentGbp ?? null, lowerIsBetter: true },
+    { label: "Rent/sq ft/yr", getValue: p => (p.annualRentGbp && p.sqFootage) ? `${formatGBP(p.annualRentGbp / p.sqFootage)}/sq ft` : "—", numericValue: p => (p.annualRentGbp && p.sqFootage && p.sqFootage > 0) ? p.annualRentGbp / p.sqFootage : null, lowerIsBetter: true },
+    { label: "Business Rates (annual)", getValue: p => p.businessRatesGbp != null ? formatGBP(p.businessRatesGbp) : "—", numericValue: p => p.businessRatesGbp ?? null, lowerIsBetter: true },
+    { label: "Service Charge (annual)", getValue: p => p.serviceChargeGbp != null ? formatGBP(p.serviceChargeGbp) : "—", numericValue: p => p.serviceChargeGbp ?? null, lowerIsBetter: true },
+    { label: "Parking Spaces", getValue: p => p.parkingSpaces != null ? String(p.parkingSpaces) : "—", numericValue: p => p.parkingSpaces ?? null, higherIsBetter: true },
+    { label: "Frontage (m)", getValue: p => p.frontageMeters != null ? `${p.frontageMeters}m` : "—", numericValue: p => p.frontageMeters ?? null, higherIsBetter: true },
+    { label: "Lease Length", getValue: p => p.leaseLength ?? "—" },
+    { label: "Use Class", getValue: p => p.useClass ?? "—" },
+    { label: "Availability", getValue: p => p.availabilityDate ? new Date(p.availabilityDate).toLocaleDateString("en-GB") : "—" },
+    { label: "VAT on Rent", getValue: p => p.vatOnRent ? "Yes" : "No" },
+    { label: "Agent", getValue: p => p.agentName ?? "—" },
+  ];
+
+  // Compute winner for each row
+  function getWinnerId(row: Row): number | null {
+    if (!row.numericValue) return null;
+    const vals = selected.map(p => ({ id: p.id, v: row.numericValue!(p) })).filter(x => x.v != null) as { id: number; v: number }[];
+    if (vals.length !== selected.length) return null;
+    if (row.higherIsBetter) {
+      const best = Math.max(...vals.map(x => x.v));
+      const winners = vals.filter(x => x.v === best);
+      return winners.length === 1 ? winners[0].id : null;
+    }
+    if (row.lowerIsBetter) {
+      const best = Math.min(...vals.map(x => x.v));
+      const winners = vals.filter(x => x.v === best);
+      return winners.length === 1 ? winners[0].id : null;
+    }
+    return null;
+  }
+
+  // Summary: count wins per property
+  const winCounts = new Map<number, number>();
+  for (const row of rows) {
+    const wid = getWinnerId(row);
+    if (wid != null) winCounts.set(wid, (winCounts.get(wid) ?? 0) + 1);
+  }
+  const overallWinnerId = winCounts.size > 0
+    ? [...winCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-5xl max-h-[92vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ArrowLeftRight className="w-5 h-5 text-primary" />
+            Comparing {selected.length} Properties
+          </DialogTitle>
+          <DialogDescription>Green highlights show the winner for each comparable metric.</DialogDescription>
+        </DialogHeader>
+
+        {/* Summary row */}
+        {overallWinnerId != null && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center gap-3">
+            <Trophy className="w-5 h-5 text-amber-500 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold">Overall Leader</p>
+              <p className="text-sm text-muted-foreground">
+                {selected.find(p => p.id === overallWinnerId)?.address ?? "Unnamed"} wins {winCounts.get(overallWinnerId)} of {rows.filter(r => !!r.numericValue).length} comparable metrics.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 pr-4 text-xs text-muted-foreground uppercase tracking-wider font-medium w-40">Field</th>
+                {selected.map(p => (
+                  <th key={p.id} className="text-left py-2 px-3 min-w-[160px]">
+                    <button
+                      className="text-left hover:text-primary transition-colors"
+                      onClick={() => { onClose(); setTimeout(() => onOpen(p), 100); }}
+                    >
+                      <p className="font-semibold leading-tight">{p.address ?? "Unnamed"}</p>
+                      {p.postcode && <p className="text-xs text-muted-foreground font-normal">{p.postcode}</p>}
+                      {p.isActiveForProject && (
+                        <Badge className="text-xs bg-primary/15 text-primary mt-0.5">Active</Badge>
+                      )}
+                      {overallWinnerId === p.id && (
+                        <Badge className="text-xs bg-amber-100 text-amber-700 mt-0.5 ml-1">
+                          <Trophy className="w-2.5 h-2.5 mr-0.5" />Leader
+                        </Badge>
+                      )}
+                    </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, ri) => {
+                const winnerId = getWinnerId(row);
+                return (
+                  <tr key={row.label} className={ri % 2 === 0 ? "bg-muted/20" : ""}>
+                    <td className="py-2 pr-4 text-xs text-muted-foreground font-medium">{row.label}</td>
+                    {selected.map(p => {
+                      const isWinner = winnerId === p.id;
+                      return (
+                        <td key={p.id} className={`py-2 px-3 text-sm ${isWinner ? "text-green-700 dark:text-green-400 font-semibold" : ""}`}>
+                          {isWinner && <CheckCircle className="w-3 h-3 inline mr-1 text-green-600" />}
+                          {row.getValue(p)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1458,6 +1632,24 @@ export default function PropertiesPage() {
   const [selectedProperty, setSelectedProperty] = useState<ClinicProperty | null>(null);
   const [showUrlImport, setShowUrlImport] = useState(false);
   const [pageTab, setPageTab] = useState("pipeline");
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSelected, setCompareSelected] = useState<Set<number>>(new Set());
+  const [showComparison, setShowComparison] = useState(false);
+
+  const toggleCompareSelect = (id: number) => {
+    setCompareSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const exitCompareMode = () => {
+    setCompareMode(false);
+    setCompareSelected(new Set());
+    setShowComparison(false);
+  };
 
   const { data: properties, isLoading } = useListProperties(PROJECT_ID, {
     query: { queryKey: getListPropertiesQueryKey(PROJECT_ID), enabled: true },
@@ -1515,13 +1707,31 @@ export default function PropertiesPage() {
             {activeProperty ? ` · Active: ${activeProperty.address ?? "Property selected"}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setShowUrlImport(true)}>
-            <Link2 className="w-3.5 h-3.5" />Import URL
-          </Button>
-          <Button size="sm" className="gap-2 text-xs" onClick={() => setIsFormOpen(true)}>
-            <Plus className="w-3.5 h-3.5" />Add Property
-          </Button>
+        <div className="flex gap-2 flex-wrap">
+          {compareMode ? (
+            <>
+              {compareSelected.size >= 2 && (
+                <Button size="sm" className="gap-2 text-xs" onClick={() => setShowComparison(true)}>
+                  <ArrowLeftRight className="w-3.5 h-3.5" />Compare {compareSelected.size}
+                </Button>
+              )}
+              <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={exitCompareMode}>
+                <X className="w-3.5 h-3.5" />Exit Compare
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setCompareMode(true)}>
+                <ArrowLeftRight className="w-3.5 h-3.5" />Compare
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setShowUrlImport(true)}>
+                <Link2 className="w-3.5 h-3.5" />Import URL
+              </Button>
+              <Button size="sm" className="gap-2 text-xs" onClick={() => setIsFormOpen(true)}>
+                <Plus className="w-3.5 h-3.5" />Add Property
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1577,7 +1787,14 @@ export default function PropertiesPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {byStage[stage.key]?.map(prop => (
-                      <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+                      <PropertyCard
+                        key={prop.id}
+                        property={prop}
+                        onOpen={() => setSelectedProperty(prop)}
+                        compareMode={compareMode}
+                        isSelected={compareSelected.has(prop.id)}
+                        onToggleSelect={() => toggleCompareSelect(prop.id)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1591,7 +1808,14 @@ export default function PropertiesPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 opacity-60">
                     {rejected.map(prop => (
-                      <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+                      <PropertyCard
+                        key={prop.id}
+                        property={prop}
+                        onOpen={() => setSelectedProperty(prop)}
+                        compareMode={compareMode}
+                        isSelected={compareSelected.has(prop.id)}
+                        onToggleSelect={() => toggleCompareSelect(prop.id)}
+                      />
                     ))}
                   </div>
                 </div>
@@ -1620,7 +1844,14 @@ export default function PropertiesPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {properties?.map(prop => (
-                <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+                <PropertyCard
+                  key={prop.id}
+                  property={prop}
+                  onOpen={() => setSelectedProperty(prop)}
+                  compareMode={compareMode}
+                  isSelected={compareSelected.has(prop.id)}
+                  onToggleSelect={() => toggleCompareSelect(prop.id)}
+                />
               ))}
             </div>
           )}
@@ -1656,6 +1887,17 @@ export default function PropertiesPage() {
         onUpdated={() => queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) })}
         onDeleted={() => setSelectedProperty(null)}
       />
+
+      {/* Comparison Dialog */}
+      {properties && (
+        <ComparisonDialog
+          properties={properties}
+          selectedIds={compareSelected}
+          open={showComparison}
+          onClose={() => setShowComparison(false)}
+          onOpen={(p) => { exitCompareMode(); setSelectedProperty(p); }}
+        />
+      )}
     </div>
   );
 }

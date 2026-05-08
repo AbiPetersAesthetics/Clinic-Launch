@@ -1637,6 +1637,12 @@ export const ListPropertyAnalysesResponseItem = zod.object({
   analysisJson: zod.record(zod.string(), zod.unknown()),
   confidenceLevel: zod.enum(["low", "medium", "high"]),
   sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+  isStale: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "True if property data has been updated since this analysis was created",
+    ),
   createdAt: zod.string(),
 });
 export const ListPropertyAnalysesResponse = zod.array(
@@ -1657,7 +1663,58 @@ export const GetLatestPropertyAnalysisResponse = zod.object({
   analysisJson: zod.record(zod.string(), zod.unknown()),
   confidenceLevel: zod.enum(["low", "medium", "high"]),
   sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+  isStale: zod
+    .boolean()
+    .nullish()
+    .describe(
+      "True if property data has been updated since this analysis was created",
+    ),
   createdAt: zod.string(),
+});
+
+/**
+ * @summary Compare two analysis versions side-by-side
+ */
+export const ComparePropertyAnalysesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ComparePropertyAnalysesQueryParams = zod.object({
+  v1: zod.coerce.number().describe("First version number to compare"),
+  v2: zod.coerce.number().describe("Second version number to compare"),
+});
+
+export const ComparePropertyAnalysesResponse = zod.object({
+  v1: zod.object({
+    id: zod.number(),
+    propertyId: zod.number(),
+    version: zod.number(),
+    analysisJson: zod.record(zod.string(), zod.unknown()),
+    confidenceLevel: zod.enum(["low", "medium", "high"]),
+    sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+    isStale: zod
+      .boolean()
+      .nullish()
+      .describe(
+        "True if property data has been updated since this analysis was created",
+      ),
+    createdAt: zod.string(),
+  }),
+  v2: zod.object({
+    id: zod.number(),
+    propertyId: zod.number(),
+    version: zod.number(),
+    analysisJson: zod.record(zod.string(), zod.unknown()),
+    confidenceLevel: zod.enum(["low", "medium", "high"]),
+    sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+    isStale: zod
+      .boolean()
+      .nullish()
+      .describe(
+        "True if property data has been updated since this analysis was created",
+      ),
+    createdAt: zod.string(),
+  }),
 });
 
 /**
@@ -1750,6 +1807,12 @@ export const ConfirmPropertyUploadBody = zod.object({
   fields: zod.record(zod.string(), zod.unknown()),
   fileName: zod.string().nullish(),
   fileSizeBytes: zod.number().nullish(),
+  tempFileId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Temporary file ID returned by upload-document to finalize the file on disk",
+    ),
 });
 
 export const ConfirmPropertyUploadResponse = zod.object({
@@ -1850,6 +1913,113 @@ export const PropertyAdvisorActionResponse = zod.object({
   propertyId: zod.number(),
   response: zod.string(),
   generatedAt: zod.string(),
+});
+
+/**
+ * @summary Get project-level scoring weight presets used in property ranking
+ */
+export const GetProjectScoringWeightsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetProjectScoringWeightsResponse = zod.object({
+  affordability: zod
+    .number()
+    .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+  size: zod
+    .number()
+    .describe("Weight multiplier for property size suitability (0-3)"),
+  parking: zod
+    .number()
+    .describe("Weight multiplier for parking availability (0-3)"),
+  frontage: zod
+    .number()
+    .describe("Weight multiplier for frontage\/visibility (0-3)"),
+  location: zod
+    .number()
+    .describe("Weight multiplier for AI location score (0-3)"),
+  competition: zod
+    .number()
+    .describe("Weight multiplier for competition opportunity score (0-3)"),
+  fitoutComplexity: zod
+    .number()
+    .describe(
+      "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+    ),
+  demographics: zod
+    .number()
+    .describe(
+      "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+    ),
+});
+
+/**
+ * @summary Update project-level scoring weight presets
+ */
+export const UpdateProjectScoringWeightsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const UpdateProjectScoringWeightsBody = zod.object({
+  affordability: zod
+    .number()
+    .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+  size: zod
+    .number()
+    .describe("Weight multiplier for property size suitability (0-3)"),
+  parking: zod
+    .number()
+    .describe("Weight multiplier for parking availability (0-3)"),
+  frontage: zod
+    .number()
+    .describe("Weight multiplier for frontage\/visibility (0-3)"),
+  location: zod
+    .number()
+    .describe("Weight multiplier for AI location score (0-3)"),
+  competition: zod
+    .number()
+    .describe("Weight multiplier for competition opportunity score (0-3)"),
+  fitoutComplexity: zod
+    .number()
+    .describe(
+      "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+    ),
+  demographics: zod
+    .number()
+    .describe(
+      "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+    ),
+});
+
+export const UpdateProjectScoringWeightsResponse = zod.object({
+  affordability: zod
+    .number()
+    .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+  size: zod
+    .number()
+    .describe("Weight multiplier for property size suitability (0-3)"),
+  parking: zod
+    .number()
+    .describe("Weight multiplier for parking availability (0-3)"),
+  frontage: zod
+    .number()
+    .describe("Weight multiplier for frontage\/visibility (0-3)"),
+  location: zod
+    .number()
+    .describe("Weight multiplier for AI location score (0-3)"),
+  competition: zod
+    .number()
+    .describe("Weight multiplier for competition opportunity score (0-3)"),
+  fitoutComplexity: zod
+    .number()
+    .describe(
+      "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+    ),
+  demographics: zod
+    .number()
+    .describe(
+      "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+    ),
 });
 
 /**
