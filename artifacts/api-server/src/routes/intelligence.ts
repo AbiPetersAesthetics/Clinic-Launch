@@ -990,7 +990,7 @@ For each result provide these fields exactly:
 - estimatedSqft: estimated floor area in sq ft as integer, or null if unknown
 - suitabilityScore: integer 0-100 rating for aesthetics clinic suitability given the criteria
 - rationale: 1-2 sentence explanation of why this location suits an aesthetics clinic
-- listingUrl: null (placeholder — live listing data requires a commercial API)
+- listingUrl: try to provide an approximate commercial property search URL from Rightmove or Zoopla Commercial for this postcode. Format: "https://www.rightmove.co.uk/commercial-property-to-let.html?searchLocation=POSTCODE" with the actual postcode URL-encoded (spaces as +), e.g. "https://www.rightmove.co.uk/commercial-property-to-let.html?searchLocation=GU1+3DP". If the postcode is uncertain, return null.
 - useClass: likely planning use class (e.g. "E", "A1", "D1"), or null
 - strengths: array of 2-3 brief bullet points on strengths of this location
 - concerns: array of 1-2 brief bullet points on concerns or risks

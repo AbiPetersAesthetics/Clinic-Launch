@@ -32,6 +32,11 @@ import {
   AlertCircle,
   Info,
   CircleDot,
+  Train,
+  Car,
+  Building2,
+  ExternalLink,
+  Users,
 } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -75,6 +80,62 @@ function makeSearchPinIcon(score: number, size = 12): ReturnType<typeof divIcon>
 }
 
 type Coords = [number, number];
+
+interface OverpassNode {
+  id: number;
+  lat: number;
+  lon: number;
+  tags: Record<string, string>;
+}
+
+async function fetchOverpassFeatures(
+  allCoords: Coords[],
+  radiusMeters: number,
+  tagFilters: string[],
+): Promise<OverpassNode[]> {
+  if (allCoords.length === 0) return [];
+  const aroundClauses = allCoords
+    .flatMap(([lat, lng]) =>
+      tagFilters.map(f => `node(around:${radiusMeters},${lat},${lng})${f};`),
+    )
+    .join("");
+  const query = `[out:json][timeout:20];(${aroundClauses});out;`;
+  try {
+    const res = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      body: query,
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { elements: OverpassNode[] };
+    const seen = new Set<number>();
+    return (data.elements ?? []).filter(n => {
+      if (seen.has(n.id)) return false;
+      seen.add(n.id);
+      return true;
+    });
+  } catch {
+    return [];
+  }
+}
+
+const COMPETITOR_FILTERS = [
+  '[amenity=beauty_salon]',
+  '[amenity=clinic]["healthcare"~"cosmetics|aesthetics|skin"]',
+  '[shop=beauty]',
+  '[amenity=dentist]',
+];
+const TRAIN_FILTERS = ['[railway=station]', '[railway=halt]'];
+const PARKING_FILTERS = ['[amenity=parking]["access"!="private"]'];
+
+function makePOIIcon(color: string, emoji: string, size = 20): ReturnType<typeof divIcon> {
+  return divIcon({
+    className: "",
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;font-size:${size * 0.5}px;line-height:1">${emoji}</div>`,
+    iconAnchor: [size / 2, size / 2],
+    popupAnchor: [0, -(size / 2 + 4)],
+    iconSize: [size, size],
+  });
+}
 
 async function batchGeocodePostcodes(postcodes: string[]): Promise<Record<string, Coords>> {
   const results: Record<string, Coords> = {};
@@ -145,6 +206,14 @@ export default function PropertyMapView({
   const [geoCache, setGeoCache] = useState<Record<string, Coords>>({});
   const [showRadiusOverlay, setShowRadiusOverlay] = useState(false);
   const [radiusKm, setRadiusKm] = useState(1.5);
+  const [showCompetitorOverlay, setShowCompetitorOverlay] = useState(false);
+  const [showTrainOverlay, setShowTrainOverlay] = useState(false);
+  const [showParkingOverlay, setShowParkingOverlay] = useState(false);
+  const [competitorPins, setCompetitorPins] = useState<OverpassNode[]>([]);
+  const [trainPins, setTrainPins] = useState<OverpassNode[]>([]);
+  const [parkingPins, setParkingPins] = useState<OverpassNode[]>([]);
+  const [overlayLoading, setOverlayLoading] = useState<string | null>(null);
+  const [overlayError, setOverlayError] = useState<string | null>(null);
   const [searchForm, setSearchForm] = useState<SearchForm>(DEFAULT_FORM);
   const [searchResults, setSearchResults] = useState<PropertySearchResultItem[]>([]);
   const [savedResultAddresses, setSavedResultAddresses] = useState<Set<string>>(new Set());
@@ -164,6 +233,41 @@ export default function PropertyMapView({
       setGeoCache(prev => ({ ...prev, ...newCache }));
     });
   }, [properties]);
+
+  const geocodedCoords: Coords[] = properties
+    .map(p => p.postcode ? geoCache[normalizePostcode(p.postcode)] : undefined)
+    .filter((c): c is Coords => !!c);
+
+  useEffect(() => {
+    if (!showCompetitorOverlay || geocodedCoords.length === 0) return;
+    setOverlayLoading("competitors");
+    setOverlayError(null);
+    fetchOverpassFeatures(geocodedCoords, 1200, COMPETITOR_FILTERS).then(nodes => {
+      setCompetitorPins(nodes);
+      setOverlayLoading(null);
+      if (nodes.length === 0) setOverlayError("No nearby competitors found in OpenStreetMap data.");
+    });
+  }, [showCompetitorOverlay, geocodedCoords.length]);
+
+  useEffect(() => {
+    if (!showTrainOverlay || geocodedCoords.length === 0) return;
+    setOverlayLoading("trains");
+    setOverlayError(null);
+    fetchOverpassFeatures(geocodedCoords, 1500, TRAIN_FILTERS).then(nodes => {
+      setTrainPins(nodes);
+      setOverlayLoading(null);
+    });
+  }, [showTrainOverlay, geocodedCoords.length]);
+
+  useEffect(() => {
+    if (!showParkingOverlay || geocodedCoords.length === 0) return;
+    setOverlayLoading("parking");
+    setOverlayError(null);
+    fetchOverpassFeatures(geocodedCoords, 800, PARKING_FILTERS).then(nodes => {
+      setParkingPins(nodes);
+      setOverlayLoading(null);
+    });
+  }, [showParkingOverlay, geocodedCoords.length]);
 
   const getPropertyCoords = useCallback((prop: ClinicProperty): Coords | null => {
     if (!prop.postcode) return null;
@@ -367,31 +471,100 @@ export default function PropertyMapView({
                 {label}
               </span>
             ))}
+            {showCompetitorOverlay && competitorPins.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span style={{ background: "#f43f5e" }} className="inline-block w-2.5 h-2.5 rounded-full border border-white shadow-sm" />
+                Competitor ({competitorPins.length})
+              </span>
+            )}
+            {showTrainOverlay && trainPins.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span style={{ background: "#8b5cf6" }} className="inline-block w-2.5 h-2.5 rounded-full border border-white shadow-sm" />
+                Train ({trainPins.length})
+              </span>
+            )}
+            {showParkingOverlay && parkingPins.length > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <span style={{ background: "#f59e0b" }} className="inline-block w-2.5 h-2.5 rounded-full border border-white shadow-sm" />
+                Parking ({parkingPins.length})
+              </span>
+            )}
           </div>
         </div>
 
         {/* Overlays toggle */}
-        <div className="rounded-xl border bg-card p-3 space-y-2">
+        <div className="rounded-xl border bg-card p-3 space-y-2.5">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Overlays</p>
+
+          {/* Drive-time radius */}
           <div className="flex items-center justify-between">
             <span className="text-xs flex items-center gap-1.5">
-              <CircleDot className="w-3 h-3 text-blue-500" />Drive-time radius ({radiusKm} km)
+              <CircleDot className="w-3 h-3 text-blue-500" />Drive radius ({radiusKm} km)
+            </span>
+            <Switch checked={showRadiusOverlay} onCheckedChange={setShowRadiusOverlay} className="scale-75" />
+          </div>
+          {showRadiusOverlay && (
+            <Slider min={0.5} max={5} step={0.5} value={[radiusKm]} onValueChange={([v]) => setRadiusKm(v)} className="h-4" />
+          )}
+
+          {/* Competitors */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs flex items-center gap-1.5">
+              <Users className="w-3 h-3 text-rose-500" />Nearby competitors
             </span>
             <Switch
-              checked={showRadiusOverlay}
-              onCheckedChange={setShowRadiusOverlay}
+              checked={showCompetitorOverlay}
+              onCheckedChange={v => {
+                setShowCompetitorOverlay(v);
+                if (!v) { setCompetitorPins([]); setOverlayError(null); }
+              }}
               className="scale-75"
             />
           </div>
-          {showRadiusOverlay && (
-            <Slider
-              min={0.5} max={5} step={0.5}
-              value={[radiusKm]}
-              onValueChange={([v]) => setRadiusKm(v)}
-              className="h-4"
+
+          {/* Train stations */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs flex items-center gap-1.5">
+              <Train className="w-3 h-3 text-purple-500" />Train stations
+            </span>
+            <Switch
+              checked={showTrainOverlay}
+              onCheckedChange={v => {
+                setShowTrainOverlay(v);
+                if (!v) setTrainPins([]);
+              }}
+              className="scale-75"
             />
+          </div>
+
+          {/* Parking */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs flex items-center gap-1.5">
+              <Car className="w-3 h-3 text-amber-500" />Parking
+            </span>
+            <Switch
+              checked={showParkingOverlay}
+              onCheckedChange={v => {
+                setShowParkingOverlay(v);
+                if (!v) setParkingPins([]);
+              }}
+              className="scale-75"
+            />
+          </div>
+
+          {/* Loading / error states */}
+          {overlayLoading && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Loader2 className="w-3 h-3 animate-spin" />Loading {overlayLoading} data…
+            </p>
           )}
-          <p className="text-xs text-muted-foreground italic">Competitor pins require Google Places API key in project settings.</p>
+          {overlayError && !overlayLoading && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">{overlayError}</p>
+          )}
+          {(showCompetitorOverlay || showTrainOverlay || showParkingOverlay) && geocodedCoords.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">Add postcodes to properties to enable overlay data.</p>
+          )}
+          <p className="text-xs text-muted-foreground/60 italic">Overlay data sourced from OpenStreetMap.</p>
         </div>
 
         {/* Search Results List */}
@@ -445,6 +618,18 @@ export default function PropertyMapView({
                           </p>
                         ))}
                       </div>
+                    )}
+
+                    {result.listingUrl && (
+                      <a
+                        href={result.listingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 text-xs text-blue-600 hover:underline flex items-center gap-0.5"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <ExternalLink className="w-2.5 h-2.5 shrink-0" />View listings
+                      </a>
                     )}
 
                     <Button
@@ -519,6 +704,19 @@ export default function PropertyMapView({
                         {prop.parkingSpaces != null && <span>{prop.parkingSpaces} parking</span>}
                       </div>
                       <p className="text-xs capitalize text-gray-500">{(prop.pipelineStatus ?? "found").replace(/_/g, " ")}</p>
+                      {prop.manualCompetitors && prop.manualCompetitors.length > 0 && (
+                        <div className="mt-1.5 space-y-0.5">
+                          <p className="text-xs font-medium text-gray-600 flex items-center gap-1">
+                            <Building2 className="w-2.5 h-2.5 text-rose-500" />Noted competitors ({prop.manualCompetitors.length})
+                          </p>
+                          {prop.manualCompetitors.slice(0, 3).map((c, i) => (
+                            <p key={i} className="text-xs text-gray-500 pl-3.5 leading-snug">{c.name} <span className="text-gray-400">({c.type})</span></p>
+                          ))}
+                          {prop.manualCompetitors.length > 3 && (
+                            <p className="text-xs text-gray-400 pl-3.5">+{prop.manualCompetitors.length - 3} more</p>
+                          )}
+                        </div>
+                      )}
                       <button
                         className="text-xs text-blue-600 hover:underline font-medium"
                         onClick={() => onOpen(prop)}
@@ -559,12 +757,70 @@ export default function PropertyMapView({
                       <p className="text-xs text-gray-500">~{result.estimatedSqft.toLocaleString()} sq ft est.</p>
                     )}
                     <p className="text-xs text-gray-600 line-clamp-2">{result.rationale}</p>
+                    {result.listingUrl && (
+                      <a href={result.listingUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-0.5">
+                        <ExternalLink className="w-2.5 h-2.5" />View listings
+                      </a>
+                    )}
                     <button
                       className="text-xs text-blue-600 hover:underline font-medium mt-1"
                       onClick={() => handleSaveToPipeline(result)}
                     >
                       {savedResultAddresses.has(result.address) ? "✓ Saved" : "+ Save to Pipeline"}
                     </button>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Competitor pins (OSM) */}
+            {showCompetitorOverlay && competitorPins.map(node => (
+              <Marker
+                key={`comp-${node.id}`}
+                position={[node.lat, node.lon]}
+                icon={makePOIIcon("#f43f5e", "💇", 18)}
+              >
+                <Popup maxWidth={200}>
+                  <div className="space-y-0.5 p-1">
+                    <p className="font-semibold text-sm">{node.tags.name ?? "Beauty/Aesthetics"}</p>
+                    <p className="text-xs text-gray-500 capitalize">{node.tags.amenity ?? node.tags.shop ?? "competitor"}</p>
+                    {node.tags["addr:street"] && (
+                      <p className="text-xs text-gray-400">{node.tags["addr:street"]}{node.tags["addr:housenumber"] ? `, ${node.tags["addr:housenumber"]}` : ""}</p>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Train station pins (OSM) */}
+            {showTrainOverlay && trainPins.map(node => (
+              <Marker
+                key={`train-${node.id}`}
+                position={[node.lat, node.lon]}
+                icon={makePOIIcon("#8b5cf6", "🚉", 18)}
+              >
+                <Popup maxWidth={200}>
+                  <div className="space-y-0.5 p-1">
+                    <p className="font-semibold text-sm">{node.tags.name ?? "Railway Station"}</p>
+                    <p className="text-xs text-gray-500 capitalize">{node.tags.railway ?? "station"}</p>
+                    {node.tags.operator && <p className="text-xs text-gray-400">{node.tags.operator}</p>}
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+
+            {/* Parking pins (OSM) */}
+            {showParkingOverlay && parkingPins.map(node => (
+              <Marker
+                key={`park-${node.id}`}
+                position={[node.lat, node.lon]}
+                icon={makePOIIcon("#f59e0b", "🅿", 16)}
+              >
+                <Popup maxWidth={200}>
+                  <div className="space-y-0.5 p-1">
+                    <p className="font-semibold text-sm">{node.tags.name ?? "Parking"}</p>
+                    {node.tags.capacity && <p className="text-xs text-gray-500">{node.tags.capacity} spaces</p>}
+                    {node.tags.fee && <p className="text-xs text-gray-400">Fee: {node.tags.fee}</p>}
                   </div>
                 </Popup>
               </Marker>
