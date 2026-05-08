@@ -741,7 +741,7 @@ export default function PropertiesPage() {
       </div>
 
       {/* Intelligence Sheet */}
-      <Sheet open={!!intelligenceTarget} onOpenChange={(open) => { if (!open) { setIntelligenceTarget(null); setIntelligenceResult(null); } }}>
+      <Sheet open={!!intelligenceTarget} onOpenChange={(open) => { if (!open) { setIntelligenceTarget(null); setIntelligenceResult(null); setExtractionFlags([]); } }}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
@@ -773,6 +773,20 @@ export default function PropertiesPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {extractionFlags.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 mb-4 space-y-1.5">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Extraction notes from document analysis</p>
+              </div>
+              <ul className="space-y-1 ml-6">
+                {extractionFlags.map((flag, i) => (
+                  <li key={i} className="text-xs text-amber-700 dark:text-amber-400 list-disc">{flag}</li>
+                ))}
+              </ul>
             </div>
           )}
 
