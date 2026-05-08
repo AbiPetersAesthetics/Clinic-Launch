@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AnalysePropertyBody,
   BurndownPoint,
   CalculateFinancialsBody,
   CashflowMonth,
@@ -3251,11 +3252,14 @@ export const getAnalysePropertyUrl = (id: number) => {
 
 export const analyseProperty = async (
   id: number,
+  analysePropertyBody?: AnalysePropertyBody,
   options?: RequestInit,
 ): Promise<PropertyIntelligenceResult> => {
   return customFetch<PropertyIntelligenceResult>(getAnalysePropertyUrl(id), {
     ...options,
     method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(analysePropertyBody),
   });
 };
 
@@ -3266,14 +3270,14 @@ export const getAnalysePropertyMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof analyseProperty>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<AnalysePropertyBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof analyseProperty>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<AnalysePropertyBody> },
   TContext
 > => {
   const mutationKey = ["analyseProperty"];
@@ -3287,11 +3291,11 @@ export const getAnalysePropertyMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof analyseProperty>>,
-    { id: number }
+    { id: number; data: BodyType<AnalysePropertyBody> }
   > = (props) => {
-    const { id } = props ?? {};
+    const { id, data } = props ?? {};
 
-    return analyseProperty(id, requestOptions);
+    return analyseProperty(id, data, requestOptions);
   };
 
   return { mutationFn, ...mutationOptions };
@@ -3300,7 +3304,7 @@ export const getAnalysePropertyMutationOptions = <
 export type AnalysePropertyMutationResult = NonNullable<
   Awaited<ReturnType<typeof analyseProperty>>
 >;
-
+export type AnalysePropertyMutationBody = BodyType<AnalysePropertyBody>;
 export type AnalysePropertyMutationError = ErrorType<unknown>;
 
 /**
@@ -3313,14 +3317,14 @@ export const useAnalyseProperty = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof analyseProperty>>,
     TError,
-    { id: number },
+    { id: number; data: BodyType<AnalysePropertyBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof analyseProperty>>,
   TError,
-  { id: number },
+  { id: number; data: BodyType<AnalysePropertyBody> },
   TContext
 > => {
   return useMutation(getAnalysePropertyMutationOptions(options));

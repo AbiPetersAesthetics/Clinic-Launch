@@ -1029,6 +1029,21 @@ export const AnalysePropertyParams = zod.object({
   id: zod.coerce.number(),
 });
 
+export const analysePropertyBodySearchRadiusMetersDefault = 600;
+export const analysePropertyBodySearchRadiusMetersMin = 200;
+export const analysePropertyBodySearchRadiusMetersMax = 2000;
+
+export const AnalysePropertyBody = zod.object({
+  searchRadiusMeters: zod
+    .number()
+    .min(analysePropertyBodySearchRadiusMetersMin)
+    .max(analysePropertyBodySearchRadiusMetersMax)
+    .default(analysePropertyBodySearchRadiusMetersDefault)
+    .describe(
+      "Radius in metres for Google Places competitor search (default 600, min 200, max 2000)",
+    ),
+});
+
 export const AnalysePropertyResponse = zod.object({
   propertyId: zod.number(),
   locationScore: zod.object({

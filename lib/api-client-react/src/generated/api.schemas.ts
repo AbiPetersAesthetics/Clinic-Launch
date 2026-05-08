@@ -743,6 +743,15 @@ export type UploadPropertyDocumentBody = {
   file?: Blob;
 };
 
+export type AnalysePropertyBody = {
+  /**
+   * Radius in metres for Google Places competitor search (default 600, min 200, max 2000)
+   * @minimum 200
+   * @maximum 2000
+   */
+  searchRadiusMeters?: number;
+};
+
 export type GetProjectCashflowParams = {
   scenario?: GetProjectCashflowScenario;
 };

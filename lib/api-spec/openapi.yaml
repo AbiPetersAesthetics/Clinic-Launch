@@ -793,6 +793,19 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                searchRadiusMeters:
+                  type: integer
+                  description: Radius in metres for Google Places competitor search (default 600, min 200, max 2000)
+                  minimum: 200
+                  maximum: 2000
+                  default: 600
       responses:
         "200":
           description: Full property intelligence result

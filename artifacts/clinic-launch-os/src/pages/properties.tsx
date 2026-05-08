@@ -452,6 +452,7 @@ export default function PropertiesPage() {
   const [intelligenceTarget, setIntelligenceTarget] = useState<ClinicProperty | null>(null);
   const [intelligenceResult, setIntelligenceResult] = useState<PropertyIntelligenceResult | null>(null);
   const [extractionFlags, setExtractionFlags] = useState<string[]>([]);
+  const [searchRadiusMeters, setSearchRadiusMeters] = useState(600);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadTargetId, setUploadTargetId] = useState<number | null>(null);
 
@@ -574,7 +575,7 @@ export default function PropertiesPage() {
     setIntelligenceResult(null);
 
     analyseProperty.mutate(
-      { id: prop.id },
+      { id: prop.id, data: { searchRadiusMeters } },
       {
         onSuccess: (data) => {
           setIntelligenceResult(data);
@@ -743,6 +744,29 @@ export default function PropertiesPage() {
               {intelligenceTarget?.address} · {intelligenceTarget?.postcode}
             </SheetDescription>
           </SheetHeader>
+
+          {!analyseProperty.isPending && !intelligenceResult && (
+            <div className="rounded-lg border bg-muted/20 p-4 mb-6 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">Competition search radius</p>
+                  <p className="text-xs text-muted-foreground">Used for Google Places competitor mapping</p>
+                </div>
+                <span className="text-sm font-semibold text-primary">{searchRadiusMeters}m</span>
+              </div>
+              <div className="flex gap-2">
+                {[200, 400, 600, 1000, 1500, 2000].map(r => (
+                  <button
+                    key={r}
+                    onClick={() => setSearchRadiusMeters(r)}
+                    className={`flex-1 text-xs py-1.5 rounded border transition-colors ${searchRadiusMeters === r ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted border-input"}`}
+                  >
+                    {r >= 1000 ? `${r / 1000}km` : `${r}m`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {analyseProperty.isPending && (
             <div className="flex flex-col items-center justify-center py-24 gap-4">

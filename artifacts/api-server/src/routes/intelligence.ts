@@ -115,13 +115,13 @@ async function geocodePostcode(postcode: string, apiKey: string): Promise<{ lat:
   return json.results[0].geometry.location;
 }
 
-async function findNearbyCompetitors(lat: number, lng: number, apiKey: string): Promise<PlacesCompetitor[]> {
-  const keywords = ["aesthetics clinic", "beauty salon", "medispa", "skin clinic", "cosmetic clinic"];
+async function findNearbyCompetitors(lat: number, lng: number, apiKey: string, radiusMeters: number): Promise<PlacesCompetitor[]> {
+  const keywords = ["aesthetics clinic", "beauty salon", "medispa", "skin clinic", "cosmetic clinic", "dentist"];
   const seen = new Set<string>();
   const competitors: PlacesCompetitor[] = [];
 
   for (const keyword of keywords) {
-    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=600&keyword=${encodeURIComponent(keyword)}&key=${apiKey}`;
+    const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radiusMeters}&keyword=${encodeURIComponent(keyword)}&key=${apiKey}`;
     const res = await fetch(url);
     const json = await res.json() as {
       status: string;
@@ -268,6 +268,11 @@ router.post("/properties/:id/analyse", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
+  const rawRadius = req.body?.searchRadiusMeters;
+  const searchRadius = typeof rawRadius === "number" && rawRadius >= 200 && rawRadius <= 2000
+    ? rawRadius
+    : 600;
+
   const propertyContext = `Address: ${property.address || "Unknown"}
 Postcode: ${property.postcode || "Unknown"}
 Square Footage: ${property.sqFootage || "Unknown"} sq ft
@@ -292,7 +297,7 @@ Notes: ${property.notes || "None"}`;
     try {
       const coords = await geocodePostcode(property.postcode, placesApiKey);
       if (coords) {
-        realCompetitors = await findNearbyCompetitors(coords.lat, coords.lng, placesApiKey);
+        realCompetitors = await findNearbyCompetitors(coords.lat, coords.lng, placesApiKey, searchRadius);
         competitionDataSource = "google_places";
       }
     } catch {
@@ -304,7 +309,7 @@ Notes: ${property.notes || "None"}`;
   const manualCompetitorsList = Array.isArray(property.manualCompetitors) ? property.manualCompetitors : [];
 
   const competitorContext = realCompetitors !== null
-    ? `Real competitor data from Google Places (within 600m of ${property.postcode}):
+    ? `Real competitor data from Google Places (within ${searchRadius}m of ${property.postcode}):
 ${JSON.stringify(realCompetitors, null, 2)}
 Score saturation/opportunity based on this real data. Return the competitors array exactly as given above.`
     : manualCompetitorsList.length > 0
