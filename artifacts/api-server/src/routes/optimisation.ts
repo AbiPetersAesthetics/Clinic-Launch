@@ -109,6 +109,18 @@ const DEFAULT_RULES: Omit<CostOptimisationRule, "id" | "createdAt" | "projectId"
     rationale: "Compliance consultant on LOW cost tier — regulatory shortcuts before CQC registration create unacceptable business risk.",
     isActive: true,
   },
+  {
+    keyword: "compliance consultant",
+    itemTag: "compliance",
+    forceCategory: "dangerous_to_cut",
+    safeThreshold: null,
+    dangerThreshold: null,
+    notes: null,
+    isAbsenceCheck: true,
+    severityIfAbsent: "critical",
+    rationale: "No compliance consultant task detected — a qualified CQC compliance consultant is required before submitting your registration application.",
+    isActive: true,
+  },
 ];
 
 async function getOrSeedRules(projectId: number): Promise<CostOptimisationRule[]> {

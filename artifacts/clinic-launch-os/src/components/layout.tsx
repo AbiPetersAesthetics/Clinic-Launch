@@ -36,7 +36,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const { data: analysis } = useGetOptimisationAnalysis(PROJECT_ID, {
     query: {
-      enabled: !bannerDismissed,
+      enabled: true,
       queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID),
       refetchInterval: 60_000,
       staleTime: 0,
@@ -46,7 +46,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const smartRiskFlags = analysis?.smartRiskFlags ?? [];
   const criticalFlags = smartRiskFlags.filter(f => f.level === "critical");
   const warningFlags = smartRiskFlags.filter(f => f.level === "warning");
-  const showBanner = !bannerDismissed && smartRiskFlags.length > 0;
+  // Critical flags cannot be dismissed — warning-only banners can be dismissed
+  const canDismiss = criticalFlags.length === 0;
+  const showBanner = smartRiskFlags.length > 0 && !(bannerDismissed && canDismiss);
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -167,13 +169,15 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
                   )}
                 </button>
-                <button
-                  onClick={() => setBannerDismissed(true)}
-                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                  aria-label="Dismiss risk banner"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                {canDismiss && (
+                  <button
+                    onClick={() => setBannerDismissed(true)}
+                    className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                    aria-label="Dismiss risk banner"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
 
               {bannerExpanded && (

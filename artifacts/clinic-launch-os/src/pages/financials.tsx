@@ -8,6 +8,7 @@ import {
   useCalculateFinancials,
   useGetProjectCashflow,
   getGetProjectCashflowQueryKey,
+  getGetOptimisationAnalysisQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
@@ -100,6 +101,7 @@ export default function FinancialsPage() {
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           runCalculation();
           toast({ title: "Financial Model Saved", description: "Your assumptions have been updated." });
         },
