@@ -1023,6 +1023,277 @@ export const SetPropertyCompetitorsResponse = zod.array(
 );
 
 /**
+ * @summary List decisions for a project
+ */
+export const ListDecisionsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListDecisionsQueryParams = zod.object({
+  category: zod.coerce.string().optional(),
+  search: zod.coerce.string().optional(),
+});
+
+export const ListDecisionsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  title: zod.string(),
+  reasoning: zod.string(),
+  expectedImpact: zod.string().nullish(),
+  financialImpactGbp: zod.number(),
+  category: zod.enum([
+    "property",
+    "financial",
+    "build",
+    "clinical",
+    "marketing",
+    "general",
+  ]),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListDecisionsResponse = zod.array(ListDecisionsResponseItem);
+
+/**
+ * @summary Create a decision
+ */
+export const CreateDecisionParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateDecisionBody = zod.object({
+  title: zod.string(),
+  reasoning: zod.string(),
+  expectedImpact: zod.string().nullish(),
+  financialImpactGbp: zod.number().optional(),
+  category: zod
+    .enum([
+      "property",
+      "financial",
+      "build",
+      "clinical",
+      "marketing",
+      "general",
+    ])
+    .optional(),
+});
+
+/**
+ * @summary Update a decision
+ */
+export const UpdateDecisionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateDecisionBody = zod.object({
+  title: zod.string().optional(),
+  reasoning: zod.string().optional(),
+  expectedImpact: zod.string().nullish(),
+  financialImpactGbp: zod.number().optional(),
+  category: zod
+    .enum([
+      "property",
+      "financial",
+      "build",
+      "clinical",
+      "marketing",
+      "general",
+    ])
+    .optional(),
+});
+
+export const UpdateDecisionResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  title: zod.string(),
+  reasoning: zod.string(),
+  expectedImpact: zod.string().nullish(),
+  financialImpactGbp: zod.number(),
+  category: zod.enum([
+    "property",
+    "financial",
+    "build",
+    "clinical",
+    "marketing",
+    "general",
+  ]),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a decision
+ */
+export const DeleteDecisionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get cost variance optimisation analysis for a project
+ */
+export const GetOptimisationAnalysisParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetOptimisationAnalysisResponse = zod.object({
+  projectId: zod.number(),
+  categorised: zod.object({
+    safe_to_reduce: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+    delayable: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+    non_negotiable: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+    dangerous_to_cut: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+    luxury_item: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+    operationally_critical: zod.array(
+      zod.object({
+        taskId: zod.number(),
+        taskTitle: zod.string(),
+        phaseId: zod.number(),
+        phaseName: zod.string(),
+        costTier: zod.string(),
+        selectedCost: zod.number(),
+        costLow: zod.number(),
+        costMid: zod.number(),
+        costHigh: zod.number(),
+        category: zod.enum([
+          "safe_to_reduce",
+          "delayable",
+          "non_negotiable",
+          "dangerous_to_cut",
+          "luxury_item",
+          "operationally_critical",
+        ]),
+        potentialSavingGbp: zod.number(),
+        rationale: zod.string(),
+      }),
+    ),
+  }),
+  totalPotentialSaving: zod.number(),
+  currentCashRequirement: zod.number(),
+  cashRequirementWithSavings: zod.number(),
+  operationalRiskScore: zod.number(),
+  smartRiskFlags: zod.array(
+    zod.object({
+      level: zod.enum(["warning", "critical"]),
+      message: zod.string(),
+      taskId: zod.number().nullish(),
+      taskTitle: zod.string().nullish(),
+    }),
+  ),
+  totalItems: zod.number(),
+  generatedAt: zod.string(),
+});
+
+/**
  * @summary Run full AI property intelligence analysis
  */
 export const AnalysePropertyParams = zod.object({

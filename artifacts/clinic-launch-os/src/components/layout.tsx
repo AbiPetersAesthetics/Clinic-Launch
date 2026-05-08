@@ -1,27 +1,58 @@
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { 
-  useGetProjectDashboard, 
-  getGetProjectDashboardQueryKey 
+import {
+  useGetProjectDashboard,
+  getGetProjectDashboardQueryKey,
+  useGetRiskFlags,
+  getGetRiskFlagsQueryKey,
 } from "@workspace/api-client-react";
-import { LayoutDashboard, ListTodo, Calculator, Building2, AlertTriangle } from "lucide-react";
+import {
+  LayoutDashboard,
+  ListTodo,
+  Calculator,
+  Building2,
+  AlertTriangle,
+  BookOpen,
+  Zap,
+  ChevronDown,
+  ChevronUp,
+  X,
+} from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
 const PROJECT_ID = 1;
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
+  const [bannerExpanded, setBannerExpanded] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: {
       enabled: true,
-      queryKey: getGetProjectDashboardQueryKey(PROJECT_ID)
-    }
+      queryKey: getGetProjectDashboardQueryKey(PROJECT_ID),
+    },
   });
+
+  const { data: riskFlags = [] } = useGetRiskFlags(PROJECT_ID, {
+    query: {
+      enabled: !bannerDismissed,
+      queryKey: getGetRiskFlagsQueryKey(PROJECT_ID),
+      refetchInterval: 60_000,
+    },
+  });
+
+  const criticalFlags = riskFlags.filter(f => f.level === "critical");
+  const warningFlags = riskFlags.filter(f => f.level === "warning");
+  const showBanner = !bannerDismissed && riskFlags.length > 0;
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/project", label: "Project Plan", icon: ListTodo },
     { href: "/financials", label: "Financials", icon: Calculator },
     { href: "/properties", label: "Properties", icon: Building2 },
+    { href: "/decisions", label: "Decisions", icon: BookOpen },
+    { href: "/optimisation", label: "Optimisation", icon: Zap },
   ];
 
   return (
@@ -36,16 +67,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {navItems.map((item) => {
             const isActive = location === item.href;
             return (
-              <Link 
-                key={item.href} 
+              <Link
+                key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive 
-                    ? "bg-primary/10 text-primary" 
+                  isActive
+                    ? "bg-primary/10 text-primary"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="w-4 h-4 shrink-0" />
                 {item.label}
               </Link>
             );
@@ -59,45 +90,114 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-16 flex items-center px-6 shrink-0">
           {dashboard ? (
             <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-8">
-                <div>
+              <div className="flex items-center gap-6 overflow-x-auto">
+                <div className="shrink-0">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Days to Launch</p>
                   <p className="text-sm font-semibold mt-0.5">{dashboard.daysToOpening ?? "TBD"}</p>
                 </div>
-                <div className="w-px h-8 bg-border"></div>
-                <div>
+                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="shrink-0">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Readiness</p>
                   <p className="text-sm font-semibold mt-0.5 text-primary">{formatPercent(dashboard.launchReadinessPercent)}</p>
                 </div>
-                <div className="w-px h-8 bg-border"></div>
-                <div>
+                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="shrink-0">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Confidence</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className={`w-2 h-2 rounded-full ${dashboard.projectConfidenceScore > 75 ? 'bg-primary' : dashboard.projectConfidenceScore > 50 ? 'bg-yellow-500' : 'bg-destructive'}`} />
+                    <div className={`w-2 h-2 rounded-full ${dashboard.projectConfidenceScore > 75 ? "bg-primary" : dashboard.projectConfidenceScore > 50 ? "bg-yellow-500" : "bg-destructive"}`} />
                     <p className="text-sm font-semibold">{dashboard.projectConfidenceScore}/100</p>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-border"></div>
-                <div>
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total Selected Cost</p>
+                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="shrink-0">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Selected Cost</p>
                   <p className="text-sm font-semibold mt-0.5">{formatGBP(dashboard.currentSelectedCost)}</p>
                 </div>
               </div>
               {dashboard.criticalRiskFlagCount > 0 && (
-                <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-3 py-1.5 rounded-full text-xs font-medium">
+                <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-3 py-1.5 rounded-full text-xs font-medium shrink-0 ml-4">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {dashboard.criticalRiskFlagCount} Critical Risks
+                  {dashboard.criticalRiskFlagCount} Critical Risk{dashboard.criticalRiskFlagCount !== 1 ? "s" : ""}
                 </div>
               )}
             </div>
           ) : (
             <div className="animate-pulse flex gap-8">
-              <div className="w-24 h-8 bg-muted rounded"></div>
-              <div className="w-24 h-8 bg-muted rounded"></div>
-              <div className="w-24 h-8 bg-muted rounded"></div>
+              <div className="w-24 h-8 bg-muted rounded" />
+              <div className="w-24 h-8 bg-muted rounded" />
+              <div className="w-24 h-8 bg-muted rounded" />
             </div>
           )}
         </header>
+
+        {/* Smart Risk Banner */}
+        {showBanner && (
+          <div className={`border-b ${criticalFlags.length > 0 ? "bg-destructive/5 border-destructive/30" : "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800/30"}`}>
+            <div className="px-6 py-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <button
+                  className="flex items-start gap-2.5 flex-1 text-left"
+                  onClick={() => setBannerExpanded(e => !e)}
+                >
+                  <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${criticalFlags.length > 0 ? "text-destructive" : "text-yellow-600 dark:text-yellow-400"}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {criticalFlags.length > 0 && (
+                        <span className="text-xs font-semibold text-destructive">
+                          {criticalFlags.length} Critical Risk{criticalFlags.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {warningFlags.length > 0 && (
+                        <span className="text-xs font-semibold text-yellow-700 dark:text-yellow-400">
+                          {warningFlags.length} Warning{warningFlags.length !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {!bannerExpanded && (
+                        <span className="text-xs text-muted-foreground truncate">
+                          {riskFlags[0]?.message}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  {bannerExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                  )}
+                </button>
+                <button
+                  onClick={() => setBannerDismissed(true)}
+                  className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                  aria-label="Dismiss risk banner"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {bannerExpanded && (
+                <div className="mt-2 space-y-1.5 pl-6">
+                  {riskFlags.map((flag, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <span className={`text-[10px] uppercase font-bold tracking-wider shrink-0 mt-0.5 px-1.5 py-0.5 rounded ${
+                        flag.level === "critical"
+                          ? "bg-destructive/15 text-destructive"
+                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300"
+                      }`}>
+                        {flag.level}
+                      </span>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{flag.message}</p>
+                    </div>
+                  ))}
+                  <div className="pt-1">
+                    <Link href="/optimisation" className="text-xs text-primary underline underline-offset-2 hover:opacity-80">
+                      View Optimisation Analysis →
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <main className="flex-1 overflow-auto p-6 md:p-8">
           <div className="max-w-6xl mx-auto">

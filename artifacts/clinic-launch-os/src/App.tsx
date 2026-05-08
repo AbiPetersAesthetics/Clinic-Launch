@@ -5,11 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout";
 
-// Pages (to be implemented)
 import DashboardPage from "@/pages/dashboard";
 import ProjectPage from "@/pages/project";
 import FinancialsPage from "@/pages/financials";
 import PropertiesPage from "@/pages/properties";
+import DecisionsPage from "@/pages/decisions";
+import OptimisationPage from "@/pages/optimisation";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,8 @@ function Router() {
         <Route path="/project" component={ProjectPage} />
         <Route path="/financials" component={FinancialsPage} />
         <Route path="/properties" component={PropertiesPage} />
+        <Route path="/decisions" component={DecisionsPage} />
+        <Route path="/optimisation" component={OptimisationPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

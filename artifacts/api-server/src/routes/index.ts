@@ -9,6 +9,8 @@ import scenarioConfigsRouter from "./scenario_configs";
 import financialsRouter from "./financials";
 import dashboardRouter from "./dashboard";
 import intelligenceRouter from "./intelligence";
+import decisionsRouter from "./decisions";
+import optimisationRouter from "./optimisation";
 
 const router: IRouter = Router();
 
@@ -22,5 +24,7 @@ router.use(scenarioConfigsRouter);
 router.use(financialsRouter);
 router.use(dashboardRouter);
 router.use(intelligenceRouter);
+router.use(decisionsRouter);
+router.use(optimisationRouter);
 
 export default router;

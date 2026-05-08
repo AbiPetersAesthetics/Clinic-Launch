@@ -28,6 +28,10 @@ tags:
     description: Dashboard summary data
   - name: intelligence
     description: AI-powered property intelligence and document extraction
+  - name: decisions
+    description: Strategic decision log entries
+  - name: optimisation
+    description: Cost variance optimisation analysis
 
 paths:
   /healthz:
@@ -781,6 +785,119 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ManualCompetitor"
+
+  # Decisions
+  /projects/{projectId}/decisions:
+    get:
+      operationId: listDecisions
+      tags: [decisions]
+      summary: List decisions for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of decisions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Decision"
+    post:
+      operationId: createDecision
+      tags: [decisions]
+      summary: Create a decision
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDecisionBody"
+      responses:
+        "201":
+          description: Created decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+
+  /decisions/{id}:
+    put:
+      operationId: updateDecision
+      tags: [decisions]
+      summary: Update a decision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDecisionBody"
+      responses:
+        "200":
+          description: Updated decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Decision"
+    delete:
+      operationId: deleteDecision
+      tags: [decisions]
+      summary: Delete a decision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Optimisation
+  /projects/{projectId}/optimisation-analysis:
+    get:
+      operationId: getOptimisationAnalysis
+      tags: [optimisation]
+      summary: Get cost variance optimisation analysis for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Optimisation analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OptimisationAnalysis"
 
   /properties/{id}/analyse:
     post:
@@ -2206,4 +2323,201 @@ components:
         - clinicSuitabilityScore
         - competition
         - executiveSummary
+        - generatedAt
+
+    Decision:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        title:
+          type: string
+        reasoning:
+          type: string
+        expectedImpact:
+          type: string
+          nullable: true
+        financialImpactGbp:
+          type: number
+        category:
+          type: string
+          enum: [property, financial, build, clinical, marketing, general]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - title
+        - reasoning
+        - financialImpactGbp
+        - category
+        - createdAt
+        - updatedAt
+
+    CreateDecisionBody:
+      type: object
+      properties:
+        title:
+          type: string
+        reasoning:
+          type: string
+        expectedImpact:
+          type: string
+          nullable: true
+        financialImpactGbp:
+          type: number
+        category:
+          type: string
+          enum: [property, financial, build, clinical, marketing, general]
+      required:
+        - title
+        - reasoning
+
+    UpdateDecisionBody:
+      type: object
+      properties:
+        title:
+          type: string
+        reasoning:
+          type: string
+        expectedImpact:
+          type: string
+          nullable: true
+        financialImpactGbp:
+          type: number
+        category:
+          type: string
+          enum: [property, financial, build, clinical, marketing, general]
+
+    OptimisationItem:
+      type: object
+      properties:
+        taskId:
+          type: integer
+        taskTitle:
+          type: string
+        phaseId:
+          type: integer
+        phaseName:
+          type: string
+        costTier:
+          type: string
+        selectedCost:
+          type: number
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        category:
+          type: string
+          enum: [safe_to_reduce, delayable, non_negotiable, dangerous_to_cut, luxury_item, operationally_critical]
+        potentialSavingGbp:
+          type: number
+        rationale:
+          type: string
+      required:
+        - taskId
+        - taskTitle
+        - phaseId
+        - phaseName
+        - costTier
+        - selectedCost
+        - costLow
+        - costMid
+        - costHigh
+        - category
+        - potentialSavingGbp
+        - rationale
+
+    OptimisationSmartRiskFlag:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [warning, critical]
+        message:
+          type: string
+        taskId:
+          type: integer
+          nullable: true
+        taskTitle:
+          type: string
+          nullable: true
+      required:
+        - level
+        - message
+
+    OptimisationCategorised:
+      type: object
+      properties:
+        safe_to_reduce:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+        delayable:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+        non_negotiable:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+        dangerous_to_cut:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+        luxury_item:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+        operationally_critical:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationItem"
+      required:
+        - safe_to_reduce
+        - delayable
+        - non_negotiable
+        - dangerous_to_cut
+        - luxury_item
+        - operationally_critical
+
+    OptimisationAnalysis:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        categorised:
+          $ref: "#/components/schemas/OptimisationCategorised"
+        totalPotentialSaving:
+          type: number
+        currentCashRequirement:
+          type: number
+        cashRequirementWithSavings:
+          type: number
+        operationalRiskScore:
+          type: integer
+        smartRiskFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/OptimisationSmartRiskFlag"
+        totalItems:
+          type: integer
+        generatedAt:
+          type: string
+      required:
+        - projectId
+        - categorised
+        - totalPotentialSaving
+        - currentCashRequirement
+        - cashRequirementWithSavings
+        - operationalRiskScore
+        - smartRiskFlags
+        - totalItems
         - generatedAt

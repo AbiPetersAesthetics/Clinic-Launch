@@ -740,8 +740,140 @@ export interface PropertyIntelligenceResult {
   generatedAt: string;
 }
 
+export type DecisionCategory =
+  (typeof DecisionCategory)[keyof typeof DecisionCategory];
+
+export const DecisionCategory = {
+  property: "property",
+  financial: "financial",
+  build: "build",
+  clinical: "clinical",
+  marketing: "marketing",
+  general: "general",
+} as const;
+
+export interface Decision {
+  id: number;
+  projectId: number;
+  title: string;
+  reasoning: string;
+  expectedImpact?: string | null;
+  financialImpactGbp: number;
+  category: DecisionCategory;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateDecisionBodyCategory =
+  (typeof CreateDecisionBodyCategory)[keyof typeof CreateDecisionBodyCategory];
+
+export const CreateDecisionBodyCategory = {
+  property: "property",
+  financial: "financial",
+  build: "build",
+  clinical: "clinical",
+  marketing: "marketing",
+  general: "general",
+} as const;
+
+export interface CreateDecisionBody {
+  title: string;
+  reasoning: string;
+  expectedImpact?: string | null;
+  financialImpactGbp?: number;
+  category?: CreateDecisionBodyCategory;
+}
+
+export type UpdateDecisionBodyCategory =
+  (typeof UpdateDecisionBodyCategory)[keyof typeof UpdateDecisionBodyCategory];
+
+export const UpdateDecisionBodyCategory = {
+  property: "property",
+  financial: "financial",
+  build: "build",
+  clinical: "clinical",
+  marketing: "marketing",
+  general: "general",
+} as const;
+
+export interface UpdateDecisionBody {
+  title?: string;
+  reasoning?: string;
+  expectedImpact?: string | null;
+  financialImpactGbp?: number;
+  category?: UpdateDecisionBodyCategory;
+}
+
+export type OptimisationItemCategory =
+  (typeof OptimisationItemCategory)[keyof typeof OptimisationItemCategory];
+
+export const OptimisationItemCategory = {
+  safe_to_reduce: "safe_to_reduce",
+  delayable: "delayable",
+  non_negotiable: "non_negotiable",
+  dangerous_to_cut: "dangerous_to_cut",
+  luxury_item: "luxury_item",
+  operationally_critical: "operationally_critical",
+} as const;
+
+export interface OptimisationItem {
+  taskId: number;
+  taskTitle: string;
+  phaseId: number;
+  phaseName: string;
+  costTier: string;
+  selectedCost: number;
+  costLow: number;
+  costMid: number;
+  costHigh: number;
+  category: OptimisationItemCategory;
+  potentialSavingGbp: number;
+  rationale: string;
+}
+
+export type OptimisationSmartRiskFlagLevel =
+  (typeof OptimisationSmartRiskFlagLevel)[keyof typeof OptimisationSmartRiskFlagLevel];
+
+export const OptimisationSmartRiskFlagLevel = {
+  warning: "warning",
+  critical: "critical",
+} as const;
+
+export interface OptimisationSmartRiskFlag {
+  level: OptimisationSmartRiskFlagLevel;
+  message: string;
+  taskId?: number | null;
+  taskTitle?: string | null;
+}
+
+export interface OptimisationCategorised {
+  safe_to_reduce: OptimisationItem[];
+  delayable: OptimisationItem[];
+  non_negotiable: OptimisationItem[];
+  dangerous_to_cut: OptimisationItem[];
+  luxury_item: OptimisationItem[];
+  operationally_critical: OptimisationItem[];
+}
+
+export interface OptimisationAnalysis {
+  projectId: number;
+  categorised: OptimisationCategorised;
+  totalPotentialSaving: number;
+  currentCashRequirement: number;
+  cashRequirementWithSavings: number;
+  operationalRiskScore: number;
+  smartRiskFlags: OptimisationSmartRiskFlag[];
+  totalItems: number;
+  generatedAt: string;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
+};
+
+export type ListDecisionsParams = {
+  category?: string;
+  search?: string;
 };
 
 export type AnalysePropertyBody = {
