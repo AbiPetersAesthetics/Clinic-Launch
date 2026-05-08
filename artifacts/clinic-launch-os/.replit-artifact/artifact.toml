@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Clinic Launch OS"
+version = "1.0.0"
+id = "artifacts/clinic-launch-os"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23773
+
+[services.development]
+run = "pnpm --filter @workspace/clinic-launch-os run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/clinic-launch-os", "run", "build" ]
+publicDir = "artifacts/clinic-launch-os/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23773"
+BASE_PATH = "/"

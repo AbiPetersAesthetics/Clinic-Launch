@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Clinic Launch OS API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Clinic launch projects
+  - name: properties
+    description: Clinic properties under evaluation
+  - name: phases
+    description: Project phases
+  - name: tasks
+    description: Project tasks within phases
+  - name: financials
+    description: Financial models
+  - name: dashboard
+    description: Dashboard summary data
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,535 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Projects
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectBody"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    put:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectBody"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Properties
+  /projects/{projectId}/properties:
+    get:
+      operationId: listProperties
+      tags: [properties]
+      summary: List properties for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of properties
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClinicProperty"
+    post:
+      operationId: createProperty
+      tags: [properties]
+      summary: Create a property
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePropertyBody"
+      responses:
+        "201":
+          description: Created property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+
+  /properties/{id}:
+    get:
+      operationId: getProperty
+      tags: [properties]
+      summary: Get a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+    put:
+      operationId: updateProperty
+      tags: [properties]
+      summary: Update a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePropertyBody"
+      responses:
+        "200":
+          description: Updated property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+    delete:
+      operationId: deleteProperty
+      tags: [properties]
+      summary: Delete a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Phases
+  /projects/{projectId}/phases:
+    get:
+      operationId: listPhases
+      tags: [phases]
+      summary: List phases for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of phases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LaunchPhase"
+    post:
+      operationId: createPhase
+      tags: [phases]
+      summary: Create a phase
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePhaseBody"
+      responses:
+        "201":
+          description: Created phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaunchPhase"
+
+  /phases/{id}:
+    put:
+      operationId: updatePhase
+      tags: [phases]
+      summary: Update a phase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePhaseBody"
+      responses:
+        "200":
+          description: Updated phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaunchPhase"
+    delete:
+      operationId: deletePhase
+      tags: [phases]
+      summary: Delete a phase
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Tasks
+  /phases/{phaseId}/tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks for a phase
+      parameters:
+        - name: phaseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LaunchTask"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create a task
+      parameters:
+        - name: phaseId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaunchTask"
+
+  /tasks/{id}:
+    get:
+      operationId: getTask
+      tags: [tasks]
+      summary: Get a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaunchTask"
+    put:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LaunchTask"
+    delete:
+      operationId: deleteTask
+      tags: [tasks]
+      summary: Delete a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Financial Models
+  /projects/{projectId}/financial:
+    get:
+      operationId: getFinancialModel
+      tags: [financials]
+      summary: Get financial model for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Financial model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialModel"
+    put:
+      operationId: upsertFinancialModel
+      tags: [financials]
+      summary: Create or update financial model
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertFinancialModelBody"
+      responses:
+        "200":
+          description: Financial model
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialModel"
+
+  /projects/{projectId}/financial/calculate:
+    post:
+      operationId: calculateFinancials
+      tags: [financials]
+      summary: Calculate financial outputs for a given scenario
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculateFinancialsBody"
+      responses:
+        "200":
+          description: Calculated financial outputs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialCalculation"
+
+  # Dashboard
+  /projects/{projectId}/dashboard:
+    get:
+      operationId: getProjectDashboard
+      tags: [dashboard]
+      summary: Get dashboard summary for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /projects/{projectId}/risk-flags:
+    get:
+      operationId: getRiskFlags
+      tags: [dashboard]
+      summary: Get risk flags for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Risk flags
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RiskFlag"
+
+  /projects/{projectId}/phases-with-tasks:
+    get:
+      operationId: getPhasesWithTasks
+      tags: [phases]
+      summary: Get all phases with their tasks for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Phases with tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PhaseWithTasks"
+
+  /projects/{projectId}/cashflow:
+    get:
+      operationId: getProjectCashflow
+      tags: [financials]
+      summary: Get monthly cashflow projection for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: scenario
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [conservative, realistic, aggressive]
+      responses:
+        "200":
+          description: Monthly cashflow data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CashflowMonth"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +575,912 @@ components:
       required:
         - status
 
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        targetLocation:
+          type: string
+          nullable: true
+        targetOpeningDate:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planning, active, launched, paused]
+        launchReadinessPercent:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - status
+        - launchReadinessPercent
+        - createdAt
+        - updatedAt
+
+    CreateProjectBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        targetLocation:
+          type: string
+          nullable: true
+        targetOpeningDate:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planning, active, launched, paused]
+      required:
+        - name
+
+    UpdateProjectBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        targetLocation:
+          type: string
+          nullable: true
+        targetOpeningDate:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [planning, active, launched, paused]
+
+    ClinicProperty:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        sqFootage:
+          type: number
+          nullable: true
+        annualRentGbp:
+          type: number
+          nullable: true
+        monthlyRentGbp:
+          type: number
+          nullable: true
+        vatOnRent:
+          type: boolean
+          nullable: true
+        businessRatesGbp:
+          type: number
+          nullable: true
+        serviceChargeGbp:
+          type: number
+          nullable: true
+        leaseLength:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        availabilityDate:
+          type: string
+          nullable: true
+        parkingSpaces:
+          type: integer
+          nullable: true
+        frontageMeters:
+          type: number
+          nullable: true
+        agentName:
+          type: string
+          nullable: true
+        agentPhone:
+          type: string
+          nullable: true
+        agentEmail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - status
+        - createdAt
+        - updatedAt
+
+    CreatePropertyBody:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        sqFootage:
+          type: number
+          nullable: true
+        annualRentGbp:
+          type: number
+          nullable: true
+        monthlyRentGbp:
+          type: number
+          nullable: true
+        vatOnRent:
+          type: boolean
+          nullable: true
+        businessRatesGbp:
+          type: number
+          nullable: true
+        serviceChargeGbp:
+          type: number
+          nullable: true
+        leaseLength:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        availabilityDate:
+          type: string
+          nullable: true
+        parkingSpaces:
+          type: integer
+          nullable: true
+        frontageMeters:
+          type: number
+          nullable: true
+        agentName:
+          type: string
+          nullable: true
+        agentPhone:
+          type: string
+          nullable: true
+        agentEmail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        notes:
+          type: string
+          nullable: true
+
+    UpdatePropertyBody:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        sqFootage:
+          type: number
+          nullable: true
+        annualRentGbp:
+          type: number
+          nullable: true
+        monthlyRentGbp:
+          type: number
+          nullable: true
+        vatOnRent:
+          type: boolean
+          nullable: true
+        businessRatesGbp:
+          type: number
+          nullable: true
+        serviceChargeGbp:
+          type: number
+          nullable: true
+        leaseLength:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        availabilityDate:
+          type: string
+          nullable: true
+        parkingSpaces:
+          type: integer
+          nullable: true
+        frontageMeters:
+          type: number
+          nullable: true
+        agentName:
+          type: string
+          nullable: true
+        agentPhone:
+          type: string
+          nullable: true
+        agentEmail:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        notes:
+          type: string
+          nullable: true
+
+    LaunchPhase:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked]
+        totalCostLow:
+          type: number
+        totalCostMid:
+          type: number
+        totalCostHigh:
+          type: number
+        taskCount:
+          type: integer
+        completedTaskCount:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - name
+        - sortOrder
+        - status
+        - totalCostLow
+        - totalCostMid
+        - totalCostHigh
+        - taskCount
+        - completedTaskCount
+        - createdAt
+        - updatedAt
+
+    CreatePhaseBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked]
+      required:
+        - name
+
+    UpdatePhaseBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked]
+
+    LaunchTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        phaseId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        contractor:
+          type: string
+          nullable: true
+        supplier:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked, deferred]
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        costTier:
+          type: string
+          enum: [low, mid, high]
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        selectedCost:
+          type: number
+        dueDate:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        dependencies:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        isNonNegotiable:
+          type: boolean
+        isCriticalRisk:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - phaseId
+        - title
+        - status
+        - riskLevel
+        - costTier
+        - costLow
+        - costMid
+        - costHigh
+        - selectedCost
+        - isNonNegotiable
+        - isCriticalRisk
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        contractor:
+          type: string
+          nullable: true
+        supplier:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked, deferred]
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        costTier:
+          type: string
+          enum: [low, mid, high]
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        dueDate:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        dependencies:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        isNonNegotiable:
+          type: boolean
+        isCriticalRisk:
+          type: boolean
+        sortOrder:
+          type: integer
+      required:
+        - title
+        - costLow
+        - costMid
+        - costHigh
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        owner:
+          type: string
+          nullable: true
+        contractor:
+          type: string
+          nullable: true
+        supplier:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, blocked, deferred]
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        costTier:
+          type: string
+          enum: [low, mid, high]
+        costLow:
+          type: number
+        costMid:
+          type: number
+        costHigh:
+          type: number
+        dueDate:
+          type: string
+          nullable: true
+        durationDays:
+          type: integer
+          nullable: true
+        dependencies:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        isNonNegotiable:
+          type: boolean
+        isCriticalRisk:
+          type: boolean
+        sortOrder:
+          type: integer
+
+    FinancialModel:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        rentGbp:
+          type: number
+        ratesGbp:
+          type: number
+        utilitiesGbp:
+          type: number
+        internetGbp:
+          type: number
+        insuranceGbp:
+          type: number
+        accountantGbp:
+          type: number
+        softwareGbp:
+          type: number
+        wasteContractGbp:
+          type: number
+        cleanerGbp:
+          type: number
+        subscriptionsGbp:
+          type: number
+        financeRepaymentsGbp:
+          type: number
+        stockPercent:
+          type: number
+        marketingGbp:
+          type: number
+        staffingGbp:
+          type: number
+        commissionsPercent:
+          type: number
+        consumablesGbp:
+          type: number
+        averageClientValueGbp:
+          type: number
+        treatmentRoomsCount:
+          type: integer
+        practitionerHoursPerDay:
+          type: number
+        workingDaysPerMonth:
+          type: integer
+        conservativeOccupancyPercent:
+          type: number
+        realisticOccupancyPercent:
+          type: number
+        aggressiveOccupancyPercent:
+          type: number
+        repeatBookingRatePercent:
+          type: number
+        membershipRevenueGbp:
+          type: number
+        existingClinicRevenueGbp:
+          type: number
+        ownerDrawingsGbp:
+          type: number
+        runwaySavingsGbp:
+          type: number
+        personalSalaryNeedsGbp:
+          type: number
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - createdAt
+        - updatedAt
+
+    UpsertFinancialModelBody:
+      type: object
+      properties:
+        rentGbp:
+          type: number
+        ratesGbp:
+          type: number
+        utilitiesGbp:
+          type: number
+        internetGbp:
+          type: number
+        insuranceGbp:
+          type: number
+        accountantGbp:
+          type: number
+        softwareGbp:
+          type: number
+        wasteContractGbp:
+          type: number
+        cleanerGbp:
+          type: number
+        subscriptionsGbp:
+          type: number
+        financeRepaymentsGbp:
+          type: number
+        stockPercent:
+          type: number
+        marketingGbp:
+          type: number
+        staffingGbp:
+          type: number
+        commissionsPercent:
+          type: number
+        consumablesGbp:
+          type: number
+        averageClientValueGbp:
+          type: number
+        treatmentRoomsCount:
+          type: integer
+        practitionerHoursPerDay:
+          type: number
+        workingDaysPerMonth:
+          type: integer
+        conservativeOccupancyPercent:
+          type: number
+        realisticOccupancyPercent:
+          type: number
+        aggressiveOccupancyPercent:
+          type: number
+        repeatBookingRatePercent:
+          type: number
+        membershipRevenueGbp:
+          type: number
+        existingClinicRevenueGbp:
+          type: number
+        ownerDrawingsGbp:
+          type: number
+        runwaySavingsGbp:
+          type: number
+        personalSalaryNeedsGbp:
+          type: number
+
+    CalculateFinancialsBody:
+      type: object
+      properties:
+        scenario:
+          type: string
+          enum: [conservative, realistic, aggressive]
+      required:
+        - scenario
+
+    FinancialCalculation:
+      type: object
+      properties:
+        scenario:
+          type: string
+          enum: [conservative, realistic, aggressive]
+        monthlyRevenue:
+          type: number
+        annualRevenue:
+          type: number
+        monthlyFixedCosts:
+          type: number
+        monthlyVariableCosts:
+          type: number
+        monthlyTotalCosts:
+          type: number
+        monthlyNetProfit:
+          type: number
+        annualNetProfit:
+          type: number
+        ebitda:
+          type: number
+        cashRunwayMonths:
+          type: number
+        breakEvenRevenueGbp:
+          type: number
+        breakEvenOccupancyPercent:
+          type: number
+        minimumViableRevenueGbp:
+          type: number
+        safeOperatingThresholdGbp:
+          type: number
+        occupancyUsedPercent:
+          type: number
+        monthsUntilProfitable:
+          type: number
+          nullable: true
+      required:
+        - scenario
+        - monthlyRevenue
+        - annualRevenue
+        - monthlyFixedCosts
+        - monthlyVariableCosts
+        - monthlyTotalCosts
+        - monthlyNetProfit
+        - annualNetProfit
+        - ebitda
+        - cashRunwayMonths
+        - breakEvenRevenueGbp
+        - breakEvenOccupancyPercent
+        - minimumViableRevenueGbp
+        - safeOperatingThresholdGbp
+        - occupancyUsedPercent
+
+    DashboardSummary:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        projectName:
+          type: string
+        status:
+          type: string
+        targetOpeningDate:
+          type: string
+          nullable: true
+        daysToOpening:
+          type: integer
+          nullable: true
+        launchReadinessPercent:
+          type: integer
+        totalTaskCount:
+          type: integer
+        completedTaskCount:
+          type: integer
+        blockedTaskCount:
+          type: integer
+        highRiskTaskCount:
+          type: integer
+        criticalRiskFlagCount:
+          type: integer
+        totalProjectCostLow:
+          type: number
+        totalProjectCostMid:
+          type: number
+        totalProjectCostHigh:
+          type: number
+        currentSelectedCost:
+          type: number
+        projectedFirstYearProfit:
+          type: number
+          nullable: true
+        monthlyBurnRate:
+          type: number
+          nullable: true
+        cashRunwayMonths:
+          type: number
+          nullable: true
+        projectConfidenceScore:
+          type: integer
+        phaseProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhaseProgress"
+      required:
+        - projectId
+        - projectName
+        - status
+        - launchReadinessPercent
+        - totalTaskCount
+        - completedTaskCount
+        - blockedTaskCount
+        - highRiskTaskCount
+        - criticalRiskFlagCount
+        - totalProjectCostLow
+        - totalProjectCostMid
+        - totalProjectCostHigh
+        - currentSelectedCost
+        - projectConfidenceScore
+        - phaseProgress
+
+    PhaseProgress:
+      type: object
+      properties:
+        phaseId:
+          type: integer
+        phaseName:
+          type: string
+        completedTasks:
+          type: integer
+        totalTasks:
+          type: integer
+        percentComplete:
+          type: integer
+        status:
+          type: string
+      required:
+        - phaseId
+        - phaseName
+        - completedTasks
+        - totalTasks
+        - percentComplete
+        - status
+
+    PhaseWithTasks:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        status:
+          type: string
+        totalCostLow:
+          type: number
+        totalCostMid:
+          type: number
+        totalCostHigh:
+          type: number
+        selectedCostTotal:
+          type: number
+        taskCount:
+          type: integer
+        completedTaskCount:
+          type: integer
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LaunchTask"
+      required:
+        - id
+        - projectId
+        - name
+        - sortOrder
+        - status
+        - totalCostLow
+        - totalCostMid
+        - totalCostHigh
+        - selectedCostTotal
+        - taskCount
+        - completedTaskCount
+        - tasks
+
+    RiskFlag:
+      type: object
+      properties:
+        level:
+          type: string
+          enum: [warning, critical]
+        category:
+          type: string
+        message:
+          type: string
+        taskId:
+          type: integer
+          nullable: true
+        taskTitle:
+          type: string
+          nullable: true
+      required:
+        - level
+        - category
+        - message
+
+    CashflowMonth:
+      type: object
+      properties:
+        month:
+          type: integer
+        monthLabel:
+          type: string
+        revenue:
+          type: number
+        fixedCosts:
+          type: number
+        variableCosts:
+          type: number
+        netCashflow:
+          type: number
+        cumulativeCashflow:
+          type: number
+        isBreakevenMonth:
+          type: boolean
+      required:
+        - month
+        - monthLabel
+        - revenue
+        - fixedCosts
+        - variableCosts
+        - netCashflow
+        - cumulativeCashflow
+        - isBreakevenMonth
