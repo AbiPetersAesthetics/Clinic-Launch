@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetPhasesWithTasks,
@@ -9,7 +9,7 @@ import {
   useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
 } from "@workspace/api-client-react";
-import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel } from "@workspace/api-client-react";
+import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
 import {
@@ -18,7 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,6 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
 import {
   Table,
@@ -45,11 +44,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const PROJECT_ID = 1;
 
@@ -83,14 +84,8 @@ export default function ProjectPage() {
   const updateTask = useUpdateTask();
 
   const handleCostTierChange = (task: LaunchTask, newTier: "low" | "mid" | "high") => {
-    const newSelectedCost =
-      newTier === "low" ? task.costLow : newTier === "high" ? task.costHigh : task.costMid;
-
     updateTask.mutate(
-      {
-        id: task.id,
-        data: { costTier: newTier },
-      },
+      { id: task.id, data: { costTier: newTier } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
@@ -102,10 +97,7 @@ export default function ProjectPage() {
 
   const handleStatusChange = (task: LaunchTask, newStatus: UpdateTaskBodyStatus) => {
     updateTask.mutate(
-      {
-        id: task.id,
-        data: { status: newStatus },
-      },
+      { id: task.id, data: { status: newStatus } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
@@ -212,7 +204,7 @@ export default function ProjectPage() {
                       <TableRow key={task.id}>
                         <TableCell>
                           <div className="font-medium text-foreground">{task.title}</div>
-                          <div className="flex gap-2 mt-1.5">
+                          <div className="flex gap-2 mt-1.5 flex-wrap">
                             {task.isNonNegotiable && (
                               <Badge variant="outline" className="text-[10px] h-4 py-0">
                                 Must Do
@@ -221,6 +213,16 @@ export default function ProjectPage() {
                             {task.isCriticalRisk && (
                               <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
                                 Critical
+                              </Badge>
+                            )}
+                            {task.files && (
+                              <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                Files attached
+                              </Badge>
+                            )}
+                            {task.dependencies && task.dependencies.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                {task.dependencies.length} dep{task.dependencies.length !== 1 ? "s" : ""}
                               </Badge>
                             )}
                           </div>
@@ -285,9 +287,9 @@ export default function ProjectPage() {
                               </button>
                             </div>
                             {task.costLow === 0 && task.costHigh === 0 && task.costMid === 0 ? null : (
-                               <div className="text-[10px] text-muted-foreground text-right mt-0.5">
-                                 Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
-                               </div>
+                              <div className="text-[10px] text-muted-foreground text-right mt-0.5">
+                                Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
+                              </div>
                             )}
                           </div>
                         </TableCell>
@@ -323,17 +325,71 @@ export default function ProjectPage() {
 
       <TaskEditSheet
         task={editingTask}
+        allPhases={phases ?? []}
         onClose={() => setEditingTask(null)}
       />
     </div>
   );
 }
 
-function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: () => void }) {
+function parseFiles(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map((f: unknown) => (typeof f === "string" ? f : (f as { name?: string }).name ?? String(f)));
+    }
+  } catch {
+    // ignore malformed JSON
+  }
+  return [];
+}
+
+function TaskEditSheet({
+  task,
+  allPhases,
+  onClose,
+}: {
+  task: LaunchTask | null;
+  allPhases: PhaseWithTasks[];
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
 
-  // Very simple uncontrolled form implementation for brevity and speed
+  const [files, setFiles] = useState<string[]>([]);
+  const [newFile, setNewFile] = useState("");
+  const [dependencies, setDependencies] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (task) {
+      setFiles(parseFiles(task.files));
+      setDependencies(task.dependencies ?? []);
+    }
+  }, [task?.id]);
+
+  const allTasks = allPhases.flatMap((p) =>
+    (p.tasks ?? []).filter((t) => t.id !== task?.id).map((t) => ({ id: t.id, title: t.title, phaseName: p.name }))
+  );
+
+  const handleAddFile = () => {
+    const trimmed = newFile.trim();
+    if (trimmed && !files.includes(trimmed)) {
+      setFiles((prev) => [...prev, trimmed]);
+    }
+    setNewFile("");
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const toggleDependency = (taskId: number) => {
+    setDependencies((prev) =>
+      prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+    );
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!task) return;
@@ -349,19 +405,18 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
       costLow: Number(formData.get("costLow") || 0),
       costMid: Number(formData.get("costMid") || 0),
       costHigh: Number(formData.get("costHigh") || 0),
-      dueDate: formData.get("dueDate") as string || undefined,
+      dueDate: (formData.get("dueDate") as string) || undefined,
       durationDays: Number(formData.get("durationDays") || 0),
       riskLevel: formData.get("riskLevel") as UpdateTaskBodyRiskLevel,
       status: formData.get("status") as UpdateTaskBodyStatus,
       isNonNegotiable: formData.get("isNonNegotiable") === "on",
       isCriticalRisk: formData.get("isCriticalRisk") === "on",
+      files: files.length > 0 ? JSON.stringify(files) : null,
+      dependencies: dependencies.length > 0 ? dependencies : null,
     };
 
     updateTask.mutate(
-      {
-        id: task.id,
-        data,
-      },
+      { id: task.id, data },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
@@ -377,7 +432,7 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader className="mb-6">
           <SheetTitle>Edit Task</SheetTitle>
-          <SheetDescription>Update task details, costs, and status.</SheetDescription>
+          <SheetDescription>Update task details, costs, files, and dependencies.</SheetDescription>
         </SheetHeader>
 
         {task && (
@@ -387,7 +442,7 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
                 <Label htmlFor="title">Title</Label>
                 <Input id="title" name="title" defaultValue={task.title} required className="mt-1" />
               </div>
-              
+
               <div>
                 <Label htmlFor="description">Description</Label>
                 <Textarea id="description" name="description" defaultValue={task.description || ""} className="mt-1" />
@@ -439,7 +494,13 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="dueDate">Due Date</Label>
-                  <Input id="dueDate" name="dueDate" type="date" defaultValue={task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : ""} className="mt-1" />
+                  <Input
+                    id="dueDate"
+                    name="dueDate"
+                    type="date"
+                    defaultValue={task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""}
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label htmlFor="durationDays">Duration (Days)</Label>
@@ -465,6 +526,71 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
               <div>
                 <Label htmlFor="notes">Notes</Label>
                 <Textarea id="notes" name="notes" defaultValue={task.notes || ""} className="mt-1" />
+              </div>
+
+              {/* Files */}
+              <div className="space-y-2">
+                <Label>Attached Files</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    placeholder="File name or URL"
+                    value={newFile}
+                    onChange={(e) => setNewFile(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddFile(); } }}
+                    className="flex-1"
+                  />
+                  <Button type="button" variant="outline" size="icon" onClick={handleAddFile}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                {files.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {files.map((file, i) => (
+                      <div key={i} className="flex items-center justify-between bg-muted rounded px-3 py-1.5 text-sm">
+                        <span className="truncate flex-1 mr-2">{file}</span>
+                        <button type="button" onClick={() => handleRemoveFile(i)} className="text-muted-foreground hover:text-destructive transition-colors">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {files.length === 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">No files attached. Add a file name or URL above.</p>
+                )}
+              </div>
+
+              {/* Dependencies */}
+              <div className="space-y-2">
+                <Label>Task Dependencies</Label>
+                <p className="text-xs text-muted-foreground">Select tasks that must complete before this one.</p>
+                {allTasks.length > 0 ? (
+                  <ScrollArea className="h-44 border rounded-md p-3 mt-1">
+                    <div className="space-y-1">
+                      {allTasks.map((t) => (
+                        <label
+                          key={t.id}
+                          className="flex items-start gap-2.5 cursor-pointer hover:bg-muted/50 rounded px-1 py-1.5 transition-colors"
+                        >
+                          <Checkbox
+                            checked={dependencies.includes(t.id)}
+                            onCheckedChange={() => toggleDependency(t.id)}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm leading-snug">{t.title}</span>
+                            <span className="block text-[11px] text-muted-foreground">{t.phaseName}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1 border rounded-md p-3">No other tasks available.</p>
+                )}
+                {dependencies.length > 0 && (
+                  <p className="text-xs text-primary mt-1">{dependencies.length} task{dependencies.length !== 1 ? "s" : ""} selected as dependencies.</p>
+                )}
               </div>
 
               <div className="flex items-center justify-between p-4 border rounded-lg bg-card">

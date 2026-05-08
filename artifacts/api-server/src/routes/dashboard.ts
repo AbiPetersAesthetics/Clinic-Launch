@@ -154,26 +154,49 @@ router.get("/projects/:projectId/risk-flags", async (req, res) => {
 
 router.get("/projects/:projectId/burndown", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
+
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+  if (!project) return res.status(404).json({ error: "Not found" });
+
   const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
   const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
   const totalTasks = allTasks.length;
-  const completedTasks = allTasks.filter(t => t.status === "complete").length;
-  const remainingNow = totalTasks - completedTasks;
+  if (totalTasks === 0) return res.json([]);
 
-  // Generate 16-week forward-looking burndown
+  const completedTasks = allTasks.filter(t => t.status === "complete");
+
+  // Anchor week 0 to the project creation date
+  const projectStart = new Date(project.createdAt);
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+
+  // Count completions per week using each task's updatedAt timestamp
+  const completionsByWeek = new Map<number, number>();
+  for (const task of completedTasks) {
+    const weeksSinceStart = Math.floor((new Date(task.updatedAt).getTime() - projectStart.getTime()) / msPerWeek);
+    const week = Math.max(0, weeksSinceStart);
+    completionsByWeek.set(week, (completionsByWeek.get(week) ?? 0) + 1);
+  }
+
+  // Span 16 weeks from project start into the future
   const WEEKS = 16;
-  const points = Array.from({ length: WEEKS + 1 }, (_, i) => {
+  const points = [];
+  let cumulativeCompleted = 0;
+
+  for (let i = 0; i <= WEEKS; i++) {
+    cumulativeCompleted += completionsByWeek.get(i) ?? 0;
+    const remaining = totalTasks - cumulativeCompleted;
     const idealRemaining = Math.max(0, totalTasks - (totalTasks / WEEKS) * i);
-    return {
+
+    points.push({
       weekNumber: i,
       weekLabel: i === 0 ? "Now" : `Wk ${i}`,
       totalTasks,
-      remainingTasks: i === 0 ? remainingNow : remainingNow, // actual stays flat until tasks complete
-      completedTasks: i === 0 ? completedTasks : completedTasks,
+      remainingTasks: remaining,
+      completedTasks: cumulativeCompleted,
       idealRemaining: Math.round(idealRemaining * 10) / 10,
-    };
-  });
+    });
+  }
 
   return res.json(points);
 });
