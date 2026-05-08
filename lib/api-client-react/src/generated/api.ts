@@ -4731,6 +4731,189 @@ export const usePropertyAdvisorAction = <
 };
 
 /**
+ * @summary Get per-property scoring weight override (null if using project defaults)
+ */
+export const getGetPropertyScoringWeightsUrl = (id: number) => {
+  return `/api/properties/${id}/scoring-weights`;
+};
+
+export const getPropertyScoringWeights = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ScoringWeights | null> => {
+  return customFetch<ScoringWeights | null>(
+    getGetPropertyScoringWeightsUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPropertyScoringWeightsQueryKey = (id: number) => {
+  return [`/api/properties/${id}/scoring-weights`] as const;
+};
+
+export const getGetPropertyScoringWeightsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPropertyScoringWeights>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPropertyScoringWeights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPropertyScoringWeightsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPropertyScoringWeights>>
+  > = ({ signal }) =>
+    getPropertyScoringWeights(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPropertyScoringWeights>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPropertyScoringWeightsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPropertyScoringWeights>>
+>;
+export type GetPropertyScoringWeightsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get per-property scoring weight override (null if using project defaults)
+ */
+
+export function useGetPropertyScoringWeights<
+  TData = Awaited<ReturnType<typeof getPropertyScoringWeights>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPropertyScoringWeights>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPropertyScoringWeightsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set per-property scoring weight override (empty body clears override)
+ */
+export const getUpdatePropertyScoringWeightsUrl = (id: number) => {
+  return `/api/properties/${id}/scoring-weights`;
+};
+
+export const updatePropertyScoringWeights = async (
+  id: number,
+  scoringWeightsNull?: ScoringWeights | null,
+  options?: RequestInit,
+): Promise<ScoringWeights | null> => {
+  return customFetch<ScoringWeights | null>(
+    getUpdatePropertyScoringWeightsUrl(id),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(scoringWeightsNull),
+    },
+  );
+};
+
+export const getUpdatePropertyScoringWeightsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePropertyScoringWeights>>,
+    TError,
+    { id: number; data: BodyType<ScoringWeights | null> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePropertyScoringWeights>>,
+  TError,
+  { id: number; data: BodyType<ScoringWeights | null> },
+  TContext
+> => {
+  const mutationKey = ["updatePropertyScoringWeights"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePropertyScoringWeights>>,
+    { id: number; data: BodyType<ScoringWeights | null> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePropertyScoringWeights(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePropertyScoringWeightsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePropertyScoringWeights>>
+>;
+export type UpdatePropertyScoringWeightsMutationBody =
+  BodyType<ScoringWeights | null>;
+export type UpdatePropertyScoringWeightsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Set per-property scoring weight override (empty body clears override)
+ */
+export const useUpdatePropertyScoringWeights = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePropertyScoringWeights>>,
+    TError,
+    { id: number; data: BodyType<ScoringWeights | null> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePropertyScoringWeights>>,
+  TError,
+  { id: number; data: BodyType<ScoringWeights | null> },
+  TContext
+> => {
+  return useMutation(getUpdatePropertyScoringWeightsMutationOptions(options));
+};
+
+/**
  * @summary Get project-level scoring weight presets used in property ranking
  */
 export const getGetProjectScoringWeightsUrl = (projectId: number) => {

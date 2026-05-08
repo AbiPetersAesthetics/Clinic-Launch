@@ -1855,6 +1855,10 @@ export const ConfirmPropertyUploadBody = zod.object({
     .describe(
       "Temporary file ID returned by upload-document to finalize the file on disk",
     ),
+  fileType: zod
+    .enum(["pdf", "image"])
+    .nullish()
+    .describe("Type of file being confirmed — pdf or image"),
 });
 
 export const ConfirmPropertyUploadResponse = zod.object({
@@ -1958,6 +1962,119 @@ export const PropertyAdvisorActionResponse = zod.object({
   response: zod.string(),
   generatedAt: zod.string(),
 });
+
+/**
+ * @summary Get per-property scoring weight override (null if using project defaults)
+ */
+export const GetPropertyScoringWeightsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPropertyScoringWeightsResponse = zod
+  .object({
+    affordability: zod
+      .number()
+      .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+    size: zod
+      .number()
+      .describe("Weight multiplier for property size suitability (0-3)"),
+    parking: zod
+      .number()
+      .describe("Weight multiplier for parking availability (0-3)"),
+    frontage: zod
+      .number()
+      .describe("Weight multiplier for frontage\/visibility (0-3)"),
+    location: zod
+      .number()
+      .describe("Weight multiplier for AI location score (0-3)"),
+    competition: zod
+      .number()
+      .describe("Weight multiplier for competition opportunity score (0-3)"),
+    fitoutComplexity: zod
+      .number()
+      .describe(
+        "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+      ),
+    demographics: zod
+      .number()
+      .describe(
+        "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+      ),
+  })
+  .nullable();
+
+/**
+ * @summary Set per-property scoring weight override (empty body clears override)
+ */
+export const UpdatePropertyScoringWeightsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePropertyScoringWeightsBody = zod
+  .object({
+    affordability: zod
+      .number()
+      .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+    size: zod
+      .number()
+      .describe("Weight multiplier for property size suitability (0-3)"),
+    parking: zod
+      .number()
+      .describe("Weight multiplier for parking availability (0-3)"),
+    frontage: zod
+      .number()
+      .describe("Weight multiplier for frontage\/visibility (0-3)"),
+    location: zod
+      .number()
+      .describe("Weight multiplier for AI location score (0-3)"),
+    competition: zod
+      .number()
+      .describe("Weight multiplier for competition opportunity score (0-3)"),
+    fitoutComplexity: zod
+      .number()
+      .describe(
+        "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+      ),
+    demographics: zod
+      .number()
+      .describe(
+        "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+      ),
+  })
+  .nullable();
+
+export const UpdatePropertyScoringWeightsResponse = zod
+  .object({
+    affordability: zod
+      .number()
+      .describe("Weight multiplier for affordability\/rent efficiency (0-3)"),
+    size: zod
+      .number()
+      .describe("Weight multiplier for property size suitability (0-3)"),
+    parking: zod
+      .number()
+      .describe("Weight multiplier for parking availability (0-3)"),
+    frontage: zod
+      .number()
+      .describe("Weight multiplier for frontage\/visibility (0-3)"),
+    location: zod
+      .number()
+      .describe("Weight multiplier for AI location score (0-3)"),
+    competition: zod
+      .number()
+      .describe("Weight multiplier for competition opportunity score (0-3)"),
+    fitoutComplexity: zod
+      .number()
+      .describe(
+        "Weight multiplier for fit-out complexity (0-3, lower = prefer simpler)",
+      ),
+    demographics: zod
+      .number()
+      .describe(
+        "Weight multiplier for AI commercial viability\/demographics score (0-3)",
+      ),
+  })
+  .nullable();
 
 /**
  * @summary Get project-level scoring weight presets used in property ranking

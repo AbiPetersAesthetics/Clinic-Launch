@@ -162,6 +162,42 @@ router.put("/projects/:projectId/scoring-weights", async (req, res) => {
   return res.json(merged);
 });
 
+// ─── Per-Property Scoring Weight Override API ─────────────────────────────────
+
+router.get("/properties/:id/scoring-weights", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const [prop] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!prop) return res.status(404).json({ error: "Property not found" });
+  return res.json(prop.scoringWeights ?? null);
+});
+
+router.put("/properties/:id/scoring-weights", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const [prop] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!prop) return res.status(404).json({ error: "Property not found" });
+
+  // null/empty body clears the per-property override (falls back to project weights)
+  const body = req.body as Partial<ScoringWeights> | null;
+  if (!body || Object.keys(body).length === 0) {
+    await db.update(propertiesTable).set({ scoringWeights: null, updatedAt: new Date() }).where(eq(propertiesTable.id, id));
+    return res.json(null);
+  }
+
+  const merged: ScoringWeights = {
+    affordability: Math.max(0, Math.min(3, body.affordability ?? DEFAULT_SCORING_WEIGHTS.affordability)),
+    size: Math.max(0, Math.min(3, body.size ?? DEFAULT_SCORING_WEIGHTS.size)),
+    parking: Math.max(0, Math.min(3, body.parking ?? DEFAULT_SCORING_WEIGHTS.parking)),
+    frontage: Math.max(0, Math.min(3, body.frontage ?? DEFAULT_SCORING_WEIGHTS.frontage)),
+    location: Math.max(0, Math.min(3, body.location ?? DEFAULT_SCORING_WEIGHTS.location)),
+    competition: Math.max(0, Math.min(3, body.competition ?? DEFAULT_SCORING_WEIGHTS.competition)),
+    fitoutComplexity: Math.max(0, Math.min(3, body.fitoutComplexity ?? DEFAULT_SCORING_WEIGHTS.fitoutComplexity)),
+    demographics: Math.max(0, Math.min(3, body.demographics ?? DEFAULT_SCORING_WEIGHTS.demographics)),
+  };
+
+  await db.update(propertiesTable).set({ scoringWeights: merged, updatedAt: new Date() }).where(eq(propertiesTable.id, id));
+  return res.json(merged);
+});
+
 // ─── Property Ranking Engine ──────────────────────────────────────────────────
 
 const RANKING_MODES = ["overall", "safest", "highest-revenue", "premium-brand", "lowest-risk", "fastest-launch"] as const;

@@ -9,14 +9,19 @@ import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
+const ACCEPTED_MIMETYPES = new Set([
+  "application/pdf",
+  "image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif",
+]);
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
   fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    if (file.mimetype === "application/pdf") {
+    if (ACCEPTED_MIMETYPES.has(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only PDF files are accepted"));
+      cb(new Error("Accepted file types: PDF, JPG, PNG, WebP, GIF"));
     }
   },
 });
@@ -253,14 +258,33 @@ router.post("/properties/:id/upload-document", upload.single("file"), async (req
   if (!property) return res.status(404).json({ error: "Property not found" });
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
+  const isImage = req.file.mimetype.startsWith("image/");
+  const isPdf = req.file.mimetype === "application/pdf";
+
   // Save file to disk with a temp ID so confirm-upload can persist it
   const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   const propertyUploadsDir = path.join(UPLOADS_DIR, String(id));
+  const tempExt = isPdf ? "pdf" : req.file.mimetype.split("/")[1] ?? "bin";
   try {
     await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
-    await fs.promises.writeFile(path.join(propertyUploadsDir, `${tempId}.pdf`), req.file.buffer);
+    await fs.promises.writeFile(path.join(propertyUploadsDir, `${tempId}.${tempExt}`), req.file.buffer);
   } catch {
     // Non-fatal — extraction still proceeds; confirm-upload will not have a file to move
+  }
+
+  // For images: skip PDF text extraction, return empty extraction with image flag
+  if (isImage) {
+    return res.json({
+      flags: ["Image uploaded — no text extraction available. Fill in property details manually if needed."],
+      tempFileId: tempId,
+      fileName: req.file.originalname,
+      fileSizeBytes: req.file.size,
+      fileType: "image",
+    });
+  }
+
+  if (!isPdf) {
+    return res.status(400).json({ error: "Unsupported file type for text extraction." });
   }
 
   let rawText = "";
@@ -307,6 +331,7 @@ Return JSON only, no markdown.`;
     tempFileId: tempId,
     fileName: req.file.originalname,
     fileSizeBytes: req.file.size,
+    fileType: "pdf",
   });
 });
 
@@ -317,12 +342,20 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  const { fields, fileName, fileSizeBytes, tempFileId } = req.body as {
-    fields: Record<string, unknown>;
-    fileName?: string;
-    fileSizeBytes?: number;
-    tempFileId?: string;
-  };
+  const ConfirmUploadBodySchema = z.object({
+    fields: z.record(z.unknown()).optional().default({}),
+    fileName: z.string().optional(),
+    fileSizeBytes: z.number().optional(),
+    tempFileId: z.string().optional(),
+    fileType: z.enum(["pdf", "image"]).optional().default("pdf"),
+  });
+
+  const parseResult = ConfirmUploadBodySchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ error: "Invalid request body", details: parseResult.error.issues });
+  }
+
+  const { fields, fileName, fileSizeBytes, tempFileId, fileType } = parseResult.data;
 
   const updateData: Record<string, unknown> = {};
   const allowedFields = [
@@ -345,8 +378,13 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
   const finalPath = path.join(propertyUploadsDir, finalFileName);
   let fileUrl = `/uploads/properties/${id}/${finalFileName}`;
 
+  const resolvedType = fileType === "image" ? "image" : "pdf";
+  const tempExt2 = resolvedType === "image"
+    ? (fileName?.split(".").pop() ?? "jpg")
+    : "pdf";
+
   if (tempFileId) {
-    const tempPath = path.join(propertyUploadsDir, `${tempFileId}.pdf`);
+    const tempPath = path.join(propertyUploadsDir, `${tempFileId}.${tempExt2}`);
     try {
       await fs.promises.mkdir(propertyUploadsDir, { recursive: true });
       await fs.promises.rename(tempPath, finalPath);
@@ -359,9 +397,9 @@ router.post("/properties/:id/confirm-upload", async (req, res) => {
   // Add media file reference
   const existingMedia = Array.isArray(property.mediaFiles) ? property.mediaFiles : [];
   const newMediaFile = {
-    id: `pdf_${Date.now()}`,
-    name: fileName ?? "brochure.pdf",
-    type: "pdf" as const,
+    id: `${resolvedType}_${Date.now()}`,
+    name: fileName ?? (resolvedType === "image" ? "photo.jpg" : "brochure.pdf"),
+    type: resolvedType as "pdf" | "image",
     url: fileUrl,
     uploadedAt: new Date().toISOString(),
     sizeBytes: fileSizeBytes ?? null,

@@ -17,8 +17,11 @@ import {
   useConfirmPropertyUpload,
   useGetProjectScoringWeights,
   useUpdateProjectScoringWeights,
+  useGetPropertyScoringWeights,
+  useUpdatePropertyScoringWeights,
   useComparePropertyAnalyses,
   getGetProjectScoringWeightsQueryKey,
+  getGetPropertyScoringWeightsQueryKey,
   useGetLatestPropertyAnalysis,
   getGetLatestPropertyAnalysisQueryKey,
 } from "@workspace/api-client-react";
@@ -924,7 +927,7 @@ function ExtractionReviewDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileId?: string } | null;
+  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileId?: string; fileType?: "pdf" | "image" } | null;
   propertyId: number | null;
   onConfirmed: () => void;
 }) {
@@ -948,7 +951,7 @@ function ExtractionReviewDialog({
   const handleConfirm = () => {
     if (!propertyId) return;
     confirmUpload.mutate(
-      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes, tempFileId: extraction?.tempFileId } },
+      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes, tempFileId: extraction?.tempFileId, fileType: extraction?.fileType ?? "pdf" } },
       {
         onSuccess: () => {
           toast({ title: "Document saved", description: "Property details have been updated from the brochure." });
@@ -1168,7 +1171,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showActiveConfirm, setShowActiveConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number }) | null>(null);
+  const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
 
   const updateProperty = useUpdateProperty();
@@ -1267,10 +1270,11 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
       { id: property.id, data: { file } },
       {
         onSuccess: (data) => {
-          setExtraction({ ...data, fileName: file.name, fileSizeBytes: file.size });
+          const fileType = (data as { fileType?: "pdf" | "image" }).fileType ?? "pdf";
+          setExtraction({ ...data, fileName: file.name, fileSizeBytes: file.size, fileType });
           setShowExtractionReview(true);
         },
-        onError: () => toast({ title: "Upload failed", description: "Could not extract from PDF.", variant: "destructive" }),
+        onError: () => toast({ title: "Upload failed", description: "Could not process file.", variant: "destructive" }),
       }
     );
   };
@@ -1412,6 +1416,9 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                   isLoading={updateProperty.isPending}
                   submitLabel="Save Changes"
                 />
+
+                <Separator className="my-4" />
+                <PropertyScoringWeightsOverride propertyId={property.id} />
               </TabsContent>
 
               <TabsContent value="intelligence" className="space-y-4">
@@ -1471,17 +1478,29 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
               <TabsContent value="media" className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-semibold">Documents & Media</h4>
-                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleUploadClick}>
-                    <Upload className="w-3.5 h-3.5" />Upload PDF
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleUploadClick} disabled={uploadDocument.isPending}>
+                    {uploadDocument.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}Upload File
                   </Button>
                 </div>
                 {Array.isArray(property.mediaFiles) && property.mediaFiles.length > 0 ? (
                   <div className="space-y-2">
                     {property.mediaFiles.map((file) => {
-                      const mf = file as { id: string; name: string; type: string; url: string; uploadedAt: string; sizeBytes?: number };
+                      const mf = file as { id: string; name: string; type: "pdf" | "image"; url: string; uploadedAt: string; sizeBytes?: number };
+                      const isImg = mf.type === "image";
+                      const fullUrl = mf.url.startsWith("/") ? `${window.location.origin}${mf.url}` : mf.url;
                       return (
-                        <div key={mf.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                          <FileText className="w-4 h-4 text-primary shrink-0" />
+                        <div key={mf.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                          {isImg ? (
+                            <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                              <img src={fullUrl} alt={mf.name} className="w-14 h-14 object-cover rounded-md border" />
+                            </a>
+                          ) : (
+                            <a href={fullUrl} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                              <div className="w-14 h-14 rounded-md border bg-muted flex items-center justify-center">
+                                <FileText className="w-6 h-6 text-muted-foreground" />
+                              </div>
+                            </a>
+                          )}
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">{mf.name}</p>
                             <p className="text-xs text-muted-foreground">{new Date(mf.uploadedAt).toLocaleDateString("en-GB")}{mf.sizeBytes ? ` · ${(mf.sizeBytes / 1024).toFixed(0)} KB` : ""}</p>
@@ -1494,10 +1513,24 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                 ) : (
                   <div className="text-center py-8 space-y-2">
                     <FileText className="w-8 h-8 text-muted-foreground mx-auto" />
-                    <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
-                    <p className="text-xs text-muted-foreground">Upload a brochure or EPC report — AI will extract property details for review.</p>
+                    <p className="text-sm text-muted-foreground">No documents or images uploaded yet.</p>
+                    <p className="text-xs text-muted-foreground">Upload a PDF brochure or photos — AI will extract property details from PDFs.</p>
                   </div>
                 )}
+
+                <Separator />
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-semibold">Property Notes</h4>
+                  <p className="text-xs text-muted-foreground">General notes about this property (viewing impressions, questions for agent, etc.).</p>
+                  <Textarea
+                    value={property.notes ?? ""}
+                    readOnly
+                    rows={4}
+                    className="text-sm resize-none bg-muted/40"
+                    placeholder="No notes yet. Edit property details to add notes."
+                  />
+                  <p className="text-xs text-muted-foreground">Edit notes in the Details tab.</p>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -1505,7 +1538,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
       </Sheet>
 
       {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.gif" className="hidden" onChange={handleFileChange} />
 
       {/* Extraction review */}
       <ExtractionReviewDialog
@@ -1558,13 +1591,14 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 // ─── Mini Property Card ───────────────────────────────────────────────────────
 
 function PropertyCard({
-  property, onOpen, compareMode = false, isSelected = false, onToggleSelect,
+  property, onOpen, compareMode = false, isSelected = false, onToggleSelect, rank,
 }: {
   property: ClinicProperty;
   onOpen: () => void;
   compareMode?: boolean;
   isSelected?: boolean;
   onToggleSelect?: () => void;
+  rank?: number;
 }) {
   const queryClient = useQueryClient();
   const setPropertyActive = useSetPropertyActive();
@@ -1593,6 +1627,14 @@ function PropertyCard({
       } ${isSelected ? "border-primary ring-2 ring-primary/30 bg-primary/5" : ""}`}
     >
       <div className="flex items-start justify-between gap-2">
+        {rank != null && (
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mr-1 ${
+            rank === 1 ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" :
+            rank === 2 ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300" :
+            rank === 3 ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" :
+            "bg-muted text-muted-foreground"
+          }`}>#{rank}</div>
+        )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 mb-1 flex-wrap">
             {compareMode && (
@@ -1866,6 +1908,116 @@ function ComparisonDialog({
   );
 }
 
+// ─── Per-Property Scoring Weight Override ─────────────────────────────────────
+
+function PropertyScoringWeightsOverride({ propertyId }: { propertyId: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const { data: weights } = useGetPropertyScoringWeights(propertyId, {
+    query: { queryKey: getGetPropertyScoringWeightsQueryKey(propertyId) },
+  });
+  const updateWeights = useUpdatePropertyScoringWeights();
+  const [local, setLocal] = useState<ScoringWeights | null>(null);
+
+  useEffect(() => {
+    if (weights && !local) setLocal(weights as ScoringWeights);
+  }, [weights]);
+
+  const WEIGHT_KEYS: { key: keyof ScoringWeights; label: string }[] = [
+    { key: "affordability", label: "Affordability" },
+    { key: "size", label: "Size" },
+    { key: "parking", label: "Parking" },
+    { key: "frontage", label: "Frontage" },
+    { key: "location", label: "Location Score" },
+    { key: "competition", label: "Competition" },
+    { key: "fitoutComplexity", label: "Fit-Out Simplicity" },
+    { key: "demographics", label: "Demographics" },
+  ];
+  const defaultWeights: ScoringWeights = { affordability: 1, size: 1, parking: 1, frontage: 1, location: 1, competition: 1, fitoutComplexity: 1, demographics: 1 };
+
+  const handleSave = () => {
+    if (!local) return;
+    updateWeights.mutate(
+      { id: propertyId, data: local },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPropertyScoringWeightsQueryKey(propertyId) });
+          queryClient.invalidateQueries({ queryKey: ["property-ranking"] });
+          toast({ title: "Per-property scoring override saved" });
+          setOpen(false);
+        },
+      }
+    );
+  };
+
+  const handleClear = () => {
+    updateWeights.mutate(
+      { id: propertyId, data: {} as ScoringWeights },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPropertyScoringWeightsQueryKey(propertyId) });
+          queryClient.invalidateQueries({ queryKey: ["property-ranking"] });
+          setLocal(null);
+          toast({ title: "Per-property override cleared — using project defaults" });
+          setOpen(false);
+        },
+      }
+    );
+  };
+
+  if (!open) {
+    return (
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-semibold">Scoring Weight Override</p>
+          <p className="text-xs text-muted-foreground">
+            {weights ? "Custom weights active — overrides project defaults for this property." : "Using project-level scoring weights."}
+          </p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { if (!local) setLocal(defaultWeights); setOpen(true); }}>
+          <Sparkles className="w-3.5 h-3.5" />{weights ? "Edit Override" : "Set Override"}
+        </Button>
+      </div>
+    );
+  }
+
+  const display = local ?? defaultWeights;
+  return (
+    <div className="rounded-xl border bg-card p-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="text-sm font-semibold flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" />Scoring Weight Override</h4>
+        <div className="flex gap-2">
+          {weights && <Button size="sm" variant="ghost" className="text-xs h-7 text-destructive hover:text-destructive" onClick={handleClear} disabled={updateWeights.isPending}>Clear</Button>}
+          <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setOpen(false)}><X className="w-3.5 h-3.5" /></Button>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Override how dimensions are weighted for this property only. Leave cleared to use project-wide weights.</p>
+      <div className="space-y-3">
+        {WEIGHT_KEYS.map(({ key, label }) => (
+          <div key={key} className="space-y-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-medium">{label}</span>
+              <span className="font-semibold w-8 text-right">{((display[key] ?? 1) * 100).toFixed(0)}%</span>
+            </div>
+            <Slider
+              min={0} max={3} step={0.1}
+              value={[display[key] ?? 1]}
+              onValueChange={([v]) => setLocal(l => ({ ...(l ?? defaultWeights), [key]: v }))}
+              className="w-full"
+            />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end">
+        <Button size="sm" className="text-xs gap-1.5" onClick={handleSave} disabled={updateWeights.isPending}>
+          {updateWeights.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}Save Override
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Rankings View ────────────────────────────────────────────────────────────
 
 const WEIGHT_LABELS: { key: keyof ScoringWeights; label: string }[] = [
@@ -2136,6 +2288,13 @@ export default function PropertiesPage() {
     query: { queryKey: getListPropertiesQueryKey(PROJECT_ID), enabled: true },
   });
 
+  // Fetch overall ranking once at page level to power rank badges on all PropertyCards
+  const { data: overallRanking } = useGetPropertyRanking(PROJECT_ID, { mode: "overall" }, {
+    query: { queryKey: ["property-ranking", PROJECT_ID, "overall"] },
+  });
+  const rankMap = new Map<number, number>();
+  overallRanking?.rankings.forEach((item: PropertyRankingItem) => rankMap.set(item.propertyId, item.rank));
+
   const createProperty = useCreateProperty();
 
   const handleCreateProperty = (data: PropertyFormData) => {
@@ -2275,6 +2434,7 @@ export default function PropertiesPage() {
                         compareMode={compareMode}
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
+                        rank={rankMap.get(prop.id)}
                       />
                     ))}
                   </div>
@@ -2296,6 +2456,7 @@ export default function PropertiesPage() {
                         compareMode={compareMode}
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
+                        rank={rankMap.get(prop.id)}
                       />
                     ))}
                   </div>
@@ -2332,6 +2493,7 @@ export default function PropertiesPage() {
                   compareMode={compareMode}
                   isSelected={compareSelected.has(prop.id)}
                   onToggleSelect={() => toggleCompareSelect(prop.id)}
+                  rank={rankMap.get(prop.id)}
                 />
               ))}
             </div>

@@ -1174,12 +1174,26 @@ export interface AdvisorActionResult {
 
 export type ConfirmUploadBodyFields = { [key: string]: unknown };
 
+/**
+ * Type of file being confirmed — pdf or image
+ */
+export type ConfirmUploadBodyFileType =
+  | (typeof ConfirmUploadBodyFileType)[keyof typeof ConfirmUploadBodyFileType]
+  | null;
+
+export const ConfirmUploadBodyFileType = {
+  pdf: "pdf",
+  image: "image",
+} as const;
+
 export interface ConfirmUploadBody {
   fields: ConfirmUploadBodyFields;
   fileName?: string | null;
   fileSizeBytes?: number | null;
   /** Temporary file ID returned by upload-document to finalize the file on disk */
   tempFileId?: string | null;
+  /** Type of file being confirmed — pdf or image */
+  fileType?: ConfirmUploadBodyFileType;
 }
 
 export interface PropertyAnalysisComparison {

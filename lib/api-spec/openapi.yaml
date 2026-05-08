@@ -1158,6 +1158,51 @@ paths:
               schema:
                 $ref: "#/components/schemas/AdvisorActionResult"
 
+  /properties/{id}/scoring-weights:
+    get:
+      operationId: getPropertyScoringWeights
+      tags: [properties]
+      summary: Get per-property scoring weight override (null if using project defaults)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Per-property scoring weights override or null if using project defaults
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringWeights"
+                nullable: true
+    put:
+      operationId: updatePropertyScoringWeights
+      tags: [properties]
+      summary: Set per-property scoring weight override (empty body clears override)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ScoringWeights"
+              nullable: true
+      responses:
+        "200":
+          description: Updated per-property scoring weights or null if cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringWeights"
+                nullable: true
+
   /projects/{projectId}/scoring-weights:
     get:
       operationId: getProjectScoringWeights
@@ -3309,6 +3354,11 @@ components:
           type: string
           nullable: true
           description: Temporary file ID returned by upload-document to finalize the file on disk
+        fileType:
+          type: string
+          enum: [pdf, image]
+          nullable: true
+          description: Type of file being confirmed — pdf or image
       required:
         - fields
 
