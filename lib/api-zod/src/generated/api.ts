@@ -828,6 +828,13 @@ export const UpsertFinancialModelResponse = zod.object({
 });
 
 /**
+ * @summary Delete financial model for a project
+ */
+export const DeleteFinancialModelParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+/**
  * @summary Calculate financial outputs for a given scenario
  */
 export const CalculateFinancialsParams = zod.object({
@@ -856,6 +863,25 @@ export const CalculateFinancialsResponse = zod.object({
   occupancyUsedPercent: zod.number(),
   monthsUntilProfitable: zod.number().nullish(),
 });
+
+/**
+ * @summary Get task completion burndown data for a project
+ */
+export const GetProjectBurndownParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetProjectBurndownResponseItem = zod.object({
+  weekNumber: zod.number(),
+  weekLabel: zod.string(),
+  totalTasks: zod.number(),
+  remainingTasks: zod.number(),
+  completedTasks: zod.number(),
+  idealRemaining: zod.number(),
+});
+export const GetProjectBurndownResponse = zod.array(
+  GetProjectBurndownResponseItem,
+);
 
 /**
  * @summary Get dashboard summary for a project

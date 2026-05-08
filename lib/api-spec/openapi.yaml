@@ -620,6 +620,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FinancialModel"
+    delete:
+      operationId: deleteFinancialModel
+      tags: [financials]
+      summary: Delete financial model for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /projects/{projectId}/financial/calculate:
     post:
@@ -645,6 +658,28 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/FinancialCalculation"
+
+  # Burndown
+  /projects/{projectId}/burndown:
+    get:
+      operationId: getProjectBurndown
+      tags: [dashboard]
+      summary: Get task completion burndown data for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Burndown data points
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BurndownPoint"
 
   # Dashboard
   /projects/{projectId}/dashboard:
@@ -1664,6 +1699,29 @@ components:
         - netCashflow
         - cumulativeCashflow
         - isBreakevenMonth
+
+    BurndownPoint:
+      type: object
+      properties:
+        weekNumber:
+          type: integer
+        weekLabel:
+          type: string
+        totalTasks:
+          type: integer
+        remainingTasks:
+          type: integer
+        completedTasks:
+          type: integer
+        idealRemaining:
+          type: number
+      required:
+        - weekNumber
+        - weekLabel
+        - totalTasks
+        - remainingTasks
+        - completedTasks
+        - idealRemaining
 
     CostItem:
       type: object

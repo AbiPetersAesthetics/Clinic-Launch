@@ -4,14 +4,16 @@ import {
   useGetProjectCashflow,
   getGetProjectCashflowQueryKey,
   useGetRiskFlags,
-  getGetRiskFlagsQueryKey
+  getGetRiskFlagsQueryKey,
+  useGetProjectBurndown,
+  getGetProjectBurndownQueryKey
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, TrendingDown, TrendingUp, AlertCircle } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { AlertTriangle, AlertCircle } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
 
 const PROJECT_ID = 1;
 
@@ -31,6 +33,10 @@ export default function DashboardPage() {
 
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetRiskFlagsQueryKey(PROJECT_ID) }
+  });
+
+  const { data: burndown } = useGetProjectBurndown(PROJECT_ID, {
+    query: { enabled: true, queryKey: getGetProjectBurndownQueryKey(PROJECT_ID) }
   });
 
   if (!dashboard) {
@@ -181,6 +187,44 @@ export default function DashboardPage() {
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
                 No financial data available to project.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Burndown Chart */}
+      <Card className="shadow-sm border-border/60">
+        <CardHeader className="pb-2">
+          <div>
+            <CardTitle className="text-lg">Task Burndown</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">16-week ideal completion trajectory vs actual remaining tasks</p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[260px] w-full mt-4">
+            {burndown && burndown.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={burndown} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="weekLabel" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} dy={8} interval={3} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <Tooltip
+                    formatter={(value: number, name: string) => [value, name === 'idealRemaining' ? 'Ideal Remaining' : 'Actual Remaining']}
+                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: 4 }}
+                    contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                  />
+                  <Legend
+                    formatter={(value) => value === 'idealRemaining' ? 'Ideal' : 'Actual'}
+                    wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
+                  />
+                  <Line type="monotone" dataKey="idealRemaining" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+                  <Line type="monotone" dataKey="remainingTasks" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
+                No task data available for burndown.
               </div>
             )}
           </div>

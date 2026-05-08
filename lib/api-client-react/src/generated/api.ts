@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  BurndownPoint,
   CalculateFinancialsBody,
   CashflowMonth,
   ClinicProperty,
@@ -2620,6 +2621,90 @@ export const useUpsertFinancialModel = <
 };
 
 /**
+ * @summary Delete financial model for a project
+ */
+export const getDeleteFinancialModelUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/financial`;
+};
+
+export const deleteFinancialModel = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteFinancialModelUrl(projectId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteFinancialModelMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFinancialModel>>,
+    TError,
+    { projectId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteFinancialModel>>,
+  TError,
+  { projectId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteFinancialModel"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteFinancialModel>>,
+    { projectId: number }
+  > = (props) => {
+    const { projectId } = props ?? {};
+
+    return deleteFinancialModel(projectId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteFinancialModelMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteFinancialModel>>
+>;
+
+export type DeleteFinancialModelMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete financial model for a project
+ */
+export const useDeleteFinancialModel = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFinancialModel>>,
+    TError,
+    { projectId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteFinancialModel>>,
+  TError,
+  { projectId: number },
+  TContext
+> => {
+  return useMutation(getDeleteFinancialModelMutationOptions(options));
+};
+
+/**
  * @summary Calculate financial outputs for a given scenario
  */
 export const getCalculateFinancialsUrl = (projectId: number) => {
@@ -2708,6 +2793,95 @@ export const useCalculateFinancials = <
 > => {
   return useMutation(getCalculateFinancialsMutationOptions(options));
 };
+
+/**
+ * @summary Get task completion burndown data for a project
+ */
+export const getGetProjectBurndownUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/burndown`;
+};
+
+export const getProjectBurndown = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<BurndownPoint[]> => {
+  return customFetch<BurndownPoint[]>(getGetProjectBurndownUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectBurndownQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/burndown`] as const;
+};
+
+export const getGetProjectBurndownQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectBurndown>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectBurndown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectBurndownQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectBurndown>>
+  > = ({ signal }) =>
+    getProjectBurndown(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectBurndown>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectBurndownQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectBurndown>>
+>;
+export type GetProjectBurndownQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get task completion burndown data for a project
+ */
+
+export function useGetProjectBurndown<
+  TData = Awaited<ReturnType<typeof getProjectBurndown>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectBurndown>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectBurndownQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get dashboard summary for a project

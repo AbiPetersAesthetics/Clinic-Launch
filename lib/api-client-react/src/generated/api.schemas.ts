@@ -574,6 +574,15 @@ export interface CashflowMonth {
   isBreakevenMonth: boolean;
 }
 
+export interface BurndownPoint {
+  weekNumber: number;
+  weekLabel: string;
+  totalTasks: number;
+  remainingTasks: number;
+  completedTasks: number;
+  idealRemaining: number;
+}
+
 export interface CostItem {
   id: number;
   taskId: number;

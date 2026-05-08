@@ -152,4 +152,30 @@ router.get("/projects/:projectId/risk-flags", async (req, res) => {
   res.json(flags);
 });
 
+router.get("/projects/:projectId/burndown", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
+
+  const totalTasks = allTasks.length;
+  const completedTasks = allTasks.filter(t => t.status === "complete").length;
+  const remainingNow = totalTasks - completedTasks;
+
+  // Generate 16-week forward-looking burndown
+  const WEEKS = 16;
+  const points = Array.from({ length: WEEKS + 1 }, (_, i) => {
+    const idealRemaining = Math.max(0, totalTasks - (totalTasks / WEEKS) * i);
+    return {
+      weekNumber: i,
+      weekLabel: i === 0 ? "Now" : `Wk ${i}`,
+      totalTasks,
+      remainingTasks: i === 0 ? remainingNow : remainingNow, // actual stays flat until tasks complete
+      completedTasks: i === 0 ? completedTasks : completedTasks,
+      idealRemaining: Math.round(idealRemaining * 10) / 10,
+    };
+  });
+
+  return res.json(points);
+});
+
 export default router;

@@ -163,4 +163,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   return res.json(cashflow);
 });
 
+router.delete("/projects/:projectId/financial", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  await db.delete(financialsTable).where(eq(financialsTable.projectId, projectId));
+  res.status(204).send();
+});
+
 export default router;
