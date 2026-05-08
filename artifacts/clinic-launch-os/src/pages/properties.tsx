@@ -332,7 +332,16 @@ function IntelligencePanel({ result, property }: { result: PropertyIntelligenceR
           <div className="space-y-3">
             <h5 className="text-sm font-semibold">Nearby Competitors</h5>
             {result.competition.competitors.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No competitors identified.</p>
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                {result.competition.dataSource === "google_places"
+                  ? <p className="text-sm text-muted-foreground">No competitors found within 600m via Google Places.</p>
+                  : <>
+                      <MapPin className="w-6 h-6 text-muted-foreground mx-auto mb-2" />
+                      <p className="text-sm font-medium mb-1">Real competitor data not available</p>
+                      <p className="text-xs text-muted-foreground">Connect a Google Places API key to map real competitors near this location.</p>
+                    </>
+                }
+              </div>
             ) : (
               result.competition.competitors.map((c, i) => (
                 <div key={i} className="flex items-start justify-between p-3 rounded-lg border bg-card gap-3">

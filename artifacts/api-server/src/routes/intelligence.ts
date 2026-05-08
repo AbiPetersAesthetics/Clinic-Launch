@@ -1,5 +1,6 @@
 import { Router, type Request } from "express";
 import multer, { type FileFilterCallback } from "multer";
+import { z } from "zod";
 import { db } from "@workspace/db";
 import { propertiesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -18,21 +19,98 @@ const upload = multer({
   },
 });
 
+// ─── Zod schemas for LLM response validation ─────────────────────────────────
+
+const ExtractionSchema = z.object({
+  address: z.string().nullable().optional(),
+  postcode: z.string().nullable().optional(),
+  sqFootage: z.number().nullable().optional(),
+  annualRentGbp: z.number().nullable().optional(),
+  monthlyRentGbp: z.number().nullable().optional(),
+  vatOnRent: z.boolean().nullable().optional(),
+  businessRatesGbp: z.number().nullable().optional(),
+  serviceChargeGbp: z.number().nullable().optional(),
+  leaseLength: z.string().nullable().optional(),
+  useClass: z.string().nullable().optional(),
+  availabilityDate: z.string().nullable().optional(),
+  parkingSpaces: z.number().nullable().optional(),
+  frontageMeters: z.number().nullable().optional(),
+  agentName: z.string().nullable().optional(),
+  agentPhone: z.string().nullable().optional(),
+  agentEmail: z.string().nullable().optional(),
+  flags: z.array(z.string()).optional().default([]),
+});
+
+const ScoreFactorSchema = z.object({
+  name: z.string(),
+  score: z.number(),
+  maxScore: z.number(),
+  weight: z.number(),
+  explanation: z.string(),
+});
+
+const PropertyScoreSchema = z.object({
+  total: z.number(),
+  maxTotal: z.number(),
+  grade: z.enum(["A", "B", "C", "D", "F"]),
+  summary: z.string(),
+  factors: z.array(ScoreFactorSchema),
+});
+
+const CompetitorItemSchema = z.object({
+  name: z.string(),
+  type: z.string(),
+  distanceMeters: z.number().nullable().optional(),
+  rating: z.number().nullable().optional(),
+  reviewCount: z.number().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
+const CompetitionScoringSchema = z.object({
+  saturationScore: z.number(),
+  opportunityScore: z.number(),
+  saturationVerdict: z.string(),
+  opportunityVerdict: z.string(),
+});
+
+const ExecutiveSummarySchema = z.object({
+  strengths: z.array(z.string()),
+  weaknesses: z.array(z.string()),
+  risks: z.array(z.string()),
+  hiddenOpportunities: z.array(z.string()),
+  likelyRevenueCeiling: z.string(),
+  launchRecommendations: z.array(z.string()),
+  suggestedPositioning: z.string(),
+  overallVerdict: z.string(),
+});
+
+const AnalysisSchema = z.object({
+  locationScore: PropertyScoreSchema,
+  commercialViabilityScore: PropertyScoreSchema,
+  clinicSuitabilityScore: PropertyScoreSchema,
+  competition: CompetitionScoringSchema,
+  executiveSummary: ExecutiveSummarySchema,
+});
+
+function parseLLMJson(raw: string): unknown {
+  const cleaned = raw.trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "");
+  return JSON.parse(cleaned);
+}
+
 // ─── Google Places helpers ────────────────────────────────────────────────────
 
-type PlacesCompetitor = {
-  name: string;
-  type: string;
-  distanceMeters: number | null;
-  rating: number | null;
-  reviewCount: number | null;
-  notes: string | null;
-};
+type PlacesCompetitor = z.infer<typeof CompetitorItemSchema>;
 
 async function geocodePostcode(postcode: string, apiKey: string): Promise<{ lat: number; lng: number } | null> {
   const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(postcode + " UK")}&key=${apiKey}`;
   const res = await fetch(url);
-  const json = await res.json() as { status: string; results: Array<{ geometry: { location: { lat: number; lng: number } } }> };
+  const json = await res.json() as {
+    status: string;
+    results: Array<{ geometry: { location: { lat: number; lng: number } } }>;
+  };
   if (json.status !== "OK" || !json.results[0]) return null;
   return json.results[0].geometry.location;
 }
@@ -92,7 +170,6 @@ router.post("/properties/:id/upload-document", upload.single("file"), async (req
   const id = parseInt(req.params["id"] as string);
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
-
   if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
   let rawText = "";
@@ -104,42 +181,31 @@ router.post("/properties/:id/upload-document", upload.single("file"), async (req
     return res.status(400).json({ error: "Could not parse PDF. Please ensure it is a valid PDF document." });
   }
 
-  const extractionPrompt = `You are a commercial property data extraction specialist. Extract structured data from this commercial property document. Return ONLY valid JSON matching the schema exactly.
+  const prompt = `You are a commercial property data extraction specialist. Extract structured data from this commercial property document. Return ONLY valid JSON.
 
-Document text:
+Document:
 ${rawText.slice(0, 6000)}
 
 Extract these fields (use null if not found):
-- address: full address string
-- postcode: UK postcode
-- sqFootage: square footage as a number
-- annualRentGbp: annual rent in GBP as a number
-- monthlyRentGbp: monthly rent in GBP (calculate from annual if needed)
-- vatOnRent: boolean - true if VAT applies, false if "exclusive" or "landlord not elected for VAT"
-- businessRatesGbp: annual business rates in GBP as a number
-- serviceChargeGbp: annual service charge in GBP as a number
-- leaseLength: lease term as a string (e.g. "10 years with 5 year break")
-- useClass: planning use class (e.g. "E", "D1")
-- availabilityDate: availability date as ISO string or null
-- parkingSpaces: number of parking spaces as integer
-- frontageMeters: frontage width in meters as number
-- agentName: estate agent or agency name
-- agentPhone: agent phone number
-- agentEmail: agent email address
-- flags: array of strings for any important flags or uncertainties detected (e.g. "Service charge estimated", "Rent review at year 5", "VAT status unclear")
+address, postcode, sqFootage (number), annualRentGbp (number), monthlyRentGbp (number),
+vatOnRent (boolean), businessRatesGbp (number), serviceChargeGbp (number),
+leaseLength, useClass, availabilityDate (ISO string or null), parkingSpaces (number),
+frontageMeters (number), agentName, agentPhone, agentEmail,
+flags (string array — important notes/uncertainties e.g. "VAT status unclear")
 
-Return JSON object only, no markdown, no explanation.`;
+Return JSON only, no markdown.`;
 
-  let extraction: Record<string, unknown> = { flags: [] };
+  let extraction: z.infer<typeof ExtractionSchema> = { flags: [] };
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.1",
       max_completion_tokens: 2048,
-      messages: [{ role: "user", content: extractionPrompt }],
+      messages: [{ role: "user", content: prompt }],
     });
-    const content = response.choices[0]?.message?.content?.trim() ?? "{}";
-    const cleaned = content.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
-    extraction = JSON.parse(cleaned);
+    const raw = response.choices[0]?.message?.content ?? "{}";
+    const parsed = parseLLMJson(raw);
+    const validated = ExtractionSchema.safeParse(parsed);
+    extraction = validated.success ? validated.data : { flags: ["AI extraction returned unexpected format — please fill fields manually"] };
   } catch {
     extraction = { flags: ["AI extraction failed — please fill fields manually"] };
   }
@@ -170,8 +236,7 @@ Return JSON object only, no markdown, no explanation.`;
 
   return res.json({
     ...extraction,
-    rawText: rawText.slice(0, 500),
-    flags: Array.isArray(extraction.flags) ? extraction.flags : [],
+    flags: extraction.flags ?? [],
   });
 });
 
@@ -182,8 +247,7 @@ router.post("/properties/:id/analyse", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  const propertyContext = `
-Address: ${property.address || "Unknown"}
+  const propertyContext = `Address: ${property.address || "Unknown"}
 Postcode: ${property.postcode || "Unknown"}
 Square Footage: ${property.sqFootage || "Unknown"} sq ft
 Annual Rent: £${property.annualRentGbp || "Unknown"}
@@ -196,9 +260,9 @@ Use Class: ${property.useClass || "Unknown"}
 Availability: ${property.availabilityDate || "Unknown"}
 Parking Spaces: ${property.parkingSpaces ?? "Unknown"}
 Frontage: ${property.frontageMeters || "Unknown"}m
-Notes: ${property.notes || "None"}`.trim();
+Notes: ${property.notes || "None"}`;
 
-  // ── Competition mapping: try Google Places first, fall back to LLM ──────────
+  // ── Competition: real Google Places data OR empty list (no LLM fabrication) ──
   const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
   let realCompetitors: PlacesCompetitor[] | null = null;
   let competitionDataSource: "google_places" | "ai_estimate" = "ai_estimate";
@@ -211,46 +275,28 @@ Notes: ${property.notes || "None"}`.trim();
         competitionDataSource = "google_places";
       }
     } catch {
-      // Fall through to AI estimate
+      // Fall through — competition will be scored without real competitor list
     }
   }
 
-  // Build the competition section of the prompt
-  const competitionContext = realCompetitors
-    ? `
-REAL competitor data retrieved from Google Places (within 600m of ${property.postcode}):
+  const competitorContext = realCompetitors !== null
+    ? `Real competitor data from Google Places (within 600m of ${property.postcode}):
 ${JSON.stringify(realCompetitors, null, 2)}
-
-Using this real data, provide:
-- saturationScore (0–100, higher = more saturated market)
-- opportunityScore (0–100, higher = better opportunity gap)
-- saturationVerdict: 1–2 sentence interpretation of competitive density
-- opportunityVerdict: 1–2 sentence interpretation of the market gap
-- competitors: use the provided list exactly (do NOT fabricate extra competitors)`
-    : `
-No Google Places API key configured. Generate a realistic competition analysis for the area around ${property.postcode || property.address || "this location"} based on your knowledge of UK aesthetics market demographics.
-Provide:
-- saturationScore (0–100)
-- opportunityScore (0–100)
-- saturationVerdict
-- opportunityVerdict
-- competitors: up to 5 plausible named competitors (clearly estimated)`;
+Score saturation/opportunity based on this real data. Return the competitors array exactly as given above.`
+    : `No Google Places API key is configured. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
 
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Analyse this property for use as a premium aesthetics clinic.
 
-Property details:
+Property:
 ${propertyContext}
 
-${competitionContext}
+Competition context:
+${competitorContext}
 
-Return a comprehensive JSON analysis with this EXACT structure (no markdown, valid JSON only):
-
+Return a JSON object with this exact structure (no markdown):
 {
   "locationScore": {
-    "total": <number 0-100>,
-    "maxTotal": 100,
-    "grade": <"A"|"B"|"C"|"D"|"F">,
-    "summary": "<one sentence verdict>",
+    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
     "factors": [
       {"name": "Affluence & Demographics", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
       {"name": "Footfall & Visibility", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
@@ -263,10 +309,7 @@ Return a comprehensive JSON analysis with this EXACT structure (no markdown, val
     ]
   },
   "commercialViabilityScore": {
-    "total": <number 0-100>,
-    "maxTotal": 100,
-    "grade": <"A"|"B"|"C"|"D"|"F">,
-    "summary": "<one sentence verdict>",
+    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
     "factors": [
       {"name": "Rent vs Revenue Potential", "score": <0-25>, "maxScore": 25, "weight": 25, "explanation": "<brief>"},
       {"name": "Occupancy Demand", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
@@ -276,10 +319,7 @@ Return a comprehensive JSON analysis with this EXACT structure (no markdown, val
     ]
   },
   "clinicSuitabilityScore": {
-    "total": <number 0-100>,
-    "maxTotal": 100,
-    "grade": <"A"|"B"|"C"|"D"|"F">,
-    "summary": "<one sentence verdict>",
+    "total": <0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<sentence>",
     "factors": [
       {"name": "Treatment Room Potential", "score": <0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
       {"name": "Reception & Client Flow", "score": <0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
@@ -291,51 +331,58 @@ Return a comprehensive JSON analysis with this EXACT structure (no markdown, val
     ]
   },
   "competition": {
-    "saturationScore": <number 0-100, higher = more saturated>,
-    "opportunityScore": <number 0-100, higher = better opportunity>,
-    "saturationVerdict": "<brief assessment>",
-    "opportunityVerdict": "<brief assessment>",
-    "competitors": [
-      {"name": "<name>", "type": "<type>", "distanceMeters": <number or null>, "rating": <number or null>, "reviewCount": <number or null>, "notes": "<brief or null>"}
-    ]
+    "saturationScore": <0-100>,
+    "opportunityScore": <0-100>,
+    "saturationVerdict": "<assessment>",
+    "opportunityVerdict": "<assessment>",
+    "competitors": []
   },
   "executiveSummary": {
-    "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
-    "weaknesses": ["<weakness 1>", "<weakness 2>"],
-    "risks": ["<risk 1>", "<risk 2>"],
-    "hiddenOpportunities": ["<opportunity 1>", "<opportunity 2>"],
-    "likelyRevenueCeiling": "<e.g. £35,000–£55,000/month at full occupancy>",
-    "launchRecommendations": ["<rec 1>", "<rec 2>", "<rec 3>"],
-    "suggestedPositioning": "<e.g. Premium medical-grade aesthetics targeting 30–55 professional women>",
-    "overallVerdict": "<2-3 sentence executive summary verdict>"
+    "strengths": ["<1>", "<2>", "<3>"],
+    "weaknesses": ["<1>", "<2>"],
+    "risks": ["<1>", "<2>"],
+    "hiddenOpportunities": ["<1>", "<2>"],
+    "likelyRevenueCeiling": "<e.g. £35k–£55k/month>",
+    "launchRecommendations": ["<1>", "<2>", "<3>"],
+    "suggestedPositioning": "<positioning statement>",
+    "overallVerdict": "<2-3 sentence verdict>"
   }
 }`;
 
-  let result: Record<string, unknown>;
+  let rawAnalysis: unknown;
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5.1",
       max_completion_tokens: 4096,
       messages: [{ role: "user", content: analysisPrompt }],
     });
-    const content = response.choices[0]?.message?.content?.trim() ?? "{}";
-    const cleaned = content.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "");
-    result = JSON.parse(cleaned);
+    const content = response.choices[0]?.message?.content ?? "{}";
+    rawAnalysis = parseLLMJson(content);
   } catch {
     return res.status(500).json({ error: "AI analysis failed. Please try again." });
   }
 
-  // Ensure competition data is from the correct source
-  const competitionResult = result.competition as Record<string, unknown> | undefined ?? {};
-  if (realCompetitors !== null) {
-    competitionResult.competitors = realCompetitors;
+  const validated = AnalysisSchema.safeParse(rawAnalysis);
+  if (!validated.success) {
+    return res.status(500).json({ error: "AI returned an unexpected response format. Please try again." });
   }
-  competitionResult.dataSource = competitionDataSource;
+
+  const analysis = validated.data;
+
+  // Overwrite competitors with real Places data when available
+  const finalCompetitors = realCompetitors ?? [];
 
   return res.json({
     propertyId: id,
-    ...result,
-    competition: competitionResult,
+    locationScore: analysis.locationScore,
+    commercialViabilityScore: analysis.commercialViabilityScore,
+    clinicSuitabilityScore: analysis.clinicSuitabilityScore,
+    competition: {
+      ...analysis.competition,
+      competitors: finalCompetitors,
+      dataSource: competitionDataSource,
+    },
+    executiveSummary: analysis.executiveSummary,
     generatedAt: new Date().toISOString(),
   });
 });
