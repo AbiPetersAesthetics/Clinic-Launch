@@ -648,6 +648,85 @@ export interface UpdateScenarioConfigBody {
   isDefault?: boolean;
 }
 
+export interface PropertyExtraction {
+  address?: string | null;
+  postcode?: string | null;
+  sqFootage?: number | null;
+  annualRentGbp?: number | null;
+  monthlyRentGbp?: number | null;
+  vatOnRent?: boolean | null;
+  businessRatesGbp?: number | null;
+  serviceChargeGbp?: number | null;
+  leaseLength?: string | null;
+  useClass?: string | null;
+  availabilityDate?: string | null;
+  parkingSpaces?: number | null;
+  frontageMeters?: number | null;
+  agentName?: string | null;
+  agentPhone?: string | null;
+  agentEmail?: string | null;
+  rawText?: string | null;
+  flags: string[];
+}
+
+export interface ScoreFactor {
+  name: string;
+  score: number;
+  maxScore: number;
+  weight: number;
+  explanation: string;
+}
+
+export interface PropertyScore {
+  total: number;
+  maxTotal: number;
+  grade: string;
+  summary: string;
+  factors: ScoreFactor[];
+}
+
+export interface CompetitorItem {
+  name: string;
+  type: string;
+  distanceMeters?: number | null;
+  rating?: number | null;
+  reviewCount?: number | null;
+  notes?: string | null;
+}
+
+export interface CompetitionAnalysis {
+  saturationScore: number;
+  opportunityScore: number;
+  saturationVerdict: string;
+  opportunityVerdict: string;
+  competitors: CompetitorItem[];
+}
+
+export interface AIExecutiveSummary {
+  strengths: string[];
+  weaknesses: string[];
+  risks: string[];
+  hiddenOpportunities: string[];
+  likelyRevenueCeiling: string;
+  launchRecommendations: string[];
+  suggestedPositioning: string;
+  overallVerdict: string;
+}
+
+export interface PropertyIntelligenceResult {
+  propertyId: number;
+  locationScore: PropertyScore;
+  commercialViabilityScore: PropertyScore;
+  clinicSuitabilityScore: PropertyScore;
+  competition: CompetitionAnalysis;
+  executiveSummary: AIExecutiveSummary;
+  generatedAt: string;
+}
+
+export type UploadPropertyDocumentBody = {
+  file?: Blob;
+};
+
 export type GetProjectCashflowParams = {
   scenario?: GetProjectCashflowScenario;
 };

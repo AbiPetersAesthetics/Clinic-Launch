@@ -26,6 +26,8 @@ tags:
     description: Financial models
   - name: dashboard
     description: Dashboard summary data
+  - name: intelligence
+    description: AI-powered property intelligence and document extraction
 
 paths:
   /healthz:
@@ -721,6 +723,54 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/RiskFlag"
+
+  /properties/{id}/upload-document:
+    post:
+      operationId: uploadPropertyDocument
+      tags: [intelligence]
+      summary: Upload a PDF document and extract property fields via AI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Extracted property fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyExtraction"
+
+  /properties/{id}/analyse:
+    post:
+      operationId: analyseProperty
+      tags: [intelligence]
+      summary: Run full AI property intelligence analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Full property intelligence result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyIntelligenceResult"
 
   /projects/{projectId}/phases-with-tasks:
     get:
@@ -1879,3 +1929,216 @@ components:
           nullable: true
         isDefault:
           type: boolean
+
+    PropertyExtraction:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        sqFootage:
+          type: number
+          nullable: true
+        annualRentGbp:
+          type: number
+          nullable: true
+        monthlyRentGbp:
+          type: number
+          nullable: true
+        vatOnRent:
+          type: boolean
+          nullable: true
+        businessRatesGbp:
+          type: number
+          nullable: true
+        serviceChargeGbp:
+          type: number
+          nullable: true
+        leaseLength:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        availabilityDate:
+          type: string
+          nullable: true
+        parkingSpaces:
+          type: number
+          nullable: true
+        frontageMeters:
+          type: number
+          nullable: true
+        agentName:
+          type: string
+          nullable: true
+        agentPhone:
+          type: string
+          nullable: true
+        agentEmail:
+          type: string
+          nullable: true
+        rawText:
+          type: string
+          nullable: true
+        flags:
+          type: array
+          items:
+            type: string
+      required:
+        - flags
+
+    ScoreFactor:
+      type: object
+      properties:
+        name:
+          type: string
+        score:
+          type: number
+        maxScore:
+          type: number
+        weight:
+          type: number
+        explanation:
+          type: string
+      required:
+        - name
+        - score
+        - maxScore
+        - weight
+        - explanation
+
+    PropertyScore:
+      type: object
+      properties:
+        total:
+          type: number
+        maxTotal:
+          type: number
+        grade:
+          type: string
+        summary:
+          type: string
+        factors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScoreFactor"
+      required:
+        - total
+        - maxTotal
+        - grade
+        - summary
+        - factors
+
+    CompetitorItem:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        distanceMeters:
+          type: number
+          nullable: true
+        rating:
+          type: number
+          nullable: true
+        reviewCount:
+          type: number
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - name
+        - type
+
+    CompetitionAnalysis:
+      type: object
+      properties:
+        saturationScore:
+          type: number
+        opportunityScore:
+          type: number
+        saturationVerdict:
+          type: string
+        opportunityVerdict:
+          type: string
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorItem"
+      required:
+        - saturationScore
+        - opportunityScore
+        - saturationVerdict
+        - opportunityVerdict
+        - competitors
+
+    AIExecutiveSummary:
+      type: object
+      properties:
+        strengths:
+          type: array
+          items:
+            type: string
+        weaknesses:
+          type: array
+          items:
+            type: string
+        risks:
+          type: array
+          items:
+            type: string
+        hiddenOpportunities:
+          type: array
+          items:
+            type: string
+        likelyRevenueCeiling:
+          type: string
+        launchRecommendations:
+          type: array
+          items:
+            type: string
+        suggestedPositioning:
+          type: string
+        overallVerdict:
+          type: string
+      required:
+        - strengths
+        - weaknesses
+        - risks
+        - hiddenOpportunities
+        - likelyRevenueCeiling
+        - launchRecommendations
+        - suggestedPositioning
+        - overallVerdict
+
+    PropertyIntelligenceResult:
+      type: object
+      properties:
+        propertyId:
+          type: integer
+        locationScore:
+          $ref: "#/components/schemas/PropertyScore"
+        commercialViabilityScore:
+          $ref: "#/components/schemas/PropertyScore"
+        clinicSuitabilityScore:
+          $ref: "#/components/schemas/PropertyScore"
+        competition:
+          $ref: "#/components/schemas/CompetitionAnalysis"
+        executiveSummary:
+          $ref: "#/components/schemas/AIExecutiveSummary"
+        generatedAt:
+          type: string
+      required:
+        - propertyId
+        - locationScore
+        - commercialViabilityScore
+        - clinicSuitabilityScore
+        - competition
+        - executiveSummary
+        - generatedAt

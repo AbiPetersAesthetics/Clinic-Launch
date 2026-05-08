@@ -939,6 +939,121 @@ export const GetRiskFlagsResponseItem = zod.object({
 export const GetRiskFlagsResponse = zod.array(GetRiskFlagsResponseItem);
 
 /**
+ * @summary Upload a PDF document and extract property fields via AI
+ */
+export const UploadPropertyDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UploadPropertyDocumentBody = zod.object({
+  file: zod.instanceof(File).optional(),
+});
+
+export const UploadPropertyDocumentResponse = zod.object({
+  address: zod.string().nullish(),
+  postcode: zod.string().nullish(),
+  sqFootage: zod.number().nullish(),
+  annualRentGbp: zod.number().nullish(),
+  monthlyRentGbp: zod.number().nullish(),
+  vatOnRent: zod.boolean().nullish(),
+  businessRatesGbp: zod.number().nullish(),
+  serviceChargeGbp: zod.number().nullish(),
+  leaseLength: zod.string().nullish(),
+  useClass: zod.string().nullish(),
+  availabilityDate: zod.string().nullish(),
+  parkingSpaces: zod.number().nullish(),
+  frontageMeters: zod.number().nullish(),
+  agentName: zod.string().nullish(),
+  agentPhone: zod.string().nullish(),
+  agentEmail: zod.string().nullish(),
+  rawText: zod.string().nullish(),
+  flags: zod.array(zod.string()),
+});
+
+/**
+ * @summary Run full AI property intelligence analysis
+ */
+export const AnalysePropertyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AnalysePropertyResponse = zod.object({
+  propertyId: zod.number(),
+  locationScore: zod.object({
+    total: zod.number(),
+    maxTotal: zod.number(),
+    grade: zod.string(),
+    summary: zod.string(),
+    factors: zod.array(
+      zod.object({
+        name: zod.string(),
+        score: zod.number(),
+        maxScore: zod.number(),
+        weight: zod.number(),
+        explanation: zod.string(),
+      }),
+    ),
+  }),
+  commercialViabilityScore: zod.object({
+    total: zod.number(),
+    maxTotal: zod.number(),
+    grade: zod.string(),
+    summary: zod.string(),
+    factors: zod.array(
+      zod.object({
+        name: zod.string(),
+        score: zod.number(),
+        maxScore: zod.number(),
+        weight: zod.number(),
+        explanation: zod.string(),
+      }),
+    ),
+  }),
+  clinicSuitabilityScore: zod.object({
+    total: zod.number(),
+    maxTotal: zod.number(),
+    grade: zod.string(),
+    summary: zod.string(),
+    factors: zod.array(
+      zod.object({
+        name: zod.string(),
+        score: zod.number(),
+        maxScore: zod.number(),
+        weight: zod.number(),
+        explanation: zod.string(),
+      }),
+    ),
+  }),
+  competition: zod.object({
+    saturationScore: zod.number(),
+    opportunityScore: zod.number(),
+    saturationVerdict: zod.string(),
+    opportunityVerdict: zod.string(),
+    competitors: zod.array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        distanceMeters: zod.number().nullish(),
+        rating: zod.number().nullish(),
+        reviewCount: zod.number().nullish(),
+        notes: zod.string().nullish(),
+      }),
+    ),
+  }),
+  executiveSummary: zod.object({
+    strengths: zod.array(zod.string()),
+    weaknesses: zod.array(zod.string()),
+    risks: zod.array(zod.string()),
+    hiddenOpportunities: zod.array(zod.string()),
+    likelyRevenueCeiling: zod.string(),
+    launchRecommendations: zod.array(zod.string()),
+    suggestedPositioning: zod.string(),
+    overallVerdict: zod.string(),
+  }),
+  generatedAt: zod.string(),
+});
+
+/**
  * @summary Get all phases with their tasks for a project
  */
 export const GetPhasesWithTasksParams = zod.object({

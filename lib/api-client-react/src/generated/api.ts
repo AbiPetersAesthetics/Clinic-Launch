@@ -37,6 +37,8 @@ import type {
   LaunchTask,
   PhaseWithTasks,
   Project,
+  PropertyExtraction,
+  PropertyIntelligenceResult,
   RiskFlag,
   ScenarioConfig,
   UpdateCostItemBody,
@@ -45,6 +47,7 @@ import type {
   UpdatePropertyBody,
   UpdateScenarioConfigBody,
   UpdateTaskBody,
+  UploadPropertyDocumentBody,
   UpsertFinancialModelBody,
 } from "./api.schemas";
 
@@ -3058,6 +3061,182 @@ export function useGetRiskFlags<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Upload a PDF document and extract property fields via AI
+ */
+export const getUploadPropertyDocumentUrl = (id: number) => {
+  return `/api/properties/${id}/upload-document`;
+};
+
+export const uploadPropertyDocument = async (
+  id: number,
+  uploadPropertyDocumentBody: UploadPropertyDocumentBody,
+  options?: RequestInit,
+): Promise<PropertyExtraction> => {
+  const formData = new FormData();
+  if (uploadPropertyDocumentBody.file !== undefined) {
+    formData.append(`file`, uploadPropertyDocumentBody.file);
+  }
+
+  return customFetch<PropertyExtraction>(getUploadPropertyDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadPropertyDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPropertyDocument>>,
+    TError,
+    { id: number; data: BodyType<UploadPropertyDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadPropertyDocument>>,
+  TError,
+  { id: number; data: BodyType<UploadPropertyDocumentBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadPropertyDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadPropertyDocument>>,
+    { id: number; data: BodyType<UploadPropertyDocumentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return uploadPropertyDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadPropertyDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadPropertyDocument>>
+>;
+export type UploadPropertyDocumentMutationBody =
+  BodyType<UploadPropertyDocumentBody>;
+export type UploadPropertyDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a PDF document and extract property fields via AI
+ */
+export const useUploadPropertyDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadPropertyDocument>>,
+    TError,
+    { id: number; data: BodyType<UploadPropertyDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadPropertyDocument>>,
+  TError,
+  { id: number; data: BodyType<UploadPropertyDocumentBody> },
+  TContext
+> => {
+  return useMutation(getUploadPropertyDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Run full AI property intelligence analysis
+ */
+export const getAnalysePropertyUrl = (id: number) => {
+  return `/api/properties/${id}/analyse`;
+};
+
+export const analyseProperty = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PropertyIntelligenceResult> => {
+  return customFetch<PropertyIntelligenceResult>(getAnalysePropertyUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getAnalysePropertyMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyseProperty>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyseProperty>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["analyseProperty"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyseProperty>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return analyseProperty(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalysePropertyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyseProperty>>
+>;
+
+export type AnalysePropertyMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Run full AI property intelligence analysis
+ */
+export const useAnalyseProperty = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyseProperty>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyseProperty>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getAnalysePropertyMutationOptions(options));
+};
 
 /**
  * @summary Get all phases with their tasks for a project
