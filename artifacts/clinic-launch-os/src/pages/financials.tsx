@@ -341,14 +341,47 @@ export default function FinancialsPage() {
 
                   <div className="h-px w-full bg-border" />
 
+                  {/* Break-even and viability highlight row */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break-Even Revenue</p>
+                      <p className="text-xl font-bold">{formatGBP(calcResults.breakEvenRevenueGbp)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">at {formatPercent(calcResults.breakEvenOccupancyPercent)} occupancy</p>
+                    </div>
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4">
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Min. Viable Revenue</p>
+                      <p className="text-xl font-bold">{formatGBP(calcResults.minimumViableRevenueGbp)}<span className="text-sm font-normal text-muted-foreground">/mo</span></p>
+                      <p className="text-xs text-muted-foreground mt-1">110% of fixed costs floor</p>
+                    </div>
+                    <div className={`rounded-lg border p-4 ${calcResults.monthsUntilProfitable === 0 ? 'border-primary/20 bg-primary/5' : 'border-orange-500/20 bg-orange-500/5'}`}>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Break-Even Month</p>
+                      <p className="text-xl font-bold">
+                        {calcResults.monthsUntilProfitable === 0
+                          ? 'Profitable now'
+                          : calcResults.monthsUntilProfitable != null
+                            ? `Month ${calcResults.monthsUntilProfitable}`
+                            : 'Not reached'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {calcResults.monthsUntilProfitable === 0
+                          ? 'Revenue exceeds costs at target occupancy'
+                          : calcResults.monthsUntilProfitable != null
+                            ? `Est. ${calcResults.monthsUntilProfitable} months to reach profitability`
+                            : 'Increase occupancy or reduce costs'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="h-px w-full bg-border" />
+
                   <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Monthly Fixed Costs</span>
                       <span className="font-medium">{formatGBP(calcResults.monthlyFixedCosts)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Break-Even Revenue</span>
-                      <span className="font-medium">{formatGBP(calcResults.breakEvenRevenueGbp)}/mo</span>
+                      <span className="text-muted-foreground">Safe Operating Threshold</span>
+                      <span className="font-medium">{formatGBP(calcResults.safeOperatingThresholdGbp)}/mo</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Monthly Variable Costs</span>
