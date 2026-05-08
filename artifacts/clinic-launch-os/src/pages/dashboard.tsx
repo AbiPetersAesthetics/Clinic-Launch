@@ -22,7 +22,7 @@ export default function DashboardPage() {
     query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) }
   });
 
-  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, {
+  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
     query: { 
       enabled: true, 
       queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }) 

@@ -30,7 +30,7 @@ export default function FinancialsPage() {
     query: { queryKey: getGetFinancialModelQueryKey(PROJECT_ID), enabled: true },
   });
 
-  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, {
+  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
     query: { 
       queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }), 
       enabled: true 
@@ -41,7 +41,7 @@ export default function FinancialsPage() {
   const calculateFinancials = useCalculateFinancials();
   
   // To store calculation results
-  const [calcResults, setCalcResults] = useState<any>(null);
+  const [calcResults, setCalcResults] = useState<import("@workspace/api-client-react").FinancialCalculation | null>(null);
 
   const form = useForm({
     defaultValues: {
@@ -90,8 +90,7 @@ export default function FinancialsPage() {
     );
   };
 
-  const onSubmit = (values: any) => {
-    // Coerce all string inputs to numbers
+  const onSubmit = (values: Record<string, number>) => {
     const processedValues = Object.fromEntries(
       Object.entries(values).map(([k, v]) => [k, Number(v) || 0])
     );
@@ -310,7 +309,7 @@ export default function FinancialsPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Est. Monthly Profit</p>
-                <p className={`text-3xl font-bold ${calcResults?.monthlyNetProfit > 0 ? 'text-primary' : 'text-destructive'}`}>
+                <p className={`text-3xl font-bold ${(calcResults?.monthlyNetProfit ?? 0) > 0 ? 'text-primary' : 'text-destructive'}`}>
                   {formatGBP(calcResults?.monthlyNetProfit || 0)}
                 </p>
               </div>

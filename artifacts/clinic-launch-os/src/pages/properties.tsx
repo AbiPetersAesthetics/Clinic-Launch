@@ -7,7 +7,7 @@ import {
   useUpdateProperty,
   useDeleteProperty,
 } from "@workspace/api-client-react";
-import type { ClinicProperty } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { ClinicProperty, UpdatePropertyBodyStatus } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
@@ -112,7 +112,7 @@ export default function PropertiesPage() {
       agentName: formData.get("agentName") as string,
       agentPhone: formData.get("agentPhone") as string,
       agentEmail: formData.get("agentEmail") as string,
-      status: formData.get("status") as any,
+      status: formData.get("status") as UpdatePropertyBodyStatus,
       notes: formData.get("notes") as string,
     };
 

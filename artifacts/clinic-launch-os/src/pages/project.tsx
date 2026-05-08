@@ -9,7 +9,7 @@ import {
   useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
 } from "@workspace/api-client-react";
-import type { LaunchTask } from "@workspace/api-client-react/src/generated/api.schemas";
+import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
 import {
@@ -89,7 +89,7 @@ export default function ProjectPage() {
     updateTask.mutate(
       {
         id: task.id,
-        data: { costTier: newTier, selectedCost: newSelectedCost },
+        data: { costTier: newTier },
       },
       {
         onSuccess: () => {
@@ -100,7 +100,7 @@ export default function ProjectPage() {
     );
   };
 
-  const handleStatusChange = (task: LaunchTask, newStatus: any) => {
+  const handleStatusChange = (task: LaunchTask, newStatus: UpdateTaskBodyStatus) => {
     updateTask.mutate(
       {
         id: task.id,
@@ -229,7 +229,7 @@ export default function ProjectPage() {
                         <TableCell>
                           <Select
                             value={task.status}
-                            onValueChange={(val) => handleStatusChange(task, val)}
+                            onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}
                           >
                             <SelectTrigger className={`w-[130px] h-8 text-xs ${STATUS_COLORS[task.status] || ""}`}>
                               <SelectValue />
@@ -351,20 +351,16 @@ function TaskEditSheet({ task, onClose }: { task: LaunchTask | null; onClose: ()
       costHigh: Number(formData.get("costHigh") || 0),
       dueDate: formData.get("dueDate") as string || undefined,
       durationDays: Number(formData.get("durationDays") || 0),
-      riskLevel: formData.get("riskLevel") as any,
-      status: formData.get("status") as any,
+      riskLevel: formData.get("riskLevel") as UpdateTaskBodyRiskLevel,
+      status: formData.get("status") as UpdateTaskBodyStatus,
       isNonNegotiable: formData.get("isNonNegotiable") === "on",
       isCriticalRisk: formData.get("isCriticalRisk") === "on",
     };
 
-    // Calculate new selected cost based on current tier and potentially updated tier costs
-    const currentTier = task.costTier;
-    const newSelectedCost = currentTier === "low" ? data.costLow : currentTier === "high" ? data.costHigh : data.costMid;
-
     updateTask.mutate(
       {
         id: task.id,
-        data: { ...data, selectedCost: newSelectedCost },
+        data,
       },
       {
         onSuccess: () => {
