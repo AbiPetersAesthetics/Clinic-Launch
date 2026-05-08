@@ -1,5 +1,6 @@
 export * from "./projects";
 export * from "./properties";
+export * from "./property_ai_analyses";
 export * from "./phases";
 export * from "./tasks";
 export * from "./financials";

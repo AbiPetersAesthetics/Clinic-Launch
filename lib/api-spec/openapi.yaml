@@ -986,7 +986,7 @@ paths:
     post:
       operationId: analyseProperty
       tags: [intelligence]
-      summary: Run full AI property intelligence analysis
+      summary: Run full AI property intelligence analysis (persisted)
       parameters:
         - name: id
           in: path
@@ -1008,11 +1008,180 @@ paths:
                   default: 600
       responses:
         "200":
-          description: Full property intelligence result
+          description: Full property intelligence result (persisted)
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PropertyIntelligenceResult"
+
+  /properties/{id}/analyses:
+    get:
+      operationId: listPropertyAnalyses
+      tags: [intelligence]
+      summary: List all saved AI analyses for a property (newest first)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of analyses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PropertyAiAnalysis"
+
+  /properties/{id}/analyses/latest:
+    get:
+      operationId: getLatestPropertyAnalysis
+      tags: [intelligence]
+      summary: Get the most recent AI analysis for a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Latest analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyAiAnalysis"
+        "404":
+          description: No analysis found
+
+  /properties/{id}/set-active:
+    put:
+      operationId: setPropertyActive
+      tags: [properties]
+      summary: Set a property as the active project property, sync financials, and create decision log entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+
+  /properties/{id}/confirm-upload:
+    post:
+      operationId: confirmPropertyUpload
+      tags: [intelligence]
+      summary: Save reviewed extracted property data and store document reference
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmUploadBody"
+      responses:
+        "200":
+          description: Updated property with media file stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+
+  /properties/{id}/advisor-action:
+    post:
+      operationId: propertyAdvisorAction
+      tags: [intelligence]
+      summary: Run an AI advisor action for a property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdvisorActionBody"
+      responses:
+        "200":
+          description: AI advisor response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdvisorActionResult"
+
+  /projects/{projectId}/properties/import-url:
+    post:
+      operationId: importPropertyFromUrl
+      tags: [intelligence]
+      summary: Extract property data from a commercial listing URL for review
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+              required:
+                - url
+      responses:
+        "200":
+          description: Extracted property data for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportUrlResult"
+        "422":
+          description: Could not fetch or extract from URL
+
+  /projects/{projectId}/properties/ranking:
+    get:
+      operationId: getPropertyRanking
+      tags: [properties]
+      summary: Get AI-scored property rankings for all non-rejected properties
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [overall, safest, highest-revenue, premium-brand, lowest-risk, fastest-launch]
+            default: overall
+      responses:
+        "200":
+          description: Ranked property list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PropertyRankingResult"
 
   /projects/{projectId}/phases-with-tasks:
     get:
@@ -1201,6 +1370,25 @@ components:
         status:
           type: string
           enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        pipelineStatus:
+          type: string
+          enum: [found, interesting, brochure_requested, viewing_booked, viewed, under_review, due_diligence, heads_of_terms, negotiating, rejected, selected]
+        viewingNotes:
+          type: string
+          nullable: true
+        negotiationNotes:
+          type: string
+          nullable: true
+        landlordConcessions:
+          type: string
+          nullable: true
+        isActiveForProject:
+          type: boolean
+        isFavourited:
+          type: boolean
+        manualRankOverride:
+          type: integer
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1209,6 +1397,11 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/ManualCompetitor"
+        mediaFiles:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/MediaFile"
         createdAt:
           type: string
         updatedAt:
@@ -1217,6 +1410,9 @@ components:
         - id
         - projectId
         - status
+        - pipelineStatus
+        - isActiveForProject
+        - isFavourited
         - createdAt
         - updatedAt
 
@@ -1274,6 +1470,25 @@ components:
         status:
           type: string
           enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        pipelineStatus:
+          type: string
+          enum: [found, interesting, brochure_requested, viewing_booked, viewed, under_review, due_diligence, heads_of_terms, negotiating, rejected, selected]
+        viewingNotes:
+          type: string
+          nullable: true
+        negotiationNotes:
+          type: string
+          nullable: true
+        landlordConcessions:
+          type: string
+          nullable: true
+        isActiveForProject:
+          type: boolean
+        isFavourited:
+          type: boolean
+        manualRankOverride:
+          type: integer
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -1332,6 +1547,25 @@ components:
         status:
           type: string
           enum: [viewing, shortlisted, offer_made, under_offer, rejected, active]
+        pipelineStatus:
+          type: string
+          enum: [found, interesting, brochure_requested, viewing_booked, viewed, under_review, due_diligence, heads_of_terms, negotiating, rejected, selected]
+        viewingNotes:
+          type: string
+          nullable: true
+        negotiationNotes:
+          type: string
+          nullable: true
+        landlordConcessions:
+          type: string
+          nullable: true
+        isActiveForProject:
+          type: boolean
+        isFavourited:
+          type: boolean
+        manualRankOverride:
+          type: integer
+          nullable: true
         notes:
           type: string
           nullable: true
@@ -2235,6 +2469,12 @@ components:
           type: array
           items:
             type: string
+        fileName:
+          type: string
+          nullable: true
+        fileSizeBytes:
+          type: integer
+          nullable: true
       required:
         - flags
 
@@ -2399,6 +2639,15 @@ components:
           $ref: "#/components/schemas/AIExecutiveSummary"
         generatedAt:
           type: string
+        analysisId:
+          type: integer
+          nullable: true
+        version:
+          type: integer
+          nullable: true
+        isStale:
+          type: boolean
+          nullable: true
       required:
         - propertyId
         - locationScore
@@ -2718,3 +2967,226 @@ components:
           type: string
         isActive:
           type: boolean
+
+    MediaFile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [pdf, image, document, floorplan]
+        url:
+          type: string
+        uploadedAt:
+          type: string
+        sizeBytes:
+          type: integer
+          nullable: true
+      required:
+        - id
+        - name
+        - type
+        - url
+        - uploadedAt
+
+    PropertyAiAnalysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        propertyId:
+          type: integer
+        version:
+          type: integer
+        analysisJson:
+          type: object
+          additionalProperties: true
+        confidenceLevel:
+          type: string
+          enum: [low, medium, high]
+        sourceDataSnapshot:
+          type: object
+          nullable: true
+          additionalProperties: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - propertyId
+        - version
+        - analysisJson
+        - confidenceLevel
+        - createdAt
+
+    PropertyRankingItem:
+      type: object
+      properties:
+        rank:
+          type: integer
+        propertyId:
+          type: integer
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        pipelineStatus:
+          type: string
+        isActiveForProject:
+          type: boolean
+        isFavourited:
+          type: boolean
+        manualRankOverride:
+          type: integer
+          nullable: true
+        hasAnalysis:
+          type: boolean
+        score:
+          type: number
+        scoreBreakdown:
+          type: object
+          additionalProperties: true
+        rationale:
+          type: string
+      required:
+        - rank
+        - propertyId
+        - pipelineStatus
+        - isActiveForProject
+        - isFavourited
+        - hasAnalysis
+        - score
+        - scoreBreakdown
+        - rationale
+
+    PropertyRankingResult:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [overall, safest, highest-revenue, premium-brand, lowest-risk, fastest-launch]
+        rankings:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyRankingItem"
+      required:
+        - mode
+        - rankings
+
+    AdvisorActionBody:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [suggest-offer, identify-risks, recommend-layout, estimate-fitout, estimate-revenue, suggest-clinic-model, suggest-negotiation, suggest-launch]
+        prompt:
+          type: string
+          nullable: true
+      required:
+        - action
+
+    AdvisorActionResult:
+      type: object
+      properties:
+        action:
+          type: string
+        propertyId:
+          type: integer
+        response:
+          type: string
+        generatedAt:
+          type: string
+      required:
+        - action
+        - propertyId
+        - response
+        - generatedAt
+
+    ConfirmUploadBody:
+      type: object
+      properties:
+        fields:
+          type: object
+          additionalProperties: true
+        fileName:
+          type: string
+          nullable: true
+        fileSizeBytes:
+          type: integer
+          nullable: true
+      required:
+        - fields
+
+    ImportUrlResult:
+      type: object
+      properties:
+        address:
+          type: string
+          nullable: true
+        postcode:
+          type: string
+          nullable: true
+        sqFootage:
+          type: number
+          nullable: true
+        annualRentGbp:
+          type: number
+          nullable: true
+        monthlyRentGbp:
+          type: number
+          nullable: true
+        vatOnRent:
+          type: boolean
+          nullable: true
+        businessRatesGbp:
+          type: number
+          nullable: true
+        serviceChargeGbp:
+          type: number
+          nullable: true
+        leaseLength:
+          type: string
+          nullable: true
+        useClass:
+          type: string
+          nullable: true
+        availabilityDate:
+          type: string
+          nullable: true
+        parkingSpaces:
+          type: number
+          nullable: true
+        frontageMeters:
+          type: number
+          nullable: true
+        agentName:
+          type: string
+          nullable: true
+        agentPhone:
+          type: string
+          nullable: true
+        agentEmail:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        flags:
+          type: array
+          items:
+            type: string
+        sourceUrl:
+          type: string
+        projectId:
+          type: integer
+        extractable:
+          type: boolean
+          nullable: true
+      required:
+        - flags
+        - sourceUrl
+        - projectId

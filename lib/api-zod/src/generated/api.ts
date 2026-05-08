@@ -128,6 +128,25 @@ export const ListPropertiesResponseItem = zod.object({
     "rejected",
     "active",
   ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
   manualCompetitors: zod
     .array(
@@ -135,6 +154,18 @@ export const ListPropertiesResponseItem = zod.object({
         name: zod.string(),
         type: zod.string(),
         notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
       }),
     )
     .nullish(),
@@ -177,6 +208,27 @@ export const CreatePropertyBody = zod.object({
       "active",
     ])
     .optional(),
+  pipelineStatus: zod
+    .enum([
+      "found",
+      "interesting",
+      "brochure_requested",
+      "viewing_booked",
+      "viewed",
+      "under_review",
+      "due_diligence",
+      "heads_of_terms",
+      "negotiating",
+      "rejected",
+      "selected",
+    ])
+    .optional(),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean().optional(),
+  isFavourited: zod.boolean().optional(),
+  manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -214,6 +266,25 @@ export const GetPropertyResponse = zod.object({
     "rejected",
     "active",
   ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
   manualCompetitors: zod
     .array(
@@ -221,6 +292,18 @@ export const GetPropertyResponse = zod.object({
         name: zod.string(),
         type: zod.string(),
         notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
       }),
     )
     .nullish(),
@@ -262,6 +345,27 @@ export const UpdatePropertyBody = zod.object({
       "active",
     ])
     .optional(),
+  pipelineStatus: zod
+    .enum([
+      "found",
+      "interesting",
+      "brochure_requested",
+      "viewing_booked",
+      "viewed",
+      "under_review",
+      "due_diligence",
+      "heads_of_terms",
+      "negotiating",
+      "rejected",
+      "selected",
+    ])
+    .optional(),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean().optional(),
+  isFavourited: zod.boolean().optional(),
+  manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
 });
 
@@ -292,6 +396,25 @@ export const UpdatePropertyResponse = zod.object({
     "rejected",
     "active",
   ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
   manualCompetitors: zod
     .array(
@@ -299,6 +422,18 @@ export const UpdatePropertyResponse = zod.object({
         name: zod.string(),
         type: zod.string(),
         notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
       }),
     )
     .nullish(),
@@ -995,6 +1130,8 @@ export const UploadPropertyDocumentResponse = zod.object({
   agentEmail: zod.string().nullish(),
   rawText: zod.string().nullish(),
   flags: zod.array(zod.string()),
+  fileName: zod.string().nullish(),
+  fileSizeBytes: zod.number().nullish(),
 });
 
 /**
@@ -1385,7 +1522,7 @@ export const GetOptimisationAnalysisResponse = zod.object({
 });
 
 /**
- * @summary Run full AI property intelligence analysis
+ * @summary Run full AI property intelligence analysis (persisted)
  */
 export const AnalysePropertyParams = zod.object({
   id: zod.coerce.number(),
@@ -1481,6 +1618,322 @@ export const AnalysePropertyResponse = zod.object({
     overallVerdict: zod.string(),
   }),
   generatedAt: zod.string(),
+  analysisId: zod.number().nullish(),
+  version: zod.number().nullish(),
+  isStale: zod.boolean().nullish(),
+});
+
+/**
+ * @summary List all saved AI analyses for a property (newest first)
+ */
+export const ListPropertyAnalysesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPropertyAnalysesResponseItem = zod.object({
+  id: zod.number(),
+  propertyId: zod.number(),
+  version: zod.number(),
+  analysisJson: zod.record(zod.string(), zod.unknown()),
+  confidenceLevel: zod.enum(["low", "medium", "high"]),
+  sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+  createdAt: zod.string(),
+});
+export const ListPropertyAnalysesResponse = zod.array(
+  ListPropertyAnalysesResponseItem,
+);
+
+/**
+ * @summary Get the most recent AI analysis for a property
+ */
+export const GetLatestPropertyAnalysisParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetLatestPropertyAnalysisResponse = zod.object({
+  id: zod.number(),
+  propertyId: zod.number(),
+  version: zod.number(),
+  analysisJson: zod.record(zod.string(), zod.unknown()),
+  confidenceLevel: zod.enum(["low", "medium", "high"]),
+  sourceDataSnapshot: zod.record(zod.string(), zod.unknown()).nullish(),
+  createdAt: zod.string(),
+});
+
+/**
+ * @summary Set a property as the active project property, sync financials, and create decision log entry
+ */
+export const SetPropertyActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SetPropertyActiveResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  address: zod.string().nullish(),
+  postcode: zod.string().nullish(),
+  sqFootage: zod.number().nullish(),
+  annualRentGbp: zod.number().nullish(),
+  monthlyRentGbp: zod.number().nullish(),
+  vatOnRent: zod.boolean().nullish(),
+  businessRatesGbp: zod.number().nullish(),
+  serviceChargeGbp: zod.number().nullish(),
+  leaseLength: zod.string().nullish(),
+  useClass: zod.string().nullish(),
+  availabilityDate: zod.string().nullish(),
+  parkingSpaces: zod.number().nullish(),
+  frontageMeters: zod.number().nullish(),
+  agentName: zod.string().nullish(),
+  agentPhone: zod.string().nullish(),
+  agentEmail: zod.string().nullish(),
+  status: zod.enum([
+    "viewing",
+    "shortlisted",
+    "offer_made",
+    "under_offer",
+    "rejected",
+    "active",
+  ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
+      }),
+    )
+    .nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Save reviewed extracted property data and store document reference
+ */
+export const ConfirmPropertyUploadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ConfirmPropertyUploadBody = zod.object({
+  fields: zod.record(zod.string(), zod.unknown()),
+  fileName: zod.string().nullish(),
+  fileSizeBytes: zod.number().nullish(),
+});
+
+export const ConfirmPropertyUploadResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  address: zod.string().nullish(),
+  postcode: zod.string().nullish(),
+  sqFootage: zod.number().nullish(),
+  annualRentGbp: zod.number().nullish(),
+  monthlyRentGbp: zod.number().nullish(),
+  vatOnRent: zod.boolean().nullish(),
+  businessRatesGbp: zod.number().nullish(),
+  serviceChargeGbp: zod.number().nullish(),
+  leaseLength: zod.string().nullish(),
+  useClass: zod.string().nullish(),
+  availabilityDate: zod.string().nullish(),
+  parkingSpaces: zod.number().nullish(),
+  frontageMeters: zod.number().nullish(),
+  agentName: zod.string().nullish(),
+  agentPhone: zod.string().nullish(),
+  agentEmail: zod.string().nullish(),
+  status: zod.enum([
+    "viewing",
+    "shortlisted",
+    "offer_made",
+    "under_offer",
+    "rejected",
+    "active",
+  ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
+      }),
+    )
+    .nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Run an AI advisor action for a property
+ */
+export const PropertyAdvisorActionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PropertyAdvisorActionBody = zod.object({
+  action: zod.enum([
+    "suggest-offer",
+    "identify-risks",
+    "recommend-layout",
+    "estimate-fitout",
+    "estimate-revenue",
+    "suggest-clinic-model",
+    "suggest-negotiation",
+    "suggest-launch",
+  ]),
+  prompt: zod.string().nullish(),
+});
+
+export const PropertyAdvisorActionResponse = zod.object({
+  action: zod.string(),
+  propertyId: zod.number(),
+  response: zod.string(),
+  generatedAt: zod.string(),
+});
+
+/**
+ * @summary Extract property data from a commercial listing URL for review
+ */
+export const ImportPropertyFromUrlParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ImportPropertyFromUrlBody = zod.object({
+  url: zod.string(),
+});
+
+export const ImportPropertyFromUrlResponse = zod.object({
+  address: zod.string().nullish(),
+  postcode: zod.string().nullish(),
+  sqFootage: zod.number().nullish(),
+  annualRentGbp: zod.number().nullish(),
+  monthlyRentGbp: zod.number().nullish(),
+  vatOnRent: zod.boolean().nullish(),
+  businessRatesGbp: zod.number().nullish(),
+  serviceChargeGbp: zod.number().nullish(),
+  leaseLength: zod.string().nullish(),
+  useClass: zod.string().nullish(),
+  availabilityDate: zod.string().nullish(),
+  parkingSpaces: zod.number().nullish(),
+  frontageMeters: zod.number().nullish(),
+  agentName: zod.string().nullish(),
+  agentPhone: zod.string().nullish(),
+  agentEmail: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  flags: zod.array(zod.string()),
+  sourceUrl: zod.string(),
+  projectId: zod.number(),
+  extractable: zod.boolean().nullish(),
+});
+
+/**
+ * @summary Get AI-scored property rankings for all non-rejected properties
+ */
+export const GetPropertyRankingParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const getPropertyRankingQueryModeDefault = `overall`;
+
+export const GetPropertyRankingQueryParams = zod.object({
+  mode: zod
+    .enum([
+      "overall",
+      "safest",
+      "highest-revenue",
+      "premium-brand",
+      "lowest-risk",
+      "fastest-launch",
+    ])
+    .default(getPropertyRankingQueryModeDefault),
+});
+
+export const GetPropertyRankingResponse = zod.object({
+  mode: zod.enum([
+    "overall",
+    "safest",
+    "highest-revenue",
+    "premium-brand",
+    "lowest-risk",
+    "fastest-launch",
+  ]),
+  rankings: zod.array(
+    zod.object({
+      rank: zod.number(),
+      propertyId: zod.number(),
+      address: zod.string().nullish(),
+      postcode: zod.string().nullish(),
+      pipelineStatus: zod.string(),
+      isActiveForProject: zod.boolean(),
+      isFavourited: zod.boolean(),
+      manualRankOverride: zod.number().nullish(),
+      hasAnalysis: zod.boolean(),
+      score: zod.number(),
+      scoreBreakdown: zod.record(zod.string(), zod.unknown()),
+      rationale: zod.string(),
+    }),
+  ),
 });
 
 /**

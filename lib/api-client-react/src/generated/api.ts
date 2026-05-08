@@ -17,11 +17,14 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdvisorActionBody,
+  AdvisorActionResult,
   AnalysePropertyBody,
   BurndownPoint,
   CalculateFinancialsBody,
   CashflowMonth,
   ClinicProperty,
+  ConfirmUploadBody,
   CostItem,
   CostOptimisationRule,
   CreateCostItemBody,
@@ -37,7 +40,10 @@ import type {
   FinancialCalculation,
   FinancialModel,
   GetProjectCashflowParams,
+  GetPropertyRankingParams,
   HealthStatus,
+  ImportPropertyFromUrlBody,
+  ImportUrlResult,
   LaunchPhase,
   LaunchTask,
   ListDecisionsParams,
@@ -45,8 +51,10 @@ import type {
   OptimisationAnalysis,
   PhaseWithTasks,
   Project,
+  PropertyAiAnalysis,
   PropertyExtraction,
   PropertyIntelligenceResult,
+  PropertyRankingResult,
   RiskFlag,
   ScenarioConfig,
   UpdateCostItemBody,
@@ -4078,7 +4086,7 @@ export function useGetOptimisationAnalysis<
 }
 
 /**
- * @summary Run full AI property intelligence analysis
+ * @summary Run full AI property intelligence analysis (persisted)
  */
 export const getAnalysePropertyUrl = (id: number) => {
   return `/api/properties/${id}/analyse`;
@@ -4142,7 +4150,7 @@ export type AnalysePropertyMutationBody = BodyType<AnalysePropertyBody>;
 export type AnalysePropertyMutationError = ErrorType<unknown>;
 
 /**
- * @summary Run full AI property intelligence analysis
+ * @summary Run full AI property intelligence analysis (persisted)
  */
 export const useAnalyseProperty = <
   TError = ErrorType<unknown>,
@@ -4163,6 +4171,649 @@ export const useAnalyseProperty = <
 > => {
   return useMutation(getAnalysePropertyMutationOptions(options));
 };
+
+/**
+ * @summary List all saved AI analyses for a property (newest first)
+ */
+export const getListPropertyAnalysesUrl = (id: number) => {
+  return `/api/properties/${id}/analyses`;
+};
+
+export const listPropertyAnalyses = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PropertyAiAnalysis[]> => {
+  return customFetch<PropertyAiAnalysis[]>(getListPropertyAnalysesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPropertyAnalysesQueryKey = (id: number) => {
+  return [`/api/properties/${id}/analyses`] as const;
+};
+
+export const getListPropertyAnalysesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPropertyAnalyses>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPropertyAnalyses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPropertyAnalysesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPropertyAnalyses>>
+  > = ({ signal }) => listPropertyAnalyses(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPropertyAnalyses>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPropertyAnalysesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPropertyAnalyses>>
+>;
+export type ListPropertyAnalysesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all saved AI analyses for a property (newest first)
+ */
+
+export function useListPropertyAnalyses<
+  TData = Awaited<ReturnType<typeof listPropertyAnalyses>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPropertyAnalyses>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPropertyAnalysesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get the most recent AI analysis for a property
+ */
+export const getGetLatestPropertyAnalysisUrl = (id: number) => {
+  return `/api/properties/${id}/analyses/latest`;
+};
+
+export const getLatestPropertyAnalysis = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PropertyAiAnalysis> => {
+  return customFetch<PropertyAiAnalysis>(getGetLatestPropertyAnalysisUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLatestPropertyAnalysisQueryKey = (id: number) => {
+  return [`/api/properties/${id}/analyses/latest`] as const;
+};
+
+export const getGetLatestPropertyAnalysisQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLatestPropertyAnalysis>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestPropertyAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetLatestPropertyAnalysisQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getLatestPropertyAnalysis>>
+  > = ({ signal }) =>
+    getLatestPropertyAnalysis(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLatestPropertyAnalysis>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLatestPropertyAnalysisQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLatestPropertyAnalysis>>
+>;
+export type GetLatestPropertyAnalysisQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the most recent AI analysis for a property
+ */
+
+export function useGetLatestPropertyAnalysis<
+  TData = Awaited<ReturnType<typeof getLatestPropertyAnalysis>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getLatestPropertyAnalysis>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLatestPropertyAnalysisQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set a property as the active project property, sync financials, and create decision log entry
+ */
+export const getSetPropertyActiveUrl = (id: number) => {
+  return `/api/properties/${id}/set-active`;
+};
+
+export const setPropertyActive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ClinicProperty> => {
+  return customFetch<ClinicProperty>(getSetPropertyActiveUrl(id), {
+    ...options,
+    method: "PUT",
+  });
+};
+
+export const getSetPropertyActiveMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPropertyActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setPropertyActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["setPropertyActive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setPropertyActive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return setPropertyActive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetPropertyActiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPropertyActive>>
+>;
+
+export type SetPropertyActiveMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Set a property as the active project property, sync financials, and create decision log entry
+ */
+export const useSetPropertyActive = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPropertyActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setPropertyActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getSetPropertyActiveMutationOptions(options));
+};
+
+/**
+ * @summary Save reviewed extracted property data and store document reference
+ */
+export const getConfirmPropertyUploadUrl = (id: number) => {
+  return `/api/properties/${id}/confirm-upload`;
+};
+
+export const confirmPropertyUpload = async (
+  id: number,
+  confirmUploadBody: ConfirmUploadBody,
+  options?: RequestInit,
+): Promise<ClinicProperty> => {
+  return customFetch<ClinicProperty>(getConfirmPropertyUploadUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(confirmUploadBody),
+  });
+};
+
+export const getConfirmPropertyUploadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPropertyUpload>>,
+    TError,
+    { id: number; data: BodyType<ConfirmUploadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmPropertyUpload>>,
+  TError,
+  { id: number; data: BodyType<ConfirmUploadBody> },
+  TContext
+> => {
+  const mutationKey = ["confirmPropertyUpload"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmPropertyUpload>>,
+    { id: number; data: BodyType<ConfirmUploadBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return confirmPropertyUpload(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmPropertyUploadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmPropertyUpload>>
+>;
+export type ConfirmPropertyUploadMutationBody = BodyType<ConfirmUploadBody>;
+export type ConfirmPropertyUploadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save reviewed extracted property data and store document reference
+ */
+export const useConfirmPropertyUpload = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPropertyUpload>>,
+    TError,
+    { id: number; data: BodyType<ConfirmUploadBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof confirmPropertyUpload>>,
+  TError,
+  { id: number; data: BodyType<ConfirmUploadBody> },
+  TContext
+> => {
+  return useMutation(getConfirmPropertyUploadMutationOptions(options));
+};
+
+/**
+ * @summary Run an AI advisor action for a property
+ */
+export const getPropertyAdvisorActionUrl = (id: number) => {
+  return `/api/properties/${id}/advisor-action`;
+};
+
+export const propertyAdvisorAction = async (
+  id: number,
+  advisorActionBody: AdvisorActionBody,
+  options?: RequestInit,
+): Promise<AdvisorActionResult> => {
+  return customFetch<AdvisorActionResult>(getPropertyAdvisorActionUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(advisorActionBody),
+  });
+};
+
+export const getPropertyAdvisorActionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof propertyAdvisorAction>>,
+    TError,
+    { id: number; data: BodyType<AdvisorActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof propertyAdvisorAction>>,
+  TError,
+  { id: number; data: BodyType<AdvisorActionBody> },
+  TContext
+> => {
+  const mutationKey = ["propertyAdvisorAction"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof propertyAdvisorAction>>,
+    { id: number; data: BodyType<AdvisorActionBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return propertyAdvisorAction(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PropertyAdvisorActionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof propertyAdvisorAction>>
+>;
+export type PropertyAdvisorActionMutationBody = BodyType<AdvisorActionBody>;
+export type PropertyAdvisorActionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Run an AI advisor action for a property
+ */
+export const usePropertyAdvisorAction = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof propertyAdvisorAction>>,
+    TError,
+    { id: number; data: BodyType<AdvisorActionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof propertyAdvisorAction>>,
+  TError,
+  { id: number; data: BodyType<AdvisorActionBody> },
+  TContext
+> => {
+  return useMutation(getPropertyAdvisorActionMutationOptions(options));
+};
+
+/**
+ * @summary Extract property data from a commercial listing URL for review
+ */
+export const getImportPropertyFromUrlUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/properties/import-url`;
+};
+
+export const importPropertyFromUrl = async (
+  projectId: number,
+  importPropertyFromUrlBody: ImportPropertyFromUrlBody,
+  options?: RequestInit,
+): Promise<ImportUrlResult> => {
+  return customFetch<ImportUrlResult>(getImportPropertyFromUrlUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importPropertyFromUrlBody),
+  });
+};
+
+export const getImportPropertyFromUrlMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPropertyFromUrl>>,
+    TError,
+    { projectId: number; data: BodyType<ImportPropertyFromUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importPropertyFromUrl>>,
+  TError,
+  { projectId: number; data: BodyType<ImportPropertyFromUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["importPropertyFromUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importPropertyFromUrl>>,
+    { projectId: number; data: BodyType<ImportPropertyFromUrlBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return importPropertyFromUrl(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportPropertyFromUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importPropertyFromUrl>>
+>;
+export type ImportPropertyFromUrlMutationBody =
+  BodyType<ImportPropertyFromUrlBody>;
+export type ImportPropertyFromUrlMutationError = ErrorType<void>;
+
+/**
+ * @summary Extract property data from a commercial listing URL for review
+ */
+export const useImportPropertyFromUrl = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importPropertyFromUrl>>,
+    TError,
+    { projectId: number; data: BodyType<ImportPropertyFromUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importPropertyFromUrl>>,
+  TError,
+  { projectId: number; data: BodyType<ImportPropertyFromUrlBody> },
+  TContext
+> => {
+  return useMutation(getImportPropertyFromUrlMutationOptions(options));
+};
+
+/**
+ * @summary Get AI-scored property rankings for all non-rejected properties
+ */
+export const getGetPropertyRankingUrl = (
+  projectId: number,
+  params?: GetPropertyRankingParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/projects/${projectId}/properties/ranking?${stringifiedParams}`
+    : `/api/projects/${projectId}/properties/ranking`;
+};
+
+export const getPropertyRanking = async (
+  projectId: number,
+  params?: GetPropertyRankingParams,
+  options?: RequestInit,
+): Promise<PropertyRankingResult> => {
+  return customFetch<PropertyRankingResult>(
+    getGetPropertyRankingUrl(projectId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPropertyRankingQueryKey = (
+  projectId: number,
+  params?: GetPropertyRankingParams,
+) => {
+  return [
+    `/api/projects/${projectId}/properties/ranking`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetPropertyRankingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPropertyRanking>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  params?: GetPropertyRankingParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPropertyRanking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPropertyRankingQueryKey(projectId, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPropertyRanking>>
+  > = ({ signal }) =>
+    getPropertyRanking(projectId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPropertyRanking>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPropertyRankingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPropertyRanking>>
+>;
+export type GetPropertyRankingQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get AI-scored property rankings for all non-rejected properties
+ */
+
+export function useGetPropertyRanking<
+  TData = Awaited<ReturnType<typeof getPropertyRanking>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  params?: GetPropertyRankingParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPropertyRanking>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPropertyRankingQueryOptions(
+    projectId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get all phases with their tasks for a project

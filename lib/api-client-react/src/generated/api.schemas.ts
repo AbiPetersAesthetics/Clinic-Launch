@@ -78,10 +78,45 @@ export const ClinicPropertyStatus = {
   active: "active",
 } as const;
 
+export type ClinicPropertyPipelineStatus =
+  (typeof ClinicPropertyPipelineStatus)[keyof typeof ClinicPropertyPipelineStatus];
+
+export const ClinicPropertyPipelineStatus = {
+  found: "found",
+  interesting: "interesting",
+  brochure_requested: "brochure_requested",
+  viewing_booked: "viewing_booked",
+  viewed: "viewed",
+  under_review: "under_review",
+  due_diligence: "due_diligence",
+  heads_of_terms: "heads_of_terms",
+  negotiating: "negotiating",
+  rejected: "rejected",
+  selected: "selected",
+} as const;
+
 export interface ManualCompetitor {
   name: string;
   type: string;
   notes?: string | null;
+}
+
+export type MediaFileType = (typeof MediaFileType)[keyof typeof MediaFileType];
+
+export const MediaFileType = {
+  pdf: "pdf",
+  image: "image",
+  document: "document",
+  floorplan: "floorplan",
+} as const;
+
+export interface MediaFile {
+  id: string;
+  name: string;
+  type: MediaFileType;
+  url: string;
+  uploadedAt: string;
+  sizeBytes?: number | null;
 }
 
 export interface ClinicProperty {
@@ -104,8 +139,16 @@ export interface ClinicProperty {
   agentPhone?: string | null;
   agentEmail?: string | null;
   status: ClinicPropertyStatus;
+  pipelineStatus: ClinicPropertyPipelineStatus;
+  viewingNotes?: string | null;
+  negotiationNotes?: string | null;
+  landlordConcessions?: string | null;
+  isActiveForProject: boolean;
+  isFavourited: boolean;
+  manualRankOverride?: number | null;
   notes?: string | null;
   manualCompetitors?: ManualCompetitor[] | null;
+  mediaFiles?: MediaFile[] | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -120,6 +163,23 @@ export const CreatePropertyBodyStatus = {
   under_offer: "under_offer",
   rejected: "rejected",
   active: "active",
+} as const;
+
+export type CreatePropertyBodyPipelineStatus =
+  (typeof CreatePropertyBodyPipelineStatus)[keyof typeof CreatePropertyBodyPipelineStatus];
+
+export const CreatePropertyBodyPipelineStatus = {
+  found: "found",
+  interesting: "interesting",
+  brochure_requested: "brochure_requested",
+  viewing_booked: "viewing_booked",
+  viewed: "viewed",
+  under_review: "under_review",
+  due_diligence: "due_diligence",
+  heads_of_terms: "heads_of_terms",
+  negotiating: "negotiating",
+  rejected: "rejected",
+  selected: "selected",
 } as const;
 
 export interface CreatePropertyBody {
@@ -140,6 +200,13 @@ export interface CreatePropertyBody {
   agentPhone?: string | null;
   agentEmail?: string | null;
   status?: CreatePropertyBodyStatus;
+  pipelineStatus?: CreatePropertyBodyPipelineStatus;
+  viewingNotes?: string | null;
+  negotiationNotes?: string | null;
+  landlordConcessions?: string | null;
+  isActiveForProject?: boolean;
+  isFavourited?: boolean;
+  manualRankOverride?: number | null;
   notes?: string | null;
 }
 
@@ -153,6 +220,23 @@ export const UpdatePropertyBodyStatus = {
   under_offer: "under_offer",
   rejected: "rejected",
   active: "active",
+} as const;
+
+export type UpdatePropertyBodyPipelineStatus =
+  (typeof UpdatePropertyBodyPipelineStatus)[keyof typeof UpdatePropertyBodyPipelineStatus];
+
+export const UpdatePropertyBodyPipelineStatus = {
+  found: "found",
+  interesting: "interesting",
+  brochure_requested: "brochure_requested",
+  viewing_booked: "viewing_booked",
+  viewed: "viewed",
+  under_review: "under_review",
+  due_diligence: "due_diligence",
+  heads_of_terms: "heads_of_terms",
+  negotiating: "negotiating",
+  rejected: "rejected",
+  selected: "selected",
 } as const;
 
 export interface UpdatePropertyBody {
@@ -173,6 +257,13 @@ export interface UpdatePropertyBody {
   agentPhone?: string | null;
   agentEmail?: string | null;
   status?: UpdatePropertyBodyStatus;
+  pipelineStatus?: UpdatePropertyBodyPipelineStatus;
+  viewingNotes?: string | null;
+  negotiationNotes?: string | null;
+  landlordConcessions?: string | null;
+  isActiveForProject?: boolean;
+  isFavourited?: boolean;
+  manualRankOverride?: number | null;
   notes?: string | null;
 }
 
@@ -674,6 +765,8 @@ export interface PropertyExtraction {
   agentEmail?: string | null;
   rawText?: string | null;
   flags: string[];
+  fileName?: string | null;
+  fileSizeBytes?: number | null;
 }
 
 export interface ScoreFactor {
@@ -738,6 +831,9 @@ export interface PropertyIntelligenceResult {
   competition: CompetitionAnalysis;
   executiveSummary: AIExecutiveSummary;
   generatedAt: string;
+  analysisId?: number | null;
+  version?: number | null;
+  isStale?: boolean | null;
 }
 
 export type DecisionCategory =
@@ -935,6 +1031,123 @@ export interface UpdateCostOptimisationRuleBody {
   isActive?: boolean;
 }
 
+export type PropertyAiAnalysisAnalysisJson = { [key: string]: unknown };
+
+export type PropertyAiAnalysisConfidenceLevel =
+  (typeof PropertyAiAnalysisConfidenceLevel)[keyof typeof PropertyAiAnalysisConfidenceLevel];
+
+export const PropertyAiAnalysisConfidenceLevel = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type PropertyAiAnalysisSourceDataSnapshot = {
+  [key: string]: unknown;
+} | null;
+
+export interface PropertyAiAnalysis {
+  id: number;
+  propertyId: number;
+  version: number;
+  analysisJson: PropertyAiAnalysisAnalysisJson;
+  confidenceLevel: PropertyAiAnalysisConfidenceLevel;
+  sourceDataSnapshot?: PropertyAiAnalysisSourceDataSnapshot;
+  createdAt: string;
+}
+
+export type PropertyRankingItemScoreBreakdown = { [key: string]: unknown };
+
+export interface PropertyRankingItem {
+  rank: number;
+  propertyId: number;
+  address?: string | null;
+  postcode?: string | null;
+  pipelineStatus: string;
+  isActiveForProject: boolean;
+  isFavourited: boolean;
+  manualRankOverride?: number | null;
+  hasAnalysis: boolean;
+  score: number;
+  scoreBreakdown: PropertyRankingItemScoreBreakdown;
+  rationale: string;
+}
+
+export type PropertyRankingResultMode =
+  (typeof PropertyRankingResultMode)[keyof typeof PropertyRankingResultMode];
+
+export const PropertyRankingResultMode = {
+  overall: "overall",
+  safest: "safest",
+  "highest-revenue": "highest-revenue",
+  "premium-brand": "premium-brand",
+  "lowest-risk": "lowest-risk",
+  "fastest-launch": "fastest-launch",
+} as const;
+
+export interface PropertyRankingResult {
+  mode: PropertyRankingResultMode;
+  rankings: PropertyRankingItem[];
+}
+
+export type AdvisorActionBodyAction =
+  (typeof AdvisorActionBodyAction)[keyof typeof AdvisorActionBodyAction];
+
+export const AdvisorActionBodyAction = {
+  "suggest-offer": "suggest-offer",
+  "identify-risks": "identify-risks",
+  "recommend-layout": "recommend-layout",
+  "estimate-fitout": "estimate-fitout",
+  "estimate-revenue": "estimate-revenue",
+  "suggest-clinic-model": "suggest-clinic-model",
+  "suggest-negotiation": "suggest-negotiation",
+  "suggest-launch": "suggest-launch",
+} as const;
+
+export interface AdvisorActionBody {
+  action: AdvisorActionBodyAction;
+  prompt?: string | null;
+}
+
+export interface AdvisorActionResult {
+  action: string;
+  propertyId: number;
+  response: string;
+  generatedAt: string;
+}
+
+export type ConfirmUploadBodyFields = { [key: string]: unknown };
+
+export interface ConfirmUploadBody {
+  fields: ConfirmUploadBodyFields;
+  fileName?: string | null;
+  fileSizeBytes?: number | null;
+}
+
+export interface ImportUrlResult {
+  address?: string | null;
+  postcode?: string | null;
+  sqFootage?: number | null;
+  annualRentGbp?: number | null;
+  monthlyRentGbp?: number | null;
+  vatOnRent?: boolean | null;
+  businessRatesGbp?: number | null;
+  serviceChargeGbp?: number | null;
+  leaseLength?: string | null;
+  useClass?: string | null;
+  availabilityDate?: string | null;
+  parkingSpaces?: number | null;
+  frontageMeters?: number | null;
+  agentName?: string | null;
+  agentPhone?: string | null;
+  agentEmail?: string | null;
+  notes?: string | null;
+  flags: string[];
+  sourceUrl: string;
+  projectId: number;
+  extractable?: boolean | null;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
 };
@@ -952,6 +1165,26 @@ export type AnalysePropertyBody = {
    */
   searchRadiusMeters?: number;
 };
+
+export type ImportPropertyFromUrlBody = {
+  url: string;
+};
+
+export type GetPropertyRankingParams = {
+  mode?: GetPropertyRankingMode;
+};
+
+export type GetPropertyRankingMode =
+  (typeof GetPropertyRankingMode)[keyof typeof GetPropertyRankingMode];
+
+export const GetPropertyRankingMode = {
+  overall: "overall",
+  safest: "safest",
+  "highest-revenue": "highest-revenue",
+  "premium-brand": "premium-brand",
+  "lowest-risk": "lowest-risk",
+  "fastest-launch": "fastest-launch",
+} as const;
 
 export type GetProjectCashflowParams = {
   scenario?: GetProjectCashflowScenario;

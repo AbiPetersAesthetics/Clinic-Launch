@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProperties,
@@ -9,17 +9,26 @@ import {
   useUploadPropertyDocument,
   useAnalyseProperty,
   useSetPropertyCompetitors,
+  useSetPropertyActive,
+  useGetPropertyRanking,
+  useListPropertyAnalyses,
+  usePropertyAdvisorAction,
+  useImportPropertyFromUrl,
+  useConfirmPropertyUpload,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
-  UpdatePropertyBodyStatus,
   PropertyIntelligenceResult,
   PropertyExtraction,
   ManualCompetitor,
+  PropertyAiAnalysis,
+  PropertyRankingItem,
+  AdvisorActionBodyAction,
+  CreatePropertyBodyPipelineStatus,
 } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -46,10 +55,19 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   MapPin,
   Maximize2,
@@ -73,29 +91,62 @@ import {
   FileText,
   Loader2,
   Sparkles,
+  Link2,
+  Trophy,
+  Heart,
+  Target,
+  BarChart3,
+  History,
+  Lightbulb,
+  ArrowUpDown,
+  Plus,
+  ExternalLink,
+  RefreshCw,
+  Gavel,
+  LayoutGrid,
+  ListFilter,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 
 const PROJECT_ID = 1;
 
-const STATUS_COLORS: Record<string, string> = {
-  viewing: "bg-muted text-muted-foreground",
-  shortlisted: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
-  offer_made: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300",
-  under_offer: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
-  rejected: "bg-muted text-muted-foreground line-through opacity-70",
-  active: "bg-primary/20 text-primary",
-};
+const PIPELINE_STAGES = [
+  { key: "found", label: "Found", color: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+  { key: "interesting", label: "Interesting", color: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
+  { key: "brochure_requested", label: "Brochure", color: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300" },
+  { key: "viewing_booked", label: "Viewing Booked", color: "bg-violet-100 text-violet-700 dark:bg-violet-900 dark:text-violet-300" },
+  { key: "viewed", label: "Viewed", color: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300" },
+  { key: "under_review", label: "Under Review", color: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
+  { key: "due_diligence", label: "Due Diligence", color: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" },
+  { key: "heads_of_terms", label: "Heads of Terms", color: "bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300" },
+  { key: "negotiating", label: "Negotiating", color: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300" },
+  { key: "selected", label: "Selected", color: "bg-primary/15 text-primary" },
+  { key: "rejected", label: "Rejected", color: "bg-muted text-muted-foreground opacity-60" },
+] as const;
+
+const RANKING_MODES = [
+  { key: "overall", label: "Overall", icon: <BarChart3 className="w-3.5 h-3.5" /> },
+  { key: "safest", label: "Safest", icon: <CheckCircle className="w-3.5 h-3.5" /> },
+  { key: "highest-revenue", label: "Highest Revenue", icon: <TrendingUp className="w-3.5 h-3.5" /> },
+  { key: "premium-brand", label: "Premium Brand", icon: <Star className="w-3.5 h-3.5" /> },
+  { key: "lowest-risk", label: "Lowest Risk", icon: <Target className="w-3.5 h-3.5" /> },
+  { key: "fastest-launch", label: "Fastest Launch", icon: <Sparkles className="w-3.5 h-3.5" /> },
+] as const;
+
+const ADVISOR_ACTIONS = [
+  { key: "suggest-offer", label: "Suggest Offer", icon: <Gavel className="w-4 h-4" />, description: "Get a recommended opening offer and negotiation strategy" },
+  { key: "identify-risks", label: "Identify Risks", icon: <AlertTriangle className="w-4 h-4" />, description: "Uncover hidden risks, lease traps, and red flags" },
+  { key: "recommend-layout", label: "Layout Plan", icon: <LayoutGrid className="w-4 h-4" />, description: "Optimal treatment room layout and flow recommendations" },
+  { key: "estimate-fitout", label: "Estimate Fit-Out", icon: <Building className="w-4 h-4" />, description: "Fit-out complexity, cost range, and timeline estimate" },
+  { key: "estimate-revenue", label: "Revenue Estimate", icon: <PoundSterling className="w-4 h-4" />, description: "First-year revenue potential and ramp-up timeline" },
+  { key: "suggest-clinic-model", label: "Clinic Model", icon: <Lightbulb className="w-4 h-4" />, description: "Optimal service mix, pricing, and positioning" },
+  { key: "suggest-negotiation", label: "Negotiation Guide", icon: <ArrowUpDown className="w-4 h-4" />, description: "Detailed lease negotiation strategy and leverage points" },
+  { key: "suggest-launch", label: "Launch Strategy", icon: <Sparkles className="w-4 h-4" />, description: "90-day pre-opening and launch strategy" },
+] as const;
+
+function pipelineStageInfo(key: string) {
+  return PIPELINE_STAGES.find(s => s.key === key) ?? PIPELINE_STAGES[0];
+}
 
 function gradeColor(grade: string) {
   if (grade === "A") return "text-green-600 dark:text-green-400";
@@ -111,15 +162,22 @@ function scoreBarColor(pct: number) {
   return "bg-destructive";
 }
 
-function ScoreCard({ score, title, icon }: { score: { total: number; maxTotal: number; grade: string; summary: string; factors: { name: string; score: number; maxScore: number; weight: number; explanation: string }[] }; title: string; icon: React.ReactNode }) {
+// ─── Score Card Component ─────────────────────────────────────────────────────
+
+type ScoreData = {
+  total: number;
+  maxTotal: number;
+  grade: string;
+  summary: string;
+  factors: { name: string; score: number; maxScore: number; weight: number; explanation: string }[];
+};
+
+function ScoreCard({ score, title, icon }: { score: ScoreData; title: string; icon: React.ReactNode }) {
   const pct = Math.round((score.total / score.maxTotal) * 100);
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {icon}
-          <h4 className="font-semibold">{title}</h4>
-        </div>
+        <div className="flex items-center gap-2">{icon}<h4 className="font-semibold">{title}</h4></div>
         <div className="flex items-center gap-3">
           <span className="text-2xl font-bold">{score.total}<span className="text-sm font-normal text-muted-foreground">/{score.maxTotal}</span></span>
           <span className={`text-2xl font-bold ${gradeColor(score.grade)}`}>{score.grade}</span>
@@ -150,19 +208,17 @@ function ScoreCard({ score, title, icon }: { score: { total: number; maxTotal: n
   );
 }
 
-function ManualCompetitorForm({
-  propertyId,
-  initialCompetitors,
-  onSaved,
-}: {
-  propertyId: number;
-  initialCompetitors: ManualCompetitor[];
-  onSaved: (updated: ManualCompetitor[]) => void;
+// ─── Intelligence Panel ───────────────────────────────────────────────────────
+
+function IntelligencePanel({ result, property, onCompetitorsSaved }: {
+  result: PropertyIntelligenceResult;
+  property: ClinicProperty;
+  onCompetitorsSaved: (updated: ManualCompetitor[]) => void;
 }) {
-  const [competitors, setCompetitors] = useState<ManualCompetitor[]>(initialCompetitors);
   const [name, setName] = useState("");
   const [type, setType] = useState("aesthetics clinic");
   const [notes, setNotes] = useState("");
+  const [competitors, setCompetitors] = useState<ManualCompetitor[]>((property.manualCompetitors as ManualCompetitor[] | null) ?? []);
   const setPropertyCompetitors = useSetPropertyCompetitors();
 
   const handleAdd = () => {
@@ -170,83 +226,34 @@ function ManualCompetitorForm({
     const updated = [...competitors, { name: name.trim(), type, notes: notes.trim() || null }];
     setCompetitors(updated);
     setName(""); setType("aesthetics clinic"); setNotes("");
-    setPropertyCompetitors.mutate({ id: propertyId, data: updated }, { onSuccess: onSaved });
+    setPropertyCompetitors.mutate({ id: property.id, data: updated }, { onSuccess: () => onCompetitorsSaved(updated) });
   };
 
   const handleRemove = (idx: number) => {
     const updated = competitors.filter((_, i) => i !== idx);
     setCompetitors(updated);
-    setPropertyCompetitors.mutate({ id: propertyId, data: updated }, { onSuccess: onSaved });
+    setPropertyCompetitors.mutate({ id: property.id, data: updated }, { onSuccess: () => onCompetitorsSaved(updated) });
   };
-
-  return (
-    <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
-      <h5 className="text-sm font-semibold flex items-center gap-2">
-        <Building className="w-4 h-4 text-primary" />
-        Add Known Competitors
-      </h5>
-      <p className="text-xs text-muted-foreground">Manually enter nearby competitors. They'll be used to score competition when AI Analysis is re-run.</p>
-
-      {competitors.length > 0 && (
-        <ul className="space-y-1.5">
-          {competitors.map((c, i) => (
-            <li key={i} className="flex items-center justify-between gap-2 text-sm p-2 rounded bg-card border">
-              <span className="flex-1 min-w-0 truncate font-medium">{c.name}<span className="text-muted-foreground font-normal ml-2 text-xs capitalize">{c.type}</span></span>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0" onClick={() => handleRemove(i)}>
-                <XCircle className="w-3.5 h-3.5" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="grid grid-cols-2 gap-2">
-        <Input value={name} onChange={e => setName(e.target.value)} placeholder="Competitor name" className="text-xs h-8" onKeyDown={e => e.key === "Enter" && handleAdd()} />
-        <select value={type} onChange={e => setType(e.target.value)} className="text-xs h-8 rounded-md border bg-background px-2">
-          <option value="aesthetics clinic">Aesthetics clinic</option>
-          <option value="beauty salon">Beauty salon</option>
-          <option value="medispa">Medispa</option>
-          <option value="skin clinic">Skin clinic</option>
-          <option value="cosmetic clinic">Cosmetic clinic</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div className="flex gap-2">
-        <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Optional notes" className="text-xs h-8 flex-1" />
-        <Button size="sm" onClick={handleAdd} disabled={!name.trim() || setPropertyCompetitors.isPending} className="h-8 shrink-0">Add</Button>
-      </div>
-    </div>
-  );
-}
-
-function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: PropertyIntelligenceResult; property: ClinicProperty; onCompetitorsSaved: (updated: ManualCompetitor[]) => void }) {
-  const overallScore = Math.round(
-    (result.locationScore.total + result.commercialViabilityScore.total + result.clinicSuitabilityScore.total) / 3
-  );
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-lg border bg-card p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Location</p>
-          <p className="text-3xl font-bold">{result.locationScore.total}</p>
-          <p className={`text-lg font-bold ${gradeColor(result.locationScore.grade)}`}>{result.locationScore.grade}</p>
-        </div>
-        <div className="rounded-lg border bg-card p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Viability</p>
-          <p className="text-3xl font-bold">{result.commercialViabilityScore.total}</p>
-          <p className={`text-lg font-bold ${gradeColor(result.commercialViabilityScore.grade)}`}>{result.commercialViabilityScore.grade}</p>
-        </div>
-        <div className="rounded-lg border bg-card p-4 text-center">
-          <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Clinic Fit</p>
-          <p className="text-3xl font-bold">{result.clinicSuitabilityScore.total}</p>
-          <p className={`text-lg font-bold ${gradeColor(result.clinicSuitabilityScore.grade)}`}>{result.clinicSuitabilityScore.grade}</p>
-        </div>
+        {[
+          { label: "Location", score: result.locationScore },
+          { label: "Viability", score: result.commercialViabilityScore },
+          { label: "Clinic Fit", score: result.clinicSuitabilityScore },
+        ].map(({ label, score }) => (
+          <div key={label} className="rounded-lg border bg-card p-4 text-center">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</p>
+            <p className="text-3xl font-bold">{score.total}</p>
+            <p className={`text-lg font-bold ${gradeColor(score.grade)}`}>{score.grade}</p>
+          </div>
+        ))}
       </div>
 
       <Tabs defaultValue="summary">
         <TabsList className="w-full">
-          <TabsTrigger value="summary" className="flex-1 text-xs">Executive Summary</TabsTrigger>
+          <TabsTrigger value="summary" className="flex-1 text-xs">Summary</TabsTrigger>
           <TabsTrigger value="location" className="flex-1 text-xs">Location</TabsTrigger>
           <TabsTrigger value="viability" className="flex-1 text-xs">Viability</TabsTrigger>
           <TabsTrigger value="clinic" className="flex-1 text-xs">Clinic Fit</TabsTrigger>
@@ -257,144 +264,67 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: P
           <div className="rounded-lg border bg-primary/5 border-primary/20 p-4">
             <p className="text-sm leading-relaxed">{result.executiveSummary.overallVerdict}</p>
           </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4 text-primary" />
-                <h5 className="text-sm font-semibold text-primary">Strengths</h5>
-              </div>
+          {[
+            { label: "Strengths", icon: <CheckCircle className="w-4 h-4 text-primary" />, cls: "text-primary", items: result.executiveSummary.strengths },
+            { label: "Weaknesses", icon: <XCircle className="w-4 h-4 text-destructive" />, cls: "text-destructive", items: result.executiveSummary.weaknesses },
+            { label: "Risks", icon: <AlertTriangle className="w-4 h-4 text-amber-500" />, cls: "text-amber-600 dark:text-amber-400", items: result.executiveSummary.risks },
+            { label: "Hidden Opportunities", icon: <TrendingUp className="w-4 h-4 text-blue-500" />, cls: "text-blue-600 dark:text-blue-400", items: result.executiveSummary.hiddenOpportunities },
+          ].map(({ label, icon, cls, items }, si) => (
+            <div key={label}>
+              {si > 0 && <Separator className="mb-4" />}
+              <div className="flex items-center gap-2 mb-2">{icon}<h5 className={`text-sm font-semibold ${cls}`}>{label}</h5></div>
               <ul className="space-y-1">
-                {result.executiveSummary.strengths.map((s, i) => (
+                {items.map((item, i) => (
                   <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0 text-primary" />
-                    {s}
+                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0" />{item}
                   </li>
                 ))}
               </ul>
             </div>
-
-            <Separator />
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <XCircle className="w-4 h-4 text-destructive" />
-                <h5 className="text-sm font-semibold text-destructive">Weaknesses</h5>
-              </div>
-              <ul className="space-y-1">
-                {result.executiveSummary.weaknesses.map((w, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />
-                    {w}
-                  </li>
-                ))}
-              </ul>
+          ))}
+          <Separator />
+          <div className="grid grid-cols-1 gap-3">
+            <div className="rounded-lg bg-muted/50 p-3 border">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Revenue Ceiling</p>
+              <p className="font-semibold text-sm">{result.executiveSummary.likelyRevenueCeiling}</p>
             </div>
-
-            <Separator />
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                <h5 className="text-sm font-semibold text-amber-600 dark:text-amber-400">Risks</h5>
-              </div>
-              <ul className="space-y-1">
-                {result.executiveSummary.risks.map((r, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0 text-amber-500" />
-                    {r}
-                  </li>
-                ))}
-              </ul>
+            <div className="rounded-lg bg-muted/50 p-3 border">
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Suggested Positioning</p>
+              <p className="font-semibold text-sm">{result.executiveSummary.suggestedPositioning}</p>
             </div>
-
-            <Separator />
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-blue-500" />
-                <h5 className="text-sm font-semibold text-blue-600 dark:text-blue-400">Hidden Opportunities</h5>
-              </div>
-              <ul className="space-y-1">
-                {result.executiveSummary.hiddenOpportunities.map((o, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <ChevronRight className="w-3 h-3 mt-0.5 shrink-0 text-blue-500" />
-                    {o}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Separator />
-
-            <div className="grid grid-cols-1 gap-3">
-              <div className="rounded-lg bg-muted/50 p-3 border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Likely Revenue Ceiling</p>
-                <p className="font-semibold text-sm">{result.executiveSummary.likelyRevenueCeiling}</p>
-              </div>
-              <div className="rounded-lg bg-muted/50 p-3 border">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Suggested Positioning</p>
-                <p className="font-semibold text-sm">{result.executiveSummary.suggestedPositioning}</p>
-              </div>
-            </div>
-
-            <div>
-              <h5 className="text-sm font-semibold mb-2">Launch Recommendations</h5>
-              <ol className="space-y-1.5">
-                {result.executiveSummary.launchRecommendations.map((r, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
-                    {r}
-                  </li>
-                ))}
-              </ol>
-            </div>
+          </div>
+          <div>
+            <h5 className="text-sm font-semibold mb-2">Launch Recommendations</h5>
+            <ol className="space-y-1.5">
+              {result.executiveSummary.launchRecommendations.map((r, i) => (
+                <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
+                  <span className="shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs flex items-center justify-center font-bold mt-0.5">{i + 1}</span>
+                  {r}
+                </li>
+              ))}
+            </ol>
           </div>
         </TabsContent>
 
         <TabsContent value="location" className="mt-4">
-          <ScoreCard
-            score={result.locationScore}
-            title="Location Score"
-            icon={<MapPin className="w-4 h-4 text-primary" />}
-          />
+          <ScoreCard score={result.locationScore} title="Location Score" icon={<MapPin className="w-4 h-4 text-primary" />} />
         </TabsContent>
-
         <TabsContent value="viability" className="mt-4">
-          <ScoreCard
-            score={result.commercialViabilityScore}
-            title="Commercial Viability"
-            icon={<PoundSterling className="w-4 h-4 text-primary" />}
-          />
+          <ScoreCard score={result.commercialViabilityScore} title="Commercial Viability" icon={<PoundSterling className="w-4 h-4 text-primary" />} />
         </TabsContent>
-
         <TabsContent value="clinic" className="mt-4">
-          <ScoreCard
-            score={result.clinicSuitabilityScore}
-            title="Clinic Suitability"
-            icon={<Building className="w-4 h-4 text-primary" />}
-          />
+          <ScoreCard score={result.clinicSuitabilityScore} title="Clinic Suitability" icon={<Building className="w-4 h-4 text-primary" />} />
         </TabsContent>
 
         <TabsContent value="competition" className="mt-4 space-y-4">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold">Competition Analysis</h4>
-            <Badge variant="outline" className={`text-xs gap-1.5 ${
-              result.competition.dataSource === "google_places"
-                ? "border-primary/40 text-primary"
-                : result.competition.dataSource === "manual"
-                  ? "border-amber-500/40 text-amber-600"
-                  : "border-muted-foreground/40 text-muted-foreground"
-            }`}>
-              {result.competition.dataSource === "google_places"
-                ? <><MapPin className="w-3 h-3" /> Live Google Places data</>
-                : result.competition.dataSource === "manual"
-                  ? <><Building className="w-3 h-3" /> Manual competitor data</>
-                  : <><Brain className="w-3 h-3" /> AI estimate</>
-              }
+            <Badge variant="outline" className="text-xs gap-1.5">
+              {result.competition.dataSource === "google_places" ? <><MapPin className="w-3 h-3" /> Live Google Places</> :
+               result.competition.dataSource === "manual" ? <><Building className="w-3 h-3" /> Manual data</> :
+               <><Brain className="w-3 h-3" /> AI estimate</>}
             </Badge>
           </div>
-
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-lg border p-4 text-center">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Saturation</p>
@@ -407,557 +337,1325 @@ function IntelligencePanel({ result, property, onCompetitorsSaved }: { result: P
               <p className="text-xs text-muted-foreground mt-1">{result.competition.opportunityVerdict}</p>
             </div>
           </div>
-
-          {result.competition.competitors.length > 0 && (
-            <div className="space-y-3">
+          {Array.isArray(result.competition.competitors) && result.competition.competitors.length > 0 && (
+            <div className="space-y-2">
               <h5 className="text-sm font-semibold">Nearby Competitors</h5>
               {result.competition.competitors.map((c, i) => (
                 <div key={i} className="flex items-start justify-between p-3 rounded-lg border bg-card gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">{c.name}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{c.type}{c.distanceMeters ? ` · ${Math.round(c.distanceMeters)}m away` : ""}</p>
-                    {c.notes && <p className="text-xs text-muted-foreground mt-1">{c.notes}</p>}
+                    <p className="text-xs text-muted-foreground capitalize">{c.type}{c.distanceMeters ? ` · ${Math.round(c.distanceMeters)}m` : ""}</p>
                   </div>
-                  {"rating" in c && c.rating != null && (
+                  {c.rating != null && (
                     <div className="flex items-center gap-1 shrink-0">
                       <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
                       <span className="text-xs font-medium">{c.rating}</span>
-                      {"reviewCount" in c && c.reviewCount != null && <span className="text-xs text-muted-foreground">({c.reviewCount})</span>}
+                      {c.reviewCount != null && <span className="text-xs text-muted-foreground">({c.reviewCount})</span>}
                     </div>
                   )}
                 </div>
               ))}
             </div>
           )}
-
           {(result.competition.dataSource === "ai_estimate" || result.competition.dataSource === "manual") && (
-            <ManualCompetitorForm
-              propertyId={property.id}
-              initialCompetitors={(property.manualCompetitors as ManualCompetitor[] | null) ?? []}
-              onSaved={onCompetitorsSaved}
-            />
-          )}
-
-          {result.competition.competitors.length === 0 && result.competition.dataSource === "google_places" && (
-            <p className="text-sm text-muted-foreground text-center py-4">No competitors found within the search radius via Google Places.</p>
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+              <h5 className="text-sm font-semibold">Add Known Competitors</h5>
+              <p className="text-xs text-muted-foreground">They'll be used next time you run AI Analysis.</p>
+              {competitors.length > 0 && (
+                <ul className="space-y-1.5">
+                  {competitors.map((c, i) => (
+                    <li key={i} className="flex items-center justify-between gap-2 text-sm p-2 rounded bg-card border">
+                      <span className="flex-1 min-w-0 truncate font-medium">{c.name}<span className="text-muted-foreground font-normal ml-2 text-xs">{c.type}</span></span>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive shrink-0" onClick={() => handleRemove(i)}>
+                        <XCircle className="w-3.5 h-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="grid grid-cols-2 gap-2">
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Name" className="text-xs h-8" onKeyDown={e => e.key === "Enter" && handleAdd()} />
+                <select value={type} onChange={e => setType(e.target.value)} className="text-xs h-8 rounded-md border bg-background px-2">
+                  {["aesthetics clinic","beauty salon","medispa","skin clinic","cosmetic clinic","other"].map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="flex gap-2">
+                <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="Notes (optional)" className="text-xs h-8 flex-1" />
+                <Button size="sm" onClick={handleAdd} disabled={!name.trim() || setPropertyCompetitors.isPending} className="h-8 shrink-0">Add</Button>
+              </div>
+            </div>
           )}
         </TabsContent>
       </Tabs>
 
-      <p className="text-xs text-muted-foreground text-right">
-        Generated {new Date(result.generatedAt).toLocaleString()}
-      </p>
+      <div className="flex items-center justify-between pt-2 border-t">
+        <p className="text-xs text-muted-foreground">Generated {new Date(result.generatedAt).toLocaleString("en-GB")}</p>
+        {result.version != null && <Badge variant="outline" className="text-xs">v{result.version}</Badge>}
+      </div>
     </div>
   );
 }
+
+// ─── Advisor Panel ────────────────────────────────────────────────────────────
+
+function AdvisorPanel({ property }: { property: ClinicProperty }) {
+  const [selectedAction, setSelectedAction] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState("");
+  const [result, setResult] = useState<string | null>(null);
+  const advisorAction = usePropertyAdvisorAction();
+
+  const handleRun = (action: string) => {
+    setSelectedAction(action);
+    setResult(null);
+    advisorAction.mutate(
+      { id: property.id, data: { action: action as AdvisorActionBodyAction, prompt: customPrompt || undefined } },
+      { onSuccess: (data) => setResult(data.response) }
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">Choose an AI advisor action to get expert guidance specific to this property.</p>
+      <div className="grid grid-cols-1 gap-2">
+        {ADVISOR_ACTIONS.map(({ key, label, icon, description }) => (
+          <button
+            key={key}
+            onClick={() => handleRun(key)}
+            disabled={advisorAction.isPending}
+            className={`flex items-start gap-3 w-full rounded-lg border p-3 text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
+              selectedAction === key ? "border-primary bg-primary/5" : "bg-card"
+            }`}
+          >
+            <div className={`mt-0.5 shrink-0 ${selectedAction === key ? "text-primary" : "text-muted-foreground"}`}>{icon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium leading-tight">{label}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
+            </div>
+            {advisorAction.isPending && selectedAction === key && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary mt-0.5" />}
+          </button>
+        ))}
+      </div>
+
+      <div>
+        <Label className="text-xs text-muted-foreground">Additional context (optional)</Label>
+        <Textarea
+          value={customPrompt}
+          onChange={e => setCustomPrompt(e.target.value)}
+          placeholder="e.g. 'The landlord seems eager to let quickly' or 'We have a £50k fit-out budget'"
+          className="text-sm mt-1 h-20 resize-none"
+        />
+      </div>
+
+      {result && (
+        <div className="rounded-lg border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-2 text-primary">
+            <Sparkles className="w-4 h-4" />
+            <h5 className="text-sm font-semibold capitalize">{selectedAction?.replace(/-/g, " ")} — AI Advice</h5>
+          </div>
+          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{result}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Analysis History Panel ───────────────────────────────────────────────────
+
+function HistoryPanel({ propertyId, currentResult, onSelect }: {
+  propertyId: number;
+  currentResult: PropertyIntelligenceResult | null;
+  onSelect: (analysis: PropertyAiAnalysis) => void;
+}) {
+  const { data: analyses, isLoading } = useListPropertyAnalyses(propertyId);
+
+  if (isLoading) return <div className="flex items-center justify-center py-8"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>;
+  if (!analyses || analyses.length === 0) return (
+    <div className="text-center py-8 space-y-2">
+      <History className="w-8 h-8 text-muted-foreground mx-auto" />
+      <p className="text-sm text-muted-foreground">No analyses yet. Run AI analysis to get started.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">{analyses.length} analysis version{analyses.length !== 1 ? "s" : ""} saved.</p>
+      {analyses.map((analysis) => {
+        const aj = analysis.analysisJson as {
+          locationScore?: { total: number; grade: string };
+          commercialViabilityScore?: { total: number; grade: string };
+          clinicSuitabilityScore?: { total: number; grade: string };
+          generatedAt?: string;
+        };
+        const snap = analysis.sourceDataSnapshot as { address?: string; competitorCount?: number } | null;
+        return (
+          <div key={analysis.id} className="rounded-lg border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-mono">v{analysis.version}</Badge>
+                <span className="text-xs text-muted-foreground">{new Date(analysis.createdAt).toLocaleString("en-GB")}</span>
+              </div>
+              <Badge variant="outline" className={`text-xs ${
+                analysis.confidenceLevel === "high" ? "border-green-500/50 text-green-600" :
+                analysis.confidenceLevel === "medium" ? "border-amber-500/50 text-amber-600" :
+                "border-muted-foreground/40 text-muted-foreground"
+              }`}>{analysis.confidenceLevel} confidence</Badge>
+            </div>
+            {aj.locationScore && (
+              <div className="flex gap-4">
+                {[
+                  { l: "Location", s: aj.locationScore },
+                  { l: "Viability", s: aj.commercialViabilityScore },
+                  { l: "Clinic Fit", s: aj.clinicSuitabilityScore },
+                ].map(({ l, s }) => s ? (
+                  <div key={l} className="text-center">
+                    <p className="text-xs text-muted-foreground">{l}</p>
+                    <p className="font-bold">{s.total} <span className={`text-sm ${gradeColor(s.grade)}`}>{s.grade}</span></p>
+                  </div>
+                ) : null)}
+              </div>
+            )}
+            {snap && (
+              <p className="text-xs text-muted-foreground">
+                {snap.address && `${snap.address} · `}{snap.competitorCount != null ? `${snap.competitorCount} competitors` : ""}
+              </p>
+            )}
+            <Button variant="outline" size="sm" className="w-full text-xs h-7" onClick={() => onSelect(analysis)}>
+              View This Version
+            </Button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Property Form ────────────────────────────────────────────────────────────
+
+type PropertyFormData = {
+  address?: string;
+  postcode?: string;
+  sqFootage?: number;
+  annualRentGbp?: number;
+  monthlyRentGbp?: number;
+  vatOnRent?: boolean;
+  businessRatesGbp?: number;
+  serviceChargeGbp?: number;
+  leaseLength?: string;
+  useClass?: string;
+  availabilityDate?: string;
+  parkingSpaces?: number;
+  frontageMeters?: number;
+  agentName?: string;
+  agentPhone?: string;
+  agentEmail?: string;
+  pipelineStatus?: string;
+  notes?: string;
+  viewingNotes?: string;
+  negotiationNotes?: string;
+  landlordConcessions?: string;
+  isFavourited?: boolean;
+};
+
+function PropertyForm({
+  initial,
+  onSubmit,
+  isLoading,
+  submitLabel,
+}: {
+  initial?: PropertyFormData;
+  onSubmit: (data: PropertyFormData) => void;
+  isLoading: boolean;
+  submitLabel: string;
+}) {
+  const [form, setForm] = useState<PropertyFormData>(initial ?? {});
+
+  useEffect(() => { setForm(initial ?? {}); }, [initial]);
+
+  const set = (k: keyof PropertyFormData, v: unknown) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(form);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-2">
+          <Label>Address</Label>
+          <Input value={form.address ?? ""} onChange={e => set("address", e.target.value)} placeholder="123 High Street, London" className="mt-1" />
+        </div>
+        <div>
+          <Label>Postcode</Label>
+          <Input value={form.postcode ?? ""} onChange={e => set("postcode", e.target.value)} placeholder="SW1A 1AA" className="mt-1" />
+        </div>
+        <div>
+          <Label>Pipeline Stage</Label>
+          <Select value={form.pipelineStatus ?? "found"} onValueChange={v => set("pipelineStatus", v)}>
+            <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {PIPELINE_STAGES.filter(s => s.key !== "selected" && s.key !== "rejected").map(s => (
+                <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <Separator />
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Financials</h4>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Monthly Rent (£)</Label>
+          <Input type="number" value={form.monthlyRentGbp ?? ""} onChange={e => set("monthlyRentGbp", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Annual Rent (£)</Label>
+          <Input type="number" value={form.annualRentGbp ?? ""} onChange={e => set("annualRentGbp", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Business Rates (£/yr)</Label>
+          <Input type="number" value={form.businessRatesGbp ?? ""} onChange={e => set("businessRatesGbp", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Service Charge (£/yr)</Label>
+          <Input type="number" value={form.serviceChargeGbp ?? ""} onChange={e => set("serviceChargeGbp", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div className="flex items-center gap-3 mt-2">
+          <Switch checked={form.vatOnRent ?? false} onCheckedChange={v => set("vatOnRent", v)} />
+          <Label>VAT on Rent</Label>
+        </div>
+      </div>
+
+      <Separator />
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Property Details</h4>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Sq Footage</Label>
+          <Input type="number" value={form.sqFootage ?? ""} onChange={e => set("sqFootage", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Parking Spaces</Label>
+          <Input type="number" value={form.parkingSpaces ?? ""} onChange={e => set("parkingSpaces", parseInt(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Frontage (m)</Label>
+          <Input type="number" value={form.frontageMeters ?? ""} onChange={e => set("frontageMeters", parseFloat(e.target.value) || 0)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Use Class</Label>
+          <Input value={form.useClass ?? ""} onChange={e => set("useClass", e.target.value)} placeholder="E" className="mt-1" />
+        </div>
+        <div>
+          <Label>Lease Length</Label>
+          <Input value={form.leaseLength ?? ""} onChange={e => set("leaseLength", e.target.value)} placeholder="10 years" className="mt-1" />
+        </div>
+        <div>
+          <Label>Available From</Label>
+          <Input type="date" value={form.availabilityDate ?? ""} onChange={e => set("availabilityDate", e.target.value)} className="mt-1" />
+        </div>
+      </div>
+
+      <Separator />
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Agent</h4>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label>Agent Name</Label>
+          <Input value={form.agentName ?? ""} onChange={e => set("agentName", e.target.value)} className="mt-1" />
+        </div>
+        <div>
+          <Label>Agent Phone</Label>
+          <Input value={form.agentPhone ?? ""} onChange={e => set("agentPhone", e.target.value)} className="mt-1" />
+        </div>
+        <div className="col-span-2">
+          <Label>Agent Email</Label>
+          <Input type="email" value={form.agentEmail ?? ""} onChange={e => set("agentEmail", e.target.value)} className="mt-1" />
+        </div>
+      </div>
+
+      <Separator />
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Notes & Negotiations</h4>
+      <div className="space-y-3">
+        <div>
+          <Label>General Notes</Label>
+          <Textarea value={form.notes ?? ""} onChange={e => set("notes", e.target.value)} placeholder="Any general notes about this property" className="mt-1 h-20 resize-none text-sm" />
+        </div>
+        <div>
+          <Label>Viewing Notes</Label>
+          <Textarea value={form.viewingNotes ?? ""} onChange={e => set("viewingNotes", e.target.value)} placeholder="Observations from viewing" className="mt-1 h-20 resize-none text-sm" />
+        </div>
+        <div>
+          <Label>Negotiation Notes</Label>
+          <Textarea value={form.negotiationNotes ?? ""} onChange={e => set("negotiationNotes", e.target.value)} placeholder="Negotiation progress and decisions" className="mt-1 h-20 resize-none text-sm" />
+        </div>
+        <div>
+          <Label>Landlord Concessions</Label>
+          <Textarea value={form.landlordConcessions ?? ""} onChange={e => set("landlordConcessions", e.target.value)} placeholder="Agreed concessions, rent-free periods, contributions" className="mt-1 h-20 resize-none text-sm" />
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Switch checked={form.isFavourited ?? false} onCheckedChange={v => set("isFavourited", v)} />
+        <Label>Mark as Favourite</Label>
+      </div>
+
+      <Button type="submit" disabled={isLoading} className="w-full">
+        {isLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</> : submitLabel}
+      </Button>
+    </form>
+  );
+}
+
+// ─── Extraction Review Dialog ─────────────────────────────────────────────────
+
+function ExtractionReviewDialog({
+  open, onClose, extraction, propertyId, onConfirmed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  extraction: PropertyExtraction & { fileName?: string; fileSizeBytes?: number } | null;
+  propertyId: number | null;
+  onConfirmed: () => void;
+}) {
+  const [fields, setFields] = useState<Record<string, unknown>>({});
+  const confirmUpload = useConfirmPropertyUpload();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (extraction) {
+      const f: Record<string, unknown> = {};
+      const keys = ["address","postcode","sqFootage","annualRentGbp","monthlyRentGbp","vatOnRent","businessRatesGbp","serviceChargeGbp","leaseLength","useClass","availabilityDate","parkingSpaces","frontageMeters","agentName","agentPhone","agentEmail"] as const;
+      for (const k of keys) {
+        if (extraction[k] != null) f[k] = extraction[k];
+      }
+      setFields(f);
+    }
+  }, [extraction]);
+
+  const set = (k: string, v: unknown) => setFields(f => ({ ...f, [k]: v }));
+
+  const handleConfirm = () => {
+    if (!propertyId) return;
+    confirmUpload.mutate(
+      { id: propertyId, data: { fields, fileName: extraction?.fileName, fileSizeBytes: extraction?.fileSizeBytes } },
+      {
+        onSuccess: () => {
+          toast({ title: "Document saved", description: "Property details have been updated from the brochure." });
+          onConfirmed();
+          onClose();
+        },
+        onError: () => toast({ title: "Save failed", variant: "destructive" }),
+      }
+    );
+  };
+
+  if (!extraction) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><FileText className="w-5 h-5 text-primary" />Review Extracted Data</DialogTitle>
+          <DialogDescription>
+            AI extracted these fields from <strong>{extraction.fileName ?? "the document"}</strong>. Review and edit before saving.
+          </DialogDescription>
+        </DialogHeader>
+
+        {extraction.flags && extraction.flags.length > 0 && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+            {extraction.flags.map((flag, i) => (
+              <p key={i} className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{flag}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { k: "address", l: "Address", type: "text", col: 2 },
+            { k: "postcode", l: "Postcode", type: "text" },
+            { k: "sqFootage", l: "Sq Footage", type: "number" },
+            { k: "monthlyRentGbp", l: "Monthly Rent (£)", type: "number" },
+            { k: "annualRentGbp", l: "Annual Rent (£)", type: "number" },
+            { k: "businessRatesGbp", l: "Business Rates (£/yr)", type: "number" },
+            { k: "serviceChargeGbp", l: "Service Charge (£/yr)", type: "number" },
+            { k: "leaseLength", l: "Lease Length", type: "text" },
+            { k: "useClass", l: "Use Class", type: "text" },
+            { k: "availabilityDate", l: "Available From", type: "date" },
+            { k: "parkingSpaces", l: "Parking Spaces", type: "number" },
+            { k: "frontageMeters", l: "Frontage (m)", type: "number" },
+            { k: "agentName", l: "Agent Name", type: "text" },
+            { k: "agentPhone", l: "Agent Phone", type: "text" },
+            { k: "agentEmail", l: "Agent Email", type: "email" },
+          ].map(({ k, l, type, col }) => (
+            <div key={k} className={col === 2 ? "col-span-2" : ""}>
+              <Label className="text-xs">{l}</Label>
+              <Input
+                type={type}
+                value={String(fields[k] ?? "")}
+                onChange={e => set(k, type === "number" ? (parseFloat(e.target.value) || null) : e.target.value)}
+                className="mt-1 text-sm h-8"
+              />
+            </div>
+          ))}
+          <div className="col-span-2 flex items-center gap-3">
+            <Switch checked={Boolean(fields.vatOnRent)} onCheckedChange={v => set("vatOnRent", v)} />
+            <Label className="text-xs">VAT on Rent</Label>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} className="flex-1">Discard</Button>
+          <Button onClick={handleConfirm} disabled={confirmUpload.isPending} className="flex-1">
+            {confirmUpload.isPending ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</> : "Confirm & Save"}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── URL Import Dialog ────────────────────────────────────────────────────────
+
+function UrlImportDialog({ open, onClose, onCreateProperty }: {
+  open: boolean;
+  onClose: () => void;
+  onCreateProperty: (data: PropertyFormData) => void;
+}) {
+  const [url, setUrl] = useState("");
+  const [extracted, setExtracted] = useState<Record<string, unknown> | null>(null);
+  const [flags, setFlags] = useState<string[]>([]);
+  const [editFields, setEditFields] = useState<PropertyFormData>({});
+  const importUrl = useImportPropertyFromUrl();
+
+  const handleImport = () => {
+    if (!url.trim()) return;
+    setExtracted(null);
+    importUrl.mutate(
+      { projectId: PROJECT_ID, data: { url: url.trim() } },
+      {
+        onSuccess: (data) => {
+          const ef: PropertyFormData = {
+            address: data.address ?? undefined,
+            postcode: data.postcode ?? undefined,
+            sqFootage: data.sqFootage ?? undefined,
+            annualRentGbp: data.annualRentGbp ?? undefined,
+            monthlyRentGbp: data.monthlyRentGbp ?? undefined,
+            vatOnRent: data.vatOnRent ?? undefined,
+            businessRatesGbp: data.businessRatesGbp ?? undefined,
+            serviceChargeGbp: data.serviceChargeGbp ?? undefined,
+            leaseLength: data.leaseLength ?? undefined,
+            useClass: data.useClass ?? undefined,
+            availabilityDate: data.availabilityDate ?? undefined,
+            parkingSpaces: data.parkingSpaces ?? undefined,
+            frontageMeters: data.frontageMeters ?? undefined,
+            agentName: data.agentName ?? undefined,
+            agentPhone: data.agentPhone ?? undefined,
+            agentEmail: data.agentEmail ?? undefined,
+          };
+          setExtracted(data as unknown as Record<string, unknown>);
+          setEditFields(ef);
+          setFlags(data.flags ?? []);
+        },
+        onError: () => {
+          setFlags(["Could not extract data from this URL. Try adding the property manually."]);
+        },
+      }
+    );
+  };
+
+  const handleCreate = () => {
+    onCreateProperty({ ...editFields, pipelineStatus: "found" });
+    onClose();
+    setUrl(""); setExtracted(null); setFlags([]);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Link2 className="w-5 h-5 text-primary" />Import from Listing URL</DialogTitle>
+          <DialogDescription>Paste a Rightmove, Zoopla, or other listing URL — AI will extract the property details.</DialogDescription>
+        </DialogHeader>
+
+        <div className="flex gap-2">
+          <Input value={url} onChange={e => setUrl(e.target.value)} placeholder="https://rightmove.co.uk/commercial-property/..." className="flex-1 text-sm" onKeyDown={e => e.key === "Enter" && handleImport()} />
+          <Button onClick={handleImport} disabled={importUrl.isPending || !url.trim()} className="shrink-0">
+            {importUrl.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
+          </Button>
+        </div>
+
+        {flags.length > 0 && !extracted && (
+          <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+            {flags.map((flag, i) => (
+              <p key={i} className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{flag}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {extracted && (
+          <>
+            {flags.length > 0 && (
+              <div className="rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+                {flags.map((flag, i) => (
+                  <p key={i} className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />{flag}
+                  </p>
+                ))}
+              </div>
+            )}
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-green-600 dark:text-green-400 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />Data extracted — review before adding
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { k: "address" as const, l: "Address", col: 2 },
+                { k: "postcode" as const, l: "Postcode" },
+                { k: "sqFootage" as const, l: "Sq Footage" },
+                { k: "monthlyRentGbp" as const, l: "Monthly Rent (£)" },
+                { k: "annualRentGbp" as const, l: "Annual Rent (£)" },
+                { k: "leaseLength" as const, l: "Lease Length" },
+                { k: "useClass" as const, l: "Use Class" },
+                { k: "agentName" as const, l: "Agent" },
+              ].map(({ k, l, col }) => (
+                <div key={k} className={col === 2 ? "col-span-2" : ""}>
+                  <Label className="text-xs">{l}</Label>
+                  <Input
+                    value={String(editFields[k] ?? "")}
+                    onChange={e => setEditFields(f => ({ ...f, [k]: e.target.value }))}
+                    className="mt-1 text-sm h-8"
+                  />
+                </div>
+              ))}
+            </div>
+            <Button onClick={handleCreate} className="w-full">Add Property to Pipeline</Button>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Property Detail Sheet ────────────────────────────────────────────────────
+
+function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
+  property: ClinicProperty | null;
+  onClose: () => void;
+  onUpdated: () => void;
+  onDeleted: () => void;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("details");
+  const [intelligenceResult, setIntelligenceResult] = useState<PropertyIntelligenceResult | null>(null);
+  const [searchRadiusMeters, setSearchRadiusMeters] = useState(600);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showActiveConfirm, setShowActiveConfirm] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number }) | null>(null);
+  const [showExtractionReview, setShowExtractionReview] = useState(false);
+
+  const updateProperty = useUpdateProperty();
+  const deleteProperty = useDeleteProperty();
+  const setPropertyActive = useSetPropertyActive();
+  const uploadDocument = useUploadPropertyDocument();
+  const analyseProperty = useAnalyseProperty();
+
+  useEffect(() => {
+    if (property) {
+      setActiveTab("details");
+      setIntelligenceResult(null);
+    }
+  }, [property?.id]);
+
+  if (!property) return null;
+
+  const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
+  const isActive = property.isActiveForProject;
+
+  const handleUpdate = (data: PropertyFormData) => {
+    updateProperty.mutate(
+      { id: property.id, data: data as Record<string, unknown> },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+          toast({ title: "Property updated" });
+          onUpdated();
+        },
+      }
+    );
+  };
+
+  const handleDelete = () => {
+    deleteProperty.mutate({ id: property.id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+        onDeleted();
+        onClose();
+      },
+    });
+  };
+
+  const handleSetActive = () => {
+    setPropertyActive.mutate({ id: property.id }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+        toast({ title: "Active property set", description: "Financials have been synced from this property's rent." });
+        setShowActiveConfirm(false);
+        onUpdated();
+      },
+      onError: () => toast({ title: "Failed to set active property", variant: "destructive" }),
+    });
+  };
+
+  const handleAnalyse = () => {
+    setIntelligenceResult(null);
+    setActiveTab("intelligence");
+    analyseProperty.mutate(
+      { id: property.id, data: { searchRadiusMeters } },
+      {
+        onSuccess: (data) => setIntelligenceResult(data),
+        onError: () => toast({ title: "Analysis failed", description: "Could not run AI analysis. Please try again.", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleUploadClick = () => fileInputRef.current?.click();
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    uploadDocument.mutate(
+      { id: property.id, data: { file } },
+      {
+        onSuccess: (data) => {
+          setExtraction({ ...data, fileName: file.name, fileSizeBytes: file.size });
+          setShowExtractionReview(true);
+        },
+        onError: () => toast({ title: "Upload failed", description: "Could not extract from PDF.", variant: "destructive" }),
+      }
+    );
+  };
+
+  const handleHistorySelect = (analysis: PropertyAiAnalysis) => {
+    const aj = analysis.analysisJson as unknown as PropertyIntelligenceResult & { generatedAt?: string };
+    if (aj.locationScore && aj.commercialViabilityScore && aj.clinicSuitabilityScore) {
+      setIntelligenceResult({
+        ...aj,
+        propertyId: property.id,
+        generatedAt: aj.generatedAt ?? analysis.createdAt,
+        version: analysis.version,
+        isStale: true,
+      });
+      setActiveTab("intelligence");
+    }
+  };
+
+  return (
+    <>
+      <Sheet open={!!property} onOpenChange={onClose}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
+          {/* Header */}
+          <div className={`p-6 border-b ${isActive ? "bg-primary/5 border-primary/20" : ""}`}>
+            <SheetHeader>
+              <SheetTitle className="flex items-start justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <Badge className={`text-xs ${stage.color}`}>{stage.label}</Badge>
+                    {isActive && <Badge className="text-xs bg-primary text-primary-foreground gap-1"><Target className="w-3 h-3" />Active Property</Badge>}
+                    {property.isFavourited && <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />}
+                  </div>
+                  <p className="text-lg font-bold leading-tight">{property.address ?? "Unnamed Property"}</p>
+                  {property.postcode && <p className="text-sm text-muted-foreground font-normal">{property.postcode}</p>}
+                </div>
+              </SheetTitle>
+            </SheetHeader>
+
+            {/* Quick stats */}
+            <div className="flex flex-wrap gap-3 mt-4">
+              {property.monthlyRentGbp != null && property.monthlyRentGbp > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <PoundSterling className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="font-semibold">{formatGBP(property.monthlyRentGbp)}/mo</span>
+                </div>
+              )}
+              {property.sqFootage != null && property.sqFootage > 0 && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Maximize2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{property.sqFootage.toFixed(0)} sq ft</span>
+                </div>
+              )}
+              {property.parkingSpaces != null && (
+                <div className="flex items-center gap-1.5 text-sm">
+                  <Car className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{property.parkingSpaces} parking</span>
+                </div>
+              )}
+            </div>
+
+            {/* Action row */}
+            <div className="flex flex-wrap gap-2 mt-4">
+              {!isActive && (
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowActiveConfirm(true)}>
+                  <Target className="w-3.5 h-3.5" />Set as Active
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleUploadClick} disabled={uploadDocument.isPending}>
+                {uploadDocument.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                Upload PDF
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleAnalyse} disabled={analyseProperty.isPending}>
+                {analyseProperty.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
+                {analyseProperty.isPending ? "Analysing…" : "Analyse"}
+              </Button>
+              <div className="ml-auto flex gap-2">
+                <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Radius selector */}
+            <div className="flex items-center gap-2 mt-3">
+              <span className="text-xs text-muted-foreground">Analysis radius:</span>
+              <Select value={String(searchRadiusMeters)} onValueChange={v => setSearchRadiusMeters(Number(v))}>
+                <SelectTrigger className="h-6 text-xs w-24"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[300, 400, 500, 600, 750, 1000, 1500, 2000].map(r => <SelectItem key={r} value={String(r)}>{r}m</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Tabs */}
+          <div className="p-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="w-full mb-6 grid grid-cols-5">
+                <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
+                <TabsTrigger value="intelligence" className="text-xs">AI Analysis</TabsTrigger>
+                <TabsTrigger value="advisor" className="text-xs">Advisor</TabsTrigger>
+                <TabsTrigger value="history" className="text-xs">History</TabsTrigger>
+                <TabsTrigger value="media" className="text-xs">Media</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="details">
+                <PropertyForm
+                  initial={{
+                    address: property.address ?? undefined,
+                    postcode: property.postcode ?? undefined,
+                    sqFootage: property.sqFootage ?? undefined,
+                    annualRentGbp: property.annualRentGbp ?? undefined,
+                    monthlyRentGbp: property.monthlyRentGbp ?? undefined,
+                    vatOnRent: property.vatOnRent ?? false,
+                    businessRatesGbp: property.businessRatesGbp ?? undefined,
+                    serviceChargeGbp: property.serviceChargeGbp ?? undefined,
+                    leaseLength: property.leaseLength ?? undefined,
+                    useClass: property.useClass ?? undefined,
+                    availabilityDate: property.availabilityDate ?? undefined,
+                    parkingSpaces: property.parkingSpaces ?? undefined,
+                    frontageMeters: property.frontageMeters ?? undefined,
+                    agentName: property.agentName ?? undefined,
+                    agentPhone: property.agentPhone ?? undefined,
+                    agentEmail: property.agentEmail ?? undefined,
+                    pipelineStatus: property.pipelineStatus ?? "found",
+                    notes: property.notes ?? undefined,
+                    viewingNotes: property.viewingNotes ?? undefined,
+                    negotiationNotes: property.negotiationNotes ?? undefined,
+                    landlordConcessions: property.landlordConcessions ?? undefined,
+                    isFavourited: property.isFavourited ?? false,
+                  }}
+                  onSubmit={handleUpdate}
+                  isLoading={updateProperty.isPending}
+                  submitLabel="Save Changes"
+                />
+              </TabsContent>
+
+              <TabsContent value="intelligence" className="space-y-4">
+                {analyseProperty.isPending && (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                    <div className="text-center">
+                      <p className="font-medium">Running AI Analysis…</p>
+                      <p className="text-sm text-muted-foreground">This takes 15–30 seconds</p>
+                    </div>
+                  </div>
+                )}
+                {!analyseProperty.isPending && !intelligenceResult && (
+                  <div className="text-center py-12 space-y-4">
+                    <Brain className="w-10 h-10 text-muted-foreground mx-auto" />
+                    <div>
+                      <p className="font-medium">No analysis yet</p>
+                      <p className="text-sm text-muted-foreground">Click "Analyse" above to run the full AI property intelligence report.</p>
+                    </div>
+                    <Button onClick={handleAnalyse} className="gap-2">
+                      <Brain className="w-4 h-4" />Run AI Analysis
+                    </Button>
+                  </div>
+                )}
+                {!analyseProperty.isPending && intelligenceResult && (
+                  <>
+                    {intelligenceResult.isStale && (
+                      <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3">
+                        <p className="text-xs text-amber-700 dark:text-amber-400">Viewing historical version v{intelligenceResult.version}.</p>
+                        <Button size="sm" variant="ghost" className="text-xs h-6 gap-1 text-amber-700" onClick={handleAnalyse}>
+                          <RefreshCw className="w-3 h-3" />Re-analyse
+                        </Button>
+                      </div>
+                    )}
+                    <IntelligencePanel
+                      result={intelligenceResult}
+                      property={property}
+                      onCompetitorsSaved={(updated) => {
+                        queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+                      }}
+                    />
+                    <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={handleAnalyse}>
+                      <RefreshCw className="w-3.5 h-3.5" />Re-run Analysis
+                    </Button>
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="advisor">
+                <AdvisorPanel property={property} />
+              </TabsContent>
+
+              <TabsContent value="history">
+                <HistoryPanel propertyId={property.id} currentResult={intelligenceResult} onSelect={handleHistorySelect} />
+              </TabsContent>
+
+              <TabsContent value="media" className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-semibold">Documents & Media</h4>
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleUploadClick}>
+                    <Upload className="w-3.5 h-3.5" />Upload PDF
+                  </Button>
+                </div>
+                {Array.isArray(property.mediaFiles) && property.mediaFiles.length > 0 ? (
+                  <div className="space-y-2">
+                    {property.mediaFiles.map((file) => {
+                      const mf = file as { id: string; name: string; type: string; url: string; uploadedAt: string; sizeBytes?: number };
+                      return (
+                        <div key={mf.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
+                          <FileText className="w-4 h-4 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{mf.name}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(mf.uploadedAt).toLocaleDateString("en-GB")}{mf.sizeBytes ? ` · ${(mf.sizeBytes / 1024).toFixed(0)} KB` : ""}</p>
+                          </div>
+                          <Badge variant="outline" className="text-xs capitalize shrink-0">{mf.type}</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 space-y-2">
+                    <FileText className="w-8 h-8 text-muted-foreground mx-auto" />
+                    <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+                    <p className="text-xs text-muted-foreground">Upload a brochure or EPC report — AI will extract property details for review.</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Hidden file input */}
+      <input ref={fileInputRef} type="file" accept=".pdf" className="hidden" onChange={handleFileChange} />
+
+      {/* Extraction review */}
+      <ExtractionReviewDialog
+        open={showExtractionReview}
+        onClose={() => setShowExtractionReview(false)}
+        extraction={extraction}
+        propertyId={property.id}
+        onConfirmed={() => {
+          queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+          onUpdated();
+        }}
+      />
+
+      {/* Delete confirm */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this property?</AlertDialogTitle>
+            <AlertDialogDescription>This will permanently remove {property.address ?? "this property"} from the pipeline. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Set active confirm */}
+      <AlertDialog open={showActiveConfirm} onOpenChange={setShowActiveConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Set as active property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark <strong>{property.address ?? "this property"}</strong> as your selected location.
+              The monthly rent ({formatGBP(property.monthlyRentGbp ?? 0)}) and business rates will be automatically synced into your financial model, and a decision log entry will be created.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSetActive} disabled={setPropertyActive.isPending}>
+              {setPropertyActive.isPending ? "Setting…" : "Set as Active"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ─── Mini Property Card ───────────────────────────────────────────────────────
+
+function PropertyCard({ property, onOpen }: { property: ClinicProperty; onOpen: () => void }) {
+  const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
+  return (
+    <button
+      onClick={onOpen}
+      className={`w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all space-y-3 ${property.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+            {property.isActiveForProject && <Target className="w-3.5 h-3.5 text-primary shrink-0" />}
+            {property.isFavourited && <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />}
+            <Badge className={`text-xs ${stage.color} shrink-0`}>{stage.label}</Badge>
+          </div>
+          <p className="text-sm font-semibold leading-tight truncate">{property.address ?? "Unnamed"}</p>
+          {property.postcode && <p className="text-xs text-muted-foreground">{property.postcode}</p>}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {property.monthlyRentGbp != null && property.monthlyRentGbp > 0 && (
+          <span className="text-xs flex items-center gap-1 text-muted-foreground">
+            <PoundSterling className="w-3 h-3" />{formatGBP(property.monthlyRentGbp)}/mo
+          </span>
+        )}
+        {property.sqFootage != null && property.sqFootage > 0 && (
+          <span className="text-xs flex items-center gap-1 text-muted-foreground">
+            <Maximize2 className="w-3 h-3" />{property.sqFootage.toFixed(0)} sq ft
+          </span>
+        )}
+        {property.parkingSpaces != null && (
+          <span className="text-xs flex items-center gap-1 text-muted-foreground">
+            <Car className="w-3 h-3" />{property.parkingSpaces}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─── Rankings View ────────────────────────────────────────────────────────────
+
+function RankingsView({ properties, onOpen }: { properties: ClinicProperty[]; onOpen: (p: ClinicProperty) => void }) {
+  const [mode, setMode] = useState<"overall" | "safest" | "highest-revenue" | "premium-brand" | "lowest-risk" | "fastest-launch">("overall");
+  const { data: ranking, isLoading } = useGetPropertyRanking(PROJECT_ID, { mode }, {
+    query: { enabled: true, queryKey: ["property-ranking", PROJECT_ID, mode] },
+  });
+
+  const findProperty = (id: number) => properties.find(p => p.id === id);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-sm text-muted-foreground font-medium">Ranking mode:</span>
+        <div className="flex flex-wrap gap-2">
+          {RANKING_MODES.map(({ key, label, icon }) => (
+            <Button
+              key={key}
+              size="sm"
+              variant={mode === key ? "default" : "outline"}
+              className="gap-1.5 text-xs h-7"
+              onClick={() => setMode(key as typeof mode)}
+            >
+              {icon}{label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+
+      {ranking && (
+        <div className="space-y-3">
+          {ranking.rankings.map((item: PropertyRankingItem) => {
+            const prop = findProperty(item.propertyId);
+            const stage = pipelineStageInfo(item.pipelineStatus ?? "found");
+            return (
+              <div
+                key={item.propertyId}
+                className={`rounded-xl border bg-card p-4 space-y-3 transition-all hover:border-primary/40 hover:shadow-sm cursor-pointer ${item.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""}`}
+                onClick={() => prop && onOpen(prop)}
+              >
+                <div className="flex items-center gap-4">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold shrink-0 ${
+                    item.rank === 1 ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" :
+                    item.rank === 2 ? "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" :
+                    item.rank === 3 ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" :
+                    "bg-muted text-muted-foreground"
+                  }`}>
+                    {item.manualRankOverride != null ? "★" : `#${item.rank}`}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{item.address ?? "Unnamed"}</p>
+                      {item.isFavourited && <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />}
+                      {item.isActiveForProject && <Badge className="text-xs bg-primary/15 text-primary shrink-0 gap-1"><Target className="w-2.5 h-2.5" />Active</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {item.postcode && <span className="text-xs text-muted-foreground">{item.postcode}</span>}
+                      <Badge className={`text-xs ${stage.color}`}>{stage.label}</Badge>
+                      {!item.hasAnalysis && <span className="text-xs text-muted-foreground italic">No AI analysis</span>}
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-2xl font-bold">{item.score}</p>
+                    <p className="text-xs text-muted-foreground">score</p>
+                  </div>
+                </div>
+                <div className="relative h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full ${item.rank === 1 ? "bg-primary" : item.rank <= 3 ? "bg-primary/70" : "bg-muted-foreground/40"}`}
+                    style={{ width: `${Math.min(100, item.score)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground leading-snug">{item.rationale}</p>
+              </div>
+            );
+          })}
+          {ranking.rankings.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground text-sm">No properties to rank yet.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function PropertiesPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingProperty, setEditingProperty] = useState<ClinicProperty | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [intelligenceTarget, setIntelligenceTarget] = useState<ClinicProperty | null>(null);
-  const [intelligenceResult, setIntelligenceResult] = useState<PropertyIntelligenceResult | null>(null);
-  const [extractionFlags, setExtractionFlags] = useState<string[]>([]);
-  const [searchRadiusMeters, setSearchRadiusMeters] = useState(600);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [uploadTargetId, setUploadTargetId] = useState<number | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<ClinicProperty | null>(null);
+  const [showUrlImport, setShowUrlImport] = useState(false);
+  const [pageTab, setPageTab] = useState("pipeline");
 
   const { data: properties, isLoading } = useListProperties(PROJECT_ID, {
     query: { queryKey: getListPropertiesQueryKey(PROJECT_ID), enabled: true },
   });
 
   const createProperty = useCreateProperty();
-  const updateProperty = useUpdateProperty();
-  const deleteProperty = useDeleteProperty();
-  const uploadDocument = useUploadPropertyDocument();
-  const analyseProperty = useAnalyseProperty();
 
-  const handleOpenCreate = () => {
-    setEditingProperty(null);
-    setIsFormOpen(true);
-  };
-
-  const handleOpenEdit = (prop: ClinicProperty) => {
-    setEditingProperty(prop);
-    setIsFormOpen(true);
-  };
-
-  const handleDelete = () => {
-    if (!deletingId) return;
-    deleteProperty.mutate(
-      { id: deletingId },
+  const handleCreateProperty = (data: PropertyFormData) => {
+    createProperty.mutate(
+      { projectId: PROJECT_ID, data: { ...data, status: "viewing" as const, pipelineStatus: (data.pipelineStatus ?? "found") as CreatePropertyBodyPipelineStatus } },
       {
         onSuccess: () => {
           queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-          setDeletingId(null);
+          setIsFormOpen(false);
+          toast({ title: "Property added" });
         },
       }
     );
   };
 
-  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+  const activeProperty = properties?.find(p => p.isActiveForProject);
+  const nonRejected = properties?.filter(p => p.pipelineStatus !== "rejected") ?? [];
+  const rejected = properties?.filter(p => p.pipelineStatus === "rejected") ?? [];
 
-    const data = {
-      address: formData.get("address") as string,
-      postcode: formData.get("postcode") as string,
-      sqFootage: Number(formData.get("sqFootage") || 0),
-      annualRentGbp: Number(formData.get("annualRentGbp") || 0),
-      monthlyRentGbp: Number(formData.get("monthlyRentGbp") || 0),
-      vatOnRent: formData.get("vatOnRent") === "on",
-      businessRatesGbp: Number(formData.get("businessRatesGbp") || 0),
-      serviceChargeGbp: Number(formData.get("serviceChargeGbp") || 0),
-      leaseLength: formData.get("leaseLength") as string,
-      useClass: formData.get("useClass") as string,
-      availabilityDate: formData.get("availabilityDate") as string || undefined,
-      parkingSpaces: Number(formData.get("parkingSpaces") || 0),
-      frontageMeters: Number(formData.get("frontageMeters") || 0),
-      agentName: formData.get("agentName") as string,
-      agentPhone: formData.get("agentPhone") as string,
-      agentEmail: formData.get("agentEmail") as string,
-      status: formData.get("status") as UpdatePropertyBodyStatus,
-      notes: formData.get("notes") as string,
-    };
-
-    if (editingProperty) {
-      updateProperty.mutate(
-        { id: editingProperty.id, data },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-            setIsFormOpen(false);
-          },
-        }
-      );
-    } else {
-      createProperty.mutate(
-        { projectId: PROJECT_ID, data },
-        {
-          onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-            setIsFormOpen(false);
-          },
-        }
-      );
+  // Group by pipeline stage for pipeline view
+  const byStage = PIPELINE_STAGES.reduce<Record<string, ClinicProperty[]>>((acc, stage) => {
+    if (stage.key !== "rejected") {
+      acc[stage.key] = properties?.filter(p => p.pipelineStatus === stage.key) ?? [];
     }
-  };
-
-  const handleUploadClick = (propId: number) => {
-    setUploadTargetId(propId);
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !uploadTargetId) return;
-    e.target.value = "";
-
-    uploadDocument.mutate(
-      { id: uploadTargetId, data: { file } },
-      {
-        onSuccess: (data: PropertyExtraction) => {
-          queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-          const flags = data.flags ?? [];
-          setExtractionFlags(flags);
-          toast({
-            title: "Document processed",
-            description: flags.length > 0
-              ? `Fields extracted. ${flags.length} flag(s): ${flags[0]}`
-              : "Property fields have been auto-populated from the document.",
-          });
-          setUploadTargetId(null);
-        },
-        onError: () => {
-          toast({ title: "Upload failed", description: "Could not extract data from the document.", variant: "destructive" });
-          setUploadTargetId(null);
-        },
-      }
-    );
-  };
-
-  const handleAnalyse = (prop: ClinicProperty) => {
-    setIntelligenceTarget(prop);
-    setIntelligenceResult(null);
-
-    analyseProperty.mutate(
-      { id: prop.id, data: { searchRadiusMeters } },
-      {
-        onSuccess: (data) => {
-          setIntelligenceResult(data);
-        },
-        onError: () => {
-          toast({ title: "Analysis failed", description: "Could not run property analysis. Please try again.", variant: "destructive" });
-        },
-      }
-    );
-  };
+    return acc;
+  }, {});
+  const activeStages = PIPELINE_STAGES.filter(s => s.key !== "rejected" && (byStage[s.key]?.length ?? 0) > 0);
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
-        <div className="h-80 bg-card rounded-lg"></div>
-        <div className="h-80 bg-card rounded-lg"></div>
+      <div className="space-y-4 animate-pulse">
+        <div className="h-12 bg-card rounded-lg" />
+        <div className="grid grid-cols-3 gap-4">
+          <div className="h-48 bg-card rounded-lg" />
+          <div className="h-48 bg-card rounded-lg" />
+          <div className="h-48 bg-card rounded-lg" />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Property Intelligence</h2>
-          <p className="text-muted-foreground mt-1">Evaluate and score potential clinic locations with AI.</p>
+          <h1 className="text-2xl font-bold">Property Pipeline</h1>
+          <p className="text-sm text-muted-foreground">
+            {nonRejected.length} active · {rejected.length} rejected
+            {activeProperty ? ` · Active: ${activeProperty.address ?? "Property selected"}` : ""}
+          </p>
         </div>
-        <Button onClick={handleOpenCreate}>Add Property</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="gap-2 text-xs" onClick={() => setShowUrlImport(true)}>
+            <Link2 className="w-3.5 h-3.5" />Import URL
+          </Button>
+          <Button size="sm" className="gap-2 text-xs" onClick={() => setIsFormOpen(true)}>
+            <Plus className="w-3.5 h-3.5" />Add Property
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        {properties?.map((prop) => (
-          <Card key={prop.id} className={`shadow-sm flex flex-col ${prop.status === "rejected" ? "opacity-75 bg-muted/30" : ""}`}>
-            <CardHeader className="pb-4 border-b">
-              <div className="flex justify-between items-start gap-4">
-                <div>
-                  <h3 className="font-semibold text-lg flex items-start gap-2">
-                    <MapPin className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-                    <span className={prop.status === "rejected" ? "line-through" : ""}>{prop.address}</span>
-                  </h3>
-                  <p className="text-muted-foreground text-sm ml-7">{prop.postcode}</p>
-                </div>
-                <Badge variant="secondary" className={STATUS_COLORS[prop.status] || ""}>
-                  {prop.status.replace("_", " ")}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 flex-1">
-              <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <PoundSterling className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Monthly Rent</span>
-                  </div>
-                  <p className="font-medium text-lg">{formatGBP(prop.monthlyRentGbp)} {prop.vatOnRent && <span className="text-xs text-muted-foreground">+VAT</span>}</p>
-                  <p className="text-xs text-muted-foreground">{formatGBP(prop.annualRentGbp)} / year</p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <Maximize2 className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Size</span>
-                  </div>
-                  <p className="font-medium text-lg">{prop.sqFootage?.toLocaleString()} sq ft</p>
-                  <p className="text-xs text-muted-foreground">Class: {prop.useClass || "Unknown"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Lease Details</span>
-                  </div>
-                  <p className="font-medium">{prop.leaseLength || "Negotiable"}</p>
-                  <p className="text-xs text-muted-foreground">Avail: {prop.availabilityDate ? new Date(prop.availabilityDate).toLocaleDateString() : "TBD"}</p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <Car className="w-4 h-4" />
-                    <span className="text-xs uppercase tracking-wider font-semibold">Parking</span>
-                  </div>
-                  <p className="font-medium">{prop.parkingSpaces ? `${prop.parkingSpaces} spaces` : "None specified"}</p>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border/50">
-                <div className="flex items-center gap-2 mb-2">
-                  <User className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-semibold">{prop.agentName || "Agent Unknown"}</span>
-                </div>
-                <div className="flex gap-4 text-xs text-muted-foreground ml-6">
-                  {prop.agentPhone && (
-                    <div className="flex items-center gap-1"><Phone className="w-3 h-3" /> {prop.agentPhone}</div>
-                  )}
-                  {prop.agentEmail && (
-                    <div className="flex items-center gap-1"><Mail className="w-3 h-3" /> {prop.agentEmail}</div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-muted/20 border-t p-4 flex justify-between items-center gap-2">
-              <div className="flex gap-2">
-                <Button
-                  variant="default"
-                  size="sm"
-                  onClick={() => handleAnalyse(prop)}
-                  disabled={analyseProperty.isPending && intelligenceTarget?.id === prop.id}
-                  className="gap-1.5"
-                >
-                  {analyseProperty.isPending && intelligenceTarget?.id === prop.id
-                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analysing...</>
-                    : <><Brain className="w-3.5 h-3.5" /> AI Analysis</>
-                  }
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleUploadClick(prop.id)}
-                  disabled={uploadDocument.isPending && uploadTargetId === prop.id}
-                  className="gap-1.5"
-                >
-                  {uploadDocument.isPending && uploadTargetId === prop.id
-                    ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Processing...</>
-                    : <><FileText className="w-3.5 h-3.5" /> Upload Doc</>
-                  }
-                </Button>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleOpenEdit(prop)}>
-                  <Pencil className="w-4 h-4 mr-2" /> Edit
-                </Button>
-                <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeletingId(prop.id)}>
-                  <Trash2 className="w-4 h-4 mr-2" /> Delete
-                </Button>
-              </div>
-            </CardFooter>
-          </Card>
-        ))}
-
-        {(!properties || properties.length === 0) && (
-          <div className="col-span-full py-12 text-center border border-dashed rounded-lg">
-            <h3 className="text-lg font-medium">No properties added yet</h3>
-            <p className="text-muted-foreground mt-1 mb-4">Start building your property pipeline.</p>
-            <Button onClick={handleOpenCreate}>Add First Property</Button>
+      {/* Active Property Banner */}
+      {activeProperty && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+            <Target className="w-5 h-5 text-primary" />
           </div>
-        )}
-      </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Active Clinic Location</p>
+            <p className="font-semibold truncate">{activeProperty.address}</p>
+            <div className="flex flex-wrap gap-3 mt-0.5">
+              {activeProperty.monthlyRentGbp != null && <span className="text-xs text-muted-foreground">{formatGBP(activeProperty.monthlyRentGbp)}/mo rent</span>}
+              {activeProperty.sqFootage != null && <span className="text-xs text-muted-foreground">{activeProperty.sqFootage.toFixed(0)} sq ft</span>}
+            </div>
+          </div>
+          <Button size="sm" variant="outline" className="shrink-0 text-xs gap-1.5" onClick={() => setSelectedProperty(activeProperty)}>
+            <Pencil className="w-3.5 h-3.5" />View
+          </Button>
+        </div>
+      )}
 
-      {/* Intelligence Sheet */}
-      <Sheet open={!!intelligenceTarget} onOpenChange={(open) => { if (!open) { setIntelligenceTarget(null); setIntelligenceResult(null); setExtractionFlags([]); } }}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader className="mb-4">
-            <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-primary" />
-              Property Intelligence Report
-            </SheetTitle>
-            <SheetDescription>
-              {intelligenceTarget?.address} · {intelligenceTarget?.postcode}
-            </SheetDescription>
-          </SheetHeader>
+      {/* Main Tabs */}
+      <Tabs value={pageTab} onValueChange={setPageTab}>
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="pipeline" className="gap-1.5 text-xs"><ListFilter className="w-3.5 h-3.5" />Pipeline</TabsTrigger>
+          <TabsTrigger value="rankings" className="gap-1.5 text-xs"><Trophy className="w-3.5 h-3.5" />Rankings</TabsTrigger>
+          <TabsTrigger value="all" className="gap-1.5 text-xs"><LayoutGrid className="w-3.5 h-3.5" />All Properties</TabsTrigger>
+        </TabsList>
 
-          {!analyseProperty.isPending && !intelligenceResult && (
-            <div className="rounded-lg border bg-muted/20 p-4 mb-6 space-y-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium">Competition search radius</p>
-                  <p className="text-xs text-muted-foreground">Used for Google Places competitor mapping</p>
+        {/* Pipeline Tab */}
+        <TabsContent value="pipeline" className="mt-6">
+          {(properties?.length ?? 0) === 0 ? (
+            <div className="text-center py-16 space-y-4">
+              <Building className="w-12 h-12 text-muted-foreground mx-auto" />
+              <div>
+                <p className="font-semibold text-lg">No properties yet</p>
+                <p className="text-sm text-muted-foreground">Add your first property or import from a listing URL to get started.</p>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button variant="outline" onClick={() => setShowUrlImport(true)} className="gap-2"><Link2 className="w-4 h-4" />Import from URL</Button>
+                <Button onClick={() => setIsFormOpen(true)} className="gap-2"><Plus className="w-4 h-4" />Add Manually</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {activeStages.map(stage => (
+                <div key={stage.key}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge className={`text-xs ${stage.color}`}>{stage.label}</Badge>
+                    <span className="text-xs text-muted-foreground">({byStage[stage.key]?.length ?? 0})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {byStage[stage.key]?.map(prop => (
+                      <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+                    ))}
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-primary">{searchRadiusMeters}m</span>
-              </div>
-              <div className="flex gap-2">
-                {[200, 400, 600, 1000, 1500, 2000].map(r => (
-                  <button
-                    key={r}
-                    onClick={() => setSearchRadiusMeters(r)}
-                    className={`flex-1 text-xs py-1.5 rounded border transition-colors ${searchRadiusMeters === r ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted border-input"}`}
-                  >
-                    {r >= 1000 ? `${r / 1000}km` : `${r}m`}
-                  </button>
-                ))}
-              </div>
+              ))}
+
+              {rejected.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Badge className="text-xs bg-muted text-muted-foreground opacity-60">Rejected</Badge>
+                    <span className="text-xs text-muted-foreground">({rejected.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 opacity-60">
+                    {rejected.map(prop => (
+                      <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
+        </TabsContent>
 
-          {extractionFlags.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 mb-4 space-y-1.5">
-              <div className="flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Extraction notes from document analysis</p>
-              </div>
-              <ul className="space-y-1 ml-6">
-                {extractionFlags.map((flag, i) => (
-                  <li key={i} className="text-xs text-amber-700 dark:text-amber-400 list-disc">{flag}</li>
-                ))}
-              </ul>
+        {/* Rankings Tab */}
+        <TabsContent value="rankings" className="mt-6">
+          {(properties?.length ?? 0) === 0 ? (
+            <div className="text-center py-16 space-y-2">
+              <Trophy className="w-10 h-10 text-muted-foreground mx-auto" />
+              <p className="font-semibold">No properties to rank yet</p>
+              <p className="text-sm text-muted-foreground">Add properties first, then use Rankings to compare them.</p>
+            </div>
+          ) : (
+            <RankingsView properties={properties ?? []} onOpen={setSelectedProperty} />
+          )}
+        </TabsContent>
+
+        {/* All Properties Tab */}
+        <TabsContent value="all" className="mt-6">
+          {(properties?.length ?? 0) === 0 ? (
+            <div className="text-center py-16 text-sm text-muted-foreground">No properties yet.</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {properties?.map(prop => (
+                <PropertyCard key={prop.id} property={prop} onOpen={() => setSelectedProperty(prop)} />
+              ))}
             </div>
           )}
+        </TabsContent>
+      </Tabs>
 
-          {analyseProperty.isPending && (
-            <div className="flex flex-col items-center justify-center py-24 gap-4">
-              <Loader2 className="w-10 h-10 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Running AI analysis… this takes 10–20 seconds</p>
-            </div>
-          )}
-
-          {analyseProperty.isError && (
-            <div className="flex flex-col items-center justify-center py-16 gap-4">
-              <XCircle className="w-10 h-10 text-destructive" />
-              <p className="text-sm text-muted-foreground">Analysis failed. Please try again.</p>
-              <Button onClick={() => intelligenceTarget && handleAnalyse(intelligenceTarget)}>Retry</Button>
-            </div>
-          )}
-
-          {intelligenceResult && intelligenceTarget && (
-            <IntelligencePanel
-              result={intelligenceResult}
-              property={intelligenceTarget}
-              onCompetitorsSaved={(updated) => {
-                setIntelligenceTarget(prev =>
-                  prev ? { ...prev, manualCompetitors: updated } : prev
-                );
-              }}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
-
-      {/* Add/Edit Dialog */}
+      {/* Add Property Dialog */}
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingProperty ? "Edit Property" : "Add Property"}</DialogTitle>
-            <DialogDescription>Enter the property details and agent contact information.</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Building className="w-5 h-5 text-primary" />Add Property</DialogTitle>
+            <DialogDescription>Manually add a property to your pipeline.</DialogDescription>
           </DialogHeader>
-
-          <form onSubmit={handleFormSubmit} className="space-y-6 mt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input id="address" name="address" defaultValue={editingProperty?.address || ""} required className="mt-1" />
-              </div>
-
-              <div>
-                <Label htmlFor="postcode">Postcode</Label>
-                <Input id="postcode" name="postcode" defaultValue={editingProperty?.postcode || ""} required className="mt-1" />
-              </div>
-
-              <div>
-                <Label htmlFor="status">Status</Label>
-                <Select name="status" defaultValue={editingProperty?.status || "viewing"}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="viewing">Viewing</SelectItem>
-                    <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                    <SelectItem value="offer_made">Offer Made</SelectItem>
-                    <SelectItem value="under_offer">Under Offer</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                    <SelectItem value="active">Active (Secured)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-              <h4 className="font-semibold text-sm">Financials & Specs</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="monthlyRentGbp">Monthly Rent (£)</Label>
-                  <Input id="monthlyRentGbp" name="monthlyRentGbp" type="number" defaultValue={editingProperty?.monthlyRentGbp || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="annualRentGbp">Annual Rent (£)</Label>
-                  <Input id="annualRentGbp" name="annualRentGbp" type="number" defaultValue={editingProperty?.annualRentGbp || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="businessRatesGbp">Business Rates (£/yr)</Label>
-                  <Input id="businessRatesGbp" name="businessRatesGbp" type="number" defaultValue={editingProperty?.businessRatesGbp || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="serviceChargeGbp">Service Charge (£/yr)</Label>
-                  <Input id="serviceChargeGbp" name="serviceChargeGbp" type="number" defaultValue={editingProperty?.serviceChargeGbp || ""} className="mt-1" />
-                </div>
-                <div className="col-span-2 flex items-center justify-between p-3 border rounded bg-card mt-2">
-                  <Label htmlFor="vatOnRent" className="mb-0">VAT applicable on rent?</Label>
-                  <Switch id="vatOnRent" name="vatOnRent" defaultChecked={editingProperty?.vatOnRent || false} />
-                </div>
-
-                <div>
-                  <Label htmlFor="sqFootage">Square Footage</Label>
-                  <Input id="sqFootage" name="sqFootage" type="number" defaultValue={editingProperty?.sqFootage || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="useClass">Use Class (e.g. E)</Label>
-                  <Input id="useClass" name="useClass" defaultValue={editingProperty?.useClass || ""} className="mt-1" />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="leaseLength">Lease Length</Label>
-                <Input id="leaseLength" name="leaseLength" defaultValue={editingProperty?.leaseLength || ""} placeholder="e.g. 5 years with 3 yr break" className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="availabilityDate">Availability Date</Label>
-                <Input id="availabilityDate" name="availabilityDate" type="date" defaultValue={editingProperty?.availabilityDate ? new Date(editingProperty.availabilityDate).toISOString().split("T")[0] : ""} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="parkingSpaces">Parking Spaces</Label>
-                <Input id="parkingSpaces" name="parkingSpaces" type="number" defaultValue={editingProperty?.parkingSpaces || ""} className="mt-1" />
-              </div>
-              <div>
-                <Label htmlFor="frontageMeters">Frontage (meters)</Label>
-                <Input id="frontageMeters" name="frontageMeters" type="number" step="0.1" defaultValue={editingProperty?.frontageMeters || ""} className="mt-1" />
-              </div>
-            </div>
-
-            <div className="bg-muted/30 p-4 rounded-lg border space-y-4">
-              <h4 className="font-semibold text-sm">Agent Contact</h4>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <Label htmlFor="agentName">Agent/Agency Name</Label>
-                  <Input id="agentName" name="agentName" defaultValue={editingProperty?.agentName || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="agentPhone">Phone</Label>
-                  <Input id="agentPhone" name="agentPhone" defaultValue={editingProperty?.agentPhone || ""} className="mt-1" />
-                </div>
-                <div>
-                  <Label htmlFor="agentEmail">Email</Label>
-                  <Input id="agentEmail" name="agentEmail" type="email" defaultValue={editingProperty?.agentEmail || ""} className="mt-1" />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea id="notes" name="notes" defaultValue={editingProperty?.notes || ""} className="mt-1 h-24" placeholder="Condition, potential layout issues, negotiation status..." />
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={() => setIsFormOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={createProperty.isPending || updateProperty.isPending}>
-                {editingProperty ? "Save Changes" : "Add Property"}
-              </Button>
-            </div>
-          </form>
+          <PropertyForm
+            onSubmit={handleCreateProperty}
+            isLoading={createProperty.isPending}
+            submitLabel="Add to Pipeline"
+          />
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the property record from your pipeline.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Property
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* URL Import Dialog */}
+      <UrlImportDialog
+        open={showUrlImport}
+        onClose={() => setShowUrlImport(false)}
+        onCreateProperty={handleCreateProperty}
+      />
+
+      {/* Property Detail Sheet */}
+      <PropertyDetailSheet
+        property={selectedProperty}
+        onClose={() => setSelectedProperty(null)}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) })}
+        onDeleted={() => setSelectedProperty(null)}
+      />
     </div>
   );
 }

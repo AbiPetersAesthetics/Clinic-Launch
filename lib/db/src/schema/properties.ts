@@ -8,6 +8,42 @@ export type ManualCompetitor = {
   notes?: string | null;
 };
 
+export type MediaFile = {
+  id: string;
+  name: string;
+  type: "pdf" | "image" | "document" | "floorplan";
+  url: string;
+  uploadedAt: string;
+  sizeBytes?: number | null;
+};
+
+export type ScoringWeights = {
+  affordability: number;
+  size: number;
+  parking: number;
+  frontage: number;
+  location: number;
+  competition: number;
+  fitoutComplexity: number;
+  demographics: number;
+};
+
+export const PIPELINE_STATUSES = [
+  "found",
+  "interesting",
+  "brochure_requested",
+  "viewing_booked",
+  "viewed",
+  "under_review",
+  "due_diligence",
+  "heads_of_terms",
+  "negotiating",
+  "rejected",
+  "selected",
+] as const;
+
+export type PipelineStatus = typeof PIPELINE_STATUSES[number];
+
 export const propertiesTable = pgTable("clinic_properties", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull(),
@@ -28,8 +64,17 @@ export const propertiesTable = pgTable("clinic_properties", {
   agentPhone: text("agent_phone"),
   agentEmail: text("agent_email"),
   status: text("status").notNull().default("viewing"),
+  pipelineStatus: text("pipeline_status").notNull().default("found"),
+  viewingNotes: text("viewing_notes"),
+  negotiationNotes: text("negotiation_notes"),
+  landlordConcessions: text("landlord_concessions"),
+  isActiveForProject: boolean("is_active_for_project").notNull().default(false),
+  isFavourited: boolean("is_favourited").notNull().default(false),
+  manualRankOverride: integer("manual_rank_override"),
   notes: text("notes"),
   manualCompetitors: jsonb("manual_competitors").$type<ManualCompetitor[]>().default([]),
+  mediaFiles: jsonb("media_files").$type<MediaFile[]>().default([]),
+  scoringWeights: jsonb("scoring_weights").$type<ScoringWeights>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
