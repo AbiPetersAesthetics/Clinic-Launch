@@ -151,6 +151,8 @@ export interface ClinicProperty {
   mediaFiles?: MediaFile[] | null;
   createdAt: string;
   updatedAt: string;
+  latestAnalysisAt?: string | null;
+  isAnalysisStale?: boolean | null;
 }
 
 export type CreatePropertyBodyStatus =

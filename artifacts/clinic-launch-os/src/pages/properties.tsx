@@ -19,6 +19,8 @@ import {
   useUpdateProjectScoringWeights,
   useComparePropertyAnalyses,
   getGetProjectScoringWeightsQueryKey,
+  useGetLatestPropertyAnalysis,
+  getGetLatestPropertyAnalysisQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
@@ -1175,12 +1177,33 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const uploadDocument = useUploadPropertyDocument();
   const analyseProperty = useAnalyseProperty();
 
+  const { data: latestAnalysisData } = useGetLatestPropertyAnalysis(
+    property?.id ?? 0,
+    { query: { enabled: !!property, queryKey: getGetLatestPropertyAnalysisQueryKey(property?.id ?? 0) } }
+  );
+
+  // Reset tab when switching properties
   useEffect(() => {
-    if (property) {
-      setActiveTab("details");
+    if (property) setActiveTab("details");
+  }, [property?.id]);
+
+  // Pre-populate intelligenceResult from the latest persisted analysis on open
+  useEffect(() => {
+    if (!property) return;
+    if (!latestAnalysisData) { setIntelligenceResult(null); return; }
+    const aj = latestAnalysisData.analysisJson as unknown as PropertyIntelligenceResult & { generatedAt?: string };
+    if (aj?.locationScore && aj?.commercialViabilityScore && aj?.clinicSuitabilityScore) {
+      setIntelligenceResult({
+        ...aj,
+        propertyId: property.id,
+        generatedAt: aj.generatedAt ?? latestAnalysisData.createdAt,
+        version: latestAnalysisData.version,
+        isStale: new Date(property.updatedAt) > new Date(latestAnalysisData.createdAt),
+      });
+    } else {
       setIntelligenceResult(null);
     }
-  }, [property?.id]);
+  }, [property?.id, latestAnalysisData]);
 
   if (!property) return null;
 
@@ -1282,6 +1305,12 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                   </div>
                   <p className="text-lg font-bold leading-tight">{property.address ?? "Unnamed Property"}</p>
                   {property.postcode && <p className="text-sm text-muted-foreground font-normal">{property.postcode}</p>}
+                  {latestAnalysisData && (
+                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                      <span>Last analysed {new Date(latestAnalysisData.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                      {intelligenceResult?.isStale && <Badge className="text-xs bg-amber-100 text-amber-700">Stale — property updated since analysis</Badge>}
+                    </p>
+                  )}
                 </div>
               </SheetTitle>
             </SheetHeader>
@@ -1537,19 +1566,29 @@ function PropertyCard({
   isSelected?: boolean;
   onToggleSelect?: () => void;
 }) {
+  const queryClient = useQueryClient();
+  const setPropertyActive = useSetPropertyActive();
   const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
+
   const handleClick = () => {
-    if (compareMode) {
-      onToggleSelect?.();
-    } else {
-      onOpen();
-    }
+    if (compareMode) onToggleSelect?.();
+    else onOpen();
+  };
+
+  const handleSetActive = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setPropertyActive.mutate({ id: property.id }, {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) }),
+    });
   };
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={handleClick}
-      className={`w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all space-y-3 ${
+      onKeyDown={e => { if (e.key === "Enter" || e.key === " ") handleClick(); }}
+      className={`w-full text-left rounded-xl border bg-card p-4 hover:border-primary/40 hover:shadow-sm transition-all space-y-3 cursor-pointer ${
         property.isActiveForProject ? "border-primary/50 ring-1 ring-primary/20" : ""
       } ${isSelected ? "border-primary ring-2 ring-primary/30 bg-primary/5" : ""}`}
     >
@@ -1564,9 +1603,17 @@ function PropertyCard({
             {property.isActiveForProject && <Target className="w-3.5 h-3.5 text-primary shrink-0" />}
             {property.isFavourited && <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500 shrink-0" />}
             <Badge className={`text-xs ${stage.color} shrink-0`}>{stage.label}</Badge>
+            {property.isAnalysisStale && (
+              <Badge className="text-xs bg-amber-100 text-amber-700 shrink-0">Analysis stale</Badge>
+            )}
           </div>
           <p className="text-sm font-semibold leading-tight truncate">{property.address ?? "Unnamed"}</p>
           {property.postcode && <p className="text-xs text-muted-foreground">{property.postcode}</p>}
+          {property.latestAnalysisAt && (
+            <p className="text-xs text-muted-foreground/70 mt-0.5">
+              Analysed {new Date(property.latestAnalysisAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
@@ -1586,7 +1633,19 @@ function PropertyCard({
           </span>
         )}
       </div>
-    </button>
+      {!compareMode && !property.isActiveForProject && property.pipelineStatus !== "rejected" && (
+        <div className="pt-1 border-t border-border/50">
+          <button
+            onClick={handleSetActive}
+            disabled={setPropertyActive.isPending}
+            className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+          >
+            <Target className="w-3 h-3" />
+            {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -1681,11 +1740,52 @@ function ComparisonDialog({
     return w.length === 1 ? w[0].id : null;
   })();
 
+  // Best premium / frontage (highest frontage = most visible shopfront)
+  const bestFrontageId = (() => {
+    const vals = selected.map(p => ({ id: p.id, v: p.frontageMeters ?? null })).filter(x => x.v != null) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.max(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+  // Best cost efficiency (lowest rent per sq ft)
+  const bestEfficiencyId = (() => {
+    const vals = selected.map(p => {
+      const rent = p.annualRentGbp ?? (p.monthlyRentGbp ? p.monthlyRentGbp * 12 : null);
+      if (!rent || !p.sqFootage || p.sqFootage === 0) return null;
+      return { id: p.id, v: rent / p.sqFootage };
+    }).filter(Boolean) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.min(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+  // Earliest available (fastest to launch)
+  const earliestAvailableId = (() => {
+    const vals = selected.map(p => p.availabilityDate ? { id: p.id, v: new Date(p.availabilityDate).getTime() } : null).filter(Boolean) as { id: number; v: number }[];
+    if (vals.length < 2) return null;
+    const best = Math.min(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+  // Lowest risk: most complete data (most non-null key fields)
+  const lowestRiskId = (() => {
+    const keyFields = (p: ClinicProperty) => [p.address, p.postcode, p.monthlyRentGbp, p.sqFootage, p.agentName, p.leaseLength, p.useClass, p.businessRatesGbp].filter(Boolean).length;
+    const vals = selected.map(p => ({ id: p.id, v: keyFields(p) }));
+    const best = Math.max(...vals.map(x => x.v));
+    const w = vals.filter(x => x.v === best);
+    return w.length === 1 ? w[0].id : null;
+  })();
+
   const recommendations: { label: string; icon: React.ReactNode; text: string }[] = [];
   if (overallWinnerId) recommendations.push({ label: "Best Overall", icon: <Trophy className="w-4 h-4 text-amber-500" />, text: selected.find(p => p.id === overallWinnerId)?.address ?? "Unnamed" });
   if (lowestRentId) recommendations.push({ label: "Lowest Cost", icon: <PoundSterling className="w-4 h-4 text-green-500" />, text: selected.find(p => p.id === lowestRentId)?.address ?? "Unnamed" });
-  if (largestId) recommendations.push({ label: "Biggest Space", icon: <Maximize2 className="w-4 h-4 text-blue-500" />, text: selected.find(p => p.id === largestId)?.address ?? "Unnamed" });
+  if (bestFrontageId) recommendations.push({ label: "Premium Location", icon: <Maximize2 className="w-4 h-4 text-rose-500" />, text: selected.find(p => p.id === bestFrontageId)?.address ?? "Unnamed" });
+  if (largestId) recommendations.push({ label: "Biggest Space", icon: <Building className="w-4 h-4 text-blue-500" />, text: selected.find(p => p.id === largestId)?.address ?? "Unnamed" });
   if (mostParkingId) recommendations.push({ label: "Best Parking", icon: <Car className="w-4 h-4 text-violet-500" />, text: selected.find(p => p.id === mostParkingId)?.address ?? "Unnamed" });
+  if (bestEfficiencyId) recommendations.push({ label: "Best Value / sq ft", icon: <PoundSterling className="w-4 h-4 text-teal-500" />, text: selected.find(p => p.id === bestEfficiencyId)?.address ?? "Unnamed" });
+  if (earliestAvailableId) recommendations.push({ label: "Fastest to Launch", icon: <Target className="w-4 h-4 text-indigo-500" />, text: selected.find(p => p.id === earliestAvailableId)?.address ?? "Unnamed" });
+  if (lowestRiskId) recommendations.push({ label: "Lowest Risk", icon: <CheckCircle className="w-4 h-4 text-emerald-500" />, text: selected.find(p => p.id === lowestRiskId)?.address ?? "Unnamed" });
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

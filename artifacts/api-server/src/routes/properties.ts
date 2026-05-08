@@ -20,7 +20,23 @@ const DEFAULT_SCORING_WEIGHTS: ScoringWeights = {
 router.get("/projects/:projectId/properties", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
   const props = await db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId));
-  res.json(props);
+
+  // Augment each property with latest analysis metadata for card-level stale indicators
+  const augmented = await Promise.all(props.map(async (prop) => {
+    const [latestAnalysis] = await db.select()
+      .from(propertyAiAnalysesTable)
+      .where(eq(propertyAiAnalysesTable.propertyId, prop.id))
+      .orderBy(desc(propertyAiAnalysesTable.version))
+      .limit(1);
+    if (!latestAnalysis) {
+      return { ...prop, latestAnalysisAt: null as string | null, isAnalysisStale: null as boolean | null };
+    }
+    const analysisDate = latestAnalysis.createdAt instanceof Date ? latestAnalysis.createdAt : new Date(latestAnalysis.createdAt);
+    const isAnalysisStale = prop.updatedAt > analysisDate;
+    return { ...prop, latestAnalysisAt: analysisDate.toISOString(), isAnalysisStale };
+  }));
+
+  res.json(augmented);
 });
 
 router.post("/projects/:projectId/properties", async (req, res) => {
@@ -216,7 +232,7 @@ function computePropertyScore(
     };
     aiLocationScore = (aj.locationScore?.total ?? 0) * effectiveWeights.location;
     aiViabilityScore = (aj.commercialViabilityScore?.total ?? 0) * effectiveWeights.demographics;
-    aiClinicScore = aj.clinicSuitabilityScore?.total ?? 0;
+    aiClinicScore = (aj.clinicSuitabilityScore?.total ?? 0) * effectiveWeights.fitoutComplexity;
     aiCompetitionOpportunity = (aj.competition?.opportunityScore ?? 0) * effectiveWeights.competition;
     breakdown.aiLocation = Math.round(aiLocationScore);
     breakdown.aiViability = Math.round(aiViabilityScore);

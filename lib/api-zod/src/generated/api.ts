@@ -171,6 +171,8 @@ export const ListPropertiesResponseItem = zod.object({
     .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
 });
 export const ListPropertiesResponse = zod.array(ListPropertiesResponseItem);
 
@@ -309,6 +311,8 @@ export const GetPropertyResponse = zod.object({
     .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
 });
 
 /**
@@ -439,6 +443,8 @@ export const UpdatePropertyResponse = zod.object({
     .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
 });
 
 /**
@@ -1828,6 +1834,8 @@ export const SetPropertyActiveResponse = zod.object({
     .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
 });
 
 /**
@@ -1919,6 +1927,8 @@ export const ConfirmPropertyUploadResponse = zod.object({
     .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
 });
 
 /**

@@ -1481,6 +1481,12 @@ components:
           type: string
         updatedAt:
           type: string
+        latestAnalysisAt:
+          type: string
+          nullable: true
+        isAnalysisStale:
+          type: boolean
+          nullable: true
       required:
         - id
         - projectId

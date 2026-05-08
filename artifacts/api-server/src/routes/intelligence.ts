@@ -421,6 +421,21 @@ router.post("/projects/:projectId/properties/import-url", async (req, res) => {
       redirect: "follow",
     });
 
+    // Re-validate final URL after redirects to prevent SSRF via open redirect
+    try {
+      const finalUrl = new URL(response.url);
+      if (finalUrl.protocol !== "https:") {
+        return res.status(422).json({ error: "Redirect to non-HTTPS URL blocked for security.", extractable: false });
+      }
+      const finalHostname = finalUrl.hostname.toLowerCase().replace(/^www\./, "");
+      const finalAllowed = ALLOWED_IMPORT_HOSTS.some(h => finalHostname === h || finalHostname.endsWith("." + h));
+      if (!finalAllowed) {
+        return res.status(422).json({ error: "Redirect to an external domain was blocked for security.", extractable: false });
+      }
+    } catch {
+      return res.status(422).json({ error: "Could not validate redirect destination.", extractable: false });
+    }
+
     if (!response.ok) {
       return res.status(422).json({
         error: `Could not fetch the listing page (HTTP ${response.status}). The site may require login or block automated access.`,
