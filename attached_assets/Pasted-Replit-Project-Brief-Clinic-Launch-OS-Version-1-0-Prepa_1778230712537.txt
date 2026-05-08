@@ -1,0 +1,644 @@
+Replit Project Brief — “Clinic Launch OS”
+Version 1.0
+Prepared for: Abi Peters Aesthetics Ltd
+Product Goal:
+
+Build a professional web-based operational platform that combines:
+
+Commercial property evaluation
+Financial modelling
+Clinic launch project management
+Build cost optimisation
+Risk management
+Timeline management
+AI-assisted property analysis
+Document intelligence
+Decision tracking
+
+Into a single “Clinic Launch Operating System”.
+
+This is NOT a generic project management app.
+
+The app should feel like:
+
+a clinic acquisition advisor
+a commercial lease planner
+a build-out coordinator
+a financial modeller
+and a launch command centre
+
+all in one.
+
+1. CORE PRODUCT VISION
+
+The platform exists to answer one question:
+
+“Can this clinic location realistically become a profitable, low-risk aesthetics clinic — and if so, how do we launch it properly?”
+
+The system should:
+
+analyse commercial units
+assess location viability
+estimate profitability
+model cashflow risk
+manage the entire launch process
+optimise costs intelligently
+track every task and dependency
+produce actionable outputs
+
+This should feel:
+
+executive
+premium
+operational
+strategic
+data-driven
+2. PRIMARY MODULES
+
+The app will contain 7 major modules:
+
+Property Intelligence Engine
+Financial Modelling Engine
+Project Management System
+Cost Variance Optimisation Engine
+Launch Dashboard
+Decision Log
+Document Intelligence System
+3. PROPERTY INTELLIGENCE ENGINE (TOP SECTION)
+
+This is the MOST important new addition.
+
+The top section should intelligently assess whether a property is viable.
+
+User uploads:
+
+commercial brochure PDF
+EPC
+floorplans
+lease documents
+estate agent particulars
+
+System extracts:
+
+address
+square footage
+rent
+VAT status
+rates
+lease length
+service charge
+use class
+availability date
+parking info
+frontage
+nearby businesses
+agent details
+
+Then enriches with external data/APIs.
+
+OUTPUT REQUIRED
+A. Location Score (/100)
+
+Weighted scoring:
+
+affluence
+footfall
+parking
+visibility
+aesthetics competition
+local income
+demographics
+proximity to premium retail
+female demographic concentration
+age distribution
+commuter profile
+population density
+local spending power
+clinic saturation
+nearby premium brands
+transport access
+B. Commercial Viability Score
+
+Should answer:
+
+Is this realistically profitable?
+Is it over-rented?
+Is it premium enough?
+Is there enough disposable income?
+Is there enough demand?
+Is the unit oversized?
+Is it underpriced?
+Is this a growth area?
+C. Aesthetics Clinic Suitability Score
+
+Should analyse:
+
+frontage
+natural light
+treatment room potential
+reception capability
+luxury feel potential
+plumbing practicality
+visibility
+discretion/privacy
+compliance suitability
+branding potential
+Instagrammability
+“premium perception”
+D. Demographic Intelligence
+
+Pull:
+
+median income
+home ownership
+average age
+female population %
+affluent postcode mapping
+nearby luxury spending indicators
+commuter affluence
+beauty/wellness density
+
+Potential APIs:
+
+Census API
+Google Places API
+ONS datasets
+Geoapify
+OpenStreetMap
+Companies House
+Google Maps Places
+E. Competition Mapping
+
+Automatically identify:
+
+nearby aesthetics clinics
+dentists
+skin clinics
+beauty salons
+medispas
+
+Display:
+
+map pins
+ratings
+review counts
+estimated positioning
+
+Then generate:
+
+saturation score
+opportunity score
+
+Not all competition is bad.
+High-end competition may validate area demand.
+
+F. AI Executive Summary
+
+Generate:
+
+strengths
+weaknesses
+risks
+hidden opportunities
+likely revenue ceiling
+launch recommendations
+suggested positioning
+
+Tone:
+professional commercial consultant.
+
+4. DOCUMENT INTELLIGENCE SYSTEM
+
+User uploads PDFs.
+
+System extracts:
+
+lease data
+rent
+EPC
+business rates
+service charge
+break clauses
+repairing obligations
+square footage
+permitted use
+
+Should use:
+
+OCR
+AI extraction
+structured parsing
+
+Then auto-populate fields.
+
+REQUIRED BEHAVIOUR
+
+If brochure says:
+“£32,500 per annum exclusive”
+
+System should:
+
+calculate monthly rent
+estimate rates
+estimate deposit
+estimate solicitor fees
+estimate stamp duty if relevant
+
+Automatically.
+
+Smart detection:
+
+If:
+“Landlord not elected for VAT”
+
+Then:
+VAT on rent = No.
+
+If:
+“Service charge estimated”
+
+System flags uncertainty.
+
+5. FINANCIAL MODELLING ENGINE
+
+This section already partially exists.
+
+Needs rebuilding properly.
+
+INPUTS
+Fixed Costs
+rent
+rates
+utilities
+internet
+insurance
+accountant
+software
+waste contract
+cleaner
+subscriptions
+finance repayments
+Variable Costs
+stock %
+of revenue
+marketing
+staffing
+commissions
+consumables
+Revenue Inputs
+
+Model:
+
+treatment mix
+average client value
+occupancy %
+room utilisation
+practitioner capacity
+conversion rates
+repeat booking rates
+memberships
+OUTPUTS
+Financial Outputs
+monthly net profit
+annual net profit
+EBITDA estimate
+cash runway
+break-even point
+break-even occupancy
+minimum viable revenue
+safe operating threshold
+Scenario Modelling
+
+Buttons:
+
+Conservative
+Realistic
+Aggressive
+
+Should dynamically alter:
+
+occupancy
+revenue growth
+marketing ROI
+staffing
+Ramp-Up Logic
+
+IMPORTANT.
+
+Current Bedhampton clinic remains active.
+
+System should allow:
+“existing clinic subsidises launch”
+
+Inputs:
+
+existing clinic revenue
+owner drawings
+runway savings
+personal salary needs
+
+Then calculate:
+“How long can this survive before profitability?”
+
+This is critical.
+
+6. PROJECT MANAGEMENT SYSTEM
+
+This becomes the operational heart.
+
+PROJECT STRUCTURE
+
+Phases:
+
+Property & Negotiation
+Legal
+Design & Planning
+Build & Fit-Out
+Compliance & Clinical
+Systems & Software
+Marketing
+Launch
+Post-launch optimisation
+TASK STRUCTURE
+
+Each task contains:
+
+title
+phase
+owner
+due date
+duration
+dependencies
+cost estimate
+status
+risk level
+notes
+files
+contractor
+supplier
+links
+COST INPUT SYSTEM (VERY IMPORTANT)
+
+Current system is too static.
+
+Need:
+
+RAG cost selection:
+LOW
+MID
+HIGH
+
+Example:
+
+Electrical work:
+
+LOW = £1,200
+MID = £2,500
+HIGH = £5,000
+
+User selects:
+
+green
+amber
+red
+
+System recalculates:
+
+project total
+cash requirement
+contingency
+risk score
+
+LIVE.
+
+This is one of the most important rebuild elements.
+
+SMART RISK ENGINE
+
+System should identify:
+
+too many high-risk selections
+unrealistic savings
+dangerous cost-cutting
+
+Example:
+If:
+
+no solicitor
+no clinical waste
+no compliance consultant
+
+System warns:
+“Critical launch risks detected.”
+
+7. COST VARIANCE OPTIMISATION ENGINE
+
+This should become:
+“Where can we safely save money?”
+
+NOT:
+“Cut everything.”
+
+AI Logic
+
+Each item tagged:
+
+safe to reduce
+delayable
+non-negotiable
+dangerous to cut
+luxury item
+operationally critical
+Example Outputs
+Safe Savings
+defer Meta ads month 1
+cheaper signage initially
+use Canva internally
+phase furniture upgrades
+Dangerous Savings
+no solicitor
+inadequate insurance
+unsafe electrics
+poor plumbing
+no fire risk assessment
+Dynamic Outputs
+
+When user changes:
+
+timeline
+contractor level
+marketing spend
+launch date
+
+System recalculates:
+
+cash requirement
+runway
+operational risk
+8. DASHBOARD
+
+Executive summary.
+
+Should instantly answer:
+
+“Are we okay?”
+Dashboard Cards
+total project cost
+likely cost
+conservative cost
+runway remaining
+launch readiness %
+blocked tasks
+high-risk items
+days to opening
+burn rate
+current spend
+projected first-year profit
+project confidence score
+Visuals
+burn-down charts
+project completion %
+cost by phase
+risk heatmap
+launch readiness meter
+occupancy projections
+monthly cashflow graph
+9. DECISION LOG
+
+Critical feature.
+
+Every major decision stored.
+
+Example:
+
+“Selected Winchester over Waterlooville”
+“Deferred second treatment room”
+“Reduced signage budget”
+
+Each includes:
+
+reasoning
+expected impact
+financial impact
+timestamp
+
+This creates:
+
+strategic audit trail
+10. UI / UX REQUIREMENTS
+
+VERY IMPORTANT.
+
+The current prototype is:
+
+too spreadsheet-like
+too cramped
+too corporate/basic
+
+Desired feel:
+
+Linear
+Notion
+modern SaaS
+premium dashboard
+Apple-like spacing
+clean
+operational
+Style Direction
+
+Colours:
+
+soft neutral background
+muted greens
+warm grey
+premium medical aesthetic
+
+Needs:
+
+cards
+whitespace
+subtle shadows
+collapsible phases
+sticky top dashboard
+responsive layout
+Mobile
+
+Must work well on:
+
+iPad
+laptop
+desktop
+
+Mobile secondary priority.
+
+11. TECH STACK (RECOMMENDED)
+Frontend
+Next.js
+Tailwind
+shadcn/ui
+Backend
+Supabase
+AI
+OpenAI API
+OCR
+PDF.js
+Tesseract
+Claude/OpenAI extraction
+Charts
+Recharts
+Maps
+Google Maps API
+Authentication
+Supabase Auth
+Storage
+Supabase Storage
+12. FUTURE FEATURES
+
+DO NOT BUILD YET
+But architect for them.
+
+Future:
+
+contractor portal
+multiple clinic support
+budgeting approvals
+supplier comparison engine
+AI negotiation assistant
+lease clause analyser
+voice notes
+mobile app
+CQC readiness scoring
+staffing planner
+treatment room profitability
+contractor tender comparison
+13. MOST IMPORTANT DESIGN PRINCIPLE
+
+This system should feel like:
+
+“Opening a £250k medical aesthetics clinic with a commercial consultant sitting beside you.”
+
+NOT:
+
+Trello
+Excel
+Monday.com clone
+
+It should feel:
+
+intelligent
+strategic
+operational
+premium
+financially aware
+clinically aware
+commercially realistic
+14. FINAL GOAL
+
+The app should eventually become reusable for:
+
+multiple clinic launches
+franchise expansion
+consulting
+ClinicSurge commercial projects
+
+Potential future SaaS product.
