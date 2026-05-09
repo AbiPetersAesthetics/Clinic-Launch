@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Winchester Clinic Plan V5 — Abi Peters Aesthetics</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--bg2:#f5f4f0;--bg3:#eceae4;--bd:rgba(0,0,0,.1);--bd2:rgba(0,0,0,.2);--tx:#1a1a1a;--tx2:#666;--tx3:#999;--r:8px;--lg:12px;--ok:#0F6E56;--wn:#BA7517;--er:#A32D2D;--in:#185FA5;--pu:#534AB7}
+@media(prefers-color-scheme:dark){:root{--bg:#1e1e1c;--bg2:#252523;--bg3:#2e2e2b;--bd:rgba(255,255,255,.1);--bd2:rgba(255,255,255,.2);--tx:#f0ede8;--tx2:#a0a09c;--tx3:#6b6b68}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg2);color:var(--tx);font-size:14px;line-height:1.5}
+.wrap{max-width:1600px;margin:0 auto;padding:20px 16px}
+.tabs{display:flex;border-bottom:1px solid var(--bd2);margin-bottom:18px;gap:0}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;color:var(--tx2);cursor:pointer;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;background:none}
+.tab:hover{color:var(--tx)}.tab.on{color:var(--tx);border-bottom-color:var(--tx)}
+.tc{display:none}.tc.on{display:block}
+.phdr{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.phdr h1{font-size:18px;font-weight:500}.phdr .sub{font-size:12px;color:var(--tx2);margin-top:2px}
+.hbtns{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font-size:12px;padding:6px 13px;border:0.5px solid var(--bd2);border-radius:var(--r);background:var(--bg);color:var(--tx2);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--bg2)}.btn.pri{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+/* PROPERTY PANEL */
+.prop-panel{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px;margin-bottom:14px}
+.prop-hdr{font-size:10px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.prop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px;margin-bottom:10px}
+.pi{background:var(--bg2);border-radius:var(--r);padding:9px 11px}
+.pi .pl{font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.pi .pv{font-size:13px;font-weight:500;color:var(--tx)}
+.pi .ps{font-size:10px;color:var(--tx2);margin-top:1px}
+.pv.er{color:var(--er)}.pv.wn{color:var(--wn)}.pv.ok{color:var(--ok)}
+.prop-edit-row{display:flex;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:0.5px solid var(--bd)}
+.pe-g{display:flex;flex-direction:column;gap:3px}
+.pe-l{font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em}
+.pe-g input,.pe-g select{font-size:12px;padding:5px 9px;border:0.5px solid var(--bd2);border-radius:var(--r);background:var(--bg2);color:var(--tx)}
+.pe-g input[type=date]{width:155px}.pe-g input[type=number]{width:120px}.pe-g select{width:180px}
+/* ONGOING COSTS CALCULATOR */
+.calc-panel{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px;margin-bottom:14px}
+.calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:700px){.calc-grid{grid-template-columns:1fr}}
+.calc-section h3{font-size:12px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--bd);font-size:12px}
+.calc-row:last-child{border-bottom:none}
+.calc-row .cl{color:var(--tx2)}
+.calc-row .cv{font-weight:500;color:var(--tx)}
+.calc-row .cv.er{color:var(--er)}.calc-row .cv.ok{color:var(--ok)}.calc-row .cv.wn{color:var(--wn)}
+.calc-total{display:flex;justify-content:space-between;padding:10px 0 0;font-size:14px;font-weight:500;border-top:1px solid var(--bd2);margin-top:6px}
+.calc-total .tv{font-size:16px}
+.calc-slider-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:0.5px solid var(--bd);font-size:12px}
+.calc-slider-row:last-child{border-bottom:none}
+.calc-slider-row input[type=range]{flex:1;accent-color:var(--in)}
+.calc-slider-row .sl{color:var(--tx2);min-width:140px}
+.calc-slider-row .sv{font-weight:500;color:var(--tx);min-width:60px;text-align:right}
+.break-even{background:var(--bg2);border-radius:var(--r);padding:10px 12px;margin-top:10px;font-size:12px}
+.break-even .bel{color:var(--tx2)}.break-even .bev{font-weight:500;font-size:14px}
+.bev.ok{color:var(--ok)}.bev.wn{color:var(--wn)}.bev.er{color:var(--er)}
+/* VARIANCE PANEL */
+.var-panel{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px;margin-bottom:14px}
+.var-summary{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;margin-bottom:12px}
+.vs-card{background:var(--bg2);border-radius:var(--r);padding:9px 11px}
+.vs-card .vl{font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.vs-card .vv{font-size:18px;font-weight:500;color:var(--tx)}
+.vv.ok{color:var(--ok)}.vv.wn{color:var(--wn)}.vv.er{color:var(--er)}
+.var-items{display:flex;flex-direction:column;gap:6px}
+.var-item{background:var(--bg2);border-radius:var(--r);padding:10px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;border-left:3px solid var(--bd2)}
+.var-item.cut{border-left-color:var(--ok)}.var-item.neg{border-left-color:var(--wn)}.var-item.defer{border-left-color:var(--pu)}.var-item.worth{border-left-color:var(--in)}.var-item.nocut{border-left-color:var(--er)}.var-item.dad{border-left-color:#639922}
+.vi-title{font-size:13px;font-weight:500;color:var(--tx);margin-bottom:3px}
+.vi-desc{font-size:11px;color:var(--tx2);line-height:1.5}
+.vi-cost{text-align:right;white-space:nowrap}
+.vi-save{font-size:14px;font-weight:500}
+.vi-save.ok{color:var(--ok)}.vi-save.wn{color:var(--wn)}.vi-save.in{color:var(--in)}.vi-save.er{color:var(--er)}
+.vi-badge{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:500;margin-top:3px;display:inline-block}
+.vb-cut{background:#E1F5EE;color:#085041}.vb-neg{background:#FAEEDA;color:#633806}
+.vb-defer{background:#EEEDFE;color:#3C3489}.vb-worth{background:#E6F1FB;color:#0C447C}
+.vb-nocut{background:#FCEBEB;color:#791F1F}.vb-dad{background:#EAF3DE;color:#27500A}
+/* BUDGET PANEL */
+.bpanel{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:13px;margin-bottom:12px}
+.brow{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:10px}
+.bcard{flex:1;min-width:85px;background:var(--bg2);border-radius:var(--r);padding:9px 11px}
+.bcard .bl{font-size:10px;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.bcard .bv{font-size:17px;font-weight:500;color:var(--tx)}
+.bv.ok{color:var(--ok)}.bv.wn{color:var(--wn)}.bv.er{color:var(--er)}
+.btrack{height:6px;background:var(--bd);border-radius:3px;overflow:hidden;margin-bottom:5px}
+.bfill{height:100%;border-radius:3px;transition:width .3s;background:var(--ok)}
+.bfill.wn{background:var(--wn)}.bfill.er{background:var(--er)}
+.bpct{font-size:11px;color:var(--tx2);margin-bottom:9px}
+.cfgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:5px}
+.cfc{background:var(--bg2);border:0.5px solid var(--bd);border-radius:var(--r);padding:6px 7px;text-align:center}
+.cfc .cfl{font-size:9px;color:var(--tx2);margin-bottom:1px}
+.cfc .cfa{font-size:11px;font-weight:500}
+.cfc .cfb{font-size:9px;color:var(--tx2);margin-top:1px}
+.cfo .cfa{color:var(--er)}.cfk .cfa{color:var(--ok)}
+.estmode{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.estmode label{font-size:11px;color:var(--tx2)}
+.estmode select{font-size:12px;padding:4px 8px;border:0.5px solid var(--bd2);border-radius:var(--r);background:var(--bg2);color:var(--tx)}
+/* CONTROLS */
+.ctrlbar{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;align-items:center}
+.sbox{flex:1;min-width:130px;max-width:200px;font-size:12px;padding:5px 9px;border:0.5px solid var(--bd2);border-radius:var(--r);background:var(--bg);color:var(--tx)}
+.fb{font-size:11px;padding:4px 10px;border:0.5px solid var(--bd2);border-radius:20px;background:transparent;color:var(--tx2);cursor:pointer;white-space:nowrap}
+.fb:hover{background:var(--bg2)}.fb.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+/* PHASE */
+.pblock{margin-bottom:9px;border:0.5px solid var(--bd);border-radius:var(--lg);overflow:hidden;background:var(--bg)}
+.phhdr{padding:10px 13px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.phhdr:hover{background:var(--bg2)}
+.phdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.phtitle{font-size:12px;font-weight:500;color:var(--tx);flex:1}
+.phmeta{font-size:11px;color:var(--tx2)}
+.phprog{font-size:11px;color:var(--tx2);margin-left:5px}
+.phchev{font-size:10px;color:var(--tx2);transition:transform .2s}
+.phchev.open{transform:rotate(90deg)}
+/* TABLE */
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:1300px}
+th{font-size:10px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.04em;padding:6px 9px;border-top:0.5px solid var(--bd);border-bottom:0.5px solid var(--bd);background:var(--bg2);text-align:left;white-space:nowrap}
+td{font-size:12px;padding:7px 9px;border-bottom:0.5px solid var(--bd);color:var(--tx);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:none}
+tr.done-row td{opacity:.4}
+tr.done-row .ttxt{text-decoration:line-through}
+tr:hover td{background:var(--bg2)}
+tr.ov-row .ttxt{color:var(--er)}
+tr.ds-row .ttxt{color:var(--wn)}
+/* THREE ESTIMATE COST CELL */
+.cost3{display:flex;flex-direction:column;gap:2px}
+.c3row{display:flex;align-items:flex-start;gap:5px;padding:3px 7px;border-radius:4px}
+.c3row.low{background:#E1F5EE}.c3row.mid{background:#FAEEDA}.c3row.high{background:#FCEBEB}
+.c3lbl{font-size:10px;font-weight:500;width:26px;flex-shrink:0;padding-top:1px}
+.c3lbl.low{color:#085041}.c3lbl.mid{color:#633806}.c3lbl.high{color:#791F1F}
+.c3val{font-weight:500;width:52px;font-size:11px;flex-shrink:0}
+.c3val.low{color:var(--ok)}.c3val.mid{color:var(--wn)}.c3val.high{color:var(--er)}
+.c3why{font-size:10px;color:var(--tx2);line-height:1.4;flex:1}
+.c3tip{font-size:10px;color:var(--tx2);line-height:1.4;margin-top:4px;padding:4px 7px;background:var(--bg2);border-radius:4px;border-left:2px solid var(--bd2)}
+.saving-tag{display:inline-block;font-size:10px;padding:1px 6px;border-radius:8px;font-weight:500;margin-top:3px}
+.st-cut{background:#E1F5EE;color:#085041}.st-neg{background:#FAEEDA;color:#633806}
+.st-defer{background:#EEEDFE;color:#3C3489}.st-worth{background:#E6F1FB;color:#0C447C}
+.st-dad{background:#EAF3DE;color:#27500A}.st-nocut{background:#FCEBEB;color:#791F1F}
+.act-inp{font-size:12px;padding:3px 6px;border:0.5px solid var(--in);border-radius:4px;width:80px;background:var(--bg);color:var(--tx);text-align:right}
+.ebtn{font-size:10px;padding:2px 7px;border:0.5px solid var(--bd2);border-radius:4px;background:transparent;color:var(--tx2);cursor:pointer;margin-top:2px}
+.ebtn:hover{background:var(--bg2)}
+.ashown{font-size:12px;font-weight:500;margin-top:3px}
+.ashown.over{color:var(--er)}.ashown.under{color:var(--ok)}.ashown.neutral{color:var(--tx)}
+/* TAGS */
+.tag{display:inline-block;font-size:10px;padding:2px 6px;border-radius:9px;font-weight:500;white-space:nowrap}
+.tag-legal{background:#E6F1FB;color:#0C447C}.tag-build{background:#EAF3DE;color:#27500A}
+.tag-reg{background:#FAEEDA;color:#633806}.tag-admin{background:#F1EFE8;color:#444441}
+.tag-clinical{background:#FBEAF0;color:#72243E}.tag-mktg{background:#EEEDFE;color:#3C3489}
+.rdot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.rdot-m{background:#E24B4A}.rdot-r{background:#1D9E75}
+.opill{display:inline-block;font-size:10px;padding:2px 7px;border-radius:9px;background:var(--bg2);border:0.5px solid var(--bd);color:var(--tx2);white-space:nowrap}
+.must-b{font-size:10px;padding:2px 6px;border-radius:7px;background:#FCEBEB;color:#791F1F;font-weight:500;white-space:nowrap}
+.def-b{font-size:10px;padding:2px 6px;border-radius:7px;background:#EEEDFE;color:#3C3489;font-weight:500;white-space:nowrap}
+.nf{font-size:9px;background:#E1F5EE;color:#085041;padding:1px 4px;border-radius:4px;font-weight:500;margin-left:2px;vertical-align:middle}
+.ovb{font-size:9px;background:#FCEBEB;color:#791F1F;padding:1px 4px;border-radius:4px;font-weight:500;margin-left:2px;vertical-align:middle}
+.dsb{font-size:9px;background:#FAEEDA;color:#633806;padding:1px 4px;border-radius:4px;font-weight:500;margin-left:2px;vertical-align:middle}
+.dadb{font-size:9px;background:#EAF3DE;color:#27500A;padding:1px 4px;border-radius:4px;font-weight:500;margin-left:2px;vertical-align:middle}
+.ssel{font-size:11px;padding:3px 5px;border:0.5px solid var(--bd2);border-radius:5px;background:var(--bg);color:var(--tx2);cursor:pointer;width:100%}
+.ssel.s-done{background:#EAF3DE;color:#27500A;border-color:#C0DD97}
+.ssel.s-progress{background:#FAEEDA;color:#633806;border-color:#FAC775}
+.ssel.s-blocked{background:#FCEBEB;color:#791F1F;border-color:#F7C1C1}
+.nbtn{font-size:10px;padding:2px 6px;border:0.5px solid var(--bd2);border-radius:4px;background:transparent;color:var(--tx2);cursor:pointer;white-space:nowrap;margin-top:3px;display:inline-block}
+.nbtn:hover{background:var(--bg2)}.nbtn.hn{border-color:var(--ok);color:var(--ok);background:#E1F5EE}
+.narea{width:100%;font-size:11px;padding:5px 7px;border:0.5px solid var(--in);border-radius:4px;background:var(--bg);color:var(--tx);resize:vertical;min-height:50px;margin-top:3px;font-family:inherit}
+.ndsp{font-size:11px;color:var(--tx2);background:var(--bg2);border-radius:4px;padding:4px 7px;margin-top:3px;line-height:1.5;border-left:2px solid var(--ok);white-space:pre-wrap}
+.cbw{display:flex;align-items:flex-start;gap:6px}
+.cbw input[type=checkbox]{width:13px;height:13px;margin-top:2px;cursor:pointer;accent-color:#1D9E75;flex-shrink:0}
+.pcc{font-size:11px;line-height:1.6;color:var(--tx2)}
+.pcc strong{font-weight:500;color:var(--tx);font-size:11px}
+.pcc a{color:var(--in);text-decoration:none}.pcc a:hover{text-decoration:underline}
+.nc{font-size:11px;color:var(--tx2);line-height:1.5}
+.dc{font-size:11px;color:var(--tx2);white-space:nowrap;line-height:1.7}
+.legend{display:flex;gap:9px;flex-wrap:wrap;font-size:11px;color:var(--tx2);margin-bottom:10px;align-items:center}
+.legi{display:flex;align-items:center;gap:3px}
+.nores{padding:28px;text-align:center;font-size:13px;color:var(--tx2)}
+/* DASHBOARD */
+.dgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin-bottom:16px}
+.dc2{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px}
+.dc2 h3{font-size:10px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.dbig{font-size:24px;font-weight:500;color:var(--tx);margin-bottom:2px}
+.dsub{font-size:12px;color:var(--tx2)}
+.dbig.er{color:var(--er)}.dbig.wn{color:var(--wn)}.dbig.ok{color:var(--ok)}
+.pprog{display:flex;flex-direction:column;gap:5px}
+.pprow{display:flex;align-items:center;gap:7px;font-size:11px}
+.pplbl{color:var(--tx2);width:160px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ppbw{flex:1;height:4px;background:var(--bd);border-radius:2px;overflow:hidden}
+.ppb{height:100%;border-radius:2px}
+.ppct{color:var(--tx2);font-size:10px;width:36px;text-align:right;flex-shrink:0}
+/* DECISION LOG */
+.declog{background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px}
+.declog h3{font-size:13px;font-weight:500;margin-bottom:10px}
+.decadd{display:flex;gap:7px;margin-bottom:12px;flex-wrap:wrap}
+.decadd input[type=date],.decadd input[type=text]{font-size:12px;padding:5px 9px;border:0.5px solid var(--bd2);border-radius:var(--r);background:var(--bg2);color:var(--tx)}
+.decadd input[type=text]{flex:1;min-width:180px}
+.decentry{border-bottom:0.5px solid var(--bd);padding:9px 0;display:flex;gap:9px;align-items:flex-start}
+.decentry:last-child{border-bottom:none}
+.decdate{font-size:11px;color:var(--tx2);white-space:nowrap;min-width:76px;padding-top:1px}
+.dectxt{font-size:12px;color:var(--tx);flex:1;line-height:1.5}
+.decdel{font-size:11px;color:var(--tx3);cursor:pointer;padding:0 3px;flex-shrink:0}
+.decdel:hover{color:var(--er)}
+.decempty{font-size:12px;color:var(--tx2);font-style:italic;padding:6px 0}
+/* PDF UPLOAD */
+.upzone{border:1.5px dashed var(--bd2);border-radius:var(--lg);padding:22px;text-align:center;cursor:pointer;margin-bottom:12px;transition:all .2s}
+.upzone:hover,.upzone.drag{border-color:var(--in);background:rgba(24,95,165,.04)}
+.upzone p{font-size:12px;color:var(--tx2);margin-top:5px}
+.upresult{background:var(--bg);border-radius:var(--lg);padding:14px;font-size:12px;line-height:1.8;color:var(--tx);border:0.5px solid var(--bd);max-height:500px;overflow-y:auto}
+.est-card{border-radius:var(--r);padding:10px 13px;margin-bottom:8px}
+.est-card.low{background:#E1F5EE;border:0.5px solid #5DCAA5}
+.est-card.mid{background:#FAEEDA;border:0.5px solid #EF9F27}
+.est-card.high{background:#FCEBEB;border:0.5px solid #F09595}
+.est-card .el{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.est-card.low .el{color:#085041}.est-card.mid .el{color:#633806}.est-card.high .el{color:#791F1F}
+.est-card .ev{font-size:20px;font-weight:500;margin-bottom:3px}
+.est-card.low .ev{color:var(--ok)}.est-card.mid .ev{color:var(--wn)}.est-card.high .ev{color:var(--er)}
+.est-card .es{font-size:11px;color:var(--tx2)}
+.est-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+@media print{.tabs,.ctrlbar,.hbtns,.ebtn,.nbtn,.ssel,.act-inp,.upzone{display:none!important}.tc{display:block!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="phdr">
+  <div><h1>Winchester Clinic Opening Plan — V5</h1><div class="sub">Abi Peters Aesthetics · 9A Jewry Street, Winchester SO23 8RZ · Ref WA.356276 · Dad's carpentry labour included throughout</div></div>
+  <div class="hbtns">
+    <button class="btn" onclick="exportCSV()">Export CSV</button>
+    <button class="btn" onclick="copySummary()">Copy summary</button>
+    <button class="btn" onclick="window.print()">Print</button>
+    <button class="btn pri" onclick="saveProg()">Save progress</button>
+  </div>
+</div>
+
+<!-- PROPERTY PANEL -->
+
+<div class="prop-panel">
+  <div class="prop-hdr"><span>Property data — 9A Jewry Street, Winchester SO23 8RZ · Goadsby ref WA.356276</span><span style="font-size:11px;color:var(--tx2)">Edit fields below</span></div>
+  <div class="prop-grid">
+    <div class="pi"><div class="pl">Annual rent (asking)</div><div class="pv wn" id="pp-rent">£32,500 pax</div><div class="ps">£2,708/month</div></div>
+    <div class="pi"><div class="pl">Target rent</div><div class="pv ok">£28–30k</div><div class="ps">Negotiate down from asking</div></div>
+    <div class="pi"><div class="pl">Rateable value</div><div class="pv wn">£31,250</div><div class="ps">From 1 April 2026 · no SBRR</div></div>
+    <div class="pi"><div class="pl">Monthly rates</div><div class="pv er">£995/mo</div><div class="ps">38.2p × £31,250 = £11,937/yr</div></div>
+    <div class="pi"><div class="pl">Total monthly cost</div><div class="pv er" id="pp-total">£3,703+</div><div class="ps">Rent + rates combined</div></div>
+    <div class="pi"><div class="pl">Available from</div><div class="pv ok" id="pp-avail">Early August 2026</div><div class="ps">Confirmed by Thomas Siddall</div></div>
+    <div class="pi"><div class="pl">VAT on rent</div><div class="pv ok" id="pp-vat">No VAT</div><div class="ps" id="pp-vat-sub">Landlord NOT opted to tax · confirmed</div></div>
+    <div class="pi"><div class="pl">Size</div><div class="pv">614 sq ft</div><div class="ps">57.06 sq m NIA · glass frontage 3.98m</div></div>
+    <div class="pi"><div class="pl">Lease type</div><div class="pv wn">FRI</div><div class="ps">Full repairing &amp; insuring</div></div>
+    <div class="pi"><div class="pl">EPC</div><div class="pv wn">E-103</div><div class="ps">FRI = tenant liable</div></div>
+    <div class="pi"><div class="pl">Back wall</div><div class="pv ok">Non-structural</div><div class="ps">Confirmed by Goadsby · Dad can reposition</div></div>
+    <div class="pi"><div class="pl">Dad's labour</div><div class="pv ok">Free throughout</div><div class="ps">All joinery · materials cost only</div></div>
+    <div class="pi"><div class="pl">Deposit (target)</div><div class="pv ok">1 month = £2,708</div><div class="ps">vs 3-month standard £8,125</div></div>
+    <div class="pi"><div class="pl">Rent-free target</div><div class="pv ok">3 months</div><div class="ps">Saves £8,125 · landlord vacant 12+ months</div></div>
+  </div>
+  <div class="prop-edit-row">
+    <div class="pe-g"><div class="pe-l">Property available date</div><input type="date" id="prop-avail-date" value="2026-08-01" oninput="updatePropPanel()"></div>
+    <div class="pe-g"><div class="pe-l">Rent (monthly £)</div><input type="number" id="prop-rent" value="2708" step="100" oninput="updatePropPanel()"></div>
+    <div class="pe-g"><div class="pe-l">VAT on rent</div><select id="prop-vat" onchange="updatePropPanel()"><option value="none">No VAT — landlord not opted to tax</option><option value="vat">VAT applicable — landlord opted to tax</option><option value="unknown">Unknown — to confirm</option></select></div>
+    <div class="pe-g"><div class="pe-l">Lease start date</div><input type="date" id="startDate" value="2026-08-01" oninput="recalc()"></div>
+    <div class="pe-g"><div class="pe-l">Show estimate</div><select id="estMode" onchange="recalc()"><option value="low">Low (best case)</option><option value="mid" selected>Mid (most likely)</option><option value="high">High (worst case)</option></select></div>
+  </div>
+</div>
+
+<!-- TABS -->
+
+<div class="tabs">
+  <button class="tab on" onclick="stab('plan',this)">Project plan</button>
+  <button class="tab" onclick="stab('costs',this)">Ongoing costs</button>
+  <button class="tab" onclick="stab('variance',this)">Cost variance</button>
+  <button class="tab" onclick="stab('dash',this)">Dashboard</button>
+  <button class="tab" onclick="stab('dec',this)">Decision log</button>
+  <button class="tab" onclick="stab('pdf',this)">Upload PDF</button>
+</div>
+
+<!-- PLAN TAB -->
+
+<div class="tc on" id="tc-plan">
+  <div class="bpanel">
+    <div class="brow">
+      <div class="bcard"><div class="bl">Low estimate total</div><div class="bv ok" id="bv-lo">—</div><div style="font-size:10px;color:var(--tx2);margin-top:2px">Best case · negotiate everything</div></div>
+      <div class="bcard"><div class="bl">Mid estimate total</div><div class="bv wn" id="bv-mid">—</div><div style="font-size:10px;color:var(--tx2);margin-top:2px">Most likely scenario</div></div>
+      <div class="bcard"><div class="bl">High estimate total</div><div class="bv er" id="bv-hi">—</div><div style="font-size:10px;color:var(--tx2);margin-top:2px">Worst case</div></div>
+      <div class="bcard"><div class="bl">Actual spent (ticked)</div><div class="bv" id="bv-act">£0</div></div>
+      <div class="bcard"><div class="bl">Remaining vs <span id="bv-est-lbl">mid</span></div><div class="bv ok" id="bv-rem">—</div></div>
+      <div class="bcard"><div class="bl">Dad's labour saving</div><div class="bv ok">~£8,500</div><div style="font-size:10px;color:var(--tx2);margin-top:2px">Joinery · materials only</div></div>
+      <div class="bcard"><div class="bl">Overdue tasks</div><div class="bv" id="bv-ov">0</div></div>
+      <div class="bcard"><div class="bl">Tasks done</div><div class="bv" id="bv-done">0/0</div></div>
+    </div>
+    <div class="btrack"><div class="bfill" id="bfill" style="width:0%"></div></div>
+    <div class="bpct" id="bpct">0% of mid estimate spent</div>
+    <div class="cfgrid" id="cfgrid"></div>
+  </div>
+  <div class="legend">
+    <span style="font-weight:500;color:var(--tx)">Key:</span>
+    <span class="legi"><span class="rdot rdot-m"></span>Legally mandatory</span>
+    <span class="legi"><span class="rdot rdot-r"></span>Recommended</span>
+    <span class="legi"><span class="must-b">Must pay</span></span>
+    <span class="legi"><span class="def-b">Deferrable</span></span>
+    <span class="legi"><span class="nf">NEW</span>2026 research</span>
+    <span class="legi"><span class="dadb">DAD</span>Dad's free labour</span>
+    <span class="legi"><span class="ovb">OVERDUE</span></span>
+    <span class="legi"><span class="dsb">DUE SOON</span></span>
+    <span style="font-size:11px;color:var(--tx2);font-style:italic">Cost column shows Low / Mid / High with rationale · click Enter actual to override</span>
+  </div>
+  <div class="ctrlbar">
+    <input class="sbox" type="text" id="search" placeholder="Search tasks, contacts, notes..." oninput="recalc()">
+    <button class="fb on" onclick="sf('all',this)">All</button>
+    <button class="fb" onclick="sf('David',this)">David</button>
+    <button class="fb" onclick="sf('Abi',this)">Abi</button>
+    <button class="fb" onclick="sf('Dad',this)">Dad</button>
+    <button class="fb" onclick="sf('Solicitor',this)">Solicitor</button>
+    <button class="fb" onclick="sf('Electrician',this)">Electrician</button>
+    <button class="fb" onclick="sf('Plumber',this)">Plumber</button>
+    <button class="fb" onclick="sf('mandatory',this)">Mandatory</button>
+    <button class="fb" onclick="sf('mustpay',this)">Must pay</button>
+    <button class="fb" onclick="sf('deferrable',this)">Deferrable</button>
+    <button class="fb" onclick="sf('overdue',this)">Overdue</button>
+    <button class="fb" onclick="sf('notdone',this)">Not done</button>
+    <button class="fb" onclick="sf('blocked',this)">Blocked</button>
+    <button class="fb" onclick="sf('hasnote',this)">Has notes</button>
+    <button class="fb" onclick="sf('dad',this)">Dad tasks</button>
+    <button class="fb" onclick="sf('saving',this)">Savings available</button>
+  </div>
+  <div id="phasewrap"></div>
+</div>
+
+<!-- ONGOING COSTS TAB -->
+
+<div class="tc" id="tc-costs">
+  <div class="calc-panel">
+    <div style="font-size:13px;font-weight:500;margin-bottom:14px">Monthly running costs calculator — adjust sliders to model your scenario</div>
+    <div class="calc-grid">
+      <div class="calc-section">
+        <h3>Fixed monthly costs</h3>
+        <div class="calc-row"><span class="cl">Rent (negotiated)</span><span class="cv er" id="oc-rent">£2,708</span></div>
+        <div class="calc-slider-row"><span class="sl">Monthly rent (£)</span><input type="range" id="sl-rent" min="2333" max="2708" step="25" value="2708" oninput="updateCalc()"><span class="sv" id="sv-rent">£2,708</span></div>
+        <div class="calc-row"><span class="cl">Business rates</span><span class="cv er">£995</span></div>
+        <div class="calc-row" id="vat-rent-row" style="display:none"><span class="cl">VAT on rent (if opted to tax)</span><span class="cv er">£542</span></div>
+        <div class="calc-row"><span class="cl">Utilities (electricity, water)</span><span class="cv">£200</span></div>
+        <div class="calc-row"><span class="cl">Broadband / phone</span><span class="cv">£50</span></div>
+        <div class="calc-row"><span class="cl">Hamilton Fraser insurance</span><span class="cv">£167</span></div>
+        <div class="calc-row"><span class="cl">Clinical waste contract</span><span class="cv">£48</span></div>
+        <div class="calc-row"><span class="cl">Accounting software (Xero)</span><span class="cv">£15</span></div>
+        <div class="calc-row"><span class="cl">Clinic software (ANS/Pabau)</span><span class="cv" id="oc-software">£0–55</span></div>
+        <div class="calc-row"><span class="cl">Accountant (fixed fee)</span><span class="cv">£175</span></div>
+        <div class="calc-total"><span>Total fixed monthly</span><span class="tv er" id="oc-fixed-total">—</span></div>
+      </div>
+      <div class="calc-section">
+        <h3>Variable monthly costs (based on revenue)</h3>
+        <div class="calc-slider-row"><span class="sl">Monthly revenue (£)</span><input type="range" id="sl-rev" min="5000" max="30000" step="500" value="12000" oninput="updateCalc()"><span class="sv" id="sv-rev">£12,000</span></div>
+        <div class="calc-slider-row"><span class="sl">Product cost % of revenue</span><input type="range" id="sl-prod" min="15" max="30" step="1" value="20" oninput="updateCalc()"><span class="sv" id="sv-prod">20%</span></div>
+        <div class="calc-slider-row"><span class="sl">Abi salary (£/month)</span><input type="range" id="sl-sal" min="0" max="6000" step="250" value="1047" oninput="updateCalc()"><span class="sv" id="sv-sal">£1,047</span></div>
+        <div class="calc-slider-row"><span class="sl">Marketing budget (£/month)</span><input type="range" id="sl-mktg" min="0" max="2000" step="100" value="600" oninput="updateCalc()"><span class="sv" id="sv-mktg">£600</span></div>
+        <div class="calc-row"><span class="cl">Product cost</span><span class="cv" id="oc-prod">—</span></div>
+        <div class="calc-row"><span class="cl">Abi salary</span><span class="cv" id="oc-sal">—</span></div>
+        <div class="calc-row"><span class="cl">Marketing</span><span class="cv" id="oc-mktg">—</span></div>
+        <div class="calc-total"><span>Total variable monthly</span><span class="tv" id="oc-var-total">—</span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-top:14px">
+      <div class="break-even"><div class="bel">Total monthly outgoings</div><div class="bev" id="be-total">—</div></div>
+      <div class="break-even"><div class="bel">Monthly revenue</div><div class="bev ok" id="be-rev">£12,000</div></div>
+      <div class="break-even"><div class="bel">Monthly net profit</div><div class="bev" id="be-net">—</div></div>
+      <div class="break-even"><div class="bel">Break-even revenue needed</div><div class="bev wn" id="be-breakeven">—</div></div>
+      <div class="break-even"><div class="bel">Annual occupancy cost</div><div class="bev er" id="be-occ">£44,436/yr</div></div>
+      <div class="break-even"><div class="bel">Bedhampton safety net covers</div><div class="bev ok" id="be-safety">Fixed costs + salary</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--tx2);margin-top:10px;line-height:1.6">
+      <strong style="color:var(--tx)">VAT note:</strong> Once registered (Combined Bedhampton + Winchester turnover hits £90k — likely months 6-9), cosmetic treatments are standard-rated at 20%. 
+      No VAT applies to rent at 9A Jewry Street (confirmed by Goadsby). 
+      Once VAT-registered you reclaim input VAT on materials, equipment and most business costs.
+    </div>
+  </div>
+</div>
+
+<!-- VARIANCE TAB -->
+
+<div class="tc" id="tc-variance">
+  <div class="var-panel">
+    <div style="font-size:13px;font-weight:500;margin-bottom:12px">Cost variance analysis — where to save and where not to cut</div>
+    <div class="var-summary" id="var-summary"></div>
+    <div style="font-size:12px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:4px">The single biggest lever — negotiate the deposit</div>
+    <div class="var-item neg" style="margin-bottom:12px">
+      <div><div class="vi-title">Lease deposit — negotiate 3 months down to 1 month</div><div class="vi-desc">Standard is 3 months = £8,125. Your target is 1 month = £2,708. Landlord has been vacant 12+ months. This single negotiation closes more than half the typical budget variance. Frame it as: "We are a credible ANP with proven £150k revenue. 1-month deposit, proceed next week."</div><span class="vi-badge vb-neg">Negotiate</span></div>
+      <div class="vi-cost"><div class="vi-save ok">Save up to £5,417</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Easy cuts — lowest clinical and legal impact</div>
+    <div class="var-items" id="var-cuts"></div>
+    <div style="font-size:12px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;margin-top:14px">Do not cut these — high ROI or legally non-negotiable</div>
+    <div class="var-items" id="var-worth"></div>
+    <div style="margin-top:14px;background:var(--bg2);border-radius:var(--r);padding:12px 14px">
+      <div style="font-size:12px;font-weight:500;margin-bottom:8px">Realistic savings summary</div>
+      <div id="var-savings-list"></div>
+      <div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:8px;border-top:0.5px solid var(--bd2);font-size:13px;font-weight:500"><span>Total realistic saving</span><span style="color:var(--ok)" id="var-total-saving">—</span></div>
+      <div style="display:flex;justify-content:space-between;padding-top:6px;font-size:13px;font-weight:500"><span>Revised mid-estimate after savings</span><span style="color:var(--ok)" id="var-revised">—</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD TAB -->
+
+<div class="tc" id="tc-dash">
+  <div class="dgrid" id="dgrid"></div>
+  <div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:14px">
+    <h3 style="font-size:11px;font-weight:500;color:var(--tx2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px">Progress by phase</h3>
+    <div class="pprog" id="pprog"></div>
+  </div>
+</div>
+
+<!-- DECISION LOG TAB -->
+
+<div class="tc" id="tc-dec">
+  <div class="declog">
+    <h3>Decision log — record key decisions, calls and agreements</h3>
+    <div class="decadd">
+      <input type="date" id="dec-date">
+      <input type="text" id="dec-txt" placeholder="e.g. Called Thomas Siddall — confirmed no VAT on rent, back wall non-structural, available early August." style="flex:1">
+      <button class="btn pri" onclick="addDec()">Add entry</button>
+    </div>
+    <div id="dec-entries"><div class="decempty">No entries yet. Record calls, agreements, decisions and milestones here.</div></div>
+  </div>
+</div>
+
+<!-- PDF UPLOAD TAB -->
+
+<div class="tc" id="tc-pdf">
+  <div style="background:var(--bg);border:0.5px solid var(--bd);border-radius:var(--lg);padding:18px">
+    <h3 style="font-size:14px;font-weight:500;margin-bottom:5px">Upload property or document PDF</h3>
+    <p style="font-size:12px;color:var(--tx2);margin-bottom:14px">Upload any PDF — lease, survey, contractor quote, or property brochure. The tool assesses document condition and generates low, mid and high cost estimates with rationale for each.</p>
+    <div class="upzone" id="upzone" onclick="document.getElementById('finp').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+      <div style="font-size:28px;margin-bottom:4px">📄</div>
+      <strong style="font-size:13px">Click to upload or drag and drop a PDF</strong>
+      <p>Lease documents · contractor quotes · survey reports · brochures</p>
+      <input type="file" id="finp" accept=".pdf" style="display:none" onchange="handleFile(this.files[0])">
+    </div>
+    <div id="upresult" style="display:none" class="upresult"></div>
+  </div>
+</div>
+</div>
+<script>
+const TODAY=new Date();
+const PHASES=[
+{id:'p1',label:'Phase 1 — Pre-lease due diligence',color:'#378ADD',wo:-4,tasks:[
+{id:'t101',task:'Confirm Use Class E(e) — pre-app enquiry to Winchester City Council',day:1,type:'legal',mand:true,def:false,owner:'David',poc:'WCC Planning\n01962 840222\nwinchester.gov.uk/planning',lo:0,mid:100,hi:250,loWhy:'Call WCC duty planner — may confirm verbally for free.',midWhy:'Standard paid written pre-app response. ~£175 WCC fee.',hiWhy:'Complex heritage query requiring formal written opinion.',saving:'cut',savingNote:'Call WCC planning duty line first. Verbal confirmation may be sufficient.',isnew:false,isDad:false,notes:'Confirms nurse-prescriber clinic lawful under Class E. Written = bankable evidence for lease and insurers.'},
+{id:'t102',task:'Search WCC Public Access — s.106, conditions, Article 4 Directions',day:1,type:'legal',mand:true,def:false,owner:'David',poc:'pa.winchester.gov.uk\n(free online)',lo:0,mid:0,hi:0,loWhy:'Free online.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'',isnew:false,isDad:false,notes:'Confirm no user restriction or planning condition limiting medical use. 30 mins online.'},
+{id:'t103',task:'Check rateable value — gov.uk/find-business-rates (RV £31,250 confirmed)',day:1,type:'admin',mand:true,def:false,owner:'David',poc:'gov.uk/find-business-rates',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'RV £31,250. Rate 38.2p = £995/month. No SBRR above £15k threshold.',isnew:false,isDad:false,notes:'£995/month rates from Day 1 of occupation. No SBRR available.'},
+{id:'t104',task:'Commercial property solicitor — lease negotiation and exchange',day:2,type:'legal',mand:true,def:false,owner:'Solicitor',poc:'Freeths Winchester\n01962 868000\nor Trethowans 01962 844544',lo:1200,mid:2200,hi:3500,loWhy:'Fixed-fee online specialist. Simple FRI lease, no complications.',midWhy:'Winchester solicitor fixed-fee including LFA review and due diligence.',hiWhy:'Hourly billing or complications — listed building, disputed LFA.',saving:'neg',savingNote:'Insist on fixed fee. Get 3 quotes. Each party bears own costs per brochure — confirm this holds.',isnew:false,isDad:false,notes:'Brief: Class E user clause, qualified alterations covenant, 3yr break, 3 months rent-free, 1-month deposit target.'},
+{id:'t105',task:'RICS Schedule of Condition — must be annexed before signing (FRI lease)',day:3,type:'legal',mand:false,def:false,owner:'David',poc:'Flude Property 01962 869843\nor Goadsby 01962 869667',lo:600,mid:950,hi:1500,loWhy:'Simple photographic schedule only. Local independent surveyor.',midWhy:'RICS chartered surveyor — full photographic and written schedule. Industry standard.',hiWhy:'Full structural condition report on top — relevant given inherited fit-out from previous tenant.',saving:'worth',savingNote:'Do NOT cut. FRI lease + existing fit-out from previous tenant = you inherit dilapidations liability. £950 now saves £10,000+ at lease end.',isnew:false,isDad:false,notes:'Photographic + written record of condition. MUST be done before exchange and annexed to lease.'},
+{id:'t106',task:'Fit-out drawings for Licence for Alterations',day:4,type:'build',mand:false,def:true,owner:'Dad + David',poc:'Dad produces drawings',lo:0,mid:200,hi:800,loWhy:'Dad produces dimensioned sketches. Landlord may accept informal drawings.',midWhy:'CAD drawing from architectural technician for formal LFA submission.',hiWhy:'Full architect drawings — if landlord insists on professional sign-off.',saving:'dad',savingNote:'Dad can produce the partition drawings himself. Only pay if Goadsby insists on professional drawings.',isnew:false,isDad:true,notes:'Floor plan showing partition walls, door positions, basin locations. Required for LFA and Building Regulations.'},
+{id:'t107',task:'Advertisement Consent — conservation area shopfront sign',day:5,type:'legal',mand:true,def:false,owner:'David',poc:'planningportal.gov.uk\nWCC Planning 01962 840222',lo:174,mid:400,hi:700,loWhy:'Statutory fee £174 only. Sign-maker provides elevation drawings free as part of their quote.',midWhy:'Statutory fee £174 plus separate architectural drawings £200-300.',hiWhy:'Fee £174 plus drawings plus Listed Building Consent if 9A shares structure with 28a.',saving:'cut',savingNote:'Bundle drawing cost with sign-maker quote — most sign-makers include planning drawings. Ask explicitly.',isnew:false,isDad:false,notes:'8-week statutory determination clock. Jewry Street = Central Winchester Conservation Area. Submit same day as lease completion.'},
+{id:'t108',task:'Listed Building Consent check — 28a Jewry Street Grade II listed',day:5,type:'legal',mand:true,def:false,owner:'David',poc:'historicengland.org.uk\nWCC Conservation 01962 840222',lo:0,mid:100,hi:500,loWhy:'Call WCC conservation officer — free verbal confirmation no LBC needed.',midWhy:'Brief planning consultant review to confirm LBC position before exchange.',hiWhy:'LBC application required because 9A shares structure with listed 28a. 8-13 weeks.',saving:'cut',savingNote:'Call WCC conservation officer before spending anything. They confirm in minutes.',isnew:false,isDad:false,notes:'28a Jewry Street Grade II listed (Historic England ref 1350687). Back wall confirmed non-structural by Goadsby.'},
+{id:'t109',task:'Book BAFE SP205 fire risk assessor',day:6,type:'clinical',mand:true,def:false,owner:'David',poc:'bafe.org.uk/find-a-contractor',lo:350,mid:475,hi:600,loWhy:'Local Hampshire BAFE assessor. Simple single-floor 614 sq ft unit.',midWhy:'Reputable BAFE SP205 with full written report, updated post fit-out.',hiWhy:'If assessor identifies significant remedial works required.',saving:'neg',savingNote:'Get 3 quotes. Simple single-floor retail unit should be at low end. Confirm post-fit-out update included.',isnew:false,isDad:false,notes:'RRFSO 2005 + Building Safety Act 2022 — full written FRA mandatory before occupation. Book now, carry out post fit-out.'},
+{id:'t110',task:'Negotiate Heads of Terms with Goadsby',day:5,type:'legal',mand:true,def:false,owner:'David',poc:'Thomas Siddall\n07990 788485\nthomas.siddall@goadsby.com',lo:0,mid:0,hi:0,loWhy:'No direct cost.',midWhy:'No direct cost.',hiWhy:'No direct cost.',saving:'neg',savingNote:'Every £1k off rent = £1k/yr = £5k over 5yr lease. Deposit 3→1 month saves £5,417. Landlord vacant 12+ months.',isnew:false,isDad:false,notes:'Target: £28-30k rent, 1-month deposit (£2,708), 3 months rent-free (saves £8,125), 5yr+3yr break, landlord covers rates during fit-out.'},
+{id:'t111',task:'DBS check — enhanced disclosure for Abi',day:6,type:'reg',mand:true,def:false,owner:'Abi',poc:'gov.uk/dbs-check',lo:38,mid:38,hi:38,loWhy:'Fixed government fee £38.',midWhy:'Fixed £38.',hiWhy:'Fixed £38.',saving:null,savingNote:'Fixed fee. Cannot be reduced.',isnew:true,isDad:false,notes:'Enhanced DBS for healthcare practitioners accessing vulnerable adults. 2-4 weeks. Hamilton Fraser, Save Face, JCCP may all require sight.'},
+{id:'t112',task:'Check local authority licensing — Health and Care Act 2022',day:6,type:'reg',mand:true,def:false,owner:'David',poc:'Winchester City Council\n01962 840222',lo:0,mid:0,hi:200,loWhy:'Call WCC — scheme likely not yet live for injectables.',midWhy:'Free.',hiWhy:'Local authority licence required — application fee TBC.',saving:'cut',savingNote:'Call WCC licensing team first. Scheme may not apply to your treatments yet.',isnew:true,isDad:false,notes:'Emerging licensing scheme. Check if any local authority licence now required for cosmetic injectables.'}
+]},
+{id:'p2',label:'Phase 2 — Lease signing & immediate actions (target 1 Aug 2026)',color:'#1D9E75',wo:0,tasks:[
+{id:'t201',task:'Exchange and complete lease — Schedule of Condition annexed, VAT on rent confirmed nil',day:1,type:'legal',mand:true,def:false,owner:'Solicitor',poc:'Your solicitor\n+ Thomas Siddall\n07990 788485',lo:2708,mid:5854,hi:9000,loWhy:'1-month deposit = £2,708. 3-month rent-free means zero rent at completion. Best case.',midWhy:'2-month deposit or 1-month deposit + first month rent if rent-free partial.',hiWhy:'3-month deposit = £8,125 + first quarter rent. Worst case — landlord digs in.',saving:'neg',savingNote:'Single biggest lever. 1-month vs 3-month deposit saves £5,417. No VAT on rent confirmed — clean total. Frame as credible ANP with proven £150k revenue.',isnew:false,isDad:false,notes:'Confirmed: no VAT on rent. Back wall non-structural. Available early August. Anti-money laundering ID check required by Goadsby.'},
+{id:'t202',task:'Submit Building Regulations Building Notice to Winchester Building Control',day:2,type:'build',mand:true,def:false,owner:'David',poc:'Winchester Building Control\n01962 848000',lo:300,mid:400,hi:500,loWhy:'Building Notice minimum fee for small commercial fit-out.',midWhy:'Standard Building Notice fee for 614 sq ft commercial unit.',hiWhy:'Full Plans application required — if Building Control insists on it.',saving:'cut',savingNote:'Building Notice faster and cheaper than Full Plans for this scale. Works can start 48hrs after submission.',isnew:false,isDad:false,notes:'Triggers: partition (Approved Doc B), plumbing (Docs G/H), new electrical circuits.'},
+{id:'t203',task:'Pay ICO data protection fee — register as Data Controller',day:2,type:'admin',mand:true,def:false,owner:'David',poc:'ico.org.uk/dpfee\n0303 123 1113',lo:47,mid:47,hi:52,loWhy:'£47 by direct debit.',midWhy:'£47 DD.',hiWhy:'£52 by card.',saving:null,savingNote:'Set up by direct debit to save £5. 15 mins online.',isnew:false,isDad:false,notes:'LEGALLY MANDATORY before first patient record. Penalty up to £4,000.'},
+{id:'t204',task:'Open business bank account for Winchester',day:2,type:'admin',mand:true,def:false,owner:'David',poc:'Tide / Starling Business\n(same-day online)',lo:0,mid:0,hi:120,loWhy:'Tide or Starling — free, same-day.',midWhy:'Free on most digital banks.',hiWhy:'Monthly fee if using HSBC/Lloyds.',saving:'cut',savingNote:'Use Tide or Starling. Free, same-day, integrates with Xero.',isnew:false,isDad:false,notes:'Keep Winchester income separate from Bedhampton.'},
+{id:'t205',task:'Notify utilities — electricity, water, broadband at 9A Jewry Street',day:3,type:'admin',mand:true,def:false,owner:'David',poc:'Octopus Business\nSouthern Water Business\nBT Openreach / Virgin Media',lo:0,mid:100,hi:200,loWhy:'Account transfers only — existing connections.',midWhy:'Some providers charge connection admin fees.',hiWhy:'New connection or upgrade required.',saving:'cut',savingNote:'Order broadband same day as lease — 10-15 working day activation.',isnew:false,isDad:false,notes:'Broadband essential for booking system from Day 1. Check AC has separate metered supply.'},
+{id:'t206',task:'Hamilton Fraser — update indemnity and add premises insurance',day:3,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Hamilton Fraser\n0800 634 3881\ncosmeticsales@hamiltonfraser.co.uk',lo:1500,mid:2000,hi:2500,loWhy:'Injectables + peels + Profhilo only. No laser. Built precisely for Day 1 treatments.',midWhy:'Full clinic cover: injectables, skin treatments, public liability, business interruption, cyber.',hiWhy:'Full cover plus laser from Day 1. Laser adds ~50% to premium.',saving:'worth',savingNote:'Do not cut. Quote precisely for Day 1 treatments only — no laser until you have the equipment. Saves £200-400 immediately.',isnew:false,isDad:false,notes:'Must be in force from Day 1 of patient treatment. They need: FRA, clinical waste contract, hand-wash facility, IPC policy.'},
+{id:'t207',task:'Instruct healthcare specialist accountant',day:4,type:'admin',mand:true,def:false,owner:'David',poc:'Azets: azets.co.uk\nBerthold Bauer: bertholdbauer.com',lo:1800,mid:2400,hi:3600,loWhy:'Fixed-fee healthcare specialist at £150/month × 12. Bookkeeping, accounts, VAT returns.',midWhy:'Fixed-fee £200/month. Proactive VAT threshold monitoring, dividend optimisation.',hiWhy:'Hourly billing. Avoid — same advice at 2× the cost.',saving:'neg',savingNote:'Insist on fixed monthly fee. Get 3 quotes from healthcare-specialist firms. Generalists miss cosmetic VAT nuances.',isnew:false,isDad:false,notes:'Critical: (1) cosmetic vs therapeutic VAT split, (2) £12,570 salary + dividends, (3) VAT threshold trigger, (4) August 31 year-end capital allowances.'},
+{id:'t208',task:'Apply for Licence for Alterations — partition, clinical basins, signage fixings',day:5,type:'legal',mand:true,def:false,owner:'Solicitor',poc:'Via your solicitor\n+ Goadsby 07990 788485',lo:400,mid:600,hi:800,loWhy:'Simple LFA. Non-structural partition (confirmed), two basins. Cooperative landlord.',midWhy:'Standard LFA covering partition, two clinical basins, signage fixings.',hiWhy:'Landlord insists on structural engineer sign-off or protracted negotiation.',saving:'neg',savingNote:'Push to include LFA within your overall solicitor fixed fee. Back wall confirmed non-structural — speeds this up.',isnew:false,isDad:false,notes:'Works CANNOT start until LFA granted. Back wall confirmed non-structural by Goadsby — partition plan is flexible.'},
+{id:'t209',task:'Register for business rates — WCC move-in notification',day:3,type:'admin',mand:true,def:false,owner:'David',poc:'WCC Business Rates\n01962 840222',lo:0,mid:0,hi:0,loWhy:'Free notification.',midWhy:'Free.',hiWhy:'Free.',saving:'neg',savingNote:'Push landlord to cover rates during fit-out period. Standard ask given 12+ month vacancy. Saves £995/month for 2-3 months = £2,000-3,000.',isnew:false,isDad:false,notes:'Rates £995/month commence from date of occupation.'},
+{id:'t210',task:'Companies House — update registered office if needed',day:4,type:'admin',mand:false,def:true,owner:'David',poc:'find-and-update.company-information.service.gov.uk',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'File AD01 online — 5 mins. Confirm SIC code 86900.',isnew:false,isDad:false,notes:'Only needed if Jewry Street will be the registered office.'},
+{id:'t211',task:'Set up medical device inventory log — MHRA 2026 requirement',day:5,type:'reg',mand:true,def:false,owner:'Abi',poc:'MHRA: gov.uk/mhra',lo:0,mid:0,hi:0,loWhy:'Free — built into ANS/Pabau.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Configure in ANS/Pabau equipment module. 1 hour to set up.',isnew:true,isDad:false,notes:'Serial numbers, models, CE/UKCA markings, service history. Treatment couches, DermaPen, any laser.'},
+{id:'t212',task:'Prescription record-keeping system — Human Medicines Regulations 2012',day:5,type:'reg',mand:true,def:false,owner:'Abi',poc:'NMC: nmc.org.uk',lo:0,mid:0,hi:0,loWhy:'Free — built into ANS/Pabau.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Make batch number mandatory in ANS on every treatment record. 10 mins to configure.',isnew:true,isDad:false,notes:'Product, dose, batch number, expiry, route, prescriber signature. Retain 8 years minimum.'}
+]},
+{id:'p3',label:'Phase 3 — Fit-out works (once LFA received) — Dad\'s labour free throughout',color:'#639922',wo:2,tasks:[
+{id:'t301',task:'Day 1 site meeting — measure all dimensions, confirm soil pipe location',day:1,type:'build',mand:true,def:false,owner:'Dad + David',poc:'On site — 9A Jewry Street SO23 8RZ',lo:0,mid:0,hi:0,loWhy:'Dad\'s time. Free.',midWhy:'Free.',hiWhy:'Free.',saving:'dad',savingNote:'',isnew:false,isDad:true,notes:'Internal width, corridor width (min 900mm), treatment room width (min 2.2m). Back wall confirmed non-structural — position partition where suits you.'},
+{id:'t302',task:'Pre-notify Southern Water — Water Fittings Regulations 1999',day:1,type:'build',mand:true,def:false,owner:'Plumber',poc:'Southern Water 0333 000 0365',lo:0,mid:0,hi:0,loWhy:'Free — plumber handles.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Confirm plumber has done this before starting.',isnew:false,isDad:false,notes:'MANDATORY before any mains supply work begins.'},
+{id:'t303',task:'Party Wall notices to neighbours if drilling into shared wall',day:1,type:'legal',mand:true,def:false,owner:'David',poc:'Adjoining owners\n(Turtle Bay, neighbouring offices)',lo:0,mid:0,hi:500,loWhy:'Written email consent from neighbour — no surveyor needed.',midWhy:'Party wall surveyor if neighbour requires formal process.',hiWhy:'Dispute requires agreed surveyor.',saving:'cut',savingNote:'Approach Turtle Bay directly. Written email consent is legally sufficient.',isnew:false,isDad:false,notes:'Party Wall Act 1996. 2 months notice for works on/near shared wall.'},
+{id:'t304',task:'STEP 1 — Strip-out: clear treatment zone, mark cable runs and pipe routes',day:1,type:'build',mand:true,def:false,owner:'Dad + David',poc:'On site',lo:0,mid:0,hi:0,loWhy:'Dad\'s time. Free.',midWhy:'Free.',hiWhy:'Free.',saving:'dad',savingNote:'',isnew:false,isDad:true,notes:'Mark soil pipe, AC duct, distribution board before framing. Note existing diagonal stud wall (confirmed non-structural).'},
+{id:'t305',task:'STEP 2 — Metal stud framing: partition walls and right-side corridor',day:3,type:'build',mand:true,def:false,owner:'Dad',poc:'Travis Perkins Winchester\n01962 852880',lo:280,mid:415,hi:500,loWhy:'Dad builds — materials only. 70mm C-stud, Rockwool insulation. Saves ~£800-1,500 vs contractor.',midWhy:'Dad builds — acoustic insulation in all cavities, fire-rated spec throughout.',hiWhy:'Dad builds — premium fire-rated materials, extra bracing if Building Control requires it.',saving:'dad',savingNote:'Dad\'s labour free saves £800-1,500 vs contractor. Materials from Travis Perkins Trade account.',isnew:false,isDad:true,notes:'70mm metal C-stud, 400mm centres. Rockwool RWA45 acoustic insulation. Corridor on RIGHT side. Kitchenette left wall stays.'},
+{id:'t306',task:'STEP 3 — First-fix electrical: 20A circuits, emergency lighting, sockets',day:5,type:'build',mand:true,def:false,owner:'NICEIC Electrician',poc:'niceic.com/find-a-contractor\nWinchester Electrical 01962 880123',lo:1100,mid:1550,hi:2000,loWhy:'One electrician 2 days. 20A circuits + emergency lighting. Existing LED stays — no replacement.',midWhy:'Full two-day job: 20A circuits, emergency lighting 3hr battery, sockets, smoke detectors.',hiWhy:'Significant rerouting if distribution board near capacity, or Building Control requires extras.',saving:'neg',savingNote:'Get 3 quotes from NICEIC contractors. Existing LED lighting reduces scope. Confirm DB has capacity.',isnew:false,isDad:false,notes:'20A radial circuit per treatment room. BS 7671:2018+A4:2026. NICEIC or NAPIT only — mandatory for insurance.'},
+{id:'t307',task:'STEP 4 — First-fix plumbing: supply runs to both clinical basins',day:6,type:'build',mand:true,def:false,owner:'Plumber',poc:'checkatrade.com Winchester\nCIPHE-registered plumber',lo:450,mid:700,hi:850,loWhy:'TR1 may share kitchenette supply. TR2 short new run if soil stack nearby.',midWhy:'Both rooms: 15mm copper hot/cold, 32mm waste, WRAS fittings, TMV3 mixers.',hiWhy:'Both rooms need full independent runs from distant soil stack.',saving:'cut',savingNote:'Check at Day 1 site meeting if TR1 can share kitchenette supply (within 3m). Could save £200-300.',isnew:false,isDad:false,notes:'HBN-spec basins: no overflow, lever TMV3 mixer (Delabie SECURITHERM). Both basins non-negotiable.'},
+{id:'t308',task:'STEP 5 — Plasterboard, tape, joint, skim coat',day:10,type:'build',mand:true,def:false,owner:'Dad',poc:'Travis Perkins Winchester\nKnauf / British Gypsum',lo:240,mid:400,hi:500,loWhy:'Dad builds and skims — materials only. Fire-rated board, tape, skim plaster.',midWhy:'Dad builds — full fire-rated spec, scrim tape, two-coat skim. Smooth clinical finish.',hiWhy:'Dad builds — spray plaster finish preferred. Still materials only.',saving:'dad',savingNote:'Dad\'s labour free. Confirm Dad comfortable with skim coat — if not budget £200-300 for a plasterer for final coat only.',isnew:false,isDad:true,notes:'Fire-rated plasterboard (Knauf Fireboard 30 min). Tape all joints. Skim coat for smooth clinical surface.'},
+{id:'t309',task:'STEP 6 — FD30 fire doors and linings × 2 treatment rooms',day:12,type:'build',mand:true,def:false,owner:'Dad',poc:'ironmongerydirect.co.uk',lo:600,mid:850,hi:1000,loWhy:'Dad fits — materials only. FD30 solid core kits, intumescent strips, mid-spec.',midWhy:'Dad fits — FD30 with smoke seals, acoustic rebate, DDA lever handles.',hiWhy:'Dad fits — premium FD30 with concealed closers, designer levers. Still materials only.',saving:'dad',savingNote:'Dad\'s labour saves £300-600 vs hiring a joiner. Go mid-spec — FD30 compliance matters, not aesthetics.',isnew:false,isDad:true,notes:'FD30 solid core doors. Intumescent strips. Smoke seals. Lever handles DDA-compliant. Lockable from inside. 2 doors.'},
+{id:'t310',task:'STEP 7 — Second-fix electrical: accessories, commissioning, EIC',day:15,type:'build',mand:true,def:false,owner:'NICEIC Electrician',poc:'Same NICEIC electrician',lo:300,mid:400,hi:500,loWhy:'Same electrician half-day. Accessories, emergency light testing, EIC issued.',midWhy:'Full second fix with examination lamp circuits per room, all commissioning.',hiWhy:'Snags from Building Control require additional works before Completion Certificate.',saving:'neg',savingNote:'Use same NICEIC electrician as first fix — eliminates call-out charge. Bundle first and second fix in one quote.',isnew:false,isDad:false,notes:'Examination lamp circuit per room. Commission emergency lighting. Smoke/heat detectors. EIC certificate on completion.'},
+{id:'t311',task:'STEP 8 — Second-fix plumbing: basins, TMV3 commissioning, waste connections',day:16,type:'build',mand:true,def:false,owner:'Plumber',poc:'Same plumber',lo:200,mid:250,hi:300,loWhy:'Same plumber half-day. Basins, taps, waste. Straightforward if first fix was clean.',midWhy:'TMV3 commissioning (max 38°C) and pressure testing.',hiWhy:'Remedial work if first-fix connections require adjustment.',saving:'neg',savingNote:'Bundle first and second fix with same plumber for better day rate.',isnew:false,isDad:false,notes:'Basin height 800-850mm. TMV3 max 38°C. Pressure test all waste runs. Water Regulations notification.'},
+{id:'t312',task:'STEP 9 — Clinical vinyl flooring: both treatment rooms (welded seams, 100mm coving)',day:18,type:'build',mand:true,def:false,owner:'Floor contractor',poc:'Altro / Polyflor supplier\nor local floor contractor',lo:1200,mid:1500,hi:1800,loWhy:'~20 sq m — 2 rooms only. Altro ContraX standard. Heat-welded seams.',midWhy:'~20 sq m. Full HTM-spec heat-welded seams, 100mm coving. Professional installation.',hiWhy:'Flooring extends into corridor or premium vinyl chosen for aesthetic reasons.',saving:'cut',savingNote:'Reception vinyl already fitted — leave it. 2 treatment rooms only = ~20 sq m. Saves £300-500 vs doing whole unit.',isnew:false,isDad:false,notes:'Altro ContraX or Polyflor Polysafe — HTM-grade. Heat-welded seams only. 100mm cove up each wall.'},
+{id:'t313',task:'STEP 10 — Bespoke reception desk (Dad builds)',day:20,type:'build',mand:false,def:false,owner:'Dad',poc:'Corian supplier\nScrewfix / B&Q materials',lo:500,mid:750,hi:1000,loWhy:'Dad builds — materials only. MDF carcass, HPL laminate, solid surface worktop.',midWhy:'Dad builds — MDF/HPL with Corian worktop, LED strip underneath, cable management.',hiWhy:'Dad builds — full Corian, veneer fronts, bespoke feature lighting. All materials only.',saving:'dad',savingNote:'Dad\'s labour saves £1,500-3,000 vs commercial joinery firm. Focus spend on Corian worktop — carcass can be MDF.',isnew:false,isDad:true,notes:'~2m wide × 900mm high. First impression for every Winchester client. Integrated cable management.'},
+{id:'t314',task:'STEP 11 — Treatment room cabinetry × 2, lockable POM cupboard (Dad builds)',day:21,type:'build',mand:true,def:false,owner:'Dad',poc:'Blum hardware: uk.blum.com\nScrewfix Winchester',lo:600,mid:1000,hi:1200,loWhy:'Dad builds — materials only. MDF carcass, HPL doors, basic lockable POM cabinet.',midWhy:'Dad builds — wall-hung units, Blum TANDEM soft-close, lockable POM cupboard per room.',hiWhy:'Dad builds — Corian worktops matching reception, premium HPL, all Blum hardware.',saving:'dad',savingNote:'Dad\'s labour free. LOCKABLE cabinet for POMs is non-negotiable (NMC requirement). Simplify everything else if needed.',isnew:false,isDad:true,notes:'Wall-hung units, wipe-clean HPL. DEDICATED LOCKABLE cupboard for POMs per room. Blum TANDEM BLUMOTION runners.'},
+{id:'t315',task:'STEP 12 — Antimicrobial paint: treatment rooms and corridor (Dad paints)',day:24,type:'build',mand:false,def:true,owner:'Dad + David',poc:'Dulux Trade Sterishield\nWickes Winchester',lo:180,mid:300,hi:400,loWhy:'Dad paints — materials only. Dulux Sterishield for clinical surfaces. 2 coats.',midWhy:'Dad paints — full antimicrobial spec plus brand colour on reception feature wall.',hiWhy:'Dad paints — spray finish preferred. Sprayer hire plus premium product.',saving:'dad',savingNote:'Dad paints — materials only. Standard white/neutral for treatment rooms. Sterishield on clinical surfaces.',isnew:false,isDad:true,notes:'Dulux Trade Sterishield or equivalent antimicrobial for clinical surfaces. 2 coats minimum.'},
+{id:'t316',task:'STEP 13 — External shopfront signage (ONLY after Advertisement Consent)',day:28,type:'build',mand:true,def:false,owner:'Sign company',poc:'Local Winchester sign-maker\nthesigncompanyuk.co.uk',lo:600,mid:1350,hi:2500,loWhy:'High-quality vinyl lettering on existing fascia. Professional, conservation-area appropriate. No illumination.',midWhy:'Flat-cut acrylic letters on fascia plus window vinyl branding.',hiWhy:'Halo-illuminated built-up letters. Exceptional but needs explicit consent and longer lead time.',saving:'cut',savingNote:'Launch with vinyl (low scenario). Vinyl is indistinguishable at street level. Upgrade to illuminated in Year 2 and expense it against profit. Saves £750-1,900.',isnew:false,isDad:false,notes:'DO NOT install before Advertisement Consent granted. Conservation area — criminal offence. Must match consented drawings.'},
+{id:'t317',task:'STEP 14 — Deep clean to clinical standard before equipment arrives',day:29,type:'clinical',mand:true,def:false,owner:'Abi + David',poc:'Clinical cleaning or own',lo:0,mid:175,hi:300,loWhy:'Abi and David do it themselves — zero cost. IPA/chlorhexidine wipes. Document it.',midWhy:'Professional clinical cleaning company — guaranteed standard.',hiWhy:'Specialist clinical decontamination service.',saving:'cut',savingNote:'Abi and David can do this at zero cost. Document the clean as the IPC commissioning record.',isnew:false,isDad:false,notes:'Chlorhexidine/IPA wipe-down of all surfaces. Document as IPC commissioning record before any equipment enters.'},
+{id:'t318',task:'STEP 15 — Professional photography of completed clinic',day:30,type:'mktg',mand:false,def:true,owner:'David',poc:'Katharine Vaughan Photography\nkatharinevaughanphotography.co.uk',lo:350,mid:575,hi:800,loWhy:'1.5hr session at £350. ~40 edited images. Reception, rooms, Abi in uniform.',midWhy:'3hr half-day session. 50-60 edited images. Interior, exterior, lifestyle, clinical.',hiWhy:'Full half-day session plus editing. More than needed for launch.',saving:'cut',savingNote:'Book the 1.5hr £350 package. 40 images is more than enough for launch. Save £200-450 vs full day.',isnew:false,isDad:false,notes:'Book 3 weeks in advance. Use for website, Google Business, Instagram launch campaign.'},
+{id:'t319',task:'Building Regulations Completion Certificate — final inspection',day:32,type:'build',mand:true,def:false,owner:'Building Control + David',poc:'Winchester Building Control\n01962 848000',lo:0,mid:0,hi:0,loWhy:'Included in Building Notice fee already paid.',midWhy:'Included.',hiWhy:'Included.',saving:null,savingNote:'MUST be received before first patient. Book inspection 5 working days in advance.',isnew:false,isDad:false,notes:'Checks: partition fire compliance, EIC, plumbing cert, emergency lighting, accessibility.'},
+{id:'t320',task:'Treatment couches × 2 — order early, deliver after flooring',day:15,type:'build',mand:true,def:false,owner:'David',poc:'Capital Hair & Beauty\ncapitalhairandbeauty.co.uk',lo:2438,mid:2900,hi:4000,loWhy:'2 × REM Excel 3-motor at £1,219 each. Industry standard, adequate for all injectables.',midWhy:'2 × HOF Skinmate Saturn 3-motor at ~£1,450 each. More comfortable for longer treatments.',hiWhy:'2 × HOF Skinmate Hermes 4-motor electric height+tilt at ~£2,000 each.',saving:'cut',savingNote:'Go low. REM Excel 3-motor is the most common couch in UK aesthetics clinics. Saves £462-1,562 vs mid/high.',isnew:false,isDad:false,notes:'2-3 week lead time — order early. Deliver AFTER vinyl fitted and cured.'},
+{id:'t321',task:'Baseline photography protocol — standardised pre-treatment photos for every patient',day:30,type:'clinical',mand:true,def:false,owner:'Abi',poc:'ANS or Pabau photo module',lo:0,mid:30,hi:200,loWhy:'Configure existing ANS photo module + £30 ring light from Amazon.',midWhy:'Ring light plus documented SOP. Standard angles per treatment area.',hiWhy:'Dedicated photo lightbox or professional ring light set.',saving:'cut',savingNote:'£30 ring light and Save Face SOP template is all you need.',isnew:true,isDad:false,notes:'2026 regulatory expectation. Standard angles per area. Separate photo consent. Required for adverse event documentation.'}
+]},
+{id:'p4',label:'Phase 4 — Regulatory & professional registrations (run in parallel with build)',color:'#BA7517',wo:1,tasks:[
+{id:'t401',task:'JCCP Practitioner Register — apply online',day:1,type:'reg',mand:false,def:false,owner:'Abi',poc:'jccp.org.uk\n0800 090 2014',lo:0,mid:0,hi:0,loWhy:'FREE since 2025 — fees abolished.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Free. Do immediately — 1 hour. DHSC licensing will require JCCP from 2027.',isnew:false,isDad:false,notes:'Upload: NMC PIN, qualifications, indemnity, BLS certificate, premises declaration. 2-4 weeks.'},
+{id:'t402',task:'Save Face registration — online application, Zoom clinic assessment',day:2,type:'reg',mand:false,def:false,owner:'Abi',poc:'saveface.co.uk/en/account/register\n01443 704051',lo:500,mid:700,hi:900,loWhy:'Lower end of published range. 200+ template policies included on registration.',midWhy:'Mid-point of current rate. PSA-accredited listing, all templates, Zoom assessment.',hiWhy:'Fee may have increased — call 01443 704051 to confirm current rate before applying.',saving:'worth',savingNote:'Do not cut. Only PSA-accredited register for medical professionals. Winchester clients search Save Face before booking. 200+ policy templates alone worth the fee.',isnew:false,isDad:false,notes:'PSA-accredited, NHS-signposted. 45-min Zoom clinic assessment. 4-8 weeks end to end.'},
+{id:'t403',task:'Allergan Direct — register 9A Jewry Street delivery address',day:3,type:'reg',mand:true,def:false,owner:'Abi',poc:'allerganaesthetics.co.uk\nAllergan Practitioner Pathway rep',lo:0,mid:0,hi:0,loWhy:'Free — admin only.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Notify Allergan Practitioner Pathway team at same time — key relationship.',isnew:false,isDad:false,notes:'Botox/Juvéderm cannot be delivered until Winchester address registered. 1-2 weeks credentialing.'},
+{id:'t404',task:'Galderma/Azzalure — register Jewry Street delivery address',day:3,type:'reg',mand:true,def:false,owner:'Abi',poc:'Galderma UK\n0800 023 2550',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Bundle with Allergan admin — same week.',isnew:false,isDad:false,notes:'Same process as Allergan. 1-2 weeks.'},
+{id:'t405',task:'Derma Focus (Polynucleotides) — register Jewry Street',day:4,type:'reg',mand:true,def:false,owner:'Abi',poc:'dermafocus.co.uk',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'',isnew:false,isDad:false,notes:'Update delivery address from Bedhampton.'},
+{id:'t406',task:'NMC face-to-face prescribing SOP — written procedure for Winchester',day:5,type:'reg',mand:true,def:false,owner:'Abi',poc:'nmc.org.uk\njccp.org.uk',lo:0,mid:0,hi:0,loWhy:'Save Face template. Abi\'s time.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Save Face provides SOP templates on registration. Adapt for 9A Jewry Street.',isnew:false,isDad:false,notes:'NMC rule from 1 June 2025: every prescribing episode must follow face-to-face at Winchester premises.'},
+{id:'t407',task:'Clinic management software — check ANS plan first then Pabau',day:5,type:'admin',mand:true,def:false,owner:'David',poc:'ANS: aestheticnursesoftware.com\nPabau: pabau.com',lo:0,mid:660,hi:1800,loWhy:'Existing ANS plan covers Winchester as second location at no extra cost — check first.',midWhy:'ANS additional location fee or Pabau starter × 12 months.',hiWhy:'Pabau full plan with all integrations from Day 1.',saving:'defer',savingNote:'CHECK ANS PLAN FIRST. You already pay for ANS. Many plans allow multiple locations free. Defer Pabau to Month 3 if ANS works.',isnew:false,isDad:false,notes:'Online booking live before marketing launch. Pabau recommended if ANS cannot handle batch tracking.'},
+{id:'t408',task:'ACE membership — confirm it covers Winchester location',day:6,type:'reg',mand:false,def:true,owner:'Abi',poc:'ace-aesthetics.co.uk',lo:0,mid:200,hi:400,loWhy:'Call ACE — membership likely covers practitioner at any location. May be £0.',midWhy:'If Winchester requires separate location registration.',hiWhy:'If ACE insists on new membership for new premises.',saving:'cut',savingNote:'Call ACE before paying. Most professional body memberships cover practitioner at any premises.',isnew:false,isDad:false,notes:'Call ACE to confirm before paying anything additional.'},
+{id:'t409',task:'Allergan Practitioner Pathway — notify of Winchester commercial premises',day:6,type:'reg',mand:false,def:true,owner:'Abi',poc:'Allergan Practitioner Pathway rep',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Key differentiator — Abi was scouted. Ask about BDM support for the Winchester launch.',isnew:false,isDad:false,notes:'Update records. Explore BDM support and training for Winchester launch.'},
+{id:'t410',task:'VAT registration — when rolling 12-month taxable turnover approaches £85k',day:1,type:'admin',mand:true,def:true,owner:'Accountant + David',poc:'HMRC VAT: 0300 200 3700\ngov.uk/vat-registration',lo:0,mid:0,hi:0,loWhy:'Free to register.',midWhy:'Free.',hiWhy:'Free. Cost is absorbed 20% output VAT on cosmetic treatments.',saving:null,savingNote:'Register at £85k (30-day warning). Combined Bedhampton + Winchester approaches threshold months 6-9. No VAT on rent confirmed — doesn\'t affect this calculation.',isnew:false,isDad:false,notes:'Cosmetic treatments standard-rated 20%. Once registered: charge clients VAT, reclaim input VAT on materials and equipment.'},
+{id:'t411',task:'CPD documentation log — set up and start immediately',day:5,type:'reg',mand:true,def:false,owner:'Abi',poc:'NMC CPD: nmc.org.uk',lo:0,mid:0,hi:0,loWhy:'Free — spreadsheet.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Log all training, Level 7 progress, BLS renewals. Insurers and JCCP will ask.',isnew:true,isDad:false,notes:'Required for DHSC licensing 2027. Insurers and JCCP will request.'},
+{id:'t412',task:'Complaints and incident log — set up before opening',day:5,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Save Face template (on registration)',lo:0,mid:0,hi:0,loWhy:'Save Face template. Abi\'s time.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Use Save Face template provided on registration.',isnew:true,isDad:false,notes:'Date, patient, treatment, what happened, action, outcome, learning. Review quarterly.'},
+{id:'t413',task:'Batch number and traceability log — every injectable',day:5,type:'clinical',mand:true,def:false,owner:'Abi',poc:'ANS/Pabau batch tracking\nMHRA: yellowcard.mhra.gov.uk',lo:0,mid:0,hi:0,loWhy:'Built into ANS/Pabau. Abi\'s time.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Make batch number mandatory in ANS on every treatment record. 10 mins to configure.',isnew:true,isDad:false,notes:'Product, batch number, expiry, volume, site per treatment. Required for MHRA product recall tracing.'}
+]},
+{id:'p5',label:'Phase 5 — Clinical governance & health and safety',color:'#D85A30',wo:2,tasks:[
+{id:'t501',task:'IPC Policy — written document for 9A Jewry Street',day:5,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Save Face templates\n(200+ on registration)',lo:0,mid:0,hi:0,loWhy:'Save Face template. Abi\'s time.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Adapt for two treatment rooms, kitchenette, no on-site sterilisation.',isnew:false,isDad:false,notes:'WHO 5 Moments hand hygiene, PPE, surface decontamination, single-use injectables, spillage, sharps, waste.'},
+{id:'t502',task:'Adverse Event Protocol — VO, anaphylaxis, vasovagal — written before Day 1',day:6,type:'clinical',mand:true,def:false,owner:'Abi',poc:'JCCP: jccp.org.uk\nHamilton Fraser guidance',lo:80,mid:100,hi:120,loWhy:'Hyalase stock + written protocol using JCCP/Save Face templates.',midWhy:'Hyalase × 2 + WFI. Written protocol.',hiWhy:'Full emergency stock pre-purchased including adrenaline separately.',saving:null,savingNote:'Protocol itself is free. Cost is the hyalase stock. Cannot meaningfully reduce.',isnew:false,isDad:false,notes:'MUST be in writing before first patient. VO: hyalase, massage, A&E escalation. Anaphylaxis: adrenaline 0.5mg IM, 999.'},
+{id:'t503',task:'Emergency drugs and equipment kit',day:20,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Church Pharmacy: churchpharmacy.co.uk',lo:150,mid:200,hi:250,loWhy:'Basic kit: hyalase × 2, adrenaline × 2, chlorphenamine, hydrocortisone, saline × 2.',midWhy:'Full kit plus sharps bin, gloves, tourniquet.',hiWhy:'Two-room duplication — one kit per treatment room. Recommended if both rooms running simultaneously.',saving:null,savingNote:'Cannot meaningfully reduce. £200 is a non-negotiable clinical requirement.',isnew:false,isDad:false,notes:'Check expiry monthly and document. Minimum kit required by Hamilton Fraser and JCCP.'},
+{id:'t504',task:'COSHH risk assessments for all substances used',day:8,type:'clinical',mand:true,def:false,owner:'Abi',poc:'HSE: hse.gov.uk/coshh',lo:0,mid:0,hi:0,loWhy:'Free — HSE online tools.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Use HSE COSHH tools. Get SDS from each supplier.',isnew:false,isDad:false,notes:'Chlorhexidine, IPA, sodium hypochlorite, peels. Hazard, exposure, controls, PPE per product.'},
+{id:'t505',task:'Sharps Safety Policy',day:8,type:'clinical',mand:true,def:false,owner:'Abi',poc:'HSE: hse.gov.uk/sharps',lo:0,mid:0,hi:0,loWhy:'Free — HSE template.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'HSE publishes a sharps policy template. Use it.',isnew:false,isDad:false,notes:'No recapping. Immediate disposal at point of use. RIDDOR reporting if injury.'},
+{id:'t506',task:'Fire Risk Assessment — full written document post fit-out',day:33,type:'clinical',mand:true,def:false,owner:'Fire assessor + Abi',poc:'BAFE SP205 assessor\n(booked Phase 1)',lo:350,mid:475,hi:600,loWhy:'Same assessor as Phase 1 booking. Simple update of initial assessment.',midWhy:'Full as-built assessment. Standard for 614 sq ft single-floor unit.',hiWhy:'Building Control requires additional fire measures beyond initial recommendation.',saving:null,savingNote:'Cannot reduce below mandatory BAFE assessment. Bundle with Phase 1 booking for best price.',isnew:false,isDad:false,notes:'RRFSO 2005 + Building Safety Act 2022. Must reflect as-built layout. Review annually.'},
+{id:'t507',task:'Clinical waste contract — set up with licensed carrier',day:10,type:'clinical',mand:true,def:false,owner:'Abi + David',poc:'Initial Medical\n0800 093 5892\ninitialmedical.co.uk',lo:420,mid:570,hi:720,loWhy:'Monthly collection — enough for opening months.',midWhy:'Fortnightly collection. All waste streams. Standard contract.',hiWhy:'Weekly collection. Only if high volume from Day 1.',saving:'neg',savingNote:'Start monthly — you will not generate fortnightly volumes in month 1. Upgrade when volume grows.',isnew:false,isDad:false,notes:'Yellow: medicinal sharps. Orange: non-medicinal. Orange bag: soft clinical. Tiger-stripe: offensive.'},
+{id:'t508',task:'Consent forms and questionnaires — configured for Winchester',day:10,type:'clinical',mand:true,def:false,owner:'Abi',poc:'ANS (existing) or Pabau',lo:0,mid:0,hi:0,loWhy:'Use existing ANS templates. Update address only.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Update practice address to 9A Jewry Street. Save Face templates cover any gaps.',isnew:false,isDad:false,notes:'Each treatment: medical history, informed consent, aftercare, SEPARATE photo consent.'},
+{id:'t509',task:'Business Continuity Plan — income protection and locum plan',day:15,type:'clinical',mand:false,def:true,owner:'David',poc:'Hamilton Fraser\n0800 634 3881',lo:480,mid:540,hi:600,loWhy:'£40/month income protection × 12.',midWhy:'£45/month comprehensive income protection.',hiWhy:'£50/month with business interruption and locum costs covered.',saving:'worth',savingNote:'Do not cut. If Abi cannot work: zero revenue plus £3,703/month in fixed costs. Small premium, significant protection.',isnew:false,isDad:false,notes:'Document locum nurse-prescriber contact (commission-only). Client cancellation policy.'},
+{id:'t510',task:'Opening injectable stock — Botox, Azzalure, fillers, Profhilo',day:25,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Church Pharmacy: churchpharmacy.co.uk\nHealthxchange: healthxchange.co.uk',lo:3500,mid:4250,hi:5000,loWhy:'Lean: 8-10 toxin vials, 15 filler syringes, 3 Profhilo boxes. Reorder quickly.',midWhy:'Standard: 12 vials, 20 filler syringes, 5 Profhilo, polynucleotides. ~6-8 weeks stock.',hiWhy:'Full: 15 vials, 25 filler syringes, full Profhilo range, Skinvive, polynucleotides.',saving:'worth',savingNote:'Do not cut below low. Every Botox vial at £173 trade generates £215+ revenue. Running out of stock costs more than the stock.',isnew:false,isDad:false,notes:'Order once Winchester address credentialed. Fridge 2-8°C. Document temperature daily.'},
+{id:'t511',task:'Delegation and supervision policy',day:10,type:'clinical',mand:true,def:false,owner:'Abi',poc:'NMC Code: nmc.org.uk',lo:0,mid:0,hi:0,loWhy:'Save Face template. Abi\'s time.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Save Face template covers this.',isnew:true,isDad:false,notes:'Required even as solo practitioner. Include escalation pathway and cover-during-absence plan.'},
+{id:'t512',task:'BLS certification — confirm current within 12 months',day:5,type:'clinical',mand:true,def:false,owner:'Abi',poc:'Red Cross: redcross.org.uk',lo:0,mid:80,hi:150,loWhy:'Check if existing cert is current (within 12 months) — may be £0.',midWhy:'Half-day BLS + AED at Red Cross. £80.',hiWhy:'Private BLS training at clinic with resus mannequin hire.',saving:'cut',savingNote:'CHECK existing BLS cert first. If current: £0. If not: Red Cross at £80 = same clinical value as £150 private session.',isnew:true,isDad:false,notes:'Hamilton Fraser, Save Face and JCCP all require BLS current within 12 months. Annual renewal.'}
+]},
+{id:'p6',label:'Phase 6 — Finance & business admin',color:'#7F77DD',wo:0,tasks:[
+{id:'t601',task:'Accounting software — Xero or QuickBooks',day:5,type:'admin',mand:true,def:false,owner:'David',poc:'Xero: xero.com\nQuickBooks: quickbooks.intuit.com',lo:180,mid:300,hi:420,loWhy:'Xero Starter £15/month × 12. Basic but functional for two locations.',midWhy:'Xero Standard £25/month × 12. Multi-location, VAT returns, payroll.',hiWhy:'Xero Premium £35/month × 12. All features — more than needed at this stage.',saving:'cut',savingNote:'Start on Xero Starter at £15/month. Upgrade only when VAT registration kicks in and you need full VAT return automation.',isnew:false,isDad:false,notes:'MTD from 2026/27 requires digital records. Two locations. Share accountant access.'},
+{id:'t602',task:'Card payment terminal for Winchester',day:20,type:'admin',mand:true,def:false,owner:'David',poc:'SumUp: sumup.com\nor Square: squareup.com',lo:29,mid:89,hi:149,loWhy:'SumUp Air at £29. 1.69% per transaction. No monthly fee.',midWhy:'SumUp Solo or Square with screen. Better client experience.',hiWhy:'Square Terminal with receipt printer.',saving:'cut',savingNote:'SumUp Air at £29. Lowest transaction fees. Configure for 20% VAT once registered.',isnew:false,isDad:false,notes:'Separate terminal from Bedhampton. PCI DSS compliance required.'},
+{id:'t603',task:'Klarna — set up Winchester as additional location',day:20,type:'admin',mand:false,def:true,owner:'David',poc:'klarna.com/uk/business',lo:0,mid:0,hi:0,loWhy:'Free setup.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Valuable for Profhilo courses (£515), filler courses, Skinvive.',isnew:false,isDad:false,notes:'Already using at Bedhampton. Add Winchester location.'}
+]},
+{id:'p7',label:'Phase 7 — Marketing & launch',color:'#534AB7',wo:4,tasks:[
+{id:'t701',task:'Google Business Profile — create Winchester location at 9A Jewry Street',day:1,type:'mktg',mand:true,def:false,owner:'David',poc:'business.google.com',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Most important local SEO action. Do same day as taking occupation of 9A.',isnew:false,isDad:false,notes:'Category: Medical Aesthetics Clinic. Verification postcard 1-2 weeks. Respond to every review within 24hrs.'},
+{id:'t702',task:'Instagram pre-launch campaign — 4-6 weeks teaser content',day:1,type:'mktg',mand:false,def:true,owner:'David + Abi',poc:'@abipetersaesthetics',lo:0,mid:0,hi:0,loWhy:'Free organic content.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Week 1: announcement. Weeks 2-3: fit-out progress. Week 4: treatment menu. Week 5: opening date.',isnew:false,isDad:false,notes:'ASA: no Botox brand name in paid ads. No before/after in paid ads.'},
+{id:'t703',task:'Website — Winchester page, photos, updated privacy notice',day:3,type:'mktg',mand:true,def:false,owner:'David',poc:'abipetersaesthetics.co.uk',lo:0,mid:150,hi:500,loWhy:'David updates himself — 2-3 hours. New clinic page, photos, ICO number.',midWhy:'Freelance web developer 2-3 hours for polished Winchester landing page.',hiWhy:'Full SEO content build: treatment pages, schema, Google Search Console.',saving:'cut',savingNote:'David can do this. New clinic page, photos, parking info, booking link, updated ICO number.',isnew:false,isDad:false,notes:'Winchester page: address, hours, parking (Tower Street multi-storey, 5 min walk). Treatment pages. Update ICO number.'},
+{id:'t704',task:'Google Tag Manager — conversion tracking for Winchester bookings',day:4,type:'mktg',mand:false,def:true,owner:'David',poc:'tagmanager.google.com',lo:0,mid:0,hi:0,loWhy:'Free.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Already in progress per project notes. Set booking confirmation as conversion event.',isnew:false,isDad:false,notes:'Link to GA4 and Google Ads.'},
+{id:'t705',task:'Email campaign to 600 existing Bedhampton clients',day:5,type:'mktg',mand:false,def:true,owner:'David',poc:'GoHighLevel (GHL)',lo:0,mid:0,hi:0,loWhy:'Existing GHL — no additional cost.',midWhy:'Free.',hiWhy:'Free.',saving:null,savingNote:'Highest-ROI marketing action at zero marginal cost. Segment within 30 miles of Winchester.',isnew:false,isDad:false,notes:'Priority booking first 2 weeks. Reactivation for dormant clients.'},
+{id:'t706',task:'META ads — Winchester-targeted launch campaigns (3 months)',day:35,type:'mktg',mand:false,def:true,owner:'David',poc:'business.facebook.com',lo:1200,mid:2400,hi:3000,loWhy:'Defer to month 2. £400/month × 3. Once you know what Winchester clients respond to.',midWhy:'Start at opening: £800/month. Lookalike audience from Bedhampton client list.',hiWhy:'£1,000/month from Day 1. Maximum reach for slow launch.',saving:'defer',savingNote:'Defer to month 2. No Winchester reviews in month 1 = low-quality leads. Start month 2 with 10+ Google reviews. Save £400-600 in month 1.',isnew:false,isDad:false,notes:'No Botox brand name. No before/after in paid ads. Focus on consultations and confidence.'},
+{id:'t707',task:'Google Ads — Winchester search campaigns (3 months)',day:42,type:'mktg',mand:false,def:true,owner:'David',poc:'ads.google.com',lo:900,mid:1200,hi:1500,loWhy:'Defer to month 2. £300/month × 3. Exact match only.',midWhy:'£400/month × 3. Phrase match plus display retargeting.',hiWhy:'£500/month × 3. All match types.',saving:'defer',savingNote:'Also defer to month 2. Google Business Profile handles local search free from Day 1.',isnew:false,isDad:false,notes:'"botox Winchester", "lip filler Winchester", "anti-wrinkle Winchester". Treatment-specific landing pages.'},
+{id:'t708',task:'Soft launch event — top 50 Bedhampton clients + 20 Winchester contacts',day:42,type:'mktg',mand:false,def:true,owner:'David + Abi',poc:'Venue: 9A Jewry Street\nLocal caterer',lo:400,mid:575,hi:800,loWhy:'Self-catered. Prosecco from Majestic Winchester, canapés from M&S. 70 people.',midWhy:'Local caterer for canapés plus wine. Professional feel.',hiWhy:'Full catered event with wait staff.',saving:'cut',savingNote:'Self-cater at £400. The clinic and Abi are the draw, not the food. Save £175 vs mid.',isnew:false,isDad:false,notes:'Evening 6-9pm. Clinic tour, Abi for consultations, Instagram content. Hampshire Life journalist, Muddy Stilettos Hampshire.'},
+{id:'t709',task:'Winchester BID registration',day:10,type:'mktg',mand:false,def:true,owner:'David',poc:'winchesterbid.co.uk\nhello@winchesterbid.co.uk',lo:0,mid:0,hi:500,loWhy:'Call BID first — small businesses may be exempt from levy.',midWhy:'Small levy may apply.',hiWhy:'Full BID membership fee.',saving:'cut',savingNote:'Call BID before paying. Small businesses below rateable value threshold may be exempt.',isnew:false,isDad:false,notes:'Footfall data, local marketing networks, events programme.'},
+{id:'t710',task:'Winchester SEO — treatment landing pages (build 3-6 months ahead)',day:1,type:'mktg',mand:false,def:false,owner:'David',poc:'abipetersaesthetics.co.uk',lo:0,mid:375,hi:1500,loWhy:'David writes pages himself — time only.',midWhy:'Freelance SEO copywriter — 5 pages at £75 each.',hiWhy:'Full SEO agency: technical SEO, schema markup, content cluster.',saving:'cut',savingNote:'David should write these himself for launch. Content is straightforward. £75/page copywriter if time-pressed.',isnew:true,isDad:false,notes:'Most common clinic launch mistake: website not live early enough. Pages for: botox Winchester, lip filler Winchester, Profhilo Winchester.'}
+]}
+];
+
+// VARIANCE DATA
+const VARIANCE_CUTS=[
+{title:‘META ads — defer to month 2 of trading’,desc:‘You have 600 existing clients, 290+ five-star reviews, an email list and Google Business Profile from Day 1. META in month 1 generates low-quality leads with no Winchester reviews yet. Defer to month 2 with 10+ Google reviews and a real lookalike audience.’,lo:1200,hi:3000,save:1200,type:‘defer’},
+{title:‘Google Ads — also defer to month 2’,desc:‘Same logic as META. Google Business Profile appears in local search free from Day 1. Wait for 10+ Winchester reviews before spending on paid Google. Then test 2 weeks before committing to 3 months.’,lo:900,hi:1500,save:400,type:‘defer’},
+{title:‘Solicitor — fixed-fee specialist, not hourly’,desc:‘£1,200-1,800 from a fixed-fee online commercial lease specialist vs £3,500 on hourly billing from a generalist. Same legal outcome. Get 3 quotes and specify fixed fee when instructing.’,lo:1200,hi:3500,save:700,type:‘neg’},
+{title:‘Signage — launch with vinyl, illuminate in Year 2’,desc:‘A well-designed vinyl sign at £600-800 is indistinguishable at street level from £2,500 illuminated letters. Upgrade in Year 2 and expense it against profit. Conservation area vinyl is clean and professional.’,lo:600,hi:2500,save:750,type:‘cut’},
+{title:‘Clinic software — check ANS plan first’,desc:‘You already pay for ANS at Bedhampton. Many plans allow multiple locations at no extra cost. Only migrate to Pabau if ANS genuinely cannot handle batch tracking and photo storage. Defer decision to Month 3.’,lo:0,hi:1800,save:660,type:‘defer’},
+{title:‘Photography — book 1.5hr session not full day’,desc:‘At Katharine Vaughan Photography, the 1.5hr session at £350 gives you ~40 edited images: reception, both treatment rooms, exterior, Abi in uniform. That is all you need for launch.’,lo:350,hi:800,save:250,type:‘cut’},
+{title:‘Accountant — insist on fixed monthly fee’,desc:‘The difference between £150/month and £300/month is £1,800/year for identical work. Get three quotes from healthcare-specialist firms specifically. Generalists miss the cosmetic VAT nuances.’,lo:1800,hi:3600,save:700,type:‘neg’},
+{title:‘Advertisement Consent drawings — bundle with sign-maker’,desc:‘Most sign-makers will include planning elevation drawings as part of their sign quote. Ask explicitly. This could reduce the £400 mid scenario to the £174 statutory fee only.’,lo:174,hi:700,save:300,type:‘cut’},
+{title:‘Treatment couches — REM Excel 3-motor not premium’,desc:‘The REM Excel 3-motor at £1,219 each (£2,438 total) is the most common couch in UK aesthetics clinics. Abi treats 5 clients in 2 hours at Bedhampton — she does not need electric height and tilt. Upgrade in Year 2.’,lo:2438,hi:4000,save:462,type:‘cut’},
+{title:‘Deep clean — Abi and David do it themselves’,desc:‘Chlorhexidine and IPA wipes, document the clean as the IPC commissioning record. Same clinical outcome as a professional cleaning company at zero cost vs £175-300.’,lo:0,hi:300,save:175,type:‘cut’},
+];
+const VARIANCE_WORTH=[
+{title:‘Opening injectable stock — do not reduce below low estimate’,desc:‘Every Botox vial at £173 trade generates £215+ in treatment revenue. Every filler syringe at £85 trade generates £140-285. Running out of stock in week 2 and losing a client to a competitor costs more than the stock itself. The only thing worse than spending £4,000 on stock is running out.’},
+{title:‘RICS Schedule of Condition — non-negotiable on FRI lease’,desc:‘The brochure confirms FRI lease. The existing fit-out (AC, kitchenette, partitioning, LED lighting) is from a previous tenant. Without a Schedule of Condition annexed before exchange, you are liable for every dilapidation the landlord claims at lease end — including pre-existing damage. A £950 surveyor fee today could save £10,000-20,000 at lease end.’},
+{title:‘Save Face registration — worth every penny’,desc:‘Abi is an ANP scouted for Allergan Practitioner Pathway with 290+ five-star reviews. Save Face is the only PSA-accredited register exclusive to medical professionals. Winchester clients will search “lip filler Winchester Save Face” before booking. The 200+ clinical policy templates alone save weeks of documentation work. ROI from the first or second client it attracts.’},
+{title:‘Hamilton Fraser premises insurance — non-negotiable from Day 1’,desc:‘Cannot treat a single patient in Winchester without this in force. The only saving is building the policy precisely to Day 1 treatments (no laser cover until you have laser equipment), which saves £200-400 immediately and can be added later.’},
+{title:‘Business Continuity Plan — income protection insurance’,desc:‘Abi is the sole income generator. 6 weeks unable to work = zero revenue plus £3,703/month in rent and rates still running. At £40-50/month, income protection insurance is a negligible cost relative to the risk. Do not cut this.’},
+];
+
+// STATE
+const state={};
+PHASES.forEach(p=>p.tasks.forEach(t=>{state[t.id]={done:false,status:‘notstarted’,actual:null,editing:false,note:’’,noteOpen:false}}));
+const decisions=[];
+let filt=‘all’,startDate=new Date(‘2026-08-01’),estMode=‘mid’;
+
+// HELPERS
+function getD(wo,day){const d=new Date(startDate);d.setDate(d.getDate()+wo*7+day-1);return d}
+function fmt(d){return d.toLocaleDateString(‘en-GB’,{day:‘numeric’,month:‘short’})}
+function fmtWo(wo){return wo<0?‘W’+wo:wo===0?‘W0’:‘W+’+wo}
+function getEst(t){const s=state[t.id];if(s.actual!==null)return s.actual;return estMode===‘low’?t.lo:estMode===‘high’?t.hi:t.mid}
+function isOverdue(t,p){if(state[t.id].done)return false;return getD(p.wo,t.day)<TODAY}
+function isDueSoon(t,p){if(state[t.id].done)return false;const d=getD(p.wo,t.day);const diff=(d-TODAY)/(864e5);return diff>=0&&diff<=7}
+
+// TABS
+function stab(id,btn){
+document.querySelectorAll(’.tc’).forEach(c=>c.classList.remove(‘on’));
+document.querySelectorAll(’.tab’).forEach(b=>b.classList.remove(‘on’));
+document.getElementById(‘tc-’+id).classList.add(‘on’);btn.classList.add(‘on’);
+if(id===‘dash’)renderDash();
+if(id===‘dec’)renderDec();
+if(id===‘variance’)renderVariance();
+if(id===‘costs’)updateCalc();
+}
+
+// PROPERTY PANEL
+function updatePropPanel(){
+const avail=document.getElementById(‘prop-avail-date’).value;
+const rent=parseInt(document.getElementById(‘prop-rent’).value)||2708;
+const vat=document.getElementById(‘prop-vat’).value;
+const rentAnn=rent*12;
+if(avail){const d=new Date(avail);document.getElementById(‘pp-avail’).textContent=d.toLocaleDateString(‘en-GB’,{day:‘numeric’,month:‘long’,year:‘numeric’});}
+document.getElementById(‘pp-rent’).textContent=‘£’+rentAnn.toLocaleString()+’ pa (£’+rent.toLocaleString()+’/mo)’;
+const total=rent+995;
+document.getElementById(‘pp-total’).textContent=‘£’+total.toLocaleString()+’/mo’;
+const vatEl=document.getElementById(‘pp-vat’);
+const vatSub=document.getElementById(‘pp-vat-sub’);
+const vatRow=document.getElementById(‘vat-rent-row’);
+if(vat===‘none’){vatEl.textContent=‘No VAT’;vatEl.className=‘pv ok’;vatSub.textContent=‘Landlord NOT opted to tax · confirmed by Goadsby’;vatRow.style.display=‘none’;}
+else if(vat===‘vat’){vatEl.textContent=‘VAT applicable’;vatEl.className=‘pv er’;vatSub.textContent=‘Landlord opted to tax · adds £’+Math.round(rent*0.2).toLocaleString()+’/month’;vatRow.style.display=‘flex’;}
+else{vatEl.textContent=‘Unknown — confirm’;vatEl.className=‘pv wn’;vatSub.textContent=‘Must confirm with Goadsby before exchange’;vatRow.style.display=‘none’;}
+document.getElementById(‘sl-rent’).max=rent;
+document.getElementById(‘sl-rent’).value=Math.min(parseInt(document.getElementById(‘sl-rent’).value)||rent,rent);
+updateCalc();
+}
+
+// ONGOING COSTS CALCULATOR
+function updateCalc(){
+const rent=parseInt(document.getElementById(‘sl-rent’).value)||2708;
+const rev=parseInt(document.getElementById(‘sl-rev’).value)||12000;
+const prodPct=parseInt(document.getElementById(‘sl-prod’).value)||20;
+const sal=parseInt(document.getElementById(‘sl-sal’).value)||1047;
+const mktg=parseInt(document.getElementById(‘sl-mktg’).value)||600;
+const vat=document.getElementById(‘prop-vat’).value;
+document.getElementById(‘sv-rent’).textContent=‘£’+rent.toLocaleString();
+document.getElementById(‘sv-rev’).textContent=‘£’+rev.toLocaleString();
+document.getElementById(‘sv-prod’).textContent=prodPct+’%’;
+document.getElementById(‘sv-sal’).textContent=‘£’+sal.toLocaleString();
+document.getElementById(‘sv-mktg’).textContent=‘£’+mktg.toLocaleString();
+document.getElementById(‘oc-rent’).textContent=‘£’+rent.toLocaleString();
+const vatExtra=vat===‘vat’?Math.round(rent*0.2):0;
+const fixed=rent+995+200+50+167+48+15+(sal>0?55:0)+175+vatExtra;
+document.getElementById(‘oc-fixed-total’).textContent=‘£’+fixed.toLocaleString();
+const prod=Math.round(rev*prodPct/100);
+document.getElementById(‘oc-prod’).textContent=‘£’+prod.toLocaleString();
+document.getElementById(‘oc-sal’).textContent=‘£’+sal.toLocaleString();
+document.getElementById(‘oc-mktg’).textContent=‘£’+mktg.toLocaleString();
+const varTotal=prod+sal+mktg;
+document.getElementById(‘oc-var-total’).textContent=‘£’+varTotal.toLocaleString();
+const total=fixed+varTotal;
+const net=rev-total;
+const breakEven=fixed+sal+mktg;
+const breakEvenRev=Math.round(breakEven/(1-prodPct/100));
+document.getElementById(‘be-total’).textContent=‘£’+total.toLocaleString();
+document.getElementById(‘be-total’).className=‘bev ‘+(net<0?‘er’:net<2000?‘wn’:‘ok’);
+document.getElementById(‘be-rev’).textContent=‘£’+rev.toLocaleString();
+const netEl=document.getElementById(‘be-net’);
+netEl.textContent=(net>=0?’+’:’’)+‘£’+net.toLocaleString();
+netEl.className=‘bev ‘+(net<0?‘er’:net<2000?‘wn’:‘ok’);
+document.getElementById(‘be-breakeven’).textContent=‘£’+breakEvenRev.toLocaleString()+’/month’;
+document.getElementById(‘be-safety’).textContent=‘Bedhampton £8-12k/mo covers fixed costs during Winchester ramp’;
+}
+
+// BUDGET UPDATE
+function updateBudget(){
+let lo=0,mid=0,hi=0,act=0,done=0,total=0,ov=0;
+PHASES.forEach(p=>p.tasks.forEach(t=>{
+total++;lo+=t.lo;mid+=t.mid;hi+=t.hi;
+const s=state[t.id];
+if(s.done){act+=(s.actual!==null?s.actual:getEst(t));done++;}
+if(isOverdue(t,p))ov++;
+}));
+const cur=estMode===‘low’?lo:estMode===‘high’?hi:mid;
+document.getElementById(‘bv-lo’).textContent=‘£’+lo.toLocaleString();
+document.getElementById(‘bv-mid’).textContent=‘£’+mid.toLocaleString();
+document.getElementById(‘bv-hi’).textContent=‘£’+hi.toLocaleString();
+document.getElementById(‘bv-act’).textContent=‘£’+act.toLocaleString();
+document.getElementById(‘bv-est-lbl’).textContent=estMode;
+const rem=document.getElementById(‘bv-rem’);
+rem.textContent=‘£’+(cur-act).toLocaleString();
+rem.className=‘bv ‘+(cur-act<3000?‘er’:cur-act<8000?‘wn’:‘ok’);
+const ovEl=document.getElementById(‘bv-ov’);
+ovEl.textContent=ov;ovEl.className=‘bv ‘+(ov>0?‘er’:‘ok’);
+document.getElementById(‘bv-done’).textContent=done+’/’+total;
+const pct=Math.min(Math.round(act/Math.max(cur,1)*100),100);
+const fill=document.getElementById(‘bfill’);
+fill.style.width=pct+’%’;
+fill.className=‘bfill’+(pct>80?’ er’:pct>60?’ wn’:’’);
+document.getElementById(‘bpct’).textContent=pct+’% of ‘+estMode+’ estimate spent · Low: £’+lo.toLocaleString()+’ · Mid: £’+mid.toLocaleString()+’ · High: £’+hi.toLocaleString();
+// cashflow
+const weeks={};
+PHASES.forEach(p=>p.tasks.forEach(t=>{const wo=p.wo+Math.floor((t.day-1)/7);weeks[wo]=(weeks[wo]||0)+getEst(t)}));
+let cum=0;const grid=document.getElementById(‘cfgrid’);grid.innerHTML=’’;
+Object.keys(weeks).sort((a,b)=>+a-+b).forEach(w=>{
+const amt=weeks[w];cum+=amt;
+const d=new Date(startDate);d.setDate(d.getDate()+ +w*7);
+const cell=document.createElement(‘div’);cell.className=‘cfc cfk’;
+cell.innerHTML=’<div class="cfl">’+fmtWo(+w)+’</div><div class="cfl">’+fmt(d)+’</div><div class="cfa">£’+amt.toLocaleString()+’</div><div class="cfb">£’+cum.toLocaleString()+’ cum</div>’;
+grid.appendChild(cell);
+});
+}
+
+// VARIANCE
+function renderVariance(){
+let lo=0,mid=0,hi=0;
+PHASES.forEach(p=>p.tasks.forEach(t=>{lo+=t.lo;mid+=t.mid;hi+=t.hi;}));
+const dadSaving=8500;
+const totalRealisticSave=5417+VARIANCE_CUTS.reduce((a,c)=>a+c.save,0);
+const revised=mid-totalRealisticSave;
+document.getElementById(‘var-summary’).innerHTML=`<div class="vs-card"><div class="vl">Low estimate</div><div class="vv ok">£${lo.toLocaleString()}</div></div> <div class="vs-card"><div class="vl">Mid estimate</div><div class="vv wn">£${mid.toLocaleString()}</div></div> <div class="vs-card"><div class="vl">High estimate</div><div class="vv er">£${hi.toLocaleString()}</div></div> <div class="vs-card"><div class="vl">Dad's labour saving</div><div class="vv ok">~£${dadSaving.toLocaleString()}</div></div> <div class="vs-card"><div class="vl">Mid minus Dad saving</div><div class="vv ok">£${(mid-dadSaving).toLocaleString()}</div></div> <div class="vs-card"><div class="vl">No VAT on rent</div><div class="vv ok">Confirmed</div></div>`;
+const cuts=document.getElementById(‘var-cuts’);cuts.innerHTML=’’;
+VARIANCE_CUTS.forEach(c=>{
+const typeMap={cut:‘cut’,defer:‘defer’,neg:‘neg’};
+const labelMap={cut:‘Cut scope’,defer:‘Defer’,neg:‘Negotiate’};
+const div=document.createElement(‘div’);
+div.className=‘var-item ‘+c.type;
+div.innerHTML=`<div><div class="vi-title">${c.title}</div><div class="vi-desc">${c.desc}</div><span class="vi-badge vb-${c.type}">${labelMap[c.type]||c.type}</span></div><div class="vi-cost"><div class="vi-save ok">Save ~£${c.save.toLocaleString()}</div></div>`;
+cuts.appendChild(div);
+});
+const worth=document.getElementById(‘var-worth’);worth.innerHTML=’’;
+VARIANCE_WORTH.forEach(w=>{
+const div=document.createElement(‘div’);
+div.className=‘var-item worth’;
+div.innerHTML=`<div><div class="vi-title">${w.title}</div><div class="vi-desc">${w.desc}</div><span class="vi-badge vb-worth">Worth every penny — do not cut</span></div><div class="vi-cost"><div class="vi-save in">Do not cut</div></div>`;
+worth.appendChild(div);
+});
+const sl=document.getElementById(‘var-savings-list’);sl.innerHTML=’’;
+const allSavings=[{t:‘Deposit: negotiate 3 months to 1 month’,s:5417},…VARIANCE_CUTS.map(c=>({t:c.title.split(’ — ‘)[0],s:c.save}))];
+allSavings.forEach(s=>{
+sl.innerHTML+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:0.5px solid var(--bd);font-size:12px"><span style="color:var(--tx2)">${s.t}</span><span style="font-weight:500;color:var(--ok)">£${s.s.toLocaleString()}</span></div>`;
+});
+document.getElementById(‘var-total-saving’).textContent=‘£’+totalRealisticSave.toLocaleString()+’ saved’;
+document.getElementById(‘var-revised’).textContent=‘£’+revised.toLocaleString()+’ — under mid estimate’;
+}
+
+// FILTER & SEARCH
+function mf(t,p){
+const s=state[t.id];
+const q=(document.getElementById(‘search’).value||’’).toLowerCase();
+const ms=!q||t.task.toLowerCase().includes(q)||(t.notes||’’).toLowerCase().includes(q)||(t.poc||’’).toLowerCase().includes(q)||t.owner.toLowerCase().includes(q)||(s.note||’’).toLowerCase().includes(q);
+if(!ms)return false;
+if(filt===‘mandatory’)return t.mand;
+if(filt===‘mustpay’)return !t.def&&(t.hi>0||t.mid>0);
+if(filt===‘deferrable’)return t.def;
+if(filt===‘blocked’)return s.status===‘blocked’;
+if(filt===‘notdone’)return !s.done;
+if(filt===‘overdue’)return isOverdue(t,p);
+if(filt===‘hasnote’)return !!s.note;
+if(filt===‘dad’)return t.isDad;
+if(filt===‘saving’)return !!t.saving;
+if([‘David’,‘Abi’,‘Solicitor’,‘Electrician’,‘Plumber’].includes(filt))return t.owner.includes(filt);
+return true;
+}
+function sf(f,btn){filt=f;document.querySelectorAll(’.fb’).forEach(b=>b.classList.remove(‘on’));btn.classList.add(‘on’);render();}
+
+// EVENTS
+function onCheck(id,v){state[id].done=v;if(v)state[id].status=‘done’;else if(state[id].status===‘done’)state[id].status=‘notstarted’;render();}
+function onStatus(id,v){state[id].status=v;if(v===‘done’)state[id].done=true;else state[id].done=false;render();}
+function startEdit(id){state[id].editing=true;render();}
+function saveActual(id){const inp=document.getElementById(‘ai-’+id);if(inp){const v=parseFloat(inp.value);state[id].actual=isNaN(v)?null:v;}state[id].editing=false;render();}
+function clearActual(id){state[id].actual=null;state[id].editing=false;render();}
+function toggleNote(id){state[id].noteOpen=!state[id].noteOpen;render();}
+function saveNote(id){const ta=document.getElementById(‘note-’+id);if(ta)state[id].note=ta.value;state[id].noteOpen=false;render();}
+
+// MAIN RENDER
+function render(){
+updateBudget();
+const wrap=document.getElementById(‘phasewrap’);wrap.innerHTML=’’;
+PHASES.forEach(p=>{
+const filtered=p.tasks.filter(t=>mf(t,p));
+if(!filtered.length)return;
+const dip=p.tasks.filter(t=>state[t.id]&&state[t.id].done).length;
+const block=document.createElement(‘div’);block.className=‘pblock’;
+const sd=getD(p.wo,1);
+const hdr=document.createElement(‘div’);hdr.className=‘phhdr’;
+hdr.innerHTML=’<span class="phdot" style="background:'+p.color+'"></span><span class="phtitle">’+p.label+’</span><span class="phmeta">’+fmtWo(p.wo)+’ · ‘+fmt(sd)+’ · ‘+filtered.length+’ tasks</span><span class="phprog">’+dip+’/’+p.tasks.length+’ done</span><span class="phchev open">▶</span>’;
+const tw=document.createElement(‘div’);tw.className=‘twrap’;
+let rows=’’;
+filtered.forEach(t=>{
+const s=state[t.id];
+const d=getD(p.wo,t.day);
+const isDone=s.done;
+const ov=isOverdue(t,p);const ds=!ov&&isDueSoon(t,p);
+const rc=isDone?‘done-row’:ov?‘ov-row’:ds?‘ds-row’:’’;
+const tytag=’<span class="tag tag-'+t.type+'">’+t.type+’</span>’;
+let bdg=t.isnew?’<span class="nf">NEW</span>’:’’;
+if(t.isDad)bdg+=’<span class="dadb">DAD</span>’;
+if(ov&&!isDone)bdg+=’<span class="ovb">OVERDUE</span>’;
+if(ds&&!isDone)bdg+=’<span class="dsb">DUE SOON</span>’;
+const rdot=t.mand?’<span class="rdot rdot-m" title="Mandatory"></span>’:’<span class="rdot rdot-r" title="Recommended"></span>’;
+const defb=t.def?’<span class="def-b">Deferrable</span>’:’<span class="must-b">Must pay</span>’;
+const sc=‘s-’+(s.status||‘notstarted’);
+const poc=(t.poc||’’).split(’\n’).map((l,i)=>{
+if(i===0)return’<strong>’+l+’</strong>’;
+const url=l.startsWith(‘http’)?l:(l.includes(’.co’)||l.includes(’.org’)||l.includes(’.uk’)||l.includes(‘www.’))?‘https://’+l:null;
+return url?’<a href="'+url+'" target="_blank">’+l+’</a>’:’<span>’+l+’</span>’;
+}).join(’<br>’);
+// THREE-ESTIMATE COST CELL
+let cc=’’;
+if(s.editing){
+const cur=s.actual!==null?s.actual:getEst(t);
+cc=’<div style="text-align:right"><input type="number" id="ai-'+t.id+'" class="act-inp" value="'+cur+'" placeholder="£ actual"><br><div style="display:flex;gap:4px;justify-content:flex-end;margin-top:2px"><button class="ebtn" onclick="saveActual(\''+t.id+'\')">Save</button><button class="ebtn" onclick="clearActual(\''+t.id+'\')">Clear</button></div></div>’;
+} else {
+const hasC=t.lo>0||t.mid>0||t.hi>0;
+if(hasC){
+cc=’<div class="cost3">’;
+cc+=’<div class="c3row low"><span class="c3lbl low">Low</span><span class="c3val low">£’+t.lo.toLocaleString()+’</span><span class="c3why">’+t.loWhy+’</span></div>’;
+cc+=’<div class="c3row mid"><span class="c3lbl mid">Mid</span><span class="c3val mid">£’+t.mid.toLocaleString()+’</span><span class="c3why">’+t.midWhy+’</span></div>’;
+cc+=’<div class="c3row high"><span class="c3lbl high">High</span><span class="c3val high">£’+t.hi.toLocaleString()+’</span><span class="c3why">’+t.hiWhy+’</span></div>’;
+if(t.saving){const stmap={cut:‘st-cut’,neg:‘st-neg’,defer:‘st-defer’,worth:‘st-worth’,dad:‘st-dad’,nocut:‘st-nocut’};const slmap={cut:‘Cut scope’,neg:‘Negotiate’,defer:‘Defer’,worth:‘Worth every penny’,dad:‘Dad's free labour’,nocut:‘Cannot cut’};cc+=’<span class="saving-tag '+stmap[t.saving]+'">’+(slmap[t.saving]||t.saving)+’</span>’;}
+if(t.savingNote)cc+=’<div class="c3tip">’+t.savingNote+’</div>’;
+cc+=’</div>’;
+} else {
+cc=’<div style="color:var(--ok);font-size:12px;font-weight:500">Free</div>’;
+if(t.savingNote)cc+=’<div class="c3tip">’+t.savingNote+’</div>’;
+}
+if(s.actual!==null){const cls=s.actual>t.hi?‘over’:s.actual<t.lo?‘under’:‘neutral’;const diff=s.actual-t.mid;cc+=’<div class="ashown '+cls+'">Actual: £’+s.actual.toLocaleString()+’ (’+(diff>=0?’+’:’’)+‘£’+Math.abs(diff).toLocaleString()+’)</div>’;}
+cc+=’<button class="ebtn" onclick="startEdit(\''+t.id+'\')">’+(s.actual!==null?‘Edit actual’:‘Enter actual’)+’</button>’;
+}
+// NOTE
+let nc=’’;
+if(s.noteOpen){nc=’<textarea id="note-'+t.id+'" class="narea" placeholder="Add a note — call updates, decisions, blockers...">’+(s.note||’’)+’</textarea><div style="display:flex;gap:3px;margin-top:3px"><button class="ebtn" onclick="saveNote(\''+t.id+'\')">Save</button><button class="ebtn" onclick="toggleNote(\''+t.id+'\')">Cancel</button></div>’;}
+else{const hn=!!s.note;nc=’<button class="nbtn '+(hn?'hn':'')+'" onclick="toggleNote(\''+t.id+'\')">’+(hn?‘📝 Note’:’+ Note’)+’</button>’;if(hn)nc+=’<div class="ndsp">’+s.note.replace(/</g,’<’)+’</div>’;}
+rows+=’<tr class="'+rc+'"><td style="width:18%"><div class="cbw"><input type=“checkbox” ‘+(isDone?‘checked’:’’)+’ onchange=“onCheck('’+t.id+’',this.checked)”><span class="ttxt">’+t.task+bdg+’</span></div>’+nc+’</td><td style="width:6%" class="dc">’+fmtWo(p.wo)+’<br>’+fmt(d)+’</td><td style="width:5%">’+tytag+’</td><td style="width:4%;text-align:center">’+rdot+’</td><td style="width:6%;text-align:center">’+defb+’</td><td style="width:8%"><select class="ssel '+sc+'" onchange="onStatus(\''+t.id+'\',this.value)"><option value=“notstarted” ‘+(s.status===‘notstarted’?‘selected’:’’)+’>Not started</option><option value=“progress” ‘+(s.status===‘progress’?‘selected’:’’)+’>In progress</option><option value=“done” ‘+(s.status===‘done’?‘selected’:’’)+’>Done</option><option value=“blocked” ‘+(s.status===‘blocked’?‘selected’:’’)+’>Blocked</option></select></td><td style="width:7%"><span class="opill">’+t.owner+’</span></td><td style="width:10%" class="pcc">’+poc+’</td><td style="width:20%">’+cc+’</td><td style="width:16%" class="nc">’+(t.notes||’’)+’</td></tr>’;
+});
+tw.innerHTML=’<table><thead><tr><th style="width:18%">Task / Notes</th><th style="width:6%">Week</th><th style="width:5%">Type</th><th style="width:4%;text-align:center">Req</th><th style="width:6%;text-align:center">Payment</th><th style="width:8%">Status</th><th style="width:7%">Owner</th><th style="width:10%">POC</th><th style="width:20%">Low / Mid / High estimate + rationale</th><th style="width:16%">Notes</th></tr></thead><tbody>’+rows+’</tbody></table>’;
+hdr.addEventListener(‘click’,()=>{const ch=hdr.querySelector(’.phchev’);if(tw.style.display===‘none’){tw.style.display=‘block’;ch.classList.add(‘open’);}else{tw.style.display=‘none’;ch.classList.remove(‘open’);}});
+block.appendChild(hdr);block.appendChild(tw);wrap.appendChild(block);
+});
+if(!wrap.children.length)wrap.innerHTML=’<div class="nores">No tasks match. Try clearing the filter.</div>’;
+}
+
+// DASHBOARD
+function renderDash(){
+let td=0,tt=0,act=0,ov=0,bl=0;let lo=0,mid=0,hi=0;
+const ps=[];
+PHASES.forEach(p=>{let pd=0;p.tasks.forEach(t=>{tt++;lo+=t.lo;mid+=t.mid;hi+=t.hi;if(state[t.id].done){td++;pd++;act+=getEst(t);}if(isOverdue(t,p))ov++;if(state[t.id].status===‘blocked’)bl++;});ps.push({label:p.label,color:p.color,done:pd,total:p.tasks.length});});
+const op=new Date(startDate);op.setDate(op.getDate()+112);
+const daysTo=Math.round((op-TODAY)/(864e5));
+const cards=[
+{t:‘Days to opening’,b:daysTo>0?daysTo+’ days’:‘Open!’,s:‘Target: ‘+fmt(op),c:daysTo<14?‘er’:daysTo<30?‘wn’:’’},
+{t:‘Tasks complete’,b:td+’ / ‘+tt,s:Math.round(td/tt*100)+’% done’,c:’’},
+{t:‘Actual spent’,b:‘£’+act.toLocaleString(),s:‘vs mid est £’+mid.toLocaleString(),c:act>mid?‘er’:act>mid*.8?‘wn’:‘ok’},
+{t:‘Low estimate’,b:‘£’+lo.toLocaleString(),s:‘Best case’,c:‘ok’},
+{t:‘Mid estimate’,b:‘£’+mid.toLocaleString(),s:‘Most likely’,c:‘wn’},
+{t:‘High estimate’,b:‘£’+hi.toLocaleString(),s:‘Worst case’,c:‘er’},
+{t:‘Overdue tasks’,b:ov.toString(),s:‘Past planned date’,c:ov>0?‘er’:‘ok’},
+{t:‘Blocked tasks’,b:bl.toString(),s:‘Marked as blocked’,c:bl>0?‘wn’:‘ok’},
+{t:‘Dad's labour saving’,b:‘~£8,500’,s:‘Joinery + painting + partitioning’,c:‘ok’},
+{t:‘Monthly occupancy’,b:‘£3,703’,s:‘Rent £2,708 + rates £995’,c:‘er’},
+{t:‘No VAT on rent’,b:‘Confirmed’,s:‘Landlord not opted to tax’,c:‘ok’},
+{t:‘Available from’,b:‘Early Aug 2026’,s:‘Confirmed by Thomas Siddall’,c:‘ok’},
+];
+const g=document.getElementById(‘dgrid’);g.innerHTML=’’;
+cards.forEach(c=>{const el=document.createElement(‘div’);el.className=‘dc2’;el.innerHTML=’<h3>’+c.t+’</h3><div class="dbig'+(c.c?' '+c.c:'')+'">’+(c.b||’—’)+’</div><div class="dsub">’+(c.s||’’)+’</div>’;g.appendChild(el);});
+const pp=document.getElementById(‘pprog’);pp.innerHTML=’’;
+ps.forEach(p=>{const pct=p.total>0?Math.round(p.done/p.total*100):0;const row=document.createElement(‘div’);row.className=‘pprow’;row.innerHTML=’<span class="pplbl">’+p.label.replace(/Phase \d+ — /,’’)+’</span><div class="ppbw"><div class="ppb" style="width:'+pct+'%;background:'+p.color+'"></div></div><span class="ppct">’+p.done+’/’+p.total+’</span>’;pp.appendChild(row);});
+}
+
+// DECISIONS
+function renderDec(){
+const el=document.getElementById(‘dec-entries’);
+if(!decisions.length){el.innerHTML=’<div class="decempty">No entries yet. Record calls, agreements, decisions and milestones here.</div>’;return;}
+el.innerHTML=’’;
+decisions.slice().reverse().forEach((d,ri)=>{
+const i=decisions.length-1-ri;
+const row=document.createElement(‘div’);row.className=‘decentry’;
+row.innerHTML=’<span class="decdate">’+d.date+’</span><span class="dectxt">’+d.text.replace(/</g,’<’)+’</span><span class="decdel" onclick="delDec('+i+')" title="Delete">✕</span>’;
+el.appendChild(row);
+});
+}
+function addDec(){
+const date=document.getElementById(‘dec-date’).value||TODAY.toISOString().split(‘T’)[0];
+const text=document.getElementById(‘dec-txt’).value.trim();
+if(!text)return;
+decisions.push({date,text});
+document.getElementById(‘dec-txt’).value=’’;
+renderDec();
+}
+function delDec(i){if(confirm(‘Delete this entry?’)){decisions.splice(i,1);renderDec();}}
+
+// PDF UPLOAD
+function handleDrop(ev){ev.preventDefault();document.getElementById(‘upzone’).classList.remove(‘drag’);const f=ev.dataTransfer.files[0];if(f)handleFile(f);}
+function handleFile(f){
+if(!f||!f.name.toLowerCase().endsWith(’.pdf’)){alert(‘Please upload a PDF file.’);return;}
+const res=document.getElementById(‘upresult’);res.style.display=‘block’;
+res.innerHTML=’<strong>’+f.name+’</strong> (’+Math.round(f.size/1024)+’ KB) — analysing…’;
+setTimeout(()=>{
+const sizeMB=(f.size/1048576).toFixed(2);
+const isSmall=f.size<300000;const isLarge=f.size>2000000;
+const docType=isSmall?‘Small document (likely a brochure, 1-6 pages)’:isLarge?‘Large document (likely a full lease or survey report, 20+ pages)’:‘Medium document (likely heads of terms, contractor quote, or short report)’;
+res.innerHTML=`
+<strong>${f.name}</strong>  ·  ${Math.round(f.size/1024)} KB  ·  Last modified: ${f.lastModified?new Date(f.lastModified).toLocaleDateString(‘en-GB’):‘Unknown’}<br>
+<span style="color:var(--tx2);font-size:11px">${docType}</span>
+
+<hr style="border:0;border-top:0.5px solid var(--bd);margin:12px 0">
+<strong>Condition assessment — what we know from file metadata:</strong><br>
+<ul style="margin:6px 0 10px 16px;font-size:12px;line-height:1.8;color:var(--tx2)">
+<li>File size ${sizeMB}MB — ${isSmall?'Suggests a short document. If this is a lease, it may be heads of terms rather than the full lease.':isLarge?'Suggests a comprehensive document. If this is a lease, expect detailed schedules and annexures.':'Typical for a standard commercial lease or detailed contractor quote.'}</li>
+<li>For a precise condition report, additional context would require text extraction from the PDF content.</li>
+</ul>
+<strong>Three-estimate framework — how to use this for any document you upload:</strong>
+<div class="est-grid">
+<div class="est-card low"><div class="el">Low estimate</div><div class="ev">Best case</div><div class="es">All costs at lower end. Competitive tender wins. No complications. Dad handles all joinery (materials only). Landlord cooperative on deposit and rent-free.</div></div>
+<div class="est-card mid"><div class="el">Mid estimate</div><div class="ev">Most likely</div><div class="es">Market rate pricing. One or two minor complications. Standard professional fees. LFA straightforward. Building Control accepts Building Notice.</div></div>
+<div class="est-card high"><div class="el">High estimate</div><div class="ev">Worst case</div><div class="es">Complications arise. Listed building consent needed. Landlord uncooperative. Building Control requests Full Plans. Electrician finds DB at capacity. Solicitor on hourly billing.</div></div>
+</div>
+<strong>To extract specific costs from this document:</strong><br>
+<div style="margin:8px 0;padding:10px 12px;background:var(--bg2);border-radius:var(--r);font-size:12px;line-height:1.7">
+1. Open <a href="https://claude.ai" target="_blank" style="color:var(--in)">claude.ai</a> and upload this PDF directly in a new message<br>
+2. Say: <em>"Assess this document for my Winchester clinic project at 9A Jewry Street. Give me a low, mid and high cost estimate for everything in it. Note that Abi's father is a high-end carpenter so all joinery, partitioning and cabinetry labour is free — materials only. Explain how each estimate differs and what I get at each price point."</em><br>
+3. Copy extracted costs back using the Enter actual button on the relevant task in the Project Plan tab
+</div>
+<strong>The Jewry Street brochure (Goadsby ref WA.356276) is already analysed and pre-loaded in the Property Panel above.</strong><br>
+<span style="font-size:11px;color:var(--tx2)">Key confirmed details: available early August 2026 · no VAT on rent · back wall non-structural · rent £32,500pa · RV £31,250 · rates £11,937pa · EPC E-103 · FRI lease</span>`;
+  },400);
+}
+
+// EXPORT & SAVE
+function exportCSV(){
+const rows=[[‘Phase’,‘Task’,‘Owner’,‘Type’,‘Mandatory’,‘Deferrable’,‘Low’,‘Mid’,‘High’,‘Actual’,‘Status’,‘Dad Labour’,‘Saving Note’,‘Notes’]];
+PHASES.forEach(p=>p.tasks.forEach(t=>{const s=state[t.id];rows.push([p.label,t.task,t.owner,t.type,t.mand?‘Yes’:‘No’,t.def?‘Yes’:‘No’,t.lo,t.mid,t.hi,s.actual!==null?s.actual:’’,s.status,t.isDad?‘Yes’:‘No’,t.savingNote||’’,t.notes||’’]);}));
+const csv=rows.map(r=>r.map(c=>’”’+String(c).replace(/”/g,’””’)+’”’).join(’,’)).join(’\n’);
+const a=document.createElement(‘a’);a.href=‘data:text/csv;charset=utf-8,’+encodeURIComponent(csv);a.download=‘winchester_clinic_plan_v5.csv’;a.click();
+}
+function copySummary(){
+let td=0,tt=0,act=0;let lo=0,mid=0,hi=0;
+PHASES.forEach(p=>p.tasks.forEach(t=>{tt++;lo+=t.lo;mid+=t.mid;hi+=t.hi;if(state[t.id].done){td++;act+=getEst(t);}}));
+const op=new Date(startDate);op.setDate(op.getDate()+112);
+const s=‘Winchester Clinic Plan V5 — Status Summary\n’+new Date().toLocaleDateString(‘en-GB’)+’\n\nProperty: 9A Jewry Street, Winchester SO23 8RZ\nAvailable: Early August 2026 · No VAT on rent (confirmed) · Back wall non-structural (confirmed)\nRent: £32,500pa (£2,708/mo) · Rates: £11,937pa (£995/mo) · Total: £44,436pa\n\nOpening target: ~‘+fmt(op)+’\nTasks: ‘+td+’/’+tt+’ done\nSpent: £’+act.toLocaleString()+’ · Low: £’+lo.toLocaleString()+’ · Mid: £’+mid.toLocaleString()+’ · High: £’+hi.toLocaleString()+’\nDad's labour saving: ~£8,500\n\nKey negotiations still needed:\n- Deposit: push for 1 month (£2,708) vs 3 months (£8,125) — saves £5,417\n- 3 months rent-free — saves £8,125\n- Landlord covers rates during fit-out period\n\nRecent decisions:\n’+decisions.slice(-5).map(d=>’• ‘+d.date+’: ‘+d.text).join(’\n’);
+navigator.clipboard.writeText(s).then(()=>{const b=event.target;b.textContent=‘Copied ✓’;setTimeout(()=>b.textContent=‘Copy summary’,2000);});
+}
+function saveProg(){
+try{
+localStorage.setItem(‘wcV5’,JSON.stringify({state,decisions,startDate:startDate.toISOString().split(‘T’)[0],estMode,propVat:document.getElementById(‘prop-vat’).value,propRent:document.getElementById(‘prop-rent’).value,propAvail:document.getElementById(‘prop-avail-date’).value}));
+const b=event.target;b.textContent=‘Saved ✓’;setTimeout(()=>b.textContent=‘Save progress’,2000);
+}catch(e){alert(’Save failed: ’+e.message);}
+}
+function loadProg(){
+try{
+const raw=localStorage.getItem(‘wcV5’);if(!raw)return;
+const d=JSON.parse(raw);
+if(d.state)Object.assign(state,d.state);
+if(d.decisions){decisions.length=0;d.decisions.forEach(x=>decisions.push(x));}
+if(d.startDate){startDate=new Date(d.startDate);document.getElementById(‘startDate’).value=d.startDate;}
+if(d.estMode){estMode=d.estMode;document.getElementById(‘estMode’).value=estMode;}
+if(d.propVat)document.getElementById(‘prop-vat’).value=d.propVat;
+if(d.propRent)document.getElementById(‘prop-rent’).value=d.propRent;
+if(d.propAvail)document.getElementById(‘prop-avail-date’).value=d.propAvail;
+}catch(e){}
+}
+
+function recalc(){
+estMode=document.getElementById(‘estMode’).value;
+const sv=document.getElementById(‘startDate’).value;if(sv)startDate=new Date(sv);
+updatePropPanel();
+render();
+}
+
+// INIT
+document.getElementById(‘dec-date’).value=TODAY.toISOString().split(‘T’)[0];
+// Pre-load confirmed decision from Goadsby
+if(decisions.length===0){
+decisions.push({date:‘2026-05-06’,text:‘Thomas Siddall (Goadsby) confirmed: no VAT on rent, back wall non-structural, property available early August 2026.’});
+}
+setInterval(()=>{try{saveProg();}catch(e){}},120000);
+loadProg();
+recalc();
+</script>
+
+</body>
+</html>
