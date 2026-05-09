@@ -46,6 +46,9 @@ const PHASES = [
       { title: "Companies House — update registered office if needed", owner: "David", riskLevel: "low", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Free. Update registered office to Winchester or keep accountant address. Must be updated within 14 days of any change." },
       { title: "Set up medical device inventory log — MHRA 2026 requirement", owner: "Abi", riskLevel: "medium", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Free — spreadsheet or ANS module. MHRA Medical Device Regulations 2026 will require device tracking. Log: device name, manufacturer, model, serial, purchase date, service history, location. Start now — easier than retrofitting." },
       { title: "Prescription record-keeping system — Human Medicines Regulations 2012", owner: "Abi", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Every prescription issued at Winchester must be: dated, patient name/address, medication, strength, dose, quantity, Abi's name/address/signature, NMC PIN. Records kept minimum 2 years. ANS has prescription pad module — configure on Day 1." },
+      { title: "Legionella risk assessment", owner: "David", riskLevel: "medium", costLow: 0, costMid: 150, costHigh: 350, isNonNegotiable: false, isCriticalRisk: false, durationDays: 7, notes: "Sensible for any clinic with sinks and a hot water system. L8 ACOP requires assessment where there is a risk of Legionella exposure. Two clinical basins plus kitchenette bring this into scope. Book a UKAS-accredited assessor — written risk assessment plus control scheme. Review annually." },
+      { title: "Air conditioning inspection/service", owner: "David", riskLevel: "medium", costLow: 0, costMid: 250, costHigh: 700, isNonNegotiable: false, isCriticalRisk: false, durationDays: 7, notes: "Important hidden-risk item under FRI lease. Under an FRI lease, Abi is responsible for maintaining any existing air conditioning units. Check whether units are present, obtain service history from landlord, and arrange F-Gas inspection and service before taking occupation. Neglected AC units can be expensive to repair or replace." },
+      { title: "PAT testing setup", owner: "David", riskLevel: "low", costLow: 0, costMid: 80, costHigh: 200, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Minimal equipment initially — defer PAT testing until clinic is operational and equipment is in place. Once treatment couches, lighting and equipment are installed, arrange PAT testing of all portable appliances. Low risk at outset but required before clinic opens to patients. £80-200 depending on number of items." },
     ],
   },
   {
@@ -165,8 +168,8 @@ export async function runStartupSeed(): Promise<void> {
           const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
           totalTasks += tasks.length;
         }
-        if (totalTasks === 84) {
-          console.log("✅ V5 data already present (7 phases, 84 tasks) — skipping seed.");
+        if (totalTasks === 87) {
+          console.log("✅ V5 data already present (7 phases, 87 tasks) — skipping seed.");
           return;
         }
       }
