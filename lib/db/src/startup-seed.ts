@@ -249,38 +249,26 @@ export async function runStartupSeed(): Promise<void> {
     if (existing.length > 0) {
       projectId = existing[0].id;
 
-      // Check if we have the correct V5 data (7 phases, 83 tasks)
+      // If any phases exist, preserve all user data — never wipe on redeploy.
+      // Exact task counts must NOT be used as a version signal; counts change
+      // whenever the user edits tasks or a new feature merge adjusts the seed.
       const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
-      const totalPhases = phases.length;
 
-      if (totalPhases === 7) {
-        // Count tasks
-        let totalTasks = 0;
-        for (const phase of phases) {
-          const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
-          totalTasks += tasks.length;
+      if (phases.length > 0) {
+        console.log(`✅ V5 data already present (${phases.length} phases) — skipping seed. User data preserved.`);
+        // Still seed compliance / CQC milestones if they haven't been added yet
+        const existingCompliance2 = await db.select().from(schema.complianceItemsTable).where(eq(schema.complianceItemsTable.projectId, projectId));
+        if (existingCompliance2.length === 0) {
+          await seedCompliance(projectId);
         }
-        if (totalTasks === 113) {
-          console.log("✅ V5 data already present (7 phases, 113 tasks) — skipping seed.");
-          // Still seed compliance if missing
-          const existingCompliance2 = await db.select().from(schema.complianceItemsTable).where(eq(schema.complianceItemsTable.projectId, projectId));
-          if (existingCompliance2.length === 0) {
-            await seedCompliance(projectId);
-          }
-          const existingMilestones2 = await db.select().from(schema.cqcMilestonesTable).where(eq(schema.cqcMilestonesTable.projectId, projectId));
-          if (existingMilestones2.length === 0) {
-            await seedCqcMilestones(projectId);
-          }
-          return;
+        const existingMilestones2 = await db.select().from(schema.cqcMilestonesTable).where(eq(schema.cqcMilestonesTable.projectId, projectId));
+        if (existingMilestones2.length === 0) {
+          await seedCqcMilestones(projectId);
         }
+        return;
       }
 
-      // Wrong data — clear and re-seed
-      console.log(`ℹ️  Found ${totalPhases} phases — expected 7. Clearing and re-seeding V5 data...`);
-      for (const phase of phases) {
-        await db.delete(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
-      }
-      await db.delete(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+      // No phases at all — fresh install, seed everything below.
     } else {
       const [project] = await db.insert(schema.projectsTable).values({
         name: "Winchester Clinic Opening Plan",
@@ -328,11 +316,9 @@ export async function runStartupSeed(): Promise<void> {
       console.log(`  ✅ Phase ${phaseData.sortOrder}: ${phaseData.name} (${phaseData.tasks.length} tasks)`);
     }
 
-    // Seed financial model
+    // Seed financial model — only on a fresh install, never overwrite user's saved assumptions
     const existingFin = await db.select().from(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
-    if (existingFin.length > 0) {
-      await db.delete(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
-    }
+    if (existingFin.length === 0) {
     await db.insert(schema.financialsTable).values({
       projectId,
       rentGbp: 2708,
@@ -371,6 +357,7 @@ export async function runStartupSeed(): Promise<void> {
       targetDrawingsGbp: 4000,
       wincAcvGbp: 155,
     });
+    } // end if (existingFin.length === 0)
 
     // Ensure scenario configs exist
     const existingScenarios = await db.select().from(schema.scenarioConfigsTable).where(eq(schema.scenarioConfigsTable.projectId, projectId));
