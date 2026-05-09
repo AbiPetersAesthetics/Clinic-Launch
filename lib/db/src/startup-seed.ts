@@ -1,27 +1,12 @@
 /**
- * Deterministic seed script for Clinic Launch OS.
- * Winchester Clinic Plan V5 — 7 phases, 83 tasks, exact V5 costs.
- * Dad's carpentry labour is free throughout Phase 3 (materials-only costs).
- *
- * Idempotent on the PROJECT row but always replaces phases + tasks so that
- * re-running (e.g. on a fresh production deploy) picks up the latest data.
- *
- * Run with:  pnpm --filter @workspace/db run seed
+ * Startup seed — runs automatically when the API server boots.
+ * Uses the shared db pool (does NOT close it).
+ * Always replaces phases + tasks with the exact V5 Winchester data.
  */
 
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
+import { db } from "./index";
 import * as schema from "./schema";
 import { eq } from "drizzle-orm";
-
-const { Pool } = pg;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set.");
-}
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const db = drizzle(pool, { schema });
 
 const PHASES = [
   {
@@ -57,7 +42,7 @@ const PHASES = [
       { title: "Instruct healthcare specialist accountant", owner: "David", riskLevel: "medium", costLow: 1800, costMid: 2400, costHigh: 3600, isNonNegotiable: true, isCriticalRisk: false, durationDays: 14, notes: "Healthcare specialist — NOT a general high street accountant. Understands VAT exemption on medical vs cosmetic treatments, PAYE for Abi as director, MTD. Budget £150-200/month ongoing. Worth every penny at VAT registration threshold." },
       { title: "Apply for Licence for Alterations — partition, clinical basins, signage fixings", owner: "Solicitor + David", riskLevel: "high", costLow: 400, costMid: 600, costHigh: 800, isNonNegotiable: true, isCriticalRisk: true, durationDays: 42, notes: "Submit immediately — landlord approval can take 4-6 weeks and FIT-OUT CANNOT START until Licence for Alterations is granted. Include Dad's fit-out drawings. Solicitor drafts licence — £400-800 in fees." },
       { title: "Register for business rates — WCC move-in notification", owner: "David", riskLevel: "medium", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Notify WCC Revenues within 7 days of occupation — legal requirement. RV £31,250 = £15,437/year rates (£995/month after 2025 relief). No small business relief. Business rates are a Day 1 liability." },
-      { title: "Companies House — update registered office if needed", owner: "David", riskLevel: "low", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Free. Update registered office to Winchester or keep accountant address. Must be updated within 14 days of any change. directors@companieshouse.gov.uk" },
+      { title: "Companies House — update registered office if needed", owner: "David", riskLevel: "low", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Free. Update registered office to Winchester or keep accountant address. Must be updated within 14 days of any change." },
       { title: "Set up medical device inventory log — MHRA 2026 requirement", owner: "Abi", riskLevel: "medium", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Free — spreadsheet or ANS module. MHRA Medical Device Regulations 2026 will require device tracking. Log: device name, manufacturer, model, serial, purchase date, service history, location. Start now — easier than retrofitting." },
       { title: "Prescription record-keeping system — Human Medicines Regulations 2012", owner: "Abi", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Every prescription issued at Winchester must be: dated, patient name/address, medication, strength, dose, quantity, Abi's name/address/signature, NMC PIN. Records kept minimum 2 years. ANS has prescription pad module — configure on Day 1." },
     ],
@@ -83,7 +68,7 @@ const PHASES = [
       { title: "STEP 11 — Treatment room cabinetry × 2, lockable POM cupboard (Dad builds)", owner: "Dad", riskLevel: "low", costLow: 600, costMid: 1000, costHigh: 1200, isNonNegotiable: false, isCriticalRisk: false, durationDays: 4, notes: "Labour: Dad (free). Materials: MDF, hinges, handles, laminate, lockable hasp for POM cupboard. POM (prescription-only medicines) storage must be lockable — regulatory requirement. Dad builds both treatment room wall units and POM cupboard." },
       { title: "STEP 12 — Antimicrobial paint: treatment rooms and corridor (Dad paints)", owner: "Dad", riskLevel: "low", costLow: 180, costMid: 300, costHigh: 400, isNonNegotiable: true, isCriticalRisk: false, durationDays: 2, notes: "Labour: Dad (free). Materials: Dulux Sterishield or similar antimicrobial emulsion. Treatment rooms and corridor only. Antimicrobial paint required by IPC Policy. Standard emulsion in reception. 2 coats. Allow 4hrs between coats." },
       { title: "STEP 13 — External shopfront signage (ONLY after Advertisement Consent)", owner: "Sign company", riskLevel: "high", costLow: 600, costMid: 1350, costHigh: 2500, isNonNegotiable: true, isCriticalRisk: true, durationDays: 3, notes: "DO NOT ORDER until Advertisement Consent is granted. Conservation area — consent required for most signs. Brief sign company simultaneously with ad consent application so they are ready to fabricate and fit the day consent lands. Budget mid £1,350." },
-      { title: "STEP 14 — Deep clean to clinical standard before equipment arrives", owner: "Clinical cleaning company", riskLevel: "high", costLow: 0, costMid: 175, costHigh: 300, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Professional clinical clean after all construction dust settles and before any equipment is moved in. Use BS EN ISO 14644 clean room standards company. Surface sampling available if needed for CQC/Save Face inspection preparation." },
+      { title: "STEP 14 — Deep clean to clinical standard before equipment arrives", owner: "Clinical cleaning company", riskLevel: "high", costLow: 0, costMid: 175, costHigh: 300, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Professional clinical clean after all construction dust settles and before any equipment is moved in. Surface sampling available if needed for CQC/Save Face inspection preparation." },
       { title: "STEP 15 — Professional photography of completed clinic", owner: "David", riskLevel: "low", costLow: 350, costMid: 575, costHigh: 800, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Book photographer for the morning after deep clean — before any equipment or stock is moved in for cleanest shots. Use for website, Google Business Profile, Instagram launch content. Budget £575 for 2-3 hours." },
       { title: "Building Regulations Completion Certificate — final inspection", owner: "Winchester Building Control", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 7, notes: "WBC inspect and issue Completion Certificate. Required before clinic opens — no legal occupation of altered space without it. Book inspection immediately after STEP 14 (deep clean). EIC from electrician must be submitted with inspection request." },
       { title: "Treatment couches × 2 — order early, deliver after flooring", owner: "Abi", riskLevel: "medium", costLow: 2438, costMid: 2900, costHigh: 4000, isNonNegotiable: true, isCriticalRisk: false, durationDays: 21, notes: "Order at Phase 2 — 3-6 week lead time. Delivery timed after vinyl flooring is complete. Beauty Express Diva at £1,219 each = £2,438. Electric preferred for Profhilo and skin treatments. Couch dimensions must be confirmed before Dad builds cabinetry." },
@@ -158,126 +143,136 @@ const PHASES = [
   },
 ];
 
-async function seed() {
-  console.log("🌱 Starting V5 seed...");
+export async function runStartupSeed(): Promise<void> {
+  console.log("🌱 Running startup seed check...");
 
-  let projectId: number;
+  try {
+    let projectId: number;
 
-  const [existing] = await db.select().from(schema.projectsTable).where(eq(schema.projectsTable.id, 1));
-  if (existing) {
-    console.log(`ℹ️  Project id=1 already exists ("${existing.name}") — clearing phases/tasks and re-seeding V5 data.`);
-    projectId = existing.id;
+    const existing = await db.select().from(schema.projectsTable).where(eq(schema.projectsTable.id, 1));
+    if (existing.length > 0) {
+      projectId = existing[0].id;
 
-    // Delete tasks first (FK), then phases
-    const existingPhases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
-    for (const phase of existingPhases) {
-      await db.delete(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
+      // Check if we have the correct V5 data (7 phases, 83 tasks)
+      const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+      const totalPhases = phases.length;
+
+      if (totalPhases === 7) {
+        // Count tasks
+        let totalTasks = 0;
+        for (const phase of phases) {
+          const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
+          totalTasks += tasks.length;
+        }
+        if (totalTasks === 83) {
+          console.log("✅ V5 data already present (7 phases, 83 tasks) — skipping seed.");
+          return;
+        }
+      }
+
+      // Wrong data — clear and re-seed
+      console.log(`ℹ️  Found ${totalPhases} phases — expected 7. Clearing and re-seeding V5 data...`);
+      for (const phase of phases) {
+        await db.delete(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
+      }
+      await db.delete(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+    } else {
+      const [project] = await db.insert(schema.projectsTable).values({
+        name: "Winchester Clinic Opening Plan",
+        description: "Full launch plan for Abi Peters Aesthetics — 9A Jewry Street, Winchester. 2 treatment rooms, Dad doing the fit-out labour.",
+        targetLocation: "9A Jewry Street, Winchester, Hampshire SO23 8QP",
+        targetOpeningDate: "2025-09-01",
+        status: "planning",
+        launchReadinessPercent: 0,
+      }).returning();
+      projectId = project.id;
     }
-    await db.delete(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
-    console.log("  ✅ Cleared old phases and tasks");
-  } else {
-    const [project] = await db.insert(schema.projectsTable).values({
-      name: "Winchester Clinic Opening Plan",
-      description: "Full launch plan for Abi Peters Aesthetics — 9A Jewry Street, Winchester. 2 treatment rooms, Dad doing the fit-out labour.",
-      targetLocation: "9A Jewry Street, Winchester, Hampshire SO23 8QP",
-      targetOpeningDate: "2025-09-01",
-      status: "planning",
-      launchReadinessPercent: 0,
-    }).returning();
-    projectId = project.id;
-    console.log(`✅ Created project: ${project.name} (id=${project.id})`);
-  }
 
-  // Insert all 7 phases and their tasks
-  let totalTasks = 0;
-  for (const phaseData of PHASES) {
-    const [phase] = await db.insert(schema.phasesTable).values({
-      projectId,
-      name: phaseData.name,
-      description: phaseData.description,
-      sortOrder: phaseData.sortOrder,
-      status: "not_started",
-    }).returning();
-
-    for (let i = 0; i < phaseData.tasks.length; i++) {
-      const t = phaseData.tasks[i];
-      await db.insert(schema.tasksTable).values({
-        phaseId: phase.id,
-        title: t.title,
-        owner: t.owner,
+    // Insert all 7 V5 phases and tasks
+    let totalTasks = 0;
+    for (const phaseData of PHASES) {
+      const [phase] = await db.insert(schema.phasesTable).values({
+        projectId,
+        name: phaseData.name,
+        description: phaseData.description,
+        sortOrder: phaseData.sortOrder,
         status: "not_started",
-        riskLevel: t.riskLevel,
-        costTier: "mid",
-        costLow: t.costLow,
-        costMid: t.costMid,
-        costHigh: t.costHigh,
-        selectedCost: t.costMid,
-        isNonNegotiable: t.isNonNegotiable,
-        isCriticalRisk: t.isCriticalRisk,
-        durationDays: t.durationDays,
-        notes: t.notes ?? null,
-        sortOrder: i,
-      });
+      }).returning();
+
+      for (let i = 0; i < phaseData.tasks.length; i++) {
+        const t = phaseData.tasks[i];
+        await db.insert(schema.tasksTable).values({
+          phaseId: phase.id,
+          title: t.title,
+          owner: t.owner,
+          status: "not_started",
+          riskLevel: t.riskLevel,
+          costTier: "mid",
+          costLow: t.costLow,
+          costMid: t.costMid,
+          costHigh: t.costHigh,
+          selectedCost: t.costMid,
+          isNonNegotiable: t.isNonNegotiable,
+          isCriticalRisk: t.isCriticalRisk,
+          durationDays: t.durationDays,
+          notes: t.notes ?? null,
+          sortOrder: i,
+        });
+      }
+      totalTasks += phaseData.tasks.length;
+      console.log(`  ✅ Phase ${phaseData.sortOrder}: ${phaseData.name} (${phaseData.tasks.length} tasks)`);
     }
-    totalTasks += phaseData.tasks.length;
-    console.log(`  ✅ Phase ${phaseData.sortOrder}: ${phaseData.name} (${phaseData.tasks.length} tasks)`);
-  }
 
-  // Update financial model to real Winchester V5 figures
-  const existingFin = await db.select().from(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
-  if (existingFin.length > 0) {
-    await db.delete(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
-  }
-  await db.insert(schema.financialsTable).values({
-    projectId,
-    rentGbp: 2708,
-    ratesGbp: 995,
-    utilitiesGbp: 200,
-    internetGbp: 50,
-    insuranceGbp: 167,
-    accountantGbp: 175,
-    softwareGbp: 55,
-    wasteContractGbp: 48,
-    cleanerGbp: 0,
-    subscriptionsGbp: 15,
-    financeRepaymentsGbp: 0,
-    stockPercent: 20,
-    marketingGbp: 600,
-    staffingGbp: 1047,
-    commissionsPercent: 0,
-    consumablesGbp: 0,
-    averageClientValueGbp: 135,
-    treatmentRoomsCount: 2,
-    practitionerHoursPerDay: 7,
-    workingDaysPerMonth: 22,
-    conservativeOccupancyPercent: 40,
-    realisticOccupancyPercent: 65,
-    aggressiveOccupancyPercent: 85,
-    repeatBookingRatePercent: 60,
-    membershipRevenueGbp: 0,
-    existingClinicRevenueGbp: 10000,
-    ownerDrawingsGbp: 1047,
-    runwaySavingsGbp: 80000,
-    personalSalaryNeedsGbp: 1047,
-  });
-  console.log("  ✅ Financial model seeded (Winchester V5 figures)");
+    // Seed financial model
+    const existingFin = await db.select().from(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
+    if (existingFin.length > 0) {
+      await db.delete(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
+    }
+    await db.insert(schema.financialsTable).values({
+      projectId,
+      rentGbp: 2708,
+      ratesGbp: 995,
+      utilitiesGbp: 200,
+      internetGbp: 50,
+      insuranceGbp: 167,
+      accountantGbp: 175,
+      softwareGbp: 55,
+      wasteContractGbp: 48,
+      cleanerGbp: 0,
+      subscriptionsGbp: 15,
+      financeRepaymentsGbp: 0,
+      stockPercent: 20,
+      marketingGbp: 600,
+      staffingGbp: 1047,
+      commissionsPercent: 0,
+      consumablesGbp: 0,
+      averageClientValueGbp: 135,
+      treatmentRoomsCount: 2,
+      practitionerHoursPerDay: 7,
+      workingDaysPerMonth: 22,
+      conservativeOccupancyPercent: 40,
+      realisticOccupancyPercent: 65,
+      aggressiveOccupancyPercent: 85,
+      repeatBookingRatePercent: 60,
+      membershipRevenueGbp: 0,
+      existingClinicRevenueGbp: 10000,
+      ownerDrawingsGbp: 1047,
+      runwaySavingsGbp: 80000,
+      personalSalaryNeedsGbp: 1047,
+    });
 
-  // Ensure 3 scenario configs exist
-  const existingScenarios = await db.select().from(schema.scenarioConfigsTable).where(eq(schema.scenarioConfigsTable.projectId, projectId));
-  if (existingScenarios.length === 0) {
-    await db.insert(schema.scenarioConfigsTable).values([
-      { projectId, name: "Conservative", description: "Cautious opening — 40% occupancy, slow ramp", occupancyPercent: 40, revenueMultiplier: 1, isDefault: false },
-      { projectId, name: "Realistic", description: "Expected performance — 65% occupancy by month 6", occupancyPercent: 65, revenueMultiplier: 1, isDefault: true },
-      { projectId, name: "Aggressive", description: "Strong opening — 85% occupancy with high marketing spend", occupancyPercent: 85, revenueMultiplier: 1, isDefault: false },
-    ]);
-    console.log("  ✅ Scenario configs seeded (3 scenarios)");
-  }
+    // Ensure scenario configs exist
+    const existingScenarios = await db.select().from(schema.scenarioConfigsTable).where(eq(schema.scenarioConfigsTable.projectId, projectId));
+    if (existingScenarios.length === 0) {
+      await db.insert(schema.scenarioConfigsTable).values([
+        { projectId, name: "Conservative", description: "Cautious opening — 40% occupancy, slow ramp", occupancyPercent: 40, revenueMultiplier: 1, isDefault: false },
+        { projectId, name: "Realistic", description: "Expected performance — 65% occupancy by month 6", occupancyPercent: 65, revenueMultiplier: 1, isDefault: true },
+        { projectId, name: "Aggressive", description: "Strong opening — 85% occupancy with high marketing spend", occupancyPercent: 85, revenueMultiplier: 1, isDefault: false },
+      ]);
+    }
 
-  console.log(`\n🎉 V5 Seed complete: 1 project, 7 phases, ${totalTasks} tasks, 1 financial model`);
-  await pool.end();
+    console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
+  } catch (err) {
+    console.error("❌ Startup seed failed:", err);
+  }
 }
-
-seed().catch((err) => {
-  console.error("❌ Seed failed:", err);
-  process.exit(1);
-});
