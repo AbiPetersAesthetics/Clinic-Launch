@@ -1,0 +1,331 @@
+Improve the Dashboard into a true Clinic Launch Command Centre.
+
+Current issue:
+The dashboard is clean, but too passive. It shows numbers, but it does not clearly answer:
+- Are we safe?
+- What needs doing next?
+- What is the biggest risk?
+- Are costs under control?
+- Can we still afford this?
+- What decision should we make this week?
+
+Required improvements:
+
+1. Add Executive Health Panel at the top
+
+Create 4 primary status cards:
+- Launch Readiness
+- Financial Safety
+- Risk Exposure
+- Next Critical Decision
+
+Each card should have:
+- score
+- RAG status: Green / Amber / Red
+- short explanation
+- recommended action
+
+Example:
+Financial Safety: Amber
+“Setup cost is within planned mid-range, but monthly burn must be stress-tested against Bedhampton revenue.”
+
+2. Replace generic “Confidence 10/100” with clear confidence categories
+
+Show:
+- Property Confidence
+- Financial Confidence
+- Compliance Confidence
+- Timeline Confidence
+
+Each should explain why it is red/amber/green.
+
+3. Add “This Week’s Priorities”
+
+Show the top 5 tasks the user should focus on now, ranked by impact and urgency.
+
+Use logic:
+- critical tasks due soon
+- blocked dependencies
+- high-value negotiation items
+- tasks that unlock future phases
+
+Each priority should show:
+- task name
+- owner
+- why it matters
+- financial/compliance impact
+- quick action button
+
+4. Add “Decision Required” section
+
+Show only items that need a decision, not normal tasks.
+
+Examples:
+- Choose solicitor
+- Decide target offer/rent
+- Decide whether to proceed with pre-app written advice
+- Choose low/mid/high cost tier for signage
+- Confirm active property
+
+Each decision should have:
+- context
+- recommended option
+- cost impact
+- risk impact
+
+5. Improve Financial Health card
+
+Current values like “99 months runway” and “£186,739 first-year profit” may look unrealistic or overconfident.
+
+Add:
+- assumptions shown underneath
+- Bedhampton revenue assumed
+- Winchester ramp revenue assumed
+- monthly household salary/drawings assumed
+- worst-case burn
+- break-even month
+- cash buffer remaining
+
+Add scenario buttons:
+- Conservative
+- Realistic
+- Aggressive
+- Stress Test
+
+Stress Test should assume:
+- fit-out high cost
+- Winchester revenue delayed by 3 months
+- Bedhampton revenue drops by 20%
+- marketing performs poorly
+- no extra staff initially
+
+6. Add “Cash Required Before Opening”
+
+This should be separate from total project cost.
+
+Show:
+- legal/pre-lease cash
+- lease/deposit cash
+- fit-out cash
+- compliance cash
+- stock/equipment cash
+- marketing cash
+- contingency
+- total cash needed before opening
+
+This is more useful than just total selected cost.
+
+7. Add “Negotiation Value Tracker”
+
+Show potential savings from:
+- rent reduction
+- rent-free period
+- deposit reduction
+- landlord contribution
+- rates during fit-out
+- service charge cap
+
+Display:
+- target saving
+- confirmed saving
+- pending saving
+- lost saving
+
+This should highlight that negotiation is one of the biggest financial levers.
+
+8. Add “Cost Risk Breakdown”
+
+Instead of only total selected cost, show:
+- fixed unavoidable costs
+- negotiable costs
+- deferrable costs
+- dangerous-to-cut costs
+- already selected HIGH items
+- items still unselected
+
+Include a simple chart or stacked bar.
+
+9. Improve Active Risks
+
+Current Active Risks list is useful but too repetitive.
+
+Group risks by category:
+- Legal / Lease
+- Planning / Conservation
+- Build / Fit-out
+- Clinical Compliance
+- Financial
+- Marketing
+
+Each risk should show:
+- severity
+- probability
+- owner
+- mitigation
+- deadline
+- linked task
+
+Add ability to dismiss/resolve when linked task is complete.
+
+10. Add “Critical Path Timeline”
+
+Show a horizontal timeline of the launch path:
+- Heads of Terms
+- Solicitor instructed
+- Schedule of Condition
+- Lease exchange
+- Licence for Alterations
+- Fit-out start
+- Compliance sign-off
+- Soft launch
+- First patient
+
+Mark:
+- completed
+- current
+- blocked
+- at risk
+
+11. Add “Project Pace” insight
+
+The task burndown is useful but too abstract.
+
+Add plain-English status:
+- “You are behind by X tasks”
+- “At current completion rate, launch slips by X weeks”
+- “Next bottleneck is: Solicitor / Lease / Fit-out / Compliance”
+
+12. Add “Property Decision Snapshot”
+
+For active property show:
+- overall property rank
+- location score
+- viability score
+- clinic fit score
+- rent pressure
+- estimated break-even revenue
+- recommended negotiation stance
+- current go/no-go recommendation
+
+Add button:
+“Open Property Intelligence Report”
+
+13. Add “Launch Readiness by Phase”
+
+Current phase execution is good but should include readiness gates.
+
+Each phase should show:
+- % complete
+- blockers
+- next task
+- cannot progress until
+- current risk
+
+Example:
+Phase 1 — Pre-lease due diligence
+0% complete
+Blocked by: Use Class confirmation, solicitor quotes, Schedule of Condition booking.
+
+14. Add “Go / No-Go Gate”
+
+Add a dedicated section showing whether the project is safe to proceed.
+
+Gate stages:
+- View only
+- Make offer
+- Instruct solicitor
+- Sign lease
+- Start works
+- Open clinic
+
+For each gate, show:
+- required completed tasks
+- unresolved risks
+- financial threshold
+- recommendation
+
+Example:
+Current Gate: Make Offer
+Recommendation: Amber — proceed only after use class and conservation checks are confirmed.
+
+15. Add “AI Executive Summary”
+
+At the top or side of dashboard, generate a short weekly-style update:
+
+Example:
+“Project is in early due diligence. The main opportunity is negotiating deposit and rent-free terms. The main risk is signing an FRI lease without Schedule of Condition. Focus this week on WCC checks, solicitor quotes and Heads of Terms.”
+
+Allow button:
+“Refresh AI Summary”
+
+Save generated summaries with timestamp.
+
+16. Add “What changed since last visit”
+
+Show:
+- new tasks completed
+- costs changed
+- risks resolved
+- risks added
+- active property changed
+- AI analysis rerun
+
+17. Add “Dashboard actions”
+
+Every card should have an action button.
+
+Examples:
+- View risks
+- Open financials
+- Open active property
+- Go to critical tasks
+- Review cost optimisation
+- Add decision
+
+18. Improve visual hierarchy
+
+Make the dashboard more premium and executive:
+- larger top cards
+- more whitespace
+- fewer tiny numbers
+- stronger section headings
+- subtle colours
+- better RAG indicators
+- sticky summary bar
+- clear callouts
+
+Avoid making it feel like Excel or a generic PM tool.
+
+Desired feel:
+“Commercial clinic launch command centre”
+not
+“basic project dashboard”.
+
+19. Add warning logic for unrealistic assumptions
+
+If first-year profit looks very high, show:
+“Profit estimate depends on revenue assumptions. Review financial model.”
+
+If runway is unusually high, show:
+“Runway calculation based on current cash/reserve assumptions.”
+
+No financial figure should appear without assumptions visible.
+
+20. Add dashboard export
+
+Allow export to:
+- PDF
+- investor/partner summary
+- solicitor/landlord pack
+- weekly internal update
+
+The PDF should include:
+- active property
+- cost exposure
+- launch readiness
+- key risks
+- next actions
+- go/no-go status
+
+Goal:
+The dashboard should help the user make better decisions every time they open it. It should not just show data — it should interpret the project and tell the user what matters next.
