@@ -99,6 +99,9 @@ const PHASES = [
       { title: "CPD documentation log — set up and start immediately", owner: "Abi", riskLevel: "medium", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Required for DHSC licensing 2027. Log all training, Level 7 progress, BLS renewals. Insurers and JCCP will request." },
       { title: "Complaints and incident log — set up before opening", owner: "Abi", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Date, patient, treatment, what happened, action, outcome, learning. Review quarterly. Use Save Face template provided on registration." },
       { title: "Batch number and traceability log — every injectable", owner: "Abi", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 1, notes: "Product, batch number, expiry, volume, site per treatment. Required for MHRA product recall tracing. Make batch number mandatory in ANS — 10 mins to configure." },
+      { title: "Save Face corrective actions contingency", owner: "Abi", riskLevel: "low", costLow: 0, costMid: 300, costHigh: 1500, isNonNegotiable: false, isCriticalRisk: false, durationDays: 14, notes: "Occasionally Save Face requests minor clinic changes after the Zoom inspection before granting accreditation — e.g. additional signage, a missing policy document, a physical change to the clinic layout. Budget LOW (£0) initially but hold £300 in reserve. Most clinics pass first time; corrective actions are minor when they occur." },
+      { title: "Policy printing/binding/compliance folders", owner: "David", riskLevel: "low", costLow: 50, costMid: 150, costHigh: 400, isNonNegotiable: false, isCriticalRisk: false, durationDays: 3, notes: "Small but realistic operational cost often forgotten. IPC policy, adverse event protocol, COSHH assessments, sharps policy, fire risk assessment, complaints log and consent SOPs all need to be printed, bound and accessible in the clinic. Budget LOW £50 for basic folders and printing — upgrade to professional binding at £150 if Save Face inspection is imminent." },
+      { title: "Fridge temperature monitoring system", owner: "David", riskLevel: "medium", costLow: 30, costMid: 120, costHigh: 350, isNonNegotiable: true, isCriticalRisk: false, durationDays: 3, notes: "Worth doing properly for injectables compliance and insurer expectations. Botox, Azzalure and Profhilo must be stored at 2-8°C. A basic min/max thermometer at £30 meets the minimum requirement. A Bluetooth data logger with app alerts (e.g. Govee or Inkbird) at £60-120 is far better — provides continuous audit trail Hamilton Fraser and JCCP will expect to see. Do not rely on a domestic fridge without a verified thermometer." },
     ],
   },
   {
@@ -170,8 +173,8 @@ export async function runStartupSeed(): Promise<void> {
           const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
           totalTasks += tasks.length;
         }
-        if (totalTasks === 89) {
-          console.log("✅ V5 data already present (7 phases, 89 tasks) — skipping seed.");
+        if (totalTasks === 92) {
+          console.log("✅ V5 data already present (7 phases, 92 tasks) — skipping seed.");
           return;
         }
       }
