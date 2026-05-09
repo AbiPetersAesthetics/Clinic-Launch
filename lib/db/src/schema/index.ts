@@ -8,3 +8,5 @@ export * from "./cost_items";
 export * from "./scenario_configs";
 export * from "./decisions";
 export * from "./cost_optimisation_rules";
+export * from "./compliance_items";
+export * from "./cqc_milestones";

@@ -25,11 +25,16 @@ import type {
   CashflowMonth,
   ClinicProperty,
   ComparePropertyAnalysesParams,
+  ComplianceItem,
+  ComplianceSummary,
   ConfirmUploadBody,
   CostItem,
   CostOptimisationRule,
+  CqcMilestone,
+  CreateComplianceItemBody,
   CreateCostItemBody,
   CreateCostOptimisationRuleBody,
+  CreateCqcMilestoneBody,
   CreateDecisionBody,
   CreatePhaseBody,
   CreateProjectBody,
@@ -62,8 +67,10 @@ import type {
   RiskFlag,
   ScenarioConfig,
   ScoringWeights,
+  UpdateComplianceItemBody,
   UpdateCostItemBody,
   UpdateCostOptimisationRuleBody,
+  UpdateCqcMilestoneBody,
   UpdateDecisionBody,
   UpdatePhaseBody,
   UpdateProjectBody,
@@ -3632,6 +3639,791 @@ export const useDeleteDecision = <
   TContext
 > => {
   return useMutation(getDeleteDecisionMutationOptions(options));
+};
+
+/**
+ * @summary List compliance checklist items for a project
+ */
+export const getListComplianceItemsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/compliance/items`;
+};
+
+export const listComplianceItems = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ComplianceItem[]> => {
+  return customFetch<ComplianceItem[]>(getListComplianceItemsUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListComplianceItemsQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/compliance/items`] as const;
+};
+
+export const getListComplianceItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listComplianceItems>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listComplianceItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListComplianceItemsQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listComplianceItems>>
+  > = ({ signal }) =>
+    listComplianceItems(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listComplianceItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListComplianceItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listComplianceItems>>
+>;
+export type ListComplianceItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List compliance checklist items for a project
+ */
+
+export function useListComplianceItems<
+  TData = Awaited<ReturnType<typeof listComplianceItems>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listComplianceItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListComplianceItemsQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a compliance item
+ */
+export const getCreateComplianceItemUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/compliance/items`;
+};
+
+export const createComplianceItem = async (
+  projectId: number,
+  createComplianceItemBody: CreateComplianceItemBody,
+  options?: RequestInit,
+): Promise<ComplianceItem> => {
+  return customFetch<ComplianceItem>(getCreateComplianceItemUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createComplianceItemBody),
+  });
+};
+
+export const getCreateComplianceItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComplianceItem>>,
+    TError,
+    { projectId: number; data: BodyType<CreateComplianceItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createComplianceItem>>,
+  TError,
+  { projectId: number; data: BodyType<CreateComplianceItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createComplianceItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createComplianceItem>>,
+    { projectId: number; data: BodyType<CreateComplianceItemBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createComplianceItem(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateComplianceItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createComplianceItem>>
+>;
+export type CreateComplianceItemMutationBody =
+  BodyType<CreateComplianceItemBody>;
+export type CreateComplianceItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a compliance item
+ */
+export const useCreateComplianceItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createComplianceItem>>,
+    TError,
+    { projectId: number; data: BodyType<CreateComplianceItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createComplianceItem>>,
+  TError,
+  { projectId: number; data: BodyType<CreateComplianceItemBody> },
+  TContext
+> => {
+  return useMutation(getCreateComplianceItemMutationOptions(options));
+};
+
+/**
+ * @summary Update a compliance item
+ */
+export const getUpdateComplianceItemUrl = (id: number) => {
+  return `/api/compliance/items/${id}`;
+};
+
+export const updateComplianceItem = async (
+  id: number,
+  updateComplianceItemBody: UpdateComplianceItemBody,
+  options?: RequestInit,
+): Promise<ComplianceItem> => {
+  return customFetch<ComplianceItem>(getUpdateComplianceItemUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateComplianceItemBody),
+  });
+};
+
+export const getUpdateComplianceItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateComplianceItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateComplianceItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateComplianceItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateComplianceItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateComplianceItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateComplianceItem>>,
+    { id: number; data: BodyType<UpdateComplianceItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateComplianceItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateComplianceItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateComplianceItem>>
+>;
+export type UpdateComplianceItemMutationBody =
+  BodyType<UpdateComplianceItemBody>;
+export type UpdateComplianceItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a compliance item
+ */
+export const useUpdateComplianceItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateComplianceItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateComplianceItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateComplianceItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateComplianceItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateComplianceItemMutationOptions(options));
+};
+
+/**
+ * @summary Delete a compliance item
+ */
+export const getDeleteComplianceItemUrl = (id: number) => {
+  return `/api/compliance/items/${id}`;
+};
+
+export const deleteComplianceItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteComplianceItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteComplianceItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComplianceItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteComplianceItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteComplianceItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteComplianceItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteComplianceItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteComplianceItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteComplianceItem>>
+>;
+
+export type DeleteComplianceItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a compliance item
+ */
+export const useDeleteComplianceItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteComplianceItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteComplianceItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteComplianceItemMutationOptions(options));
+};
+
+/**
+ * @summary Get compliance readiness summary for a project
+ */
+export const getGetComplianceSummaryUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/compliance/summary`;
+};
+
+export const getComplianceSummary = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ComplianceSummary> => {
+  return customFetch<ComplianceSummary>(getGetComplianceSummaryUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetComplianceSummaryQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/compliance/summary`] as const;
+};
+
+export const getGetComplianceSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getComplianceSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getComplianceSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetComplianceSummaryQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getComplianceSummary>>
+  > = ({ signal }) =>
+    getComplianceSummary(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getComplianceSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetComplianceSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getComplianceSummary>>
+>;
+export type GetComplianceSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get compliance readiness summary for a project
+ */
+
+export function useGetComplianceSummary<
+  TData = Awaited<ReturnType<typeof getComplianceSummary>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getComplianceSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetComplianceSummaryQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List CQC registration milestones for a project
+ */
+export const getListCqcMilestonesUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/compliance/milestones`;
+};
+
+export const listCqcMilestones = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<CqcMilestone[]> => {
+  return customFetch<CqcMilestone[]>(getListCqcMilestonesUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCqcMilestonesQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/compliance/milestones`] as const;
+};
+
+export const getListCqcMilestonesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCqcMilestones>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCqcMilestones>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCqcMilestonesQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCqcMilestones>>
+  > = ({ signal }) =>
+    listCqcMilestones(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCqcMilestones>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCqcMilestonesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCqcMilestones>>
+>;
+export type ListCqcMilestonesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List CQC registration milestones for a project
+ */
+
+export function useListCqcMilestones<
+  TData = Awaited<ReturnType<typeof listCqcMilestones>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCqcMilestones>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCqcMilestonesQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a CQC milestone for a project
+ */
+export const getCreateCqcMilestoneUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/compliance/milestones`;
+};
+
+export const createCqcMilestone = async (
+  projectId: number,
+  createCqcMilestoneBody: CreateCqcMilestoneBody,
+  options?: RequestInit,
+): Promise<CqcMilestone> => {
+  return customFetch<CqcMilestone>(getCreateCqcMilestoneUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createCqcMilestoneBody),
+  });
+};
+
+export const getCreateCqcMilestoneMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCqcMilestone>>,
+    TError,
+    { projectId: number; data: BodyType<CreateCqcMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCqcMilestone>>,
+  TError,
+  { projectId: number; data: BodyType<CreateCqcMilestoneBody> },
+  TContext
+> => {
+  const mutationKey = ["createCqcMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCqcMilestone>>,
+    { projectId: number; data: BodyType<CreateCqcMilestoneBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createCqcMilestone(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCqcMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCqcMilestone>>
+>;
+export type CreateCqcMilestoneMutationBody = BodyType<CreateCqcMilestoneBody>;
+export type CreateCqcMilestoneMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a CQC milestone for a project
+ */
+export const useCreateCqcMilestone = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCqcMilestone>>,
+    TError,
+    { projectId: number; data: BodyType<CreateCqcMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCqcMilestone>>,
+  TError,
+  { projectId: number; data: BodyType<CreateCqcMilestoneBody> },
+  TContext
+> => {
+  return useMutation(getCreateCqcMilestoneMutationOptions(options));
+};
+
+/**
+ * @summary Update a CQC milestone status
+ */
+export const getUpdateCqcMilestoneUrl = (id: number) => {
+  return `/api/compliance/milestones/${id}`;
+};
+
+export const updateCqcMilestone = async (
+  id: number,
+  updateCqcMilestoneBody: UpdateCqcMilestoneBody,
+  options?: RequestInit,
+): Promise<CqcMilestone> => {
+  return customFetch<CqcMilestone>(getUpdateCqcMilestoneUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCqcMilestoneBody),
+  });
+};
+
+export const getUpdateCqcMilestoneMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCqcMilestone>>,
+    TError,
+    { id: number; data: BodyType<UpdateCqcMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateCqcMilestone>>,
+  TError,
+  { id: number; data: BodyType<UpdateCqcMilestoneBody> },
+  TContext
+> => {
+  const mutationKey = ["updateCqcMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateCqcMilestone>>,
+    { id: number; data: BodyType<UpdateCqcMilestoneBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateCqcMilestone(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateCqcMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateCqcMilestone>>
+>;
+export type UpdateCqcMilestoneMutationBody = BodyType<UpdateCqcMilestoneBody>;
+export type UpdateCqcMilestoneMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a CQC milestone status
+ */
+export const useUpdateCqcMilestone = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateCqcMilestone>>,
+    TError,
+    { id: number; data: BodyType<UpdateCqcMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateCqcMilestone>>,
+  TError,
+  { id: number; data: BodyType<UpdateCqcMilestoneBody> },
+  TContext
+> => {
+  return useMutation(getUpdateCqcMilestoneMutationOptions(options));
+};
+
+/**
+ * @summary Delete a CQC milestone
+ */
+export const getDeleteCqcMilestoneUrl = (id: number) => {
+  return `/api/compliance/milestones/${id}`;
+};
+
+export const deleteCqcMilestone = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteCqcMilestoneUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteCqcMilestoneMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCqcMilestone>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteCqcMilestone>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteCqcMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteCqcMilestone>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteCqcMilestone(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteCqcMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteCqcMilestone>>
+>;
+
+export type DeleteCqcMilestoneMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a CQC milestone
+ */
+export const useDeleteCqcMilestone = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteCqcMilestone>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteCqcMilestone>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteCqcMilestoneMutationOptions(options));
 };
 
 /**

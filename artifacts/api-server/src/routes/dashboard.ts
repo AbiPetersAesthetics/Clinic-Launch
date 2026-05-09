@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable } from "@workspace/db";
+import { eq, asc } from "drizzle-orm";
 
 const router = Router();
 
@@ -76,6 +76,14 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     };
   }));
 
+  // Compliance readiness score
+  const complianceItems = await db.select().from(complianceItemsTable).where(eq(complianceItemsTable.projectId, projectId));
+  const complianceMilestones = await db.select().from(cqcMilestonesTable).where(eq(cqcMilestonesTable.projectId, projectId));
+  const applicableItems = complianceItems.filter(i => i.status !== "not_applicable");
+  const completeItems = applicableItems.filter(i => i.status === "complete" || i.policyStatus === "signed_off");
+  const complianceReadinessPercent = applicableItems.length > 0 ? Math.round((completeItems.length / applicableItems.length) * 100) : 0;
+  const cqcNotStarted = complianceMilestones.length > 0 && complianceMilestones.every(m => m.status === "not_started");
+
   return res.json({
     projectId,
     projectName: project.name,
@@ -97,6 +105,8 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     cashRunwayMonths,
     projectConfidenceScore,
     phaseProgress,
+    complianceReadinessPercent,
+    cqcNotStarted,
   });
 });
 

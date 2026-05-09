@@ -1088,6 +1088,8 @@ export const GetProjectDashboardResponse = zod.object({
       status: zod.string(),
     }),
   ),
+  complianceReadinessPercent: zod.number().nullish(),
+  cqcNotStarted: zod.boolean().nullish(),
 });
 
 /**
@@ -1268,6 +1270,209 @@ export const UpdateDecisionResponse = zod.object({
  * @summary Delete a decision
  */
 export const DeleteDecisionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List compliance checklist items for a project
+ */
+export const ListComplianceItemsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListComplianceItemsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  section: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.enum([
+    "not_started",
+    "in_progress",
+    "complete",
+    "not_applicable",
+  ]),
+  policyStatus: zod.enum(["draft", "reviewed", "signed_off"]).nullish(),
+  requiredByDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  attachmentUrl: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListComplianceItemsResponse = zod.array(
+  ListComplianceItemsResponseItem,
+);
+
+/**
+ * @summary Create a compliance item
+ */
+export const CreateComplianceItemParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateComplianceItemBody = zod.object({
+  section: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod
+    .enum(["not_started", "in_progress", "complete", "not_applicable"])
+    .optional(),
+  policyStatus: zod.enum(["draft", "reviewed", "signed_off"]).nullish(),
+  requiredByDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  attachmentUrl: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
+
+/**
+ * @summary Update a compliance item
+ */
+export const UpdateComplianceItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateComplianceItemBody = zod.object({
+  section: zod.string().optional(),
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  status: zod
+    .enum(["not_started", "in_progress", "complete", "not_applicable"])
+    .optional(),
+  policyStatus: zod.enum(["draft", "reviewed", "signed_off"]).nullish(),
+  requiredByDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  attachmentUrl: zod.string().nullish(),
+  sortOrder: zod.number().nullish(),
+});
+
+export const UpdateComplianceItemResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  section: zod.string(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.enum([
+    "not_started",
+    "in_progress",
+    "complete",
+    "not_applicable",
+  ]),
+  policyStatus: zod.enum(["draft", "reviewed", "signed_off"]).nullish(),
+  requiredByDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  attachmentUrl: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a compliance item
+ */
+export const DeleteComplianceItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Get compliance readiness summary for a project
+ */
+export const GetComplianceSummaryParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetComplianceSummaryResponse = zod.object({
+  projectId: zod.number(),
+  overallScore: zod.number(),
+  sectionSummaries: zod.array(
+    zod.object({
+      section: zod.string(),
+      total: zod.number(),
+      applicable: zod.number(),
+      complete: zod.number(),
+      percentComplete: zod.number(),
+    }),
+  ),
+  cqcNotStarted: zod.boolean(),
+  cqcComplete: zod.boolean(),
+  totalItems: zod.number(),
+});
+
+/**
+ * @summary List CQC registration milestones for a project
+ */
+export const ListCqcMilestonesParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListCqcMilestonesResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  step: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  leadTimeWeeks: zod.number(),
+  status: zod.enum(["not_started", "in_progress", "complete"]),
+  dueDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListCqcMilestonesResponse = zod.array(
+  ListCqcMilestonesResponseItem,
+);
+
+/**
+ * @summary Create a CQC milestone for a project
+ */
+export const CreateCqcMilestoneParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateCqcMilestoneBody = zod.object({
+  step: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  leadTimeWeeks: zod.number(),
+  status: zod.enum(["not_started", "in_progress", "complete"]).optional(),
+  dueDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a CQC milestone status
+ */
+export const UpdateCqcMilestoneParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCqcMilestoneBody = zod.object({
+  status: zod.enum(["not_started", "in_progress", "complete"]).optional(),
+  dueDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+});
+
+export const UpdateCqcMilestoneResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  step: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  leadTimeWeeks: zod.number(),
+  status: zod.enum(["not_started", "in_progress", "complete"]),
+  dueDate: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a CQC milestone
+ */
+export const DeleteCqcMilestoneParams = zod.object({
   id: zod.coerce.number(),
 });
 

@@ -32,6 +32,8 @@ tags:
     description: Strategic decision log entries
   - name: optimisation
     description: Cost variance optimisation analysis
+  - name: compliance
+    description: CQC registration and clinical compliance tracker
 
 paths:
   /healthz:
@@ -869,6 +871,190 @@ paths:
       operationId: deleteDecision
       tags: [decisions]
       summary: Delete a decision
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # Compliance
+  /projects/{projectId}/compliance/items:
+    get:
+      operationId: listComplianceItems
+      tags: [compliance]
+      summary: List compliance checklist items for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of compliance items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ComplianceItem"
+    post:
+      operationId: createComplianceItem
+      tags: [compliance]
+      summary: Create a compliance item
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateComplianceItemBody"
+      responses:
+        "201":
+          description: Created compliance item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceItem"
+
+  /compliance/items/{id}:
+    put:
+      operationId: updateComplianceItem
+      tags: [compliance]
+      summary: Update a compliance item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateComplianceItemBody"
+      responses:
+        "200":
+          description: Updated compliance item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceItem"
+    delete:
+      operationId: deleteComplianceItem
+      tags: [compliance]
+      summary: Delete a compliance item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /projects/{projectId}/compliance/summary:
+    get:
+      operationId: getComplianceSummary
+      tags: [compliance]
+      summary: Get compliance readiness summary for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Compliance summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ComplianceSummary"
+
+  /projects/{projectId}/compliance/milestones:
+    get:
+      operationId: listCqcMilestones
+      tags: [compliance]
+      summary: List CQC registration milestones for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of CQC milestones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CqcMilestone"
+    post:
+      operationId: createCqcMilestone
+      tags: [compliance]
+      summary: Create a CQC milestone for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCqcMilestoneBody"
+      responses:
+        "201":
+          description: Created milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CqcMilestone"
+
+  /compliance/milestones/{id}:
+    put:
+      operationId: updateCqcMilestone
+      tags: [compliance]
+      summary: Update a CQC milestone status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCqcMilestoneBody"
+      responses:
+        "200":
+          description: Updated milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CqcMilestone"
+    delete:
+      operationId: deleteCqcMilestone
+      tags: [compliance]
+      summary: Delete a CQC milestone
       parameters:
         - name: id
           in: path
@@ -2250,6 +2436,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/PhaseProgress"
+        complianceReadinessPercent:
+          type: integer
+          nullable: true
+        cqcNotStarted:
+          type: boolean
+          nullable: true
       required:
         - projectId
         - projectName
@@ -3609,3 +3801,240 @@ components:
         - results
         - location
         - criteria
+
+    ComplianceItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        section:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, not_applicable]
+        policyStatus:
+          type: string
+          enum: [draft, reviewed, signed_off]
+          nullable: true
+        requiredByDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        attachmentUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - section
+        - title
+        - status
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateComplianceItemBody:
+      type: object
+      properties:
+        section:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, not_applicable]
+        policyStatus:
+          type: string
+          enum: [draft, reviewed, signed_off]
+          nullable: true
+        requiredByDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        attachmentUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+          nullable: true
+      required:
+        - section
+        - title
+
+    UpdateComplianceItemBody:
+      type: object
+      properties:
+        section:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [not_started, in_progress, complete, not_applicable]
+        policyStatus:
+          type: string
+          enum: [draft, reviewed, signed_off]
+          nullable: true
+        requiredByDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        attachmentUrl:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+          nullable: true
+
+    CqcMilestone:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        step:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        leadTimeWeeks:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, complete]
+        dueDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - projectId
+        - step
+        - title
+        - leadTimeWeeks
+        - status
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateCqcMilestoneBody:
+      type: object
+      required:
+        - step
+        - title
+        - leadTimeWeeks
+      properties:
+        step:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        leadTimeWeeks:
+          type: integer
+        status:
+          type: string
+          enum: [not_started, in_progress, complete]
+        dueDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+
+    UpdateCqcMilestoneBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_started, in_progress, complete]
+        dueDate:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+
+    ComplianceSectionSummary:
+      type: object
+      properties:
+        section:
+          type: string
+        total:
+          type: integer
+        applicable:
+          type: integer
+        complete:
+          type: integer
+        percentComplete:
+          type: integer
+      required:
+        - section
+        - total
+        - applicable
+        - complete
+        - percentComplete
+
+    ComplianceSummary:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        overallScore:
+          type: integer
+        sectionSummaries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ComplianceSectionSummary"
+        cqcNotStarted:
+          type: boolean
+        cqcComplete:
+          type: boolean
+        totalItems:
+          type: integer
+      required:
+        - projectId
+        - overallScore
+        - sectionSummaries
+        - cqcNotStarted
+        - cqcComplete
+        - totalItems

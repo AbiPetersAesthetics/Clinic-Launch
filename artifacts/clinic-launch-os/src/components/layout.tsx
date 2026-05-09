@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   BookOpen,
   Zap,
+  ShieldCheck,
   ChevronDown,
   ChevronUp,
   X,
@@ -50,6 +51,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const canDismiss = criticalFlags.length === 0;
   const showBanner = smartRiskFlags.length > 0 && !(bannerDismissed && canDismiss);
 
+  const complianceScore = dashboard?.complianceReadinessPercent ?? null;
+
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/project", label: "Project Plan", icon: ListTodo },
@@ -57,6 +60,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
+    { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
   ];
 
   return (
@@ -70,6 +74,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 p-4 space-y-1">
           {navItems.map((item) => {
             const isActive = location === item.href;
+            const nav = item as typeof item & { badge?: string; badgeAlert?: boolean };
             return (
               <Link
                 key={item.href}
@@ -81,7 +86,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 }`}
               >
                 <item.icon className="w-4 h-4 shrink-0" />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {nav.badge !== undefined && (
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                    nav.badgeAlert
+                      ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800"
+                      : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800"
+                  }`}>
+                    {nav.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -110,6 +124,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${dashboard.projectConfidenceScore > 75 ? "bg-primary" : dashboard.projectConfidenceScore > 50 ? "bg-yellow-500" : "bg-destructive"}`} />
                     <p className="text-sm font-semibold">{dashboard.projectConfidenceScore}/100</p>
+                  </div>
+                </div>
+                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="shrink-0">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">CQC &amp; Compliance</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className={`w-2 h-2 rounded-full ${(dashboard.complianceReadinessPercent ?? 0) >= 80 ? "bg-primary" : (dashboard.complianceReadinessPercent ?? 0) >= 40 ? "bg-yellow-500" : "bg-destructive"}`} />
+                    <p className="text-sm font-semibold">{dashboard.complianceReadinessPercent ?? 0}%</p>
                   </div>
                 </div>
                 <div className="w-px h-8 bg-border shrink-0" />

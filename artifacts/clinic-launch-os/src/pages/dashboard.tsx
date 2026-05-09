@@ -11,6 +11,8 @@ import {
   getListPropertiesQueryKey,
   useGetPhasesWithTasks,
   getGetPhasesWithTasksQueryKey,
+  useGetComplianceSummary,
+  getGetComplianceSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { useState, useMemo } from "react";
@@ -29,6 +31,7 @@ import {
   Target,
   ArrowRight,
   ShieldAlert,
+  ShieldCheck,
   ChevronRight,
 } from "lucide-react";
 import {
@@ -110,6 +113,10 @@ export default function DashboardPage() {
 
   const { data: phases } = useGetPhasesWithTasks(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) },
+  });
+
+  const { data: complianceSummary } = useGetComplianceSummary(PROJECT_ID, {
+    query: { enabled: true, queryKey: getGetComplianceSummaryQueryKey(PROJECT_ID) },
   });
 
   const activeProperty = properties?.find((p) => p.isActiveForProject);
@@ -279,7 +286,32 @@ export default function DashboardPage() {
         })()}
       </div>
 
-      {/* 2. Active Property Banner */}
+      {/* 2. CQC Risk Banner — shown when registration not started and opening date within 20 weeks */}
+      {(() => {
+        if (!dashboard.cqcNotStarted) return null;
+        const openingDate = dashboard.targetOpeningDate;
+        if (!openingDate) return null;
+        const weeksToOpen = (new Date(openingDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24 * 7);
+        if (weeksToOpen >= 20) return null;
+        return (
+          <div className="rounded-xl border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/50 flex items-center justify-center shrink-0 mt-0.5">
+              <ShieldCheck className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-red-700 dark:text-red-400 text-sm">CQC Registration not started — opening at risk</p>
+              <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 leading-relaxed">
+                Your target opening date is {Math.round(weeksToOpen)} weeks away but CQC registration requires a minimum of 19 weeks. Start the registration process immediately to avoid delaying opening.
+              </p>
+              <a href="/compliance" className="mt-2 text-xs font-semibold text-red-700 dark:text-red-400 hover:underline flex items-center gap-1">
+                Open compliance tracker <ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 3. Active Property Banner */}
       {activeProperty && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
@@ -434,7 +466,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* 5. KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Cost Exposure */}
         <Card className="shadow-sm border-border/60">
           <CardHeader className="pb-2">
@@ -536,6 +568,48 @@ export default function DashboardPage() {
                   {paceInsight.message}
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Compliance Readiness */}
+        <Card className="shadow-sm border-border/60 cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = "/compliance"}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              CQC & Compliance
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {(() => {
+                const score = complianceSummary?.overallScore ?? 0;
+                const total = complianceSummary?.totalItems ?? 0;
+                const complete = complianceSummary?.sectionSummaries.reduce((s, x) => s + x.complete, 0) ?? 0;
+                const cqcNotStarted = complianceSummary?.cqcNotStarted ?? true;
+                const color = score >= 75 ? "text-emerald-600 dark:text-emerald-400" : score >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
+                const barColor = score >= 75 ? "bg-emerald-500" : score >= 40 ? "bg-amber-500" : "bg-red-400";
+                return (
+                  <>
+                    <div className="flex justify-between items-end">
+                      <span className="text-sm text-muted-foreground">Readiness</span>
+                      <span className={`text-2xl font-bold ${color}`}>{score}%</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${score}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{complete} / {total} items</span>
+                      {cqcNotStarted && (
+                        <span className="text-red-600 dark:text-red-400 font-medium flex items-center gap-0.5">
+                          <AlertTriangle className="w-3 h-3" /> CQC not started
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/70">Click to open compliance tracker →</p>
+                  </>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>

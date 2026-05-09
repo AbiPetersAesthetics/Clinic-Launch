@@ -12,6 +12,7 @@ import intelligenceRouter from "./intelligence";
 import decisionsRouter from "./decisions";
 import optimisationRouter from "./optimisation";
 import costOptimisationRulesRouter from "./cost_optimisation_rules";
+import complianceRouter from "./compliance";
 
 const router: IRouter = Router();
 
@@ -28,5 +29,6 @@ router.use(intelligenceRouter);
 router.use(decisionsRouter);
 router.use(optimisationRouter);
 router.use(costOptimisationRulesRouter);
+router.use(complianceRouter);
 
 export default router;

@@ -11,6 +11,7 @@ import FinancialsPage from "@/pages/financials";
 import PropertiesPage from "@/pages/properties";
 import DecisionsPage from "@/pages/decisions";
 import OptimisationPage from "@/pages/optimisation";
+import CompliancePage from "@/pages/compliance";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/properties" component={PropertiesPage} />
         <Route path="/decisions" component={DecisionsPage} />
         <Route path="/optimisation" component={OptimisationPage} />
+        <Route path="/compliance" component={CompliancePage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

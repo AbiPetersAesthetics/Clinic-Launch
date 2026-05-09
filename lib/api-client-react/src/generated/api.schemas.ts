@@ -630,6 +630,8 @@ export interface DashboardSummary {
   cashRunwayMonths?: number | null;
   projectConfidenceScore: number;
   phaseProgress: PhaseProgress[];
+  complianceReadinessPercent?: number | null;
+  cqcNotStarted?: boolean | null;
 }
 
 export interface PhaseWithTasks {
@@ -1281,6 +1283,182 @@ export interface PropertySearchResult {
   results: PropertySearchResultItem[];
   location: string;
   criteria: PropertySearchResultCriteria;
+}
+
+export type ComplianceItemStatus =
+  (typeof ComplianceItemStatus)[keyof typeof ComplianceItemStatus];
+
+export const ComplianceItemStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+  not_applicable: "not_applicable",
+} as const;
+
+export type ComplianceItemPolicyStatus =
+  | (typeof ComplianceItemPolicyStatus)[keyof typeof ComplianceItemPolicyStatus]
+  | null;
+
+export const ComplianceItemPolicyStatus = {
+  draft: "draft",
+  reviewed: "reviewed",
+  signed_off: "signed_off",
+} as const;
+
+export interface ComplianceItem {
+  id: number;
+  projectId: number;
+  section: string;
+  title: string;
+  description?: string | null;
+  status: ComplianceItemStatus;
+  policyStatus?: ComplianceItemPolicyStatus;
+  requiredByDate?: string | null;
+  notes?: string | null;
+  attachmentUrl?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateComplianceItemBodyStatus =
+  (typeof CreateComplianceItemBodyStatus)[keyof typeof CreateComplianceItemBodyStatus];
+
+export const CreateComplianceItemBodyStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+  not_applicable: "not_applicable",
+} as const;
+
+export type CreateComplianceItemBodyPolicyStatus =
+  | (typeof CreateComplianceItemBodyPolicyStatus)[keyof typeof CreateComplianceItemBodyPolicyStatus]
+  | null;
+
+export const CreateComplianceItemBodyPolicyStatus = {
+  draft: "draft",
+  reviewed: "reviewed",
+  signed_off: "signed_off",
+} as const;
+
+export interface CreateComplianceItemBody {
+  section: string;
+  title: string;
+  description?: string | null;
+  status?: CreateComplianceItemBodyStatus;
+  policyStatus?: CreateComplianceItemBodyPolicyStatus;
+  requiredByDate?: string | null;
+  notes?: string | null;
+  attachmentUrl?: string | null;
+  sortOrder?: number | null;
+}
+
+export type UpdateComplianceItemBodyStatus =
+  (typeof UpdateComplianceItemBodyStatus)[keyof typeof UpdateComplianceItemBodyStatus];
+
+export const UpdateComplianceItemBodyStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+  not_applicable: "not_applicable",
+} as const;
+
+export type UpdateComplianceItemBodyPolicyStatus =
+  | (typeof UpdateComplianceItemBodyPolicyStatus)[keyof typeof UpdateComplianceItemBodyPolicyStatus]
+  | null;
+
+export const UpdateComplianceItemBodyPolicyStatus = {
+  draft: "draft",
+  reviewed: "reviewed",
+  signed_off: "signed_off",
+} as const;
+
+export interface UpdateComplianceItemBody {
+  section?: string;
+  title?: string;
+  description?: string | null;
+  status?: UpdateComplianceItemBodyStatus;
+  policyStatus?: UpdateComplianceItemBodyPolicyStatus;
+  requiredByDate?: string | null;
+  notes?: string | null;
+  attachmentUrl?: string | null;
+  sortOrder?: number | null;
+}
+
+export type CqcMilestoneStatus =
+  (typeof CqcMilestoneStatus)[keyof typeof CqcMilestoneStatus];
+
+export const CqcMilestoneStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+} as const;
+
+export interface CqcMilestone {
+  id: number;
+  projectId: number;
+  step: number;
+  title: string;
+  description?: string | null;
+  leadTimeWeeks: number;
+  status: CqcMilestoneStatus;
+  dueDate?: string | null;
+  notes?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateCqcMilestoneBodyStatus =
+  (typeof CreateCqcMilestoneBodyStatus)[keyof typeof CreateCqcMilestoneBodyStatus];
+
+export const CreateCqcMilestoneBodyStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+} as const;
+
+export interface CreateCqcMilestoneBody {
+  step: number;
+  title: string;
+  description?: string | null;
+  leadTimeWeeks: number;
+  status?: CreateCqcMilestoneBodyStatus;
+  dueDate?: string | null;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export type UpdateCqcMilestoneBodyStatus =
+  (typeof UpdateCqcMilestoneBodyStatus)[keyof typeof UpdateCqcMilestoneBodyStatus];
+
+export const UpdateCqcMilestoneBodyStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  complete: "complete",
+} as const;
+
+export interface UpdateCqcMilestoneBody {
+  status?: UpdateCqcMilestoneBodyStatus;
+  dueDate?: string | null;
+  notes?: string | null;
+}
+
+export interface ComplianceSectionSummary {
+  section: string;
+  total: number;
+  applicable: number;
+  complete: number;
+  percentComplete: number;
+}
+
+export interface ComplianceSummary {
+  projectId: number;
+  overallScore: number;
+  sectionSummaries: ComplianceSectionSummary[];
+  cqcNotStarted: boolean;
+  cqcComplete: boolean;
+  totalItems: number;
 }
 
 export type UploadPropertyDocumentBody = {

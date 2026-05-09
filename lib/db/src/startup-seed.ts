@@ -173,6 +173,72 @@ const PHASES = [
   },
 ];
 
+async function seedCompliance(projectId: number): Promise<void> {
+  await db.insert(schema.complianceItemsTable).values([
+    { projectId, section: "CQC Registration", title: "Create CQC provider account on the CQC portal", description: "Register as a provider on the CQC online portal. Required before submitting any application.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "CQC Registration", title: "Submit CQC registration application", description: "Complete and submit the full provider registration application including all required declarations.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "CQC Registration", title: "Nominate Nominated Individual (NI)", description: "Identify and register a Nominated Individual — the person legally responsible for CQC registration compliance.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "CQC Registration", title: "Submit Statement of Purpose", description: "Detailed document describing the regulated activities, service user band, and aims of the service.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "CQC Registration", title: "Submit required policies to CQC", description: "All mandatory clinical governance policies must be in place before CQC registration is granted.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "CQC Registration", title: "CQC inspection booked and completed", description: "CQC will arrange an inspection of the premises before granting registration.", status: "not_started", sortOrder: 6 },
+    { projectId, section: "CQC Registration", title: "CQC registration certificate received", description: "Final step — CQC issues certificate of registration. Clinic CANNOT open to patients without this.", status: "not_started", sortOrder: 7 },
+    { projectId, section: "Clinical Governance", title: "Clinical governance framework documented", description: "Formal framework covering accountability, risk management, audit, and patient safety.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Clinical Governance", title: "Adverse incident reporting procedure in place", description: "Clear process for reporting, investigating, and learning from adverse clinical incidents.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Clinical Governance", title: "Patient complaints procedure documented and visible", description: "Written complaints procedure available to patients. Response timeline must meet CQC expectations.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Clinical Governance", title: "Clinical audit schedule established", description: "Plan for regular audits of clinical outcomes, record-keeping, and patient experience.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Clinical Governance", title: "Patient consent process and forms documented", description: "Informed consent process for all treatments, including specific consent for prescription procedures.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "Clinical Governance", title: "Chaperone policy in place", description: "Policy covering the use of chaperones during clinical procedures, including patient communication.", status: "not_started", sortOrder: 6 },
+    { projectId, section: "Infection Control", title: "Infection Prevention & Control (IPC) policy signed off", description: "Comprehensive IPC policy covering hand hygiene, PPE, decontamination, waste disposal, and spillage procedures.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Infection Control", title: "Clinical waste contract in place (registered carrier)", description: "Signed contract with a registered clinical waste carrier for sharps, contaminated waste, and pharmaceutical waste.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Infection Control", title: "Decontamination/sterilisation procedure documented", description: "Written procedure for cleaning and decontaminating reusable equipment, including ultrasound probes.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Infection Control", title: "Hand hygiene audit completed", description: "Baseline hand hygiene compliance audit completed before opening.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Infection Control", title: "Sharps safety procedure in place (EPA/BBE policy)", description: "Needle-stick and sharps injury policy covering prevention, first aid response, and incident reporting.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "Prescriber Arrangements", title: "Prescribing governance framework documented", description: "Framework covering how prescribing decisions are made, documented, and reviewed.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Prescriber Arrangements", title: "Independent prescriber or supervision arrangement confirmed", description: "Either Abi is a qualified IP or a written clinical supervision arrangement is in place with a named prescriber.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Prescriber Arrangements", title: "POM storage — locked, temperature-controlled cupboard", description: "Prescription-only medicines stored in a compliant locked cupboard with temperature monitoring.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Prescriber Arrangements", title: "Prescription record-keeping system operational", description: "Every prescription recorded per Human Medicines Regulations 2012. ANS or equivalent system configured.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Prescriber Arrangements", title: "Medicines management policy in place", description: "Policy covering procurement, storage, administration, disposal, and audit trail of all medicines.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "Staff Training", title: "Basic Life Support (BLS) training current", description: "All clinical staff must hold current BLS certification. Minimum annual renewal.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Staff Training", title: "Anaphylaxis management training completed", description: "Adrenaline auto-injector use, recognition, and emergency response. Mandatory for all prescribing staff.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Staff Training", title: "Safeguarding Level 2 training completed", description: "Adults and children safeguarding training. Required by CQC and most professional registers.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Staff Training", title: "IPC training completed for all staff", description: "All clinical and non-clinical staff complete infection prevention and control training.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Staff Training", title: "Mental Capacity Act awareness training", description: "Understanding of capacity assessment in relation to consent for cosmetic procedures.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "Staff Training", title: "GDPR / data protection training for all staff", description: "All staff handling patient data must receive GDPR training before clinic opens.", status: "not_started", sortOrder: 6 },
+    { projectId, section: "Insurance & Indemnity", title: "Professional indemnity insurance confirmed for Winchester", description: "Hamilton Fraser or equivalent — policy must include all treatments offered at Winchester and the new address.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Insurance & Indemnity", title: "Public liability insurance in place", description: "Minimum £2m public liability. Check FRI lease requirements — may need higher cover.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Insurance & Indemnity", title: "Employers liability insurance (if staff employed)", description: "Legal requirement if any staff are employed. £5m minimum statutory cover.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Insurance & Indemnity", title: "Treatment liability covers prescription procedures", description: "Confirm indemnity explicitly covers toxin, filler, PRP, IV drips and all other prescription treatments.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Opening Requirements", title: "BAFE SP205 fire risk assessment completed (post fit-out)", description: "Post-fit-out fire risk assessment by BAFE SP205 accredited assessor. Required by Hamilton Fraser.", status: "not_started", sortOrder: 1 },
+    { projectId, section: "Opening Requirements", title: "Building Regulations Completion Certificate received", description: "WCC Building Control must issue Completion Certificate before clinic opens to patients.", status: "not_started", sortOrder: 2 },
+    { projectId, section: "Opening Requirements", title: "Electrical Installation Certificate (EIC) obtained", description: "Issued by Part P qualified electrician on completion of all electrical works.", status: "not_started", sortOrder: 3 },
+    { projectId, section: "Opening Requirements", title: "Emergency equipment stocked and accessible", description: "Anaphylaxis kit (adrenaline 1:1000, antihistamine), oxygen if applicable, and basic resuscitation equipment.", status: "not_started", sortOrder: 4 },
+    { projectId, section: "Opening Requirements", title: "ICO data controller registration active", description: "ICO registration must be active before processing any patient data. £47/year.", status: "not_started", sortOrder: 5 },
+    { projectId, section: "Opening Requirements", title: "Save Face / JCCP accreditation application submitted", description: "Professional accreditation for aesthetics. Required for most insurer panels and patient trust.", status: "not_started", sortOrder: 6 },
+    { projectId, section: "Policy Library", title: "Infection Control Policy", description: "Comprehensive IPC policy covering hand hygiene, decontamination, PPE, waste and spillage.", status: "not_started", policyStatus: "draft", sortOrder: 1 },
+    { projectId, section: "Policy Library", title: "Medicines Management Policy", description: "Covers procurement, storage, prescribing, administration, disposal and audit of all medicines.", status: "not_started", policyStatus: "draft", sortOrder: 2 },
+    { projectId, section: "Policy Library", title: "Safeguarding Policy", description: "Safeguarding adults and children at risk — referral pathways, designated lead, training requirements.", status: "not_started", policyStatus: "draft", sortOrder: 3 },
+    { projectId, section: "Policy Library", title: "Complaints Policy", description: "Patient complaints procedure, response timelines, investigation process and learning outcomes.", status: "not_started", policyStatus: "draft", sortOrder: 4 },
+    { projectId, section: "Policy Library", title: "Consent Policy", description: "Informed consent procedure for all treatments. Covers capacity, documentation and withdrawal.", status: "not_started", policyStatus: "draft", sortOrder: 5 },
+    { projectId, section: "Policy Library", title: "Chaperone Policy", description: "Use of chaperones during clinical procedures including patient communication and documentation.", status: "not_started", policyStatus: "draft", sortOrder: 6 },
+    { projectId, section: "Policy Library", title: "Prescribing Governance Policy", description: "Prescribing decision framework, oversight, prescriber competency, and prescription audit.", status: "not_started", policyStatus: "draft", sortOrder: 7 },
+    { projectId, section: "Policy Library", title: "Adverse Incidents Policy", description: "Reporting, investigation, root cause analysis and learning from adverse clinical incidents.", status: "not_started", policyStatus: "draft", sortOrder: 8 },
+  ]);
+  console.log("  ✅ Compliance items seeded (40 items across 7 sections + Policy Library)");
+}
+
+async function seedCqcMilestones(projectId: number): Promise<void> {
+  await db.insert(schema.cqcMilestonesTable).values([
+    { projectId, step: 1, title: "Register with CQC portal", description: "Create provider account and complete pre-registration on the CQC online portal.", leadTimeWeeks: 1, status: "not_started", sortOrder: 1 },
+    { projectId, step: 2, title: "Submit application", description: "Complete and submit full provider registration application with all required information.", leadTimeWeeks: 2, status: "not_started", sortOrder: 2 },
+    { projectId, step: 3, title: "Nominated Individual approved", description: "CQC confirms the Nominated Individual meets the fit and proper person requirements.", leadTimeWeeks: 4, status: "not_started", sortOrder: 3 },
+    { projectId, step: 4, title: "Statement of Purpose accepted", description: "CQC reviews and accepts the Statement of Purpose describing regulated activities.", leadTimeWeeks: 2, status: "not_started", sortOrder: 4 },
+    { projectId, step: 5, title: "Policies submitted and reviewed", description: "All required clinical governance policies submitted and reviewed by CQC.", leadTimeWeeks: 2, status: "not_started", sortOrder: 5 },
+    { projectId, step: 6, title: "Inspection booked", description: "CQC books and conducts a premises inspection. Typically 4–8 weeks after application.", leadTimeWeeks: 6, status: "not_started", sortOrder: 6 },
+    { projectId, step: 7, title: "Registration granted", description: "CQC issues certificate of registration. Clinic is legally permitted to operate as a regulated activity.", leadTimeWeeks: 2, status: "not_started", sortOrder: 7 },
+  ]);
+  console.log("  ✅ CQC milestones seeded (7 steps, ~19 weeks total)");
+}
+
 export async function runStartupSeed(): Promise<void> {
   console.log("🌱 Running startup seed check...");
 
@@ -196,6 +262,15 @@ export async function runStartupSeed(): Promise<void> {
         }
         if (totalTasks === 113) {
           console.log("✅ V5 data already present (7 phases, 113 tasks) — skipping seed.");
+          // Still seed compliance if missing
+          const existingCompliance2 = await db.select().from(schema.complianceItemsTable).where(eq(schema.complianceItemsTable.projectId, projectId));
+          if (existingCompliance2.length === 0) {
+            await seedCompliance(projectId);
+          }
+          const existingMilestones2 = await db.select().from(schema.cqcMilestonesTable).where(eq(schema.cqcMilestonesTable.projectId, projectId));
+          if (existingMilestones2.length === 0) {
+            await seedCqcMilestones(projectId);
+          }
           return;
         }
       }
@@ -305,6 +380,18 @@ export async function runStartupSeed(): Promise<void> {
         { projectId, name: "Realistic", description: "Expected performance — 65% occupancy by month 6", occupancyPercent: 65, revenueMultiplier: 1, isDefault: true },
         { projectId, name: "Aggressive", description: "Strong opening — 85% occupancy with high marketing spend", occupancyPercent: 85, revenueMultiplier: 1, isDefault: false },
       ]);
+    }
+
+    // Ensure compliance items exist
+    const existingCompliance = await db.select().from(schema.complianceItemsTable).where(eq(schema.complianceItemsTable.projectId, projectId));
+    if (existingCompliance.length === 0) {
+      await seedCompliance(projectId);
+    }
+
+    // Ensure CQC milestones exist
+    const existingMilestones = await db.select().from(schema.cqcMilestonesTable).where(eq(schema.cqcMilestonesTable.projectId, projectId));
+    if (existingMilestones.length === 0) {
+      await seedCqcMilestones(projectId);
     }
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
