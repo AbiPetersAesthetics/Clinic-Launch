@@ -174,6 +174,15 @@ export const ListPropertiesResponseItem = zod.object({
       }),
     )
     .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
   latestAnalysisAt: zod.string().nullish(),
@@ -237,6 +246,15 @@ export const CreatePropertyBody = zod.object({
   isFavourited: zod.boolean().optional(),
   manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
 });
 
 /**
@@ -314,6 +332,15 @@ export const GetPropertyResponse = zod.object({
       }),
     )
     .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
   latestAnalysisAt: zod.string().nullish(),
@@ -376,6 +403,15 @@ export const UpdatePropertyBody = zod.object({
   isFavourited: zod.boolean().optional(),
   manualRankOverride: zod.number().nullish(),
   notes: zod.string().nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
 });
 
 export const UpdatePropertyResponse = zod.object({
@@ -443,6 +479,15 @@ export const UpdatePropertyResponse = zod.object({
         url: zod.string(),
         uploadedAt: zod.string(),
         sizeBytes: zod.number().nullish(),
+      }),
+    )
+    .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
       }),
     )
     .nullish(),
@@ -2042,6 +2087,15 @@ export const SetPropertyActiveResponse = zod.object({
       }),
     )
     .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
   createdAt: zod.string(),
   updatedAt: zod.string(),
   latestAnalysisAt: zod.string().nullish(),
@@ -2142,6 +2196,15 @@ export const ConfirmPropertyUploadResponse = zod.object({
         url: zod.string(),
         uploadedAt: zod.string(),
         sizeBytes: zod.number().nullish(),
+      }),
+    )
+    .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
       }),
     )
     .nullish(),

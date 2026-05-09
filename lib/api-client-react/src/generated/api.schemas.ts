@@ -98,6 +98,13 @@ export const ClinicPropertyPipelineStatus = {
   selected: "selected",
 } as const;
 
+export type ClinicPropertyViewingChecklistData = {
+  [key: string]: {
+    checked?: boolean;
+    note?: string | null;
+  };
+} | null;
+
 export interface ManualCompetitor {
   name: string;
   type: string;
@@ -152,6 +159,7 @@ export interface ClinicProperty {
   notes?: string | null;
   manualCompetitors?: ManualCompetitor[] | null;
   mediaFiles?: MediaFile[] | null;
+  viewingChecklistData?: ClinicPropertyViewingChecklistData;
   createdAt: string;
   updatedAt: string;
   latestAnalysisAt?: string | null;
@@ -187,6 +195,13 @@ export const CreatePropertyBodyPipelineStatus = {
   selected: "selected",
 } as const;
 
+export type CreatePropertyBodyViewingChecklistData = {
+  [key: string]: {
+    checked?: boolean;
+    note?: string | null;
+  };
+} | null;
+
 export interface CreatePropertyBody {
   address?: string | null;
   postcode?: string | null;
@@ -213,6 +228,7 @@ export interface CreatePropertyBody {
   isFavourited?: boolean;
   manualRankOverride?: number | null;
   notes?: string | null;
+  viewingChecklistData?: CreatePropertyBodyViewingChecklistData;
 }
 
 export type UpdatePropertyBodyStatus =
@@ -244,6 +260,13 @@ export const UpdatePropertyBodyPipelineStatus = {
   selected: "selected",
 } as const;
 
+export type UpdatePropertyBodyViewingChecklistData = {
+  [key: string]: {
+    checked?: boolean;
+    note?: string | null;
+  };
+} | null;
+
 export interface UpdatePropertyBody {
   address?: string | null;
   postcode?: string | null;
@@ -270,6 +293,7 @@ export interface UpdatePropertyBody {
   isFavourited?: boolean;
   manualRankOverride?: number | null;
   notes?: string | null;
+  viewingChecklistData?: UpdatePropertyBodyViewingChecklistData;
 }
 
 export type LaunchPhaseStatus =

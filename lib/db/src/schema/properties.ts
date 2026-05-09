@@ -75,6 +75,7 @@ export const propertiesTable = pgTable("clinic_properties", {
   manualCompetitors: jsonb("manual_competitors").$type<ManualCompetitor[]>().default([]),
   mediaFiles: jsonb("media_files").$type<MediaFile[]>().default([]),
   scoringWeights: jsonb("scoring_weights").$type<ScoringWeights>(),
+  viewingChecklistData: jsonb("viewing_checklist_data").$type<Record<string, { checked: boolean; note?: string }>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -127,6 +127,278 @@ import { useToast } from "@/hooks/use-toast";
 
 const PropertyMapView = lazy(() => import("@/components/property-map-view"));
 
+// ─── Viewing Checklist ────────────────────────────────────────────────────────
+
+type ChecklistItem = { id: string; label: string; helpText?: string };
+type ChecklistCategory = { id: string; label: string; items: ChecklistItem[] };
+
+const VIEWING_CHECKLIST: ChecklistCategory[] = [
+  {
+    id: "exterior",
+    label: "Exterior & Street Presence",
+    items: [
+      { id: "ext_visibility", label: "Clearly visible from street (50m+)", helpText: "Can a passing client see the frontage from a distance?" },
+      { id: "ext_frontage", label: "Frontage condition — windows, entrance, signage potential" },
+      { id: "ext_neighbours", label: "Neighbouring businesses are complementary (not detrimental)", helpText: "e.g. hair salon, pharmacy, optician — not a bookmaker or off-licence" },
+      { id: "ext_footfall", label: "Street footfall feels appropriate for the target clientele" },
+      { id: "ext_kerb", label: "Kerb appeal — premium clients would feel proud to visit here" },
+    ],
+  },
+  {
+    id: "access",
+    label: "Access & Parking",
+    items: [
+      { id: "acc_parking", label: "Parking on-site or within easy walking distance (5 min max)" },
+      { id: "acc_walk", label: "Walk from parking to door feels safe and pleasant" },
+      { id: "acc_disabled", label: "Step-free / disabled access at entrance" },
+      { id: "acc_door", label: "Door wide enough for equipment delivery" },
+      { id: "acc_waste", label: "Refuse / clinical waste collection access at rear" },
+    ],
+  },
+  {
+    id: "layout",
+    label: "Internal Layout & Space",
+    items: [
+      { id: "lay_size", label: "Overall size feels right for your planned treatment room count" },
+      { id: "lay_reception", label: "Reception / waiting area can be carved out" },
+      { id: "lay_consultation", label: "Consultation / private room is possible" },
+      { id: "lay_light", label: "Natural light in planned treatment rooms" },
+      { id: "lay_ceiling", label: "Ceiling height adequate (minimum 2.4m ideally 2.7m+)" },
+      { id: "lay_storage", label: "Storage room or utility space available" },
+      { id: "lay_staff_wc", label: "Staff toilet separate from client-facing areas" },
+      { id: "lay_client_wc", label: "Client toilet accessible without crossing treatment rooms" },
+    ],
+  },
+  {
+    id: "services",
+    label: "Services & Infrastructure",
+    items: [
+      { id: "svc_water", label: "Hot & cold running water in each treatment room (or can be plumbed)", helpText: "Essential for aesthetics treatments — ask the agent or check pipework" },
+      { id: "svc_electric", label: "Electrical supply appears adequate — ask about amperage", helpText: "Aesthetic devices, lighting, HVAC can be power-hungry; 3-phase is ideal" },
+      { id: "svc_ventilation", label: "Ventilation / openable windows in treatment rooms" },
+      { id: "svc_broadband", label: "Full-fibre broadband available to the building" },
+      { id: "svc_hvac", label: "Air conditioning present or conduit for easy installation" },
+    ],
+  },
+  {
+    id: "condition",
+    label: "Condition & Fit-Out",
+    items: [
+      { id: "con_damp", label: "No visible damp, mould, or water staining" },
+      { id: "con_structure", label: "No obvious structural cracks or subsidence" },
+      { id: "con_flooring", label: "Flooring in good condition or within budget to replace" },
+      { id: "con_existing", label: "Any existing fit-out (desk, sinks, units) is usable or easy to strip" },
+      { id: "con_asbestos", label: "If pre-2000 building, asbestos survey arranged / budgeted for" },
+      { id: "con_smell", label: "No unexplained odours suggesting hidden issues" },
+    ],
+  },
+  {
+    id: "legal",
+    label: "Lease & Legals",
+    items: [
+      { id: "leg_useclass", label: "Use class confirmed as E (formerly D1) — suitable for clinic use", helpText: "Must be E class to operate a medical / aesthetics clinic without planning permission" },
+      { id: "leg_norestrict", label: "No restrictions on medical/aesthetic clinic use in heads of terms", helpText: "Some leases restrict the type of professional services — check with solicitor" },
+      { id: "leg_landlord", label: "Met or spoken to the landlord (or their direct representative)" },
+      { id: "leg_agent", label: "Agent is professional and responsive" },
+      { id: "leg_epc", label: "EPC rating known and acceptable (C or better preferred)" },
+      { id: "leg_fire", label: "Fire safety / sprinklers / emergency lighting confirmed in building" },
+    ],
+  },
+  {
+    id: "gutfeel",
+    label: "Gut Feel",
+    items: [
+      { id: "gut_client", label: "Clients would feel proud and excited to visit here" },
+      { id: "gut_brand", label: "The space feels on-brand for Abi Peters Aesthetics" },
+      { id: "gut_you", label: "You would feel excited and energised to work here every day" },
+    ],
+  },
+];
+
+type ChecklistData = Record<string, { checked: boolean; note?: string }>;
+
+function ViewingChecklist({ property }: { property: ClinicProperty }) {
+  const queryClient = useQueryClient();
+  const updateProperty = useUpdateProperty();
+  const { toast } = useToast();
+
+  const [data, setData] = useState<ChecklistData>(() => {
+    const raw = property.viewingChecklistData;
+    return (raw && typeof raw === "object" ? raw : {}) as ChecklistData;
+  });
+  const [dirty, setDirty] = useState(false);
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const raw = property.viewingChecklistData;
+    setData((raw && typeof raw === "object" ? raw : {}) as ChecklistData);
+    setDirty(false);
+  }, [property.id]);
+
+  const totalItems = VIEWING_CHECKLIST.reduce((s, c) => s + c.items.length, 0);
+  const checkedCount = Object.values(data).filter(v => v.checked).length;
+
+  const toggle = (id: string) => {
+    setData(prev => {
+      const cur = prev[id];
+      return { ...prev, [id]: { ...cur, checked: !cur?.checked } };
+    });
+    setDirty(true);
+  };
+
+  const setNote = (id: string, note: string) => {
+    setData(prev => ({ ...prev, [id]: { ...prev[id], checked: prev[id]?.checked ?? false, note } }));
+    setDirty(true);
+  };
+
+  const toggleNoteOpen = (id: string) => {
+    setExpandedNotes(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSave = () => {
+    updateProperty.mutate(
+      { id: property.id, data: { viewingChecklistData: data as Record<string, { checked?: boolean; note?: string | null }> } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+          setDirty(false);
+          toast({ title: "Checklist saved", description: "Viewing notes saved for this property." });
+        },
+      }
+    );
+  };
+
+  const categoryProgress = (cat: ChecklistCategory) => {
+    const checked = cat.items.filter(i => data[i.id]?.checked).length;
+    return { checked, total: cat.items.length };
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-semibold">Property Viewing Checklist</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {checkedCount} of {totalItems} items checked
+          </p>
+        </div>
+        <Button
+          size="sm"
+          onClick={handleSave}
+          disabled={!dirty || updateProperty.isPending}
+          className="h-8 gap-1.5 text-xs"
+        >
+          {updateProperty.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+          {updateProperty.isPending ? "Saving…" : dirty ? "Save Checklist" : "Saved"}
+        </Button>
+      </div>
+
+      {/* Overall progress bar */}
+      <div className="space-y-1.5">
+        <Progress
+          value={totalItems > 0 ? (checkedCount / totalItems) * 100 : 0}
+          className="h-2"
+        />
+        <div className="flex justify-between text-[11px] text-muted-foreground">
+          <span>Overall completion</span>
+          <span>{totalItems > 0 ? Math.round((checkedCount / totalItems) * 100) : 0}%</span>
+        </div>
+      </div>
+
+      {/* Categories */}
+      <div className="space-y-4">
+        {VIEWING_CHECKLIST.map((category) => {
+          const prog = categoryProgress(category);
+          const allDone = prog.checked === prog.total;
+          return (
+            <div key={category.id} className="border rounded-lg overflow-hidden">
+              {/* Category header */}
+              <div className={`flex items-center justify-between px-4 py-2.5 ${allDone ? "bg-primary/8 border-b border-primary/15" : "bg-muted/40 border-b border-border/50"}`}>
+                <div className="flex items-center gap-2">
+                  {allDone ? (
+                    <CheckCircle className="w-3.5 h-3.5 text-primary shrink-0" />
+                  ) : (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-muted-foreground/40 shrink-0" />
+                  )}
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${allDone ? "text-primary" : "text-muted-foreground"}`}>
+                    {category.label}
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {prog.checked}/{prog.total}
+                </span>
+              </div>
+
+              {/* Items */}
+              <div className="divide-y divide-border/50">
+                {category.items.map((item) => {
+                  const checked = !!data[item.id]?.checked;
+                  const note = data[item.id]?.note ?? "";
+                  const noteOpen = expandedNotes.has(item.id);
+                  return (
+                    <div key={item.id} className={`px-4 py-3 transition-colors ${checked ? "bg-primary/4" : "bg-card"}`}>
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => toggle(item.id)}
+                          className={`shrink-0 w-4.5 h-4.5 mt-0.5 rounded border-2 flex items-center justify-center transition-colors ${
+                            checked
+                              ? "bg-primary border-primary text-primary-foreground"
+                              : "border-muted-foreground/40 hover:border-primary/60"
+                          }`}
+                          style={{ width: "18px", height: "18px", minWidth: "18px" }}
+                        >
+                          {checked && <CheckCircle className="w-3 h-3" />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm leading-snug ${checked ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                            {item.label}
+                          </p>
+                          {item.helpText && !checked && (
+                            <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{item.helpText}</p>
+                          )}
+                          {noteOpen && (
+                            <Textarea
+                              value={note}
+                              onChange={e => setNote(item.id, e.target.value)}
+                              placeholder="Add a note about this item…"
+                              className="mt-2 text-xs h-16 resize-none"
+                              onClick={e => e.stopPropagation()}
+                            />
+                          )}
+                          {!noteOpen && note && (
+                            <p className="text-[11px] text-muted-foreground mt-1 italic">"{note}"</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => toggleNoteOpen(item.id)}
+                          className={`shrink-0 text-muted-foreground hover:text-foreground transition-colors ${noteOpen ? "text-foreground" : ""}`}
+                          title={noteOpen ? "Close note" : "Add note"}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-xs text-muted-foreground text-center pb-2">
+        Tick items as you walk around, add notes with the pencil icon, then hit Save.
+      </p>
+    </div>
+  );
+}
+
 const PROJECT_ID = 1;
 
 const PIPELINE_STAGES = [
@@ -1382,8 +1654,9 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
           {/* Tabs */}
           <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-6 grid grid-cols-5">
+              <TabsList className="w-full mb-6 grid grid-cols-6">
                 <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
+                <TabsTrigger value="checklist" className="text-xs">Checklist</TabsTrigger>
                 <TabsTrigger value="intelligence" className="text-xs">AI Analysis</TabsTrigger>
                 <TabsTrigger value="advisor" className="text-xs">Advisor</TabsTrigger>
                 <TabsTrigger value="history" className="text-xs">History</TabsTrigger>
@@ -1423,6 +1696,10 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
                 <Separator className="my-4" />
                 <PropertyScoringWeightsOverride propertyId={property.id} />
+              </TabsContent>
+
+              <TabsContent value="checklist">
+                <ViewingChecklist property={property} />
               </TabsContent>
 
               <TabsContent value="intelligence" className="space-y-4">

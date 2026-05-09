@@ -1746,6 +1746,17 @@ components:
           nullable: true
           items:
             $ref: "#/components/schemas/MediaFile"
+        viewingChecklistData:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: object
+            properties:
+              checked:
+                type: boolean
+              note:
+                type: string
+                nullable: true
         createdAt:
           type: string
         updatedAt:
@@ -1842,6 +1853,17 @@ components:
         notes:
           type: string
           nullable: true
+        viewingChecklistData:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: object
+            properties:
+              checked:
+                type: boolean
+              note:
+                type: string
+                nullable: true
 
     UpdatePropertyBody:
       type: object
@@ -1919,6 +1941,17 @@ components:
         notes:
           type: string
           nullable: true
+        viewingChecklistData:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: object
+            properties:
+              checked:
+                type: boolean
+              note:
+                type: string
+                nullable: true
 
     LaunchPhase:
       type: object
