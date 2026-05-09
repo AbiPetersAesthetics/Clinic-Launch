@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import {
   useGetProjectDashboard,
@@ -18,15 +18,93 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Menu,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
 const PROJECT_ID = 1;
 
+function AbiPetersLogo() {
+  return (
+    <div className="select-none">
+      <div
+        className="text-sidebar-foreground leading-none tracking-tight"
+        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.35rem", fontWeight: 500 }}
+      >
+        Abi Peters
+      </div>
+      <div className="text-sidebar-foreground/60 tracking-[0.22em] uppercase mt-0.5" style={{ fontSize: "0.6rem", fontWeight: 500 }}>
+        Aesthetics
+      </div>
+      <div className="text-sidebar-foreground/35 tracking-[0.18em] uppercase mt-0.5" style={{ fontSize: "0.55rem", fontWeight: 400 }}>
+        Launch OS
+      </div>
+    </div>
+  );
+}
+
+function SidebarNav({
+  navItems,
+  location,
+  onNavigate,
+}: {
+  navItems: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[];
+  location: string;
+  onNavigate?: () => void;
+}) {
+  return (
+    <nav className="flex-1 p-4 space-y-0.5">
+      {navItems.map((item) => {
+        const isActive = location === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-sidebar-primary/20 text-sidebar-primary"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            }`}
+          >
+            <item.icon className="w-4 h-4 shrink-0" />
+            <span className="flex-1">{item.label}</span>
+            {item.badge !== undefined && (
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
+                item.badgeAlert
+                  ? "bg-red-500/20 text-red-300 border-red-500/30"
+                  : "bg-sidebar-primary/20 text-sidebar-primary border-sidebar-primary/30"
+              }`}>
+                {item.badge}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [bannerExpanded, setBannerExpanded] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
+
+  // Prevent body scroll when mobile menu open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileMenuOpen]);
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: {
@@ -47,7 +125,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const smartRiskFlags = analysis?.smartRiskFlags ?? [];
   const criticalFlags = smartRiskFlags.filter(f => f.level === "critical");
   const warningFlags = smartRiskFlags.filter(f => f.level === "warning");
-  // Critical flags cannot be dismissed — warning-only banners can be dismissed
   const canDismiss = criticalFlags.length === 0;
   const showBanner = smartRiskFlags.length > 0 && !(bannerDismissed && canDismiss);
 
@@ -65,101 +142,122 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 bg-card border-r border-border shrink-0 flex flex-col">
-        <div className="p-6 border-b border-border">
-          <h1 className="font-semibold text-lg text-foreground tracking-tight">Clinic Launch OS</h1>
-          <p className="text-xs text-muted-foreground mt-1 tracking-wide uppercase">Command Centre</p>
+
+      {/* ── Mobile overlay backdrop ── */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar (desktop: always visible | mobile: slide-in drawer) ── */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-50 w-72 flex flex-col bg-sidebar border-r border-sidebar-border
+          transform transition-transform duration-300 ease-in-out
+          md:static md:w-64 md:translate-x-0 md:z-auto md:shrink-0
+          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
+      >
+        {/* Logo area */}
+        <div className="p-6 border-b border-sidebar-border flex items-start justify-between">
+          <AbiPetersLogo />
+          {/* Close button — mobile only */}
+          <button
+            className="md:hidden text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors p-1 -mr-1 -mt-1"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location === item.href;
-            const nav = item as typeof item & { badge?: string; badgeAlert?: boolean };
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <item.icon className="w-4 h-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {nav.badge !== undefined && (
-                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
-                    nav.badgeAlert
-                      ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/40 dark:text-red-300 dark:border-red-800"
-                      : "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-800"
-                  }`}>
-                    {nav.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+
+        <SidebarNav
+          navItems={navItems}
+          location={location}
+          onNavigate={() => setMobileMenuOpen(false)}
+        />
+
+        {/* Bottom branding strip */}
+        <div className="p-4 border-t border-sidebar-border">
+          <p className="text-sidebar-foreground/30 text-[10px] tracking-[0.15em] uppercase">
+            Winchester · 9A Jewry Street
+          </p>
+        </div>
       </aside>
 
-      {/* Main Content */}
+      {/* ── Main content column ── */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Sticky Top KPI Bar */}
-        <header className="sticky top-0 z-40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-16 flex items-center px-6 shrink-0">
+
+        {/* ── Sticky top bar ── */}
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-14 md:h-16 flex items-center px-4 md:px-6 shrink-0 gap-3">
+
+          {/* Hamburger — mobile only */}
+          <button
+            className="md:hidden text-foreground p-1.5 rounded-md hover:bg-muted transition-colors shrink-0"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* KPI metrics */}
           {dashboard ? (
-            <div className="flex items-center justify-between w-full">
-              <div className="flex items-center gap-6 overflow-x-auto">
+            <div className="flex items-center justify-between w-full min-w-0">
+              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-none flex-1 min-w-0">
                 <div className="shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Days to Launch</p>
-                  <p className="text-sm font-semibold mt-0.5">{dashboard.daysToOpening ?? "TBD"}</p>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Days to Launch</p>
+                  <p className="text-xs md:text-sm font-semibold mt-0.5">{dashboard.daysToOpening ?? "TBD"}</p>
                 </div>
-                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="w-px h-7 bg-border shrink-0" />
                 <div className="shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Readiness</p>
-                  <p className="text-sm font-semibold mt-0.5 text-primary">{formatPercent(dashboard.launchReadinessPercent)}</p>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Readiness</p>
+                  <p className="text-xs md:text-sm font-semibold mt-0.5 text-primary">{formatPercent(dashboard.launchReadinessPercent)}</p>
                 </div>
-                <div className="w-px h-8 bg-border shrink-0" />
+                <div className="w-px h-7 bg-border shrink-0" />
                 <div className="shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Confidence</p>
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Confidence</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${dashboard.projectConfidenceScore > 75 ? "bg-primary" : dashboard.projectConfidenceScore > 50 ? "bg-yellow-500" : "bg-destructive"}`} />
-                    <p className="text-sm font-semibold">{dashboard.projectConfidenceScore}/100</p>
+                    <p className="text-xs md:text-sm font-semibold">{dashboard.projectConfidenceScore}/100</p>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-border shrink-0" />
-                <div className="shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">CQC &amp; Compliance</p>
+                <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
+                <div className="shrink-0 hidden sm:block">
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">CQC &amp; Compliance</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${(dashboard.complianceReadinessPercent ?? 0) >= 80 ? "bg-primary" : (dashboard.complianceReadinessPercent ?? 0) >= 40 ? "bg-yellow-500" : "bg-destructive"}`} />
-                    <p className="text-sm font-semibold">{dashboard.complianceReadinessPercent ?? 0}%</p>
+                    <p className="text-xs md:text-sm font-semibold">{dashboard.complianceReadinessPercent ?? 0}%</p>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-border shrink-0" />
-                <div className="shrink-0">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Selected Cost</p>
-                  <p className="text-sm font-semibold mt-0.5">{formatGBP(dashboard.currentSelectedCost)}</p>
+                <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
+                <div className="shrink-0 hidden sm:block">
+                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Selected Cost</p>
+                  <p className="text-xs md:text-sm font-semibold mt-0.5">{formatGBP(dashboard.currentSelectedCost)}</p>
                 </div>
               </div>
               {criticalFlags.length > 0 && (
-                <div className="flex items-center gap-2 bg-destructive/10 text-destructive px-3 py-1.5 rounded-full text-xs font-medium shrink-0 ml-4">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  {criticalFlags.length} Critical Risk{criticalFlags.length !== 1 ? "s" : ""}
+                <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1.5 rounded-full text-[10px] md:text-xs font-medium shrink-0 ml-3">
+                  <AlertTriangle className="w-3 h-3 md:w-3.5 md:h-3.5" />
+                  <span className="hidden sm:inline">{criticalFlags.length} Critical Risk{criticalFlags.length !== 1 ? "s" : ""}</span>
+                  <span className="sm:hidden">{criticalFlags.length}!</span>
                 </div>
               )}
             </div>
           ) : (
-            <div className="animate-pulse flex gap-8">
-              <div className="w-24 h-8 bg-muted rounded" />
-              <div className="w-24 h-8 bg-muted rounded" />
-              <div className="w-24 h-8 bg-muted rounded" />
+            <div className="animate-pulse flex gap-6">
+              <div className="w-20 h-8 bg-muted rounded" />
+              <div className="w-20 h-8 bg-muted rounded" />
+              <div className="w-20 h-8 bg-muted rounded" />
             </div>
           )}
         </header>
 
-        {/* Smart Risk Banner — sourced from optimisation analysis */}
+        {/* ── Smart Risk Banner ── */}
         {showBanner && (
           <div className={`border-b ${criticalFlags.length > 0 ? "bg-destructive/5 border-destructive/30" : "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-800/30"}`}>
-            <div className="px-6 py-2.5">
+            <div className="px-4 md:px-6 py-2.5">
               <div className="flex items-start justify-between gap-3">
                 <button
                   className="flex items-start gap-2.5 flex-1 text-left"
@@ -237,7 +335,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <main className="flex-1 overflow-auto p-6 md:p-8">
+        {/* ── Page content ── */}
+        <main className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             {children}
           </div>
