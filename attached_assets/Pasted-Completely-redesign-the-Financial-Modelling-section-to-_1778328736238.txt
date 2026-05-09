@@ -1,0 +1,554 @@
+Completely redesign the Financial Modelling section to reflect how a REAL aesthetics clinic expansion works.
+
+Current problem:
+The current financial model is too simplistic and produces unrealistic outputs.
+It behaves like a startup opening from zero.
+
+This project is NOT a brand-new startup.
+
+Abi Peters Aesthetics already exists and is:
+- operating successfully in Bedhampton
+- generating existing monthly revenue
+- carrying an existing patient base
+- reducing launch risk substantially
+- using Winchester as an expansion/premium growth location
+
+The model must therefore behave like:
+“Expansion modelling”
+NOT
+“new business fantasy forecasting”.
+
+The financial system should feel like:
+- a real commercial planning tool
+- something an accountant/founder/investor would trust
+- grounded in operational reality
+- conservative by default
+
+GOAL:
+The financial model should answer:
+- Can we actually afford this?
+- What happens if Winchester ramps slowly?
+- How much cash do we need?
+- What if revenue drops?
+- What is our real risk exposure?
+- How long until Winchester is independently sustainable?
+- What happens if Abi leaves nursing?
+- What happens if Bedhampton weakens?
+- What occupancy is realistically required?
+
+========================================
+1. SPLIT THE BUSINESS INTO MULTIPLE OPERATING UNITS
+========================================
+
+Replace single revenue model with:
+- Existing Clinic (Bedhampton)
+- New Clinic (Winchester)
+- Combined Business View
+
+Allow:
+- standalone projections
+- combined cashflow
+- stress testing between clinics
+
+Each clinic should have:
+- revenue
+- occupancy
+- average client value
+- fixed costs
+- staffing
+- marketing
+- growth assumptions
+- maturity level
+
+Winchester should default to:
+“newly launched premium clinic”
+
+Bedhampton should default to:
+“stable operating clinic”
+
+========================================
+2. ADD REALISTIC CLINIC RAMP-UP MODELLING
+========================================
+
+Current projections ramp unrealistically fast.
+
+Create realistic ramp profiles:
+- Slow ramp
+- Expected ramp
+- Strong launch
+- Delayed launch
+- Seasonal launch
+
+Ramp should influence:
+- occupancy
+- revenue
+- repeat bookings
+- memberships
+- treatment mix
+
+Example:
+Month 1:
+25% occupancy
+
+Month 3:
+40–50%
+
+Month 6:
+60–70%
+
+Month 12:
+75–85%
+
+Allow editable ramp curve.
+
+Add graph:
+“Occupancy Ramp Forecast”
+
+========================================
+3. ADD REVENUE TRANSFER MODELLING
+========================================
+
+This is critical.
+
+Some revenue is NOT “new”.
+Some patients will move from Bedhampton to Winchester.
+
+Add:
+“Revenue Cannibalisation / Migration”
+
+Example:
+- 10%
+- 20%
+- 30%
+
+This should reduce Bedhampton revenue accordingly.
+
+Show:
+- retained revenue
+- transferred revenue
+- genuinely new revenue
+
+Very important.
+
+========================================
+4. ADD TREATMENT MIX MODELLING
+========================================
+
+Revenue should not be generic.
+
+Allow revenue weighting by:
+- Anti-wrinkle
+- Filler
+- Polynucleotides
+- Skin boosters
+- Microneedling
+- Packages/memberships
+- Consultations
+
+Each treatment type should have:
+- average value
+- margin
+- repeat frequency
+- room utilisation
+- practitioner time
+
+Winchester should support:
+- higher average spend
+- more premium skin work
+- more memberships
+- less discount dependence
+
+========================================
+5. ADD TRUE FIXED VS VARIABLE COST LOGIC
+========================================
+
+Current model is too simplistic.
+
+Split costs into:
+FIXED:
+- rent
+- rates
+- insurance
+- software
+- internet
+- finance
+- utilities baseline
+- subscriptions
+
+VARIABLE:
+- injectables stock
+- consumables
+- commissions
+- card fees
+- marketing scaling
+- waste scaling
+- laundry
+- staffing growth
+
+Add:
+“Gross Margin”
+and
+“Contribution Margin”
+
+This is critical for clinic modelling.
+
+========================================
+6. ADD VAT MODELLING
+========================================
+
+Very important.
+
+Add:
+- VAT threshold tracking
+- projected VAT registration date
+- post-VAT profitability
+- recoverable VAT
+- non-recoverable VAT
+- effect on cashflow
+
+Allow:
+- include VAT on rent toggle
+- partial exemption estimate
+- capital expenditure VAT recovery
+
+Show:
+“Business becomes VAT registered in projected month X”
+
+========================================
+7. ADD REAL OWNER DRAWINGS & SALARY LOGIC
+========================================
+
+Current owner drawings are meaningless.
+
+Separate:
+- Abi salary
+- David drawings
+- dividends
+- retained profit
+- household needs
+
+Add:
+“Can the owners survive financially?”
+
+Show:
+- minimum safe household income
+- current projected owner extraction
+- stress-test survivability
+
+========================================
+8. ADD BEDHAMPTON TRANSITION STRATEGY
+========================================
+
+Critical.
+
+Add operational modes:
+- Parallel operation
+- Gradual migration
+- Winchester flagship
+- Bedhampton retained permanently
+- Bedhampton reduced hours
+- Full relocation
+
+This should affect:
+- staffing
+- occupancy
+- travel
+- scheduling
+- revenue transfer
+
+========================================
+9. ADD CASHFLOW PHASE MODELLING
+========================================
+
+Separate:
+PHASE 1:
+Pre-lease
+
+PHASE 2:
+Legal/signing
+
+PHASE 3:
+Fit-out
+
+PHASE 4:
+Pre-launch
+
+PHASE 5:
+Launch
+
+PHASE 6:
+Stabilisation
+
+Each phase should show:
+- cash burn
+- required reserve
+- risk level
+- major liabilities
+
+========================================
+10. ADD REALISTIC “CASH REQUIRED BEFORE OPENING”
+========================================
+
+Very important.
+
+Create dedicated section:
+“Minimum Cash Required Before Opening”
+
+Breakdown:
+- deposit
+- legal
+- fit-out
+- stock
+- signage
+- contingency
+- first 3 months operating reserve
+- VAT reserve
+- emergency reserve
+
+Show:
+- minimum survivable cash
+- recommended safe cash
+- ideal safe launch cash
+
+========================================
+11. ADD SCENARIO ENGINE
+========================================
+
+Current Conservative / Realistic / Aggressive is too basic.
+
+Replace with:
+- Best Case
+- Expected
+- Delayed Ramp
+- Economic Downturn
+- Marketing Failure
+- High Build Cost
+- Abi Leaves Nursing Early
+- Staffing Issue
+- Stress Test
+
+Each should dynamically affect:
+- occupancy
+- costs
+- runway
+- launch delay
+- profitability
+
+========================================
+12. ADD TRUE BREAK-EVEN ANALYSIS
+========================================
+
+Current break-even logic is misleading.
+
+Show:
+- clinic-level break-even
+- combined-business break-even
+- owner-income break-even
+- post-tax break-even
+- post-VAT break-even
+
+Show:
+“How many treatments per week are required to survive?”
+
+Examples:
+- toxin appointments/week
+- filler appointments/week
+- skin booster mix required
+
+========================================
+13. ADD TREATMENT CAPACITY MODELLING
+========================================
+
+Current occupancy percentages are abstract.
+
+Model:
+- rooms
+- operating hours
+- treatment durations
+- realistic turnaround time
+- max daily appointments
+- practitioner fatigue
+
+Show:
+- realistic weekly capacity
+- realistic monthly capacity
+- over-capacity warning
+
+========================================
+14. ADD “CLINIC HEALTH SCORE”
+========================================
+
+Show:
+- Financial Safety
+- Growth Strength
+- Operational Sustainability
+- Risk Exposure
+- Dependency Risk
+- Cash Stability
+
+This should feel executive-level.
+
+========================================
+15. ADD ASSUMPTION EXPLANATIONS
+========================================
+
+Every figure should explain itself.
+
+Example:
+“Projected annual profit assumes:
+- 65% occupancy
+- £135 avg client spend
+- 22 working days/month
+- stable Bedhampton revenue
+- no major staffing increases”
+
+No unexplained fantasy numbers.
+
+========================================
+16. ADD “WHAT COULD KILL THIS PROJECT?”
+========================================
+
+Dedicated section.
+
+Rank top threats:
+- low occupancy
+- delayed ramp
+- VAT pressure
+- fit-out overruns
+- marketing underperformance
+- Abi burnout
+- legal delays
+- cash reserve depletion
+
+For each:
+- likelihood
+- impact
+- mitigation
+
+========================================
+17. ADD REALISTIC MARKETING ECONOMICS
+========================================
+
+Model:
+- cost per lead
+- booking conversion
+- consultation conversion
+- average LTV
+- repeat booking frequency
+- referral generation
+
+Do not assume every lead becomes revenue.
+
+========================================
+18. ADD “SAFE TO LEAVE NURSING?” CALCULATOR
+========================================
+
+Very important.
+
+Allow:
+- nursing salary input
+- desired replacement income
+- minimum savings threshold
+
+Show:
+- safe exit date
+- unsafe exit warning
+- dependency on Winchester success
+
+========================================
+19. ADD PROPERTY-SPECIFIC FINANCIAL EFFECTS
+========================================
+
+The selected property should dynamically affect:
+- rent
+- rates
+- fit-out
+- expected spend profile
+- target demographic
+- occupancy expectations
+- premium pricing potential
+
+Winchester should produce:
+- higher average spend
+- stronger skin demand
+- stronger premium positioning
+- higher operating costs
+
+Waterlooville should produce:
+- lower operating costs
+- lower premium ceiling
+- lower average spend
+
+========================================
+20. ADD INVESTOR / BANK / PARTNER EXPORT
+========================================
+
+Export:
+- executive summary
+- assumptions
+- cashflow
+- break-even
+- risks
+- property selection
+- stress test
+
+Should feel commercially credible.
+
+========================================
+21. VISUAL IMPROVEMENTS
+========================================
+
+Current finance page feels like a form.
+
+Improve:
+- executive summary cards
+- scenario comparison table
+- cleaner charts
+- occupancy graphs
+- cashflow waterfall
+- burn-down chart
+- break-even visualisation
+- runway gauge
+- property comparison charts
+
+Avoid:
+- spreadsheet feel
+- generic SaaS feel
+
+Target feel:
+“Private equity / founder-grade commercial modelling tool”
+
+========================================
+22. VERY IMPORTANT
+========================================
+
+Reduce unrealistic optimism.
+
+The system should default to:
+- conservative assumptions
+- slower growth
+- realistic occupancy
+- delayed profitability
+
+It should challenge assumptions, not reinforce fantasy.
+
+If projections become unrealistic, display warnings.
+
+Example:
+“Warning: projected occupancy exceeds typical first-year premium clinic ramp.”
+
+or:
+“Warning: projected profit assumes unusually strong conversion and retention.”
+
+========================================
+END GOAL
+========================================
+
+The financial model should feel like:
+- a real-world clinic expansion simulator
+- grounded in commercial reality
+- intelligent enough to challenge assumptions
+- useful enough to make major business decisions from
+
+It should help answer:
+“Is this expansion genuinely safe, sustainable and commercially intelligent?”

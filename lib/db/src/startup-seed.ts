@@ -286,9 +286,14 @@ export async function runStartupSeed(): Promise<void> {
       repeatBookingRatePercent: 60,
       membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 10000,
+      bedhamptonCostsGbp: 3200,
+      cannibalPercent: 15,
       ownerDrawingsGbp: 1047,
       runwaySavingsGbp: 80000,
       personalSalaryNeedsGbp: 1047,
+      nursingIncomeGbp: 4500,
+      targetDrawingsGbp: 4000,
+      wincAcvGbp: 155,
     });
 
     // Ensure scenario configs exist
