@@ -77,6 +77,8 @@ const PHASES = [
       { title: "Building Regulations Completion Certificate — final inspection", owner: "Winchester Building Control", riskLevel: "high", costLow: 0, costMid: 0, costHigh: 0, isNonNegotiable: true, isCriticalRisk: true, durationDays: 7, notes: "WBC inspect and issue Completion Certificate. Required before clinic opens — no legal occupation of altered space without it. Book inspection immediately after STEP 14 (deep clean). EIC from electrician must be submitted with inspection request." },
       { title: "Treatment couches × 2 — order early, deliver after flooring", owner: "Abi", riskLevel: "medium", costLow: 2438, costMid: 2900, costHigh: 4000, isNonNegotiable: true, isCriticalRisk: false, durationDays: 21, notes: "Order at Phase 2 — 3-6 week lead time. Delivery timed after vinyl flooring is complete. Beauty Express Diva at £1,219 each = £2,438. Electric preferred for Profhilo and skin treatments. Couch dimensions must be confirmed before Dad builds cabinetry." },
       { title: "Baseline photography protocol — standardised pre-treatment photos for every patient", owner: "Abi", riskLevel: "medium", costLow: 0, costMid: 30, costHigh: 200, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "Standard lighting, distance, angles for every treatment area. Ring light + phone mount = £30. Consistent baseline photos are required by Save Face, JCCP and Hamilton Fraser. Protects Abi from complaints about pre-existing conditions." },
+      { title: "Skip hire / waste removal", owner: "Dad + David", riskLevel: "low", costLow: 0, costMid: 250, costHigh: 700, isNonNegotiable: false, isCriticalRisk: false, durationDays: 3, notes: "Very commonly forgotten fit-out cost. Strip-out rubble, plasterboard offcuts, old fitments and packaging all need removing. Order a skip before strip-out begins — 6-yard skip typically £250-400 in Winchester. Check with landlord that a skip can be placed outside. Budget MID £250." },
+      { title: "Contingency for hidden building issues", owner: "David", riskLevel: "high", costLow: 0, costMid: 1000, costHigh: 5000, isNonNegotiable: true, isCriticalRisk: false, durationDays: 1, notes: "You should absolutely carry a contingency buffer on an older commercial unit. Common hidden issues in period Jewry Street buildings: asbestos in ceiling tiles or floor adhesive (survey required if pre-2000 build), substandard previous electrics, inadequate drainage falls, damp behind existing linings. Budget MID £1,000 minimum — do not spend this unless needed." },
     ],
   },
   {
@@ -168,8 +170,8 @@ export async function runStartupSeed(): Promise<void> {
           const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
           totalTasks += tasks.length;
         }
-        if (totalTasks === 87) {
-          console.log("✅ V5 data already present (7 phases, 87 tasks) — skipping seed.");
+        if (totalTasks === 89) {
+          console.log("✅ V5 data already present (7 phases, 89 tasks) — skipping seed.");
           return;
         }
       }
