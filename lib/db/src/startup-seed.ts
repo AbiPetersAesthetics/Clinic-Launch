@@ -156,6 +156,11 @@ const PHASES = [
       { title: "Soft launch event — top 50 Bedhampton clients + 20 Winchester contacts", owner: "David + Abi", riskLevel: "low", costLow: 400, costMid: 575, costHigh: 800, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Evening 6-9pm. Clinic tour, Abi for consultations, Instagram content. Self-cater at £400 — the clinic and Abi are the draw, not the food." },
       { title: "Winchester BID registration", owner: "David", riskLevel: "low", costLow: 0, costMid: 0, costHigh: 500, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Call BID first — small businesses may be exempt from levy. winchesterbid.co.uk. Footfall data, local marketing networks, events programme." },
       { title: "Winchester SEO — treatment landing pages (build 3-6 months ahead)", owner: "David", riskLevel: "low", costLow: 0, costMid: 375, costHigh: 1500, isNonNegotiable: false, isCriticalRisk: false, durationDays: 30, notes: "David writes pages himself for launch. Most common clinic launch mistake: website not live early enough. Pages for: botox Winchester, lip filler Winchester, Profhilo Winchester." },
+      { title: "Google review generation campaign", owner: "David", riskLevel: "medium", costLow: 0, costMid: 150, costHigh: 600, isNonNegotiable: false, isCriticalRisk: false, durationDays: 7, notes: "Far more valuable than Meta ads at this stage — a Winchester Google Business Profile with 20+ reviews within 3 months will drive consistent organic bookings. Tactics: post-appointment WhatsApp message with direct review link, QR code card at reception. Tools: NiceJob at £75/month or manual outreach (free). Budget MID £150 for QR cards, printed inserts, and 3 months of a review tool if used." },
+      { title: "Launch videography / reels content day", owner: "Abi", riskLevel: "low", costLow: 0, costMid: 500, costHigh: 2000, isNonNegotiable: false, isCriticalRisk: false, durationDays: 1, notes: "Can be self-produced initially using iPhone 15 — ring light, clean background, good audio. Reels content: treatment process clips, before/after reveal, clinic tour, meet Abi intro. A professional videographer at £500-800/day adds polish but is not necessary to start. Defer spend until brand is established and content ROI is proven. Budget LOW (£0) for launch." },
+      { title: "Printed launch materials / signage", owner: "David", riskLevel: "low", costLow: 50, costMid: 250, costHigh: 800, isNonNegotiable: false, isCriticalRisk: false, durationDays: 3, notes: "Minimal premium print collateral is sufficient initially. Essential: A5 double-sided appointment cards (Moo or Canva print), A4 treatment menu, window vinyl with logo. Nice to have: branded bags, tissue paper, stickers. Moo business cards 50-pack at £25, window vinyl at £80-150. Budget LOW (£50) for launch basics; upgrade signage once trading." },
+      { title: "Local influencer / creator outreach", owner: "Abi", riskLevel: "low", costLow: 0, costMid: 300, costHigh: 2000, isNonNegotiable: false, isCriticalRisk: false, durationDays: 7, notes: "Not necessary at launch — prioritise Google reviews and organic social first. When ready: target Hampshire-based lifestyle creators with 5k-50k followers (micro-influencers outperform on conversion). Offer complimentary treatment in exchange for an honest reel and 3 static posts. Cost = treatment materials only. Budget LOW (£0) initially." },
+      { title: "PR / Hampshire lifestyle magazine outreach", owner: "David", riskLevel: "low", costLow: 0, costMid: 250, costHigh: 1500, isNonNegotiable: false, isCriticalRisk: false, durationDays: 7, notes: "Organic PR outreach can be done manually first — no agency needed at launch. Targets: Hampshire Life, Winchester Magazine, The Winchester Edit. Angles: new premium clinic opening in Jewry Street, Abi's clinical background, safe non-surgical aesthetics. Send press release + hi-res images to editorial email. Budget LOW (£0) — cost only if a PR agency is engaged later." },
     ],
   },
 ];
@@ -181,8 +186,8 @@ export async function runStartupSeed(): Promise<void> {
           const tasks = await db.select().from(schema.tasksTable).where(eq(schema.tasksTable.phaseId, phase.id));
           totalTasks += tasks.length;
         }
-        if (totalTasks === 100) {
-          console.log("✅ V5 data already present (7 phases, 100 tasks) — skipping seed.");
+        if (totalTasks === 105) {
+          console.log("✅ V5 data already present (7 phases, 105 tasks) — skipping seed.");
           return;
         }
       }
