@@ -1589,6 +1589,9 @@ components:
         targetLocation:
           type: string
           nullable: true
+        startDate:
+          type: string
+          nullable: true
         targetOpeningDate:
           type: string
           nullable: true
@@ -1620,6 +1623,9 @@ components:
         targetLocation:
           type: string
           nullable: true
+        startDate:
+          type: string
+          nullable: true
         targetOpeningDate:
           type: string
           nullable: true
@@ -1638,6 +1644,9 @@ components:
           type: string
           nullable: true
         targetLocation:
+          type: string
+          nullable: true
+        startDate:
           type: string
           nullable: true
         targetOpeningDate:

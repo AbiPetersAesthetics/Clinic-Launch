@@ -32,9 +32,9 @@ router.get("/projects/:id", async (req, res) => {
 
 router.put("/projects/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, description, targetLocation, targetOpeningDate, status } = req.body;
+  const { name, description, targetLocation, startDate, targetOpeningDate, status } = req.body;
   const [project] = await db.update(projectsTable)
-    .set({ name, description, targetLocation, targetOpeningDate, status, updatedAt: new Date() })
+    .set({ name, description, targetLocation, startDate, targetOpeningDate, status, updatedAt: new Date() })
     .where(eq(projectsTable.id, id))
     .returning();
   if (!project) return res.status(404).json({ error: "Not found" });

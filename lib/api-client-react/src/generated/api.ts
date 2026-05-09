@@ -1625,7 +1625,7 @@ export const updateTask = async (
 ): Promise<LaunchTask> => {
   return customFetch<LaunchTask>(getUpdateTaskUrl(id), {
     ...options,
-    method: "PATCH",
+    method: "PUT",
     headers: { "Content-Type": "application/json", ...options?.headers },
     body: JSON.stringify(updateTaskBody),
   });

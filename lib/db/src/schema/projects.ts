@@ -8,6 +8,7 @@ export const projectsTable = pgTable("projects", {
   name: text("name").notNull(),
   description: text("description"),
   targetLocation: text("target_location"),
+  startDate: text("start_date"),
   targetOpeningDate: text("target_opening_date"),
   status: text("status").notNull().default("planning"),
   launchReadinessPercent: integer("launch_readiness_percent").notNull().default(0),

@@ -4,6 +4,10 @@ import {
   useGetPhasesWithTasks,
   getGetPhasesWithTasksQueryKey,
   useUpdateTask,
+  useCreateTask,
+  useDeleteTask,
+  useGetProject,
+  useUpdateProject,
   useGetRiskFlags,
   getGetRiskFlagsQueryKey,
   useGetProjectDashboard,
@@ -45,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -70,16 +74,140 @@ const RISK_COLORS: Record<string, string> = {
   critical: "bg-destructive/20 text-destructive",
 };
 
+function addDays(date: Date, days: number): Date {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function fmtDate(d: Date): string {
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
+
+interface PhaseWindow {
+  mustEndBy: Date;
+  mustStartBy: Date;
+  estimatedEnd: Date;
+  totalDays: number;
+  status: "on_track" | "tight" | "overdue" | "unknown";
+}
+
+function computePhaseWindows(
+  phases: PhaseWithTasks[],
+  startDate: Date | null,
+  openDate: Date | null,
+): Map<number, PhaseWindow> {
+  const sorted = [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  const map = new Map<number, PhaseWindow>();
+
+  const backward = new Map<number, { mustEndBy: Date; mustStartBy: Date; totalDays: number }>();
+  if (openDate) {
+    let deadline = new Date(openDate);
+    for (const phase of [...sorted].reverse()) {
+      const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+      const mustEndBy = new Date(deadline);
+      const mustStartBy = addDays(deadline, -totalDays);
+      backward.set(phase.id, { mustEndBy, mustStartBy, totalDays });
+      deadline = new Date(mustStartBy);
+    }
+  }
+
+  const forward = new Map<number, { estimatedEnd: Date }>();
+  if (startDate) {
+    let cursor = new Date(startDate);
+    for (const phase of sorted) {
+      const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+      const estimatedEnd = addDays(cursor, totalDays);
+      forward.set(phase.id, { estimatedEnd });
+      cursor = estimatedEnd;
+    }
+  }
+
+  for (const phase of sorted) {
+    const bw = backward.get(phase.id);
+    const fw = forward.get(phase.id);
+    const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+
+    let status: PhaseWindow["status"] = "unknown";
+    if (bw && fw) {
+      const diffDays = Math.floor((bw.mustEndBy.getTime() - fw.estimatedEnd.getTime()) / 86400000);
+      if (diffDays < 0) status = "overdue";
+      else if (diffDays < 14) status = "tight";
+      else status = "on_track";
+    }
+
+    map.set(phase.id, {
+      mustEndBy: bw?.mustEndBy ?? new Date(),
+      mustStartBy: bw?.mustStartBy ?? new Date(),
+      estimatedEnd: fw?.estimatedEnd ?? new Date(),
+      totalDays,
+      status,
+    });
+  }
+  return map;
+}
+
 export default function ProjectPage() {
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<LaunchTask | null>(null);
+  const [addingTaskPhaseId, setAddingTaskPhaseId] = useState<number | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
-  // Parse ?taskId= deep-link from optimisation page
+  const [localStartDate, setLocalStartDate] = useState("");
+  const [localOpenDate, setLocalOpenDate] = useState("");
+  const [datesDirty, setDatesDirty] = useState(false);
+
   const highlightedTaskId = (() => {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("taskId");
     return raw ? parseInt(raw) : null;
   })();
+
+  const { data: project } = useGetProject(PROJECT_ID);
+  const updateProject = useUpdateProject();
+  const deleteTask = useDeleteTask();
+
+  useEffect(() => {
+    if (project) {
+      setLocalStartDate(project.startDate ?? "");
+      setLocalOpenDate(project.targetOpeningDate ?? "");
+      setDatesDirty(false);
+    }
+  }, [project?.startDate, project?.targetOpeningDate]);
+
+  const handleSaveDates = () => {
+    updateProject.mutate(
+      {
+        id: PROJECT_ID,
+        data: {
+          name: project?.name ?? "Winchester Clinic Opening Plan",
+          startDate: localStartDate || null,
+          targetOpeningDate: localOpenDate || null,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}`] });
+          queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
+          setDatesDirty(false);
+        },
+      }
+    );
+  };
+
+  const handleDeleteTask = (taskId: number) => {
+    deleteTask.mutate(
+      { id: taskId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+          setConfirmDeleteId(null);
+        },
+      }
+    );
+  };
 
   const { data: phases, isLoading: isPhasesLoading } = useGetPhasesWithTasks(PROJECT_ID, {
     query: { queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID), enabled: true },
@@ -91,7 +219,6 @@ export default function ProjectPage() {
 
   const [openPhases, setOpenPhases] = useState<string[]>([]);
 
-  // Once phases load, auto-open the relevant phase and scroll to the task
   useEffect(() => {
     if (!highlightedTaskId || !phases) return;
     const phase = phases.find(p => p.tasks?.some(t => t.id === highlightedTaskId));
@@ -100,12 +227,9 @@ export default function ProjectPage() {
         const key = `phase-${phase.id}`;
         return prev.includes(key) ? prev : [...prev, key];
       });
-      // Scroll after accordion opens
       setTimeout(() => {
         const el = document.getElementById(`task-${highlightedTaskId}`);
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 200);
     }
   }, [highlightedTaskId, phases]);
@@ -132,6 +256,20 @@ export default function ProjectPage() {
     );
   };
 
+  const openDateObj = localOpenDate ? new Date(localOpenDate) : null;
+  const startDateObj = localStartDate ? new Date(localStartDate) : null;
+  const phaseWindows = phases && (openDateObj || startDateObj)
+    ? computePhaseWindows(phases, startDateObj, openDateObj)
+    : null;
+
+  const totalProjectDays = phases?.reduce(
+    (s, p) => s + (p.tasks?.reduce((ts, t) => ts + (t.durationDays ?? 0), 0) ?? 0),
+    0
+  ) ?? 0;
+  const availableDays = openDateObj && startDateObj
+    ? Math.max(0, Math.floor((openDateObj.getTime() - startDateObj.getTime()) / 86400000))
+    : null;
+
   const totalSelectedCost = phases?.reduce((sum, phase) => sum + phase.selectedCostTotal, 0) || 0;
   const criticalRiskCount = risks?.filter((r) => r.level === "critical").length || 0;
 
@@ -150,7 +288,7 @@ export default function ProjectPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <div>
         <h2 className="text-2xl font-bold tracking-tight">Project Plan</h2>
-        <p className="text-muted-foreground mt-1">Detailed phase and task management.</p>
+        <p className="text-muted-foreground mt-1">Set your key dates, then manage phases and tasks.</p>
       </div>
 
       {criticalRiskCount > 0 && (
@@ -165,13 +303,87 @@ export default function ProjectPage() {
         </div>
       )}
 
+      {/* Date settings + timeline */}
       <Card className="shadow-sm border-border/60">
-        <CardContent className="p-6 flex flex-col md:flex-row justify-between items-center gap-4">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-1">
-              Total Project Selected Cost
-            </p>
-            <p className="text-3xl font-bold">{formatGBP(totalSelectedCost)}</p>
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-center gap-2 mb-1">
+            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+            <p className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Project Timeline</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+            <div className="space-y-1.5">
+              <Label htmlFor="startDate" className="text-sm">Available From</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={localStartDate}
+                onChange={(e) => { setLocalStartDate(e.target.value); setDatesDirty(true); }}
+                className="h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">When work can begin (lease start, today, etc.)</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="openDate" className="text-sm">
+                Target Open Date <span className="text-destructive font-semibold">(hard right)</span>
+              </Label>
+              <Input
+                id="openDate"
+                type="date"
+                value={localOpenDate}
+                onChange={(e) => { setLocalOpenDate(e.target.value); setDatesDirty(true); }}
+                className="h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">CQC floats independently — not tied to this date.</p>
+            </div>
+            <div>
+              <Button
+                onClick={handleSaveDates}
+                disabled={!datesDirty || updateProject.isPending}
+                size="sm"
+                className="w-full md:w-auto"
+              >
+                <Save className="w-3.5 h-3.5 mr-1.5" />
+                {updateProject.isPending ? "Saving…" : "Save Dates"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Timeline health */}
+          {availableDays !== null && totalProjectDays > 0 && (
+            <div className="pt-2 border-t border-border/50 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Estimated work: <span className="font-semibold text-foreground">{Math.round(totalProjectDays / 7)} wks</span>
+                  {" "}({totalProjectDays} days across all phases)
+                </span>
+                <span className="text-muted-foreground">
+                  Available: <span className={`font-semibold ${availableDays < totalProjectDays ? "text-destructive" : "text-primary"}`}>
+                    {Math.round(availableDays / 7)} wks
+                  </span>
+                  {" "}({availableDays} days)
+                </span>
+              </div>
+              <Progress
+                value={Math.min(100, (availableDays / totalProjectDays) * 100)}
+                className={`h-2 ${availableDays < totalProjectDays ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"}`}
+              />
+              {availableDays < totalProjectDays ? (
+                <p className="text-xs text-destructive font-medium">
+                  ⚠ Timeline is {Math.round((totalProjectDays - availableDays) / 7)} weeks short — review task durations or move the open date.
+                </p>
+              ) : (
+                <p className="text-xs text-primary font-medium">
+                  ✓ Enough time to complete all phases before the open date.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Cost summary */}
+          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
+            <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
           </div>
         </CardContent>
       </Card>
@@ -182,180 +394,229 @@ export default function ProjectPage() {
         onValueChange={setOpenPhases}
         className="space-y-4"
       >
-        {phases?.map((phase) => (
-          <AccordionItem
-            key={phase.id}
-            value={`phase-${phase.id}`}
-            className="border bg-card rounded-lg overflow-hidden shadow-sm"
-          >
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
-              <div className="flex flex-col md:flex-row md:items-center gap-4 w-full pr-4 text-left">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-lg">{phase.name}</span>
-                    <Badge variant="secondary" className={STATUS_COLORS[phase.status] || ""}>
-                      {phase.status.replace("_", " ")}
-                    </Badge>
+        {phases?.map((phase) => {
+          const win = phaseWindows?.get(phase.id);
+          const windowBadgeClass =
+            !win || win.status === "unknown" ? "bg-muted text-muted-foreground" :
+            win.status === "on_track" ? "bg-primary/15 text-primary" :
+            win.status === "tight" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300" :
+            "bg-destructive/15 text-destructive";
+
+          return (
+            <AccordionItem
+              key={phase.id}
+              value={`phase-${phase.id}`}
+              className="border bg-card rounded-lg overflow-hidden shadow-sm"
+            >
+              <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/50 transition-colors">
+                <div className="flex flex-col md:flex-row md:items-center gap-4 w-full pr-4 text-left">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <span className="font-semibold text-lg">{phase.name}</span>
+                      <Badge variant="secondary" className={STATUS_COLORS[phase.status] || ""}>
+                        {phase.status.replace("_", " ")}
+                      </Badge>
+                      {win && localOpenDate && (
+                        <Badge variant="secondary" className={`text-[11px] ${windowBadgeClass}`}>
+                          Complete by {fmtDate(win.mustEndBy)}
+                          {win.totalDays > 0 && ` · ${win.totalDays}d`}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-sm text-muted-foreground">
+                        Tasks: {phase.completedTaskCount} / {phase.taskCount}
+                      </span>
+                      <Progress
+                        value={phase.taskCount > 0 ? (phase.completedTaskCount / phase.taskCount) * 100 : 0}
+                        className="h-2 w-32"
+                      />
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-sm text-muted-foreground">
-                      Tasks: {phase.completedTaskCount} / {phase.taskCount}
-                    </span>
-                    <Progress
-                      value={phase.taskCount > 0 ? (phase.completedTaskCount / phase.taskCount) * 100 : 0}
-                      className="h-2 w-32"
-                    />
+                  <div className="text-right">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                      Selected Cost
+                    </p>
+                    <p className="font-semibold">{formatGBP(phase.selectedCostTotal)}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                    Selected Cost
-                  </p>
-                  <p className="font-semibold">{formatGBP(phase.selectedCostTotal)}</p>
-                </div>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="px-6 py-4 bg-background">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[300px]">Task</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Risk</TableHead>
-                      <TableHead>Cost Tier Selection</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead className="w-[50px]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {phase.tasks?.map((task) => (
-                      <TableRow
-                        key={task.id}
-                        id={`task-${task.id}`}
-                        className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
-                        onClick={() => setEditingTask(task)}
-                      >
-                        <TableCell>
-                          <div className="font-medium text-foreground">{task.title}</div>
-                          <div className="flex gap-2 mt-1.5 flex-wrap">
-                            {task.isNonNegotiable && (
-                              <Badge variant="outline" className="text-[10px] h-4 py-0">
-                                Must Do
-                              </Badge>
-                            )}
-                            {task.isCriticalRisk && (
-                              <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
-                                Critical
-                              </Badge>
-                            )}
-                            {task.files && (
-                              <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
-                                Files attached
-                              </Badge>
-                            )}
-                            {task.dependencies && task.dependencies.length > 0 && (
-                              <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
-                                {task.dependencies.length} dep{task.dependencies.length !== 1 ? "s" : ""}
-                              </Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Select
-                            value={task.status}
-                            onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}
-                          >
-                            <SelectTrigger className={`w-[130px] h-8 text-xs ${STATUS_COLORS[task.status] || ""}`}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="not_started">Not Started</SelectItem>
-                              <SelectItem value="in_progress">In Progress</SelectItem>
-                              <SelectItem value="complete">Complete</SelectItem>
-                              <SelectItem value="blocked">Blocked</SelectItem>
-                              <SelectItem value="deferred">Deferred</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className={RISK_COLORS[task.riskLevel] || ""}>
-                            {task.riskLevel}
-                          </Badge>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex flex-col gap-1 w-max">
-                            <div className="flex rounded-md overflow-hidden border border-border/60">
-                              <button
-                                onClick={() => handleCostTierChange(task, "low")}
-                                className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                  task.costTier === "low"
-                                    ? "bg-primary/20 text-primary"
-                                    : "bg-card text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                Low: {formatGBP(task.costLow)}
-                              </button>
-                              <div className="w-px bg-border/60"></div>
-                              <button
-                                onClick={() => handleCostTierChange(task, "mid")}
-                                className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                  task.costTier === "mid"
-                                    ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                                    : "bg-card text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                Mid: {formatGBP(task.costMid)}
-                              </button>
-                              <div className="w-px bg-border/60"></div>
-                              <button
-                                onClick={() => handleCostTierChange(task, "high")}
-                                className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                  task.costTier === "high"
-                                    ? "bg-destructive/20 text-destructive"
-                                    : "bg-card text-muted-foreground hover:bg-muted"
-                                }`}
-                              >
-                                High: {formatGBP(task.costHigh)}
-                              </button>
-                            </div>
-                            {task.costLow === 0 && task.costHigh === 0 && task.costMid === 0 ? null : (
-                              <div className="text-[10px] text-muted-foreground text-right mt-0.5">
-                                Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => setEditingTask(task)}
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {(!phase.tasks || phase.tasks.length === 0) && (
+              </AccordionTrigger>
+              <AccordionContent className="px-6 py-4 bg-background">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
-                          No tasks in this phase yet.
-                        </TableCell>
+                        <TableHead className="w-[300px]">Task</TableHead>
+                        <TableHead>Owner</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Risk</TableHead>
+                        <TableHead>Cost Tier Selection</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead className="w-[80px]"></TableHead>
                       </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        ))}
+                    </TableHeader>
+                    <TableBody>
+                      {phase.tasks?.map((task) => (
+                        <TableRow
+                          key={task.id}
+                          id={`task-${task.id}`}
+                          className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
+                          onClick={() => setEditingTask(task)}
+                        >
+                          <TableCell>
+                            <div className="font-medium text-foreground">{task.title}</div>
+                            <div className="flex gap-2 mt-1.5 flex-wrap">
+                              {task.isNonNegotiable && (
+                                <Badge variant="outline" className="text-[10px] h-4 py-0">
+                                  Must Do
+                                </Badge>
+                              )}
+                              {task.isCriticalRisk && (
+                                <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
+                                  Critical
+                                </Badge>
+                              )}
+                              {task.files && (
+                                <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                  Files attached
+                                </Badge>
+                              )}
+                              {task.dependencies && task.dependencies.length > 0 && (
+                                <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                  {task.dependencies.length} dep{task.dependencies.length !== 1 ? "s" : ""}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Select
+                              value={task.status}
+                              onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}
+                            >
+                              <SelectTrigger className={`w-[130px] h-8 text-xs ${STATUS_COLORS[task.status] || ""}`}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="not_started">Not Started</SelectItem>
+                                <SelectItem value="in_progress">In Progress</SelectItem>
+                                <SelectItem value="complete">Complete</SelectItem>
+                                <SelectItem value="blocked">Blocked</SelectItem>
+                                <SelectItem value="deferred">Deferred</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className={RISK_COLORS[task.riskLevel] || ""}>
+                              {task.riskLevel}
+                            </Badge>
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="flex flex-col gap-1 w-max">
+                              <div className="flex rounded-md overflow-hidden border border-border/60">
+                                <button
+                                  onClick={() => handleCostTierChange(task, "low")}
+                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                    task.costTier === "low"
+                                      ? "bg-primary/20 text-primary"
+                                      : "bg-card text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  Low: {formatGBP(task.costLow)}
+                                </button>
+                                <div className="w-px bg-border/60"></div>
+                                <button
+                                  onClick={() => handleCostTierChange(task, "mid")}
+                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                    task.costTier === "mid"
+                                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                                      : "bg-card text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  Mid: {formatGBP(task.costMid)}
+                                </button>
+                                <div className="w-px bg-border/60"></div>
+                                <button
+                                  onClick={() => handleCostTierChange(task, "high")}
+                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                    task.costTier === "high"
+                                      ? "bg-destructive/20 text-destructive"
+                                      : "bg-card text-muted-foreground hover:bg-muted"
+                                  }`}
+                                >
+                                  High: {formatGBP(task.costHigh)}
+                                </button>
+                              </div>
+                              {task.costLow === 0 && task.costHigh === 0 && task.costMid === 0 ? null : (
+                                <div className="text-[10px] text-muted-foreground text-right mt-0.5">
+                                  Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
+                          </TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => setEditingTask(task)}
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              {confirmDeleteId === task.id ? (
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDeleteTask(task.id)}
+                                  title="Click again to confirm delete"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => setConfirmDeleteId(task.id)}
+                                  title="Delete task"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {(!phase.tasks || phase.tasks.length === 0) && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                            No tasks in this phase yet.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+                <div className="mt-3 flex">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-8 gap-1.5"
+                    onClick={() => setAddingTaskPhaseId(phase.id)}
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Task
+                  </Button>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
       </Accordion>
 
       <TaskEditSheet
@@ -363,6 +624,24 @@ export default function ProjectPage() {
         allPhases={phases ?? []}
         onClose={() => setEditingTask(null)}
       />
+
+      <AddTaskSheet
+        phaseId={addingTaskPhaseId}
+        onClose={() => setAddingTaskPhaseId(null)}
+        onCreated={(task) => {
+          invalidateAfterTaskChange();
+          setAddingTaskPhaseId(null);
+          setEditingTask(task as LaunchTask);
+        }}
+      />
+
+      {/* Click-away dismiss for delete confirm */}
+      {confirmDeleteId !== null && (
+        <div
+          className="fixed inset-0 z-0"
+          onClick={() => setConfirmDeleteId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -378,6 +657,120 @@ function parseFiles(raw: string | null | undefined): string[] {
     // ignore malformed JSON
   }
   return [];
+}
+
+function AddTaskSheet({
+  phaseId,
+  onClose,
+  onCreated,
+}: {
+  phaseId: number | null;
+  onClose: () => void;
+  onCreated: (task: unknown) => void;
+}) {
+  const createTask = useCreateTask();
+  const [title, setTitle] = useState("");
+  const [owner, setOwner] = useState("");
+  const [durationDays, setDurationDays] = useState("");
+  const [riskLevel, setRiskLevel] = useState<string>("low");
+
+  useEffect(() => {
+    if (phaseId) {
+      setTitle("");
+      setOwner("");
+      setDurationDays("");
+      setRiskLevel("low");
+    }
+  }, [phaseId]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!phaseId || !title.trim()) return;
+    createTask.mutate(
+      {
+        phaseId,
+        data: {
+          title: title.trim(),
+          owner: owner.trim() || undefined,
+          durationDays: durationDays ? Number(durationDays) : undefined,
+          riskLevel: riskLevel as "low" | "medium" | "high" | "critical",
+          status: "not_started",
+          costTier: "mid",
+          costLow: 0,
+          costMid: 0,
+          costHigh: 0,
+        },
+      },
+      { onSuccess: (task) => onCreated(task) }
+    );
+  };
+
+  return (
+    <Sheet open={phaseId !== null} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full sm:max-w-md">
+        <SheetHeader className="mb-6">
+          <SheetTitle>Add Task</SheetTitle>
+          <SheetDescription>Create a new task. You can fill in full details afterwards.</SheetDescription>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="newTitle">Task Title *</Label>
+            <Input
+              id="newTitle"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Book fire risk assessor"
+              required
+              className="mt-1"
+              autoFocus
+            />
+          </div>
+          <div>
+            <Label htmlFor="newOwner">Owner</Label>
+            <Input
+              id="newOwner"
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              placeholder="e.g. David, Abi, Solicitor"
+              className="mt-1"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="newDuration">Duration (Days)</Label>
+              <Input
+                id="newDuration"
+                type="number"
+                min="0"
+                value={durationDays}
+                onChange={(e) => setDurationDays(e.target.value)}
+                placeholder="0"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label htmlFor="newRisk">Risk Level</Label>
+              <Select value={riskLevel} onValueChange={setRiskLevel}>
+                <SelectTrigger id="newRisk" className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={!title.trim() || createTask.isPending}>
+              {createTask.isPending ? "Adding…" : "Add Task"}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
 }
 
 function TaskEditSheet({

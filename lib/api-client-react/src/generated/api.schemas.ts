@@ -23,6 +23,7 @@ export interface Project {
   name: string;
   description?: string | null;
   targetLocation?: string | null;
+  startDate?: string | null;
   targetOpeningDate?: string | null;
   status: ProjectStatus;
   launchReadinessPercent: number;
@@ -44,6 +45,7 @@ export interface CreateProjectBody {
   name: string;
   description?: string | null;
   targetLocation?: string | null;
+  startDate?: string | null;
   targetOpeningDate?: string | null;
   status?: CreateProjectBodyStatus;
 }
@@ -62,6 +64,7 @@ export interface UpdateProjectBody {
   name?: string;
   description?: string | null;
   targetLocation?: string | null;
+  startDate?: string | null;
   targetOpeningDate?: string | null;
   status?: UpdateProjectBodyStatus;
 }
