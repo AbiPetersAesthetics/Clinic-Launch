@@ -140,7 +140,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   if (!model) return res.status(404).json({ error: "No financial model found" });
 
+  const isStressTest = scenario === "stress_test";
   const targetOccupancy =
+    isStressTest ? Math.max(model.conservativeOccupancyPercent - 5, 15) :
     scenario === "conservative" ? model.conservativeOccupancyPercent :
     scenario === "aggressive" ? model.aggressiveOccupancyPercent :
     model.realisticOccupancyPercent;
@@ -157,8 +159,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   let hasReachedBreakeven = false;
 
   const cashflow = Array.from({ length: 12 }, (_, i) => {
-    // Ramp up occupancy from 25% to targetOccupancy over first 6 months
-    const rampedOccupancy = Math.min(25 + (i * (targetOccupancy - 25) / 6), targetOccupancy);
+    // Ramp: stress test starts at 5% over 10 months; standard starts at 25% over 6 months
+    const startOccupancy = isStressTest ? 5 : 25;
+    const rampMonths = isStressTest ? 10 : 6;
+    const rampedOccupancy = Math.min(startOccupancy + (i * (targetOccupancy - startOccupancy) / rampMonths), targetOccupancy);
     const revenue = (slotsPerMonth * (rampedOccupancy / 100)) * model.averageClientValueGbp + model.membershipRevenueGbp;
     const variableCosts = revenue * ((model.stockPercent + model.commissionsPercent) / 100) + model.marketingGbp + model.staffingGbp + model.consumablesGbp;
     const totalCosts = monthlyFixedCosts + variableCosts;

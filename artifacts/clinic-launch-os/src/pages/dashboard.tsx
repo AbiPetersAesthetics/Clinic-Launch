@@ -1,5 +1,5 @@
-import { 
-  useGetProjectDashboard, 
+import {
+  useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
   useGetProjectCashflow,
   getGetProjectCashflowQueryKey,
@@ -9,16 +9,52 @@ import {
   getGetProjectBurndownQueryKey,
   useListProperties,
   getListPropertiesQueryKey,
+  useGetPhasesWithTasks,
+  getGetPhasesWithTasksQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, AlertCircle, MapPin, Building } from "lucide-react";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from "recharts";
+import { Button } from "@/components/ui/button";
+import {
+  AlertTriangle,
+  AlertCircle,
+  MapPin,
+  Building,
+  CheckCircle2,
+  Clock,
+  Zap,
+  Target,
+  ArrowRight,
+  ShieldAlert,
+  ChevronRight,
+} from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
+} from "recharts";
 
 const PROJECT_ID = 1;
+
+type ScenarioKey = "conservative" | "realistic" | "aggressive" | "stress_test";
+type RAGStatus = "green" | "amber" | "red";
+
+const SCENARIO_LABELS: Record<ScenarioKey, string> = {
+  conservative: "Conservative",
+  realistic: "Realistic",
+  aggressive: "Aggressive",
+  stress_test: "Stress Test",
+};
 
 const PIPELINE_STAGE_LABELS: Record<string, string> = {
   found: "Found",
@@ -34,60 +70,225 @@ const PIPELINE_STAGE_LABELS: Record<string, string> = {
   selected: "Selected",
 };
 
+const GO_NO_GO_GATES = [
+  { id: "assess", label: "Find & Assess", description: "Identify property and conduct pre-lease assessment", requiredPhase1Pct: 0 },
+  { id: "offer", label: "Make Offer", description: "Submit offer on Heads of Terms once due diligence basics confirmed", requiredPhase1Pct: 20 },
+  { id: "solicit", label: "Instruct Solicitor", description: "Engage solicitor to review lease, schedule of condition and FRI", requiredPhase1Pct: 50 },
+  { id: "lease", label: "Sign Lease", description: "Exchange lease only once all Phase 1 and 2 tasks are substantially complete", requiredPhase1Pct: 90 },
+  { id: "works", label: "Start Fit-out", description: "Begin physical works once Licence for Alterations is signed", requiredPhase1Pct: 100 },
+  { id: "open", label: "Open Clinic", description: "First patient only once Phases 3, 4 and 5 are fully complete", requiredPhase1Pct: 100 },
+];
+
+function ragColors(status: RAGStatus) {
+  if (status === "green") return { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-200 dark:border-emerald-800", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500" };
+  if (status === "amber") return { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-500" };
+  return { bg: "bg-red-50 dark:bg-red-950/30", border: "border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-400", dot: "bg-red-500" };
+}
+
 export default function DashboardPage() {
-  const [scenario, setScenario] = useState<"conservative" | "realistic" | "aggressive">("realistic");
+  const [scenario, setScenario] = useState<ScenarioKey>("realistic");
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
-    query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) }
+    query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) },
   });
 
   const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
-    query: { 
-      enabled: true, 
-      queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }) 
-    }
+    query: { enabled: true, queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }) },
   });
 
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
-    query: { enabled: true, queryKey: getGetRiskFlagsQueryKey(PROJECT_ID) }
+    query: { enabled: true, queryKey: getGetRiskFlagsQueryKey(PROJECT_ID) },
   });
 
   const { data: burndown } = useGetProjectBurndown(PROJECT_ID, {
-    query: { enabled: true, queryKey: getGetProjectBurndownQueryKey(PROJECT_ID) }
+    query: { enabled: true, queryKey: getGetProjectBurndownQueryKey(PROJECT_ID) },
   });
 
   const { data: properties } = useListProperties(PROJECT_ID, {
-    query: { enabled: true, queryKey: getListPropertiesQueryKey(PROJECT_ID) }
+    query: { enabled: true, queryKey: getListPropertiesQueryKey(PROJECT_ID) },
   });
 
-  const activeProperty = properties?.find(p => p.isActiveForProject);
+  const { data: phases } = useGetPhasesWithTasks(PROJECT_ID, {
+    query: { enabled: true, queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) },
+  });
+
+  const activeProperty = properties?.find((p) => p.isActiveForProject);
+
+  const allTasks = useMemo(() => {
+    if (!phases) return [];
+    return phases.flatMap((ph) =>
+      (ph.tasks ?? []).map((t) => ({ ...t, phaseName: ph.name }))
+    );
+  }, [phases]);
+
+  const topPriorities = useMemo(() => {
+    const incomplete = allTasks.filter((t) => t.status !== "complete");
+    const critical = incomplete.filter((t) => t.isCriticalRisk);
+    const nonNeg = incomplete.filter((t) => !t.isCriticalRisk && t.isNonNegotiable && t.riskLevel === "high");
+    const highRisk = incomplete.filter((t) => !t.isCriticalRisk && !t.isNonNegotiable && t.riskLevel === "high");
+    return [...critical, ...nonNeg, ...highRisk].slice(0, 5);
+  }, [allTasks]);
+
+  const phase1Progress = dashboard?.phaseProgress?.find((p) => p.phaseName.includes("Phase 1"));
+  const phase1Pct = phase1Progress?.percentComplete ?? 0;
+
+  const currentGateIdx = (() => {
+    let idx = 0;
+    GO_NO_GO_GATES.forEach((g, i) => { if (phase1Pct >= g.requiredPhase1Pct) idx = i; });
+    return idx;
+  })();
+
+  const phaseOpeningCash = useMemo(() => {
+    if (!phases) return [];
+    return phases.map((ph) => ({
+      label: ph.name.replace(/Phase \d+ — /, ""),
+      selected: ph.selectedCostTotal ?? 0,
+    }));
+  }, [phases]);
+
+  const paceInsight = useMemo(() => {
+    if (!burndown || burndown.length < 2) return null;
+    const last = burndown[burndown.length - 1];
+    const gap = (last.remainingTasks ?? 0) - (last.idealRemaining ?? 0);
+    if (gap > 10) return { status: "red" as RAGStatus, message: `Behind by ~${Math.round(gap)} tasks — launch timeline at risk.` };
+    if (gap > 0) return { status: "amber" as RAGStatus, message: `Slightly behind ideal trajectory by ${Math.round(gap)} tasks.` };
+    return { status: "green" as RAGStatus, message: "On or ahead of schedule." };
+  }, [burndown]);
+
+  const unrealisticRunway = (dashboard?.cashRunwayMonths ?? 0) >= 48;
+
+  const readinessStatus: RAGStatus =
+    (dashboard?.launchReadinessPercent ?? 0) >= 30 ? "green" :
+    (dashboard?.launchReadinessPercent ?? 0) >= 5 ? "amber" : "red";
+
+  const financialStatus: RAGStatus =
+    (dashboard?.cashRunwayMonths ?? 0) >= 12 ? "green" :
+    (dashboard?.cashRunwayMonths ?? 0) >= 6 ? "amber" : "red";
+
+  const riskStatus: RAGStatus =
+    (dashboard?.criticalRiskFlagCount ?? 0) === 0 ? "green" :
+    (dashboard?.criticalRiskFlagCount ?? 0) <= 3 ? "amber" : "red";
 
   if (!dashboard) {
-    return <div className="animate-pulse space-y-6">
-      <div className="h-32 bg-card rounded-lg"></div>
-      <div className="h-64 bg-card rounded-lg"></div>
-    </div>;
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="h-10 bg-muted rounded w-48" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-32 bg-muted rounded-xl" />)}
+        </div>
+        <div className="h-64 bg-muted rounded-lg" />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Command Centre</h2>
-          <p className="text-muted-foreground mt-1">High-level overview of project health and financials.</p>
-        </div>
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Command Centre</h2>
+        <p className="text-muted-foreground mt-1">Real-time health, priorities, and decisions for the Winchester clinic launch.</p>
       </div>
 
-      {/* Active Property Banner */}
+      {/* 1. Executive Health Panel */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Launch Readiness */}
+        {(() => {
+          const r = ragColors(readinessStatus);
+          return (
+            <div className={`rounded-xl border p-4 ${r.bg} ${r.border}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Launch Readiness</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+              </div>
+              <div className={`text-2xl font-bold mb-1 ${r.text}`}>{dashboard.launchReadinessPercent}%</div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                {dashboard.completedTaskCount} of {dashboard.totalTaskCount} tasks done
+              </p>
+              <a href="/project" className={`mt-3 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
+                View plan <ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
+          );
+        })()}
+
+        {/* Financial Safety */}
+        {(() => {
+          const r = ragColors(financialStatus);
+          return (
+            <div className={`rounded-xl border p-4 ${r.bg} ${r.border}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financial Safety</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+              </div>
+              <div className={`text-2xl font-bold mb-1 ${r.text}`}>
+                {unrealisticRunway ? "99+ mo" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
+              </div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                {unrealisticRunway
+                  ? "Review financial assumptions — runway may be overstated."
+                  : "Cash runway with Bedhampton income offset."}
+              </p>
+              <a href="/financials" className={`mt-3 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
+                Review <ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
+          );
+        })()}
+
+        {/* Risk Exposure */}
+        {(() => {
+          const r = ragColors(riskStatus);
+          return (
+            <div className={`rounded-xl border p-4 ${r.bg} ${r.border}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Risk Exposure</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+              </div>
+              <div className={`text-2xl font-bold mb-1 ${r.text}`}>{dashboard.criticalRiskFlagCount} critical</div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                {dashboard.highRiskTaskCount} high-risk pending. {dashboard.blockedTaskCount} blocked.
+              </p>
+              <span className={`mt-3 text-xs font-medium flex items-center gap-1 ${r.text}`}>
+                {dashboard.criticalRiskFlagCount === 0 ? "No critical blockers" : "Action required"}
+              </span>
+            </div>
+          );
+        })()}
+
+        {/* Next Decision */}
+        {(() => {
+          const r = ragColors("amber");
+          const nextTask = topPriorities[0];
+          return (
+            <div className={`rounded-xl border p-4 ${r.bg} ${r.border}`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Next Decision</span>
+                <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+              </div>
+              <div className={`text-sm font-bold mb-1 ${r.text} leading-tight`}>
+                {nextTask ? nextTask.title.substring(0, 42) + (nextTask.title.length > 42 ? "…" : "") : "All clear"}
+              </div>
+              <p className="text-xs text-muted-foreground leading-snug">
+                {topPriorities.length} priority tasks need attention.
+              </p>
+              <a href="/decisions" className={`mt-3 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
+                Log decision <ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* 2. Active Property Banner */}
       {activeProperty && (
         <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex items-center gap-4">
           <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
             <Building className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
               <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">Active Clinic Location</p>
-              <Badge className="text-xs bg-primary/15 text-primary border-primary/30">
+              <Badge className="text-xs bg-primary/15 text-primary border-primary/30 border">
                 {PIPELINE_STAGE_LABELS[activeProperty.pipelineStatus ?? "selected"] ?? "Selected"}
               </Badge>
             </div>
@@ -100,21 +301,141 @@ export default function DashboardPage() {
                 <span>Rent: <strong className="text-foreground">{formatGBP(activeProperty.monthlyRentGbp)}/mo</strong></span>
               )}
               {activeProperty.businessRatesGbp != null && (
-                <span>Rates: <strong className="text-foreground">{formatGBP(activeProperty.businessRatesGbp)}/yr</strong></span>
-              )}
-              {activeProperty.monthlyRentGbp != null && (
-                <span>Annual occupancy cost: <strong className="text-foreground">{formatGBP((activeProperty.monthlyRentGbp + (activeProperty.businessRatesGbp ?? 0) / 12) * 12)}</strong></span>
-              )}
-              {activeProperty.sqFootage != null && (
-                <span>{activeProperty.sqFootage.toFixed(0)} sq ft</span>
+                <span>Annual rates: <strong className="text-foreground">{formatGBP(activeProperty.businessRatesGbp)}</strong></span>
               )}
             </div>
           </div>
+          <Button variant="outline" size="sm" onClick={() => window.location.href = "/properties"} className="shrink-0 hidden sm:flex">
+            Properties <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
         </div>
       )}
 
-      {/* KPI Cards */}
+      {/* 3. This Week's Priorities */}
+      <Card className="shadow-sm border-border/60">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                This Week's Priorities
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Ranked by compliance impact: critical risk first, then non-negotiable high-risk</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => window.location.href = "/project"}>
+              Full plan <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {topPriorities.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground text-sm border border-dashed rounded-lg">
+              <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+              All critical and high-risk tasks complete.
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {topPriorities.map((task, i) => (
+                <div key={task.id} className="flex gap-3 p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {i + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start gap-2 flex-wrap mb-1">
+                      <span className="font-medium text-sm leading-snug">{task.title}</span>
+                      {task.isCriticalRisk && (
+                        <Badge className="text-[10px] px-1.5 py-0 h-4 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 border-0 shrink-0">Critical</Badge>
+                      )}
+                      {task.isNonNegotiable && !task.isCriticalRisk && (
+                        <Badge className="text-[10px] px-1.5 py-0 h-4 bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300 border-0 shrink-0">Required</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      <span className="font-medium text-foreground/70">{(task as any).phaseName?.replace(/Phase \d+ — /, "")}</span>
+                      {task.owner && <span>Owner: {task.owner}</span>}
+                      {(task.selectedCost ?? 0) > 0 && <span className="text-amber-600 dark:text-amber-400 font-medium">{formatGBP(task.selectedCost)}</span>}
+                    </div>
+                  </div>
+                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                    task.status === "in_progress" ? "bg-amber-400" :
+                    task.status === "blocked" ? "bg-red-500" : "bg-muted-foreground/30"
+                  }`} />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* 4. Go / No-Go Gate */}
+      <Card className="shadow-sm border-border/60">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className="w-5 h-5 text-primary" />
+            Go / No-Go Gate
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">Current project gate based on Phase 1 completion ({phase1Pct}%)</p>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
+            {GO_NO_GO_GATES.map((gate, i) => {
+              const isCompleted = i < currentGateIdx;
+              const isCurrent = i === currentGateIdx;
+              return (
+                <div key={gate.id} className="flex items-center shrink-0">
+                  <div className={`flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-colors ${
+                    isCurrent ? "bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800" :
+                    isCompleted ? "bg-emerald-50 dark:bg-emerald-950/30" : "opacity-40"
+                  }`}>
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                      isCompleted ? "bg-emerald-500" : isCurrent ? "bg-amber-500" : "bg-muted"
+                    }`}>
+                      {isCompleted ? (
+                        <CheckCircle2 className="w-4 h-4 text-white" />
+                      ) : isCurrent ? (
+                        <Clock className="w-3.5 h-3.5 text-white" />
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground font-bold">{i + 1}</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-semibold text-center leading-tight whitespace-nowrap ${
+                      isCurrent ? "text-amber-700 dark:text-amber-400" :
+                      isCompleted ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
+                    }`}>{gate.label}</span>
+                  </div>
+                  {i < GO_NO_GO_GATES.length - 1 && (
+                    <div className={`w-5 h-px mx-1 ${i < currentGateIdx ? "bg-emerald-400" : "bg-border"}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          {(() => {
+            const gate = GO_NO_GO_GATES[currentGateIdx];
+            const nextGate = GO_NO_GO_GATES[currentGateIdx + 1];
+            return gate ? (
+              <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">Current gate: {gate.label}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{gate.description}</p>
+                    {nextGate && (
+                      <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">
+                        Next gate ({nextGate.label}) requires Phase 1 at {nextGate.requiredPhase1Pct}% — currently {phase1Pct}%.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null;
+          })()}
+        </CardContent>
+      </Card>
+
+      {/* 5. KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Cost Exposure */}
         <Card className="shadow-sm border-border/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Project Cost Exposure</CardTitle>
@@ -122,14 +443,14 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-3">
               <div className="flex justify-between items-end">
-                <span className="text-sm text-muted-foreground">Current Selected</span>
+                <span className="text-sm text-muted-foreground">Selected</span>
                 <span className="text-2xl font-bold">{formatGBP(dashboard.currentSelectedCost)}</span>
               </div>
               <div className="h-px w-full bg-border" />
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div>
                   <span className="text-muted-foreground block mb-1">Low</span>
-                  <span className="font-medium">{formatGBP(dashboard.totalProjectCostLow)}</span>
+                  <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatGBP(dashboard.totalProjectCostLow)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground block mb-1">Mid</span>
@@ -144,28 +465,39 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
+        {/* Financial Health */}
         <Card className="shadow-sm border-border/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Financial Health</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Runway Remaining</span>
-                <span className="text-xl font-bold">{dashboard.cashRunwayMonths ? `${dashboard.cashRunwayMonths} months` : 'N/A'}</span>
+                <span className="text-sm text-muted-foreground">Cash Runway</span>
+                <span className="text-xl font-bold">
+                  {unrealisticRunway ? "99+ mo" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
+                </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Monthly Burn Rate</span>
-                <span className="text-lg font-medium text-destructive">{formatGBP(dashboard.monthlyBurnRate)}</span>
+                <span className="text-sm text-muted-foreground">Monthly Burn</span>
+                <span className="text-lg font-medium text-destructive">{formatGBP(dashboard.monthlyBurnRate ?? 0)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Est. 1st Year Profit</span>
-                <span className="text-lg font-medium text-primary">{formatGBP(dashboard.projectedFirstYearProfit)}</span>
+                <span className="text-sm text-muted-foreground">Est. Yr 1 Profit</span>
+                <span className={`text-lg font-medium ${(dashboard.projectedFirstYearProfit ?? 0) > 0 ? "text-primary" : "text-destructive"}`}>
+                  {formatGBP(dashboard.projectedFirstYearProfit ?? 0)}
+                </span>
+              </div>
+              <div className="border-t border-border/50 pt-2">
+                <p className="text-[10px] text-muted-foreground">
+                  Assumes Bedhampton revenue offset, realistic occupancy ramp, selected cost tier.
+                </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
+        {/* Task Execution */}
         <Card className="shadow-sm border-border/60">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Task Execution</CardTitle>
@@ -174,174 +506,207 @@ export default function DashboardPage() {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-1.5">
-                  <span className="text-muted-foreground">Overall Completion</span>
+                  <span className="text-muted-foreground">Overall progress</span>
                   <span className="font-medium">{dashboard.completedTaskCount} / {dashboard.totalTaskCount}</span>
                 </div>
-                <Progress value={(dashboard.completedTaskCount / dashboard.totalTaskCount) * 100} className="h-2" />
+                <Progress value={(dashboard.completedTaskCount / Math.max(dashboard.totalTaskCount, 1)) * 100} className="h-2" />
               </div>
-              
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="bg-destructive/5 rounded p-3 border border-destructive/10">
-                  <div className="flex items-center gap-1.5 text-destructive mb-1">
-                    <AlertCircle className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase">Blocked</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-destructive/5 rounded p-2.5 border border-destructive/10">
+                  <div className="flex items-center gap-1 text-destructive mb-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase">Blocked</span>
                   </div>
                   <span className="text-xl font-bold text-destructive">{dashboard.blockedTaskCount}</span>
                 </div>
-                <div className="bg-orange-500/5 rounded p-3 border border-orange-500/10">
-                  <div className="flex items-center gap-1.5 text-orange-600 mb-1">
-                    <AlertTriangle className="w-4 h-4" />
-                    <span className="text-xs font-bold uppercase">High Risk</span>
+                <div className="bg-orange-500/5 rounded p-2.5 border border-orange-500/10">
+                  <div className="flex items-center gap-1 text-orange-600 mb-1">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span className="text-[10px] font-bold uppercase">High Risk</span>
                   </div>
                   <span className="text-xl font-bold text-orange-600">{dashboard.highRiskTaskCount}</span>
                 </div>
               </div>
+              {paceInsight && (
+                <div className={`text-xs rounded p-2 border ${
+                  paceInsight.status === "green" ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 text-emerald-700 dark:text-emerald-400" :
+                  paceInsight.status === "amber" ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 text-amber-700 dark:text-amber-400" :
+                  "bg-red-50 dark:bg-red-950/30 border-red-200 text-red-700 dark:text-red-400"
+                }`}>
+                  {paceInsight.message}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Property Pipeline Summary */}
-      {properties && properties.length > 0 && (
+      {/* 6. Cash Required Before Opening */}
+      {phaseOpeningCash.length > 0 && dashboard.currentSelectedCost > 0 && (
         <Card className="shadow-sm border-border/60">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Property Pipeline</CardTitle>
+            <CardTitle className="text-lg">Cash Required Before Opening</CardTitle>
+            <p className="text-sm text-muted-foreground">Selected cost budget by phase — total committed spend before first patient</p>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(
-                properties.reduce<Record<string, number>>((acc, p) => {
-                  const stage = p.pipelineStatus ?? "found";
-                  acc[stage] = (acc[stage] ?? 0) + 1;
-                  return acc;
-                }, {})
-              )
-                .filter(([, count]) => count > 0)
-                .sort((a, b) => {
-                  const order = ["found","interesting","brochure_requested","viewing_booked","viewed","under_review","due_diligence","heads_of_terms","negotiating","selected","rejected"];
-                  return order.indexOf(a[0]) - order.indexOf(b[0]);
-                })
-                .map(([stage, count]) => (
-                  <div key={stage} className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-card text-xs">
-                    <span className="text-muted-foreground">{PIPELINE_STAGE_LABELS[stage] ?? stage}</span>
-                    <span className="font-bold">{count}</span>
+            <div className="space-y-2.5">
+              {phaseOpeningCash.map((p, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground w-40 shrink-0 truncate">{p.label}</span>
+                  <div className="flex-1 h-5 bg-muted rounded overflow-hidden">
+                    <div
+                      className="h-full bg-primary/65 rounded transition-all duration-700"
+                      style={{ width: p.selected > 0 ? `${Math.min((p.selected / dashboard.currentSelectedCost) * 100, 100)}%` : "0%" }}
+                    />
                   </div>
-                ))
-              }
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border bg-muted/50 text-xs ml-auto">
-                <span className="text-muted-foreground">Total</span>
-                <span className="font-bold">{properties.length}</span>
+                  <span className="text-sm font-semibold w-20 text-right shrink-0">
+                    {p.selected > 0 ? formatGBP(p.selected) : <span className="text-muted-foreground font-normal">—</span>}
+                  </span>
+                </div>
+              ))}
+              <div className="flex items-center gap-3 border-t border-border pt-2.5 mt-1">
+                <span className="text-xs font-bold w-40 shrink-0">Total before opening</span>
+                <div className="flex-1" />
+                <span className="text-lg font-bold w-20 text-right shrink-0">{formatGBP(dashboard.currentSelectedCost)}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Cashflow Chart */}
+      {/* 7. Cashflow Chart */}
       <Card className="shadow-sm border-border/60">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardHeader className="flex flex-row items-start justify-between gap-4 pb-2">
           <div>
             <CardTitle className="text-lg">Projected Cashflow</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">12-month net cashflow projection</p>
+            <p className="text-sm text-muted-foreground mt-0.5">12-month net cashflow with occupancy ramp from opening</p>
           </div>
-          <div className="flex bg-muted p-1 rounded-lg">
-            {(["conservative", "realistic", "aggressive"] as const).map(s => (
+          <div className="flex bg-muted p-1 rounded-lg flex-wrap gap-1 shrink-0">
+            {(["conservative", "realistic", "aggressive", "stress_test"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setScenario(s)}
-                className={`px-3 py-1 text-xs font-medium rounded-md capitalize transition-colors ${scenario === s ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors whitespace-nowrap ${
+                  scenario === s
+                    ? s === "stress_test"
+                      ? "bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 shadow-sm"
+                      : "bg-background shadow-sm text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                {s}
+                {SCENARIO_LABELS[s]}
               </button>
             ))}
           </div>
         </CardHeader>
+        {scenario === "stress_test" && (
+          <div className="px-6 pb-2">
+            <div className="rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+              <strong>Stress test:</strong> 5% opening occupancy, slow 10-month ramp to below-conservative level. Shows worst-case cashflow exposure — the minimum operating buffer you need to survive.
+            </div>
+          </div>
+        )}
         <CardContent>
-          <div className="h-[300px] w-full mt-4">
+          <div className="h-[280px] w-full mt-2">
             {cashflow && cashflow.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={cashflow} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorNet" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      <stop offset="5%" stopColor={scenario === "stress_test" ? "#ef4444" : "hsl(var(--primary))"} stopOpacity={0.2} />
+                      <stop offset="95%" stopColor={scenario === "stress_test" ? "#ef4444" : "hsl(var(--primary))"} stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="monthLabel" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} dy={10} />
-                  <YAxis tickFormatter={(val) => `£${(val/1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip 
-                    formatter={(value: number) => [formatGBP(value), 'Net Cashflow']}
-                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: 4 }}
-                    contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))', boxShadow: 'var(--shadow-sm)' }}
+                  <XAxis dataKey="monthLabel" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} dy={10} />
+                  <YAxis tickFormatter={(val) => `£${(val / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip
+                    formatter={(value: number) => [formatGBP(value), "Net Cashflow"]}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
+                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", boxShadow: "0 1px 6px 0 rgb(0 0 0 / 0.1)" }}
                   />
-                  <Area type="monotone" dataKey="netCashflow" stroke="hsl(var(--primary))" strokeWidth={2} fillOpacity={1} fill="url(#colorNet)" />
+                  <Area
+                    type="monotone"
+                    dataKey="netCashflow"
+                    stroke={scenario === "stress_test" ? "#ef4444" : "hsl(var(--primary))"}
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorNet)"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                No financial data available to project.
+                No financial data available. Set up a financial model first.
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Burndown Chart */}
+      {/* 8. Burndown */}
       <Card className="shadow-sm border-border/60">
         <CardHeader className="pb-2">
-          <div>
-            <CardTitle className="text-lg">Task Burndown</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">16-week ideal completion trajectory vs actual remaining tasks</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-lg">Task Burndown</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">16-week ideal trajectory vs actual remaining tasks</p>
+            </div>
+            {paceInsight && (
+              <Badge className={`text-xs shrink-0 ${
+                paceInsight.status === "green" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" :
+                paceInsight.status === "amber" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" :
+                "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300"
+              } border-0`}>
+                {paceInsight.status === "green" ? "On track" : paceInsight.status === "amber" ? "Slightly behind" : "Behind schedule"}
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent>
-          <div className="h-[260px] w-full mt-4">
+          <div className="h-[220px] w-full mt-2">
             {burndown && burndown.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={burndown} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                  <XAxis dataKey="weekLabel" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} dy={8} interval={3} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
+                  <XAxis dataKey="weekLabel" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={8} interval={3} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip
-                    formatter={(value: number, name: string) => [value, name === 'idealRemaining' ? 'Ideal Remaining' : 'Actual Remaining']}
-                    labelStyle={{ color: 'hsl(var(--foreground))', fontWeight: 600, marginBottom: 4 }}
-                    contentStyle={{ borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+                    formatter={(value: number, name: string) => [value, name === "idealRemaining" ? "Ideal" : "Actual"]}
+                    labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
+                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))" }}
                   />
-                  <Legend
-                    formatter={(value) => value === 'idealRemaining' ? 'Ideal' : 'Actual'}
-                    wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
-                  />
+                  <Legend formatter={(v) => v === "idealRemaining" ? "Ideal" : "Actual"} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                   <Line type="monotone" dataKey="idealRemaining" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
                   <Line type="monotone" dataKey="remainingTasks" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">
-                No task data available for burndown.
-              </div>
+              <div className="w-full h-full flex items-center justify-center text-muted-foreground text-sm">No task data available.</div>
             )}
           </div>
         </CardContent>
       </Card>
 
+      {/* 9. Phase Execution + Active Risks */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Phase Progress */}
         <Card className="lg:col-span-2 shadow-sm border-border/60">
           <CardHeader>
             <CardTitle className="text-lg">Phase Execution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-5">
-              {dashboard.phaseProgress.map(phase => (
+            <div className="space-y-4">
+              {dashboard.phaseProgress.map((phase) => (
                 <div key={phase.phaseId}>
                   <div className="flex justify-between text-sm mb-1.5">
-                    <span className="font-medium text-foreground">{phase.phaseName}</span>
-                    <span className="text-muted-foreground">{phase.completedTasks} / {phase.totalTasks} ({formatPercent(phase.percentComplete)})</span>
+                    <span className="font-medium">{phase.phaseName}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {phase.completedTasks} / {phase.totalTasks} ({formatPercent(phase.percentComplete)})
+                    </span>
                   </div>
                   <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${phase.percentComplete === 100 ? 'bg-primary' : 'bg-primary/70'}`} 
+                    <div
+                      className={`h-full transition-all duration-500 rounded-full ${phase.percentComplete === 100 ? "bg-emerald-500" : "bg-primary"}`}
                       style={{ width: `${phase.percentComplete}%` }}
                     />
                   </div>
@@ -351,40 +716,45 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Risk Flags */}
         <Card className="shadow-sm border-border/60">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-orange-500" />
+              <ShieldAlert className="w-5 h-5 text-orange-500" />
               Active Risks
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
               {risks && risks.length > 0 ? (
                 risks.map((risk, i) => (
-                  <div key={i} className={`p-3 rounded-lg border flex gap-3 ${
-                    risk.level === 'critical' ? 'bg-destructive/5 border-destructive/20' : 'bg-orange-500/5 border-orange-500/20'
-                  }`}>
-                    {risk.level === 'critical' ? (
+                  <div
+                    key={i}
+                    className={`p-3 rounded-lg border flex gap-2.5 ${
+                      risk.level === "critical"
+                        ? "bg-destructive/5 border-destructive/20"
+                        : "bg-orange-500/5 border-orange-500/15"
+                    }`}
+                  >
+                    {risk.level === "critical" ? (
                       <AlertCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
                     ) : (
                       <AlertTriangle className="w-4 h-4 text-orange-600 shrink-0 mt-0.5" />
                     )}
                     <div>
-                      <h4 className={`text-sm font-semibold ${risk.level === 'critical' ? 'text-destructive' : 'text-orange-700'}`}>
+                      <h4 className={`text-xs font-semibold uppercase tracking-wide ${risk.level === "critical" ? "text-destructive" : "text-orange-700 dark:text-orange-400"}`}>
                         {risk.category}
                       </h4>
-                      <p className="text-sm text-foreground mt-0.5">{risk.message}</p>
+                      <p className="text-xs text-foreground mt-0.5 leading-snug">{risk.message}</p>
                       {risk.taskTitle && (
-                        <p className="text-xs text-muted-foreground mt-1 truncate">Task: {risk.taskTitle}</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 truncate">→ {risk.taskTitle}</p>
                       )}
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="text-center py-6 text-muted-foreground text-sm border border-dashed rounded-lg">
-                  No active risk flags detected.
+                <div className="text-center py-8 text-muted-foreground text-sm border border-dashed rounded-lg">
+                  <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500" />
+                  No active risk flags.
                 </div>
               )}
             </div>
