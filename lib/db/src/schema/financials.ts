@@ -34,10 +34,13 @@ export const financialsTable = pgTable("financial_models", {
   aggressiveOccupancyPercent: real("aggressive_occupancy_percent").notNull().default(85),
   repeatBookingRatePercent: real("repeat_booking_rate_percent").notNull().default(60),
   membershipRevenueGbp: real("membership_revenue_gbp").notNull().default(0),
-  // Bedhampton (existing clinic) expansion data
+  // Winchester self-funding target — the monthly net that triggers Bedhampton closure
+  wincSelfFundingTargetGbp: real("winc_self_funding_target_gbp").notNull().default(12000),
+  // Bedhampton — temporary support clinic (separate patient base, will close)
   existingClinicRevenueGbp: real("existing_clinic_revenue_gbp").notNull().default(0),
-  bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(3500),
-  cannibalPercent: real("cannibal_percent").notNull().default(15),
+  bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(3200),
+  // cannibal_percent kept in DB for backward compat but no longer used (set to 0)
+  cannibalPercent: real("cannibal_percent").notNull().default(0),
   // Owner / personal planning
   ownerDrawingsGbp: real("owner_drawings_gbp").notNull().default(0),
   runwaySavingsGbp: real("runway_savings_gbp").notNull().default(0),
