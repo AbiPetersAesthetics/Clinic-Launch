@@ -21,6 +21,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend, ReferenceLine,
@@ -243,12 +244,10 @@ export default function FinancialsPage() {
 
       {/* ─── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Expansion Modelling</h2>
-          <p className="text-muted-foreground mt-1">
-            Winchester ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when Winchester hits the target.
-          </p>
-        </div>
+        <PageHeader
+          title="Expansion Modelling"
+          subtitle="Winchester ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when Winchester hits the target."
+        />
         {cr?.scenarioNote && (
           <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
             <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />

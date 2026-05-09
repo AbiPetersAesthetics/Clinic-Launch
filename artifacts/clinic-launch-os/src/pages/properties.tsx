@@ -124,6 +124,7 @@ import {
   Map,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/page-header";
 
 const PropertyMapView = lazy(() => import("@/components/property-map-view"));
 
@@ -2619,16 +2620,11 @@ export default function PropertiesPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold">Property Pipeline</h1>
-          <p className="text-sm text-muted-foreground">
-            {nonRejected.length} active · {rejected.length} rejected
-            {activeProperty ? ` · Active: ${activeProperty.address ?? "Property selected"}` : ""}
-          </p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
+      <PageHeader
+        title="Property Pipeline"
+        subtitle={`${nonRejected.length} active · ${rejected.length} rejected${activeProperty ? ` · Active: ${activeProperty.address ?? "Property selected"}` : ""}`}
+        action={
+          <div className="flex gap-2 flex-wrap">
           {compareMode ? (
             <>
               {compareSelected.size >= 2 && (
@@ -2654,7 +2650,8 @@ export default function PropertiesPage() {
             </>
           )}
         </div>
-      </div>
+        }
+      />
 
       {/* Active Property Banner */}
       {activeProperty && (

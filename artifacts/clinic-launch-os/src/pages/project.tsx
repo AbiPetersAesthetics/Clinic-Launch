@@ -50,6 +50,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -286,10 +287,10 @@ export default function ProjectPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Project Plan</h2>
-        <p className="text-muted-foreground mt-1">Set your key dates, then manage phases and tasks.</p>
-      </div>
+      <PageHeader
+        title="Project Plan"
+        subtitle="Set your key dates, then manage phases and tasks."
+      />
 
       {criticalRiskCount > 0 && (
         <div className="bg-destructive/10 border-l-4 border-destructive p-4 rounded-r-lg flex items-start gap-3">

@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   ChevronRight,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import {
   AreaChart,
   Area,
@@ -190,11 +191,10 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Command Centre</h2>
-        <p className="text-muted-foreground mt-1">Real-time health, priorities, and decisions for the Winchester clinic launch.</p>
-      </div>
+      <PageHeader
+        title="Command Centre"
+        subtitle="Real-time health, priorities, and decisions for the Winchester clinic launch."
+      />
 
       {/* 1. Executive Health Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

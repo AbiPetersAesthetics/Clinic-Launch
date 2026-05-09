@@ -34,6 +34,7 @@ import {
   Clock,
   ExternalLink,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { useQueryClient } from "@tanstack/react-query";
 
 const PROJECT_ID = 1;
@@ -203,27 +204,16 @@ export default function OptimisationPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cost Optimisation Engine</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Automated analysis of cost variance — click{" "}
-            <ExternalLink className="w-3 h-3 inline-block" />{" "}
-            on any task to jump directly to it in the Project Plan
-          </p>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          disabled={isFetching}
-          className="gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
-      </div>
+      <PageHeader
+        title="Cost Optimisation"
+        subtitle="Automated analysis of cost variance — tap any task row to jump directly to it in the Project Plan."
+        action={
+          <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching} className="gap-2">
+            <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        }
+      />
 
       {isLoading ? (
         <div className="space-y-3">

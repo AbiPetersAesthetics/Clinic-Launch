@@ -30,6 +30,7 @@ import {
   ClipboardList,
   Calendar,
 } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 
 const PROJECT_ID = 1;
 
@@ -231,11 +232,10 @@ export default function CompliancePage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">CQC & Clinical Compliance</h2>
-        <p className="text-muted-foreground mt-1">Track every regulatory requirement before the clinic can legally open.</p>
-      </div>
+      <PageHeader
+        title="CQC & Compliance"
+        subtitle="Track every regulatory requirement before the clinic can legally open."
+      />
 
       {/* Score + CQC Warning */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -40,6 +40,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 
 const PROJECT_ID = 1;
@@ -175,17 +176,16 @@ export default function DecisionsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Decision Log</h1>
-          <p className="text-sm text-muted-foreground mt-1">Record and track strategic decisions throughout your clinic launch</p>
-        </div>
-        <Button onClick={openNew} size="sm" className="gap-2">
-          <Plus className="w-4 h-4" />
-          Log Decision
-        </Button>
-      </div>
+      <PageHeader
+        title="Decision Log"
+        subtitle="Record and track strategic decisions throughout your clinic launch."
+        action={
+          <Button onClick={openNew} size="sm" className="gap-2">
+            <Plus className="w-4 h-4" />
+            Log Decision
+          </Button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
