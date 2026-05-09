@@ -64,16 +64,14 @@ router.get("/tasks/:id", async (req, res) => {
   return res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
 });
 
-router.put("/tasks/:id", async (req, res) => {
+async function handleTaskUpdate(req: import("express").Request, res: import("express").Response) {
   const id = parseInt(req.params.id);
 
-  // Fetch existing record first so partial updates always have full cost context
   const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
   if (!existing) return res.status(404).json({ error: "Not found" });
 
   const body = req.body;
 
-  // Merge incoming values over existing ones for cost fields
   const tier = body.costTier ?? existing.costTier;
   const low = body.costLow ?? existing.costLow;
   const mid = body.costMid ?? existing.costMid;
@@ -92,7 +90,11 @@ router.put("/tasks/:id", async (req, res) => {
     .returning();
   if (!task) return res.status(404).json({ error: "Not found" });
   return res.json({ ...task, dependencies: task.dependencies ? JSON.parse(task.dependencies) : [] });
-});
+}
+
+router.put("/tasks/:id", handleTaskUpdate);
+
+router.patch("/tasks/:id", handleTaskUpdate);
 
 router.delete("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);

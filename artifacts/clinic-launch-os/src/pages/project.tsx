@@ -234,7 +234,8 @@ export default function ProjectPage() {
                       <TableRow
                         key={task.id}
                         id={`task-${task.id}`}
-                        className={highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5 transition-colors" : ""}
+                        className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
+                        onClick={() => setEditingTask(task)}
                       >
                         <TableCell>
                           <div className="font-medium text-foreground">{task.title}</div>
@@ -262,7 +263,7 @@ export default function ProjectPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Select
                             value={task.status}
                             onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}
@@ -284,7 +285,7 @@ export default function ProjectPage() {
                             {task.riskLevel}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <div className="flex flex-col gap-1 w-max">
                             <div className="flex rounded-md overflow-hidden border border-border/60">
                               <button
@@ -330,7 +331,7 @@ export default function ProjectPage() {
                         <TableCell className="text-sm text-muted-foreground">
                           {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
                         </TableCell>
-                        <TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -394,13 +395,23 @@ function TaskEditSheet({
   const [files, setFiles] = useState<string[]>([]);
   const [newFile, setNewFile] = useState("");
   const [dependencies, setDependencies] = useState<number[]>([]);
+  const [costTier, setCostTier] = useState<"low" | "mid" | "high">("mid");
+  const [costLow, setCostLow] = useState(0);
+  const [costMid, setCostMid] = useState(0);
+  const [costHigh, setCostHigh] = useState(0);
 
   useEffect(() => {
     if (task) {
       setFiles(parseFiles(task.files));
       setDependencies(task.dependencies ?? []);
+      setCostTier((task.costTier as "low" | "mid" | "high") ?? "mid");
+      setCostLow(task.costLow ?? 0);
+      setCostMid(task.costMid ?? 0);
+      setCostHigh(task.costHigh ?? 0);
     }
   }, [task?.id]);
+
+  const previewSelectedCost = costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
 
   const allTasks = allPhases.flatMap((p) =>
     (p.tasks ?? []).filter((t) => t.id !== task?.id).map((t) => ({ id: t.id, title: t.title, phaseName: p.name }))
@@ -436,9 +447,10 @@ function TaskEditSheet({
       contractor: formData.get("contractor") as string,
       supplier: formData.get("supplier") as string,
       notes: formData.get("notes") as string,
-      costLow: Number(formData.get("costLow") || 0),
-      costMid: Number(formData.get("costMid") || 0),
-      costHigh: Number(formData.get("costHigh") || 0),
+      costTier,
+      costLow,
+      costMid,
+      costHigh,
       dueDate: (formData.get("dueDate") as string) || undefined,
       durationDays: Number(formData.get("durationDays") || 0),
       riskLevel: formData.get("riskLevel") as UpdateTaskBodyRiskLevel,
@@ -511,19 +523,66 @@ function TaskEditSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="costLow">Low Cost (£)</Label>
-                  <Input id="costLow" name="costLow" type="number" defaultValue={task.costLow} className="mt-1" />
+              <div className="space-y-3">
+                <Label>Cost Tier</Label>
+                <div className="flex rounded-md overflow-hidden border border-border/60">
+                  {(["low", "mid", "high"] as const).map((tier, i) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => setCostTier(tier)}
+                      className={`flex-1 py-2 text-xs font-semibold transition-colors capitalize ${i > 0 ? "border-l border-border/60" : ""} ${
+                        costTier === tier
+                          ? tier === "low"
+                            ? "bg-primary/20 text-primary"
+                            : tier === "mid"
+                            ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                            : "bg-destructive/20 text-destructive"
+                          : "bg-card text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {tier.toUpperCase()}
+                    </button>
+                  ))}
                 </div>
-                <div>
-                  <Label htmlFor="costMid">Mid Cost (£)</Label>
-                  <Input id="costMid" name="costMid" type="number" defaultValue={task.costMid} className="mt-1" />
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label htmlFor="costLow" className="text-xs text-muted-foreground">Low (£)</Label>
+                    <Input
+                      id="costLow"
+                      type="number"
+                      value={costLow}
+                      onChange={(e) => setCostLow(Number(e.target.value))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="costMid" className="text-xs text-muted-foreground">Mid (£)</Label>
+                    <Input
+                      id="costMid"
+                      type="number"
+                      value={costMid}
+                      onChange={(e) => setCostMid(Number(e.target.value))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="costHigh" className="text-xs text-muted-foreground">High (£)</Label>
+                    <Input
+                      id="costHigh"
+                      type="number"
+                      value={costHigh}
+                      onChange={(e) => setCostHigh(Number(e.target.value))}
+                      className="mt-1 h-8 text-sm"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="costHigh">High Cost (£)</Label>
-                  <Input id="costHigh" name="costHigh" type="number" defaultValue={task.costHigh} className="mt-1" />
-                </div>
+                {(costLow > 0 || costMid > 0 || costHigh > 0) && (
+                  <div className="flex items-center justify-between px-3 py-2 bg-muted rounded-md">
+                    <span className="text-xs text-muted-foreground">Selected cost preview</span>
+                    <span className="text-sm font-semibold">{formatGBP(previewSelectedCost)}</span>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
