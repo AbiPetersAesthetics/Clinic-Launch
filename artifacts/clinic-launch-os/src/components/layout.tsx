@@ -15,6 +15,7 @@ import {
   BookOpen,
   Zap,
   ShieldCheck,
+  Network,
   ChevronDown,
   ChevronUp,
   X,
@@ -138,6 +139,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
+    { href: "/franchise", label: "Franchise Model", icon: Network },
   ];
 
   return (
