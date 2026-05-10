@@ -1,0 +1,270 @@
+Update the existing Franchise Model section of my Clinic Launch OS app to make it more accurate, more realistic, and more suitable for a UK nurse-led aesthetics clinic.
+
+Use the existing design style, layout, colours, rounded cards, tabs, mobile-first spacing, and plain-English tone already in the app. Do not redesign the whole app. Improve the current Franchise Model page only.
+
+CONTEXT
+This app is for Abi Peters Aesthetics, currently moving toward a Winchester clinic. The franchise section should not imply we are ready to franchise now. It should position franchising as a future strategic option only after Winchester is profitable, repeatable, legally compliant, and operationally documented.
+
+IMPORTANT STRATEGIC POSITION
+The current page is too optimistic and too simplistic. Update it to reflect this core message:
+
+“Do not franchise the clinic yet. First prove Winchester works. Then build the operating system. Then decide whether the best route is franchising, joint ventures, licensing, company-owned clinics, or ClinicSurge OS.”
+
+Add this as the main conclusion near the top.
+
+RESEARCH TO BAKE INTO THE PAGE
+Use these researched points throughout the content:
+
+1. Aesthetics franchising exists, but the safest models are usually either:
+   - lower clinical complexity models such as facials, skin, laser, memberships and retail
+   - tightly controlled partnership/JV models
+   - company-owned multi-site models
+
+2. Examples to mention in a “Market Examples” section:
+   - Laser Clinics UK / Laser Clinics Australia: franchise/partnership style model, often closer to a 50:50 partnership than a light-touch franchise.
+   - FACE FOUNDRIÉ: US facial/skin bar franchise, membership-led, lower clinical complexity.
+   - GLO30: skincare membership/franchise model.
+   - dermani MEDSPA: US medspa franchise with medical supervision.
+   - BodyBrite: laser/beauty franchise with lower-cost formats.
+   - Thérapie Clinic: not a franchise, but a useful company-owned multi-site comparator.
+
+3. UK regulation is fragmented and tightening:
+   - England does not currently regulate many non-surgical cosmetic treatments through CQC when they are purely cosmetic, but that does not mean low risk.
+   - CQC applies where regulated activities are carried out, such as surgical procedures or treatment of disease, disorder or injury.
+   - England is moving toward a licensing regime for non-surgical cosmetic procedures.
+   - Scotland, Wales and Northern Ireland may have different rules, especially around laser/IPL and non-surgical cosmetic procedures.
+   - Any future franchise model must have nation-specific compliance checks.
+
+4. Medicines and prescribing risks:
+   - Prescription-only medicines must not be advertised directly to the public.
+   - Avoid product-led marketing around Botox/botulinum toxin.
+   - Marketing should use service-led language such as “anti-wrinkle consultations” or “lines and wrinkles treatment options”.
+   - Nurse/midwife prescribers are required to consult face-to-face before prescribing elective non-surgical cosmetic medicines from June 2025.
+   - A franchise model must not rely on remote prescribing shortcuts.
+
+5. Clinical governance must be central:
+   - approved prescribers
+   - treatment authority matrix
+   - incident reporting
+   - complication pathways
+   - consent process
+   - record keeping
+   - audit rights
+   - approved suppliers
+   - batch/lot traceability
+   - insurance checks
+   - complaint handling
+   - mandatory training and re-certification
+
+6. A better scale route may be:
+   - company-owned Winchester proof site
+   - second company-owned or closely controlled proof site
+   - then pilot a JV/partnership unit
+   - only then consider franchise rollout
+
+7. ClinicSurge OS may actually be the higher-value scalable asset:
+   - GHL/CRM setup
+   - lead handling
+   - automations
+   - patient conversion
+   - reporting
+   - marketing systems
+   - launch planning
+   - retention workflows
+   - this could scale faster and with less clinical risk than franchising physical clinics.
+
+CHANGES TO MAKE
+
+1. Update the top intro
+Replace any text that suggests franchising is the obvious goal with:
+“Franchising is a possible future route, not the current plan. Winchester must first become a profitable, repeatable clinic that works without founder dependency.”
+
+2. Add a big warning card
+Title: “Current recommendation”
+Text:
+“Do not sell franchises yet. Build Winchester first, document the operating system, prove the numbers, then choose the safest scaling model.”
+
+Use amber/yellow styling, not red panic styling.
+
+3. Update readiness scoring
+Current readiness is too basic. Change scoring to include:
+- Winchester clinic proven
+- second proof site proven
+- founder dependency reduced
+- clinical governance documented
+- compliance map completed
+- operations manual completed
+- financial model proven
+- marketing engine repeatable
+- supplier/product controls documented
+- franchise/legal framework drafted
+- ClinicSurge OS transferable
+
+Make the unlock threshold higher:
+- 0–39 = foundation stage
+- 40–69 = operating system stage
+- 70–84 = pilot/JV ready
+- 85+ = franchise evaluation ready
+
+Do not say “franchise ready” at 70%. At 70%, say “pilot model ready”.
+
+4. Add a “Best route for us?” comparison section
+Create cards comparing:
+A. Company-owned expansion
+Pros: maximum control, keeps profit, safest clinically
+Cons: capital intensive, slower
+Best for: Winchester + one more proof site
+
+B. Joint venture / 50:50 partnership
+Pros: shared capital, motivated operator, more control than franchise
+Cons: more complex agreements, shared profit
+Best for: first external location after proof
+
+C. Classic franchise
+Pros: faster rollout, lower capital
+Cons: clinical risk, brand risk, harder control
+Best for: later only, after 2+ proof sites
+
+D. ClinicSurge OS licensing
+Pros: lower clinical risk, scalable, recurring income, uses our systems
+Cons: less control over clinics, lower brand visibility
+Best for: earlier monetisation and B2B scaling
+
+Highlight “ClinicSurge OS” as a serious alternative, not a side note.
+
+5. Fix the financial model
+The current numbers are too confident. Add low/base/high scenarios.
+
+Keep editable inputs but add caution labels:
+- franchise fee: default £20,000, range £15,000–£35,000
+- training/onboarding fee: default £5,000
+- royalty: default 6%, range 5–8%
+- marketing levy: default 2%, range 1–3%
+- tech/support fee: default £250/month
+- launch investment: default should not pretend every clinic costs £125k exactly; add a range:
+  - light skin/laser studio: £150k–£300k
+  - laser/skin + limited injectables: £250k–£500k
+  - full medical aesthetics clinic: £450k–£900k
+
+6. Add net franchisor profit warning
+Under the “What You Earn” tab, explain:
+“Royalty income is not pure profit. From this you must pay for support, training, audits, compliance, legal, marketing management, software, franchisee support and dispute handling.”
+
+Add estimated franchisor support cost per clinic:
+- low: £500/month
+- base: £1,250/month
+- high: £2,500/month
+
+Show:
+Gross monthly income per franchisee
+Less estimated support cost
+Estimated net contribution
+
+7. Add “treatment stack” section
+Create three columns:
+
+GREEN — easier to replicate
+- facials
+- skin consultations
+- peels
+- microneedling
+- retail skincare
+- memberships
+- laser/IPL where locally compliant
+
+AMBER — only with central governance
+- injectables
+- skin boosters
+- polynucleotides
+- prescription-linked services
+- advanced device treatments
+
+RED — do not franchise yet
+- anything requiring founder-level judgement
+- poorly documented treatments
+- high-risk procedures
+- treatments without clear complication pathways
+- anything where compliance is uncertain
+
+8. Add “Franchise legal/compliance checklist”
+Include:
+- franchise agreement
+- operations manual
+- clinical governance manual
+- marketing compliance manual
+- approved supplier list
+- prescriber approval process
+- insurance minimums
+- data protection/DPIA
+- territory rules
+- audit rights
+- step-in/suspension rights
+- complaint and incident process
+- exit/debranding process
+
+9. Add “Market Examples” tab or section
+Use plain English cards:
+- Laser Clinics: partnership/franchise-style, tighter control
+- FACE FOUNDRIÉ: facial bar, membership-led, lower clinical complexity
+- GLO30: monthly skincare model
+- dermani MEDSPA: medspa franchise with medical oversight
+- BodyBrite: laser/beauty franchise
+- Thérapie Clinic: company-owned multi-site comparator
+
+Add a note:
+“These are not direct copies for Abi Peters Aesthetics. They show that scalable aesthetics models usually simplify the clinical offer, centralise systems, or retain tighter ownership control.”
+
+10. Update the income projections
+Current 1/3/5/10 clinic projections can stay, but:
+- label them as “illustrative only”
+- include low/base/high revenue assumptions
+- include support cost deductions
+- separate:
+  - joining fees
+  - gross recurring income
+  - estimated support costs
+  - estimated net contribution
+- add a toggle between Classic Franchise and JV/Partnership model if possible
+
+11. Add a decision gate section
+Title: “When would we actually consider franchising?”
+Checklist:
+- Winchester trading profitably for 12 months
+- second site or controlled pilot proven
+- founder no longer needed day to day
+- treatment outcomes audited
+- compliance file complete
+- repeatable lead generation proven
+- CRM and automations transferable
+- team training system created
+- financial model works after royalty/support costs
+- legal agreement drafted by franchise solicitor
+- clinical governance reviewed by specialist adviser
+
+12. Add a final strategic conclusion
+Text:
+“The real asset may not be a franchise network yet. The real asset is the operating system being built around Abi Peters Aesthetics: marketing, lead handling, CRM, patient journey, reporting, pricing, retention and launch management. Winchester should be used to prove the clinic model. ClinicSurge OS could then become the scalable B2B product, while physical franchising remains a later-stage option.”
+
+STYLE
+Keep the tone:
+- plain English
+- direct
+- strategic
+- beginner-friendly
+- no legal jargon unless explained
+- calm, not hypey
+
+Remove or soften any language that suggests franchising is easy passive income.
+
+BUG/UX IMPROVEMENTS
+- Make all cards fully readable on mobile.
+- Avoid important text being hidden behind the mobile browser bottom bar.
+- Add padding at the bottom of long pages.
+- Keep tabs sticky only if they do not cover content.
+- Ensure currency values use £ and commas.
+- Ensure percentages recalculate correctly.
+- Ensure all inputs persist in local state.
+- Ensure readiness score updates live from the actual checklist/progress data.
+- Keep warning/risk cards visually distinct but not overwhelming.
+
+Do not delete the existing franchise section. Upgrade it into a more realistic strategic planning module.
