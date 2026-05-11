@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetPhasesWithTasks,
@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +57,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Slider } from "@/components/ui/slider";
 
 const PROJECT_ID = 1;
 
@@ -74,6 +75,450 @@ const RISK_COLORS: Record<string, string> = {
   high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
   critical: "bg-destructive/20 text-destructive",
 };
+
+const PHASE_PALETTE = [
+  { bar: "#6d28d9", bg: "#f5f3ff", border: "#c4b5fd" },
+  { bar: "#1d4ed8", bg: "#eff6ff", border: "#93c5fd" },
+  { bar: "#0e7490", bg: "#ecfeff", border: "#67e8f9" },
+  { bar: "#059669", bg: "#ecfdf5", border: "#6ee7b7" },
+  { bar: "#b45309", bg: "#fffbeb", border: "#fcd34d" },
+  { bar: "#be123c", bg: "#fff1f2", border: "#fda4af" },
+  { bar: "#4338ca", bg: "#eef2ff", border: "#a5b4fc" },
+];
+
+const GANTT_NAME_W = 264;
+const GANTT_ROW_H = 34;
+const GANTT_PHASE_H = 30;
+const GANTT_HEADER_H = 42;
+const GANTT_LS_KEY = "clinic_gantt_offsets_v1";
+
+interface GanttProps {
+  phases: PhaseWithTasks[];
+  startDateObj: Date | null;
+  updateTask: ReturnType<typeof useUpdateTask>;
+  invalidateAfterTaskChange: () => void;
+}
+
+function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange }: GanttProps) {
+  const [dayWidth, setDayWidth] = useState(9);
+  // taskOffsets: absolute day offset from project day-0 for each task (overrides computed phase start)
+  const [taskOffsets, setTaskOffsets] = useState<Record<number, number>>({});
+  // localDurations: optimistic duration updates before API confirms
+  const [localDurations, setLocalDurations] = useState<Record<number, number>>({});
+  const [collapsedPhases, setCollapsedPhases] = useState<Set<number>>(new Set());
+  const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+  const dragRef = useRef<{
+    taskId: number;
+    type: "move" | "resize";
+    startX: number;
+    origValue: number;
+    phaseStart: number;
+  } | null>(null);
+
+  // Load offsets from localStorage on mount
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem(GANTT_LS_KEY);
+      if (s) setTaskOffsets(JSON.parse(s));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist offsets whenever they change
+  useEffect(() => {
+    try { localStorage.setItem(GANTT_LS_KEY, JSON.stringify(taskOffsets)); } catch { /* ignore */ }
+  }, [taskOffsets]);
+
+  const sortedPhases = useMemo(
+    () => [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)),
+    [phases],
+  );
+
+  const getTaskDuration = useCallback(
+    (t: LaunchTask) => localDurations[t.id] ?? t.durationDays ?? 1,
+    [localDurations],
+  );
+
+  // Phase start day = sum of max-duration of all preceding phases.
+  // A task's position within the Gantt = taskOffsets[id] if set, else phaseStartDay[phaseId].
+  const phaseStartDays = useMemo<Record<number, number>>(() => {
+    const map: Record<number, number> = {};
+    let cursor = 0;
+    for (const phase of sortedPhases) {
+      map[phase.id] = cursor;
+      // phase duration = max end-day of any of its tasks (relative to cursor)
+      const phaseEnd = phase.tasks?.reduce((maxEnd, t) => {
+        const tAbsStart = taskOffsets[t.id] ?? cursor;
+        const tEnd = tAbsStart + getTaskDuration(t) - cursor;
+        return Math.max(maxEnd, tEnd);
+      }, 0) ?? 0;
+      cursor += Math.max(1, phaseEnd);
+    }
+    return map;
+  }, [sortedPhases, taskOffsets, getTaskDuration]);
+
+  const totalDays = useMemo(() => {
+    let max = 90;
+    for (const phase of sortedPhases) {
+      const phaseStart = phaseStartDays[phase.id] ?? 0;
+      for (const t of phase.tasks ?? []) {
+        const absStart = taskOffsets[t.id] ?? phaseStart;
+        max = Math.max(max, absStart + getTaskDuration(t));
+      }
+    }
+    return max + 28;
+  }, [sortedPhases, phaseStartDays, taskOffsets, getTaskDuration]);
+
+  const baseDate = startDateObj ?? new Date();
+
+  const weekMarkers = useMemo(() => {
+    const marks: { day: number; label: string }[] = [];
+    for (let d = 0; d <= totalDays; d += 7) {
+      const date = addDays(baseDate, d);
+      marks.push({
+        day: d,
+        label: date.toLocaleDateString("en-GB", { day: "numeric", month: "short" }),
+      });
+    }
+    return marks;
+  }, [totalDays, baseDate]);
+
+  const monthMarkers = useMemo(() => {
+    const marks: { day: number; label: string }[] = [];
+    const start = new Date(baseDate);
+    start.setDate(1);
+    let d = Math.ceil((start.getTime() - baseDate.getTime()) / 86400000);
+    while (d <= totalDays) {
+      const date = addDays(baseDate, d);
+      marks.push({
+        day: d,
+        label: date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
+      });
+      date.setMonth(date.getMonth() + 1);
+      d = Math.round((date.getTime() - baseDate.getTime()) / 86400000);
+    }
+    return marks;
+  }, [totalDays, baseDate]);
+
+  // ─── Drag handling ───────────────────────────────────────────────
+  const handleBarMouseDown = useCallback((
+    e: React.MouseEvent,
+    taskId: number,
+    type: "move" | "resize",
+    origValue: number,
+    phaseStart: number,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragRef.current = { taskId, type, startX: e.clientX, origValue, phaseStart };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const daysDelta = Math.round(dx / dayWidth);
+      const { taskId, type, origValue, phaseStart } = dragRef.current;
+
+      if (type === "resize") {
+        setLocalDurations(prev => ({ ...prev, [taskId]: Math.max(1, origValue + daysDelta) }));
+      } else {
+        setTaskOffsets(prev => ({ ...prev, [taskId]: Math.max(phaseStart, origValue + daysDelta) }));
+      }
+    };
+
+    const onUp = (ev: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const daysDelta = Math.round(dx / dayWidth);
+      const { taskId, type, origValue } = dragRef.current;
+
+      if (type === "resize") {
+        const newDur = Math.max(1, origValue + daysDelta);
+        setSavingIds(s => new Set([...s, taskId]));
+        updateTask.mutate(
+          { id: taskId, data: { durationDays: newDur } },
+          {
+            onSuccess: () => {
+              invalidateAfterTaskChange();
+              setLocalDurations(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+              setSavingIds(s => { const n = new Set(s); n.delete(taskId); return n; });
+            },
+            onError: () => {
+              setLocalDurations(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+              setSavingIds(s => { const n = new Set(s); n.delete(taskId); return n; });
+            },
+          },
+        );
+      }
+      // move: already persisted to localStorage via useEffect
+
+      dragRef.current = null;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [dayWidth, updateTask, invalidateAfterTaskChange]);
+
+  const totalWidth = totalDays * dayWidth;
+
+  const statusBarColor: Record<string, string> = {
+    complete:    "#059669",
+    in_progress: "#2563eb",
+    blocked:     "#dc2626",
+    deferred:    "#9ca3af",
+    not_started: "",
+  };
+
+  return (
+    <div className="border rounded-xl overflow-hidden shadow-sm bg-card">
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 px-4 py-2.5 border-b bg-muted/30 flex-wrap">
+        <ZoomOut className="w-3.5 h-3.5 text-muted-foreground" />
+        <Slider
+          value={[dayWidth]}
+          onValueChange={([v]) => setDayWidth(v)}
+          min={4} max={28} step={1}
+          className="w-32"
+        />
+        <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">{dayWidth}px / day</span>
+        <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
+          <span>Drag bar to move · drag right edge to resize</span>
+          <button
+            onClick={() => {
+              setTaskOffsets({});
+              try { localStorage.removeItem(GANTT_LS_KEY); } catch { /* ignore */ }
+            }}
+            className="flex items-center gap-1 hover:text-foreground transition-colors border rounded px-2 py-0.5"
+          >
+            <RotateCcw className="w-3 h-3" /> Reset positions
+          </button>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "68vh" }}>
+        <div style={{ width: GANTT_NAME_W + totalWidth, minWidth: "100%" }}>
+
+          {/* ── Header row ── */}
+          <div style={{
+            display: "flex",
+            position: "sticky", top: 0, zIndex: 30,
+            borderBottom: "1px solid hsl(var(--border))",
+            background: "hsl(var(--card))",
+            height: GANTT_HEADER_H,
+          }}>
+            {/* Corner cell */}
+            <div style={{
+              width: GANTT_NAME_W, flexShrink: 0,
+              position: "sticky", left: 0, zIndex: 31,
+              background: "hsl(var(--card))",
+              borderRight: "1px solid hsl(var(--border))",
+              display: "flex", alignItems: "center", padding: "0 14px",
+            }}>
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Task</span>
+            </div>
+            {/* Month + week markers */}
+            <div style={{ flex: 1, position: "relative", background: "hsl(var(--muted)/0.5)" }}>
+              {/* Month bands */}
+              {monthMarkers.map((m, i) => {
+                const nextDay = monthMarkers[i + 1]?.day ?? totalDays;
+                const w = (nextDay - m.day) * dayWidth;
+                return (
+                  <div key={m.day} style={{
+                    position: "absolute", left: m.day * dayWidth, top: 0,
+                    width: w, height: "50%",
+                    borderLeft: "1px solid hsl(var(--border))",
+                    display: "flex", alignItems: "center", paddingLeft: 6,
+                  }}>
+                    <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", fontWeight: 600, whiteSpace: "nowrap" }}>{m.label}</span>
+                  </div>
+                );
+              })}
+              {/* Week ticks */}
+              {weekMarkers.map(wk => (
+                <div key={wk.day} style={{
+                  position: "absolute", left: wk.day * dayWidth,
+                  top: "50%", height: "50%",
+                  borderLeft: "1px solid hsl(var(--border)/0.6)",
+                  display: "flex", alignItems: "center", paddingLeft: 4,
+                }}>
+                  <span style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", whiteSpace: "nowrap" }}>{wk.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Phase + task rows ── */}
+          {sortedPhases.map((phase, phaseIdx) => {
+            const color = PHASE_PALETTE[phaseIdx % PHASE_PALETTE.length];
+            const phaseStart = phaseStartDays[phase.id] ?? 0;
+            const isCollapsed = collapsedPhases.has(phase.id);
+
+            // Phase bar: from phaseStart to latest task end
+            const phaseEndDay = (phase.tasks ?? []).reduce((maxEnd, t) => {
+              const absStart = taskOffsets[t.id] ?? phaseStart;
+              return Math.max(maxEnd, absStart + getTaskDuration(t));
+            }, phaseStart);
+            const phaseBarW = Math.max(dayWidth, (phaseEndDay - phaseStart) * dayWidth);
+
+            return (
+              <div key={phase.id}>
+                {/* Phase header row */}
+                <div
+                  style={{
+                    display: "flex", height: GANTT_PHASE_H, cursor: "pointer",
+                    borderBottom: "1px solid hsl(var(--border))",
+                    background: color.bg,
+                  }}
+                  onClick={() => setCollapsedPhases(prev => {
+                    const n = new Set(prev);
+                    if (n.has(phase.id)) n.delete(phase.id); else n.add(phase.id);
+                    return n;
+                  })}
+                >
+                  {/* Phase name (sticky) */}
+                  <div style={{
+                    width: GANTT_NAME_W, flexShrink: 0,
+                    position: "sticky", left: 0, zIndex: 10,
+                    background: color.bg,
+                    borderRight: `2px solid ${color.bar}`,
+                    display: "flex", alignItems: "center", gap: 6,
+                    padding: "0 10px 0 12px",
+                  }}>
+                    {isCollapsed
+                      ? <ChevronRight className="w-3 h-3 shrink-0" style={{ color: color.bar }} />
+                      : <ChevronDown className="w-3 h-3 shrink-0" style={{ color: color.bar }} />
+                    }
+                    <span style={{ fontSize: 11, fontWeight: 700, color: color.bar, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {phase.name}
+                    </span>
+                    <span style={{ fontSize: 10, color: color.bar, opacity: 0.65, marginLeft: "auto", flexShrink: 0 }}>
+                      {phase.completedTaskCount}/{phase.taskCount}
+                    </span>
+                  </div>
+                  {/* Phase timeline bar */}
+                  <div style={{ flex: 1, position: "relative" }}>
+                    {weekMarkers.map(wk => (
+                      <div key={wk.day} style={{ position: "absolute", left: wk.day * dayWidth, top: 0, bottom: 0, borderLeft: "1px solid hsl(var(--border)/0.25)", pointerEvents: "none" }} />
+                    ))}
+                    <div style={{
+                      position: "absolute",
+                      left: phaseStart * dayWidth,
+                      top: 5, height: GANTT_PHASE_H - 10,
+                      width: phaseBarW,
+                      background: color.bar, opacity: 0.18,
+                      borderRadius: 4,
+                    }} />
+                  </div>
+                </div>
+
+                {/* Task rows */}
+                {!isCollapsed && (phase.tasks ?? []).map(task => {
+                  const absStart = taskOffsets[task.id] ?? phaseStart;
+                  const dur = getTaskDuration(task);
+                  const barW = Math.max(8, dur * dayWidth);
+                  const isSaving = savingIds.has(task.id);
+                  const barColor = statusBarColor[task.status] || color.bar;
+                  const barOpacity = task.status === "deferred" ? 0.4 : task.status === "not_started" ? 0.65 : 0.88;
+
+                  return (
+                    <div key={task.id} style={{ display: "flex", height: GANTT_ROW_H, borderBottom: "1px solid hsl(var(--border)/0.35)" }}>
+                      {/* Task name (sticky) */}
+                      <div style={{
+                        width: GANTT_NAME_W, flexShrink: 0,
+                        position: "sticky", left: 0, zIndex: 10,
+                        background: "hsl(var(--card))",
+                        borderRight: "1px solid hsl(var(--border)/0.5)",
+                        display: "flex", alignItems: "center",
+                        padding: "0 10px 0 28px", gap: 4,
+                      }}>
+                        <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={task.title}>
+                          {task.title}
+                        </span>
+                        {isSaving && <Loader2 className="w-3 h-3 animate-spin shrink-0 text-muted-foreground" />}
+                      </div>
+
+                      {/* Timeline area */}
+                      <div style={{ flex: 1, position: "relative", background: "hsl(var(--background))" }}>
+                        {/* Grid lines */}
+                        {weekMarkers.map(wk => (
+                          <div key={wk.day} style={{ position: "absolute", left: wk.day * dayWidth, top: 0, bottom: 0, borderLeft: "1px solid hsl(var(--border)/0.2)", pointerEvents: "none" }} />
+                        ))}
+
+                        {/* Task bar */}
+                        <div
+                          title={`${task.title}\nDay ${absStart}–${absStart + dur} · ${dur} day${dur !== 1 ? "s" : ""}\nDrag to reposition, drag right edge to resize`}
+                          style={{
+                            position: "absolute",
+                            left: absStart * dayWidth,
+                            top: 4, height: GANTT_ROW_H - 8,
+                            width: barW,
+                            background: barColor,
+                            opacity: barOpacity,
+                            borderRadius: 4,
+                            cursor: "grab",
+                            display: "flex", alignItems: "center",
+                            paddingLeft: 7, paddingRight: 10,
+                            overflow: "hidden",
+                            userSelect: "none",
+                            boxShadow: isSaving ? `0 0 0 2px ${barColor}` : "0 1px 3px rgba(0,0,0,0.15)",
+                          }}
+                          onMouseDown={e => handleBarMouseDown(e, task.id, "move", absStart, phaseStart)}
+                        >
+                          {barW > 36 && (
+                            <span style={{ color: "white", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, pointerEvents: "none" }}>
+                              {task.title}
+                            </span>
+                          )}
+                          {barW > 70 && (
+                            <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 9, flexShrink: 0, marginLeft: 4, pointerEvents: "none" }}>
+                              {dur}d
+                            </span>
+                          )}
+                          {/* Resize handle */}
+                          <div
+                            title="Drag to resize duration"
+                            style={{
+                              position: "absolute", right: 0, top: 0, bottom: 0, width: 9,
+                              cursor: "ew-resize",
+                              background: "rgba(0,0,0,0.18)",
+                              borderRadius: "0 4px 4px 0",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                            onMouseDown={e => handleBarMouseDown(e, task.id, "resize", dur, phaseStart)}
+                          >
+                            <div style={{ width: 1, height: 10, background: "rgba(255,255,255,0.5)" }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 px-4 py-2 border-t bg-muted/20 flex-wrap">
+        {[
+          { color: "#059669", label: "Complete" },
+          { color: "#2563eb", label: "In progress" },
+          { color: "#dc2626", label: "Blocked" },
+          { color: "#9ca3af", label: "Deferred" },
+          { color: "#6d28d9", label: "Not started (phase colour)" },
+        ].map(item => (
+          <div key={item.label} className="flex items-center gap-1.5">
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color }} />
+            <span className="text-[10px] text-muted-foreground">{item.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function addDays(date: Date, days: number): Date {
   const d = new Date(date);
@@ -158,6 +603,7 @@ export default function ProjectPage() {
   const [addingTaskPhaseId, setAddingTaskPhaseId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
+  const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
@@ -294,10 +740,36 @@ export default function ProjectPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <PageHeader
-        title="Project Plan"
-        subtitle="Set your key dates, then manage phases and tasks."
-      />
+      <div className="flex items-start justify-between gap-4">
+        <PageHeader
+          title="Project Plan"
+          subtitle="Set your key dates, then manage phases and tasks."
+        />
+        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm shrink-0 mt-1">
+          <button
+            onClick={() => setViewMode("list")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              viewMode === "list"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            List
+          </button>
+          <button
+            onClick={() => setViewMode("gantt")}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              viewMode === "gantt"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <GanttChartSquare className="w-3.5 h-3.5" />
+            Gantt
+          </button>
+        </div>
+      </div>
 
       {criticalRiskCount > 0 && (
         <div className="bg-destructive/10 border-l-4 border-destructive p-4 rounded-r-lg flex items-start gap-3">
@@ -396,11 +868,20 @@ export default function ProjectPage() {
         </CardContent>
       </Card>
 
+      {viewMode === "gantt" && phases && (
+        <GanttView
+          phases={phases}
+          startDateObj={startDateObj}
+          updateTask={updateTask}
+          invalidateAfterTaskChange={invalidateAfterTaskChange}
+        />
+      )}
+
       <Accordion
         type="multiple"
         value={openPhases}
         onValueChange={setOpenPhases}
-        className="space-y-4"
+        className={`space-y-4 ${viewMode === "gantt" ? "hidden" : ""}`}
       >
         {phases?.map((phase) => {
           const win = phaseWindows?.get(phase.id);
