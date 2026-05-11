@@ -182,7 +182,7 @@ export default function FinancialsPage() {
         workingDaysPerMonth: m.workingDaysPerMonth || 22, conservativeOccupancyPercent: m.conservativeOccupancyPercent || 40,
         realisticOccupancyPercent: m.realisticOccupancyPercent || 65, aggressiveOccupancyPercent: m.aggressiveOccupancyPercent || 85,
         repeatBookingRatePercent: m.repeatBookingRatePercent || 60, membershipRevenueGbp: m.membershipRevenueGbp || 0,
-        existingClinicRevenueGbp: m.existingClinicRevenueGbp || 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp || 3200,
+        existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 3200,
         ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp || 0, nursingIncomeGbp: m.nursingIncomeGbp || 4500,
         targetDrawingsGbp: m.targetDrawingsGbp || 4000,

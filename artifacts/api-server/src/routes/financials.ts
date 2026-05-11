@@ -136,7 +136,7 @@ function calcWinchester(model: any, targetOcc: number, acvMultiplier: number) {
 
 function calcBedhampton(model: any) {
   const grossRevenue = model.existingClinicRevenueGbp || 0;
-  const costs = model.bedhamptonCostsGbp || 3200;
+  const costs = model.bedhamptonCostsGbp ?? 3200;
   const netProfit = grossRevenue - costs;
   return {
     grossRevenue: Math.round(grossRevenue),
@@ -375,7 +375,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
-  const bedhMonthlyCosts = (model as any).bedhamptonCostsGbp || 3200;
+  const bedhMonthlyCosts = (model as any).bedhamptonCostsGbp ?? 3200;
   const bedhMonthlyNet = bedhMonthlyRevenue - bedhMonthlyCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
 
