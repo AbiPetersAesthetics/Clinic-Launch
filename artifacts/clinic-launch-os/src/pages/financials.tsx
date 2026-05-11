@@ -98,12 +98,12 @@ const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color
 const RISKS = [
   { threat: "Winchester ramp too slow — Bedhampton never closes", likelihood: "High", impact: "Critical", mitigation: "Pre-launch waitlist, soft-open to existing Bedhampton regulars who travel. Set a firm review gate at Month 6: if Winchester net < £8k, activate contingency plan." },
   { threat: "Cash reserve depleted before Winchester is self-funding", likelihood: "Medium", impact: "Critical", mitigation: "Maintain £20k operating buffer. Do not spend on non-essential capex until Winchester Month 3 revenue is confirmed. Bedhampton support covers this gap." },
-  { threat: "Abi burnout running both clinics simultaneously", likelihood: "High", impact: "Very High", mitigation: "This is the biggest personal risk. Pre-agree with David: if Winchester hits £8k net, immediately reduce Bedhampton days. Do not wait for £12k self-funding target." },
+  { threat: "Abi burnout running both clinics simultaneously", likelihood: "High", impact: "Very High", mitigation: "This is the biggest personal risk. Pre-agree with David: if Winchester hits £8k net, immediately reduce Bedhampton days. Do not wait for the self-funding margin target to be hit." },
   { threat: "VAT registration pressure on Winchester", likelihood: "Medium", impact: "High", mitigation: "Monitor Winchester rolling 12-month revenue. Appoint accountant before hitting 75% of £90k annual threshold." },
   { threat: "Winchester fit-out overruns delay opening", likelihood: "Medium", impact: "High", mitigation: "Phase-gate spend. Keep £5k contingency unallocated. Dad's labour eliminates the biggest variable. Open date tied to Bedhampton income model." },
   { threat: "Marketing underperformance — slow first 3 months", likelihood: "High", impact: "Medium", mitigation: "Prioritise Google reviews and organic social. Avoid paid ads until organic baseline is established. Bedhampton income absorbs the shortfall." },
   { threat: "Bedhampton revenue weakens during dual-clinic phase", likelihood: "Low", impact: "High", mitigation: "Reduced Abi hours at Bedhampton may affect revenue. Model shows Bedhampton income is the safety net — any reduction lengthens the Winchester ramp period." },
-  { threat: "Winchester never reaches £12k net — Bedhampton never closes", likelihood: "Low", impact: "High", mitigation: "Set a formal review at Month 9. If Winchester is tracking below £8k net, consider revising the self-funding target or accepting a longer Bedhampton exit timeline." },
+  { threat: "Winchester never hits the self-funding margin — Bedhampton never closes", likelihood: "Low", impact: "High", mitigation: "Set a formal review at Month 9. If Winchester net margin is below the buffer %, consider reducing the target % or accepting a longer Bedhampton exit timeline." },
 ];
 
 const LIKELI_COLOR: Record<string, string> = {
@@ -157,7 +157,7 @@ export default function FinancialsPage() {
       accountantGbp: 0, softwareGbp: 0, wasteContractGbp: 0, cleanerGbp: 0,
       subscriptionsGbp: 0, financeRepaymentsGbp: 0,
       stockPercent: 8, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
-      wincAcvGbp: 155, wincSelfFundingTargetGbp: 12000,
+      wincAcvGbp: 155, selfFundingBufferPercent: 20,
       treatmentRoomsCount: 2, practitionerHoursPerDay: 7,
       workingDaysPerMonth: 22, conservativeOccupancyPercent: 40, realisticOccupancyPercent: 65,
       aggressiveOccupancyPercent: 85, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
@@ -177,7 +177,7 @@ export default function FinancialsPage() {
         subscriptionsGbp: m.subscriptionsGbp || 0, financeRepaymentsGbp: m.financeRepaymentsGbp || 0,
         stockPercent: m.stockPercent || 8, marketingGbp: m.marketingGbp || 0, staffingGbp: m.staffingGbp || 0,
         commissionsPercent: m.commissionsPercent || 0, consumablesGbp: m.consumablesGbp || 0,
-        wincAcvGbp: m.wincAcvGbp || 155, wincSelfFundingTargetGbp: m.wincSelfFundingTargetGbp || 12000,
+        wincAcvGbp: m.wincAcvGbp || 155, selfFundingBufferPercent: m.selfFundingBufferPercent ?? 20,
         treatmentRoomsCount: m.treatmentRoomsCount || 2, practitionerHoursPerDay: m.practitionerHoursPerDay || 7,
         workingDaysPerMonth: m.workingDaysPerMonth || 22, conservativeOccupancyPercent: m.conservativeOccupancyPercent || 40,
         realisticOccupancyPercent: m.realisticOccupancyPercent || 65, aggressiveOccupancyPercent: m.aggressiveOccupancyPercent || 85,
@@ -296,7 +296,7 @@ export default function FinancialsPage() {
             <Building2 className="w-4 h-4 text-blue-400" />
           </div>
           <div className="text-xl font-bold">{cr ? formatGBP(cr.bedh.netProfit) : "—"}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
-          <div className="text-xs text-muted-foreground mt-0.5">Closes when Winchester hits £{((cr?.combined.selfFundingTargetGbp ?? 12000) / 1000).toFixed(0)}k/mo net</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Closes when Winchester net margin ≥ {cr?.winc.selfFundingBufferPercent ?? 20}% of revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net)</div>
         </div>
 
         <div className={`rounded-xl border p-4 ${cr?.combined.selfFundingMonth ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
@@ -345,8 +345,7 @@ export default function FinancialsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">12-Month Cashflow — Winchester Ramp + Bedhampton Support</CardTitle>
               <CardDescription>
-                Winchester climbs toward {formatGBP(cr?.combined.selfFundingTargetGbp ?? 12000)}/mo target.
-                Bedhampton support line drops to zero when Winchester is self-funding.
+                Winchester net must reach {cr?.winc.selfFundingBufferPercent ?? 20}% of gross revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net at current costs) before Bedhampton closes.
                 {selfFundingPoint && <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes Month {selfFundingPoint.month}.</strong>}
               </CardDescription>
             </CardHeader>
@@ -367,13 +366,13 @@ export default function FinancialsPage() {
                           label={{ value: "Bedh closes", position: "insideTopRight", fontSize: 10, fill: "#10b981" }}
                         />
                       )}
-                      {cr?.combined.selfFundingTargetGbp && (
+                      {cr?.winc.sfNetProfitTarget != null && cr.winc.sfNetProfitTarget > 0 && (
                         <ReferenceLine
-                          y={cr.combined.selfFundingTargetGbp}
+                          y={cr.winc.sfNetProfitTarget}
                           stroke="#10b981"
                           strokeDasharray="3 3"
                           strokeOpacity={0.5}
-                          label={{ value: `£${(cr.combined.selfFundingTargetGbp / 1000).toFixed(0)}k target`, position: "insideTopLeft", fontSize: 9, fill: "#10b981" }}
+                          label={{ value: `£${(cr.winc.sfNetProfitTarget / 1000).toFixed(0)}k (${cr.winc.selfFundingBufferPercent}% margin)`, position: "insideTopLeft", fontSize: 9, fill: "#10b981" }}
                         />
                       )}
                       <Tooltip
@@ -449,14 +448,14 @@ export default function FinancialsPage() {
                         pct: Math.min((cr.winc.grossRevenue / cr.winc.breakEvenRevenue) * 60, 60),
                       },
                       {
-                        label: `Self-funding target (${formatGBP(cr.combined.selfFundingTargetGbp)}/mo net)`,
+                        label: `Self-funding (${cr.winc.selfFundingBufferPercent}% margin · ~${formatGBP(cr.winc.sfNetProfitTarget)}/mo net)`,
                         value: cr.winc.grossRevenue,
                         sub: cr.combined.selfFundingMonth
                           ? `Projected Month ${cr.combined.selfFundingMonth} · ${cr.winc.selfFundingOccupancy}% occupancy required`
                           : `Requires ${cr.winc.selfFundingOccupancy}% occupancy — not reached in 12mo on this scenario`,
-                        achieved: cr.winc.netProfit >= cr.combined.selfFundingTargetGbp,
+                        achieved: cr.winc.sfNetProfitTarget > 0 ? cr.winc.netProfit >= cr.winc.sfNetProfitTarget : false,
                         color: "bg-emerald-500",
-                        pct: Math.min((cr.winc.netProfit / cr.combined.selfFundingTargetGbp) * 80, 100),
+                        pct: cr.winc.sfNetProfitTarget > 0 ? Math.min((cr.winc.netProfit / cr.winc.sfNetProfitTarget) * 80, 100) : 0,
                       },
                       {
                         label: "Target occupancy projection",
@@ -627,7 +626,7 @@ export default function FinancialsPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        ["wincAcvGbp","Avg Client Value (£)"],["wincSelfFundingTargetGbp","Self-Funding Target (£/mo net)"],
+                        ["wincAcvGbp","Avg Client Value (£)"],
                         ["treatmentRoomsCount","Treatment Rooms"],["practitionerHoursPerDay","Hours/Day/Room"],
                         ["workingDaysPerMonth","Working Days/Mo"],["membershipRevenueGbp","Membership Rev (£/mo)"],
                         ["conservativeOccupancyPercent","Conservative Occ %"],["realisticOccupancyPercent","Realistic Occ %"],
@@ -638,8 +637,18 @@ export default function FinancialsPage() {
                         )} />
                       ))}
                     </div>
+                    <div className="mt-3">
+                      <FormField control={form.control} name={"selfFundingBufferPercent" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Self-Funding Buffer (%)</FormLabel>
+                          <FormControl>
+                            <Input type="number" min={5} max={50} step={1} {...field} className="h-8 text-sm w-32" />
+                          </FormControl>
+                        </FormItem>
+                      )} />
+                    </div>
                     <p className="text-[10px] text-muted-foreground mt-2">
-                      Self-funding target is the monthly Winchester net profit at which Bedhampton closes and Abi moves full-time to Winchester. Default: £12,000.
+                      Bedhampton closes when Winchester's net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
                     </p>
                   </CardContent>
                 </Card>
@@ -724,7 +733,7 @@ export default function FinancialsPage() {
                       <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase mb-1">Self-Funding Occ</div>
                         <div className="font-bold">{cr.winc.selfFundingOccupancy}%</div>
-                        <div className="text-[10px] text-muted-foreground">for £{(cr.combined.selfFundingTargetGbp/1000).toFixed(0)}k net</div>
+                        <div className="text-[10px] text-muted-foreground">{cr.winc.selfFundingBufferPercent}% margin (~{formatGBP(cr.winc.sfNetProfitTarget)})</div>
                       </div>
                       <div className={`rounded-lg border p-3 text-center ${cr.combined.selfFundingMonth ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30" : "border-amber-200 bg-amber-50 dark:bg-amber-950/30"}`}>
                         <div className="text-[10px] text-muted-foreground uppercase mb-1">Bedh Closes</div>
@@ -797,7 +806,7 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 2",
                     title: "After Bedhampton closes",
-                    subtitle: "Nursing + Winchester net (≥£12k). Bedhampton closed.",
+                    subtitle: `Nursing + Winchester net (≥${cr.winc.selfFundingBufferPercent}% margin). Bedhampton closed.`,
                     income: cr.owner.phase2Income,
                     shortfall: cr.owner.phase2Shortfall,
                     safe: cr.owner.phase2IsSafe,

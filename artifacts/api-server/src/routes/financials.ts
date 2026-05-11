@@ -79,24 +79,37 @@ function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: numbe
 
 // ─── Helper: Full Winchester projection at target occupancy ──────────────────
 
-function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, selfFundingTarget: number) {
+function calcWinchester(model: any, targetOcc: number, acvMultiplier: number) {
   const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier);
   const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, totalCosts, netProfit, grossMarginPercent } = base;
 
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
-  const breakEvenRevenue = variableRatio < 1 ? fixedCosts / (1 - variableRatio) : fixedCosts * 3;
-  const breakEvenSlots = breakEvenRevenue / Math.max(acv, 1);
+  const fixedVarItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
+
+  // Break-even: revenue where netProfit = 0
+  const breakEvenRevenue = variableRatio < 1
+    ? (fixedCosts + fixedVarItems) / (1 - variableRatio)
+    : (fixedCosts + fixedVarItems) * 3;
+  const breakEvenSlots = (breakEvenRevenue - (model.membershipRevenueGbp || 0)) / Math.max(acv, 1);
   const breakEvenOccupancy = slotsPerMonth > 0 ? (breakEvenSlots / slotsPerMonth) * 100 : 0;
   const treatmentsPerWeek = breakEvenSlots / Math.max((model.workingDaysPerMonth || 22) / 4.33, 1);
 
-  // What occupancy % is needed to hit the self-funding target?
-  const selfFundingRevenueNeeded = selfFundingTarget + fixedCosts;
-  const selfFundingSlots = variableRatio < 1 ? (selfFundingRevenueNeeded / (1 - variableRatio)) / acv : 999;
-  const selfFundingOccupancy = slotsPerMonth > 0 ? (selfFundingSlots / slotsPerMonth) * 100 : 0;
+  // Self-funding: netProfit ≥ bufferPct × grossRevenue (revenue-based margin target)
+  // Solving: grossRevenue × (1 − variableRatio − bufferPct) ≥ fixedCosts + fixedVarItems
+  const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
+  const sfDenominator = 1 - variableRatio - bufferPct;
+  const sfRevenueTarget = sfDenominator > 0.001
+    ? (fixedCosts + fixedVarItems) / sfDenominator
+    : Infinity;
+  const sfNetProfitTarget = isFinite(sfRevenueTarget) ? Math.round(sfRevenueTarget * bufferPct) : 9999999;
+  const sfSlots = isFinite(sfRevenueTarget)
+    ? ((sfRevenueTarget - (model.membershipRevenueGbp || 0)) / Math.max(acv, 1))
+    : 9999;
+  const selfFundingOccupancy = slotsPerMonth > 0 ? (sfSlots / slotsPerMonth) * 100 : 0;
 
   const warnings: string[] = [];
   if (targetOcc > 75) warnings.push("Projected occupancy exceeds typical first-year premium clinic ramp (>75%).");
-  if (selfFundingOccupancy > targetOcc) warnings.push(`Winchester self-funding target requires ${Math.round(selfFundingOccupancy)}% occupancy — above this scenario's target. Bedhampton may not close within 12 months.`);
+  if (selfFundingOccupancy > targetOcc) warnings.push(`Winchester self-funding target (${model.selfFundingBufferPercent ?? 20}% net margin) requires ${Math.round(selfFundingOccupancy)}% occupancy — above this scenario's target. Bedhampton may not close within 12 months.`);
   if (breakEvenOccupancy > targetOcc * 0.8) warnings.push("Break-even occupancy is close to target — little margin for underperformance.");
 
   return {
@@ -111,6 +124,9 @@ function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, se
     breakEvenOccupancy: Math.round(breakEvenOccupancy * 10) / 10,
     treatmentsPerWeekToBreakeven: Math.round(treatmentsPerWeek * 10) / 10,
     selfFundingOccupancy: Math.round(selfFundingOccupancy * 10) / 10,
+    sfNetProfitTarget,      // effective net profit £ target at buffer %
+    sfRevenueTarget: isFinite(sfRevenueTarget) ? Math.round(sfRevenueTarget) : 0,
+    selfFundingBufferPercent: model.selfFundingBufferPercent ?? 20,
     slotsPerMonth,
     warnings,
   };
@@ -132,13 +148,14 @@ function calcBedhampton(model: any) {
 // ─── Helper: Find the month Winchester hits the self-funding target ───────────
 
 function findSelfFundingMonth(model: any, targetOcc: number, acvMultiplier: number, profile: any): number | null {
-  const target = model.wincSelfFundingTargetGbp || 12000;
+  const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
   const { startOcc, rampMonths } = profile;
   for (let m = 1; m <= 24; m++) {
     // Use (m-1) to align with the cashflow endpoint's 0-indexed month (i), so both show the same month number
     const occ = Math.min(startOcc + ((m - 1) * (targetOcc - startOcc) / rampMonths), targetOcc);
     const sim = calcWincAtOccupancy(model, occ, acvMultiplier);
-    if (sim.netProfit >= target) return m;
+    // Self-funding = net profit covers buffer% of gross revenue (revenue-based margin target)
+    if (sim.grossRevenue > 0 && sim.netProfit >= sim.grossRevenue * bufferPct) return m;
   }
   return null;
 }
@@ -146,7 +163,8 @@ function findSelfFundingMonth(model: any, targetOcc: number, acvMultiplier: numb
 // ─── Helper: Combined business (support phase model) ─────────────────────────
 
 function calcCombined(winc: any, bedh: any, model: any, selfFundingMonth: number | null) {
-  const selfFundingTarget = model.wincSelfFundingTargetGbp || 12000;
+  // Use the dynamically computed net profit target (from revenue-% approach)
+  const selfFundingTarget = winc.sfNetProfitTarget ?? (model.wincSelfFundingTargetGbp || 12000);
   // During the support phase: Winchester net + Bedhampton net
   const preSelfFundingMonthlyNet = winc.netProfit + bedh.netProfit;
   // After Bedhampton closes: Winchester net only
@@ -286,9 +304,8 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
   const nursingIncome = (model.nursingIncomeGbp || 4500) * profile.nursingMultiplier;
-  const selfFundingTarget = (model as any).wincSelfFundingTargetGbp || 12000;
 
-  const winc = calcWinchester(model, targetOcc, acvMultiplier, selfFundingTarget);
+  const winc = calcWinchester(model, targetOcc, acvMultiplier);
   const bedh = calcBedhampton(model);
   const selfFundingMonth = findSelfFundingMonth(model, targetOcc, acvMultiplier, profile);
   const combined = calcCombined(winc, bedh, model as any, selfFundingMonth);
@@ -360,7 +377,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhMonthlyCosts = (model as any).bedhamptonCostsGbp || 3200;
   const bedhMonthlyNet = bedhMonthlyRevenue - bedhMonthlyCosts;
-  const selfFundingTarget = (model as any).wincSelfFundingTargetGbp || 12000;
+  const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   let wincCumulative = 0;
@@ -377,8 +394,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const wincNet = wincRevenue - wincTotalCosts;
     wincCumulative += wincNet;
 
-    // Track when Winchester becomes self-funding
-    if (selfFundingMonthIndex === null && wincNet >= selfFundingTarget) {
+    // Track when Winchester becomes self-funding (net profit ≥ buffer% of gross revenue)
+    if (selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
       selfFundingMonthIndex = i;
     }
     const isSelfFundingMonth = selfFundingMonthIndex === i;

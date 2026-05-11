@@ -34,8 +34,11 @@ export const financialsTable = pgTable("financial_models", {
   aggressiveOccupancyPercent: real("aggressive_occupancy_percent").notNull().default(85),
   repeatBookingRatePercent: real("repeat_booking_rate_percent").notNull().default(60),
   membershipRevenueGbp: real("membership_revenue_gbp").notNull().default(0),
-  // Winchester self-funding target — the monthly net that triggers Bedhampton closure
+  // Winchester self-funding target — kept for backward compat but no longer user-editable;
+  // the active trigger is selfFundingBufferPercent (revenue % margin target)
   wincSelfFundingTargetGbp: real("winc_self_funding_target_gbp").notNull().default(12000),
+  // Self-funding buffer: Bedhampton closes when Winchester net profit ≥ this % of gross revenue
+  selfFundingBufferPercent: real("self_funding_buffer_percent").notNull().default(20),
   // Bedhampton — temporary support clinic (separate patient base, will close)
   existingClinicRevenueGbp: real("existing_clinic_revenue_gbp").notNull().default(0),
   bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(3200),
