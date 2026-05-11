@@ -79,7 +79,8 @@ type CashflowMonth = {
   isPreOpening: boolean; isOpeningMonth: boolean; isBedhamptonCloseMonth: boolean;
   wincRevenue: number; wincCosts: number; wincNet: number;
   bedhRevenue: number; bedhCosts: number; bedhNet: number;
-  projectCostBurn: number; monthlyCashflow: number; cashBalance: number;
+  projectCostBurn: number; taskLabels: string[]; ownerDrawings: number;
+  monthlyCashflow: number; cashBalance: number;
   occupancyPercent: number;
   isSelfFundingMonth: boolean; bedhClosed: boolean;
   bedhSupport: number; combinedNet: number;
@@ -448,18 +449,39 @@ export default function FinancialsPage() {
                         )}
 
                         <Tooltip
-                          formatter={(v: number, name: string) => {
-                            if (name === "cashBalance") return [formatGBP(v), "Business capital"];
-                            if (name === "monthlyCashflow") return [formatGBP(v), v >= 0 ? "Monthly surplus" : "Monthly deficit"];
-                            return [formatGBP(v), name];
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload?.length) return null;
+                            const d = payload[0]?.payload as CashflowMonth;
+                            if (!d) return null;
+                            return (
+                              <div className="rounded-lg border bg-background shadow-md p-3 text-xs max-w-[260px]">
+                                <p className="font-semibold text-sm mb-2">{label}</p>
+                                <div className="space-y-1">
+                                  <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business capital</span><span className="font-bold">{formatGBP(d.cashBalance)}</span></div>
+                                  {d.bedhNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Bedhampton net</span><span className={d.bedhNet >= 0 ? "text-blue-600" : "text-destructive"}>{formatGBP(d.bedhNet)}</span></div>}
+                                  {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winchester net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
+                                  {d.projectCostBurn > 0 && (
+                                    <div>
+                                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Project spend</span><span className="text-red-500">−{formatGBP(d.projectCostBurn)}</span></div>
+                                      {d.taskLabels?.length > 0 && (
+                                        <ul className="mt-1 pl-2 space-y-0.5 text-muted-foreground">
+                                          {d.taskLabels.slice(0, 5).map((t, i) => <li key={i} className="truncate">· {t}</li>)}
+                                          {d.taskLabels.length > 5 && <li>· +{d.taskLabels.length - 5} more</li>}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  )}
+                                  {d.ownerDrawings > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Owner drawings</span><span className="text-orange-500">−{formatGBP(d.ownerDrawings)}</span></div>}
+                                  <div className="flex justify-between gap-4 border-t pt-1 mt-1"><span className="font-medium">Monthly net</span><span className={d.monthlyCashflow >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>{formatGBP(d.monthlyCashflow)}</span></div>
+                                </div>
+                              </div>
+                            );
                           }}
-                          labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                          contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                         />
                         <Legend
                           formatter={(v) =>
                             v === "cashBalance" ? "Business capital (running balance)"
-                            : v === "monthlyCashflow" ? "Monthly net (Bedhampton + Winchester − setup costs)"
+                            : v === "monthlyCashflow" ? "Monthly net (income − project costs − drawings)"
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}

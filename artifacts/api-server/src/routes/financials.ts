@@ -368,13 +368,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // Fetch project for start + open dates
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
 
-  // Fetch total selected project cost from tasks
+  // Fetch tasks (with due dates) to build a month-by-month cost map
   const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
   const phaseIds = phases.map((p) => p.id);
   const allTasks = phaseIds.length > 0
     ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
     : [];
-  const totalProjectCost = allTasks.reduce((sum, t) => sum + (t.selectedCost || 0), 0);
 
   const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
   const targetOcc = profile.getTargetOcc(model);
@@ -404,9 +403,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
+  const monthlyDrawings = model.ownerDrawingsGbp || 0;
 
   // Determine calendar anchor — always start from the earlier of project startDate or today
-  // so the chart always begins in the current month (never a future month)
   const today = new Date();
   const rawStart = project?.startDate ? new Date(project.startDate) : today;
   const effectiveStart = rawStart < today ? rawStart : today;
@@ -414,7 +413,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   // Opening month index (0-based offset from calendarStart)
   const TOTAL_MONTHS = 18;
-  let openingMonthIndex = TOTAL_MONTHS; // default: never opens in window
+  let openingMonthIndex = TOTAL_MONTHS;
   if (project?.targetOpeningDate) {
     const openDate = new Date(project.targetOpeningDate);
     const diff = (openDate.getFullYear() - calendarStart.getFullYear()) * 12
@@ -422,14 +421,36 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS));
   }
 
-  // Spread project costs across pre-opening months with a ramp
-  // (costs weighted toward the later pre-opening months — fit-out heavy near opening)
-  const preOpeningCount = openingMonthIndex;
-  const costWeights: number[] = [];
-  if (preOpeningCount > 0) {
-    const rawWeights = Array.from({ length: preOpeningCount }, (_, i) => i + 1);
-    const weightSum = rawWeights.reduce((s, w) => s + w, 0);
-    costWeights.push(...rawWeights.map((w) => (w / weightSum) * totalProjectCost));
+  // ── Build month-by-month project cost map from task due dates ──────────────
+  // Tasks WITH a dueDate → cost lands in that calendar month.
+  // Tasks WITHOUT a dueDate → spread across pre-opening months with a ramp
+  // (undated tasks weighted toward the later months, where fit-out spend is heaviest).
+  const monthCostMap: number[] = Array(TOTAL_MONTHS).fill(0);
+  const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS }, () => []);
+  let undatedTaskCost = 0;
+
+  for (const task of allTasks) {
+    const cost = task.selectedCost || 0;
+    if (!cost) continue;
+
+    if (task.dueDate) {
+      const due = new Date(task.dueDate);
+      const idx = (due.getFullYear() - calendarStart.getFullYear()) * 12
+        + (due.getMonth() - calendarStart.getMonth());
+      // Clamp past tasks to month 0, future-beyond-window tasks to last pre-opening month
+      const clampedIdx = idx < 0 ? 0 : idx >= TOTAL_MONTHS ? Math.max(0, openingMonthIndex - 1) : idx;
+      monthCostMap[clampedIdx] += cost;
+      monthTaskLabels[clampedIdx].push(task.title);
+    } else {
+      undatedTaskCost += cost;
+    }
+  }
+
+  // Spread undated costs across pre-opening months (ramp-weighted toward opening)
+  if (undatedTaskCost > 0 && openingMonthIndex > 0) {
+    const rawW = Array.from({ length: openingMonthIndex }, (_, i) => i + 1);
+    const wSum = rawW.reduce((s, w) => s + w, 0);
+    rawW.forEach((w, i) => { monthCostMap[i] += (w / wSum) * undatedTaskCost; });
   }
 
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -444,8 +465,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isPreOpening = i < openingMonthIndex;
     const isOpeningMonth = i === openingMonthIndex;
 
-    // Project cost drain — only pre-opening, weighted toward later months
-    const projectCostBurn = isPreOpening ? (costWeights[i] ?? 0) : 0;
+    // Project spend this month — tied to actual task due dates
+    const projectCostBurn = monthCostMap[i] ?? 0;
+    const taskLabelsThisMonth = monthTaskLabels[i] ?? [];
 
     // Bedhampton closes when Winchester becomes self-funding
     const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
@@ -476,7 +498,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isSelfFundingMonth = selfFundingMonthIndex === i;
     const isBedhamptonCloseMonth = isSelfFundingMonth;
 
-    const monthlyCashflow = wincNet + bedhNet - projectCostBurn;
+    // True monthly cashflow: income (Bedh + Winc) minus project spend minus owner drawings
+    const monthlyCashflow = wincNet + bedhNet - projectCostBurn - monthlyDrawings;
     cashBalance += monthlyCashflow;
 
     return {
@@ -487,6 +510,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       isOpeningMonth,
       isBedhamptonCloseMonth,
       projectCostBurn: Math.round(projectCostBurn),
+      taskLabels: taskLabelsThisMonth,
+      ownerDrawings: Math.round(monthlyDrawings),
       wincRevenue: Math.round(wincRevenue),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
