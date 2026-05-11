@@ -25,6 +25,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line, Legend, ReferenceLine,
+  ComposedChart, Bar, ReferenceArea,
 } from "recharts";
 import { useToast } from "@/hooks/use-toast";
 
@@ -74,13 +75,14 @@ type ExtendedCalcResult = {
   occupancyUsedPercent: number; monthsUntilProfitable: number | null;
 };
 type CashflowMonth = {
-  month: number; monthLabel: string; revenue: number; fixedCosts: number;
-  variableCosts: number; netCashflow: number; cumulativeCashflow: number;
-  isBreakevenMonth: boolean; occupancyPercent: number;
+  month: number; calendarLabel: string; monthLabel: string;
+  isPreOpening: boolean; isOpeningMonth: boolean; isBedhamptonCloseMonth: boolean;
   wincRevenue: number; wincCosts: number; wincNet: number;
-  bedhRevenue: number; bedhCosts: number; bedhNet: number; bedhSupport: number;
-  combinedNet: number; combinedCumulative: number;
+  bedhRevenue: number; bedhCosts: number; bedhNet: number;
+  projectCostBurn: number; monthlyCashflow: number; cashBalance: number;
+  occupancyPercent: number;
   isSelfFundingMonth: boolean; bedhClosed: boolean;
+  bedhSupport: number; combinedNet: number;
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -208,7 +210,7 @@ export default function FinancialsPage() {
   const totalFixedCosts = ['rentGbp','ratesGbp','utilitiesGbp','internetGbp','insuranceGbp','accountantGbp','softwareGbp','wasteContractGbp','cleanerGbp','subscriptionsGbp','financeRepaymentsGbp']
     .reduce((s, k) => s + (Number(watchAll[k as keyof typeof watchAll]) || 0), 0);
 
-  const rampData = useMemo(() => cashflow?.map((m) => ({ monthLabel: m.monthLabel, occupancy: m.occupancyPercent })) ?? [], [cashflow]);
+  const rampData = useMemo(() => cashflow?.filter(m => !m.isPreOpening).map((m) => ({ monthLabel: m.calendarLabel, occupancy: m.occupancyPercent })) ?? [], [cashflow]);
   const selfFundingPoint = useMemo(() => cashflow?.find(m => m.isSelfFundingMonth), [cashflow]);
 
   const cr = calcResults;
@@ -339,62 +341,145 @@ export default function FinancialsPage() {
       {tab === "overview" && (
         <div className="space-y-6">
 
-          {/* Combined cashflow chart */}
+          {/* 18-Month Cash Position Chart */}
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">12-Month Cashflow — Winchester Ramp + Bedhampton Support</CardTitle>
-              <CardDescription>
-                Winchester net must reach {cr?.winc.selfFundingBufferPercent ?? 20}% of gross revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net at current costs) before Bedhampton closes.
-                {selfFundingPoint && <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes Month {selfFundingPoint.month}.</strong>}
+              <CardTitle className="text-base">18-Month Cash Position</CardTitle>
+              <CardDescription className="text-sm">
+                Starting capital burns through project setup costs + Bedhampton revenue, then Winchester opens and begins recovering.
+                {selfFundingPoint && (
+                  <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes {selfFundingPoint.calendarLabel} when Winchester is self-funding.</strong>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[280px]">
-                {cashflow && cashflow.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={cashflow} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                      <XAxis dataKey="monthLabel" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={8} />
-                      <YAxis tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                      <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
-                      {selfFundingPoint && (
-                        <ReferenceLine
-                          x={selfFundingPoint.monthLabel}
-                          stroke="#10b981"
-                          strokeDasharray="5 3"
-                          label={{ value: "Bedh closes", position: "insideTopRight", fontSize: 10, fill: "#10b981" }}
+              <div className="h-[340px]">
+                {cashflow && cashflow.length > 0 ? (() => {
+                  const openingMonth = cashflow.find(m => m.isOpeningMonth);
+                  const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
+                  const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
+                  return (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={cashflow} margin={{ top: 12, right: 60, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="calendarLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} dy={8} interval={1} />
+                        <YAxis yAxisId="left" tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+
+                        {/* Pre-opening shading */}
+                        {preOpenEnd && (
+                          <ReferenceArea
+                            yAxisId="left"
+                            x1={cashflow[0].calendarLabel}
+                            x2={preOpenEnd.calendarLabel}
+                            fill="hsl(var(--muted))"
+                            fillOpacity={0.35}
+                          />
+                        )}
+
+                        {/* Winchester open marker */}
+                        {openingMonth && (
+                          <ReferenceLine
+                            yAxisId="left"
+                            x={openingMonth.calendarLabel}
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            label={{ value: "Winchester opens", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--primary))", dy: -2 }}
+                          />
+                        )}
+
+                        {/* Bedhampton close marker */}
+                        {closeMonth && (
+                          <ReferenceLine
+                            yAxisId="left"
+                            x={closeMonth.calendarLabel}
+                            stroke="#10b981"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            label={{ value: "Bedhampton closes", position: "insideTopRight", fontSize: 9, fill: "#10b981", dy: -2 }}
+                          />
+                        )}
+
+                        <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
+
+                        <Tooltip
+                          formatter={(v: number, name: string) => {
+                            const labels: Record<string, string> = {
+                              bedhNet: "Bedhampton net",
+                              wincNet: "Winchester net",
+                              projectCostBurnNeg: "Project costs",
+                              cashBalance: "Cash balance",
+                            };
+                            return [formatGBP(Math.abs(v)), labels[name] ?? name];
+                          }}
+                          labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                          contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                         />
-                      )}
-                      {cr?.winc.sfNetProfitTarget != null && cr.winc.sfNetProfitTarget > 0 && (
-                        <ReferenceLine
-                          y={cr.winc.sfNetProfitTarget}
-                          stroke="#10b981"
-                          strokeDasharray="3 3"
-                          strokeOpacity={0.5}
-                          label={{ value: `£${(cr.winc.sfNetProfitTarget / 1000).toFixed(0)}k (${cr.winc.selfFundingBufferPercent}% margin)`, position: "insideTopLeft", fontSize: 9, fill: "#10b981" }}
+                        <Legend
+                          formatter={(v) => ({
+                            bedhNet: "Bedhampton monthly net",
+                            wincNet: "Winchester monthly net",
+                            projectCostBurnNeg: "Project setup costs",
+                            cashBalance: "Cash balance (right axis)",
+                          }[v] ?? v)}
+                          wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                         />
-                      )}
-                      <Tooltip
-                        formatter={(v: number, name: string) => [
-                          formatGBP(v),
-                          name === "wincNet" ? "Winchester Net" : name === "bedhSupport" ? "Bedhampton Support" : "Combined Net"
-                        ]}
-                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                        contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))" }}
-                      />
-                      <Legend
-                        formatter={(v) => v === "wincNet" ? "Winchester Net" : v === "bedhSupport" ? "Bedhampton Support (closes at target)" : "Combined"}
-                        wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                      />
-                      <Line type="monotone" dataKey="wincNet" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={false} />
-                      <Line type="monotone" dataKey="bedhSupport" stroke="#60a5fa" strokeWidth={2} dot={false} strokeDasharray="5 3" />
-                      <Line type="monotone" dataKey="combinedNet" stroke="#10b981" strokeWidth={2} dot={false} strokeOpacity={0.7} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Save assumptions first.</div>
+
+                        {/* Stacked monthly bars */}
+                        <Bar yAxisId="left" dataKey="bedhNet" stackId="monthly" fill="#93c5fd" name="bedhNet" radius={[0,0,0,0]} />
+                        <Bar yAxisId="left" dataKey="wincNet" stackId="monthly" fill="hsl(var(--primary))" fillOpacity={0.8} name="wincNet" radius={[2,2,0,0]} />
+                        <Bar
+                          yAxisId="left"
+                          dataKey={(d) => d.projectCostBurn > 0 ? -d.projectCostBurn : null}
+                          name="projectCostBurnNeg"
+                          stackId="costs"
+                          fill="#f87171"
+                          fillOpacity={0.75}
+                          radius={[0,0,2,2]}
+                        />
+
+                        {/* Cash balance line on right axis */}
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="cashBalance"
+                          stroke="#f59e0b"
+                          strokeWidth={2.5}
+                          dot={false}
+                          name="cashBalance"
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  );
+                })() : (
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Save assumptions first — also set Savings / Buffer in the Model tab.</div>
                 )}
               </div>
+
+              {/* Key callouts */}
+              {cashflow && cashflow.length > 0 && (() => {
+                const minBalance = Math.min(...cashflow.map(m => m.cashBalance));
+                const endBalance = cashflow[cashflow.length - 1].cashBalance;
+                const startBalance = cashflow[0].cashBalance - cashflow[0].monthlyCashflow;
+                const openMonth = cashflow.find(m => m.isOpeningMonth);
+                return (
+                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t">
+                    <div className="text-center">
+                      <div className="text-xs text-muted-foreground">Starting capital</div>
+                      <div className="text-sm font-bold">{formatGBP(startBalance)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-muted-foreground">Lowest cash point</div>
+                      <div className={`text-sm font-bold ${minBalance < 0 ? "text-destructive" : "text-amber-600"}`}>{formatGBP(minBalance)}</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-xs text-muted-foreground">Cash at month 18</div>
+                      <div className={`text-sm font-bold ${endBalance >= startBalance ? "text-emerald-600" : "text-amber-600"}`}>{formatGBP(endBalance)}</div>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 

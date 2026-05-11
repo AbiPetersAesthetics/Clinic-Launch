@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable, propertiesTable } from "@workspace/db";
-import { eq, and } from "drizzle-orm";
+import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -354,6 +354,17 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
 
+  // Fetch project for start + open dates
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
+
+  // Fetch total selected project cost from tasks
+  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const phaseIds = phases.map((p) => p.id);
+  const allTasks = phaseIds.length > 0
+    ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
+    : [];
+  const totalProjectCost = allTasks.reduce((sum, t) => sum + (t.selectedCost || 0), 0);
+
   const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
@@ -361,7 +372,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
   const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
-  const fixedCosts =
+  const wincFixedCosts =
     (model.rentGbp || 0) + (model.ratesGbp || 0) + (model.utilitiesGbp || 0) +
     (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
     (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
@@ -371,64 +382,102 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhMonthlyCosts = (model as any).bedhamptonCostsGbp ?? 3200;
-  const bedhMonthlyNet = bedhMonthlyRevenue - bedhMonthlyCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
+  const startingCash = model.runwaySavingsGbp || 0;
 
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  let wincCumulative = 0;
-  let combinedCumulative = 0;
-  let hasReachedBreakeven = false;
+  // Determine calendar anchor
+  const today = new Date();
+  const rawStart = project?.startDate ? new Date(project.startDate) : today;
+  const calendarStart = new Date(rawStart.getFullYear(), rawStart.getMonth(), 1);
+
+  // Opening month index (0-based offset from calendarStart)
+  const TOTAL_MONTHS = 18;
+  let openingMonthIndex = TOTAL_MONTHS; // default: never opens in window
+  if (project?.targetOpeningDate) {
+    const openDate = new Date(project.targetOpeningDate);
+    const diff = (openDate.getFullYear() - calendarStart.getFullYear()) * 12
+      + (openDate.getMonth() - calendarStart.getMonth());
+    openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS));
+  }
+
+  // Spread project costs across pre-opening months with a ramp
+  // (costs weighted toward the later pre-opening months — fit-out heavy near opening)
+  const preOpeningCount = openingMonthIndex;
+  const costWeights: number[] = [];
+  if (preOpeningCount > 0) {
+    const rawWeights = Array.from({ length: preOpeningCount }, (_, i) => i + 1);
+    const weightSum = rawWeights.reduce((s, w) => s + w, 0);
+    costWeights.push(...rawWeights.map((w) => (w / weightSum) * totalProjectCost));
+  }
+
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  let cashBalance = startingCash;
   let selfFundingMonthIndex: number | null = null;
 
-  const cashflow = Array.from({ length: 12 }, (_, i) => {
-    const occupancy = Math.min(startOcc + (i * (targetOcc - startOcc) / rampMonths), targetOcc);
-    const bookedSlots = slotsPerMonth * (occupancy / 100);
-    const wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
-    const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
-    const wincTotalCosts = fixedCosts + variableCosts;
-    const wincNet = wincRevenue - wincTotalCosts;
-    wincCumulative += wincNet;
+  const cashflow = Array.from({ length: TOTAL_MONTHS }, (_, i) => {
+    const monthDate = new Date(calendarStart.getFullYear(), calendarStart.getMonth() + i, 1);
+    const calendarLabel = `${MONTH_NAMES[monthDate.getMonth()]} '${String(monthDate.getFullYear()).slice(2)}`;
 
-    // Track when Winchester becomes self-funding (net profit ≥ buffer% of gross revenue)
-    if (selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
-      selfFundingMonthIndex = i;
-    }
-    const isSelfFundingMonth = selfFundingMonthIndex === i;
+    const isPreOpening = i < openingMonthIndex;
+    const isOpeningMonth = i === openingMonthIndex;
+
+    // Project cost drain — only pre-opening, weighted toward later months
+    const projectCostBurn = isPreOpening ? (costWeights[i] ?? 0) : 0;
+
+    // Bedhampton closes when Winchester becomes self-funding
     const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
-
-    // Bedhampton: flat support until Winchester is self-funding, then closes
     const bedhRevenue = bedhClosed ? 0 : bedhMonthlyRevenue;
     const bedhCosts = bedhClosed ? 0 : bedhMonthlyCosts;
     const bedhNet = bedhRevenue - bedhCosts;
-    const bedhSupport = bedhClosed ? 0 : Math.max(bedhNet, 0);
 
-    const combinedNet = wincNet + bedhNet;
-    combinedCumulative += combinedNet;
+    // Winchester: zero before opening, ramps from opening month
+    let wincRevenue = 0;
+    let wincCosts = 0;
+    let wincNet = 0;
+    let occupancyPercent = 0;
 
-    const isBreakevenMonth = !hasReachedBreakeven && wincNet >= 0;
-    if (isBreakevenMonth) hasReachedBreakeven = true;
+    if (!isPreOpening) {
+      const wincMonth = i - openingMonthIndex; // 0 = first month open
+      occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
+      const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
+      wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
+      const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
+      wincCosts = wincFixedCosts + variableCosts;
+      wincNet = wincRevenue - wincCosts;
+
+      if (selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
+        selfFundingMonthIndex = i;
+      }
+    }
+
+    const isSelfFundingMonth = selfFundingMonthIndex === i;
+    const isBedhamptonCloseMonth = isSelfFundingMonth;
+
+    const monthlyCashflow = wincNet + bedhNet - projectCostBurn;
+    cashBalance += monthlyCashflow;
 
     return {
       month: i + 1,
-      monthLabel: months[i],
-      revenue: Math.round(wincRevenue),
-      fixedCosts: Math.round(fixedCosts),
-      variableCosts: Math.round(variableCosts),
-      netCashflow: Math.round(wincNet),
-      cumulativeCashflow: Math.round(wincCumulative),
-      isBreakevenMonth,
-      occupancyPercent: Math.round(occupancy * 10) / 10,
+      calendarLabel,
+      monthLabel: calendarLabel,
+      isPreOpening,
+      isOpeningMonth,
+      isBedhamptonCloseMonth,
+      projectCostBurn: Math.round(projectCostBurn),
       wincRevenue: Math.round(wincRevenue),
-      wincCosts: Math.round(wincTotalCosts),
+      wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
       bedhRevenue: Math.round(bedhRevenue),
       bedhCosts: Math.round(bedhCosts),
       bedhNet: Math.round(bedhNet),
-      bedhSupport: Math.round(bedhSupport),
-      combinedNet: Math.round(combinedNet),
-      combinedCumulative: Math.round(combinedCumulative),
+      monthlyCashflow: Math.round(monthlyCashflow),
+      cashBalance: Math.round(cashBalance),
+      occupancyPercent,
       isSelfFundingMonth,
       bedhClosed,
+      bedhSupport: Math.round(Math.max(bedhNet, 0)),
+      combinedNet: Math.round(wincNet + bedhNet),
     };
   });
 
