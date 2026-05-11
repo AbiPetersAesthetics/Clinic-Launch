@@ -1059,8 +1059,6 @@ function PropertyForm({
 }) {
   const [form, setForm] = useState<PropertyFormData>(initial ?? {});
 
-  useEffect(() => { setForm(initial ?? {}); }, [initial]);
-
   const set = (k: keyof PropertyFormData, v: unknown) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1666,6 +1664,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
               <TabsContent value="details">
                 <PropertyForm
+                  key={property.id}
                   initial={{
                     address: property.address ?? undefined,
                     postcode: property.postcode ?? undefined,

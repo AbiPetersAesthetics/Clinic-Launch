@@ -101,11 +101,15 @@ function computePhaseWindows(
   const sorted = [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   const map = new Map<number, PhaseWindow>();
 
+  // Use the longest task per phase as the phase duration — tasks run in parallel within a phase.
+  const phaseDays = (phase: PhaseWithTasks) =>
+    Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+
   const backward = new Map<number, { mustEndBy: Date; mustStartBy: Date; totalDays: number }>();
   if (openDate) {
     let deadline = new Date(openDate);
     for (const phase of [...sorted].reverse()) {
-      const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+      const totalDays = phaseDays(phase);
       const mustEndBy = new Date(deadline);
       const mustStartBy = addDays(deadline, -totalDays);
       backward.set(phase.id, { mustEndBy, mustStartBy, totalDays });
@@ -117,7 +121,7 @@ function computePhaseWindows(
   if (startDate) {
     let cursor = new Date(startDate);
     for (const phase of sorted) {
-      const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+      const totalDays = phaseDays(phase);
       const estimatedEnd = addDays(cursor, totalDays);
       forward.set(phase.id, { estimatedEnd });
       cursor = estimatedEnd;
@@ -127,7 +131,7 @@ function computePhaseWindows(
   for (const phase of sorted) {
     const bw = backward.get(phase.id);
     const fw = forward.get(phase.id);
-    const totalDays = phase.tasks?.reduce((s, t) => s + (t.durationDays ?? 0), 0) ?? 0;
+    const totalDays = phaseDays(phase);
 
     let status: PhaseWindow["status"] = "unknown";
     if (bw && fw) {
@@ -263,10 +267,13 @@ export default function ProjectPage() {
     ? computePhaseWindows(phases, startDateObj, openDateObj)
     : null;
 
-  const totalProjectDays = phases?.reduce(
-    (s, p) => s + (p.tasks?.reduce((ts, t) => ts + (t.durationDays ?? 0), 0) ?? 0),
-    0
-  ) ?? 0;
+  // Use the longest task per phase (critical path estimate).
+  // Tasks within a phase run in parallel, so the phase duration is its longest task,
+  // not the sum of all tasks. Summing all tasks would imply everything is sequential.
+  const totalProjectDays = phases?.reduce((s, p) => {
+    const durations = p.tasks?.map(t => t.durationDays ?? 0) ?? [0];
+    return s + Math.max(0, ...durations);
+  }, 0) ?? 0;
   const availableDays = openDateObj && startDateObj
     ? Math.max(0, Math.floor((openDateObj.getTime() - startDateObj.getTime()) / 86400000))
     : null;
@@ -355,8 +362,8 @@ export default function ProjectPage() {
             <div className="pt-2 border-t border-border/50 space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
-                  Estimated work: <span className="font-semibold text-foreground">{Math.round(totalProjectDays / 7)} wks</span>
-                  {" "}({totalProjectDays} days across all phases)
+                  Critical path: <span className="font-semibold text-foreground">~{Math.round(totalProjectDays / 7)} wks</span>
+                  <span className="text-xs"> (longest task per phase, run in parallel)</span>
                 </span>
                 <span className="text-muted-foreground">
                   Available: <span className={`font-semibold ${availableDays < totalProjectDays ? "text-destructive" : "text-primary"}`}>
