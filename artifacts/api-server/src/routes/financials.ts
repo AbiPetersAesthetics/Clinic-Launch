@@ -393,10 +393,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
 
-  // Determine calendar anchor
+  // Determine calendar anchor — always start from the earlier of project startDate or today
+  // so the chart always begins in the current month (never a future month)
   const today = new Date();
   const rawStart = project?.startDate ? new Date(project.startDate) : today;
-  const calendarStart = new Date(rawStart.getFullYear(), rawStart.getMonth(), 1);
+  const effectiveStart = rawStart < today ? rawStart : today;
+  const calendarStart = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
 
   // Opening month index (0-based offset from calendarStart)
   const TOTAL_MONTHS = 18;

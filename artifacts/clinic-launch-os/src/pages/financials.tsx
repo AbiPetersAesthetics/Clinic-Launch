@@ -359,102 +359,133 @@ export default function FinancialsPage() {
                   const openingMonth = cashflow.find(m => m.isOpeningMonth);
                   const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
                   const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
+                  const startingCapital = cashflow[0].cashBalance - cashflow[0].monthlyCashflow;
+                  const allVals = [
+                    ...cashflow.map(m => m.cashBalance),
+                    ...cashflow.map(m => m.monthlyCashflow),
+                    0,
+                  ];
+                  const rawMin = Math.min(...allVals);
+                  const rawMax = Math.max(...allVals);
+                  const pad = (rawMax - rawMin) * 0.08;
+                  const yDomain: [number, number] = [
+                    Math.floor((rawMin - pad) / 5000) * 5000,
+                    Math.ceil((rawMax + pad) / 5000) * 5000,
+                  ];
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={cashflow} margin={{ top: 12, right: 60, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis dataKey="calendarLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} dy={8} interval={1} />
-                        <YAxis yAxisId="left" tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                        <YAxis yAxisId="right" orientation="right" tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                      <ComposedChart data={cashflow} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="cashGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
+                            <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.02} />
+                          </linearGradient>
+                        </defs>
 
-                        {/* Pre-opening shading */}
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis
+                          dataKey="calendarLabel"
+                          axisLine={false} tickLine={false}
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          dy={8} interval={1}
+                        />
+                        <YAxis
+                          tickFormatter={(v) => `£${(v / 1000).toFixed(0)}k`}
+                          axisLine={false} tickLine={false}
+                          tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                          domain={yDomain}
+                          width={48}
+                        />
+
+                        {/* Pre-opening shaded region */}
                         {preOpenEnd && (
                           <ReferenceArea
-                            yAxisId="left"
                             x1={cashflow[0].calendarLabel}
                             x2={preOpenEnd.calendarLabel}
                             fill="hsl(var(--muted))"
-                            fillOpacity={0.35}
+                            fillOpacity={0.45}
+                            label={{ value: "Pre-opening", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
                           />
                         )}
 
-                        {/* Winchester open marker */}
+                        {/* Zero line */}
+                        <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
+
+                        {/* Starting capital reference */}
+                        {startingCapital > 0 && (
+                          <ReferenceLine
+                            y={startingCapital}
+                            stroke="#94a3b8"
+                            strokeDasharray="5 3"
+                            strokeWidth={1}
+                            label={{ value: `Business capital £${(startingCapital / 1000).toFixed(0)}k`, position: "insideTopLeft", fontSize: 9, fill: "#94a3b8", dy: -10 }}
+                          />
+                        )}
+
+                        {/* Winchester opening */}
                         {openingMonth && (
                           <ReferenceLine
-                            yAxisId="left"
                             x={openingMonth.calendarLabel}
                             stroke="hsl(var(--primary))"
-                            strokeWidth={2}
+                            strokeWidth={1.5}
                             strokeDasharray="6 3"
-                            label={{ value: "Winchester opens", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--primary))", dy: -2 }}
+                            label={{ value: "Winchester opens", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--primary))" }}
                           />
                         )}
 
-                        {/* Bedhampton close marker */}
+                        {/* Bedhampton closes */}
                         {closeMonth && (
                           <ReferenceLine
-                            yAxisId="left"
                             x={closeMonth.calendarLabel}
                             stroke="#10b981"
-                            strokeWidth={2}
+                            strokeWidth={1.5}
                             strokeDasharray="6 3"
-                            label={{ value: "Bedhampton closes", position: "insideTopRight", fontSize: 9, fill: "#10b981", dy: -2 }}
+                            label={{ value: "Bedhampton closes", position: "insideTopRight", fontSize: 9, fill: "#10b981" }}
                           />
                         )}
-
-                        <ReferenceLine yAxisId="left" y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
 
                         <Tooltip
                           formatter={(v: number, name: string) => {
-                            const labels: Record<string, string> = {
-                              bedhNet: "Bedhampton net",
-                              wincNet: "Winchester net",
-                              projectCostBurnNeg: "Project costs",
-                              cashBalance: "Cash balance",
-                            };
-                            return [formatGBP(Math.abs(v)), labels[name] ?? name];
+                            if (name === "cashBalance") return [formatGBP(v), "Business capital"];
+                            if (name === "monthlyCashflow") return [formatGBP(v), v >= 0 ? "Monthly surplus" : "Monthly deficit"];
+                            return [formatGBP(v), name];
                           }}
                           labelStyle={{ fontWeight: 600, marginBottom: 4 }}
                           contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", fontSize: 12 }}
                         />
                         <Legend
-                          formatter={(v) => ({
-                            bedhNet: "Bedhampton monthly net",
-                            wincNet: "Winchester monthly net",
-                            projectCostBurnNeg: "Project setup costs",
-                            cashBalance: "Cash balance (right axis)",
-                          }[v] ?? v)}
+                          formatter={(v) =>
+                            v === "cashBalance" ? "Business capital (running balance)"
+                            : v === "monthlyCashflow" ? "Monthly net (Bedhampton + Winchester − setup costs)"
+                            : v
+                          }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
                         />
 
-                        {/* Stacked monthly bars */}
-                        <Bar yAxisId="left" dataKey="bedhNet" stackId="monthly" fill="#93c5fd" name="bedhNet" radius={[0,0,0,0]} />
-                        <Bar yAxisId="left" dataKey="wincNet" stackId="monthly" fill="hsl(var(--primary))" fillOpacity={0.8} name="wincNet" radius={[2,2,0,0]} />
+                        {/* Monthly net bars — context: shows monthly surplus/deficit driving the balance */}
                         <Bar
-                          yAxisId="left"
-                          dataKey={(d) => d.projectCostBurn > 0 ? -d.projectCostBurn : null}
-                          name="projectCostBurnNeg"
-                          stackId="costs"
-                          fill="#f87171"
-                          fillOpacity={0.75}
-                          radius={[0,0,2,2]}
+                          dataKey="monthlyCashflow"
+                          name="monthlyCashflow"
+                          fill="#93c5fd"
+                          fillOpacity={0.7}
+                          radius={[2, 2, 0, 0]}
                         />
 
-                        {/* Cash balance line on right axis */}
-                        <Line
-                          yAxisId="right"
+                        {/* Business capital area — the primary story */}
+                        <Area
                           type="monotone"
                           dataKey="cashBalance"
-                          stroke="#f59e0b"
+                          name="cashBalance"
+                          fill="url(#cashGradient)"
+                          stroke="hsl(var(--primary))"
                           strokeWidth={2.5}
                           dot={false}
-                          name="cashBalance"
                         />
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
                 })() : (
-                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Save assumptions first — also set Savings / Buffer in the Model tab.</div>
+                  <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Save assumptions first, then set Business Capital in Assumptions → Personal &amp; Runway.</div>
                 )}
               </div>
 
