@@ -353,7 +353,7 @@ export async function runStartupSeed(): Promise<void> {
       ownerDrawingsGbp: 1047,
       runwaySavingsGbp: 80000,
       personalSalaryNeedsGbp: 1047,
-      nursingIncomeGbp: 4500,
+      nursingIncomeGbp: 0,
       targetDrawingsGbp: 4000,
       wincAcvGbp: 155,
     });

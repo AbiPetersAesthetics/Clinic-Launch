@@ -40,11 +40,6 @@ const SCENARIO_PROFILES: Record<string, {
     acvMultiplier: 0.85, startOcc: 15, rampMonths: 9, nursingMultiplier: 1,
     note: "Economic pressure: lower consumer demand, −15% average spend",
   },
-  abi_leaves_nursing: {
-    getTargetOcc: (m) => m.realisticOccupancyPercent,
-    acvMultiplier: 1, startOcc: 25, rampMonths: 6, nursingMultiplier: 0,
-    note: "Full nursing exit early — clinics must cover all personal income from Day 1",
-  },
   stress_test: {
     getTargetOcc: (m) => Math.max(m.conservativeOccupancyPercent * 0.65, 12),
     acvMultiplier: 0.9, startOcc: 5, rampMonths: 10, nursingMultiplier: 1,
@@ -303,7 +298,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
-  const nursingIncome = (model.nursingIncomeGbp || 4500) * profile.nursingMultiplier;
+  const nursingIncome = 0;
 
   const winc = calcWinchester(model, targetOcc, acvMultiplier);
   const bedh = calcBedhampton(model);

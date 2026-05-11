@@ -33,7 +33,7 @@ const VAT_THRESHOLD = 90000;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "abi_leaves_nursing" | "stress_test";
+type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "stress_test";
 type TabKey = "overview" | "model" | "owner" | "risks";
 
 type WincMetrics = {
@@ -91,7 +91,6 @@ const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color
   aggressive: { label: "Strong Launch", description: "85% occ, 4-mo ramp", color: "text-emerald-600", badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
   delayed_ramp: { label: "Delayed Ramp", description: "65% occ, 12-mo ramp", color: "text-amber-600", badgeClass: "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
   economic_downturn: { label: "Downturn", description: "−20% occ, −15% spend", color: "text-orange-600", badgeClass: "bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
-  abi_leaves_nursing: { label: "No Nursing Income", description: "Clinics must cover all income", color: "text-purple-600", badgeClass: "bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300" },
   stress_test: { label: "Stress Test", description: "5% start, worst-case ramp", color: "text-destructive", badgeClass: "bg-destructive/10 text-destructive" },
 };
 
@@ -678,7 +677,7 @@ export default function FinancialsPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        ["nursingIncomeGbp","Nursing Income (£/mo)"],["targetDrawingsGbp","Desired Income (£/mo)"],
+                        ["targetDrawingsGbp","Desired Income (£/mo)"],
                         ["runwaySavingsGbp","Savings / Buffer (£)"],["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
@@ -793,12 +792,11 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 1",
                     title: "During Bedhampton support",
-                    subtitle: "Nursing + Bedhampton profit + Winchester net (growing)",
+                    subtitle: "Bedhampton profit + Winchester net (growing). Both clinics running.",
                     income: cr.owner.phase1Income,
                     shortfall: cr.owner.phase1Shortfall,
                     safe: cr.owner.phase1IsSafe,
                     breakdown: [
-                      ["Nursing income", cr.owner.nursingIncome],
                       ["Bedhampton net", cr.bedh.netProfit],
                       ["Winchester net", cr.winc.netProfit],
                     ] as [string, number][],
@@ -806,26 +804,24 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 2",
                     title: "After Bedhampton closes",
-                    subtitle: `Nursing + Winchester net (≥${cr.winc.selfFundingBufferPercent}% margin). Bedhampton closed.`,
+                    subtitle: `Winchester self-funding (≥${cr.winc.selfFundingBufferPercent}% margin). Solo clinic.`,
                     income: cr.owner.phase2Income,
                     shortfall: cr.owner.phase2Shortfall,
                     safe: cr.owner.phase2IsSafe,
                     breakdown: [
-                      ["Nursing income", cr.owner.nursingIncome],
                       ["Winchester net", cr.winc.netProfit],
                       ["Bedhampton", 0],
                     ] as [string, number][],
                   },
                   {
                     phase: "Phase 3",
-                    title: "After leaving nursing",
-                    subtitle: "Winchester alone covers everything. Full independence.",
+                    title: "Winchester at full target",
+                    subtitle: "Winchester alone covers desired income. Full financial independence.",
                     income: cr.owner.phase3Income,
                     shortfall: Math.max(cr.owner.targetDrawings - cr.owner.phase3Income, 0),
                     safe: cr.owner.phase3IsSafe,
                     breakdown: [
                       ["Winchester net", cr.winc.netProfit],
-                      ["Nursing", 0],
                       ["Bedhampton", 0],
                     ] as [string, number][],
                   },
@@ -898,7 +894,6 @@ export default function FinancialsPage() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {[
-                      ["abi_leaves_nursing", "No Nursing Income — can clinics alone cover target?"],
                       ["stress_test", "Stress Test — worst-case ramp, is Phase 1 still survivable?"],
                       ["delayed_ramp", "Delayed Ramp — how long is the dual-clinic burden?"],
                       ["economic_downturn", "Downturn — reduced spend, lower occupancy"],
