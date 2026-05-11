@@ -24,6 +24,7 @@ import {
   getGetPropertyScoringWeightsQueryKey,
   useGetLatestPropertyAnalysis,
   getGetLatestPropertyAnalysisQueryKey,
+  useAnalyseBrochure,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
@@ -38,6 +39,7 @@ import type {
   RiskAnalysis,
   NegotiationLeverage,
   LaunchStrategy,
+  BrochureVisualAnalysis,
 } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
@@ -1429,6 +1431,253 @@ function UrlImportDialog({ open, onClose, onCreateProperty }: {
   );
 }
 
+// ─── Brochure Visual Analysis Section ────────────────────────────────────────
+
+function conditionColor(v: string) {
+  if (v === "excellent" || v === "high" || v === "minimal") return "text-emerald-600";
+  if (v === "good" || v === "moderate") return "text-amber-600";
+  return "text-red-600";
+}
+
+function complexityColor(v: string) {
+  if (v === "low") return "bg-emerald-100 text-emerald-700";
+  if (v === "medium") return "bg-amber-100 text-amber-700";
+  return "bg-red-100 text-red-700";
+}
+
+function BrochureAnalysisSection({ propertyId }: { propertyId: number }) {
+  const { toast } = useToast();
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
+  const [result, setResult] = useState<BrochureVisualAnalysis | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const analyseBrochure = useAnalyseBrochure();
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []).slice(0, 5);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setSelectedImages(files);
+    setPreviews(files.map(f => URL.createObjectURL(f)));
+    setResult(null);
+  };
+
+  const handleRemoveImage = (idx: number) => {
+    setSelectedImages(prev => prev.filter((_, i) => i !== idx));
+    setPreviews(prev => {
+      URL.revokeObjectURL(prev[idx] ?? "");
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const handleRunAnalysis = () => {
+    if (selectedImages.length === 0) return;
+    analyseBrochure.mutate(
+      { id: propertyId, data: { images: selectedImages } },
+      {
+        onSuccess: (data) => {
+          setResult(data);
+          setSelectedImages([]);
+          setPreviews([]);
+        },
+        onError: (err) => {
+          const msg = err instanceof Error ? err.message : "Visual analysis failed. Please try again.";
+          toast({ title: "Analysis failed", description: msg, variant: "destructive" });
+        },
+      }
+    );
+  };
+
+  const gradeClr = (g: string) =>
+    g === "A" ? "bg-emerald-100 text-emerald-700" :
+    g === "B" ? "bg-green-100 text-green-700" :
+    g === "C" ? "bg-amber-100 text-amber-700" :
+    g === "D" ? "bg-orange-100 text-orange-700" :
+    "bg-red-100 text-red-700";
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-semibold flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-primary" />Visual Brochure Analysis</h4>
+          <p className="text-xs text-muted-foreground mt-0.5">Upload floor plans or photos — AI assesses layout, condition and fit-out requirements.</p>
+        </div>
+        <Button size="sm" variant="outline" className="gap-1.5 text-xs shrink-0" onClick={() => imageInputRef.current?.click()} disabled={analyseBrochure.isPending}>
+          <Upload className="w-3.5 h-3.5" />Add Images
+        </Button>
+      </div>
+
+      <input ref={imageInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImageSelect} />
+
+      {selectedImages.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {previews.map((src, idx) => (
+              <div key={idx} className="relative group">
+                <img src={src} alt={selectedImages[idx]?.name} className="w-20 h-20 object-cover rounded-lg border" />
+                <button
+                  onClick={() => handleRemoveImage(idx)}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-destructive text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+                <p className="text-xs text-muted-foreground mt-1 w-20 truncate text-center">{selectedImages[idx]?.name}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">{selectedImages.length} image{selectedImages.length !== 1 ? "s" : ""} selected (max 5). Include the floor plan for best results.</p>
+          <Button size="sm" className="gap-1.5 w-full" onClick={handleRunAnalysis} disabled={analyseBrochure.isPending}>
+            {analyseBrochure.isPending ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Analysing images…</> : <><Sparkles className="w-3.5 h-3.5" />Run Visual Analysis</>}
+          </Button>
+        </div>
+      )}
+
+      {analyseBrochure.isPending && selectedImages.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-10 gap-3">
+          <Loader2 className="w-7 h-7 animate-spin text-primary" />
+          <div className="text-center">
+            <p className="text-sm font-medium">Analysing images…</p>
+            <p className="text-xs text-muted-foreground">GPT-4o Vision is assessing the floor plan and photos. This takes 15–30 seconds.</p>
+          </div>
+        </div>
+      )}
+
+      {result && !analyseBrochure.isPending && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">{result.imageCount} image{result.imageCount !== 1 ? "s" : ""} analysed · {new Date(result.generatedAt ?? "").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+            <Button size="sm" variant="ghost" className="text-xs h-7 gap-1" onClick={() => imageInputRef.current?.click()}>
+              <RefreshCw className="w-3 h-3" />Re-analyse
+            </Button>
+          </div>
+
+          {/* Suitability score */}
+          <div className="rounded-xl border bg-card p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h5 className="text-sm font-semibold">Visual Clinic Suitability</h5>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${gradeClr(result.clinicSuitabilityFromImages.grade)}`}>
+                Grade {result.clinicSuitabilityFromImages.grade} · {result.clinicSuitabilityFromImages.score}/100
+              </span>
+            </div>
+            <Progress value={result.clinicSuitabilityFromImages.score} className="h-2" />
+            <p className="text-xs text-muted-foreground">{result.clinicSuitabilityFromImages.verdict}</p>
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <div>
+                <p className="text-xs font-medium text-emerald-700 mb-1">Strengths</p>
+                <ul className="space-y-0.5">
+                  {result.clinicSuitabilityFromImages.strengths.map((s, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-1.5 items-start"><CheckCircle className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />{s}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-amber-700 mb-1">Concerns</p>
+                <ul className="space-y-0.5">
+                  {result.clinicSuitabilityFromImages.concerns.map((c, i) => (
+                    <li key={i} className="text-xs text-muted-foreground flex gap-1.5 items-start"><AlertTriangle className="w-3 h-3 text-amber-500 mt-0.5 shrink-0" />{c}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Layout & Condition row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layout</h5>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Treatment rooms</span>
+                  <span className="text-sm font-bold">{result.layoutAssessment.estimatedRoomCount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Reception</span>
+                  <span className={`text-xs font-medium capitalize ${conditionColor(result.layoutAssessment.receptionViability)}`}>{result.layoutAssessment.receptionViability}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Client flow</span>
+                  <span className={`text-xs font-medium capitalize ${conditionColor(result.layoutAssessment.clientFlowRating)}`}>{result.layoutAssessment.clientFlowRating}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Fit-out complexity</span>
+                  <Badge className={`text-xs capitalize ${complexityColor(result.layoutAssessment.fitoutComplexity)}`}>{result.layoutAssessment.fitoutComplexity}</Badge>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground border-t pt-2">{result.layoutAssessment.floorPlanNotes}</p>
+            </div>
+            <div className="rounded-xl border bg-card p-4 space-y-2">
+              <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Condition</h5>
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Overall</span>
+                  <span className={`text-xs font-medium capitalize ${conditionColor(result.conditionAssessment.overallCondition)}`}>{result.conditionAssessment.overallCondition}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Decorative standard</span>
+                  <span className={`text-xs font-medium capitalize ${conditionColor(result.conditionAssessment.decorativeStandard)}`}>{result.conditionAssessment.decorativeStandard}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-muted-foreground">Maintenance needed</span>
+                  <span className={`text-xs font-medium capitalize ${conditionColor(result.conditionAssessment.maintenanceEstimate)}`}>{result.conditionAssessment.maintenanceEstimate}</span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground border-t pt-2">{result.conditionAssessment.interiorNotes}</p>
+            </div>
+          </div>
+
+          {/* Fit-out estimate */}
+          <div className="rounded-xl border bg-card p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <h5 className="text-sm font-semibold">Fit-Out Estimate</h5>
+              <Badge className={`text-xs capitalize ${complexityColor(result.fitOutEstimate.complexityRating)}`}>{result.fitOutEstimate.complexityRating} complexity</Badge>
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-bold">{formatGBP(result.fitOutEstimate.estimatedCostRangeLow)}</span>
+              <span className="text-muted-foreground">–</span>
+              <span className="text-lg font-bold">{formatGBP(result.fitOutEstimate.estimatedCostRangeHigh)}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Timeline: {result.fitOutEstimate.timelineWeeks}</p>
+            <div>
+              <p className="text-xs font-medium mb-1">Key work required:</p>
+              <ul className="space-y-0.5">
+                {result.fitOutEstimate.keyWorkRequired.map((w, i) => (
+                  <li key={i} className="text-xs text-muted-foreground flex gap-1.5 items-start"><ChevronRight className="w-3 h-3 text-muted-foreground mt-0.5 shrink-0" />{w}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* CQC observations */}
+          {result.cqcObservations.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-2">
+              <h5 className="text-sm font-semibold flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5 text-amber-600" />CQC / Compliance Observations</h5>
+              <ul className="space-y-1">
+                {result.cqcObservations.map((obs, i) => (
+                  <li key={i} className="text-xs text-amber-800 dark:text-amber-300 flex gap-1.5 items-start"><span className="shrink-0">·</span>{obs}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Visual summary */}
+          <div className="rounded-xl border bg-card p-4">
+            <h5 className="text-sm font-semibold mb-1.5 flex items-center gap-1.5"><Brain className="w-3.5 h-3.5 text-primary" />Overall Assessment</h5>
+            <p className="text-xs text-muted-foreground leading-relaxed">{result.visualSummary}</p>
+          </div>
+        </div>
+      )}
+
+      {!result && !analyseBrochure.isPending && selectedImages.length === 0 && (
+        <div className="rounded-xl border border-dashed bg-muted/20 p-6 text-center space-y-2">
+          <Sparkles className="w-7 h-7 text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">Upload floor plans or interior photos from the brochure to get an AI assessment of layout, condition, and fit-out requirements.</p>
+          <p className="text-xs text-muted-foreground">Accepts JPEG, PNG, WebP — up to 5 images. Screenshots from a PDF brochure work perfectly.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Property Detail Sheet ────────────────────────────────────────────────────
 
 function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
@@ -1798,6 +2047,10 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                     <p className="text-xs text-muted-foreground">Upload a PDF brochure or photos — AI will extract property details from PDFs.</p>
                   </div>
                 )}
+
+                <Separator />
+
+                <BrochureAnalysisSection propertyId={property.id} />
 
                 <Separator />
                 <div className="space-y-1.5">

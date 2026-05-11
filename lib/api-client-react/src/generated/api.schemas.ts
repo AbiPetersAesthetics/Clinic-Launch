@@ -1488,6 +1488,143 @@ export interface ComplianceSummary {
   totalItems: number;
 }
 
+export type BrochureVisualAnalysisAnalysisType =
+  (typeof BrochureVisualAnalysisAnalysisType)[keyof typeof BrochureVisualAnalysisAnalysisType];
+
+export const BrochureVisualAnalysisAnalysisType = {
+  brochure_visual: "brochure_visual",
+} as const;
+
+export type BrochureVisualAnalysisLayoutAssessmentReceptionViability =
+  (typeof BrochureVisualAnalysisLayoutAssessmentReceptionViability)[keyof typeof BrochureVisualAnalysisLayoutAssessmentReceptionViability];
+
+export const BrochureVisualAnalysisLayoutAssessmentReceptionViability = {
+  excellent: "excellent",
+  good: "good",
+  limited: "limited",
+  none: "none",
+} as const;
+
+export type BrochureVisualAnalysisLayoutAssessmentClientFlowRating =
+  (typeof BrochureVisualAnalysisLayoutAssessmentClientFlowRating)[keyof typeof BrochureVisualAnalysisLayoutAssessmentClientFlowRating];
+
+export const BrochureVisualAnalysisLayoutAssessmentClientFlowRating = {
+  excellent: "excellent",
+  good: "good",
+  adequate: "adequate",
+  poor: "poor",
+} as const;
+
+export type BrochureVisualAnalysisLayoutAssessmentFitoutComplexity =
+  (typeof BrochureVisualAnalysisLayoutAssessmentFitoutComplexity)[keyof typeof BrochureVisualAnalysisLayoutAssessmentFitoutComplexity];
+
+export const BrochureVisualAnalysisLayoutAssessmentFitoutComplexity = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type BrochureVisualAnalysisLayoutAssessment = {
+  estimatedRoomCount: number;
+  receptionViability: BrochureVisualAnalysisLayoutAssessmentReceptionViability;
+  clientFlowRating: BrochureVisualAnalysisLayoutAssessmentClientFlowRating;
+  floorPlanNotes: string;
+  fitoutComplexity: BrochureVisualAnalysisLayoutAssessmentFitoutComplexity;
+};
+
+export type BrochureVisualAnalysisConditionAssessmentOverallCondition =
+  (typeof BrochureVisualAnalysisConditionAssessmentOverallCondition)[keyof typeof BrochureVisualAnalysisConditionAssessmentOverallCondition];
+
+export const BrochureVisualAnalysisConditionAssessmentOverallCondition = {
+  excellent: "excellent",
+  good: "good",
+  fair: "fair",
+  poor: "poor",
+} as const;
+
+export type BrochureVisualAnalysisConditionAssessmentDecorativeStandard =
+  (typeof BrochureVisualAnalysisConditionAssessmentDecorativeStandard)[keyof typeof BrochureVisualAnalysisConditionAssessmentDecorativeStandard];
+
+export const BrochureVisualAnalysisConditionAssessmentDecorativeStandard = {
+  high: "high",
+  moderate: "moderate",
+  low: "low",
+  stripped: "stripped",
+} as const;
+
+export type BrochureVisualAnalysisConditionAssessmentMaintenanceEstimate =
+  (typeof BrochureVisualAnalysisConditionAssessmentMaintenanceEstimate)[keyof typeof BrochureVisualAnalysisConditionAssessmentMaintenanceEstimate];
+
+export const BrochureVisualAnalysisConditionAssessmentMaintenanceEstimate = {
+  minimal: "minimal",
+  moderate: "moderate",
+  significant: "significant",
+  major: "major",
+} as const;
+
+export type BrochureVisualAnalysisConditionAssessment = {
+  overallCondition: BrochureVisualAnalysisConditionAssessmentOverallCondition;
+  decorativeStandard: BrochureVisualAnalysisConditionAssessmentDecorativeStandard;
+  interiorNotes: string;
+  structuralObservations: string;
+  maintenanceEstimate: BrochureVisualAnalysisConditionAssessmentMaintenanceEstimate;
+};
+
+export type BrochureVisualAnalysisClinicSuitabilityFromImagesGrade =
+  (typeof BrochureVisualAnalysisClinicSuitabilityFromImagesGrade)[keyof typeof BrochureVisualAnalysisClinicSuitabilityFromImagesGrade];
+
+export const BrochureVisualAnalysisClinicSuitabilityFromImagesGrade = {
+  A: "A",
+  B: "B",
+  C: "C",
+  D: "D",
+  F: "F",
+} as const;
+
+export type BrochureVisualAnalysisClinicSuitabilityFromImages = {
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  score: number;
+  grade: BrochureVisualAnalysisClinicSuitabilityFromImagesGrade;
+  strengths: string[];
+  concerns: string[];
+  verdict: string;
+};
+
+export type BrochureVisualAnalysisFitOutEstimateComplexityRating =
+  (typeof BrochureVisualAnalysisFitOutEstimateComplexityRating)[keyof typeof BrochureVisualAnalysisFitOutEstimateComplexityRating];
+
+export const BrochureVisualAnalysisFitOutEstimateComplexityRating = {
+  low: "low",
+  medium: "medium",
+  high: "high",
+} as const;
+
+export type BrochureVisualAnalysisFitOutEstimate = {
+  complexityRating: BrochureVisualAnalysisFitOutEstimateComplexityRating;
+  estimatedCostRangeLow: number;
+  estimatedCostRangeHigh: number;
+  keyWorkRequired: string[];
+  timelineWeeks: string;
+};
+
+export interface BrochureVisualAnalysis {
+  analysisType: BrochureVisualAnalysisAnalysisType;
+  propertyId: number;
+  imageCount: number;
+  analysisId?: number;
+  version?: number;
+  generatedAt?: string;
+  layoutAssessment: BrochureVisualAnalysisLayoutAssessment;
+  conditionAssessment: BrochureVisualAnalysisConditionAssessment;
+  clinicSuitabilityFromImages: BrochureVisualAnalysisClinicSuitabilityFromImages;
+  fitOutEstimate: BrochureVisualAnalysisFitOutEstimate;
+  cqcObservations: string[];
+  visualSummary: string;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
 };
@@ -1495,6 +1632,11 @@ export type UploadPropertyDocumentBody = {
 export type ListDecisionsParams = {
   category?: string;
   search?: string;
+};
+
+export type AnalyseBrochureBody = {
+  /** Up to 5 image files (JPEG, PNG, WebP) of floor plans and property photos */
+  images?: Blob[];
 };
 
 export type AnalysePropertyBody = {

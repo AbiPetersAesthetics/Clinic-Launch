@@ -1783,6 +1783,72 @@ export const GetOptimisationAnalysisResponse = zod.object({
 });
 
 /**
+ * @summary Upload brochure images for AI visual analysis (layout, condition, fit-out estimate)
+ */
+export const AnalyseBrochureParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AnalyseBrochureBody = zod.object({
+  images: zod
+    .array(zod.instanceof(File))
+    .optional()
+    .describe(
+      "Up to 5 image files (JPEG, PNG, WebP) of floor plans and property photos",
+    ),
+});
+
+export const analyseBrochureResponseClinicSuitabilityFromImagesScoreMin = 0;
+export const analyseBrochureResponseClinicSuitabilityFromImagesScoreMax = 100;
+
+export const AnalyseBrochureResponse = zod.object({
+  analysisType: zod.enum(["brochure_visual"]),
+  propertyId: zod.number(),
+  imageCount: zod.number(),
+  analysisId: zod.number().optional(),
+  version: zod.number().optional(),
+  generatedAt: zod.string().optional(),
+  layoutAssessment: zod.object({
+    estimatedRoomCount: zod.number(),
+    receptionViability: zod.enum(["excellent", "good", "limited", "none"]),
+    clientFlowRating: zod.enum(["excellent", "good", "adequate", "poor"]),
+    floorPlanNotes: zod.string(),
+    fitoutComplexity: zod.enum(["low", "medium", "high"]),
+  }),
+  conditionAssessment: zod.object({
+    overallCondition: zod.enum(["excellent", "good", "fair", "poor"]),
+    decorativeStandard: zod.enum(["high", "moderate", "low", "stripped"]),
+    interiorNotes: zod.string(),
+    structuralObservations: zod.string(),
+    maintenanceEstimate: zod.enum([
+      "minimal",
+      "moderate",
+      "significant",
+      "major",
+    ]),
+  }),
+  clinicSuitabilityFromImages: zod.object({
+    score: zod
+      .number()
+      .min(analyseBrochureResponseClinicSuitabilityFromImagesScoreMin)
+      .max(analyseBrochureResponseClinicSuitabilityFromImagesScoreMax),
+    grade: zod.enum(["A", "B", "C", "D", "F"]),
+    strengths: zod.array(zod.string()),
+    concerns: zod.array(zod.string()),
+    verdict: zod.string(),
+  }),
+  fitOutEstimate: zod.object({
+    complexityRating: zod.enum(["low", "medium", "high"]),
+    estimatedCostRangeLow: zod.number(),
+    estimatedCostRangeHigh: zod.number(),
+    keyWorkRequired: zod.array(zod.string()),
+    timelineWeeks: zod.string(),
+  }),
+  cqcObservations: zod.array(zod.string()),
+  visualSummary: zod.string(),
+});
+
+/**
  * @summary Run full AI property intelligence analysis (persisted)
  */
 export const AnalysePropertyParams = zod.object({

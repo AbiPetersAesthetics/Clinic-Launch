@@ -1019,5 +1019,184 @@ Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
   }
 });
 
+// ─── Brochure Visual Analysis (GPT-4o Vision) ────────────────────────────────
+
+const BrochureVisualAnalysisSchema = z.object({
+  layoutAssessment: z.object({
+    estimatedRoomCount: z.number(),
+    receptionViability: z.enum(["excellent", "good", "limited", "none"]),
+    clientFlowRating: z.enum(["excellent", "good", "adequate", "poor"]),
+    floorPlanNotes: z.string(),
+    fitoutComplexity: z.enum(["low", "medium", "high"]),
+  }),
+  conditionAssessment: z.object({
+    overallCondition: z.enum(["excellent", "good", "fair", "poor"]),
+    decorativeStandard: z.enum(["high", "moderate", "low", "stripped"]),
+    interiorNotes: z.string(),
+    structuralObservations: z.string(),
+    maintenanceEstimate: z.enum(["minimal", "moderate", "significant", "major"]),
+  }),
+  clinicSuitabilityFromImages: z.object({
+    score: z.number(),
+    grade: z.enum(["A", "B", "C", "D", "F"]),
+    strengths: z.array(z.string()),
+    concerns: z.array(z.string()),
+    verdict: z.string(),
+  }),
+  fitOutEstimate: z.object({
+    complexityRating: z.enum(["low", "medium", "high"]),
+    estimatedCostRangeLow: z.number(),
+    estimatedCostRangeHigh: z.number(),
+    keyWorkRequired: z.array(z.string()),
+    timelineWeeks: z.string(),
+  }),
+  cqcObservations: z.array(z.string()),
+  visualSummary: z.string(),
+});
+
+router.post("/properties/:id/analyse-brochure", upload.array("images", 5), async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!property) return res.status(404).json({ error: "Property not found" });
+
+  const files = req.files as Express.Multer.File[] | undefined;
+  const imageFiles = (files ?? []).filter(f => f.mimetype.startsWith("image/"));
+
+  if (imageFiles.length === 0) {
+    return res.status(400).json({ error: "At least one image file is required (JPEG, PNG, or WebP)." });
+  }
+
+  const imageContent = imageFiles.map(f => ({
+    type: "image_url" as const,
+    image_url: {
+      url: `data:${f.mimetype};base64,${f.buffer.toString("base64")}`,
+      detail: "high" as const,
+    },
+  }));
+
+  const propertyContext = [
+    property.address && `Address: ${property.address}`,
+    property.postcode && `Postcode: ${property.postcode}`,
+    property.sqFootage && `Size: ${property.sqFootage} sq ft`,
+    property.monthlyRentGbp && `Monthly rent: £${property.monthlyRentGbp}`,
+  ].filter(Boolean).join(" | ") || "Address and details not yet entered";
+
+  const visionPrompt = `You are a specialist clinic design consultant and commercial property surveyor assessing brochure images for a PREMIUM AESTHETICS CLINIC site in the UK.
+
+Property context: ${propertyContext}
+Images provided: ${imageFiles.length} (may include floor plans, interior photos, exterior photos, brochure pages)
+
+Analyse ALL images carefully and assess:
+1. LAYOUT: Max feasible treatment rooms, reception area potential, client flow, fit-out complexity.
+2. CONDITION: Overall decorative and structural condition. What needs doing?
+3. CLINIC SUITABILITY: Score 0-100 and grade A-F purely from what's visible in the images.
+4. FIT-OUT ESTIMATE: Cost range in GBP (low/high), complexity, key works required, timeline.
+5. CQC OBSERVATIONS: Any compliance implications visible — hand wash access, room sizes, ventilation, etc.
+
+Return ONLY valid JSON, no markdown:
+{
+  "layoutAssessment": {
+    "estimatedRoomCount": <integer — max feasible treatment rooms>,
+    "receptionViability": <"excellent"|"good"|"limited"|"none">,
+    "clientFlowRating": <"excellent"|"good"|"adequate"|"poor">,
+    "floorPlanNotes": "<2-3 sentences on layout, room arrangement, circulation>",
+    "fitoutComplexity": <"low"|"medium"|"high">
+  },
+  "conditionAssessment": {
+    "overallCondition": <"excellent"|"good"|"fair"|"poor">,
+    "decorativeStandard": <"high"|"moderate"|"low"|"stripped">,
+    "interiorNotes": "<2-3 sentences on condition — what is good, what needs work>",
+    "structuralObservations": "<brief note on structural or infrastructure observations>",
+    "maintenanceEstimate": <"minimal"|"moderate"|"significant"|"major">
+  },
+  "clinicSuitabilityFromImages": {
+    "score": <integer 0-100>,
+    "grade": <"A"|"B"|"C"|"D"|"F">,
+    "strengths": ["<strength 1>", "<strength 2>", "<strength 3>"],
+    "concerns": ["<concern 1>", "<concern 2>"],
+    "verdict": "<2-3 sentence overall verdict on clinic suitability from the images>"
+  },
+  "fitOutEstimate": {
+    "complexityRating": <"low"|"medium"|"high">,
+    "estimatedCostRangeLow": <integer GBP>,
+    "estimatedCostRangeHigh": <integer GBP>,
+    "keyWorkRequired": ["<work item 1>", "<work item 2>", "<work item 3>"],
+    "timelineWeeks": "<e.g. 8-12 weeks>"
+  },
+  "cqcObservations": ["<observation 1>", "<observation 2>"],
+  "visualSummary": "<1 paragraph overall summary of what the images show and the property's potential as a premium clinic>"
+}`;
+
+  let rawAnalysis: unknown;
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_completion_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: visionPrompt },
+            ...imageContent,
+          ],
+        },
+      ],
+    });
+    const content = response.choices[0]?.message?.content ?? "{}";
+    rawAnalysis = parseLLMJson(content);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
+      return res.status(503).json({ error: "AI service is not configured. Please provision the OpenAI integration." });
+    }
+    return res.status(500).json({ error: "Visual analysis failed. Please try again.", details: msg });
+  }
+
+  const validated = BrochureVisualAnalysisSchema.safeParse(rawAnalysis);
+  if (!validated.success) {
+    return res.status(500).json({
+      error: "AI returned an unexpected response format. Please try again.",
+      details: validated.error.issues.map(i => i.message).join("; "),
+    });
+  }
+
+  const analysis = validated.data;
+  const fullResult = {
+    analysisType: "brochure_visual" as const,
+    propertyId: id,
+    imageCount: imageFiles.length,
+    ...analysis,
+    generatedAt: new Date().toISOString(),
+  };
+
+  const [latestExisting] = await db.select()
+    .from(propertyAiAnalysesTable)
+    .where(eq(propertyAiAnalysesTable.propertyId, id))
+    .orderBy(desc(propertyAiAnalysesTable.version))
+    .limit(1);
+
+  const newVersion = latestExisting ? latestExisting.version + 1 : 1;
+  const score = analysis.clinicSuitabilityFromImages.score;
+  const confidenceLevel = score >= 75 ? "high" : score >= 50 ? "medium" : "low";
+
+  const [savedAnalysis] = await db.insert(propertyAiAnalysesTable).values({
+    propertyId: id,
+    version: newVersion,
+    analysisJson: fullResult as unknown as Record<string, unknown>,
+    confidenceLevel,
+    sourceDataSnapshot: {
+      imageCount: imageFiles.length,
+      propertyAddress: property.address,
+      analysisType: "brochure_visual",
+    } as Record<string, unknown>,
+  }).returning();
+
+  return res.json({
+    ...fullResult,
+    analysisId: savedAnalysis.id,
+    version: newVersion,
+  });
+});
+
 export default router;
 

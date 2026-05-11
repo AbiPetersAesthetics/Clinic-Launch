@@ -19,7 +19,9 @@ import type {
 import type {
   AdvisorActionBody,
   AdvisorActionResult,
+  AnalyseBrochureBody,
   AnalysePropertyBody,
+  BrochureVisualAnalysis,
   BurndownPoint,
   CalculateFinancialsBody,
   CashflowMonth,
@@ -4881,6 +4883,99 @@ export function useGetOptimisationAnalysis<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Upload brochure images for AI visual analysis (layout, condition, fit-out estimate)
+ */
+export const getAnalyseBrochureUrl = (id: number) => {
+  return `/api/properties/${id}/analyse-brochure`;
+};
+
+export const analyseBrochure = async (
+  id: number,
+  analyseBrochureBody: AnalyseBrochureBody,
+  options?: RequestInit,
+): Promise<BrochureVisualAnalysis> => {
+  const formData = new FormData();
+  if (analyseBrochureBody.images !== undefined) {
+    analyseBrochureBody.images.forEach((value) =>
+      formData.append(`images`, value),
+    );
+  }
+
+  return customFetch<BrochureVisualAnalysis>(getAnalyseBrochureUrl(id), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getAnalyseBrochureMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyseBrochure>>,
+    TError,
+    { id: number; data: BodyType<AnalyseBrochureBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof analyseBrochure>>,
+  TError,
+  { id: number; data: BodyType<AnalyseBrochureBody> },
+  TContext
+> => {
+  const mutationKey = ["analyseBrochure"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof analyseBrochure>>,
+    { id: number; data: BodyType<AnalyseBrochureBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return analyseBrochure(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AnalyseBrochureMutationResult = NonNullable<
+  Awaited<ReturnType<typeof analyseBrochure>>
+>;
+export type AnalyseBrochureMutationBody = BodyType<AnalyseBrochureBody>;
+export type AnalyseBrochureMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload brochure images for AI visual analysis (layout, condition, fit-out estimate)
+ */
+export const useAnalyseBrochure = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof analyseBrochure>>,
+    TError,
+    { id: number; data: BodyType<AnalyseBrochureBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof analyseBrochure>>,
+  TError,
+  { id: number; data: BodyType<AnalyseBrochureBody> },
+  TContext
+> => {
+  return useMutation(getAnalyseBrochureMutationOptions(options));
+};
 
 /**
  * @summary Run full AI property intelligence analysis (persisted)

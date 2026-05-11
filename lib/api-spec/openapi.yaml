@@ -1168,6 +1168,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/OptimisationAnalysis"
 
+  /properties/{id}/analyse-brochure:
+    post:
+      operationId: analyseBrochure
+      tags: [intelligence]
+      summary: Upload brochure images for AI visual analysis (layout, condition, fit-out estimate)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Up to 5 image files (JPEG, PNG, WebP) of floor plans and property photos
+      responses:
+        "200":
+          description: Brochure visual analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BrochureVisualAnalysis"
+
   /properties/{id}/analyse:
     post:
       operationId: analyseProperty
@@ -4080,3 +4112,108 @@ components:
         - cqcNotStarted
         - cqcComplete
         - totalItems
+
+    BrochureVisualAnalysis:
+      type: object
+      properties:
+        analysisType:
+          type: string
+          enum: [brochure_visual]
+        propertyId:
+          type: integer
+        imageCount:
+          type: integer
+        analysisId:
+          type: integer
+        version:
+          type: integer
+        generatedAt:
+          type: string
+        layoutAssessment:
+          type: object
+          properties:
+            estimatedRoomCount:
+              type: integer
+            receptionViability:
+              type: string
+              enum: [excellent, good, limited, none]
+            clientFlowRating:
+              type: string
+              enum: [excellent, good, adequate, poor]
+            floorPlanNotes:
+              type: string
+            fitoutComplexity:
+              type: string
+              enum: [low, medium, high]
+          required: [estimatedRoomCount, receptionViability, clientFlowRating, floorPlanNotes, fitoutComplexity]
+        conditionAssessment:
+          type: object
+          properties:
+            overallCondition:
+              type: string
+              enum: [excellent, good, fair, poor]
+            decorativeStandard:
+              type: string
+              enum: [high, moderate, low, stripped]
+            interiorNotes:
+              type: string
+            structuralObservations:
+              type: string
+            maintenanceEstimate:
+              type: string
+              enum: [minimal, moderate, significant, major]
+          required: [overallCondition, decorativeStandard, interiorNotes, structuralObservations, maintenanceEstimate]
+        clinicSuitabilityFromImages:
+          type: object
+          properties:
+            score:
+              type: integer
+              minimum: 0
+              maximum: 100
+            grade:
+              type: string
+              enum: [A, B, C, D, F]
+            strengths:
+              type: array
+              items:
+                type: string
+            concerns:
+              type: array
+              items:
+                type: string
+            verdict:
+              type: string
+          required: [score, grade, strengths, concerns, verdict]
+        fitOutEstimate:
+          type: object
+          properties:
+            complexityRating:
+              type: string
+              enum: [low, medium, high]
+            estimatedCostRangeLow:
+              type: integer
+            estimatedCostRangeHigh:
+              type: integer
+            keyWorkRequired:
+              type: array
+              items:
+                type: string
+            timelineWeeks:
+              type: string
+          required: [complexityRating, estimatedCostRangeLow, estimatedCostRangeHigh, keyWorkRequired, timelineWeeks]
+        cqcObservations:
+          type: array
+          items:
+            type: string
+        visualSummary:
+          type: string
+      required:
+        - analysisType
+        - propertyId
+        - imageCount
+        - layoutAssessment
+        - conditionAssessment
+        - clinicSuitabilityFromImages
+        - fitOutEstimate
+        - cqcObservations
+        - visualSummary
