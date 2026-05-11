@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1758,6 +1758,72 @@ function TaskEditSheet({
   const [costMid, setCostMid] = useState(0);
   const [costHigh, setCostHigh] = useState(0);
 
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiQuery, setAiQuery] = useState("");
+  const [aiResult, setAiResult] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const aiResultRef = useRef<HTMLDivElement>(null);
+
+  const QUICK_PROMPTS = [
+    "Find Winchester suppliers",
+    "Typical UK cost range",
+    "Who to contact for quotes?",
+    "Key risks & mitigation",
+    "CQC requirements",
+  ];
+
+  const runAiResearch = async (query: string) => {
+    if (!query.trim() || aiLoading) return;
+    setAiOpen(true);
+    setAiResult("");
+    setAiLoading(true);
+    try {
+      const res = await fetch("/api/ai/task-research", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskTitle: task?.title ?? "",
+          taskDescription: task?.description ?? "",
+          taskPhase: allPhases.find((p) => p.id === task?.phaseId)?.name ?? "",
+          query,
+        }),
+      });
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.error) throw new Error(payload.error);
+            if (payload.content) {
+              setAiResult((prev) => {
+                const next = prev + payload.content;
+                requestAnimationFrame(() => {
+                  if (aiResultRef.current) {
+                    aiResultRef.current.scrollTop = aiResultRef.current.scrollHeight;
+                  }
+                });
+                return next;
+              });
+            }
+          } catch {}
+        }
+      }
+    } catch (err) {
+      setAiResult(`Error: ${err instanceof Error ? err.message : "Request failed"}`);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (task) {
       setFiles(parseFiles(task.files));
@@ -2060,6 +2126,77 @@ function TaskEditSheet({
                 </div>
                 <Switch id="isCriticalRisk" name="isCriticalRisk" defaultChecked={task.isCriticalRisk} />
               </div>
+            </div>
+
+            {/* AI Research Panel */}
+            <div className="border rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setAiOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-primary/10 to-primary/5 hover:from-primary/15 hover:to-primary/8 transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-semibold text-primary">AI Research Assistant</span>
+                </div>
+                {aiOpen ? <ChevronDown className="w-4 h-4 text-primary" /> : <ChevronRight className="w-4 h-4 text-primary" />}
+              </button>
+
+              {aiOpen && (
+                <div className="p-4 space-y-3 bg-card">
+                  <p className="text-xs text-muted-foreground">Ask for Winchester-specific supplier contacts, UK cost benchmarks, CQC guidance, or risk advice for this task.</p>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {QUICK_PROMPTS.map((prompt) => (
+                      <button
+                        key={prompt}
+                        type="button"
+                        onClick={() => runAiResearch(prompt)}
+                        disabled={aiLoading}
+                        className="text-xs px-2.5 py-1 rounded-full border border-primary/30 bg-primary/5 text-primary hover:bg-primary/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask a custom question…"
+                      value={aiQuery}
+                      onChange={(e) => setAiQuery(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          runAiResearch(aiQuery);
+                          setAiQuery("");
+                        }
+                      }}
+                      disabled={aiLoading}
+                      className="flex-1 h-8 text-sm"
+                    />
+                    <Button
+                      type="button"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      disabled={aiLoading || !aiQuery.trim()}
+                      onClick={() => { runAiResearch(aiQuery); setAiQuery(""); }}
+                    >
+                      {aiLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+
+                  {(aiResult || aiLoading) && (
+                    <div
+                      ref={aiResultRef}
+                      className="max-h-64 overflow-y-auto rounded-md bg-muted/60 p-3 text-xs leading-relaxed whitespace-pre-wrap font-mono border border-border/40"
+                    >
+                      {aiResult || <span className="text-muted-foreground flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin inline" /> Researching…</span>}
+                      {aiLoading && aiResult && <span className="inline-block w-1.5 h-3.5 bg-primary animate-pulse ml-0.5 align-middle" />}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t">
