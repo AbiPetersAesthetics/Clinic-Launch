@@ -97,9 +97,10 @@ interface GanttProps {
   startDateObj: Date | null;
   updateTask: ReturnType<typeof useUpdateTask>;
   invalidateAfterTaskChange: () => void;
+  onTaskClick: (task: LaunchTask) => void;
 }
 
-function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange }: GanttProps) {
+function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange, onTaskClick }: GanttProps) {
   const [dayWidth, setDayWidth] = useState(9);
   // taskOffsets: absolute day offset from project day-0 for each task (overrides computed phase start)
   const [taskOffsets, setTaskOffsets] = useState<Record<number, number>>({});
@@ -109,10 +110,12 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const dragRef = useRef<{
     taskId: number;
+    task: LaunchTask;
     type: "move" | "resize";
     startX: number;
     origValue: number;
     phaseStart: number;
+    hasDragged: boolean;
   } | null>(null);
 
   // Load offsets from localStorage on mount
@@ -202,18 +205,19 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   // ─── Drag handling ───────────────────────────────────────────────
   const handleBarMouseDown = useCallback((
     e: React.MouseEvent,
-    taskId: number,
+    task: LaunchTask,
     type: "move" | "resize",
     origValue: number,
     phaseStart: number,
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    dragRef.current = { taskId, type, startX: e.clientX, origValue, phaseStart };
+    dragRef.current = { taskId: task.id, task, type, startX: e.clientX, origValue, phaseStart, hasDragged: false };
 
     const onMove = (ev: MouseEvent) => {
       if (!dragRef.current) return;
       const dx = ev.clientX - dragRef.current.startX;
+      if (Math.abs(dx) > 4) dragRef.current.hasDragged = true;
       const daysDelta = Math.round(dx / dayWidth);
       const { taskId, type, origValue, phaseStart } = dragRef.current;
 
@@ -226,9 +230,18 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
     const onUp = (ev: MouseEvent) => {
       if (!dragRef.current) return;
+      const { taskId, task, type, origValue, hasDragged } = dragRef.current;
       const dx = ev.clientX - dragRef.current.startX;
       const daysDelta = Math.round(dx / dayWidth);
-      const { taskId, type, origValue } = dragRef.current;
+
+      // Click without drag → open task editor
+      if (!hasDragged && type === "move") {
+        dragRef.current = null;
+        document.removeEventListener("mousemove", onMove);
+        document.removeEventListener("mouseup", onUp);
+        onTaskClick(task);
+        return;
+      }
 
       if (type === "resize") {
         const newDur = Math.max(1, origValue + daysDelta);
@@ -257,7 +270,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [dayWidth, updateTask, invalidateAfterTaskChange]);
+  }, [dayWidth, updateTask, invalidateAfterTaskChange, onTaskClick]);
 
   const totalWidth = totalDays * dayWidth;
 
@@ -424,15 +437,20 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
                   return (
                     <div key={task.id} style={{ display: "flex", height: GANTT_ROW_H, borderBottom: "1px solid hsl(var(--border)/0.35)" }}>
-                      {/* Task name (sticky) */}
-                      <div style={{
-                        width: GANTT_NAME_W, flexShrink: 0,
-                        position: "sticky", left: 0, zIndex: 10,
-                        background: "hsl(var(--card))",
-                        borderRight: "1px solid hsl(var(--border)/0.5)",
-                        display: "flex", alignItems: "center",
-                        padding: "0 10px 0 28px", gap: 4,
-                      }}>
+                      {/* Task name (sticky) — click to open editor */}
+                      <div
+                        style={{
+                          width: GANTT_NAME_W, flexShrink: 0,
+                          position: "sticky", left: 0, zIndex: 10,
+                          background: "hsl(var(--card))",
+                          borderRight: "1px solid hsl(var(--border)/0.5)",
+                          display: "flex", alignItems: "center",
+                          padding: "0 10px 0 28px", gap: 4,
+                          cursor: "pointer",
+                        }}
+                        onClick={() => onTaskClick(task)}
+                        title="Click to edit task"
+                      >
                         <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={task.title}>
                           {task.title}
                         </span>
@@ -464,7 +482,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                             userSelect: "none",
                             boxShadow: isSaving ? `0 0 0 2px ${barColor}` : "0 1px 3px rgba(0,0,0,0.15)",
                           }}
-                          onMouseDown={e => handleBarMouseDown(e, task.id, "move", absStart, phaseStart)}
+                          onMouseDown={e => handleBarMouseDown(e, task, "move", absStart, phaseStart)}
                         >
                           {barW > 36 && (
                             <span style={{ color: "white", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, pointerEvents: "none" }}>
@@ -486,7 +504,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                               borderRadius: "0 4px 4px 0",
                               display: "flex", alignItems: "center", justifyContent: "center",
                             }}
-                            onMouseDown={e => handleBarMouseDown(e, task.id, "resize", dur, phaseStart)}
+                            onMouseDown={e => { e.stopPropagation(); handleBarMouseDown(e, task, "resize", dur, phaseStart); }}
                           >
                             <div style={{ width: 1, height: 10, background: "rgba(255,255,255,0.5)" }} />
                           </div>
@@ -538,6 +556,10 @@ interface PhaseWindow {
   status: "on_track" | "tight" | "overdue" | "unknown";
 }
 
+// Phases 1–3 (by sortOrder) form the sequential property/legal track.
+// Phases 4+ run in parallel from Day 1 — they don't depend on the property track finishing.
+const SEQUENTIAL_PHASE_COUNT = 3;
+
 function computePhaseWindows(
   phases: PhaseWithTasks[],
   startDate: Date | null,
@@ -550,26 +572,41 @@ function computePhaseWindows(
   const phaseDays = (phase: PhaseWithTasks) =>
     Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
 
+  // Backward pass: sequential phases (1–3) chain backwards from open date.
+  // Parallel phases (4+) each must finish by open date but can start from Day 1.
   const backward = new Map<number, { mustEndBy: Date; mustStartBy: Date; totalDays: number }>();
   if (openDate) {
     let deadline = new Date(openDate);
-    for (const phase of [...sorted].reverse()) {
+    for (const phase of [...sorted.slice(0, SEQUENTIAL_PHASE_COUNT)].reverse()) {
       const totalDays = phaseDays(phase);
       const mustEndBy = new Date(deadline);
       const mustStartBy = addDays(deadline, -totalDays);
       backward.set(phase.id, { mustEndBy, mustStartBy, totalDays });
       deadline = new Date(mustStartBy);
     }
+    for (const phase of sorted.slice(SEQUENTIAL_PHASE_COUNT)) {
+      const totalDays = phaseDays(phase);
+      const mustEndBy = new Date(openDate);
+      const mustStartBy = startDate ? new Date(startDate) : addDays(openDate, -totalDays);
+      backward.set(phase.id, { mustEndBy, mustStartBy, totalDays });
+    }
   }
 
+  // Forward pass: sequential phases chain from start date; parallel phases start from Day 1.
   const forward = new Map<number, { estimatedEnd: Date }>();
   if (startDate) {
     let cursor = new Date(startDate);
-    for (const phase of sorted) {
+    for (let i = 0; i < sorted.length; i++) {
+      const phase = sorted[i];
       const totalDays = phaseDays(phase);
-      const estimatedEnd = addDays(cursor, totalDays);
-      forward.set(phase.id, { estimatedEnd });
-      cursor = estimatedEnd;
+      if (i < SEQUENTIAL_PHASE_COUNT) {
+        const estimatedEnd = addDays(cursor, totalDays);
+        forward.set(phase.id, { estimatedEnd });
+        cursor = estimatedEnd;
+      } else {
+        // Parallel track: starts from Day 1 (startDate), ends after its own duration
+        forward.set(phase.id, { estimatedEnd: addDays(startDate, totalDays) });
+      }
     }
   }
 
@@ -713,13 +750,17 @@ export default function ProjectPage() {
     ? computePhaseWindows(phases, startDateObj, openDateObj)
     : null;
 
-  // Use the longest task per phase (critical path estimate).
-  // Tasks within a phase run in parallel, so the phase duration is its longest task,
-  // not the sum of all tasks. Summing all tasks would imply everything is sequential.
-  const totalProjectDays = phases?.reduce((s, p) => {
-    const durations = p.tasks?.map(t => t.durationDays ?? 0) ?? [0];
-    return s + Math.max(0, ...durations);
-  }, 0) ?? 0;
+  // Critical path = the longer of:
+  //   A) Sequential property/legal track (Phases 1–3 chain, each = longest task)
+  //   B) Longest single parallel track (Phases 4–7, each starts Day 1)
+  // This correctly models the reality that regulatory/marketing/finance work in parallel.
+  const sortedForCritPath = phases
+    ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    : [];
+  const phaseMaxDur = (p: PhaseWithTasks) => Math.max(0, ...(p.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+  const propertyTrackDays = sortedForCritPath.slice(0, SEQUENTIAL_PHASE_COUNT).reduce((s, p) => s + phaseMaxDur(p), 0);
+  const parallelTrackDays = sortedForCritPath.slice(SEQUENTIAL_PHASE_COUNT).reduce((mx, p) => Math.max(mx, phaseMaxDur(p)), 0);
+  const totalProjectDays = Math.max(propertyTrackDays, parallelTrackDays);
   const availableDays = openDateObj && startDateObj
     ? Math.max(0, Math.floor((openDateObj.getTime() - startDateObj.getTime()) / 86400000))
     : null;
@@ -835,7 +876,7 @@ export default function ProjectPage() {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">
                   Critical path: <span className="font-semibold text-foreground">~{Math.round(totalProjectDays / 7)} wks</span>
-                  <span className="text-xs"> (longest task per phase, run in parallel)</span>
+                  <span className="text-xs"> (Phases 1–3 sequential · Phases 4–7 run from Day 1)</span>
                 </span>
                 <span className="text-muted-foreground">
                   Available: <span className={`font-semibold ${availableDays < totalProjectDays ? "text-destructive" : "text-primary"}`}>
@@ -874,6 +915,7 @@ export default function ProjectPage() {
           startDateObj={startDateObj}
           updateTask={updateTask}
           invalidateAfterTaskChange={invalidateAfterTaskChange}
+          onTaskClick={setEditingTask}
         />
       )}
 
