@@ -49,7 +49,7 @@ const SCENARIO_PROFILES: Record<string, {
 
 // ─── Helper: Winchester metrics at given occupancy ────────────────────────────
 
-function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: number) {
+function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: number, vatRate = 0) {
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
   const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
   const bookedSlots = slotsPerMonth * (occupancy / 100);
@@ -65,34 +65,38 @@ function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: numbe
     grossRevenue * (((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100) +
     (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
-  const totalCosts = fixedCosts + variableCosts;
+  // VAT is a liability on gross revenue — treated as a cost (conservative: prices not raised)
+  const vatLiability = grossRevenue * vatRate;
+  const totalCosts = fixedCosts + variableCosts + vatLiability;
   const netProfit = grossRevenue - totalCosts;
   const grossMarginPercent = grossRevenue > 0 ? ((grossRevenue - variableCosts) / grossRevenue) * 100 : 0;
 
-  return { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, totalCosts, netProfit, grossMarginPercent };
+  return { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, vatLiability, totalCosts, netProfit, grossMarginPercent };
 }
 
 // ─── Helper: Full Winchester projection at target occupancy ──────────────────
 
-function calcWinchester(model: any, targetOcc: number, acvMultiplier: number) {
-  const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier);
-  const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, totalCosts, netProfit, grossMarginPercent } = base;
+function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, vatRate = 0) {
+  const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier, vatRate);
+  const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, vatLiability, totalCosts, netProfit, grossMarginPercent } = base;
 
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
   const fixedVarItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   // Break-even: revenue where netProfit = 0
-  const breakEvenRevenue = variableRatio < 1
-    ? (fixedCosts + fixedVarItems) / (1 - variableRatio)
+  // With VAT: revenue × (1 − variableRatio − vatRate) = fixedCosts + fixedVarItems
+  const effectiveMargin = 1 - variableRatio - vatRate;
+  const breakEvenRevenue = effectiveMargin > 0.001
+    ? (fixedCosts + fixedVarItems) / effectiveMargin
     : (fixedCosts + fixedVarItems) * 3;
   const breakEvenSlots = (breakEvenRevenue - (model.membershipRevenueGbp || 0)) / Math.max(acv, 1);
   const breakEvenOccupancy = slotsPerMonth > 0 ? (breakEvenSlots / slotsPerMonth) * 100 : 0;
   const treatmentsPerWeek = breakEvenSlots / Math.max((model.workingDaysPerMonth || 22) / 4.33, 1);
 
-  // Self-funding: netProfit ≥ bufferPct × grossRevenue (revenue-based margin target)
-  // Solving: grossRevenue × (1 − variableRatio − bufferPct) ≥ fixedCosts + fixedVarItems
+  // Self-funding: netProfit ≥ bufferPct × grossRevenue
+  // Solving: grossRevenue × (1 − variableRatio − vatRate − bufferPct) ≥ fixedCosts + fixedVarItems
   const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
-  const sfDenominator = 1 - variableRatio - bufferPct;
+  const sfDenominator = 1 - variableRatio - vatRate - bufferPct;
   const sfRevenueTarget = sfDenominator > 0.001
     ? (fixedCosts + fixedVarItems) / sfDenominator
     : Infinity;
@@ -311,18 +315,29 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const acvMultiplier = profile.acvMultiplier;
   const nursingIncome = 0;
 
-  const winc = calcWinchester(model, targetOcc, acvMultiplier);
+  // Determine VAT rate for Winchester calculations
+  // VAT is a business-level obligation (£90k rolling threshold across all clinics).
+  // If the business is already close enough that Winchester will open after registration,
+  // include VAT in all Winchester projections and break-even figures.
+  const vatCurrentTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
+  const bedhMonthlyRev = model.existingClinicRevenueGbp || 0;
+  // Project 12 months of Bedhampton forward — will they cross the threshold?
+  const vatWillApplyAtOpening = vatCurrentTurnover >= 90000 ||
+    (vatCurrentTurnover + bedhMonthlyRev * 12 >= 90000);
+  const vatRateForCalc = vatWillApplyAtOpening ? 0.20 : 0;
+
+  const winc = calcWinchester(model, targetOcc, acvMultiplier, vatRateForCalc);
   const bedh = calcBedhampton(model);
   const selfFundingMonth = findSelfFundingMonth(model, targetOcc, acvMultiplier, profile);
   const combined = calcCombined(winc, bedh, model as any, selfFundingMonth);
   const owner = calcOwner(winc, bedh, model as any, nursingIncome);
 
-  // Legacy: months until Winchester itself breaks even
+  // Legacy: months until Winchester itself breaks even (with VAT applied)
   let monthsUntilProfitable: number | null = null;
   if (winc.netProfit < 0) {
     for (let m = 1; m <= 24; m++) {
       const occ = Math.min(profile.startOcc + (m * (targetOcc - profile.startOcc) / profile.rampMonths), targetOcc);
-      const sim = calcWincAtOccupancy(model, occ, acvMultiplier);
+      const sim = calcWincAtOccupancy(model, occ, acvMultiplier, vatRateForCalc);
       if (sim.netProfit >= 0) { monthsUntilProfitable = m; break; }
     }
   } else {
