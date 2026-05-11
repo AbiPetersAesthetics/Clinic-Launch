@@ -208,3 +208,115 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* ─── Print styles ────────────────────────────────────────────────────────── */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm;
+  }
+
+  /* Hide chrome */
+  aside,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Flatten layout — sidebar is hidden, content goes full width */
+  .min-h-screen {
+    display: block !important;
+  }
+
+  .flex-1.flex.flex-col.min-w-0 {
+    display: block !important;
+  }
+
+  main {
+    overflow: visible !important;
+    padding: 4mm 0 !important;
+  }
+
+  main > div {
+    max-width: 100% !important;
+  }
+
+  /* Force all accordion panels open regardless of interactive state */
+  [data-state="closed"] {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Base typography */
+  body {
+    font-size: 9pt !important;
+    color: #111 !important;
+    background: #fff !important;
+  }
+
+  /* Remove backgrounds & shadows */
+  * {
+    box-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Cards: light border only */
+  .border {
+    border-color: #d1d5db !important;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    font-size: 7.5pt !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+  }
+
+  thead th {
+    font-size: 6.5pt !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #f3f4f6 !important;
+    padding: 3px 5px !important;
+    border: 0.5pt solid #ccc !important;
+  }
+
+  tbody td {
+    padding: 3px 5px !important;
+    border: 0.5pt solid #e5e7eb !important;
+    vertical-align: top !important;
+    word-wrap: break-word !important;
+  }
+
+  /* Don't break rows across pages */
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Phase accordion items: try to keep header with at least some rows */
+  [data-radix-accordion-item] {
+    break-inside: avoid-page;
+  }
+
+  /* Disable animations */
+  .animate-in,
+  .transition-colors,
+  .transition-all {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Progress bars: keep the fill visible */
+  [role="progressbar"] > div {
+    background-color: #2d6a4f !important;
+  }
+
+  /* Page header — tighten spacing */
+  h1, h2, h3 {
+    page-break-after: avoid;
+  }
+}

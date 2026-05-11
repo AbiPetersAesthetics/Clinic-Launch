@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, Printer } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -779,6 +779,13 @@ export default function ProjectPage() {
     );
   }
 
+  const handlePrint = () => {
+    // Expand all phases so their content is visible before the browser prints
+    if (phases) setOpenPhases(phases.map(p => `phase-${p.id}`));
+    // Small delay to let accordion animation settle before print dialog opens
+    setTimeout(() => window.print(), 200);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
@@ -786,7 +793,16 @@ export default function ProjectPage() {
           title="Project Plan"
           subtitle="Set your key dates, then manage phases and tasks."
         />
-        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm shrink-0 mt-1">
+        <div className="flex items-center gap-2 shrink-0 mt-1">
+        <button
+          onClick={handlePrint}
+          className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
+          title="Print project plan"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print
+        </button>
+        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm no-print">
           <button
             onClick={() => setViewMode("list")}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
@@ -809,6 +825,7 @@ export default function ProjectPage() {
             <GanttChartSquare className="w-3.5 h-3.5" />
             Gantt
           </button>
+        </div>
         </div>
       </div>
 
@@ -862,7 +879,7 @@ export default function ProjectPage() {
                 onClick={handleSaveDates}
                 disabled={!datesDirty || updateProject.isPending}
                 size="sm"
-                className="w-full md:w-auto"
+                className="w-full md:w-auto no-print"
               >
                 <Save className="w-3.5 h-3.5 mr-1.5" />
                 {updateProject.isPending ? "Saving…" : "Save Dates"}
@@ -983,7 +1000,7 @@ export default function ProjectPage() {
                         <TableHead>Risk</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
                         <TableHead>Due Date</TableHead>
-                        <TableHead className="w-[80px]"></TableHead>
+                        <TableHead className="w-[80px] no-print"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1088,7 +1105,7 @@ export default function ProjectPage() {
                           <TableCell className="text-sm text-muted-foreground">
                             {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
                           </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
+                          <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
@@ -1133,7 +1150,7 @@ export default function ProjectPage() {
                     </TableBody>
                   </Table>
                 </div>
-                <div className="mt-3 flex">
+                <div className="mt-3 flex no-print">
                   <Button
                     variant="outline"
                     size="sm"
