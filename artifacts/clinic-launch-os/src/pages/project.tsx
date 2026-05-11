@@ -647,6 +647,7 @@ export default function ProjectPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [showExport, setShowExport] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [ganttKey, setGanttKey] = useState(0);
 
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState("");
@@ -658,6 +659,7 @@ export default function ProjectPage() {
     title: string;
     changes: { field: string; from: string; to: string }[];
     patch: Record<string, unknown>;
+    ganttOffset?: number;
   };
   const [importDiffs, setImportDiffs] = useState<ImportDiff[] | null>(null);
   const [importError, setImportError] = useState("");
@@ -887,6 +889,8 @@ export default function ProjectPage() {
         {
           title: "Exact task title as shown above — used for matching",
           duration_days: 14,
+          start_date: "2026-06-15",
+          end_date: "2026-06-29",
           status: "not_started",
           owner: "Solicitor",
           risk_level: "medium",
@@ -901,6 +905,9 @@ export default function ProjectPage() {
     lines.push("- Only include tasks you want to change — omit tasks with no changes.");
     lines.push("- title must match EXACTLY as shown above (it is the lookup key).");
     lines.push("- Only include the fields you want to update — omit fields you do not want to change.");
+    lines.push("- start_date and end_date must be ISO format (YYYY-MM-DD). start_date moves the task bar on the Gantt chart.");
+    lines.push("- end_date is informational — the Gantt uses start_date + duration_days. Include both for clarity.");
+    lines.push(`- Project start date is ${localStartDate || "not yet set"}. Dates before this will clamp to day 0.`);
     lines.push("- status must be one of: not_started, in_progress, complete, blocked, deferred");
     lines.push("- risk_level must be one of: low, medium, high, critical");
     lines.push("- cost_tier must be one of: low, mid, high");
@@ -997,7 +1004,24 @@ export default function ProjectPage() {
         changes.push({ field: "Notes", from: task.notes ? task.notes.slice(0, 60) + "…" : "—", to: String(update.notes).slice(0, 60) + "…" });
       }
 
-      if (changes.length > 0) diffs.push({ taskId: task.id, title: task.title, changes, patch });
+      let ganttOffset: number | undefined;
+      if (update.start_date && localStartDate) {
+        const taskDate = new Date(String(update.start_date));
+        const originDate = new Date(localStartDate);
+        if (!isNaN(taskDate.getTime()) && !isNaN(originDate.getTime())) {
+          const offset = Math.max(0, Math.round((taskDate.getTime() - originDate.getTime()) / 86400000));
+          ganttOffset = offset;
+          const currentOffsets: Record<number, number> = (() => {
+            try { return JSON.parse(localStorage.getItem(GANTT_LS_KEY) ?? "{}"); } catch { return {}; }
+          })();
+          const currentOffset = currentOffsets[task.id];
+          if (currentOffset !== offset) {
+            changes.push({ field: "Gantt start", from: currentOffset !== undefined ? `day ${currentOffset}` : "auto", to: `day ${offset} (${taskDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })})` });
+          }
+        }
+      }
+
+      if (changes.length > 0) diffs.push({ taskId: task.id, title: task.title, changes, patch, ganttOffset });
     }
 
     if (unmatched.length > 0) {
@@ -1015,15 +1039,33 @@ export default function ProjectPage() {
     setImportApplying(true);
     let count = 0;
     for (const diff of importDiffs) {
-      await new Promise<void>((resolve) => {
-        updateTask.mutate(
-          { id: diff.taskId, data: diff.patch as Parameters<typeof updateTask.mutate>[0]["data"] },
-          { onSettled: () => resolve() }
-        );
-      });
+      // Only call API if there are non-Gantt fields to update
+      const apiPatch = { ...diff.patch };
+      if (Object.keys(apiPatch).length > 0) {
+        await new Promise<void>((resolve) => {
+          updateTask.mutate(
+            { id: diff.taskId, data: apiPatch as Parameters<typeof updateTask.mutate>[0]["data"] },
+            { onSettled: () => resolve() }
+          );
+        });
+      }
       count++;
       setImportApplied(count);
     }
+
+    // Write any Gantt offsets (start_date overrides) to localStorage then remount GanttView
+    const ganttDiffs = importDiffs.filter(d => d.ganttOffset !== undefined);
+    if (ganttDiffs.length > 0) {
+      try {
+        const existing: Record<number, number> = JSON.parse(localStorage.getItem(GANTT_LS_KEY) ?? "{}");
+        for (const d of ganttDiffs) {
+          existing[d.taskId] = d.ganttOffset!;
+        }
+        localStorage.setItem(GANTT_LS_KEY, JSON.stringify(existing));
+      } catch { /* ignore */ }
+      setGanttKey(k => k + 1);
+    }
+
     setImportApplying(false);
     invalidateAfterTaskChange();
     setImportDiffs(null);
@@ -1181,6 +1223,7 @@ export default function ProjectPage() {
 
       {viewMode === "gantt" && phases && (
         <GanttView
+          key={ganttKey}
           phases={phases}
           startDateObj={startDateObj}
           updateTask={updateTask}
