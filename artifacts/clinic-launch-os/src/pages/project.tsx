@@ -805,13 +805,32 @@ export default function ProjectPage() {
 
     const sorted = phases ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)) : [];
     const SEQUENTIAL = SEQUENTIAL_PHASE_COUNT;
+    const fmtD = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+
+    // Compute phase start dates using the same forward-pass as computePhaseWindows.
+    // Sequential phases (0–2) chain from startDate; parallel phases (3+) all start from startDate.
+    const phaseStartDates: Date[] = [];
+    const origin = startDateObj ?? new Date();
+    let cursor = new Date(origin);
+    for (let i = 0; i < sorted.length; i++) {
+      const phase = sorted[i];
+      if (i < SEQUENTIAL) {
+        phaseStartDates.push(new Date(cursor));
+        const phaseMax = Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+        cursor = addDays(cursor, phaseMax);
+      } else {
+        phaseStartDates.push(new Date(origin));
+      }
+    }
 
     sorted.forEach((phase, idx) => {
       const track = idx < SEQUENTIAL ? "SEQUENTIAL — Property/Legal Track" : "PARALLEL — runs from Day 1";
+      const phaseStart = phaseStartDates[idx];
       const phaseMax = Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+      const phaseEnd = addDays(phaseStart, phaseMax);
       lines.push("---");
       lines.push(`## Phase ${idx + 1}: ${phase.name} [${track}]`);
-      lines.push(`Status: ${phase.status.replace("_", " ")} | Tasks: ${phase.completedTaskCount}/${phase.taskCount} complete | Phase duration: ${phaseMax}d (longest task) | Selected Cost: ${formatGBP(phase.selectedCostTotal)}`);
+      lines.push(`Window: ${startDateObj ? fmtD(phaseStart) : "TBD"} → ${startDateObj ? fmtD(phaseEnd) : "TBD"} (${phaseMax}d) | Status: ${phase.status.replace("_", " ")} | Tasks: ${phase.completedTaskCount}/${phase.taskCount} complete | Selected Cost: ${formatGBP(phase.selectedCostTotal)}`);
       lines.push("");
 
       const tasks = phase.tasks ?? [];
@@ -820,9 +839,12 @@ export default function ProjectPage() {
       } else {
         for (const task of tasks) {
           const done = task.status === "complete" ? "[x]" : "[ ]";
-          const dur = task.durationDays ? `${task.durationDays}d` : "?d";
+          const dur = task.durationDays ?? 0;
+          const taskStart = phaseStart;
+          const taskEnd = addDays(phaseStart, dur);
+          const startStr = startDateObj ? fmtD(taskStart) : "TBD";
+          const endStr = startDateObj && dur > 0 ? fmtD(taskEnd) : "TBD";
           const owner = task.owner || "—";
-          const due = task.dueDate ? new Date(task.dueDate).toLocaleDateString("en-GB") : "—";
           const risk = task.riskLevel || "low";
           const costStr = task.selectedCost > 0 ? `${formatGBP(task.selectedCost)} (${task.costTier})` : "£0";
           const flags = [
@@ -831,7 +853,7 @@ export default function ProjectPage() {
           ].filter(Boolean).join(", ");
 
           lines.push(`${done} **${task.title}**`);
-          lines.push(`   Duration: ${dur} | Status: ${task.status.replace("_", " ")} | Owner: ${owner} | Due: ${due} | Risk: ${risk} | Cost: ${costStr}${flags ? ` | ⚠ ${flags}` : ""}`);
+          lines.push(`   ${startStr} → ${endStr} (${dur}d) | Status: ${task.status.replace("_", " ")} | Owner: ${owner} | Risk: ${risk} | Cost: ${costStr}${flags ? ` | ⚠ ${flags}` : ""}`);
           if (task.notes) lines.push(`   Notes: ${task.notes}`);
         }
       }
