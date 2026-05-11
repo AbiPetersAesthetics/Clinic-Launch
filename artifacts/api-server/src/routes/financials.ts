@@ -403,7 +403,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
-  const monthlyDrawings = model.ownerDrawingsGbp || 0;
+  const monthlyDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
 
   // Determine calendar anchor — always start from the earlier of project startDate or today
   const today = new Date();

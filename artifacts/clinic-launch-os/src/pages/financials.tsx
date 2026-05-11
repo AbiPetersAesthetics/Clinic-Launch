@@ -471,7 +471,7 @@ export default function FinancialsPage() {
                                       )}
                                     </div>
                                   )}
-                                  {d.ownerDrawings > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Owner drawings</span><span className="text-orange-500">−{formatGBP(d.ownerDrawings)}</span></div>}
+                                  {d.ownerDrawings > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Your drawings</span><span className="text-orange-500">−{formatGBP(d.ownerDrawings)}</span></div>}
                                   <div className="flex justify-between gap-4 border-t pt-1 mt-1"><span className="font-medium">Monthly net</span><span className={d.monthlyCashflow >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>{formatGBP(d.monthlyCashflow)}</span></div>
                                 </div>
                               </div>
