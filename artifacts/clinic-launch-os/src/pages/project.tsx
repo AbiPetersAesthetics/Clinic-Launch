@@ -648,6 +648,20 @@ export default function ProjectPage() {
   const [showExport, setShowExport] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importApplying, setImportApplying] = useState(false);
+  const [importApplied, setImportApplied] = useState(0);
+
+  type ImportDiff = {
+    taskId: number;
+    title: string;
+    changes: { field: string; from: string; to: string }[];
+    patch: Record<string, unknown>;
+  };
+  const [importDiffs, setImportDiffs] = useState<ImportDiff[] | null>(null);
+  const [importError, setImportError] = useState("");
+
   const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
@@ -860,6 +874,39 @@ export default function ProjectPage() {
       lines.push("");
     });
 
+    lines.push("---");
+    lines.push("## HOW TO RESPOND WITH UPDATES (read carefully)");
+    lines.push("");
+    lines.push("When you have assessed this plan, respond with your analysis, then include a JSON block");
+    lines.push("in EXACTLY this format so the user can paste your full response into the Import modal:");
+    lines.push("");
+    lines.push("```json");
+    lines.push(JSON.stringify({
+      summary: "Brief description of what you have changed and why",
+      task_updates: [
+        {
+          title: "Exact task title as shown above — used for matching",
+          duration_days: 14,
+          status: "not_started",
+          owner: "Solicitor",
+          risk_level: "medium",
+          notes: "Your reasoning or updated notes",
+          cost_tier: "mid",
+        }
+      ]
+    }, null, 2));
+    lines.push("```");
+    lines.push("");
+    lines.push("RULES:");
+    lines.push("- Only include tasks you want to change — omit tasks with no changes.");
+    lines.push("- title must match EXACTLY as shown above (it is the lookup key).");
+    lines.push("- Only include the fields you want to update — omit fields you do not want to change.");
+    lines.push("- status must be one of: not_started, in_progress, complete, blocked, deferred");
+    lines.push("- risk_level must be one of: low, medium, high, critical");
+    lines.push("- cost_tier must be one of: low, mid, high");
+    lines.push("- duration_days must be a positive whole number (calendar days).");
+    lines.push("- The user will paste your FULL response into the Import modal — it auto-extracts the JSON.");
+
     return lines.join("\n");
   };
 
@@ -883,6 +930,107 @@ export default function ProjectPage() {
     win.print();
   };
 
+  const parseClaudeResponse = () => {
+    setImportError("");
+    setImportDiffs(null);
+    setImportApplied(0);
+
+    // Extract JSON from code fence or raw text
+    let jsonStr = importText;
+    const fence = importText.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) jsonStr = fence[1];
+
+    let parsed: { summary?: string; task_updates?: unknown[] };
+    try {
+      parsed = JSON.parse(jsonStr.trim());
+    } catch {
+      setImportError("Could not find valid JSON in the pasted text. Make sure you have copied Claude's full response including the ```json block.");
+      return;
+    }
+
+    if (!Array.isArray(parsed.task_updates)) {
+      setImportError("JSON found but missing a `task_updates` array. Check Claude followed the format instructions.");
+      return;
+    }
+
+    // Build lookup: normalised title → task
+    const allTasks = new Map<string, LaunchTask>();
+    for (const phase of phases ?? []) {
+      for (const t of phase.tasks ?? []) {
+        allTasks.set(t.title.trim().toLowerCase(), t);
+      }
+    }
+
+    const diffs: ImportDiff[] = [];
+    const unmatched: string[] = [];
+
+    for (const update of parsed.task_updates as Record<string, unknown>[]) {
+      const titleKey = String(update.title ?? "").trim().toLowerCase();
+      const task = allTasks.get(titleKey);
+      if (!task) {
+        unmatched.push(String(update.title ?? "(unknown)"));
+        continue;
+      }
+
+      const patch: Record<string, unknown> = {};
+      const changes: { field: string; from: string; to: string }[] = [];
+
+      const maybeSet = (field: string, newVal: unknown, display: string, currentDisplay: string) => {
+        if (newVal === undefined || newVal === null) return;
+        if (String(newVal) !== String(currentDisplay).toLowerCase().replace(/ /g, "_")) {
+          patch[field] = newVal;
+          changes.push({ field: display, from: currentDisplay || "—", to: String(newVal) });
+        }
+      };
+
+      if (update.duration_days !== undefined && Number(update.duration_days) !== (task.durationDays ?? 0)) {
+        patch.durationDays = Number(update.duration_days);
+        changes.push({ field: "Duration", from: `${task.durationDays ?? 0}d`, to: `${update.duration_days}d` });
+      }
+      maybeSet("status", update.status, "Status", task.status);
+      maybeSet("owner", update.owner, "Owner", task.owner ?? "");
+      maybeSet("riskLevel", update.risk_level, "Risk", task.riskLevel ?? "low");
+      maybeSet("costTier", update.cost_tier, "Cost tier", task.costTier ?? "");
+
+      if (update.notes !== undefined && String(update.notes) !== (task.notes ?? "")) {
+        patch.notes = String(update.notes);
+        changes.push({ field: "Notes", from: task.notes ? task.notes.slice(0, 60) + "…" : "—", to: String(update.notes).slice(0, 60) + "…" });
+      }
+
+      if (changes.length > 0) diffs.push({ taskId: task.id, title: task.title, changes, patch });
+    }
+
+    if (unmatched.length > 0) {
+      setImportError(`Warning: ${unmatched.length} task(s) not matched by title: ${unmatched.slice(0, 3).join(", ")}${unmatched.length > 3 ? " …" : ""}. These were skipped. Other matches are shown below.`);
+    }
+    if (diffs.length === 0 && unmatched.length === 0) {
+      setImportError("No changes detected — Claude's updates already match current values.");
+      return;
+    }
+    setImportDiffs(diffs);
+  };
+
+  const applyImport = async () => {
+    if (!importDiffs) return;
+    setImportApplying(true);
+    let count = 0;
+    for (const diff of importDiffs) {
+      await new Promise<void>((resolve) => {
+        updateTask.mutate(
+          { id: diff.taskId, data: diff.patch as Parameters<typeof updateTask.mutate>[0]["data"] },
+          { onSettled: () => resolve() }
+        );
+      });
+      count++;
+      setImportApplied(count);
+    }
+    setImportApplying(false);
+    invalidateAfterTaskChange();
+    setImportDiffs(null);
+    setImportText("");
+    setShowImport(false);
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-start justify-between gap-4">
@@ -894,10 +1042,18 @@ export default function ProjectPage() {
         <button
           onClick={() => setShowExport(true)}
           className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
-          title="Export plan for Claude / print"
+          title="Export plan for Claude"
         >
           <FileText className="w-3.5 h-3.5" />
           Export
+        </button>
+        <button
+          onClick={() => { setShowImport(true); setImportDiffs(null); setImportError(""); setImportText(""); setImportApplied(0); }}
+          className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
+          title="Import Claude's response"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          Import
         </button>
         <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm no-print">
           <button
@@ -1289,6 +1445,98 @@ export default function ProjectPage() {
             <pre className="text-[11px] leading-relaxed font-mono text-foreground whitespace-pre-wrap break-words">
               {generateExportText()}
             </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Import from Claude modal ── */}
+      <Dialog open={showImport} onOpenChange={(open) => { setShowImport(open); if (!open) { setImportDiffs(null); setImportError(""); } }}>
+        <DialogContent className="max-w-2xl h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <DialogTitle className="text-base font-semibold">Import Claude's Response</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Paste Claude's full response below. The JSON block will be extracted automatically, changes previewed, and applied to your tasks.
+            </p>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto px-6 py-4 flex flex-col gap-4">
+            {!importDiffs && (
+              <>
+                <Textarea
+                  className="flex-1 font-mono text-xs min-h-[260px] resize-none"
+                  placeholder={"Paste Claude's full response here — including analysis and the ```json block at the end…"}
+                  value={importText}
+                  onChange={(e) => setImportText(e.target.value)}
+                />
+                {importError && (
+                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 text-destructive px-3 py-2 text-sm">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{importError}</span>
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" onClick={() => setShowImport(false)}>Cancel</Button>
+                  <Button onClick={parseClaudeResponse} disabled={!importText.trim()}>
+                    Preview changes
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {importDiffs && (
+              <>
+                {importError && (
+                  <div className="flex items-start gap-2 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3 py-2 text-sm">
+                    <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{importError}</span>
+                  </div>
+                )}
+                <p className="text-sm font-medium">
+                  {importDiffs.length === 0
+                    ? "No changes to apply."
+                    : `${importDiffs.length} task${importDiffs.length !== 1 ? "s" : ""} will be updated:`}
+                </p>
+                <div className="flex-1 overflow-auto space-y-3">
+                  {importDiffs.map((diff) => (
+                    <div key={diff.taskId} className="rounded-md border bg-muted/30 px-4 py-3 text-sm">
+                      <p className="font-medium mb-2">{diff.title}</p>
+                      <div className="space-y-1">
+                        {diff.changes.map((ch) => (
+                          <div key={ch.field} className="flex items-baseline gap-2 text-xs text-muted-foreground">
+                            <span className="w-20 shrink-0 font-medium text-foreground">{ch.field}</span>
+                            <span className="line-through opacity-60">{ch.from}</span>
+                            <ChevronRight className="w-3 h-3 shrink-0" />
+                            <span className="text-primary font-medium">{ch.to}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t gap-2">
+                  <button
+                    onClick={() => { setImportDiffs(null); setImportError(""); }}
+                    className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    ← Back
+                  </button>
+                  <div className="flex items-center gap-3">
+                    {importApplying && (
+                      <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        Applying {importApplied}/{importDiffs.length}…
+                      </span>
+                    )}
+                    <Button
+                      onClick={applyImport}
+                      disabled={importApplying || importDiffs.length === 0}
+                    >
+                      {importApplying ? "Applying…" : `Apply ${importDiffs.length} update${importDiffs.length !== 1 ? "s" : ""}`}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
