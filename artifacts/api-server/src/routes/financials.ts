@@ -403,7 +403,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
-  const monthlyDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
+  const targetDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
+
+  // VAT — UK statutory threshold £90,000/year = £7,500/month
+  // Once Winchester monthly revenue hits this level, 20% VAT is deducted as a cost
+  // (conservative model: assumes VAT cannot be fully passed on to clients)
+  const VAT_MONTHLY_THRESHOLD = 90000 / 12;
+  const VAT_RATE = 0.20;
 
   // Determine calendar anchor — always start from the earlier of project startDate or today
   const today = new Date();
@@ -479,6 +485,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let wincRevenue = 0;
     let wincCosts = 0;
     let wincNet = 0;
+    let vatLiability = 0;
+    let isVatRegistered = false;
     let occupancyPercent = 0;
 
     if (!isPreOpening) {
@@ -488,8 +496,17 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
       wincCosts = wincFixedCosts + variableCosts;
+
+      // VAT kicks in once monthly Winchester revenue hits the £90k/year threshold
+      if (wincRevenue >= VAT_MONTHLY_THRESHOLD) {
+        isVatRegistered = true;
+        vatLiability = wincRevenue * VAT_RATE;
+        wincCosts += vatLiability;
+      }
+
       wincNet = wincRevenue - wincCosts;
 
+      // Self-funding check runs after VAT is applied so it's based on true net
       if (selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
         selfFundingMonthIndex = i;
       }
@@ -498,8 +515,16 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isSelfFundingMonth = selfFundingMonthIndex === i;
     const isBedhamptonCloseMonth = isSelfFundingMonth;
 
-    // True monthly cashflow: income (Bedh + Winc) minus project spend minus owner drawings
-    const monthlyCashflow = wincNet + bedhNet - projectCostBurn - monthlyDrawings;
+    // Dynamic drawings:
+    // - Before self-funding: no drawings from the business (Bedhampton income sustains Abi personally)
+    // - After self-funding: Abi takes up to her desired income from the available surplus
+    // - Any surplus above drawings accrues as business capital
+    const drawingsActive = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
+    const grossSurplus = wincNet + bedhNet - projectCostBurn;
+    const actualDrawings = drawingsActive ? Math.min(Math.max(0, grossSurplus), targetDrawings) : 0;
+    const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
+
+    const monthlyCashflow = grossSurplus - actualDrawings;
     cashBalance += monthlyCashflow;
 
     return {
@@ -511,7 +536,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       isBedhamptonCloseMonth,
       projectCostBurn: Math.round(projectCostBurn),
       taskLabels: taskLabelsThisMonth,
-      ownerDrawings: Math.round(monthlyDrawings),
+      vatLiability: Math.round(vatLiability),
+      isVatRegistered,
+      actualDrawings: Math.round(actualDrawings),
+      targetDrawings: Math.round(targetDrawings),
+      drawingsShortfall: Math.round(drawingsShortfall),
+      drawingsActive,
       wincRevenue: Math.round(wincRevenue),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),

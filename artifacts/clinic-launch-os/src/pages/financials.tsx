@@ -79,7 +79,9 @@ type CashflowMonth = {
   isPreOpening: boolean; isOpeningMonth: boolean; isBedhamptonCloseMonth: boolean;
   wincRevenue: number; wincCosts: number; wincNet: number;
   bedhRevenue: number; bedhCosts: number; bedhNet: number;
-  projectCostBurn: number; taskLabels: string[]; ownerDrawings: number;
+  projectCostBurn: number; taskLabels: string[];
+  vatLiability: number; isVatRegistered: boolean;
+  actualDrawings: number; targetDrawings: number; drawingsShortfall: number; drawingsActive: boolean;
   monthlyCashflow: number; cashBalance: number;
   occupancyPercent: number;
   isSelfFundingMonth: boolean; bedhClosed: boolean;
@@ -454,25 +456,45 @@ export default function FinancialsPage() {
                             const d = payload[0]?.payload as CashflowMonth;
                             if (!d) return null;
                             return (
-                              <div className="rounded-lg border bg-background shadow-md p-3 text-xs max-w-[260px]">
+                              <div className="rounded-lg border bg-background shadow-md p-3 text-xs max-w-[280px]">
                                 <p className="font-semibold text-sm mb-2">{label}</p>
                                 <div className="space-y-1">
                                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business capital</span><span className="font-bold">{formatGBP(d.cashBalance)}</span></div>
                                   {d.bedhNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Bedhampton net</span><span className={d.bedhNet >= 0 ? "text-blue-600" : "text-destructive"}>{formatGBP(d.bedhNet)}</span></div>}
+                                  {d.wincRevenue > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winchester revenue</span><span>{formatGBP(d.wincRevenue)}</span></div>}
+                                  {d.vatLiability > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">VAT liability (20%)</span><span className="text-amber-600">−{formatGBP(d.vatLiability)}</span></div>}
                                   {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winchester net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
                                   {d.projectCostBurn > 0 && (
                                     <div>
                                       <div className="flex justify-between gap-4"><span className="text-muted-foreground">Project spend</span><span className="text-red-500">−{formatGBP(d.projectCostBurn)}</span></div>
                                       {d.taskLabels?.length > 0 && (
                                         <ul className="mt-1 pl-2 space-y-0.5 text-muted-foreground">
-                                          {d.taskLabels.slice(0, 5).map((t, i) => <li key={i} className="truncate">· {t}</li>)}
+                                          {d.taskLabels.slice(0, 5).map((t, idx) => <li key={idx} className="truncate">· {t}</li>)}
                                           {d.taskLabels.length > 5 && <li>· +{d.taskLabels.length - 5} more</li>}
                                         </ul>
                                       )}
                                     </div>
                                   )}
-                                  {d.ownerDrawings > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Your drawings</span><span className="text-orange-500">−{formatGBP(d.ownerDrawings)}</span></div>}
-                                  <div className="flex justify-between gap-4 border-t pt-1 mt-1"><span className="font-medium">Monthly net</span><span className={d.monthlyCashflow >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>{formatGBP(d.monthlyCashflow)}</span></div>
+                                  {d.drawingsActive && (
+                                    <div>
+                                      <div className="flex justify-between gap-4">
+                                        <span className="text-muted-foreground">Your drawings</span>
+                                        <span className="text-orange-500">−{formatGBP(d.actualDrawings)}</span>
+                                      </div>
+                                      {d.drawingsShortfall > 0 && (
+                                        <p className="text-amber-600 text-[10px] pl-2 mt-0.5">
+                                          {formatGBP(d.drawingsShortfall)} short of target — clinic still ramping
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                  {!d.drawingsActive && !d.isPreOpening && (
+                                    <p className="text-muted-foreground text-[10px]">No drawings yet — waiting for self-funding threshold</p>
+                                  )}
+                                  <div className="flex justify-between gap-4 border-t pt-1 mt-1">
+                                    <span className="font-medium">{d.actualDrawings > 0 ? "To business capital" : "Monthly net"}</span>
+                                    <span className={d.monthlyCashflow >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>{formatGBP(d.monthlyCashflow)}</span>
+                                  </div>
                                 </div>
                               </div>
                             );
@@ -481,7 +503,7 @@ export default function FinancialsPage() {
                         <Legend
                           formatter={(v) =>
                             v === "cashBalance" ? "Business capital (running balance)"
-                            : v === "monthlyCashflow" ? "Monthly net (income − project costs − drawings)"
+                            : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
