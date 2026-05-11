@@ -114,6 +114,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const [localDurations, setLocalDurations] = useState<Record<number, number>>({});
   const [collapsedPhases, setCollapsedPhases] = useState<Set<number>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+  const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     taskId: number;
     task: LaunchTask;
@@ -179,6 +180,23 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
   const baseDate = startDateObj ?? new Date();
 
+  // How many days from baseDate to today (for the "today" marker line)
+  const todayDay = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const base = new Date(baseDate);
+    base.setHours(0, 0, 0, 0);
+    return Math.round((now.getTime() - base.getTime()) / 86400000);
+  }, [baseDate]);
+
+  // Scroll to today on mount (and whenever the view first opens)
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const scrollTarget = Math.max(0, todayDay * dayWidth - 180);
+    scrollRef.current.scrollLeft = scrollTarget;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const weekMarkers = useMemo(() => {
     const marks: { day: number; label: string }[] = [];
     for (let d = 0; d <= totalDays; d += 7) {
@@ -194,16 +212,22 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const monthMarkers = useMemo(() => {
     const marks: { day: number; label: string }[] = [];
     const start = new Date(baseDate);
-    start.setDate(1);
+    start.setDate(1); // rewind to 1st of the current month
     let d = Math.ceil((start.getTime() - baseDate.getTime()) / 86400000);
+    // If the 1st of the month is before baseDate (e.g. project starts on the 11th),
+    // clamp to 0 so the current month label still appears at the left edge.
+    if (d < 0) d = 0;
     while (d <= totalDays) {
       const date = addDays(baseDate, d);
       marks.push({
         day: d,
         label: date.toLocaleDateString("en-GB", { month: "short", year: "2-digit" }),
       });
-      date.setMonth(date.getMonth() + 1);
-      d = Math.round((date.getTime() - baseDate.getTime()) / 86400000);
+      // Advance to the 1st of the next month
+      const next = new Date(date);
+      next.setDate(1);
+      next.setMonth(next.getMonth() + 1);
+      d = Math.round((next.getTime() - baseDate.getTime()) / 86400000);
     }
     return marks;
   }, [totalDays, baseDate]);
@@ -316,7 +340,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       </div>
 
       {/* Chart */}
-      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "68vh" }}>
+      <div ref={scrollRef} style={{ overflowX: "auto", overflowY: "auto", maxHeight: "68vh" }}>
         <div style={{ width: GANTT_NAME_W + totalWidth, minWidth: "100%" }}>
 
           {/* ── Header row ── */}
@@ -365,6 +389,15 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                   <span style={{ fontSize: 9, color: "hsl(var(--muted-foreground))", whiteSpace: "nowrap" }}>{wk.label}</span>
                 </div>
               ))}
+              {/* Today marker line in header */}
+              {todayDay >= 0 && todayDay <= totalDays && (
+                <div style={{
+                  position: "absolute", left: todayDay * dayWidth,
+                  top: 0, bottom: 0, width: 2,
+                  background: "#dc2626", opacity: 0.85,
+                  pointerEvents: "none", zIndex: 5,
+                }} />
+              )}
             </div>
           </div>
 
@@ -469,6 +502,10 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                         {weekMarkers.map(wk => (
                           <div key={wk.day} style={{ position: "absolute", left: wk.day * dayWidth, top: 0, bottom: 0, borderLeft: "1px solid hsl(var(--border)/0.2)", pointerEvents: "none" }} />
                         ))}
+                        {/* Today marker */}
+                        {todayDay >= 0 && todayDay <= totalDays && (
+                          <div style={{ position: "absolute", left: todayDay * dayWidth, top: 0, bottom: 0, width: 2, background: "#dc2626", opacity: 0.35, pointerEvents: "none" }} />
+                        )}
 
                         {/* Task bar */}
                         <div
