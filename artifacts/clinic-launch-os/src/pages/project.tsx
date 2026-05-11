@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, Printer } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +58,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const PROJECT_ID = 1;
 
@@ -639,6 +645,8 @@ export default function ProjectPage() {
   const [editingTask, setEditingTask] = useState<LaunchTask | null>(null);
   const [addingTaskPhaseId, setAddingTaskPhaseId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [showExport, setShowExport] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
   const [localStartDate, setLocalStartDate] = useState("");
@@ -779,11 +787,78 @@ export default function ProjectPage() {
     );
   }
 
-  const handlePrint = () => {
-    // Expand all phases so their content is visible before the browser prints
-    if (phases) setOpenPhases(phases.map(p => `phase-${p.id}`));
-    // Small delay to let accordion animation settle before print dialog opens
-    setTimeout(() => window.print(), 200);
+  const generateExportText = (): string => {
+    const lines: string[] = [];
+    const today = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    lines.push("# Abi Peters Aesthetics — Winchester Clinic Project Plan");
+    lines.push(`Generated: ${today}`);
+    lines.push(`Start Date: ${localStartDate || "TBD"} | Target Open: ${localOpenDate || "TBD"}`);
+    lines.push(`Available: ${availableDays ?? "?"} days (${availableDays ? Math.round(availableDays / 7) : "?"} wks) | Critical Path: ~${Math.round(totalProjectDays / 7)} wks (${totalProjectDays} days)`);
+    lines.push(`Total Selected Cost: ${formatGBP(totalSelectedCost)}`);
+    lines.push("");
+    lines.push("## Scheduling Model");
+    lines.push("Phases 1–3 are SEQUENTIAL (property/legal track — must complete in order).");
+    lines.push("Phases 4–7 run IN PARALLEL from Day 1 (regulatory, clinical governance, finance, marketing).");
+    lines.push(`True critical path = max(Phase 1+2+3 chain = ${propertyTrackDays}d, longest parallel track = ${parallelTrackDays}d) = ${totalProjectDays} days.`);
+    lines.push("");
+
+    const sorted = phases ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)) : [];
+    const SEQUENTIAL = SEQUENTIAL_PHASE_COUNT;
+
+    sorted.forEach((phase, idx) => {
+      const track = idx < SEQUENTIAL ? "SEQUENTIAL — Property/Legal Track" : "PARALLEL — runs from Day 1";
+      const phaseMax = Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+      lines.push("---");
+      lines.push(`## Phase ${idx + 1}: ${phase.name} [${track}]`);
+      lines.push(`Status: ${phase.status.replace("_", " ")} | Tasks: ${phase.completedTaskCount}/${phase.taskCount} complete | Phase duration: ${phaseMax}d (longest task) | Selected Cost: ${formatGBP(phase.selectedCostTotal)}`);
+      lines.push("");
+
+      const tasks = phase.tasks ?? [];
+      if (tasks.length === 0) {
+        lines.push("_(no tasks)_");
+      } else {
+        for (const task of tasks) {
+          const done = task.status === "complete" ? "[x]" : "[ ]";
+          const dur = task.durationDays ? `${task.durationDays}d` : "?d";
+          const owner = task.owner || "—";
+          const due = task.dueDate ? new Date(task.dueDate).toLocaleDateString("en-GB") : "—";
+          const risk = task.riskLevel || "low";
+          const costStr = task.selectedCost > 0 ? `${formatGBP(task.selectedCost)} (${task.costTier})` : "£0";
+          const flags = [
+            task.isNonNegotiable ? "NON-NEGOTIABLE" : "",
+            task.isCriticalRisk ? "CRITICAL RISK" : "",
+          ].filter(Boolean).join(", ");
+
+          lines.push(`${done} **${task.title}**`);
+          lines.push(`   Duration: ${dur} | Status: ${task.status.replace("_", " ")} | Owner: ${owner} | Due: ${due} | Risk: ${risk} | Cost: ${costStr}${flags ? ` | ⚠ ${flags}` : ""}`);
+          if (task.notes) lines.push(`   Notes: ${task.notes}`);
+        }
+      }
+      lines.push("");
+    });
+
+    return lines.join("\n");
+  };
+
+  const handleCopy = async () => {
+    const text = generateExportText();
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handlePrintText = () => {
+    const text = generateExportText();
+    const win = window.open("", "_blank");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head><title>Project Plan — Abi Peters Aesthetics</title>
+<style>
+  body { font-family: monospace; font-size: 11pt; line-height: 1.6; margin: 15mm; color: #111; white-space: pre-wrap; }
+  @page { size: A4 portrait; margin: 15mm; }
+</style></head><body>${text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</body></html>`);
+    win.document.close();
+    win.print();
   };
 
   return (
@@ -795,12 +870,12 @@ export default function ProjectPage() {
         />
         <div className="flex items-center gap-2 shrink-0 mt-1">
         <button
-          onClick={handlePrint}
+          onClick={() => setShowExport(true)}
           className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
-          title="Print project plan"
+          title="Export plan for Claude / print"
         >
-          <Printer className="w-3.5 h-3.5" />
-          Print
+          <FileText className="w-3.5 h-3.5" />
+          Export
         </button>
         <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm no-print">
           <button
@@ -1166,6 +1241,35 @@ export default function ProjectPage() {
           );
         })}
       </Accordion>
+
+      {/* ── Export for Claude modal ── */}
+      <Dialog open={showExport} onOpenChange={setShowExport}>
+        <DialogContent className="max-w-3xl h-[85vh] flex flex-col gap-0 p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
+            <DialogTitle className="text-base font-semibold">Export Project Plan</DialogTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Copy this into Claude to assess timeline, gaps, or sequencing. All 113 tasks, phases, durations, costs, and flags included.
+            </p>
+            <div className="flex items-center gap-2 mt-3">
+              <Button size="sm" onClick={handleCopy} className="gap-1.5 h-8">
+                {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? "Copied!" : "Copy to clipboard"}
+              </Button>
+              <Button size="sm" variant="outline" onClick={handlePrintText} className="gap-1.5 h-8">
+                Print as plain text
+              </Button>
+              <span className="text-xs text-muted-foreground ml-auto">
+                {generateExportText().split("\n").length} lines · {Math.round(generateExportText().length / 1000)}k chars
+              </span>
+            </div>
+          </DialogHeader>
+          <div className="flex-1 overflow-auto px-6 py-4">
+            <pre className="text-[11px] leading-relaxed font-mono text-foreground whitespace-pre-wrap break-words">
+              {generateExportText()}
+            </pre>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <TaskEditSheet
         task={editingTask}
