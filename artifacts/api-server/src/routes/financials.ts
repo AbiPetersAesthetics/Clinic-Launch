@@ -133,7 +133,13 @@ function calcBedhampton(model: any) {
   const grossRevenue = model.existingClinicRevenueGbp || 0;
   const stockPct = (model.bedhStockPercent ?? 35) / 100;
   const productCosts = grossRevenue * stockPct;
-  const runningCosts = model.bedhamptonCostsGbp ?? 3200;
+  const runningCosts =
+    (model.bedhRentGbp || 0) +
+    (model.bedhSoftwareGbp || 0) +
+    (model.bedhStaffingGbp || 0) +
+    (model.bedhInsuranceGbp || 0) +
+    (model.bedhMarketingGbp || 0) +
+    (model.bedhamptonCostsGbp || 0);
   const costs = productCosts + runningCosts;
   const netProfit = grossRevenue - costs;
   return {
@@ -388,7 +394,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
   const bedhProductCosts = bedhMonthlyRevenue * bedhStockPct;
-  const bedhRunningCosts = (model as any).bedhamptonCostsGbp ?? 3200;
+  const bedhRunningCosts =
+    ((model as any).bedhRentGbp || 0) +
+    ((model as any).bedhSoftwareGbp || 0) +
+    ((model as any).bedhStaffingGbp || 0) +
+    ((model as any).bedhInsuranceGbp || 0) +
+    ((model as any).bedhMarketingGbp || 0) +
+    ((model as any).bedhamptonCostsGbp || 0);
   const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;

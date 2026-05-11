@@ -41,8 +41,14 @@ export const financialsTable = pgTable("financial_models", {
   selfFundingBufferPercent: real("self_funding_buffer_percent").notNull().default(20),
   // Bedhampton — temporary support clinic (separate patient base, will close)
   existingClinicRevenueGbp: real("existing_clinic_revenue_gbp").notNull().default(0),
-  bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(3200),
   bedhStockPercent: real("bedh_stock_percent").notNull().default(35),
+  // Bedhampton individual cost lines (mirrors Winchester fixed cost structure)
+  bedhRentGbp: real("bedh_rent_gbp").notNull().default(0),
+  bedhSoftwareGbp: real("bedh_software_gbp").notNull().default(0),
+  bedhStaffingGbp: real("bedh_staffing_gbp").notNull().default(0),
+  bedhInsuranceGbp: real("bedh_insurance_gbp").notNull().default(0),
+  bedhMarketingGbp: real("bedh_marketing_gbp").notNull().default(0),
+  bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(0), // "Other" catch-all
   // cannibal_percent kept in DB for backward compat but no longer used (set to 0)
   cannibalPercent: real("cannibal_percent").notNull().default(0),
   // Owner / personal planning

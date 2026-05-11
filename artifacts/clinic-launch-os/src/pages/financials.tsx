@@ -162,7 +162,8 @@ export default function FinancialsPage() {
       treatmentRoomsCount: 2, practitionerHoursPerDay: 7,
       workingDaysPerMonth: 22, conservativeOccupancyPercent: 40, realisticOccupancyPercent: 65,
       aggressiveOccupancyPercent: 85, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
-      existingClinicRevenueGbp: 0, bedhamptonCostsGbp: 3200, bedhStockPercent: 35,
+      existingClinicRevenueGbp: 0, bedhStockPercent: 35,
+      bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
       ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
     }
@@ -183,7 +184,9 @@ export default function FinancialsPage() {
         workingDaysPerMonth: m.workingDaysPerMonth || 22, conservativeOccupancyPercent: m.conservativeOccupancyPercent || 40,
         realisticOccupancyPercent: m.realisticOccupancyPercent || 65, aggressiveOccupancyPercent: m.aggressiveOccupancyPercent || 85,
         repeatBookingRatePercent: m.repeatBookingRatePercent || 60, membershipRevenueGbp: m.membershipRevenueGbp || 0,
-        existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 3200, bedhStockPercent: m.bedhStockPercent ?? 35,
+        existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhStockPercent: m.bedhStockPercent ?? 35,
+        bedhRentGbp: m.bedhRentGbp || 0, bedhSoftwareGbp: m.bedhSoftwareGbp || 0, bedhStaffingGbp: m.bedhStaffingGbp || 0,
+        bedhInsuranceGbp: m.bedhInsuranceGbp || 0, bedhMarketingGbp: m.bedhMarketingGbp || 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp || 0,
         ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp || 0, nursingIncomeGbp: m.nursingIncomeGbp || 4500,
         targetDrawingsGbp: m.targetDrawingsGbp || 4000,
@@ -771,9 +774,9 @@ export default function FinancialsPage() {
 
                 <Card className="shadow-sm border-blue-200 dark:border-blue-900">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Bedhampton — Temporary Support Clinic</CardTitle>
+                    <CardTitle className="text-sm">Bedhampton — Revenue</CardTitle>
                     <CardDescription className="text-xs">
-                      Separate patient base. Revenue supports the household during the Winchester ramp. Closes when Winchester hits the self-funding target.
+                      Separate patient base. Supports the business during the Winchester ramp. Closes when Winchester hits the self-funding target.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -781,14 +784,74 @@ export default function FinancialsPage() {
                       {[
                         ["existingClinicRevenueGbp","Gross Monthly Revenue (£)"],
                         ["bedhStockPercent","Product / Stock Cost (%)"],
-                        ["bedhamptonCostsGbp","Fixed Running Costs (£/mo)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-2">Net = Revenue − product cost % − fixed running costs. This is the true monthly contribution during the Winchester ramp.</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-blue-200 dark:border-blue-900">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Bedhampton — Monthly Running Costs</CardTitle>
+                    <CardDescription className="text-xs">
+                      These costs run until Bedhampton closes. Software, staffing and insurance that will transfer to Winchester on opening day.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        ["bedhRentGbp","Rent / Premises (£)"],
+                        ["bedhInsuranceGbp","Insurance (£)"],
+                        ["bedhSoftwareGbp","Software (£)"],
+                        ["bedhStaffingGbp","Staffing / Wages (£)"],
+                        ["bedhMarketingGbp","Marketing (£)"],
+                        ["bedhamptonCostsGbp","Other (£)"],
+                      ].map(([name, label]) => (
+                        <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
+                          <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
+                        )} />
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-sm font-semibold">Total running costs</span>
+                      <span className="font-bold">{formatGBP(
+                        (Number(form.watch("bedhRentGbp")) || 0) +
+                        (Number(form.watch("bedhInsuranceGbp")) || 0) +
+                        (Number(form.watch("bedhSoftwareGbp")) || 0) +
+                        (Number(form.watch("bedhStaffingGbp")) || 0) +
+                        (Number(form.watch("bedhMarketingGbp")) || 0) +
+                        (Number(form.watch("bedhamptonCostsGbp")) || 0)
+                      )}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Product costs ({form.watch("bedhStockPercent") ?? 35}% of rev)</span>
+                      <span>{formatGBP(((Number(form.watch("existingClinicRevenueGbp")) || 0) * (Number(form.watch("bedhStockPercent")) || 35)) / 100)}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Est. monthly net</span>
+                      <span className={`font-bold ${
+                        (Number(form.watch("existingClinicRevenueGbp")) || 0) -
+                        ((Number(form.watch("existingClinicRevenueGbp")) || 0) * (Number(form.watch("bedhStockPercent")) || 35) / 100) -
+                        (Number(form.watch("bedhRentGbp")) || 0) -
+                        (Number(form.watch("bedhInsuranceGbp")) || 0) -
+                        (Number(form.watch("bedhSoftwareGbp")) || 0) -
+                        (Number(form.watch("bedhStaffingGbp")) || 0) -
+                        (Number(form.watch("bedhMarketingGbp")) || 0) -
+                        (Number(form.watch("bedhamptonCostsGbp")) || 0) >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
+                      }`}>{formatGBP(
+                        (Number(form.watch("existingClinicRevenueGbp")) || 0) -
+                        ((Number(form.watch("existingClinicRevenueGbp")) || 0) * (Number(form.watch("bedhStockPercent")) || 35) / 100) -
+                        (Number(form.watch("bedhRentGbp")) || 0) -
+                        (Number(form.watch("bedhInsuranceGbp")) || 0) -
+                        (Number(form.watch("bedhSoftwareGbp")) || 0) -
+                        (Number(form.watch("bedhStaffingGbp")) || 0) -
+                        (Number(form.watch("bedhMarketingGbp")) || 0) -
+                        (Number(form.watch("bedhamptonCostsGbp")) || 0)
+                      )}</span>
+                    </div>
                   </CardContent>
                 </Card>
 
