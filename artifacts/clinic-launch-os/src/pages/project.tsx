@@ -1004,6 +1004,31 @@ export default function ProjectPage() {
         changes.push({ field: "Notes", from: task.notes ? task.notes.slice(0, 60) + "…" : "—", to: String(update.notes).slice(0, 60) + "…" });
       }
 
+      if (update.cost_low !== undefined && Number(update.cost_low) !== (task.costLow ?? 0)) {
+        patch.costLow = Number(update.cost_low);
+        changes.push({ field: "Cost low", from: `£${task.costLow ?? 0}`, to: `£${update.cost_low}` });
+      }
+      if (update.cost_mid !== undefined && Number(update.cost_mid) !== (task.costMid ?? 0)) {
+        patch.costMid = Number(update.cost_mid);
+        changes.push({ field: "Cost mid", from: `£${task.costMid ?? 0}`, to: `£${update.cost_mid}` });
+      }
+      if (update.cost_high !== undefined && Number(update.cost_high) !== (task.costHigh ?? 0)) {
+        patch.costHigh = Number(update.cost_high);
+        changes.push({ field: "Cost high", from: `£${task.costHigh ?? 0}`, to: `£${update.cost_high}` });
+      }
+
+      if (update.end_date !== undefined) {
+        const endDate = new Date(String(update.end_date));
+        if (!isNaN(endDate.getTime())) {
+          const isoEnd = endDate.toISOString().split("T")[0];
+          const currentDue = task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "";
+          if (isoEnd !== currentDue) {
+            patch.dueDate = endDate.toISOString();
+            changes.push({ field: "Due date", from: currentDue || "—", to: isoEnd });
+          }
+        }
+      }
+
       let ganttOffset: number | undefined;
       if (update.start_date && localStartDate) {
         const taskDate = new Date(String(update.start_date));
