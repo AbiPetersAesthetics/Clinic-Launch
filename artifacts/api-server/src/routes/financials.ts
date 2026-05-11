@@ -405,11 +405,14 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const startingCash = model.runwaySavingsGbp || 0;
   const targetDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
 
-  // VAT — UK statutory threshold £90,000/year = £7,500/month
-  // Once Winchester monthly revenue hits this level, 20% VAT is deducted as a cost
-  // (conservative model: assumes VAT cannot be fully passed on to clients)
-  const VAT_MONTHLY_THRESHOLD = 90000 / 12;
+  // VAT — UK statutory threshold £90,000/year across the whole business (all clinics)
+  // Start tracking from the user's current rolling 12-month turnover position
+  const VAT_THRESHOLD = 90000;
   const VAT_RATE = 0.20;
+  // How much of the £90k has already been used up by prior revenue
+  const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
+  let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue
+  let vatRegistered = false; // flips true once threshold is crossed
 
   // Determine calendar anchor — always start from the earlier of project startDate or today
   const today = new Date();
@@ -477,39 +480,48 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
     // Bedhampton closes when Winchester becomes self-funding
     const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
-    const bedhRevenue = bedhClosed ? 0 : bedhMonthlyRevenue;
+    const bedhRevenueGross = bedhClosed ? 0 : bedhMonthlyRevenue;
     const bedhCosts = bedhClosed ? 0 : bedhMonthlyCosts;
-    const bedhNet = bedhRevenue - bedhCosts;
 
     // Winchester: zero before opening, ramps from opening month
     let wincRevenue = 0;
     let wincCosts = 0;
     let wincNet = 0;
-    let vatLiability = 0;
-    let isVatRegistered = false;
     let occupancyPercent = 0;
 
     if (!isPreOpening) {
-      const wincMonth = i - openingMonthIndex; // 0 = first month open
+      const wincMonth = i - openingMonthIndex;
       occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
       const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
       wincCosts = wincFixedCosts + variableCosts;
+    }
 
-      // VAT kicks in once monthly Winchester revenue hits the £90k/year threshold
-      if (wincRevenue >= VAT_MONTHLY_THRESHOLD) {
-        isVatRegistered = true;
-        vatLiability = wincRevenue * VAT_RATE;
-        wincCosts += vatLiability;
-      }
+    // VAT — tracked across the whole business (Bedhampton + Winchester combined)
+    // Cumulative turnover rolls forward each month; once it hits £90k the business must register.
+    // VAT liability applies to ALL revenue from registration month onwards.
+    const monthTotalRevenue = bedhRevenueGross + wincRevenue;
+    if (!vatRegistered) {
+      vatCumulativeTurnover += monthTotalRevenue;
+      if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
+    }
+    const isVatRegistered = vatRegistered;
+    // VAT is a liability on ALL turnover once registered — treated as a cost (conservative: prices not raised)
+    const vatLiability = isVatRegistered ? monthTotalRevenue * VAT_RATE : 0;
+    // Apply VAT proportionally across Bedhampton and Winchester costs
+    const bedhVat = (bedhRevenueGross > 0 && isVatRegistered) ? bedhRevenueGross * VAT_RATE : 0;
+    const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
 
-      wincNet = wincRevenue - wincCosts;
+    const bedhRevenue = bedhRevenueGross;
+    const bedhNet = bedhRevenue - bedhCosts - bedhVat;
 
-      // Self-funding check runs after VAT is applied so it's based on true net
-      if (selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
-        selfFundingMonthIndex = i;
-      }
+    wincCosts += wincVat;
+    wincNet = wincRevenue - wincCosts;
+
+    // Self-funding check after VAT applied
+    if (!isPreOpening && selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
+      selfFundingMonthIndex = i;
     }
 
     const isSelfFundingMonth = selfFundingMonthIndex === i;

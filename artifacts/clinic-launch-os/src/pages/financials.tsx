@@ -167,7 +167,7 @@ export default function FinancialsPage() {
       aggressiveOccupancyPercent: 85, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0,
+      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 75000,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
     }
   });
@@ -190,7 +190,7 @@ export default function FinancialsPage() {
         existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhStockPercent: m.bedhStockPercent ?? 35,
         bedhRentGbp: m.bedhRentGbp || 0, bedhSoftwareGbp: m.bedhSoftwareGbp || 0, bedhStaffingGbp: m.bedhStaffingGbp || 0,
         bedhInsuranceGbp: m.bedhInsuranceGbp || 0, bedhMarketingGbp: m.bedhMarketingGbp || 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp || 0,
-        ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0,
+        ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0, vatCurrentTurnoverGbp: (m as any).vatCurrentTurnoverGbp ?? 75000,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp || 0, nursingIncomeGbp: m.nursingIncomeGbp || 4500,
         targetDrawingsGbp: m.targetDrawingsGbp || 4000,
       });
@@ -912,6 +912,26 @@ export default function FinancialsPage() {
                         )} />
                       ))}
                     </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="shadow-sm border-amber-200 dark:border-amber-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      VAT Planning
+                      <span className="text-[10px] font-normal bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">£90k threshold</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField control={form.control} name={"vatCurrentTurnoverGbp" as any} render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Current rolling 12-month turnover (all clinics, £)</FormLabel>
+                        <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          £{Math.max(0, 90000 - (Number(form.watch("vatCurrentTurnoverGbp")) || 0)).toLocaleString()} remaining before VAT registration required
+                        </p>
+                      </FormItem>
+                    )} />
                   </CardContent>
                 </Card>
               </form>

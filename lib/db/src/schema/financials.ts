@@ -57,6 +57,9 @@ export const financialsTable = pgTable("financial_models", {
   personalSalaryNeedsGbp: real("personal_salary_needs_gbp").notNull().default(0),
   nursingIncomeGbp: real("nursing_income_gbp").notNull().default(4500),
   targetDrawingsGbp: real("target_drawings_gbp").notNull().default(4000),
+  // VAT planning — current rolling 12-month business turnover (all clinics combined)
+  // Used to calculate exactly when the £90k threshold will be crossed
+  vatCurrentTurnoverGbp: real("vat_current_turnover_gbp").notNull().default(75000),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
