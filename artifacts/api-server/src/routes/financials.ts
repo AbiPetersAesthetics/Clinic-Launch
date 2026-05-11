@@ -131,10 +131,15 @@ function calcWinchester(model: any, targetOcc: number, acvMultiplier: number) {
 
 function calcBedhampton(model: any) {
   const grossRevenue = model.existingClinicRevenueGbp || 0;
-  const costs = model.bedhamptonCostsGbp ?? 3200;
+  const stockPct = (model.bedhStockPercent ?? 35) / 100;
+  const productCosts = grossRevenue * stockPct;
+  const runningCosts = model.bedhamptonCostsGbp ?? 3200;
+  const costs = productCosts + runningCosts;
   const netProfit = grossRevenue - costs;
   return {
     grossRevenue: Math.round(grossRevenue),
+    productCosts: Math.round(productCosts),
+    runningCosts: Math.round(runningCosts),
     costs: Math.round(costs),
     netProfit: Math.round(netProfit),
   };
@@ -381,7 +386,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
-  const bedhMonthlyCosts = (model as any).bedhamptonCostsGbp ?? 3200;
+  const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
+  const bedhProductCosts = bedhMonthlyRevenue * bedhStockPct;
+  const bedhRunningCosts = (model as any).bedhamptonCostsGbp ?? 3200;
+  const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
 

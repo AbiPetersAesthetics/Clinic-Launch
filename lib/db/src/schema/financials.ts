@@ -42,6 +42,7 @@ export const financialsTable = pgTable("financial_models", {
   // Bedhampton — temporary support clinic (separate patient base, will close)
   existingClinicRevenueGbp: real("existing_clinic_revenue_gbp").notNull().default(0),
   bedhamptonCostsGbp: real("bedhampton_costs_gbp").notNull().default(3200),
+  bedhStockPercent: real("bedh_stock_percent").notNull().default(35),
   // cannibal_percent kept in DB for backward compat but no longer used (set to 0)
   cannibalPercent: real("cannibal_percent").notNull().default(0),
   // Owner / personal planning

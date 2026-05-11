@@ -162,7 +162,7 @@ export default function FinancialsPage() {
       treatmentRoomsCount: 2, practitionerHoursPerDay: 7,
       workingDaysPerMonth: 22, conservativeOccupancyPercent: 40, realisticOccupancyPercent: 65,
       aggressiveOccupancyPercent: 85, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
-      existingClinicRevenueGbp: 0, bedhamptonCostsGbp: 3200,
+      existingClinicRevenueGbp: 0, bedhamptonCostsGbp: 3200, bedhStockPercent: 35,
       ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
     }
@@ -183,7 +183,7 @@ export default function FinancialsPage() {
         workingDaysPerMonth: m.workingDaysPerMonth || 22, conservativeOccupancyPercent: m.conservativeOccupancyPercent || 40,
         realisticOccupancyPercent: m.realisticOccupancyPercent || 65, aggressiveOccupancyPercent: m.aggressiveOccupancyPercent || 85,
         repeatBookingRatePercent: m.repeatBookingRatePercent || 60, membershipRevenueGbp: m.membershipRevenueGbp || 0,
-        existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 3200,
+        existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 3200, bedhStockPercent: m.bedhStockPercent ?? 35,
         ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp || 0, nursingIncomeGbp: m.nursingIncomeGbp || 4500,
         targetDrawingsGbp: m.targetDrawingsGbp || 4000,
@@ -346,10 +346,11 @@ export default function FinancialsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">18-Month Cash Position</CardTitle>
               <CardDescription className="text-sm">
-                Starting capital burns through project setup costs + Bedhampton revenue, then Winchester opens and begins recovering.
+                Business capital burns through project setup costs, partially offset by Bedhampton net income. Winchester opens Nov '26 and starts recovering the position.
                 {selfFundingPoint && (
-                  <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes {selfFundingPoint.calendarLabel} when Winchester is self-funding.</strong>
+                  <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes {selfFundingPoint.calendarLabel} once Winchester is self-funding.</strong>
                 )}
+                {" "}Set your <strong>Business Capital</strong> in the Assumptions → Personal &amp; Runway section to see the burndown from your actual starting point.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -747,13 +748,16 @@ export default function FinancialsPage() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        ["existingClinicRevenueGbp","Monthly Revenue (£)"],["bedhamptonCostsGbp","Monthly Costs (£)"],
+                        ["existingClinicRevenueGbp","Gross Monthly Revenue (£)"],
+                        ["bedhStockPercent","Product / Stock Cost (%)"],
+                        ["bedhamptonCostsGbp","Fixed Running Costs (£/mo)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
                     </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">Net = Revenue − product cost % − fixed running costs. This is the true monthly contribution during the Winchester ramp.</p>
                   </CardContent>
                 </Card>
 
@@ -763,7 +767,7 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["targetDrawingsGbp","Desired Income (£/mo)"],
-                        ["runwaySavingsGbp","Savings / Buffer (£)"],["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
+                        ["runwaySavingsGbp","Business Capital (£)"],["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>

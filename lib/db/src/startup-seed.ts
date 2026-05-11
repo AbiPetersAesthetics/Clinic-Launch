@@ -348,6 +348,7 @@ export async function runStartupSeed(): Promise<void> {
       membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 10000,
       bedhamptonCostsGbp: 3200,
+      bedhStockPercent: 35,
       cannibalPercent: 0,
       wincSelfFundingTargetGbp: 12000,
       ownerDrawingsGbp: 1047,
