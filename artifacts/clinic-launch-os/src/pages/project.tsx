@@ -896,6 +896,9 @@ export default function ProjectPage() {
           risk_level: "medium",
           notes: "Your reasoning or updated notes",
           cost_tier: "mid",
+          cost_low: 5000,
+          cost_mid: 8000,
+          cost_high: 12000,
         }
       ]
     }, null, 2));
@@ -911,6 +914,7 @@ export default function ProjectPage() {
     lines.push("- status must be one of: not_started, in_progress, complete, blocked, deferred");
     lines.push("- risk_level must be one of: low, medium, high, critical");
     lines.push("- cost_tier must be one of: low, mid, high");
+    lines.push("- cost_low, cost_mid, cost_high are numbers in pounds sterling (integers, no currency symbol).");
     lines.push("- duration_days must be a positive whole number (calendar days).");
     lines.push("- The user will paste your FULL response into the Import modal — it auto-extracts the JSON.");
 
