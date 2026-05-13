@@ -115,6 +115,8 @@ function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, va
     grossRevenue: Math.round(grossRevenue),
     fixedCosts: Math.round(fixedCosts),
     variableCosts: Math.round(variableCosts),
+    vatLiability: Math.round(vatLiability),
+    vatApplied: vatRate > 0,
     totalCosts: Math.round(totalCosts),
     netProfit: Math.round(netProfit),
     grossMarginPercent: Math.round(grossMarginPercent),
@@ -123,7 +125,7 @@ function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, va
     breakEvenOccupancy: Math.round(breakEvenOccupancy * 10) / 10,
     treatmentsPerWeekToBreakeven: Math.round(treatmentsPerWeek * 10) / 10,
     selfFundingOccupancy: Math.round(selfFundingOccupancy * 10) / 10,
-    sfNetProfitTarget,      // effective net profit £ target at buffer %
+    sfNetProfitTarget,
     sfRevenueTarget: isFinite(sfRevenueTarget) ? Math.round(sfRevenueTarget) : 0,
     selfFundingBufferPercent: model.selfFundingBufferPercent ?? 20,
     slotsPerMonth,
@@ -531,6 +533,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const bedhRevenue = bedhRevenueGross;
     const bedhNet = bedhRevenue - bedhCosts - bedhVat;
 
+    const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
+    const wincFixedCostsMonth = !isPreOpening ? wincFixedCosts : 0;
     wincCosts += wincVat;
     wincNet = wincRevenue - wincCosts;
 
@@ -570,6 +574,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       drawingsShortfall: Math.round(drawingsShortfall),
       drawingsActive,
       wincRevenue: Math.round(wincRevenue),
+      wincVariableCosts: Math.round(wincVariableCosts),
+      wincFixedCosts: Math.round(wincFixedCostsMonth),
+      wincVat: Math.round(wincVat),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
       bedhRevenue: Math.round(bedhRevenue),

@@ -38,10 +38,12 @@ type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" 
 type TabKey = "overview" | "model" | "owner" | "risks";
 
 type WincMetrics = {
-  grossRevenue: number; fixedCosts: number; variableCosts: number; totalCosts: number;
-  netProfit: number; grossMarginPercent: number; occupancyUsed: number;
+  grossRevenue: number; fixedCosts: number; variableCosts: number;
+  vatLiability: number; vatApplied: boolean;
+  totalCosts: number; netProfit: number; grossMarginPercent: number; occupancyUsed: number;
   breakEvenRevenue: number; breakEvenOccupancy: number; treatmentsPerWeekToBreakeven: number;
-  selfFundingOccupancy: number; slotsPerMonth: number; warnings: string[];
+  selfFundingOccupancy: number; sfNetProfitTarget: number; sfRevenueTarget: number;
+  selfFundingBufferPercent: number; slotsPerMonth: number; warnings: string[];
 };
 type BedhMetrics = {
   grossRevenue: number; costs: number; netProfit: number;
@@ -77,7 +79,8 @@ type ExtendedCalcResult = {
 type CashflowMonth = {
   month: number; calendarLabel: string; monthLabel: string;
   isPreOpening: boolean; isOpeningMonth: boolean; isBedhamptonCloseMonth: boolean;
-  wincRevenue: number; wincCosts: number; wincNet: number;
+  wincRevenue: number; wincVariableCosts: number; wincFixedCosts: number; wincVat: number;
+  wincCosts: number; wincNet: number;
   bedhRevenue: number; bedhCosts: number; bedhNet: number;
   projectCostBurn: number; taskLabels: string[];
   vatLiability: number; isVatRegistered: boolean;
@@ -562,6 +565,98 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
+          {/* Month-by-month breakdown table */}
+          {cashflow && cashflow.length > 0 && (
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Monthly P&L Breakdown</CardTitle>
+                <CardDescription className="text-sm">
+                  Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+                  <span className="ml-2 inline-flex items-center gap-1 text-[10px]">
+                    <span className="inline-block w-2 h-2 rounded-sm bg-primary/20 border border-primary/40" /> Winchester opens
+                    <span className="inline-block w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-800 border border-emerald-400 ml-1" /> Bedhampton closes
+                    <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 border border-amber-400 ml-1" /> VAT registered
+                  </span>
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-muted/40 min-w-[72px]">Month</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Winc Rev</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Bedh Rev</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Variable</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Fixed</th>
+                        <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">VAT</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Total Costs</th>
+                        <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
+                        <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cashflow.map((m) => {
+                        const isOpen = m.isOpeningMonth;
+                        const isClose = m.isSelfFundingMonth;
+                        const totalRev = m.wincRevenue + m.bedhRevenue;
+                        const totalVarCosts = m.wincVariableCosts;
+                        const totalFixCosts = m.wincFixedCosts + m.bedhCosts;
+                        const totalCostRow = m.wincCosts + m.bedhCosts;
+                        const netProfitRow = m.wincNet + m.bedhNet;
+                        const rowBg = isClose
+                          ? "bg-emerald-50 dark:bg-emerald-950/30"
+                          : isOpen
+                          ? "bg-primary/5"
+                          : m.isVatRegistered
+                          ? "bg-amber-50/40 dark:bg-amber-950/10"
+                          : "";
+                        return (
+                          <tr key={m.month} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                            <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {m.calendarLabel}
+                                {isOpen && <span className="text-[9px] bg-primary/20 text-primary px-1 rounded font-bold">OPEN</span>}
+                                {isClose && <span className="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 px-1 rounded font-bold">BEDH CLOSES</span>}
+                                {m.isVatRegistered && !isClose && !isOpen && <span className="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-1 rounded">VAT</span>}
+                              </div>
+                              {m.isPreOpening && <div className="text-[9px] text-muted-foreground">pre-open</div>}
+                            </td>
+                            <td className="text-right px-2 py-1.5 tabular-nums">{m.wincRevenue > 0 ? formatGBP(m.wincRevenue) : <span className="text-muted-foreground/40">—</span>}</td>
+                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.bedhClosed ? "text-muted-foreground/40 line-through" : ""}`}>
+                              {m.bedhRevenue > 0 ? formatGBP(m.bedhRevenue) : <span className="text-muted-foreground/40">—</span>}
+                            </td>
+                            <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
+                              {totalVarCosts > 0 ? <span className="text-red-500/70">({formatGBP(totalVarCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                            </td>
+                            <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
+                              {totalFixCosts > 0 ? <span className="text-red-500/70">({formatGBP(totalFixCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                            </td>
+                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.vatLiability > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
+                              {m.vatLiability > 0 ? <span>({formatGBP(m.vatLiability)})</span> : "—"}
+                            </td>
+                            <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
+                              {totalCostRow > 0 ? <span className="text-red-500/70">({formatGBP(totalCostRow)})</span> : <span className="text-muted-foreground/30">—</span>}
+                            </td>
+                            <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                              {formatGBP(netProfitRow)}
+                            </td>
+                            <td className={`text-right px-3 py-1.5 tabular-nums font-medium ${m.cashBalance >= 0 ? "" : "text-destructive"}`}>
+                              {formatGBP(m.cashBalance)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground">
+                  Variable costs shown net of VAT. Fixed costs include Winchester running costs. Bedhampton costs shown in Fixed column until closure. Net Profit = combined Winchester + Bedhampton.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Occupancy ramp */}
             <Card className="shadow-sm">
@@ -954,20 +1049,49 @@ export default function FinancialsPage() {
                     </div>
                   </div>
                   <CardContent className="p-5 space-y-4">
-                    <div className="grid grid-cols-3 gap-3 text-sm">
-                      {[
-                        ["Gross Revenue", formatGBP(cr.winc.grossRevenue)],
-                        ["Variable Costs", formatGBP(cr.winc.variableCosts)],
-                        ["Gross Margin", `${cr.winc.grossMarginPercent}%`],
-                        ["Fixed Costs", formatGBP(cr.winc.fixedCosts)],
-                        ["Total Costs", formatGBP(cr.winc.totalCosts)],
-                        ["Annual Net", formatGBP(cr.combined.annualNetProfit)],
-                      ].map(([label, value]) => (
-                        <div key={label}>
-                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
-                          <div className="font-semibold text-sm">{value}</div>
+                    {/* Ledger-style P&L breakdown */}
+                    <div className="rounded-lg border border-border overflow-hidden text-sm">
+                      <div className="flex justify-between items-center px-3 py-2 bg-muted/30">
+                        <span className="text-muted-foreground font-medium">Gross Revenue</span>
+                        <span className="font-bold">{formatGBP(cr.winc.grossRevenue)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50">
+                        <span className="text-muted-foreground pl-3">− Variable Costs</span>
+                        <span className="text-destructive/80">({formatGBP(cr.winc.variableCosts)})</span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50">
+                        <span className="text-muted-foreground pl-3">− Fixed Costs</span>
+                        <span className="text-destructive/80">({formatGBP(cr.winc.fixedCosts)})</span>
+                      </div>
+                      {cr.winc.vatApplied && cr.winc.vatLiability > 0 && (
+                        <div className="flex justify-between items-center px-3 py-1.5 border-t border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+                          <span className="text-amber-700 dark:text-amber-400 pl-3 flex items-center gap-1">
+                            − VAT Liability (20% of revenue)
+                            <span className="text-[10px] bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-1 rounded">VAT registered</span>
+                          </span>
+                          <span className="text-amber-700 dark:text-amber-400 font-medium">({formatGBP(cr.winc.vatLiability)})</span>
                         </div>
-                      ))}
+                      )}
+                      {!cr.winc.vatApplied && (
+                        <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50 bg-muted/10">
+                          <span className="text-muted-foreground/60 pl-3 text-xs">VAT — not yet registered</span>
+                          <span className="text-muted-foreground/60 text-xs">£0</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50 bg-muted/20">
+                        <span className="font-semibold text-muted-foreground">= Total Costs</span>
+                        <span className="font-bold text-destructive">({formatGBP(cr.winc.totalCosts)})</span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-2.5 border-t-2 border-border">
+                        <span className="font-bold">Monthly Net Profit</span>
+                        <span className={`font-bold text-base ${cr.winc.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                          {formatGBP(cr.winc.netProfit)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50 bg-muted/10">
+                        <span className="text-muted-foreground text-xs">Annual net · Gross margin {cr.winc.grossMarginPercent}%</span>
+                        <span className="font-semibold text-xs">{formatGBP(cr.combined.annualNetProfit)}</span>
+                      </div>
                     </div>
                     <div className="h-px bg-border" />
                     <div className="grid grid-cols-3 gap-3 text-sm">
