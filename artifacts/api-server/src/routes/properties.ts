@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { propertiesTable, propertyAiAnalysesTable, financialsTable, decisionsTable, projectsTable } from "@workspace/db";
+import { propertiesTable, propertyAiAnalysesTable, financialsTable, decisionsTable, projectsTable, fixedCostItemsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ScoringWeights } from "@workspace/db";
 
@@ -98,6 +98,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
   // Sync rent and rates into financial model
   const monthlyRent = property.monthlyRentGbp ?? 0;
   const monthlyRates = property.businessRatesGbp ? Math.round(property.businessRatesGbp / 12) : 0;
+  const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
 
   const [existingModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, property.projectId));
   if (existingModel) {
@@ -110,6 +111,55 @@ router.put("/properties/:id/set-active", async (req, res) => {
       rentGbp: monthlyRent,
       ratesGbp: monthlyRates,
     });
+  }
+
+  // ── Seed / refresh fixed cost items from property data ────────────────────
+  // Delete existing auto-generated items (preserve any manually added ones
+  // by only deleting rows that match our known default names)
+  const DEFAULT_COST_NAMES = [
+    "Rent / Lease", "Service Charge", "Business Rates",
+    "Utilities (Gas & Electric)", "Internet / WiFi",
+    "ANS Software", "Card Terminal Rental", "Insurance (Indemnity + Premises)",
+    "Accountant", "Waste Contract", "Cleaner", "Marketing Budget",
+    "Subscriptions & Sundries",
+  ];
+
+  // Upsert approach — update if exists, insert if not
+  const existingItems = await db.select().from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, property.projectId));
+  const existingNames = existingItems.map(i => i.name);
+
+  const defaultItems: { name: string; amountGbp: number; costType: string; sortOrder: number }[] = [
+    { name: "Rent / Lease",                    amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
+    { name: "Service Charge",                  amountGbp: monthlyServiceCharge, costType: "unique", sortOrder: 1 },
+    { name: "Business Rates",                  amountGbp: monthlyRates,         costType: "unique", sortOrder: 2 },
+    { name: "Utilities (Gas & Electric)",      amountGbp: 0,                    costType: "unique", sortOrder: 3 },
+    { name: "Internet / WiFi",                 amountGbp: 0,                    costType: "unique", sortOrder: 4 },
+    { name: "ANS Software",                    amountGbp: 0,                    costType: "dual",   sortOrder: 5 },
+    { name: "Card Terminal Rental",            amountGbp: 0,                    costType: "dual",   sortOrder: 6 },
+    { name: "Insurance (Indemnity + Premises)",amountGbp: 0,                    costType: "dual",   sortOrder: 7 },
+    { name: "Accountant",                      amountGbp: 0,                    costType: "dual",   sortOrder: 8 },
+    { name: "Waste Contract",                  amountGbp: 0,                    costType: "unique", sortOrder: 9 },
+    { name: "Cleaner",                         amountGbp: 0,                    costType: "unique", sortOrder: 10 },
+    { name: "Marketing Budget",                amountGbp: 0,                    costType: "unique", sortOrder: 11 },
+    { name: "Subscriptions & Sundries",        amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
+  ];
+
+  for (const item of defaultItems) {
+    const existing = existingItems.find(e => e.name === item.name);
+    if (existing) {
+      // Update amounts from property data but preserve user-edited amounts for non-property items
+      if (["Rent / Lease", "Service Charge", "Business Rates"].includes(item.name)) {
+        await db.update(fixedCostItemsTable)
+          .set({ amountGbp: item.amountGbp, updatedAt: new Date() })
+          .where(eq(fixedCostItemsTable.id, existing.id));
+      }
+    } else {
+      await db.insert(fixedCostItemsTable).values({
+        projectId: property.projectId,
+        ...item,
+      });
+    }
   }
 
   // Create a Decision Log entry
