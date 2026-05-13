@@ -38,6 +38,7 @@ import type {
   CreateCostOptimisationRuleBody,
   CreateCqcMilestoneBody,
   CreateDecisionBody,
+  CreateFixedCostItemBody,
   CreatePhaseBody,
   CreateProjectBody,
   CreatePropertyBody,
@@ -47,6 +48,7 @@ import type {
   Decision,
   FinancialCalculation,
   FinancialModel,
+  FixedCostItem,
   GetProjectCashflowParams,
   GetPropertyRankingParams,
   HealthStatus,
@@ -74,6 +76,7 @@ import type {
   UpdateCostOptimisationRuleBody,
   UpdateCqcMilestoneBody,
   UpdateDecisionBody,
+  UpdateFixedCostItemBody,
   UpdatePhaseBody,
   UpdateProjectBody,
   UpdatePropertyBody,
@@ -2476,6 +2479,353 @@ export const useDeleteScenarioConfig = <
   TContext
 > => {
   return useMutation(getDeleteScenarioConfigMutationOptions(options));
+};
+
+/**
+ * @summary List dynamic fixed monthly cost items for a project
+ */
+export const getListFixedCostItemsUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/fixed-cost-items`;
+};
+
+export const listFixedCostItems = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<FixedCostItem[]> => {
+  return customFetch<FixedCostItem[]>(getListFixedCostItemsUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFixedCostItemsQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/fixed-cost-items`] as const;
+};
+
+export const getListFixedCostItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFixedCostItems>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFixedCostItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListFixedCostItemsQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listFixedCostItems>>
+  > = ({ signal }) =>
+    listFixedCostItems(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFixedCostItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFixedCostItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFixedCostItems>>
+>;
+export type ListFixedCostItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List dynamic fixed monthly cost items for a project
+ */
+
+export function useListFixedCostItems<
+  TData = Awaited<ReturnType<typeof listFixedCostItems>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFixedCostItems>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFixedCostItemsQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a fixed monthly cost item
+ */
+export const getCreateFixedCostItemUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/fixed-cost-items`;
+};
+
+export const createFixedCostItem = async (
+  projectId: number,
+  createFixedCostItemBody: CreateFixedCostItemBody,
+  options?: RequestInit,
+): Promise<FixedCostItem> => {
+  return customFetch<FixedCostItem>(getCreateFixedCostItemUrl(projectId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createFixedCostItemBody),
+  });
+};
+
+export const getCreateFixedCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFixedCostItem>>,
+    TError,
+    { projectId: number; data: BodyType<CreateFixedCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createFixedCostItem>>,
+  TError,
+  { projectId: number; data: BodyType<CreateFixedCostItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createFixedCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createFixedCostItem>>,
+    { projectId: number; data: BodyType<CreateFixedCostItemBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return createFixedCostItem(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateFixedCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createFixedCostItem>>
+>;
+export type CreateFixedCostItemMutationBody = BodyType<CreateFixedCostItemBody>;
+export type CreateFixedCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a fixed monthly cost item
+ */
+export const useCreateFixedCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFixedCostItem>>,
+    TError,
+    { projectId: number; data: BodyType<CreateFixedCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createFixedCostItem>>,
+  TError,
+  { projectId: number; data: BodyType<CreateFixedCostItemBody> },
+  TContext
+> => {
+  return useMutation(getCreateFixedCostItemMutationOptions(options));
+};
+
+/**
+ * @summary Update a fixed monthly cost item
+ */
+export const getUpdateFixedCostItemUrl = (id: number) => {
+  return `/api/fixed-cost-items/${id}`;
+};
+
+export const updateFixedCostItem = async (
+  id: number,
+  updateFixedCostItemBody: UpdateFixedCostItemBody,
+  options?: RequestInit,
+): Promise<FixedCostItem> => {
+  return customFetch<FixedCostItem>(getUpdateFixedCostItemUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateFixedCostItemBody),
+  });
+};
+
+export const getUpdateFixedCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFixedCostItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateFixedCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateFixedCostItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateFixedCostItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateFixedCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateFixedCostItem>>,
+    { id: number; data: BodyType<UpdateFixedCostItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateFixedCostItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateFixedCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateFixedCostItem>>
+>;
+export type UpdateFixedCostItemMutationBody = BodyType<UpdateFixedCostItemBody>;
+export type UpdateFixedCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a fixed monthly cost item
+ */
+export const useUpdateFixedCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFixedCostItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateFixedCostItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateFixedCostItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateFixedCostItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateFixedCostItemMutationOptions(options));
+};
+
+/**
+ * @summary Delete a fixed monthly cost item
+ */
+export const getDeleteFixedCostItemUrl = (id: number) => {
+  return `/api/fixed-cost-items/${id}`;
+};
+
+export const deleteFixedCostItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteFixedCostItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteFixedCostItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFixedCostItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteFixedCostItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteFixedCostItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteFixedCostItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteFixedCostItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteFixedCostItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteFixedCostItem>>
+>;
+
+export type DeleteFixedCostItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a fixed monthly cost item
+ */
+export const useDeleteFixedCostItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFixedCostItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteFixedCostItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteFixedCostItemMutationOptions(options));
 };
 
 /**

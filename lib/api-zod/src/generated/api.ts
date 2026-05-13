@@ -928,6 +928,73 @@ export const DeleteScenarioConfigParams = zod.object({
 });
 
 /**
+ * @summary List dynamic fixed monthly cost items for a project
+ */
+export const ListFixedCostItemsParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListFixedCostItemsResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  amountGbp: zod.number(),
+  costType: zod.enum(["unique", "dual"]),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+export const ListFixedCostItemsResponse = zod.array(
+  ListFixedCostItemsResponseItem,
+);
+
+/**
+ * @summary Create a fixed monthly cost item
+ */
+export const CreateFixedCostItemParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateFixedCostItemBody = zod.object({
+  name: zod.string(),
+  amountGbp: zod.number(),
+  costType: zod.enum(["unique", "dual"]),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a fixed monthly cost item
+ */
+export const UpdateFixedCostItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFixedCostItemBody = zod.object({
+  name: zod.string().optional(),
+  amountGbp: zod.number().optional(),
+  costType: zod.enum(["unique", "dual"]).optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateFixedCostItemResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  amountGbp: zod.number(),
+  costType: zod.enum(["unique", "dual"]),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date().optional(),
+  updatedAt: zod.coerce.date().optional(),
+});
+
+/**
+ * @summary Delete a fixed monthly cost item
+ */
+export const DeleteFixedCostItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Get financial model for a project
  */
 export const GetFinancialModelParams = zod.object({

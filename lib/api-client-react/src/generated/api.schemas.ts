@@ -712,6 +712,55 @@ export interface BurndownPoint {
   idealRemaining: number;
 }
 
+export type FixedCostItemCostType =
+  (typeof FixedCostItemCostType)[keyof typeof FixedCostItemCostType];
+
+export const FixedCostItemCostType = {
+  unique: "unique",
+  dual: "dual",
+} as const;
+
+export interface FixedCostItem {
+  id: number;
+  projectId: number;
+  name: string;
+  amountGbp: number;
+  costType: FixedCostItemCostType;
+  sortOrder: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CreateFixedCostItemBodyCostType =
+  (typeof CreateFixedCostItemBodyCostType)[keyof typeof CreateFixedCostItemBodyCostType];
+
+export const CreateFixedCostItemBodyCostType = {
+  unique: "unique",
+  dual: "dual",
+} as const;
+
+export interface CreateFixedCostItemBody {
+  name: string;
+  amountGbp: number;
+  costType: CreateFixedCostItemBodyCostType;
+  sortOrder?: number;
+}
+
+export type UpdateFixedCostItemBodyCostType =
+  (typeof UpdateFixedCostItemBodyCostType)[keyof typeof UpdateFixedCostItemBodyCostType];
+
+export const UpdateFixedCostItemBodyCostType = {
+  unique: "unique",
+  dual: "dual",
+} as const;
+
+export interface UpdateFixedCostItemBody {
+  name?: string;
+  amountGbp?: number;
+  costType?: UpdateFixedCostItemBodyCostType;
+  sortOrder?: number;
+}
+
 export interface CostItem {
   id: number;
   taskId: number;
