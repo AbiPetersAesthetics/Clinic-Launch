@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable } from "@workspace/db";
+import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 
 const router = Router();
@@ -49,17 +49,20 @@ const SCENARIO_PROFILES: Record<string, {
 
 // ─── Helper: Winchester metrics at given occupancy ────────────────────────────
 
-function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: number, vatRate = 0) {
+function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: number, vatRate = 0, injectedFixedCosts?: number) {
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
   const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
   const bookedSlots = slotsPerMonth * (occupancy / 100);
   const grossRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
 
-  const fixedCosts =
+  // Use injected fixed costs (from dynamic fixed_cost_items table) if provided,
+  // otherwise fall back to legacy hardcoded fields for backward compatibility
+  const fixedCosts = injectedFixedCosts !== undefined ? injectedFixedCosts : (
     (model.rentGbp || 0) + (model.ratesGbp || 0) + (model.utilitiesGbp || 0) +
     (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
     (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
-    (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
+    (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0)
+  );
 
   const variableCosts =
     grossRevenue * (((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100) +
@@ -76,8 +79,8 @@ function calcWincAtOccupancy(model: any, occupancy: number, acvMultiplier: numbe
 
 // ─── Helper: Full Winchester projection at target occupancy ──────────────────
 
-function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, vatRate = 0) {
-  const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier, vatRate);
+function calcWinchester(model: any, targetOcc: number, acvMultiplier: number, vatRate = 0, injectedFixedCosts?: number) {
+  const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier, vatRate, injectedFixedCosts);
   const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, vatLiability, totalCosts, netProfit, grossMarginPercent } = base;
 
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
@@ -159,13 +162,13 @@ function calcBedhampton(model: any) {
 
 // ─── Helper: Find the month Winchester hits the self-funding target ───────────
 
-function findSelfFundingMonth(model: any, targetOcc: number, acvMultiplier: number, profile: any): number | null {
+function findSelfFundingMonth(model: any, targetOcc: number, acvMultiplier: number, profile: any, injectedFixedCosts?: number): number | null {
   const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
   const { startOcc, rampMonths } = profile;
   for (let m = 1; m <= 24; m++) {
     // Use (m-1) to align with the cashflow endpoint's 0-indexed month (i), so both show the same month number
     const occ = Math.min(startOcc + ((m - 1) * (targetOcc - startOcc) / rampMonths), targetOcc);
-    const sim = calcWincAtOccupancy(model, occ, acvMultiplier);
+    const sim = calcWincAtOccupancy(model, occ, acvMultiplier, 0, injectedFixedCosts);
     // Self-funding = net profit covers buffer% of gross revenue (revenue-based margin target)
     if (sim.grossRevenue > 0 && sim.netProfit >= sim.grossRevenue * bufferPct) return m;
   }
@@ -312,6 +315,19 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
 
+  // Load dynamic fixed cost items — these replace the hardcoded fixed cost fields
+  // if any exist. If none exist yet, fall back to legacy hardcoded fields.
+  const fixedCostItems = await db
+    .select()
+    .from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, projectId));
+
+  // All fixed cost items go into Winchester's fixed cost base.
+  // Dual items count once — they don't get added to Bedhampton separately.
+  const dynamicFixedCosts = fixedCostItems.length > 0
+    ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+    : undefined; // undefined = fall back to legacy hardcoded fields
+
   const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
@@ -328,9 +344,9 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     (vatCurrentTurnover + bedhMonthlyRev * 12 >= 90000);
   const vatRateForCalc = vatWillApplyAtOpening ? 0.20 : 0;
 
-  const winc = calcWinchester(model, targetOcc, acvMultiplier, vatRateForCalc);
+  const winc = calcWinchester(model, targetOcc, acvMultiplier, vatRateForCalc, dynamicFixedCosts);
   const bedh = calcBedhampton(model);
-  const selfFundingMonth = findSelfFundingMonth(model, targetOcc, acvMultiplier, profile);
+  const selfFundingMonth = findSelfFundingMonth(model, targetOcc, acvMultiplier, profile, dynamicFixedCosts);
   const combined = calcCombined(winc, bedh, model as any, selfFundingMonth);
   const owner = calcOwner(winc, bedh, model as any, nursingIncome);
 
@@ -392,6 +408,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
     : [];
 
+  // Load dynamic fixed cost items
+  const fixedCostItems = await db
+    .select()
+    .from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, projectId));
+
   const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
@@ -399,22 +421,29 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
   const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
-  const wincFixedCosts =
-    (model.rentGbp || 0) + (model.ratesGbp || 0) + (model.utilitiesGbp || 0) +
-    (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
-    (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
-    (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
+
+  // Use dynamic fixed cost items if any exist; fall back to legacy hardcoded fields
+  const wincFixedCosts = fixedCostItems.length > 0
+    ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+    : (model.rentGbp || 0) + (model.ratesGbp || 0) + (model.utilitiesGbp || 0) +
+      (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
+      (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
+      (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
+
+  // Dual cost items are shared — they already count in Winchester's fixed costs above.
+  // Bedhampton only carries location-specific costs (rent, marketing, other catch-all).
+  // This eliminates the double-counting bug where software/insurance appeared in both clinics.
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
   const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
   const bedhProductCosts = bedhMonthlyRevenue * bedhStockPct;
+  // Bedhampton running costs: location-specific only.
+  // Shared costs (software, insurance, staffing) are now entered as "dual" fixed cost items
+  // on Winchester and count once — they do NOT appear here to avoid double-counting.
   const bedhRunningCosts =
     ((model as any).bedhRentGbp || 0) +
-    ((model as any).bedhSoftwareGbp || 0) +
-    ((model as any).bedhStaffingGbp || 0) +
-    ((model as any).bedhInsuranceGbp || 0) +
     ((model as any).bedhMarketingGbp || 0) +
     ((model as any).bedhamptonCostsGbp || 0);
   const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
