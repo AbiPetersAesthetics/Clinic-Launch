@@ -10,3 +10,4 @@ export * from "./decisions";
 export * from "./cost_optimisation_rules";
 export * from "./compliance_items";
 export * from "./cqc_milestones";
+export * from "./fixed_cost_items";
