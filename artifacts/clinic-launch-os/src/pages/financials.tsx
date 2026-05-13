@@ -25,7 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
-  Plus, Trash2,
+  Plus, Trash2, Sparkles,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -180,6 +180,47 @@ export default function FinancialsPage() {
     await deleteFixedCostItem.mutateAsync({ id });
     queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
     if (model) runCalculation();
+  };
+
+  // ── AI cost assessment ─────────────────────────────────────────────────────
+  const [aiAssessing, setAiAssessing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    estimates: { name: string; estimatedMonthly: number; reasoning: string }[];
+    additionalCosts: { name: string; estimatedMonthly: number; costType: string; reasoning: string }[];
+    flags: string[];
+  } | null>(null);
+
+  const handleAiAssess = async () => {
+    setAiAssessing(true);
+    setAiSuggestions(null);
+    try {
+      const res = await fetch("/api/ai/assess-property-costs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: PROJECT_ID }),
+      });
+      const data = await res.json();
+      setAiSuggestions(data);
+    } catch (e) {
+      toast({ title: "AI assessment failed", variant: "destructive" });
+    } finally {
+      setAiAssessing(false);
+    }
+  };
+
+  const applyAiEstimate = async (name: string, amount: number) => {
+    const existing = fixedCostItems.find(i => i.name === name);
+    if (existing) {
+      await handleUpdateCostItem(existing.id, "amountGbp", amount);
+    }
+  };
+
+  const applyAiAdditionalCost = async (cost: { name: string; estimatedMonthly: number; costType: string }) => {
+    await createFixedCostItem.mutateAsync({
+      projectId: PROJECT_ID,
+      data: { name: cost.name, amountGbp: cost.estimatedMonthly, costType: cost.costType as "unique" | "dual", sortOrder: fixedCostItems.length },
+    });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
   };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
@@ -983,6 +1024,89 @@ export default function FinancialsPage() {
                     <div className="flex gap-3 text-[10px] text-muted-foreground pt-1">
                       <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-muted border border-border" />Unique = Winchester only</span>
                       <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800" />Dual = shared, counted once</span>
+                    </div>
+
+                    {/* AI Assessment */}
+                    <div className="border-t pt-3 space-y-3">
+                      <button
+                        onClick={handleAiAssess}
+                        disabled={aiAssessing}
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        {aiAssessing ? "Analysing property costs…" : "AI: Estimate costs & suggest missing items"}
+                      </button>
+
+                      {aiSuggestions && (
+                        <div className="space-y-3 bg-muted/40 rounded-lg p-3 text-xs">
+                          {/* Estimates for existing zero items */}
+                          {aiSuggestions.estimates?.filter(e => {
+                            const item = fixedCostItems.find(i => i.name === e.name);
+                            return item && item.amountGbp === 0;
+                          }).length > 0 && (
+                            <div>
+                              <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-2">Suggested amounts for empty items</p>
+                              <div className="space-y-1.5">
+                                {aiSuggestions.estimates
+                                  .filter(e => {
+                                    const item = fixedCostItems.find(i => i.name === e.name);
+                                    return item && item.amountGbp === 0;
+                                  })
+                                  .map((e, i) => (
+                                    <div key={i} className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <span className="font-medium">{e.name}</span>
+                                        <span className="text-muted-foreground ml-1">— {e.reasoning}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => applyAiEstimate(e.name, e.estimatedMonthly)}
+                                        className="shrink-0 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-semibold hover:opacity-90"
+                                      >
+                                        Apply £{e.estimatedMonthly}
+                                      </button>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Additional cost suggestions */}
+                          {aiSuggestions.additionalCosts?.length > 0 && (
+                            <div>
+                              <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-2">Suggested additional costs</p>
+                              <div className="space-y-1.5">
+                                {aiSuggestions.additionalCosts.map((c, i) => (
+                                  <div key={i} className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <span className="font-medium">{c.name}</span>
+                                      <span className={`ml-1.5 px-1 py-0.5 rounded text-[9px] font-semibold ${c.costType === "dual" ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300" : "bg-muted text-muted-foreground"}`}>{c.costType}</span>
+                                      <span className="text-muted-foreground ml-1">— {c.reasoning}</span>
+                                    </div>
+                                    <button
+                                      onClick={() => applyAiAdditionalCost(c)}
+                                      className="shrink-0 px-2 py-0.5 rounded bg-primary text-primary-foreground text-[10px] font-semibold hover:opacity-90"
+                                    >
+                                      Add £{c.estimatedMonthly}
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Flags */}
+                          {aiSuggestions.flags?.length > 0 && (
+                            <div className="border-t pt-2 space-y-1">
+                              {aiSuggestions.flags.map((f, i) => (
+                                <div key={i} className="flex gap-1.5 text-amber-700 dark:text-amber-400">
+                                  <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+                                  <span>{f}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Total */}
