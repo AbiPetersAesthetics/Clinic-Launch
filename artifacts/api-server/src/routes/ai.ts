@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { db } from "@workspace/db";
+import { fixedCostItemsTable, propertiesTable } from "@workspace/db";
+import { eq } from "drizzle-orm";
 
 const router = Router();
 
@@ -69,6 +72,88 @@ router.post("/api/ai/task-research", async (req, res) => {
     const msg = err instanceof Error ? err.message : "AI request failed";
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
+  }
+});
+
+// ─── POST /api/ai/assess-property-costs ───────────────────────────────────────
+// Given a property, AI estimates likely monthly running costs and flags any
+// additional cost lines the user may not have considered.
+router.post("/api/ai/assess-property-costs", async (req, res) => {
+  const { projectId, propertyId } = req.body as { projectId: number; propertyId?: number };
+
+  // Load property data
+  let property: any = null;
+  if (propertyId) {
+    const [p] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, propertyId));
+    property = p;
+  } else {
+    // Find active property
+    const [p] = await db.select().from(propertiesTable)
+      .where(eq(propertiesTable.projectId, projectId));
+    property = p;
+  }
+
+  // Load existing cost items
+  const existingItems = await db.select().from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, projectId));
+
+  const propertyContext = property ? `
+Property: ${property.address || "unknown"}, ${property.postcode || ""}
+Size: ${property.sqFootage ? `${property.sqFootage} sq ft` : "unknown"}
+Monthly rent: ${property.monthlyRentGbp ? `£${property.monthlyRentGbp}` : "unknown"}
+Annual business rates: ${property.businessRatesGbp ? `£${property.businessRatesGbp}` : "unknown"}
+Monthly service charge: ${property.serviceChargeGbp ? `£${property.serviceChargeGbp}` : "unknown"}
+Lease length: ${property.leaseLength || "unknown"}
+VAT on rent: ${property.vatOnRent ? "Yes" : "No / unknown"}
+Use class: ${property.useClass || "unknown"}
+` : "No property selected yet";
+
+  const existingCostContext = existingItems.length > 0
+    ? `\nExisting cost items:\n${existingItems.map(i => `- ${i.name}: £${i.amountGbp}/month (${i.costType})`).join("\n")}`
+    : "\nNo cost items entered yet.";
+
+  const prompt = `You are a specialist commercial property and business cost advisor for UK aesthetics clinics.
+
+${propertyContext}
+${existingCostContext}
+
+This is a solo-practitioner aesthetic clinic (Advanced Nurse Practitioner) opening in a high street commercial premises. The clinic will offer injectable treatments, skin treatments, and medical-grade skincare retail.
+
+Please provide:
+
+1. **Estimated monthly amounts** for each of the existing cost items above that have £0 (use realistic 2025/2026 UK market rates for this type and size of property)
+
+2. **Additional cost lines** the operator may not have considered — specific to this property type, location, and clinic use. For each, provide: name, estimated monthly cost, whether it's unique to Winchester or shared across both clinic locations (dual), and why it's relevant.
+
+Respond in this exact JSON format only, no preamble:
+{
+  "estimates": [
+    { "name": "exact name matching existing item", "estimatedMonthly": 150, "reasoning": "brief explanation" }
+  ],
+  "additionalCosts": [
+    { "name": "cost name", "estimatedMonthly": 50, "costType": "unique|dual", "reasoning": "why this applies" }
+  ],
+  "flags": [
+    "any important financial or compliance flags specific to this property or clinic type"
+  ]
+}`;
+
+  res.setHeader("Content-Type", "application/json");
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+    });
+
+    const content = completion.choices[0]?.message?.content ?? "{}";
+    const parsed = JSON.parse(content);
+    return res.json(parsed);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    return res.status(500).json({ error: msg });
   }
 });
 
