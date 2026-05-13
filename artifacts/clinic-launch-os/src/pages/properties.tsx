@@ -1834,10 +1834,10 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                   <p className="text-lg font-bold leading-tight">{property.address ?? "Unnamed Property"}</p>
                   {property.postcode && <p className="text-sm text-muted-foreground font-normal">{property.postcode}</p>}
                   {latestAnalysisData && (
-                    <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <span>Last analysed {new Date(latestAnalysisData.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
                       {intelligenceResult?.isStale && <Badge className="text-xs bg-amber-100 text-amber-700">Stale — property updated since analysis</Badge>}
-                    </p>
+                    </div>
                   )}
                 </div>
               </SheetTitle>

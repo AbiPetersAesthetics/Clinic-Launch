@@ -24,7 +24,7 @@ Your role:
 - If asked for quotes/suppliers, give 3-5 concrete suggestions with how to contact them
 - Always flag CQC or clinical governance implications where relevant`;
 
-router.post("/api/ai/task-research", async (req, res) => {
+router.post("/ai/task-research", async (req, res) => {
   const { taskTitle, taskDescription, taskPhase, query } = req.body as {
     taskTitle?: string;
     taskDescription?: string;
@@ -78,7 +78,7 @@ router.post("/api/ai/task-research", async (req, res) => {
 // ─── POST /api/ai/assess-property-costs ───────────────────────────────────────
 // Given a property, AI estimates likely monthly running costs and flags any
 // additional cost lines the user may not have considered.
-router.post("/api/ai/assess-property-costs", async (req, res) => {
+router.post("/ai/assess-property-costs", async (req, res) => {
   const { projectId, propertyId } = req.body as { projectId: number; propertyId?: number };
 
   // Load property data
@@ -144,12 +144,27 @@ Respond in this exact JSON format only, no preamble:
     const completion = await openai.chat.completions.create({
       model: "gpt-5.1",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 1500,
+      max_completion_tokens: 4000,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(clean);
+
+    // Attempt to parse; if JSON is truncated, try to recover a partial result
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(clean);
+    } catch {
+      // Try to recover by finding the last complete top-level key
+      const estimates = clean.match(/"estimates"\s*:\s*(\[[\s\S]*?\])/)?.[1];
+      const additional = clean.match(/"additionalCosts"\s*:\s*(\[[\s\S]*?\])/)?.[1];
+      const flags = clean.match(/"flags"\s*:\s*(\[[\s\S]*?\])/)?.[1];
+      parsed = {
+        estimates: estimates ? JSON.parse(estimates) : [],
+        additionalCosts: additional ? JSON.parse(additional) : [],
+        flags: flags ? JSON.parse(flags) : ["Note: AI response was partially truncated — some suggestions may be missing."],
+      };
+    }
     return res.json(parsed);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "AI request failed";
