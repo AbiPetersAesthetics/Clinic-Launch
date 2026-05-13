@@ -9,6 +9,11 @@ import {
   useGetProjectCashflow,
   getGetProjectCashflowQueryKey,
   getGetOptimisationAnalysisQueryKey,
+  useListFixedCostItems,
+  getListFixedCostItemsQueryKey,
+  useCreateFixedCostItem,
+  useUpdateFixedCostItem,
+  useDeleteFixedCostItem,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -20,6 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
+  Plus, Trash2,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -136,6 +142,45 @@ export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+
+  // ── Fixed cost items (dynamic, replaces hardcoded fixed cost fields) ──────
+  const { data: fixedCostItems = [] } = useListFixedCostItems(PROJECT_ID, {
+    query: { queryKey: getListFixedCostItemsQueryKey(PROJECT_ID), enabled: true },
+  });
+  const createFixedCostItem = useCreateFixedCostItem();
+  const updateFixedCostItem = useUpdateFixedCostItem();
+  const deleteFixedCostItem = useDeleteFixedCostItem();
+
+  const [newCostName, setNewCostName] = useState("");
+  const [newCostAmount, setNewCostAmount] = useState("");
+  const [newCostType, setNewCostType] = useState<"unique" | "dual">("unique");
+
+  const totalDynamicFixedCosts = fixedCostItems.reduce((s, i) => s + (i.amountGbp || 0), 0);
+
+  const handleAddCostItem = async () => {
+    if (!newCostName.trim() || !newCostAmount) return;
+    await createFixedCostItem.mutateAsync({
+      projectId: PROJECT_ID,
+      data: { name: newCostName.trim(), amountGbp: Number(newCostAmount), costType: newCostType, sortOrder: fixedCostItems.length },
+    });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    setNewCostName("");
+    setNewCostAmount("");
+    setNewCostType("unique");
+  };
+
+  const handleUpdateCostItem = async (id: number, field: string, value: string | number) => {
+    await updateFixedCostItem.mutateAsync({ id, data: { [field]: value } });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    // Recalculate after cost change
+    if (model) runCalculation();
+  };
+
+  const handleDeleteCostItem = async (id: number) => {
+    await deleteFixedCostItem.mutateAsync({ id });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    if (model) runCalculation();
+  };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
 
@@ -842,23 +887,108 @@ export default function FinancialsPage() {
                 </div>
 
                 <Card className="shadow-sm">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Winchester — Fixed Monthly Costs</CardTitle></CardHeader>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Fixed Monthly Costs</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Tag each cost as <strong>Unique</strong> (Winchester only) or <strong>Dual</strong> (shared across both clinics — counts once, never double-charged).
+                    </p>
+                  </CardHeader>
                   <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        ["rentGbp","Rent (£)"],["ratesGbp","Business Rates (£)"],["utilitiesGbp","Utilities (£)"],
-                        ["internetGbp","Internet (£)"],["insuranceGbp","Insurance (£)"],["accountantGbp","Accountant (£)"],
-                        ["softwareGbp","Software (£)"],["wasteContractGbp","Waste Contract (£)"],["cleanerGbp","Cleaner (£)"],
-                        ["subscriptionsGbp","Subscriptions (£)"],["financeRepaymentsGbp","Finance (£)"],
-                      ].map(([name, label]) => (
-                        <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
-                        )} />
-                      ))}
+                    {/* Existing cost rows */}
+                    {fixedCostItems.length > 0 && (
+                      <div className="space-y-2">
+                        {fixedCostItems.map((item) => (
+                          <div key={item.id} className="flex items-center gap-2">
+                            <input
+                              className="flex-1 h-8 px-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                              defaultValue={item.name}
+                              onBlur={(e) => {
+                                if (e.target.value !== item.name) handleUpdateCostItem(item.id, "name", e.target.value);
+                              }}
+                            />
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">£</span>
+                              <input
+                                type="number"
+                                className="w-24 h-8 pl-6 pr-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                                defaultValue={item.amountGbp}
+                                onBlur={(e) => {
+                                  const val = Number(e.target.value);
+                                  if (val !== item.amountGbp) handleUpdateCostItem(item.id, "amountGbp", val);
+                                }}
+                              />
+                            </div>
+                            <button
+                              onClick={() => handleUpdateCostItem(item.id, "costType", item.costType === "unique" ? "dual" : "unique")}
+                              className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
+                                item.costType === "dual"
+                                  ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                                  : "bg-muted text-muted-foreground border-border hover:border-foreground/30"
+                              }`}
+                              title={item.costType === "dual" ? "Dual — shared across both clinics, counts once" : "Unique — Winchester only"}
+                            >
+                              {item.costType === "dual" ? "Dual" : "Unique"}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCostItem(item.id)}
+                              className="shrink-0 p-1.5 text-muted-foreground hover:text-destructive transition-colors rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add new row */}
+                    <div className="flex items-center gap-2 pt-1 border-t border-dashed border-border">
+                      <input
+                        className="flex-1 h-8 px-2 rounded-md border border-input bg-background text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        placeholder="e.g. ANS software, card terminal..."
+                        value={newCostName}
+                        onChange={(e) => setNewCostName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === "Enter") handleAddCostItem(); }}
+                      />
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">£</span>
+                        <input
+                          type="number"
+                          className="w-24 h-8 pl-6 pr-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                          placeholder="0"
+                          value={newCostAmount}
+                          onChange={(e) => setNewCostAmount(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") handleAddCostItem(); }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => setNewCostType(t => t === "unique" ? "dual" : "unique")}
+                        className={`shrink-0 px-2 py-1 rounded text-[10px] font-semibold border transition-colors ${
+                          newCostType === "dual"
+                            ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
+                            : "bg-muted text-muted-foreground border-border hover:border-foreground/30"
+                        }`}
+                      >
+                        {newCostType === "dual" ? "Dual" : "Unique"}
+                      </button>
+                      <button
+                        onClick={handleAddCostItem}
+                        disabled={!newCostName.trim() || !newCostAmount}
+                        className="shrink-0 p-1.5 rounded bg-primary text-primary-foreground disabled:opacity-40 hover:opacity-90 transition-opacity"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
                     </div>
+
+                    {/* Legend */}
+                    <div className="flex gap-3 text-[10px] text-muted-foreground pt-1">
+                      <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-muted border border-border" />Unique = Winchester only</span>
+                      <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800" />Dual = shared, counted once</span>
+                    </div>
+
+                    {/* Total */}
                     <div className="flex justify-between items-center border-t pt-2">
                       <span className="text-sm font-semibold">Total fixed</span>
-                      <span className="font-bold">{formatGBP(totalFixedCosts)}</span>
+                      <span className="font-bold">{formatGBP(totalDynamicFixedCosts)}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -936,16 +1066,13 @@ export default function FinancialsPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Bedhampton — Monthly Running Costs</CardTitle>
                     <CardDescription className="text-xs">
-                      These costs run until Bedhampton closes. Software, staffing and insurance that will transfer to Winchester on opening day.
+                      Location-specific costs only. Shared costs (software, insurance, staffing) should be added as <strong>Dual</strong> items in Fixed Monthly Costs above — they count once across both clinics.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["bedhRentGbp","Rent / Premises (£)"],
-                        ["bedhInsuranceGbp","Insurance (£)"],
-                        ["bedhSoftwareGbp","Software (£)"],
-                        ["bedhStaffingGbp","Staffing / Wages (£)"],
                         ["bedhMarketingGbp","Marketing (£)"],
                         ["bedhamptonCostsGbp","Other (£)"],
                       ].map(([name, label]) => (
@@ -958,9 +1085,6 @@ export default function FinancialsPage() {
                       <span className="text-sm font-semibold">Total running costs</span>
                       <span className="font-bold">{formatGBP(
                         (Number(form.watch("bedhRentGbp")) || 0) +
-                        (Number(form.watch("bedhInsuranceGbp")) || 0) +
-                        (Number(form.watch("bedhSoftwareGbp")) || 0) +
-                        (Number(form.watch("bedhStaffingGbp")) || 0) +
                         (Number(form.watch("bedhMarketingGbp")) || 0) +
                         (Number(form.watch("bedhamptonCostsGbp")) || 0)
                       )}</span>
@@ -975,18 +1099,12 @@ export default function FinancialsPage() {
                         (Number(form.watch("existingClinicRevenueGbp")) || 0) -
                         ((Number(form.watch("existingClinicRevenueGbp")) || 0) * (Number(form.watch("bedhStockPercent")) || 35) / 100) -
                         (Number(form.watch("bedhRentGbp")) || 0) -
-                        (Number(form.watch("bedhInsuranceGbp")) || 0) -
-                        (Number(form.watch("bedhSoftwareGbp")) || 0) -
-                        (Number(form.watch("bedhStaffingGbp")) || 0) -
                         (Number(form.watch("bedhMarketingGbp")) || 0) -
                         (Number(form.watch("bedhamptonCostsGbp")) || 0) >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"
                       }`}>{formatGBP(
                         (Number(form.watch("existingClinicRevenueGbp")) || 0) -
                         ((Number(form.watch("existingClinicRevenueGbp")) || 0) * (Number(form.watch("bedhStockPercent")) || 35) / 100) -
                         (Number(form.watch("bedhRentGbp")) || 0) -
-                        (Number(form.watch("bedhInsuranceGbp")) || 0) -
-                        (Number(form.watch("bedhSoftwareGbp")) || 0) -
-                        (Number(form.watch("bedhStaffingGbp")) || 0) -
                         (Number(form.watch("bedhMarketingGbp")) || 0) -
                         (Number(form.watch("bedhamptonCostsGbp")) || 0)
                       )}</span>
