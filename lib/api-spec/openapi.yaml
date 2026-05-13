@@ -586,6 +586,89 @@ paths:
         "204":
           description: Deleted
 
+  # Fixed Monthly Cost Items
+  /projects/{projectId}/fixed-cost-items:
+    get:
+      operationId: listFixedCostItems
+      tags: [financials]
+      summary: List dynamic fixed monthly cost items for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of fixed cost items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FixedCostItem"
+    post:
+      operationId: createFixedCostItem
+      tags: [financials]
+      summary: Create a fixed monthly cost item
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFixedCostItemBody"
+      responses:
+        "201":
+          description: Created fixed cost item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedCostItem"
+
+  /fixed-cost-items/{id}:
+    put:
+      operationId: updateFixedCostItem
+      tags: [financials]
+      summary: Update a fixed monthly cost item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFixedCostItemBody"
+      responses:
+        "200":
+          description: Updated fixed cost item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedCostItem"
+    delete:
+      operationId: deleteFixedCostItem
+      tags: [financials]
+      summary: Delete a fixed monthly cost item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   # Financial Models
   /projects/{projectId}/financial:
     get:
@@ -2674,6 +2757,57 @@ components:
         - remainingTasks
         - completedTasks
         - idealRemaining
+
+    FixedCostItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        amountGbp:
+          type: number
+        costType:
+          type: string
+          enum: [unique, dual]
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, projectId, name, amountGbp, costType, sortOrder]
+
+    CreateFixedCostItemBody:
+      type: object
+      properties:
+        name:
+          type: string
+        amountGbp:
+          type: number
+        costType:
+          type: string
+          enum: [unique, dual]
+        sortOrder:
+          type: integer
+      required: [name, amountGbp, costType]
+
+    UpdateFixedCostItemBody:
+      type: object
+      properties:
+        name:
+          type: string
+        amountGbp:
+          type: number
+        costType:
+          type: string
+          enum: [unique, dual]
+        sortOrder:
+          type: integer
 
     CostItem:
       type: object
