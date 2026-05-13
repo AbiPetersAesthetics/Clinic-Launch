@@ -142,14 +142,14 @@ Respond in this exact JSON format only, no preamble:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5.1",
       messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
       max_tokens: 1500,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
-    const parsed = JSON.parse(content);
+    const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(clean);
     return res.json(parsed);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "AI request failed";
