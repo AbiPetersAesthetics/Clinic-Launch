@@ -20,7 +20,9 @@ import {
   ChevronUp,
   X,
   Menu,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "@/contexts/auth";
 import { formatGBP, formatPercent } from "@/lib/format";
 
 const PROJECT_ID = 1;
@@ -83,6 +85,19 @@ function SidebarNav({
         );
       })}
     </nav>
+  );
+}
+
+function LogoutButton() {
+  const { logout } = useAuth();
+  return (
+    <button
+      onClick={logout}
+      className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent transition-colors text-xs"
+    >
+      <LogOut className="w-3.5 h-3.5 shrink-0" />
+      <span className="tracking-wide">Sign out</span>
+    </button>
   );
 }
 
@@ -181,11 +196,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           onNavigate={() => setMobileMenuOpen(false)}
         />
 
-        {/* Bottom branding strip */}
-        <div className="p-4 border-t border-sidebar-border">
+        {/* Bottom: location + logout */}
+        <div className="p-4 border-t border-sidebar-border space-y-3">
           <p className="text-sidebar-foreground/30 text-[10px] tracking-[0.15em] uppercase">
             Winchester · 9A Jewry Street
           </p>
+          <LogoutButton />
         </div>
       </aside>
 
