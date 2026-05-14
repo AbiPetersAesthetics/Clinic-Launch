@@ -25,7 +25,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
-  Plus, Trash2, Sparkles,
+  Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
+  RefreshCw,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -224,6 +225,36 @@ export default function FinancialsPage() {
   };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
+
+  // ── Live Bedhampton data ──────────────────────────────────────────────────
+  type BLiveSummary = {
+    revenueThisMonth: number; projectedMonthRevenue: number; lastMonthRevenue: number;
+    avgClientSpend: number; appointmentsThisMonth: number; repeatClientPct: number;
+    revenueGrowthPct: number; topTreatment: string; totalRevenue: number;
+  };
+  type BLiveExpansion = {
+    winchesterViabilityRevenue: number; currentBaselineRevenue: number;
+    revenueGap: number; projectedWinchesterRevenue: number; onTrack: boolean;
+  };
+  type BLiveMonth = { month: string; revenue: number; appointmentCount: number; };
+  type BLiveData = {
+    summary: BLiveSummary; expansion: BLiveExpansion;
+    recentMonths: BLiveMonth[]; fetchedAt: string;
+  };
+  const [bLive, setBLive] = useState<BLiveData | null>(null);
+  const [bLiveLoading, setBLiveLoading] = useState(true);
+  const [bLiveError, setBLiveError] = useState(false);
+
+  const loadBedhamptonLive = () => {
+    setBLiveLoading(true);
+    setBLiveError(false);
+    fetch("/api/bedhampton/summary")
+      .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+      .then((d: BLiveData) => { setBLive(d); setBLiveLoading(false); })
+      .catch(() => { setBLiveError(true); setBLiveLoading(false); });
+  };
+
+  useEffect(() => { loadBedhamptonLive(); }, []);
 
   const { data: model, isLoading: isModelLoading } = useGetFinancialModel(PROJECT_ID, {
     query: { queryKey: getGetFinancialModelQueryKey(PROJECT_ID), enabled: true },
@@ -435,6 +466,101 @@ export default function FinancialsPage() {
       {/* ═══ TAB: OVERVIEW ═══════════════════════════════════════════════════ */}
       {tab === "overview" && (
         <div className="space-y-6">
+
+          {/* ── Live Bedhampton Performance ───────────────────────────────────── */}
+          <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-blue-500" />
+                  <CardTitle className="text-sm text-blue-700 dark:text-blue-300">Live Bedhampton Performance</CardTitle>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    LIVE
+                  </span>
+                </div>
+                <button onClick={loadBedhamptonLive} className="text-muted-foreground hover:text-foreground transition-colors" title="Refresh">
+                  <RefreshCw className={`w-3.5 h-3.5 ${bLiveLoading ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+              <CardDescription className="text-xs">Real-time data from your Bedhampton clinic — the financial foundation for the Winchester launch.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {bLiveLoading && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 animate-pulse">
+                  {[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-lg bg-muted" />)}
+                </div>
+              )}
+              {bLiveError && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                  Live data temporarily unavailable — check your analytics app.
+                  <button onClick={loadBedhamptonLive} className="underline text-blue-500 ml-1">Retry</button>
+                </div>
+              )}
+              {bLive && !bLiveLoading && (
+                <div className="space-y-4">
+                  {/* KPI row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-blue-950/30 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">This Month</div>
+                      <div className="text-lg font-bold text-foreground">{formatGBP(bLive.summary.projectedMonthRevenue)}</div>
+                      <div className={`flex items-center gap-1 text-xs mt-0.5 ${bLive.summary.revenueGrowthPct >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                        {bLive.summary.revenueGrowthPct >= 0
+                          ? <TrendingUp className="w-3 h-3" />
+                          : <TrendingDown className="w-3 h-3" />}
+                        {bLive.summary.revenueGrowthPct > 0 ? "+" : ""}{bLive.summary.revenueGrowthPct}% vs last month
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-blue-950/30 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Avg Client Spend</div>
+                      <div className="text-lg font-bold text-foreground">{formatGBP(bLive.summary.avgClientSpend)}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">{bLive.summary.appointmentsThisMonth} appts this month</div>
+                    </div>
+                    <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-blue-950/30 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Repeat Rate</div>
+                      <div className="text-lg font-bold text-foreground">{bLive.summary.repeatClientPct}%</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">client retention</div>
+                    </div>
+                    <div className={`rounded-lg border p-3 ${bLive.expansion.onTrack ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30" : "border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30"}`}>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Winchester Gap</div>
+                      <div className={`text-lg font-bold ${bLive.expansion.onTrack ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                        {formatGBP(bLive.expansion.revenueGap)}<span className="text-xs font-normal text-muted-foreground">/mo</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">needs {formatGBP(bLive.expansion.winchesterViabilityRevenue)}/mo to be viable</div>
+                    </div>
+                  </div>
+
+                  {/* Sparkline */}
+                  {bLive.recentMonths.length > 1 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">Revenue trend (last {bLive.recentMonths.length} months)</div>
+                      <div className="h-24">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={bLive.recentMonths} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                            <defs>
+                              <linearGradient id="bedLiveGrad" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.02} />
+                              </linearGradient>
+                            </defs>
+                            <XAxis dataKey="month" tick={{ fontSize: 9, fill: "currentColor" }} tickFormatter={(v: string) => { const [y, m] = v.split("-"); return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-GB", { month: "short" }); }} axisLine={false} tickLine={false} />
+                            <Tooltip formatter={(v: number) => [formatGBP(v), "Revenue"]} contentStyle={{ fontSize: 11 }} />
+                            <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#bedLiveGrad)" dot={false} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-muted-foreground border-t border-blue-100 dark:border-blue-900 pt-2 flex justify-between">
+                    <span>Top treatment: <strong>{bLive.summary.topTreatment}</strong></span>
+                    <span>Total revenue to date: <strong>{formatGBP(bLive.summary.totalRevenue)}</strong></span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* 18-Month Cash Position Chart */}
           <Card className="shadow-sm">

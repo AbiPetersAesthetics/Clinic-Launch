@@ -15,6 +15,7 @@ import costOptimisationRulesRouter from "./cost_optimisation_rules";
 import complianceRouter from "./compliance";
 import aiRouter from "./ai";
 import fixedCostItemsRouter from "./fixed_cost_items";
+import bedhamptonRouter from "./bedhampton";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(costOptimisationRulesRouter);
 router.use(complianceRouter);
 router.use(aiRouter);
 router.use(fixedCostItemsRouter);
+router.use(bedhamptonRouter);
 
 export default router;

@@ -3,6 +3,7 @@ import { openai } from "@workspace/integrations-openai-ai-server";
 import { db } from "@workspace/db";
 import { fixedCostItemsTable, propertiesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { getBedhamptonContext } from "./bedhampton";
 
 const router = Router();
 
@@ -53,11 +54,14 @@ router.post("/ai/task-research", async (req, res) => {
     : query;
 
   try {
+    const bedhamptonContext = await getBedhamptonContext();
+    const systemWithContext = `${SYSTEM_PROMPT}\n\n${bedhamptonContext}`;
+
     const stream = await openai.chat.completions.create({
       model: "gpt-5.1",
       max_completion_tokens: 4096,
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: systemWithContext },
         { role: "user", content: userMessage },
       ],
       stream: true,

@@ -7,6 +7,7 @@ import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
+import { getBedhamptonContext } from "./bedhampton";
 
 const router = Router();
 const ACCEPTED_MIMETYPES = new Set([
@@ -775,9 +776,13 @@ ${JSON.stringify(manualCompetitorsList, null, 2)}
 Score saturation/opportunity based on this known competitor list. Return the competitors array exactly as given above (add distanceMeters: null, rating: null, reviewCount: null for each).`
       : `No competitor data available. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
 
+  const bedhamptonContext = await getBedhamptonContext();
+
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Conduct a thorough, expert-grade analysis of this property for use as a premium aesthetics clinic.
 
 Be highly analytical and specific. Every factor explanation must be 2-4 sentences covering: what the data tells you, why it matters for an aesthetics clinic specifically, and any nuance or caveat. Every verdict, summary, and recommendation must be substantive — no single-sentence answers.
+
+${bedhamptonContext}
 
 Property:
 ${propertyContext}
@@ -987,6 +992,8 @@ Agent: ${property.agentName || "Unknown"} | Notes: ${property.notes || "None"}`;
     "suggest-launch": `As a clinic launch strategist, provide a 90-day launch strategy for this property. Include: pre-opening marketing timeline, soft launch vs hard launch recommendation, local PR strategy, social media launch plan, opening offer/promotion ideas, partnerships to establish, and first 30/60/90 day milestones.`,
   };
 
+  const bedhamptonCtx = await getBedhamptonContext();
+
   const systemPrompt = `You are a senior expert advisor specialising in UK aesthetics clinic property acquisition, fit-out, launch strategy, and clinical governance. Provide thorough, analytical, deeply expert advice specific to the UK aesthetics market.
 
 For every response:
@@ -996,7 +1003,9 @@ For every response:
 - Flag CQC, JCCP, or other regulatory implications explicitly and explain their practical impact
 - Include risk factors and how to mitigate them
 - Close with a prioritised list of immediate next steps
-- A thorough response of 500-900 words is expected — do not truncate or oversimplify`;
+- A thorough response of 500-900 words is expected — do not truncate or oversimplify
+
+${bedhamptonCtx}`;
 
   const userPrompt = customPrompt
     ? `${actionPrompts[action]}\n\nAdditional context from user: ${customPrompt}\n\nProperty details:\n${propertyContext}`
