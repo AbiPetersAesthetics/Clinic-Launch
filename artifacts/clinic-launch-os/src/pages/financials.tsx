@@ -232,13 +232,9 @@ export default function FinancialsPage() {
     avgClientSpend: number; appointmentsThisMonth: number; repeatClientPct: number;
     revenueGrowthPct: number; topTreatment: string; totalRevenue: number;
   };
-  type BLiveExpansion = {
-    winchesterViabilityRevenue: number; currentBaselineRevenue: number;
-    revenueGap: number; projectedWinchesterRevenue: number; onTrack: boolean;
-  };
   type BLiveMonth = { month: string; revenue: number; appointmentCount: number; };
   type BLiveData = {
-    summary: BLiveSummary; expansion: BLiveExpansion;
+    summary: BLiveSummary;
     recentMonths: BLiveMonth[]; fetchedAt: string;
   };
   const [bLive, setBLive] = useState<BLiveData | null>(null);
@@ -501,7 +497,7 @@ export default function FinancialsPage() {
               {bLive && !bLiveLoading && (
                 <div className="space-y-4">
                   {/* KPI row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-blue-950/30 p-3">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">This Month</div>
                       <div className="text-lg font-bold text-foreground">{formatGBP(bLive.summary.projectedMonthRevenue)}</div>
@@ -521,13 +517,6 @@ export default function FinancialsPage() {
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Repeat Rate</div>
                       <div className="text-lg font-bold text-foreground">{bLive.summary.repeatClientPct}%</div>
                       <div className="text-xs text-muted-foreground mt-0.5">client retention</div>
-                    </div>
-                    <div className={`rounded-lg border p-3 ${bLive.expansion.onTrack ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30" : "border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/30"}`}>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Winchester Gap</div>
-                      <div className={`text-lg font-bold ${bLive.expansion.onTrack ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-                        {formatGBP(bLive.expansion.revenueGap)}<span className="text-xs font-normal text-muted-foreground">/mo</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">needs {formatGBP(bLive.expansion.winchesterViabilityRevenue)}/mo to be viable</div>
                     </div>
                   </div>
 

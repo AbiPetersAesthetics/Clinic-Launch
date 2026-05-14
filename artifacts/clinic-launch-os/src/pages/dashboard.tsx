@@ -15,7 +15,7 @@ import {
   getGetComplianceSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,12 @@ import {
   ShieldAlert,
   ShieldCheck,
   ChevronRight,
+  Sparkles,
+  ThumbsUp,
+  ThumbsDown,
+  Pause,
+  RefreshCw,
+  TrendingUp,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -89,8 +95,73 @@ function ragColors(status: RAGStatus) {
   return { bg: "bg-red-50 dark:bg-red-950/30", border: "border-red-200 dark:border-red-800", text: "text-red-700 dark:text-red-400", dot: "bg-red-500" };
 }
 
+type GoNoGoVerdict = "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED";
+type GoNoGoResult = {
+  verdict: GoNoGoVerdict;
+  verdictLabel: string;
+  confidenceScore: number;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  conditions: string[];
+  immediateActions: string[];
+  reviewTrigger: string;
+  generatedAt: string;
+};
+
+const VERDICT_CONFIG: Record<GoNoGoVerdict, { label: string; icon: React.ReactNode; bg: string; border: string; text: string; badge: string }> = {
+  PROCEED: {
+    label: "Proceed",
+    icon: <ThumbsUp className="w-5 h-5" />,
+    bg: "from-emerald-50/80 to-transparent dark:from-emerald-950/30",
+    border: "border-emerald-200 dark:border-emerald-800",
+    text: "text-emerald-700 dark:text-emerald-300",
+    badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-200",
+  },
+  PROCEED_WITH_CONDITIONS: {
+    label: "Proceed — with conditions",
+    icon: <TrendingUp className="w-5 h-5" />,
+    bg: "from-amber-50/80 to-transparent dark:from-amber-950/30",
+    border: "border-amber-200 dark:border-amber-800",
+    text: "text-amber-700 dark:text-amber-300",
+    badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-200",
+  },
+  DELAY: {
+    label: "Delay",
+    icon: <Pause className="w-5 h-5" />,
+    bg: "from-orange-50/80 to-transparent dark:from-orange-950/30",
+    border: "border-orange-200 dark:border-orange-800",
+    text: "text-orange-700 dark:text-orange-300",
+    badge: "bg-orange-100 text-orange-800 dark:bg-orange-900/60 dark:text-orange-200",
+  },
+  DO_NOT_PROCEED: {
+    label: "Do not proceed",
+    icon: <ThumbsDown className="w-5 h-5" />,
+    bg: "from-red-50/80 to-transparent dark:from-red-950/30",
+    border: "border-red-200 dark:border-red-800",
+    text: "text-red-700 dark:text-red-300",
+    badge: "bg-red-100 text-red-800 dark:bg-red-900/60 dark:text-red-200",
+  },
+};
+
 export default function DashboardPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+
+  // ── Go/No-Go recommendation ───────────────────────────────────────────────
+  const [goNoGo, setGoNoGo] = useState<GoNoGoResult | null>(null);
+  const [goNoGoLoading, setGoNoGoLoading] = useState(false);
+  const [goNoGoError, setGoNoGoError] = useState<string | null>(null);
+
+  const runGoNoGo = useCallback(() => {
+    setGoNoGoLoading(true);
+    setGoNoGoError(null);
+    fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" } })
+      .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
+      .then((d: GoNoGoResult) => { setGoNoGo(d); setGoNoGoLoading(false); })
+      .catch((e: string) => { setGoNoGoError(typeof e === "string" ? e : "Analysis failed"); setGoNoGoLoading(false); });
+  }, []);
+
+  useEffect(() => { runGoNoGo(); }, [runGoNoGo]);
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) },
@@ -195,6 +266,134 @@ export default function DashboardPage() {
         title="Command Centre"
         subtitle="Real-time health, priorities, and decisions for the Winchester clinic launch."
       />
+
+      {/* 0. Go/No-Go Recommendation */}
+      {(() => {
+        const cfg = goNoGo ? VERDICT_CONFIG[goNoGo.verdict] : null;
+        return (
+          <Card className={`shadow-sm border bg-gradient-to-br ${cfg ? `${cfg.bg} ${cfg.border}` : "border-border/60"}`}>
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-primary/70 shrink-0" />
+                  <CardTitle className="text-base">Launch Recommendation</CardTitle>
+                  {goNoGo && (
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg!.badge}`}>
+                      {cfg!.icon}
+                      {goNoGo.verdictLabel}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {goNoGo && (
+                    <span className="text-xs text-muted-foreground">
+                      Confidence: <strong>{goNoGo.confidenceScore}%</strong>
+                    </span>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={runGoNoGo} disabled={goNoGoLoading} className="h-7 px-2 text-xs gap-1">
+                    <RefreshCw className={`w-3 h-3 ${goNoGoLoading ? "animate-spin" : ""}`} />
+                    {goNoGoLoading ? "Analysing…" : "Refresh"}
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                AI analysis of your financials, property, tasks, compliance, decisions, and live Bedhampton performance — updated each time you refresh.
+              </p>
+            </CardHeader>
+            <CardContent>
+              {goNoGoLoading && (
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-4 bg-muted rounded w-full" />
+                  <div className="h-4 bg-muted rounded w-5/6" />
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
+                    <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
+                  </div>
+                </div>
+              )}
+              {goNoGoError && !goNoGoLoading && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  {goNoGoError}
+                  <button onClick={runGoNoGo} className="underline text-primary ml-1">Try again</button>
+                </div>
+              )}
+              {goNoGo && !goNoGoLoading && (
+                <div className="space-y-5">
+                  {/* Summary */}
+                  <div className="text-sm text-foreground/85 leading-relaxed whitespace-pre-line">{goNoGo.summary}</div>
+
+                  {/* Strengths + Concerns */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {goNoGo.strengths.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Strengths</div>
+                        <ul className="space-y-1.5">
+                          {goNoGo.strengths.map((s, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {goNoGo.concerns.length > 0 && (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Concerns</div>
+                        <ul className="space-y-1.5">
+                          {goNoGo.concerns.map((c, i) => (
+                            <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                              {c}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Conditions (only if PROCEED_WITH_CONDITIONS or DELAY) */}
+                  {goNoGo.conditions.length > 0 && (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Conditions that must be met</div>
+                      <ul className="space-y-1">
+                        {goNoGo.conditions.map((c, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
+                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5" />{c}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Immediate actions */}
+                  {goNoGo.immediateActions.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Next 30 days</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                        {goNoGo.immediateActions.map((a, i) => (
+                          <div key={i} className="flex items-start gap-1.5 text-xs bg-muted/60 rounded-md px-2.5 py-1.5">
+                            <span className="text-primary font-bold shrink-0">{i + 1}.</span>
+                            {a}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Footer */}
+                  <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/40 pt-3">
+                    <span>Re-run when: {goNoGo.reviewTrigger}</span>
+                    <span>Generated {new Date(goNoGo.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* 1. Executive Health Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
