@@ -1741,6 +1741,8 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [showActiveConfirm, setShowActiveConfirm] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [analyseStage, setAnalyseStage] = useState("");
+  const [analyseStartedAt, setAnalyseStartedAt] = useState<number | null>(null);
+  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileName?: string; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
@@ -1774,10 +1776,33 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
         version: latestAnalysisData.version,
         isStale: new Date(property.updatedAt) > new Date(latestAnalysisData.createdAt),
       });
+      // Detect when a brand-new analysis arrives during an active poll
+      if (analyseStartedAt) {
+        const analysisTime = new Date((latestAnalysisData as any).createdAt).getTime();
+        if (analysisTime > analyseStartedAt - 5000) {
+          setAnalyseStartedAt(null);
+          setIsAnalysing(false);
+          setAnalyseStage("");
+          if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
+        }
+      }
     } else {
       setIntelligenceResult(null);
     }
   }, [property?.id, latestAnalysisData]);
+
+  // Polling: while an analysis is in-flight, refetch every 4 s + show elapsed-time progress
+  useEffect(() => {
+    if (!analyseStartedAt || !property?.id) return;
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - analyseStartedAt;
+      if (elapsed < 8_000) setAnalyseStage("Locating property…");
+      else if (elapsed < 22_000) setAnalyseStage("Mapping competitors…");
+      else setAnalyseStage("Running AI analysis…");
+      queryClient.invalidateQueries({ queryKey: getGetLatestPropertyAnalysisQueryKey(property.id) });
+    }, 4_000);
+    return () => clearInterval(interval);
+  }, [analyseStartedAt, property?.id]);
 
   if (!property) return null;
 
@@ -1831,45 +1856,28 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
     setIntelligenceResult(null);
     setActiveTab("intelligence");
     setIsAnalysing(true);
-    setAnalyseStage("Starting…");
+    setAnalyseStage("Locating property…");
+    if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
     try {
       const res = await fetch(`/api/properties/${property.id}/analyse`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ searchRadiusMeters }),
       });
-      if (!res.body) throw new Error("No response body");
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          try {
-            const payload = JSON.parse(line.slice(6));
-            if (payload.stage === "geocoding") setAnalyseStage("Locating property…");
-            else if (payload.stage === "competitors") setAnalyseStage("Mapping nearby competitors…");
-            else if (payload.stage === "analysing") setAnalyseStage("Running AI analysis — 60–90 seconds…");
-            else if (payload.stage === "saving") setAnalyseStage("Saving results…");
-            else if (payload.stage === "complete") {
-              setIntelligenceResult(payload.result);
-              queryClient.invalidateQueries({ queryKey: getGetLatestPropertyAnalysisQueryKey(property.id) });
-            } else if (payload.stage === "error") {
-              toast({ title: "Analysis failed", description: payload.error ?? "Please try again.", variant: "destructive" });
-            }
-          } catch {}
-        }
-      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Analysis is running in the background — start polling
+      setAnalyseStartedAt(Date.now());
+      // Hard timeout: give up after 3 minutes with a friendly message
+      pollTimeoutRef.current = setTimeout(() => {
+        setAnalyseStartedAt(null);
+        setIsAnalysing(false);
+        setAnalyseStage("");
+        toast({ title: "Still working…", description: "Analysis is taking longer than usual. Check back in a moment — it will appear automatically.", variant: "default" });
+      }, 180_000);
     } catch {
-      toast({ title: "Analysis failed", description: "Could not run AI analysis. Please try again.", variant: "destructive" });
-    } finally {
       setIsAnalysing(false);
       setAnalyseStage("");
+      toast({ title: "Analysis failed", description: "Could not start analysis. Please try again.", variant: "destructive" });
     }
   };
 

@@ -723,11 +723,9 @@ router.post("/properties/:id/analyse", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  // SSE headers — keeps the connection alive and lets the frontend show progress
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
+  // Respond immediately — analysis runs in background, client polls GET /analyses/latest
+  res.json({ status: "started" });
+  const send = (_data: object) => { /* no-op: fire-and-forget mode */ };
 
   const rawRadius = req.body?.searchRadiusMeters;
   const searchRadius = typeof rawRadius === "number" && rawRadius >= 200 && rawRadius <= 2000
@@ -791,8 +789,6 @@ Score saturation/opportunity based on this known competitor list. Return the com
   // ── Stage 3: AI analysis ────────────────────────────────────────────────────
   send({ stage: "analysing", message: "Running deep AI analysis — this takes 60–90 seconds…" });
 
-  // Keep connection alive with a heartbeat every 12s while the model works
-  const heartbeat = setInterval(() => send({ stage: "heartbeat" }), 12000);
 
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Conduct a thorough, expert-grade analysis of this property for use as a premium aesthetics clinic.
 
@@ -906,28 +902,14 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
     const content = response.choices[0]?.message?.content ?? "{}";
     rawAnalysis = parseLLMJson(content);
   } catch (err) {
-    clearInterval(heartbeat);
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
-      send({ stage: "error", error: "AI service is not configured. Please provision the OpenAI AI integration." });
-    } else if (msg.includes("aborted") || msg.includes("AbortError")) {
-      send({ stage: "error", error: "Analysis timed out after 2 minutes. Please try again." });
-    } else {
-      send({ stage: "error", error: "AI analysis failed. Please try again." });
-    }
-    res.end();
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[analyse] property ${id} background error: ${msg}`);
     return;
   }
-  clearInterval(heartbeat);
 
   const validated = AnalysisSchema.safeParse(rawAnalysis);
   if (!validated.success) {
-    send({
-      stage: "error",
-      error: "AI returned an unexpected response format. Please try again.",
-      details: validated.error.issues.map(i => i.message).join("; "),
-    });
-    res.end();
+    console.error(`[analyse] property ${id} schema error: ${validated.error.issues.map(i => i.message).join("; ")}`);
     return;
   }
 
@@ -986,17 +968,8 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
     } as Record<string, unknown>,
   }).returning();
 
-  // ── Stage 5: Complete ──────────────────────────────────────────────────────
-  send({
-    stage: "complete",
-    result: {
-      ...fullResult,
-      analysisId: savedAnalysis.id,
-      version: newVersion,
-      isStale: false,
-    },
-  });
-  res.end();
+  // Analysis saved — client will fetch it via GET /analyses/latest on next poll
+  console.info(`[analyse] property ${id} analysis saved (v${newVersion})`);
 });
 
 // ─── AI Advisor Actions — SSE streaming ───────────────────────────────────────
