@@ -679,6 +679,13 @@ export interface DashboardSummary {
   phaseProgress: PhaseProgress[];
   complianceReadinessPercent?: number | null;
   cqcNotStarted?: boolean | null;
+  activePropertyAddress?: string | null;
+  activePropertyPostcode?: string | null;
+  activePropertyShortName?: string | null;
+  breakEvenRevenue?: number | null;
+  realisticRevenue?: number | null;
+  realisticNetProfit?: number | null;
+  vatRisk?: boolean | null;
 }
 
 export interface PhaseWithTasks {

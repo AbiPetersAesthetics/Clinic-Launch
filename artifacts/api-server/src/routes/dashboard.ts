@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable } from "@workspace/db";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 
 const router = Router();
@@ -37,21 +37,63 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     daysToOpening = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // Financial data
-  const [financial] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+  // Financial + property + fixed cost items — fetched in parallel
+  const [
+    [financial],
+    allProperties,
+    fixedCostItems,
+  ] = await Promise.all([
+    db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
+    db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+  ]);
+
+  const activeProperty = allProperties.find(p => p.isActiveForProject) ?? allProperties[0] ?? null;
+
+  // Short display name: first segment before a comma (e.g. "9a Jewry Street")
+  const activePropertyAddress = activeProperty?.address ?? null;
+  const activePropertyPostcode = activeProperty?.postcode ?? null;
+  const activePropertyShortName = activeProperty?.address
+    ? activeProperty.address.split(",")[0].trim()
+    : null;
+
   let projectedFirstYearProfit: number | null = null;
   let monthlyBurnRate: number | null = null;
   let cashRunwayMonths: number | null = null;
+  let breakEvenRevenue: number | null = null;
+  let realisticRevenue: number | null = null;
+  let realisticNetProfit: number | null = null;
+  let vatRisk: boolean | null = null;
 
   if (financial) {
     const slotsPerMonth = financial.treatmentRoomsCount * financial.practitionerHoursPerDay * financial.workingDaysPerMonth;
-    const monthlyRevenue = (slotsPerMonth * (financial.realisticOccupancyPercent / 100)) * financial.averageClientValueGbp + financial.membershipRevenueGbp;
-    const monthlyFixed = financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp;
-    const monthlyVariable = monthlyRevenue * ((financial.stockPercent + financial.commissionsPercent) / 100) + financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
-    monthlyBurnRate = monthlyFixed + monthlyVariable;
-    projectedFirstYearProfit = (monthlyRevenue - (monthlyBurnRate ?? 0)) * 12;
+
+    // Use itemised fixed costs when available (more accurate than legacy fields)
+    const totalFixedItemsCost = fixedCostItems.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
+    const legacyFixed = financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp;
+    const actualFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : legacyFixed;
+
+    const acv = financial.wincAcvGbp || financial.averageClientValueGbp;
+    const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
+    const fixedVarItems = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
+
+    realisticRevenue = Math.round((slotsPerMonth * (financial.realisticOccupancyPercent / 100)) * acv + financial.membershipRevenueGbp);
+    const realisticVariable = Math.round(realisticRevenue * variableRatio + fixedVarItems);
+    realisticNetProfit = realisticRevenue - actualFixed - realisticVariable;
+
+    monthlyBurnRate = actualFixed + realisticVariable;
+    projectedFirstYearProfit = realisticNetProfit * 12;
+
+    // Break-even: revenue at which net = 0 (covers fixed + variable overheads)
+    breakEvenRevenue = Math.round((actualFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
+
     const monthlyCashDrain = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp - financial.existingClinicRevenueGbp;
     cashRunwayMonths = monthlyCashDrain > 0 ? financial.runwaySavingsGbp / monthlyCashDrain : 99;
+
+    // VAT risk: if combined annual revenue likely exceeds £85k (warn before £90k threshold)
+    const projectedAnnualWinc = (realisticRevenue ?? 0) * 12;
+    const combinedTurnover = (financial.vatCurrentTurnoverGbp || 0) + projectedAnnualWinc;
+    vatRisk = combinedTurnover > 85000;
   }
 
   // Confidence score (0-100)
@@ -107,6 +149,13 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     phaseProgress,
     complianceReadinessPercent,
     cqcNotStarted,
+    activePropertyAddress,
+    activePropertyPostcode,
+    activePropertyShortName,
+    breakEvenRevenue,
+    realisticRevenue,
+    realisticNetProfit,
+    vatRisk,
   });
 });
 

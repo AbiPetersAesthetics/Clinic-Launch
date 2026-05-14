@@ -21,6 +21,8 @@ import {
   X,
   Menu,
   LogOut,
+  MapPin,
+  TrendingUp,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { formatGBP, formatPercent } from "@/lib/format";
@@ -223,37 +225,97 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* KPI metrics */}
           {dashboard ? (
             <div className="flex items-center justify-between w-full min-w-0">
-              <div className="flex items-center gap-4 md:gap-6 overflow-x-auto scrollbar-none flex-1 min-w-0">
-                <div className="shrink-0">
+              <div className="flex items-center gap-3 md:gap-5 overflow-x-auto scrollbar-none flex-1 min-w-0">
+
+                {/* ── Active property — most prominent item ── */}
+                <div className="shrink-0 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Property</p>
+                    <p className="text-xs md:text-sm font-semibold mt-0.5 text-primary whitespace-nowrap">
+                      {dashboard.activePropertyShortName ?? "None selected"}
+                      {dashboard.activePropertyPostcode && (
+                        <span className="text-muted-foreground font-normal ml-1 text-[10px] md:text-xs">{dashboard.activePropertyPostcode}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-px h-7 bg-border shrink-0" />
+
+                {/* ── Break-even revenue ── */}
+                {dashboard.breakEvenRevenue != null && (
+                  <>
+                    <div className="shrink-0">
+                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Break-even</p>
+                      <p className="text-xs md:text-sm font-semibold mt-0.5 whitespace-nowrap">
+                        {formatGBP(dashboard.breakEvenRevenue)}<span className="text-muted-foreground font-normal text-[10px]">/mo</span>
+                      </p>
+                    </div>
+                    <div className="w-px h-7 bg-border shrink-0" />
+                  </>
+                )}
+
+                {/* ── Net profit at realistic scenario ── */}
+                {dashboard.realisticNetProfit != null && (
+                  <>
+                    <div className="shrink-0">
+                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Net (Realistic)</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <TrendingUp className={`w-3 h-3 shrink-0 ${dashboard.realisticNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`} />
+                        <p className={`text-xs md:text-sm font-semibold whitespace-nowrap ${dashboard.realisticNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                          {dashboard.realisticNetProfit >= 0 ? "+" : ""}{formatGBP(dashboard.realisticNetProfit)}<span className="text-muted-foreground font-normal text-[10px]">/mo</span>
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
+                  </>
+                )}
+
+                {/* ── VAT risk indicator (if approaching threshold) ── */}
+                {dashboard.vatRisk && (
+                  <>
+                    <div className="shrink-0 hidden sm:block">
+                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-amber-600 font-semibold whitespace-nowrap">VAT Risk</p>
+                      <p className="text-xs md:text-sm font-semibold mt-0.5 text-amber-600 whitespace-nowrap">£90k threshold</p>
+                    </div>
+                    <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
+                  </>
+                )}
+
+                {/* ── Days to launch ── */}
+                <div className="shrink-0 hidden sm:block">
                   <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Days to Launch</p>
                   <p className="text-xs md:text-sm font-semibold mt-0.5">{dashboard.daysToOpening ?? "TBD"}</p>
                 </div>
-                <div className="w-px h-7 bg-border shrink-0" />
-                <div className="shrink-0">
+                <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
+
+                {/* ── Readiness ── */}
+                <div className="shrink-0 hidden sm:block">
                   <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Readiness</p>
                   <p className="text-xs md:text-sm font-semibold mt-0.5 text-primary">{formatPercent(dashboard.launchReadinessPercent)}</p>
                 </div>
-                <div className="w-px h-7 bg-border shrink-0" />
-                <div className="shrink-0">
+                <div className="w-px h-7 bg-border shrink-0 hidden md:block" />
+
+                {/* ── Confidence ── */}
+                <div className="shrink-0 hidden md:block">
                   <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Confidence</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${dashboard.projectConfidenceScore > 75 ? "bg-primary" : dashboard.projectConfidenceScore > 50 ? "bg-yellow-500" : "bg-destructive"}`} />
                     <p className="text-xs md:text-sm font-semibold">{dashboard.projectConfidenceScore}/100</p>
                   </div>
                 </div>
-                <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
-                <div className="shrink-0 hidden sm:block">
+                <div className="w-px h-7 bg-border shrink-0 hidden lg:block" />
+
+                {/* ── CQC & Compliance ── */}
+                <div className="shrink-0 hidden lg:block">
                   <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">CQC &amp; Compliance</p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-2 h-2 rounded-full ${(dashboard.complianceReadinessPercent ?? 0) >= 80 ? "bg-primary" : (dashboard.complianceReadinessPercent ?? 0) >= 40 ? "bg-yellow-500" : "bg-destructive"}`} />
                     <p className="text-xs md:text-sm font-semibold">{dashboard.complianceReadinessPercent ?? 0}%</p>
                   </div>
                 </div>
-                <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
-                <div className="shrink-0 hidden sm:block">
-                  <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Selected Cost</p>
-                  <p className="text-xs md:text-sm font-semibold mt-0.5">{formatGBP(dashboard.currentSelectedCost)}</p>
-                </div>
+
               </div>
               {criticalFlags.length > 0 && (
                 <div className="flex items-center gap-1.5 bg-destructive/10 text-destructive px-2.5 py-1.5 rounded-full text-[10px] md:text-xs font-medium shrink-0 ml-3">
