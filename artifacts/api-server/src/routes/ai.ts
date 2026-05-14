@@ -496,4 +496,160 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
   }
 });
 
+// ─── POST /api/projects/:projectId/financial/generate ─────────────────────────
+// AI generates a full set of financial assumptions for the active property and
+// saves them directly to the database (financial model + fixed cost items).
+router.post("/projects/:projectId/financial/generate", async (req, res) => {
+  const projectId = parseInt(req.params["projectId"] as string);
+
+  // Load active property
+  const [property] = await db.select().from(propertiesTable)
+    .where(eq(propertiesTable.projectId, projectId))
+    .then(rows => rows.filter(r => r.isActiveForProject));
+
+  // Load current fixed cost items
+  const fixedCostItems = await db.select().from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, projectId));
+
+  const propertyContext = property ? `
+Property address: ${property.address || "unknown"}, ${property.postcode || ""}
+Floor size: ${property.sqFootage ? `${property.sqFootage} sq ft` : "unknown — assume typical high street retail unit ~500-800 sq ft"}
+Monthly rent: £${(property.monthlyRentGbp ?? 0).toFixed(0)}
+Annual business rates: £${(property.businessRatesGbp ?? 0).toFixed(0)} (£${Math.round((property.businessRatesGbp ?? 0) / 12)}/month)
+Monthly service charge: £${Math.round((property.serviceChargeGbp ?? 0) / 12)}
+VAT on rent: ${property.vatOnRent ? "YES — landlord charges 20% VAT on rent" : "No"}
+Lease length: ${property.leaseLength || "unknown"}
+Use class: ${property.useClass || "E-class / commercial"}
+` : "No active property — use typical UK high street aesthetics clinic assumptions";
+
+  const costItemsList = fixedCostItems.map(i =>
+    `- ${i.name}: currently £${i.amountGbp}/month (${i.costType})`
+  ).join("\n");
+
+  const prompt = `You are a specialist financial advisor for UK aesthetics clinics (2025/2026 market rates).
+
+${propertyContext}
+
+Clinic type: Solo-practitioner aesthetic clinic (Advanced Nurse Practitioner). Premium positioning. Services: injectables (botulinum toxin, fillers), skin treatments (peels, microneedling), medical-grade skincare retail. No employees initially — Abi is the sole practitioner. High street commercial premises.
+
+Current fixed cost items (these need realistic £/month estimates):
+${costItemsList}
+
+Generate a comprehensive set of financial assumptions for this exact clinic and property. Use realistic 2025/2026 UK market rates specific to the size, location, and clinic type.
+
+Respond ONLY in this exact JSON format — no preamble, no markdown:
+{
+  "fixedCosts": [
+    { "name": "exact name matching list above", "amountGbp": 150, "reasoning": "brief UK market justification" }
+  ],
+  "variableCosts": {
+    "stockPercent": 10,
+    "commissionsPercent": 0,
+    "staffingGbp": 0,
+    "consumablesGbp": 80,
+    "marketingGbp": 0
+  },
+  "revenue": {
+    "wincAcvGbp": 185,
+    "treatmentRoomsCount": 1,
+    "practitionerHoursPerDay": 7,
+    "workingDaysPerMonth": 22,
+    "conservativeOccupancyPercent": 35,
+    "realisticOccupancyPercent": 60,
+    "aggressiveOccupancyPercent": 80
+  },
+  "flags": ["any important financial or compliance notes"]
+}
+
+Rules:
+- fixedCosts: estimate EVERY item in the list above. Items that are property-specific (Rent, Rates, Service Charge) should match the property data already provided. For zero-value items, provide a realistic estimate.
+- stockPercent: typically 8-14% for aesthetics (product cost of goods sold)
+- commissionsPercent: 0 (solo practitioner, no staff commissions)
+- consumablesGbp: needles, PPE, gloves, cannulas — typically £60-120/month for a solo clinic
+- wincAcvGbp: realistic average treatment value for premium aesthetics in this market (£150-250 range)
+- treatmentRoomsCount: based on floor size — 1 room per ~200-300 sq ft usable (assume 60% of total sq ft is usable)
+- conservativeOccupancyPercent: Month 6-8 realistic target (25-40%)
+- realisticOccupancyPercent: Month 12 target (50-70%)
+- aggressiveOccupancyPercent: best-case Month 12 (65-85%)`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.1",
+      messages: [{ role: "user", content: prompt }],
+      max_completion_tokens: 4000,
+    });
+
+    const content = completion.choices[0]?.message?.content ?? "{}";
+    const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(clean);
+    } catch {
+      const fixedMatch = clean.match(/"fixedCosts"\s*:\s*(\[[\s\S]*?\])/);
+      const varMatch = clean.match(/"variableCosts"\s*:\s*(\{[\s\S]*?\})/);
+      const revMatch = clean.match(/"revenue"\s*:\s*(\{[\s\S]*?\})/);
+      const flagsMatch = clean.match(/"flags"\s*:\s*(\[[\s\S]*?\])/);
+      parsed = {
+        fixedCosts: fixedMatch ? JSON.parse(fixedMatch[1]) : [],
+        variableCosts: varMatch ? JSON.parse(varMatch[1]) : {},
+        revenue: revMatch ? JSON.parse(revMatch[1]) : {},
+        flags: flagsMatch ? JSON.parse(flagsMatch[1]) : [],
+      };
+    }
+
+    // ── Apply fixed cost estimates to the fixed_cost_items table ────────────
+    const fixedCostUpdates: Promise<any>[] = [];
+    for (const estimate of (parsed.fixedCosts ?? [])) {
+      const match = fixedCostItems.find(i => i.name === estimate.name);
+      if (match && typeof estimate.amountGbp === "number") {
+        fixedCostUpdates.push(
+          db.update(fixedCostItemsTable)
+            .set({ amountGbp: estimate.amountGbp, updatedAt: new Date() })
+            .where(eq(fixedCostItemsTable.id, match.id))
+        );
+      }
+    }
+    await Promise.all(fixedCostUpdates);
+
+    // ── Apply variable costs + revenue to financial model ────────────────────
+    const vc = parsed.variableCosts ?? {};
+    const rev = parsed.revenue ?? {};
+
+    const modelUpdates: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+    if (typeof vc.stockPercent === "number")       modelUpdates.stockPercent = vc.stockPercent;
+    if (typeof vc.commissionsPercent === "number") modelUpdates.commissionsPercent = vc.commissionsPercent;
+    if (typeof vc.staffingGbp === "number")        modelUpdates.staffingGbp = vc.staffingGbp;
+    if (typeof vc.consumablesGbp === "number")     modelUpdates.consumablesGbp = vc.consumablesGbp;
+    if (typeof vc.marketingGbp === "number")       modelUpdates.marketingGbp = vc.marketingGbp;
+    if (typeof rev.wincAcvGbp === "number")                  modelUpdates.wincAcvGbp = rev.wincAcvGbp;
+    if (typeof rev.treatmentRoomsCount === "number")         modelUpdates.treatmentRoomsCount = rev.treatmentRoomsCount;
+    if (typeof rev.practitionerHoursPerDay === "number")     modelUpdates.practitionerHoursPerDay = rev.practitionerHoursPerDay;
+    if (typeof rev.workingDaysPerMonth === "number")         modelUpdates.workingDaysPerMonth = rev.workingDaysPerMonth;
+    if (typeof rev.conservativeOccupancyPercent === "number") modelUpdates.conservativeOccupancyPercent = rev.conservativeOccupancyPercent;
+    if (typeof rev.realisticOccupancyPercent === "number")    modelUpdates.realisticOccupancyPercent = rev.realisticOccupancyPercent;
+    if (typeof rev.aggressiveOccupancyPercent === "number")   modelUpdates.aggressiveOccupancyPercent = rev.aggressiveOccupancyPercent;
+
+    await db.update(financialsTable)
+      .set(modelUpdates)
+      .where(eq(financialsTable.projectId, projectId));
+
+    // Return updated state
+    const [updatedModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+    const updatedItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
+
+    return res.json({
+      model: updatedModel,
+      fixedCostItems: updatedItems,
+      flags: parsed.flags ?? [],
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI generation failed";
+    return res.status(500).json({ error: msg });
+  }
+});
+
 export default router;

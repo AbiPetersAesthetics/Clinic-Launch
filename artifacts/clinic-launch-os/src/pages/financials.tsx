@@ -23,11 +23,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
 import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw,
+  RefreshCw, Loader2, Wand2,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -288,17 +289,18 @@ export default function FinancialsPage() {
 
   const form = useForm({
     defaultValues: {
-      rentGbp: 0, ratesGbp: 0, utilitiesGbp: 0, internetGbp: 0, insuranceGbp: 0,
+      rentGbp: 0, ratesGbp: 0, vatOnRent: false,
+      utilitiesGbp: 0, internetGbp: 0, insuranceGbp: 0,
       accountantGbp: 0, softwareGbp: 0, wasteContractGbp: 0, cleanerGbp: 0,
       subscriptionsGbp: 0, financeRepaymentsGbp: 0,
-      stockPercent: 8, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
-      wincAcvGbp: 155, selfFundingBufferPercent: 20,
-      treatmentRoomsCount: 2, practitionerHoursPerDay: 7,
-      workingDaysPerMonth: 22, conservativeOccupancyPercent: 40, realisticOccupancyPercent: 65,
-      aggressiveOccupancyPercent: 85, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
+      stockPercent: 0, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
+      wincAcvGbp: 0, selfFundingBufferPercent: 20,
+      treatmentRoomsCount: 1, practitionerHoursPerDay: 7,
+      workingDaysPerMonth: 22, conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0,
+      aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 75000,
+      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
     }
   });
@@ -307,23 +309,32 @@ export default function FinancialsPage() {
     if (model) {
       const m = model as any;
       form.reset({
-        rentGbp: m.rentGbp || 0, ratesGbp: m.ratesGbp || 0, utilitiesGbp: m.utilitiesGbp || 0,
-        internetGbp: m.internetGbp || 0, insuranceGbp: m.insuranceGbp || 0, accountantGbp: m.accountantGbp || 0,
-        softwareGbp: m.softwareGbp || 0, wasteContractGbp: m.wasteContractGbp || 0, cleanerGbp: m.cleanerGbp || 0,
-        subscriptionsGbp: m.subscriptionsGbp || 0, financeRepaymentsGbp: m.financeRepaymentsGbp || 0,
-        stockPercent: m.stockPercent || 8, marketingGbp: m.marketingGbp || 0, staffingGbp: m.staffingGbp || 0,
-        commissionsPercent: m.commissionsPercent || 0, consumablesGbp: m.consumablesGbp || 0,
-        wincAcvGbp: m.wincAcvGbp || 155, selfFundingBufferPercent: m.selfFundingBufferPercent ?? 20,
-        treatmentRoomsCount: m.treatmentRoomsCount || 2, practitionerHoursPerDay: m.practitionerHoursPerDay || 7,
-        workingDaysPerMonth: m.workingDaysPerMonth || 22, conservativeOccupancyPercent: m.conservativeOccupancyPercent || 40,
-        realisticOccupancyPercent: m.realisticOccupancyPercent || 65, aggressiveOccupancyPercent: m.aggressiveOccupancyPercent || 85,
-        repeatBookingRatePercent: m.repeatBookingRatePercent || 60, membershipRevenueGbp: m.membershipRevenueGbp || 0,
+        rentGbp: m.rentGbp ?? 0, ratesGbp: m.ratesGbp ?? 0, vatOnRent: m.vatOnRent ?? false,
+        utilitiesGbp: m.utilitiesGbp ?? 0, internetGbp: m.internetGbp ?? 0,
+        insuranceGbp: m.insuranceGbp ?? 0, accountantGbp: m.accountantGbp ?? 0,
+        softwareGbp: m.softwareGbp ?? 0, wasteContractGbp: m.wasteContractGbp ?? 0,
+        cleanerGbp: m.cleanerGbp ?? 0, subscriptionsGbp: m.subscriptionsGbp ?? 0,
+        financeRepaymentsGbp: m.financeRepaymentsGbp ?? 0,
+        stockPercent: m.stockPercent ?? 0, marketingGbp: m.marketingGbp ?? 0,
+        staffingGbp: m.staffingGbp ?? 0, commissionsPercent: m.commissionsPercent ?? 0,
+        consumablesGbp: m.consumablesGbp ?? 0,
+        wincAcvGbp: m.wincAcvGbp ?? 0, selfFundingBufferPercent: m.selfFundingBufferPercent ?? 20,
+        treatmentRoomsCount: m.treatmentRoomsCount ?? 1, practitionerHoursPerDay: m.practitionerHoursPerDay ?? 7,
+        workingDaysPerMonth: m.workingDaysPerMonth ?? 22,
+        conservativeOccupancyPercent: m.conservativeOccupancyPercent ?? 0,
+        realisticOccupancyPercent: m.realisticOccupancyPercent ?? 0,
+        aggressiveOccupancyPercent: m.aggressiveOccupancyPercent ?? 0,
+        repeatBookingRatePercent: m.repeatBookingRatePercent ?? 60,
+        membershipRevenueGbp: m.membershipRevenueGbp ?? 0,
         existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhStockPercent: m.bedhStockPercent ?? 35,
-        bedhRentGbp: m.bedhRentGbp || 0, bedhSoftwareGbp: m.bedhSoftwareGbp || 0, bedhStaffingGbp: m.bedhStaffingGbp || 0,
-        bedhInsuranceGbp: m.bedhInsuranceGbp || 0, bedhMarketingGbp: m.bedhMarketingGbp || 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp || 0,
-        ownerDrawingsGbp: m.ownerDrawingsGbp || 0, runwaySavingsGbp: m.runwaySavingsGbp || 0, vatCurrentTurnoverGbp: (m as any).vatCurrentTurnoverGbp ?? 75000,
-        personalSalaryNeedsGbp: m.personalSalaryNeedsGbp || 0, nursingIncomeGbp: m.nursingIncomeGbp || 4500,
-        targetDrawingsGbp: m.targetDrawingsGbp || 4000,
+        bedhRentGbp: m.bedhRentGbp ?? 0, bedhSoftwareGbp: m.bedhSoftwareGbp ?? 0,
+        bedhStaffingGbp: m.bedhStaffingGbp ?? 0, bedhInsuranceGbp: m.bedhInsuranceGbp ?? 0,
+        bedhMarketingGbp: m.bedhMarketingGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 0,
+        ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0,
+        vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
+        personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
+        nursingIncomeGbp: m.nursingIncomeGbp ?? 4500,
+        targetDrawingsGbp: m.targetDrawingsGbp ?? 4000,
       });
       runCalculation();
     }
@@ -331,8 +342,44 @@ export default function FinancialsPage() {
 
   useEffect(() => { if (model) runCalculation(); }, [scenario]);
 
-  const onSubmit = (values: Record<string, number>) => {
-    const processed = Object.fromEntries(Object.entries(values).map(([k, v]) => [k, Number(v) || 0]));
+  // ── AI generating state (triggered externally via URL param after property switch) ─
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiGenerateFlags, setAiGenerateFlags] = useState<string[]>([]);
+
+  const handleGenerateAssumptions = async () => {
+    setAiGenerating(true);
+    setAiGenerateFlags([]);
+    try {
+      const res = await fetch(`/api/projects/${PROJECT_ID}/financial/generate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Generation failed");
+      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+      queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+      if (data.flags?.length) setAiGenerateFlags(data.flags);
+      toast({ title: "AI assumptions generated", description: "Financial model populated — review and save." });
+    } catch {
+      toast({ title: "AI generation failed", description: "You can enter assumptions manually.", variant: "destructive" });
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  // Auto-trigger AI generation if navigated here with ?generate=1
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("generate") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+      setTab("model");
+      handleGenerateAssumptions();
+    }
+  }, []);
+
+  const onSubmit = (values: Record<string, any>) => {
+    const { vatOnRent: vatOnRentVal, ...rest } = values;
+    const processed = {
+      ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
+      vatOnRent: Boolean(vatOnRentVal),
+    };
     upsertModel.mutate({ projectId: PROJECT_ID, data: processed }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
@@ -1047,14 +1094,36 @@ export default function FinancialsPage() {
       {tab === "model" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-5 space-y-5">
+            {/* AI generating banner */}
+            {aiGenerating && (
+              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+                <div>
+                  <p className="font-medium text-primary">Generating assumptions with AI…</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Analysing the property and local market — this takes 10–20 seconds.</p>
+                </div>
+              </div>
+            )}
+            {aiGenerateFlags.length > 0 && !aiGenerating && (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3 space-y-1">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">AI notes on these assumptions:</p>
+                {aiGenerateFlags.map((f, i) => <p key={i} className="text-xs text-amber-700 dark:text-amber-400">• {f}</p>)}
+              </div>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-                <div className="flex items-center justify-between sticky top-16 z-30 bg-background/95 py-3 border-b">
+                <div className="flex items-center justify-between sticky top-16 z-30 bg-background/95 py-3 border-b gap-2">
                   <h3 className="font-semibold">Assumptions</h3>
-                  <Button type="submit" disabled={upsertModel.isPending} size="sm">
-                    <Save className="w-4 h-4 mr-1.5" />
-                    {upsertModel.isPending ? "Saving…" : "Save & Recalculate"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={handleGenerateAssumptions} disabled={aiGenerating}>
+                      {aiGenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Wand2 className="w-4 h-4 mr-1.5" />}
+                      Generate with AI
+                    </Button>
+                    <Button type="submit" disabled={upsertModel.isPending} size="sm">
+                      <Save className="w-4 h-4 mr-1.5" />
+                      {upsertModel.isPending ? "Saving…" : "Save"}
+                    </Button>
+                  </div>
                 </div>
 
                 <Card className="shadow-sm">
@@ -1063,6 +1132,26 @@ export default function FinancialsPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Tag each cost as <strong>Unique</strong> ({clinicLabel} only) or <strong>Dual</strong> (shared across both clinics — counts once, never double-charged).
                     </p>
+                    {/* VAT on rent toggle — synced from property */}
+                    <div className="flex items-center justify-between pt-2 border-t mt-2">
+                      <div>
+                        <p className="text-xs font-medium">VAT on Rent</p>
+                        <p className="text-[10px] text-muted-foreground">Landlord charges 20% VAT on top of rent</p>
+                      </div>
+                      <FormField control={form.control} name={"vatOnRent" as any} render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Switch
+                              checked={!!field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <span className={`text-xs font-medium ${field.value ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>
+                            {field.value ? "Yes — VAT applies" : "No"}
+                          </span>
+                        </FormItem>
+                      )} />
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {/* Existing cost rows */}

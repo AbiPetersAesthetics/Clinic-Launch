@@ -1780,13 +1780,15 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
   const handleSetActive = () => {
     setPropertyActive.mutate({ id: property.id }, {
-      onSuccess: () => {
+      onSuccess: async () => {
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
-        toast({ title: "Active property set", description: "Financials have been synced from this property's rent and rates." });
+        toast({ title: "Property selected", description: "Assumptions cleared. Generating financial model with AI…" });
         setShowActiveConfirm(false);
         onUpdated();
+        // Navigate to financials with ?generate=1 so the AI runs automatically
+        window.location.href = `/clinic-launch-os/financials?generate=1`;
       },
       onError: () => toast({ title: "Failed to set active property", variant: "destructive" }),
     });
@@ -2214,6 +2216,7 @@ function PropertyCard({
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+        window.location.href = `/clinic-launch-os/financials?generate=1`;
       },
     });
   };

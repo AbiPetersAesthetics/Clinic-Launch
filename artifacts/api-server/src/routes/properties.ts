@@ -95,39 +95,44 @@ router.put("/properties/:id/set-active", async (req, res) => {
     .where(eq(propertiesTable.id, id))
     .returning();
 
-  // Sync rent and rates into financial model
+  // Sync property data into financial model — full reset to defaults, keeping only property-derived values
   const monthlyRent = property.monthlyRentGbp ?? 0;
   const monthlyRates = property.businessRatesGbp ? Math.round(property.businessRatesGbp / 12) : 0;
   const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
+  const vatOnRent = property.vatOnRent ?? false;
+
+  const resetFields = {
+    // Property-derived values (from selected property)
+    rentGbp: monthlyRent,
+    ratesGbp: monthlyRates,
+    vatOnRent,
+    // All assumptions reset to blank/defaults — AI will populate these
+    utilitiesGbp: 0, internetGbp: 0, insuranceGbp: 0, accountantGbp: 0,
+    softwareGbp: 0, wasteContractGbp: 0, cleanerGbp: 0, subscriptionsGbp: 0,
+    financeRepaymentsGbp: 0,
+    stockPercent: 0, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
+    wincAcvGbp: 0, treatmentRoomsCount: 1, practitionerHoursPerDay: 7, workingDaysPerMonth: 22,
+    conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0, aggressiveOccupancyPercent: 0,
+    repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
+    selfFundingBufferPercent: 20,
+    existingClinicRevenueGbp: 0, bedhStockPercent: 35,
+    bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0,
+    bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
+    ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0,
+    nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
+    vatCurrentTurnoverGbp: 0,
+    updatedAt: new Date(),
+  };
 
   const [existingModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, property.projectId));
   if (existingModel) {
-    await db.update(financialsTable)
-      .set({ rentGbp: monthlyRent, ratesGbp: monthlyRates, updatedAt: new Date() })
-      .where(eq(financialsTable.projectId, property.projectId));
+    await db.update(financialsTable).set(resetFields).where(eq(financialsTable.projectId, property.projectId));
   } else {
-    await db.insert(financialsTable).values({
-      projectId: property.projectId,
-      rentGbp: monthlyRent,
-      ratesGbp: monthlyRates,
-    });
+    await db.insert(financialsTable).values({ projectId: property.projectId, ...resetFields });
   }
 
-  // ── Seed / refresh fixed cost items from property data ────────────────────
-  // Delete existing auto-generated items (preserve any manually added ones
-  // by only deleting rows that match our known default names)
-  const DEFAULT_COST_NAMES = [
-    "Rent / Lease", "Service Charge", "Business Rates",
-    "Utilities (Gas & Electric)", "Internet / WiFi",
-    "ANS Software", "Card Terminal Rental", "Insurance (Indemnity + Premises)",
-    "Accountant", "Waste Contract", "Cleaner", "Marketing Budget",
-    "Subscriptions & Sundries",
-  ];
-
-  // Upsert approach — update if exists, insert if not
-  const existingItems = await db.select().from(fixedCostItemsTable)
-    .where(eq(fixedCostItemsTable.projectId, property.projectId));
-  const existingNames = existingItems.map(i => i.name);
+  // ── Full reset of fixed cost items — delete all, re-seed from defaults ─────
+  await db.delete(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, property.projectId));
 
   const defaultItems: { name: string; amountGbp: number; costType: string; sortOrder: number }[] = [
     { name: "Rent / Lease",                    amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
@@ -145,22 +150,9 @@ router.put("/properties/:id/set-active", async (req, res) => {
     { name: "Subscriptions & Sundries",        amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
   ];
 
-  for (const item of defaultItems) {
-    const existing = existingItems.find(e => e.name === item.name);
-    if (existing) {
-      // Update amounts from property data but preserve user-edited amounts for non-property items
-      if (["Rent / Lease", "Service Charge", "Business Rates"].includes(item.name)) {
-        await db.update(fixedCostItemsTable)
-          .set({ amountGbp: item.amountGbp, updatedAt: new Date() })
-          .where(eq(fixedCostItemsTable.id, existing.id));
-      }
-    } else {
-      await db.insert(fixedCostItemsTable).values({
-        projectId: property.projectId,
-        ...item,
-      });
-    }
-  }
+  await db.insert(fixedCostItemsTable).values(
+    defaultItems.map(item => ({ projectId: property.projectId, ...item }))
+  );
 
   // Create a Decision Log entry
   const annualCost = (monthlyRent + monthlyRates) * 12;

@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, real, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -60,6 +60,8 @@ export const financialsTable = pgTable("financial_models", {
   // VAT planning — current rolling 12-month business turnover (all clinics combined)
   // Used to calculate exactly when the £90k threshold will be crossed
   vatCurrentTurnoverGbp: real("vat_current_turnover_gbp").notNull().default(75000),
+  // VAT on rent — synced from active property; whether landlord charges VAT on rent
+  vatOnRent: boolean("vat_on_rent").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
