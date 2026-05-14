@@ -524,144 +524,46 @@ Use class: ${property.useClass || "Class E commercial"}
     ? `\nExisting cost items in the model:\n${existingItems.map(i => `  • "${i.name}": £${i.amountGbp}/mo`).join("\n")}`
     : "";
 
-  const prompt = `You are a specialist financial modeller for UK aesthetics clinics (2025/2026 market data).
+  const prompt = `UK aesthetics clinic financial model. Solo ANP practitioner, premium positioning, Ltd Co.
+${propertyContext}${existingList}
 
-CLINIC PROFILE:
-${propertyContext}
-Operator: Abi Peters — Advanced Nurse Practitioner (ANP). Solo practitioner, no employees initially.
-Services: Botulinum toxin, dermal fillers, skin boosters, polynucleotides, chemical peels, microneedling, medical-grade skincare retail.
-Positioning: Premium. Target clientele: professionals, 30-55 age range.
-Business structure: Limited company (Abi Peters Aesthetics Ltd).
-${existingList}
+Generate a complete set of monthly cost estimates. Return ONLY valid JSON, no markdown:
 
-YOUR TASK: Produce a COMPLETE financial model with every possible cost line item for this exact clinic. Be specific and accurate — Abi will use this to make real financial decisions.
-
-For EACH cost: give a precise monthly £ amount AND a detailed justification citing the specific reason (supplier names, regulatory requirement, UK market data, or industry benchmark). Do NOT use vague reasoning like "typical cost" — be specific.
-
-MASTER COST LIST — estimate every single one:
-
-CATEGORY: Property & Occupancy
-- Rent / Lease (use property data above)
-- Business Rates (use property data; check if Small Business Rate Relief applies for rateable value <£12,000 — full relief, or tapered £12k-£15k)
-- Service Charge / Estate Charge (use property data)
-- Building & Contents Insurance (tenant's liability: equipment, stock, public liability — NOT landlord's building)
-
-CATEGORY: Utilities
-- Electricity (lighting, treatment equipment, fridge for toxin storage — aesthetics clinics 600 sq ft: £150-300/mo)
-- Gas / Heating (if gas-heated premises; if electric only, £0)
-- Water Rates / Sewerage (commercial rates for small premises)
-- Broadband / Business Internet (dedicated business fibre: £40-80/mo; do NOT use residential)
-
-CATEGORY: Clinical & Regulatory
-- Medical Indemnity Insurance (Hamilton Fraser, Cosmetic Insure, or MDDUS — ANP prescribers: £150-400/mo depending on treatment volume and revenue)
-- Public & Products Liability Insurance (£1m-£5m cover: £30-60/mo)
-- CQC Registration (if regulated activities — aesthetics clinics often exempt if no CQC-regulated procedures, but prescribing pathways may require it; amortise annual fee monthly)
-- Clinical Waste Disposal Contract (licensed carrier MANDATORY for sharps, clinical waste — Solo clinic: £40-80/mo; name a specific provider e.g. Daniels Sharpsmart, Cannon Hygiene)
-- Sharps Bins & Consumables (yellow bins, yellow bags, collection — often bundled with contract above)
-- CPD / Training Budget (NMC requirement for nurses: minimum 35 hours/yr; aesthetics-specific training: £100-300/mo amortised)
-
-CATEGORY: Software & Technology
-- Practice Management Software (Phorest £100-200/mo, Jane App £70-110/mo, Fresha free but commission-based, Aesthetic Nurse Software £80-150/mo — recommend and price specific)
-- Card Payment Terminal (SumUp Air £0 terminal + 1.69% per transaction; Zettle/iZettle similar; OR PDQ rental £15-30/mo + lower %: choose and justify)
-- Accounting Software (Xero £26-42/mo; QuickBooks £30/mo; FreeAgent £19/mo — specific plan)
-- Email Marketing (Mailchimp, Klaviyo, or ActiveCampaign — small list: £10-30/mo)
-- Website Hosting & Domain (hosting + domain renewal amortised: £10-30/mo)
-- Online Booking System (if separate from practice management: £0-50/mo)
-- Telecoms / Business Mobile (business SIM or phone plan: £15-40/mo)
-
-CATEGORY: Professional Services
-- Accountant / Bookkeeper (monthly bookkeeping + quarterly management accounts + annual accounts for Ltd Co: £200-500/mo depending on complexity)
-- Payroll Administration (even sole director payroll for PAYE optimisation: £20-50/mo via accountant or bureau)
-- Legal / Company Compliance (Companies House filings, registered address service: £10-25/mo amortised)
-
-CATEGORY: Marketing & Brand
-- Digital Marketing Budget (Meta/Instagram ads, Google Ads — essential for new clinic launch: £200-600/mo; state this is the MINIMUM for meaningful reach in 2025/2026)
-- Photography / Content Creation (monthly content shoot or UGC: £100-300/mo; vital for aesthetics social media)
-- Printed Materials (aftercare sheets, consent forms, business cards, leaflets — amortised: £20-50/mo)
-- Gifts / Client Retention (birthday offers, welcome gifts, loyalty rewards — £30-80/mo)
-
-CATEGORY: Operations & Compliance
-- Cleaner / Cleaning Contract (clinical-standard cleaning required: £60-150/mo for weekly or bi-weekly deep clean)
-- Laundry / Linen Service (towels, gowns, couch rolls — either laundry service or disposable linen: £30-80/mo)
-- Stationery & Office Supplies (consent forms, printer ink, paper, pens: £15-30/mo)
-- Postage (prescriptions, letters, lab results: £10-20/mo)
-
-CATEGORY: Financial & Banking
-- Business Bank Account Charges (Starling free; Barclays/HSBC/NatWest £8-15/mo; Tide £0-9.99/mo — specify)
-- Finance Repayments (fit-out loan / equipment finance if applicable — can be £0 if self-funded)
-- Merchant Services / Payment Processing Fees (if percentage-based: estimate based on expected revenue)
-
-CATEGORY: Contingency
-- Miscellaneous / Contingency (5-8% of total fixed costs; covers unexpected costs, repairs, equipment replacement)
-
-Now also provide:
-VARIABLE COSTS (percentage of revenue or fixed monthly):
-- Stock / COGS percent (product cost of toxin, fillers, skin boosters — typically 12-18% for premium aesthetics)
-- Consumables monthly (needles, cannulas, swabs, syringes, PPE — NOT included in stock %)
-- Marketing as % or fixed (if already in fixed costs, set to 0 here)
-
-REVENUE MODEL:
-- Average client visit value (ACV) in £ — be specific to premium ANP-level aesthetics in this location
-- Treatment rooms (based on sq footage)
-- Practitioner hours per day
-- Working days per month
-- Conservative occupancy % (Month 3-6 realistic)
-- Realistic occupancy % (Month 12 target)
-- Aggressive occupancy % (best case Month 12)
-
-RESPOND ONLY IN THIS EXACT JSON — no markdown, no preamble:
 {
   "fixedCosts": [
-    {
-      "name": "Cost item name",
-      "category": "Property & Occupancy",
-      "amountGbp": 2500,
-      "reasoning": "Detailed justification with specific reference — e.g. 'Based on property data: £2,500/mo as stated in lease. Note: if VAT on rent applies, add 20% = £3,000/mo total outgoing.'",
-      "confidence": "high",
-      "isEssential": true,
-      "matchesExisting": true
-    }
+    { "name": "Rent / Lease", "category": "Property & Occupancy", "amountGbp": 0, "reasoning": "1 sentence with specific reference", "confidence": "high|medium|low", "isEssential": true }
   ],
-  "variableCosts": {
-    "stockPercent": 14,
-    "stockPercentReasoning": "Premium botulinum toxin (Botox/Bocouture) ~£7-9/unit, fillers £60-100/ml wholesale — at premium pricing, COGS typically 12-16%.",
-    "commissionsPercent": 0,
-    "staffingGbp": 0,
-    "consumablesGbp": 95,
-    "consumablesReasoning": "Needles (£0.30-0.80 each), cannulas (£1.50-4 each), syringes, swabs, PPE gloves — solo clinic doing 8-12 appointments/day at full capacity.",
-    "marketingGbp": 0
-  },
-  "revenue": {
-    "wincAcvGbp": 220,
-    "wincAcvReasoning": "Premium ANP pricing in this market: anti-wrinkle from £200, 1ml filler £350-450, combination treatments common. Average across all service types.",
-    "treatmentRoomsCount": 1,
-    "treatmentRoomsReasoning": "600 sq ft total; ~360 sq ft usable (60%); 1 treatment room at ~200 sq ft minimum, reception/retail area.",
-    "practitionerHoursPerDay": 7,
-    "workingDaysPerMonth": 21,
-    "conservativeOccupancyPercent": 30,
-    "realisticOccupancyPercent": 60,
-    "aggressiveOccupancyPercent": 80
-  },
-  "flags": [
-    "CRITICAL: Medical indemnity must cover prescribing AND all treatments — verify with insurer before opening.",
-    "Any other important financial, regulatory, or compliance flags"
-  ]
+  "variableCosts": { "stockPercent": 14, "stockPercentReasoning": "1 sentence", "commissionsPercent": 0, "staffingGbp": 0, "consumablesGbp": 90, "consumablesReasoning": "1 sentence", "marketingGbp": 0 },
+  "revenue": { "wincAcvGbp": 220, "wincAcvReasoning": "1 sentence", "treatmentRoomsCount": 1, "practitionerHoursPerDay": 7, "workingDaysPerMonth": 21, "conservativeOccupancyPercent": 30, "realisticOccupancyPercent": 60, "aggressiveOccupancyPercent": 80 },
+  "flags": ["max 3 critical compliance/financial warnings"]
 }
 
-CRITICAL RULES:
-- confidence: "high" (industry standard, property-derived, or well-established cost), "medium" (estimated based on typical range), "low" (highly variable, needs Abi's input)
-- isEssential: true if legally required or operationally critical; false if optional/nice-to-have
-- matchesExisting: true if this cost matches one of the existing items listed above
-- reasoning MUST be specific — cite supplier names, regulatory bodies, or specific price benchmarks
-- For Property costs: use EXACT figures from property data provided
-- Do NOT omit any category — include every line item even if £0 (mark with reasoning why it's zero)
-- Flag Small Business Rate Relief eligibility if rateable value suggests it may apply`;
+Required fixedCosts items (use exact category names shown):
+Property & Occupancy: Rent / Lease, Business Rates, Service Charge, Contents & Equipment Insurance
+Utilities: Electricity, Gas / Heating, Water & Sewerage, Business Internet
+Clinical & Regulatory: Medical Indemnity Insurance, Public Liability Insurance, Clinical Waste Contract, CPD & Training
+Software & Technology: Practice Management Software, Card Payment Processing, Accounting Software, Website & Domain, Telecoms
+Professional Services: Accountant / Bookkeeper, Payroll Administration
+Marketing & Brand: Digital Marketing Budget, Content Creation & Photography, Printed Materials
+Operations: Cleaner / Cleaning Contract, Laundry & Linen, Stationery & Office Supplies
+Financial & Banking: Business Bank Charges, Finance Repayments
+Contingency: Miscellaneous / Contingency
+
+Rules:
+- Property items (Rent, Rates, Service Charge): use EXACT figures from property data above
+- confidence: "high" = property-derived or regulatory standard, "medium" = estimated range, "low" = highly variable
+- isEssential: true if legally required or operationally critical
+- reasoning: 1 concise sentence citing a specific supplier, regulation, or benchmark figure
+- stockPercent: 12-16% for premium injectables
+- wincAcvGbp: realistic average across all treatment types for premium ANP clinic`;
+
+  const max_completion_tokens = 3500;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.1",
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 8000,
+      max_completion_tokens,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
