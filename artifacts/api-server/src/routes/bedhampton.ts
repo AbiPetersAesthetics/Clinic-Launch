@@ -47,7 +47,7 @@ export interface BedhamptonSummary {
 }
 
 export interface BedhamptonMonthlyRevenue {
-  month: string;
+  month: string; // YYYY-MM format
   revenue: number;
   appointmentCount: number;
   avgTransactionValue: number;
@@ -60,7 +60,7 @@ export interface BedhamptonLiveData {
   fetchedAt: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export async function fetchBedhamptonLive(): Promise<BedhamptonLiveData> {
   const [summary, allMonths] = await Promise.all([
@@ -68,8 +68,20 @@ export async function fetchBedhamptonLive(): Promise<BedhamptonLiveData> {
     fetchWithCache<BedhamptonMonthlyRevenue[]>(`${EXTERNAL_BASE}/api/analytics/monthly-revenue`),
   ]);
 
-  // Last 8 completed months
-  const completedMonths = allMonths.filter((m) => m.revenue > 0).slice(-8);
+  // Determine the current month in YYYY-MM format so we can exclude it.
+  // The current month is always partial (in-progress) — including it biases
+  // 3-month averages downward. Only completed, past months are used.
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  // Sort by month ascending (YYYY-MM string sort is lexicographically correct),
+  // then filter: must have positive revenue AND be a past (completed) month.
+  // slice(-8) is safe only after sorting — the external API returns months in
+  // arbitrary order and must never be sliced unsorted.
+  const completedMonths = allMonths
+    .filter((m) => m.revenue > 0 && m.month < currentMonth)
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .slice(-8);
 
   return {
     summary,
@@ -87,8 +99,9 @@ export async function getBedhamptonContext(): Promise<string> {
   try {
     const { summary, recentMonths } = await fetchBedhamptonLive();
 
-    const trendLines = recentMonths
-      .slice(-6)
+    // recentMonths is already sorted ascending by fetchBedhamptonLive — slice(-6) is safe
+    const last6 = recentMonths.slice(-6);
+    const trendLines = last6
       .map((m) => {
         const [year, month] = m.month.split("-");
         const label = new Date(Number(year), Number(month) - 1, 1).toLocaleDateString("en-GB", {
@@ -99,7 +112,7 @@ export async function getBedhamptonContext(): Promise<string> {
       })
       .join(" | ");
 
-    // Trailing 3-month average for trend characterisation
+    // Trailing 3-month average for trend characterisation (last 3 completed months)
     const last3 = recentMonths.slice(-3);
     const avg3 = last3.length > 0 ? last3.reduce((s, m) => s + m.revenue, 0) / last3.length : 0;
 
@@ -111,10 +124,10 @@ Current performance:
 • This month revenue: ${fmt(summary.projectedMonthRevenue)} (projected) | Last month: ${fmt(summary.lastMonthRevenue)} | MoM growth: ${summary.revenueGrowthPct > 0 ? "+" : ""}${summary.revenueGrowthPct}%
 • Average client spend: ${fmt(summary.avgClientSpend)} | Appointments this month: ${summary.appointmentsThisMonth}
 • Repeat client rate: ${summary.repeatClientPct}% | Total revenue since launch: ${fmt(summary.totalRevenue)}
-• 3-month average revenue: ${fmt(avg3)}/month
+• 3-month average revenue (completed months only): ${fmt(avg3)}/month
 • Top treatment: ${summary.topTreatment}
 
-Recent monthly revenue (last 6 months):
+Recent monthly revenue (last 6 completed months, sorted chronologically):
 ${trendLines}
 
 Use this data when assessing financial viability, rent affordability, cash runway, or launch readiness. Bedhampton income is the financial safety net for the Winchester launch period.

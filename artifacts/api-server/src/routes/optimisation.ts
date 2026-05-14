@@ -1,8 +1,9 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { phasesTable, tasksTable, costOptimisationRulesTable, financialsTable } from "@workspace/db";
+import { phasesTable, tasksTable, costOptimisationRulesTable, financialsTable, fixedCostItemsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { LaunchTask, CostOptimisationRule } from "@workspace/db";
+import { calcLegacyFixed } from "../lib/financialEngine";
 
 const router = Router();
 
@@ -225,9 +226,10 @@ function applyRuleOverrides(
 router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
 
-  const [phases, financialsRows] = await Promise.all([
+  const [phases, financialsRows, fixedCostItems] = await Promise.all([
     db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
   ]);
   const phaseMap = new Map(phases.map(p => [p.id, p.name]));
   const fin = financialsRows[0] ?? null;
@@ -311,11 +313,11 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   let runwayMonths: number | null = null;
   let runwayMonthsWithSavings: number | null = null;
   if (fin) {
-    const monthlyFixedCosts =
-      fin.rentGbp + fin.ratesGbp + fin.utilitiesGbp + fin.internetGbp +
-      fin.insuranceGbp + fin.accountantGbp + fin.softwareGbp +
-      fin.wasteContractGbp + fin.cleanerGbp + fin.subscriptionsGbp +
-      fin.financeRepaymentsGbp;
+    // Prefer dynamic fixed cost items when available — the legacy hardcoded field sum
+    // (calcLegacyFixed) is only used as a fallback for backward compatibility.
+    const monthlyFixedCosts = fixedCostItems.length > 0
+      ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+      : calcLegacyFixed(fin);
     const monthlyVariableCosts =
       fin.marketingGbp + fin.staffingGbp + fin.consumablesGbp;
     const monthlyPersonalNeeds = fin.personalSalaryNeedsGbp + fin.ownerDrawingsGbp;

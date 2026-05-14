@@ -247,18 +247,25 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   let bedhCoverageMonths = 0;
 
   if (financial) {
-    const conservative = calcScenario(financial.conservativeOccupancyPercent, financial.averageClientValueGbp, financial);
-    const realistic = calcScenario(financial.realisticOccupancyPercent, financial.averageClientValueGbp, financial);
-    const aggressive = calcScenario(financial.aggressiveOccupancyPercent, financial.wincAcvGbp || financial.averageClientValueGbp, financial);
+    // All three scenarios now use wincAcvGbp (Winchester-specific ACV, e.g. £155)
+    // rather than the legacy averageClientValueGbp (originally set from Bedhampton, e.g. £120).
+    // Conservative/Realistic previously used the wrong ACV, understating Winchester revenue.
+    const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
+    const conservative = calcScenario(financial.conservativeOccupancyPercent, wincAcv, financial);
+    const realistic = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial);
+    const aggressive = calcScenario(financial.aggressiveOccupancyPercent, wincAcv, financial);
 
     // Use itemised fixed cost total when available — the scenario's `fixed` field only
     // sums legacy individual columns which may be incomplete if the user switched to
     // the dynamic fixed cost items list.
     const actualMonthlyFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : realistic.fixed;
 
-    // Break-even: actual fixed costs / (1 - variable cost ratio)
+    // Break-even: (fixedCosts + fixedVarItems) / (1 - variableRatio)
+    // fixedVarItems = marketing + staffing + consumables (fixed monthly amounts, not %-of-revenue).
+    // Previously omitted fixedVarItems, understating break-even by those amounts.
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
-    breakEvenRevenue = Math.round(actualMonthlyFixed / (1 - variableRatio));
+    const fixedVarItems = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
+    breakEvenRevenue = Math.round((actualMonthlyFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
 
     // Cash runway pre-opening
     const monthlyCashDrain = (financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp)
@@ -287,13 +294,13 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     financialContext = `=== THREE-SCENARIO FINANCIAL MODEL (for ${propertyLabel}) ===
 IMPORTANT: Use £${actualMonthlyFixed.toLocaleString()}/mo as the definitive monthly fixed cost figure (from itemised cost list). The scenario 'Fixed:' lines below show legacy category totals which may be incomplete.
 
-Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
+Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${wincAcv} ACV):
   Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${netAfterFixed(conservative).toLocaleString()}/mo
 
-Realistic (${financial.realisticOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
+Realistic (${financial.realisticOccupancyPercent}% occupancy, £${wincAcv} ACV):
   Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${netAfterFixed(realistic).toLocaleString()}/mo
 
-Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${(financial.wincAcvGbp || financial.averageClientValueGbp)} ACV):
+Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${wincAcv} ACV):
   Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${netAfterFixed(aggressive).toLocaleString()}/mo
 
 Key ratios (Realistic scenario, using actual fixed costs):

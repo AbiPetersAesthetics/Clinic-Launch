@@ -65,6 +65,9 @@ type CombinedMetrics = {
   monthlyRevenue: number; monthlyCosts: number; monthlyNetProfit: number;
   annualRevenue: number; annualNetProfit: number; vatThreshold: number;
   monthsUntilVatRegistration: number; vatRegistrationWarning: boolean; ebitda: number;
+  // Combined turnover for VAT tracker: existing Bedhampton annual + Winchester annual
+  combinedAnnualRevenue: number;
+  vatCurrentTurnover: number;
 };
 type OwnerMetrics = {
   nursingIncome: number;
@@ -477,6 +480,23 @@ export default function FinancialsPage() {
   const rampData = useMemo(() => cashflow?.filter(m => !m.isPreOpening).map((m) => ({ monthLabel: m.calendarLabel, occupancy: m.occupancyPercent })) ?? [], [cashflow]);
   const selfFundingPoint = useMemo(() => cashflow?.find(m => m.isSelfFundingMonth), [cashflow]);
 
+  // Bedhampton data health check: compare the manual model figure against the live
+  // 3-month average. recentMonths is already sorted ascending by the API (YYYY-MM sort).
+  // Warn if divergence exceeds 20% — a sign the model assumptions are stale.
+  const bedhHealthCheck = useMemo(() => {
+    if (!bLive || !model) return null;
+    const modelledRevenue = (model as any).existingClinicRevenueGbp ?? 0;
+    if (modelledRevenue <= 0) return null;
+    const last3 = bLive.recentMonths.slice(-3);
+    if (last3.length === 0) return null;
+    const liveAvg3m = last3.reduce((s, m) => s + m.revenue, 0) / last3.length;
+    if (liveAvg3m <= 0) return null;
+    const divergencePct = Math.round(Math.abs(modelledRevenue - liveAvg3m) / liveAvg3m * 100);
+    if (divergencePct <= 20) return null;
+    const direction = modelledRevenue > liveAvg3m ? "overstated" : "understated";
+    return { divergencePct, direction, modelledRevenue, liveAvg3m };
+  }, [bLive, model]);
+
   const cr = calcResults;
   const sc = SCENARIOS[scenario];
 
@@ -833,6 +853,14 @@ export default function FinancialsPage() {
                     <span>Top treatment: <strong>{bLive.summary.topTreatment}</strong></span>
                     <span>Total revenue to date: <strong>{formatGBP(bLive.summary.totalRevenue)}</strong></span>
                   </div>
+                  {bedhHealthCheck && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 text-xs text-amber-800 dark:text-amber-300">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-amber-600" />
+                      <span>
+                        <strong>Model mismatch ({bedhHealthCheck.divergencePct}%):</strong> Your financial model uses {formatGBP(bedhHealthCheck.modelledRevenue)}/mo for Bedhampton, but the live 3-month average is {formatGBP(Math.round(bedhHealthCheck.liveAvg3m))}/mo — your model is {bedhHealthCheck.direction} by {bedhHealthCheck.divergencePct}%. Update <em>Bedhampton Monthly Revenue</em> in the Assumptions tab to reflect actual performance.
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1269,14 +1297,23 @@ export default function FinancialsPage() {
                           : cr.combined.monthsUntilVatRegistration >= 99 ? "Not imminent"
                           : `~${cr.combined.monthsUntilVatRegistration} months`}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">until {clinicLabel} annual £90k VAT threshold</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">until business crosses £90k VAT threshold (all clinics combined)</div>
                     </div>
-                    <Progress value={Math.min((cr.combined.annualRevenue / VAT_THRESHOLD) * 100, 100)}
+                    {/* Progress shows combined all-clinic turnover vs £90k.
+                        vatCurrentTurnover = existing rolling 12-month Bedhampton revenue.
+                        combinedAnnualRevenue = that + Winchester steady-state annual.
+                        This gives the true picture of how close the business is to mandatory VAT registration. */}
+                    <Progress value={Math.min((cr.combined.combinedAnnualRevenue / VAT_THRESHOLD) * 100, 100)}
                       className={`h-2 ${cr.combined.vatRegistrationWarning ? "[&>div]:bg-amber-500" : ""}`} />
                     <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>{formatGBP(cr.combined.annualRevenue)} projected</span>
+                      <span>{formatGBP(cr.combined.combinedAnnualRevenue)} combined (all clinics)</span>
                       <span>£90k limit</span>
                     </div>
+                    {cr.combined.vatCurrentTurnover > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        Existing turnover: {formatGBP(cr.combined.vatCurrentTurnover)} · {clinicLabel} adds: {formatGBP(cr.combined.annualRevenue)}
+                      </div>
+                    )}
                     {cr.combined.vatRegistrationWarning && (
                       <div className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />Appoint accountant to plan VAT registration now.
