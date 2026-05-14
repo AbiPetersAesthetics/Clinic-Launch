@@ -10,6 +10,7 @@ import {
   useAnalyseProperty,
   useSetPropertyCompetitors,
   useSetPropertyActive,
+  useUnsetPropertyActive,
   useGetPropertyRanking,
   useListPropertyAnalyses,
   usePropertyAdvisorAction,
@@ -1046,6 +1047,8 @@ type PropertyFormData = {
   negotiationNotes?: string;
   landlordConcessions?: string;
   isFavourited?: boolean;
+  sourceUrl?: string;
+  photoUrl?: string;
 };
 
 function PropertyForm({
@@ -1181,6 +1184,19 @@ function PropertyForm({
         <div>
           <Label>Landlord Concessions</Label>
           <Textarea value={form.landlordConcessions ?? ""} onChange={e => set("landlordConcessions", e.target.value)} placeholder="Agreed concessions, rent-free periods, contributions" className="mt-1 h-20 resize-none text-sm" />
+        </div>
+      </div>
+
+      <Separator />
+      <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Links & Media</h4>
+      <div className="space-y-3">
+        <div>
+          <Label>Listing / Brochure URL</Label>
+          <Input value={form.sourceUrl ?? ""} onChange={e => set("sourceUrl", e.target.value)} placeholder="https://rightmove.co.uk/... or S3 brochure link" className="mt-1 text-sm" />
+        </div>
+        <div>
+          <Label>Photo URL</Label>
+          <Input value={form.photoUrl ?? ""} onChange={e => set("photoUrl", e.target.value)} placeholder="https://... (paste a direct image URL)" className="mt-1 text-sm" />
         </div>
       </div>
 
@@ -1356,7 +1372,7 @@ function UrlImportDialog({ open, onClose, onCreateProperty }: {
   };
 
   const handleCreate = () => {
-    onCreateProperty({ ...editFields, pipelineStatus: "found" });
+    onCreateProperty({ ...editFields, pipelineStatus: "found", sourceUrl: url.trim() || undefined });
     onClose();
     setUrl(""); setExtracted(null); setFlags([]);
   };
@@ -1366,7 +1382,7 @@ function UrlImportDialog({ open, onClose, onCreateProperty }: {
       <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Link2 className="w-5 h-5 text-primary" />Import from Listing URL</DialogTitle>
-          <DialogDescription>Paste a Rightmove, Zoopla, or other listing URL — AI will extract the property details.</DialogDescription>
+          <DialogDescription>Paste a property listing URL (Rightmove, Zoopla, etc.) or a direct PDF brochure link — AI will extract the details automatically.</DialogDescription>
         </DialogHeader>
 
         <div className="flex gap-2">
@@ -1700,6 +1716,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
   const setPropertyActive = useSetPropertyActive();
+  const unsetPropertyActive = useUnsetPropertyActive();
   const uploadDocument = useUploadPropertyDocument();
   const analyseProperty = useAnalyseProperty();
 
@@ -1831,14 +1848,37 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                     {isActive && <Badge className="text-xs bg-primary text-primary-foreground gap-1"><Target className="w-3 h-3" />Active Property</Badge>}
                     {property.isFavourited && <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />}
                   </div>
-                  <p className="text-lg font-bold leading-tight">{property.address ?? "Unnamed Property"}</p>
-                  {property.postcode && <p className="text-sm text-muted-foreground font-normal">{property.postcode}</p>}
-                  {latestAnalysisData && (
-                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
-                      <span>Last analysed {new Date(latestAnalysisData.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-                      {intelligenceResult?.isStale && <Badge className="text-xs bg-amber-100 text-amber-700">Stale — property updated since analysis</Badge>}
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-bold leading-tight">{property.address ?? "Unnamed Property"}</p>
+                      {property.postcode && <p className="text-sm text-muted-foreground font-normal">{property.postcode}</p>}
+                      {property.sourceUrl && (
+                        <a
+                          href={property.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                        >
+                          <ExternalLink className="w-3 h-3 shrink-0" />
+                          View listing
+                        </a>
+                      )}
+                      {latestAnalysisData && (
+                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+                          <span>Last analysed {new Date(latestAnalysisData.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+                          {intelligenceResult?.isStale && <Badge className="text-xs bg-amber-100 text-amber-700">Stale — property updated since analysis</Badge>}
+                        </div>
+                      )}
                     </div>
-                  )}
+                    {property.photoUrl && (
+                      <img
+                        src={property.photoUrl}
+                        alt={property.address ?? "Property photo"}
+                        className="w-20 h-16 rounded-lg object-cover shrink-0 border"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    )}
+                  </div>
                 </div>
               </SheetTitle>
             </SheetHeader>
@@ -1870,6 +1910,26 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
               {!isActive && (
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/5" onClick={() => setShowActiveConfirm(true)}>
                   <Target className="w-3.5 h-3.5" />Set as Active
+                </Button>
+              )}
+              {isActive && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs border-muted-foreground/40 text-muted-foreground hover:bg-muted/40"
+                  disabled={unsetPropertyActive.isPending}
+                  onClick={() => {
+                    unsetPropertyActive.mutate({ id: property.id }, {
+                      onSuccess: () => {
+                        queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+                        toast({ title: "Property deselected", description: "No active property is set." });
+                        onUpdated();
+                      },
+                    });
+                  }}
+                >
+                  {unsetPropertyActive.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
+                  Deselect
                 </Button>
               )}
               <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleUploadClick} disabled={uploadDocument.isPending}>

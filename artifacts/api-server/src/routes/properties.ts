@@ -176,6 +176,21 @@ router.put("/properties/:id/set-active", async (req, res) => {
   return res.json(updated);
 });
 
+// ─── Unset Active Property ────────────────────────────────────────────────────
+
+router.put("/properties/:id/unset-active", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
+  if (!property) return res.status(404).json({ error: "Property not found" });
+
+  const [updated] = await db.update(propertiesTable)
+    .set({ isActiveForProject: false, pipelineStatus: "under_review", status: "viewing", updatedAt: new Date() })
+    .where(eq(propertiesTable.id, id))
+    .returning();
+
+  return res.json(updated);
+});
+
 // ─── Project Scoring Weights API ──────────────────────────────────────────────
 
 router.get("/projects/:projectId/scoring-weights", async (req, res) => {

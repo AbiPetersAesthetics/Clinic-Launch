@@ -5795,6 +5795,83 @@ export const useSetPropertyActive = <
   return useMutation(getSetPropertyActiveMutationOptions(options));
 };
 
+export const getUnsetPropertyActiveUrl = (id: number) => {
+  return `/api/properties/${id}/unset-active`;
+};
+
+export const unsetPropertyActive = async (
+  id: number,
+  options?: RequestInit,
+): Promise<ClinicProperty> => {
+  return customFetch<ClinicProperty>(getUnsetPropertyActiveUrl(id), {
+    ...options,
+    method: "PUT",
+  });
+};
+
+export const getUnsetPropertyActiveMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unsetPropertyActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unsetPropertyActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["unsetPropertyActive"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unsetPropertyActive>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+    return unsetPropertyActive(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnsetPropertyActiveMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unsetPropertyActive>>
+>;
+
+export type UnsetPropertyActiveMutationError = ErrorType<unknown>;
+
+export const useUnsetPropertyActive = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unsetPropertyActive>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unsetPropertyActive>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getUnsetPropertyActiveMutationOptions(options));
+};
+
 /**
  * @summary Save reviewed extracted property data and store document reference
  */

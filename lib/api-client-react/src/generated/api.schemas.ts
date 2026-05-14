@@ -150,6 +150,8 @@ export interface ClinicProperty {
   agentEmail?: string | null;
   status: ClinicPropertyStatus;
   pipelineStatus: ClinicPropertyPipelineStatus;
+  sourceUrl?: string | null;
+  photoUrl?: string | null;
   viewingNotes?: string | null;
   negotiationNotes?: string | null;
   landlordConcessions?: string | null;

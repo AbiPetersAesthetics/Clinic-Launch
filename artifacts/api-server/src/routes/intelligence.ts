@@ -452,12 +452,100 @@ router.post("/projects/:projectId/properties/import-url", async (req, res) => {
     return res.status(400).json({ error: "Only HTTPS URLs are supported for security reasons." });
   }
 
-  // Strict allowlist enforcement — reject any URL not on the allowlist
   const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+
+  // ── PDF URL path (S3 brochures, direct PDF links) ──────────────────────────
+  // Detect PDFs by URL extension or by sniffing the Content-Type header.
+  // PDFs bypass the listing-site allowlist — they are downloaded and processed
+  // with the same pdf-parse + AI pipeline as a manually-uploaded brochure.
+  const looksLikePdf = parsedUrl.pathname.toLowerCase().endsWith(".pdf");
+
+  if (looksLikePdf) {
+    let pdfBuffer: Buffer;
+    try {
+      const response = await fetch(parsedUrl.toString(), {
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; ClinicLaunchOS/1.0; brochure download)" },
+        signal: AbortSignal.timeout(20000),
+        redirect: "follow",
+      });
+      if (!response.ok) {
+        return res.status(422).json({
+          error: `Could not download the PDF (HTTP ${response.status}). Check the link is still valid.`,
+          extractable: false,
+        });
+      }
+      const contentType = response.headers.get("content-type") ?? "";
+      if (!contentType.includes("pdf") && !contentType.includes("octet-stream")) {
+        return res.status(422).json({
+          error: "The URL did not return a PDF file. Try uploading the brochure directly instead.",
+          extractable: false,
+        });
+      }
+      const arrayBuf = await response.arrayBuffer();
+      pdfBuffer = Buffer.from(arrayBuf);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("timeout") || msg.includes("AbortError")) {
+        return res.status(422).json({ error: "The PDF download timed out. Try uploading the file directly.", extractable: false });
+      }
+      return res.status(422).json({ error: "Could not download the PDF. Try uploading the file directly.", extractable: false });
+    }
+
+    let rawText = "";
+    try {
+      const pdfParse = (await import("pdf-parse")).default;
+      const result = await pdfParse(pdfBuffer);
+      rawText = result.text;
+    } catch {
+      return res.status(422).json({ error: "Could not read the PDF. It may be scanned or password-protected. Try uploading a different brochure.", extractable: false });
+    }
+
+    const pdfPrompt = `You are a commercial property data extraction specialist. Extract structured data from this commercial property brochure. Return ONLY valid JSON.
+
+Source PDF URL: ${parsedUrl.toString()}
+
+Document text:
+${rawText.slice(0, 6000)}
+
+Extract these fields (use null if not found):
+address, postcode, sqFootage (number in sq ft), annualRentGbp (number), monthlyRentGbp (number),
+vatOnRent (boolean), businessRatesGbp (number per year), serviceChargeGbp (number per year),
+leaseLength (string), useClass (string e.g. "E"), availabilityDate (ISO string or null),
+parkingSpaces (number), frontageMeters (number), agentName, agentPhone, agentEmail,
+notes (string — any other useful info about the property),
+flags (string array — important notes/uncertainties e.g. "VAT status unclear", "Rent is asking price only")
+
+Return JSON only, no markdown.`;
+
+    const ExtractWithNotesSchema = ExtractionSchema.extend({ notes: z.string().nullable().optional() });
+    let extraction: z.infer<typeof ExtractWithNotesSchema> = { flags: [] };
+    try {
+      const aiResp = await openai.chat.completions.create({
+        model: AI_MODEL,
+        max_completion_tokens: 2048,
+        messages: [{ role: "user", content: pdfPrompt }],
+      });
+      const raw = aiResp.choices[0]?.message?.content ?? "{}";
+      const parsed = parseLLMJson(raw);
+      const validated = ExtractWithNotesSchema.safeParse(parsed);
+      extraction = validated.success ? validated.data : { flags: ["AI could not extract data from brochure — please fill fields manually"] };
+    } catch {
+      extraction = { flags: ["AI extraction failed — please fill fields manually"] };
+    }
+
+    return res.json({
+      ...extraction,
+      sourceUrl: parsedUrl.toString(),
+      projectId,
+      flags: extraction.flags ?? [],
+    });
+  }
+
+  // ── Listing page path (Rightmove, Zoopla, etc.) ────────────────────────────
   const isAllowed = ALLOWED_IMPORT_HOSTS.some(h => hostname === h || hostname.endsWith("." + h));
   if (!isAllowed) {
     return res.status(400).json({
-      error: `URL must be from a supported commercial property listing site. Supported sites: ${ALLOWED_IMPORT_HOSTS.join(", ")}`,
+      error: `URL must be from a supported property listing site or a direct PDF link. Supported listing sites: ${ALLOWED_IMPORT_HOSTS.join(", ")}`,
       extractable: false,
     });
   }

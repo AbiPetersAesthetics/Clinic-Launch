@@ -65,6 +65,8 @@ export const propertiesTable = pgTable("clinic_properties", {
   agentEmail: text("agent_email"),
   status: text("status").notNull().default("viewing"),
   pipelineStatus: text("pipeline_status").notNull().default("found"),
+  sourceUrl: text("source_url"),
+  photoUrl: text("photo_url"),
   viewingNotes: text("viewing_notes"),
   negotiationNotes: text("negotiation_notes"),
   landlordConcessions: text("landlord_concessions"),
