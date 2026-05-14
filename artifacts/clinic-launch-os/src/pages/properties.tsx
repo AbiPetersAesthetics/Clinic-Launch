@@ -1577,7 +1577,7 @@ function BrochureAnalysisSection({ propertyId }: { propertyId: number }) {
             </div>
             <Progress value={result.clinicSuitabilityFromImages.score} className="h-2" />
             <p className="text-xs text-muted-foreground">{result.clinicSuitabilityFromImages.verdict}</p>
-            <div className="grid grid-cols-2 gap-3 mt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
               <div>
                 <p className="text-xs font-medium text-emerald-700 mb-1">Strengths</p>
                 <ul className="space-y-0.5">
@@ -1598,7 +1598,7 @@ function BrochureAnalysisSection({ propertyId }: { propertyId: number }) {
           </div>
 
           {/* Layout & Condition row */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="rounded-xl border bg-card p-4 space-y-2">
               <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Layout</h5>
               <div className="space-y-1.5">
@@ -2988,10 +2988,10 @@ export default function PropertiesPage() {
       {/* Main Tabs */}
       <Tabs value={pageTab} onValueChange={setPageTab}>
         <TabsList className="w-full sm:w-auto">
-          <TabsTrigger value="pipeline" className="gap-1.5 text-xs"><ListFilter className="w-3.5 h-3.5" />Pipeline</TabsTrigger>
-          <TabsTrigger value="rankings" className="gap-1.5 text-xs"><Trophy className="w-3.5 h-3.5" />Rankings</TabsTrigger>
-          <TabsTrigger value="all" className="gap-1.5 text-xs"><LayoutGrid className="w-3.5 h-3.5" />All Properties</TabsTrigger>
-          <TabsTrigger value="map" className="gap-1.5 text-xs"><Map className="w-3.5 h-3.5" />Map View</TabsTrigger>
+          <TabsTrigger value="pipeline" className="gap-1.5 text-xs"><ListFilter className="w-3.5 h-3.5" /><span className="hidden sm:inline">Pipeline</span></TabsTrigger>
+          <TabsTrigger value="rankings" className="gap-1.5 text-xs"><Trophy className="w-3.5 h-3.5" /><span className="hidden sm:inline">Rankings</span></TabsTrigger>
+          <TabsTrigger value="all" className="gap-1.5 text-xs"><LayoutGrid className="w-3.5 h-3.5" /><span className="hidden sm:inline">All Properties</span></TabsTrigger>
+          <TabsTrigger value="map" className="gap-1.5 text-xs"><Map className="w-3.5 h-3.5" /><span className="hidden sm:inline">Map View</span></TabsTrigger>
         </TabsList>
 
         {/* Pipeline Tab */}
