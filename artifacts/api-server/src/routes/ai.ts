@@ -497,86 +497,171 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 });
 
 // ─── POST /api/projects/:projectId/financial/generate ─────────────────────────
-// AI generates a full set of financial assumptions for the active property and
-// saves them directly to the database (financial model + fixed cost items).
+// AI generates a PROPOSAL (no DB writes) — returns every possible cost with
+// detailed reasoning so the user can review and selectively accept.
 router.post("/projects/:projectId/financial/generate", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
 
-  // Load active property
   const [property] = await db.select().from(propertiesTable)
     .where(eq(propertiesTable.projectId, projectId))
     .then(rows => rows.filter(r => r.isActiveForProject));
 
-  // Load current fixed cost items
-  const fixedCostItems = await db.select().from(fixedCostItemsTable)
+  const existingItems = await db.select().from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
 
   const propertyContext = property ? `
-Property address: ${property.address || "unknown"}, ${property.postcode || ""}
-Floor size: ${property.sqFootage ? `${property.sqFootage} sq ft` : "unknown — assume typical high street retail unit ~500-800 sq ft"}
+Property: ${property.address || "unknown address"}, ${property.postcode || "unknown postcode"}
+Floor size: ${property.sqFootage ? `${property.sqFootage} sq ft` : "unknown — assume ~600-800 sq ft high street unit"}
 Monthly rent: £${(property.monthlyRentGbp ?? 0).toFixed(0)}
-Annual business rates: £${(property.businessRatesGbp ?? 0).toFixed(0)} (£${Math.round((property.businessRatesGbp ?? 0) / 12)}/month)
+Annual business rates: £${(property.businessRatesGbp ?? 0).toFixed(0)} → £${Math.round((property.businessRatesGbp ?? 0) / 12)}/month
 Monthly service charge: £${Math.round((property.serviceChargeGbp ?? 0) / 12)}
-VAT on rent: ${property.vatOnRent ? "YES — landlord charges 20% VAT on rent" : "No"}
+VAT on rent: ${property.vatOnRent ? "YES — 20% VAT on top of rent (landlord has opted to tax)" : "No VAT on rent"}
 Lease length: ${property.leaseLength || "unknown"}
-Use class: ${property.useClass || "E-class / commercial"}
-` : "No active property — use typical UK high street aesthetics clinic assumptions";
+Use class: ${property.useClass || "Class E commercial"}
+` : "No active property set — use assumptions for a typical UK high street aesthetics clinic (600 sq ft, mid-market location).";
 
-  const costItemsList = fixedCostItems.map(i =>
-    `- ${i.name}: currently £${i.amountGbp}/month (${i.costType})`
-  ).join("\n");
+  const existingList = existingItems.length > 0
+    ? `\nExisting cost items in the model:\n${existingItems.map(i => `  • "${i.name}": £${i.amountGbp}/mo`).join("\n")}`
+    : "";
 
-  const prompt = `You are a specialist financial advisor for UK aesthetics clinics (2025/2026 market rates).
+  const prompt = `You are a specialist financial modeller for UK aesthetics clinics (2025/2026 market data).
 
+CLINIC PROFILE:
 ${propertyContext}
+Operator: Abi Peters — Advanced Nurse Practitioner (ANP). Solo practitioner, no employees initially.
+Services: Botulinum toxin, dermal fillers, skin boosters, polynucleotides, chemical peels, microneedling, medical-grade skincare retail.
+Positioning: Premium. Target clientele: professionals, 30-55 age range.
+Business structure: Limited company (Abi Peters Aesthetics Ltd).
+${existingList}
 
-Clinic type: Solo-practitioner aesthetic clinic (Advanced Nurse Practitioner). Premium positioning. Services: injectables (botulinum toxin, fillers), skin treatments (peels, microneedling), medical-grade skincare retail. No employees initially — Abi is the sole practitioner. High street commercial premises.
+YOUR TASK: Produce a COMPLETE financial model with every possible cost line item for this exact clinic. Be specific and accurate — Abi will use this to make real financial decisions.
 
-Current fixed cost items (these need realistic £/month estimates):
-${costItemsList}
+For EACH cost: give a precise monthly £ amount AND a detailed justification citing the specific reason (supplier names, regulatory requirement, UK market data, or industry benchmark). Do NOT use vague reasoning like "typical cost" — be specific.
 
-Generate a comprehensive set of financial assumptions for this exact clinic and property. Use realistic 2025/2026 UK market rates specific to the size, location, and clinic type.
+MASTER COST LIST — estimate every single one:
 
-Respond ONLY in this exact JSON format — no preamble, no markdown:
+CATEGORY: Property & Occupancy
+- Rent / Lease (use property data above)
+- Business Rates (use property data; check if Small Business Rate Relief applies for rateable value <£12,000 — full relief, or tapered £12k-£15k)
+- Service Charge / Estate Charge (use property data)
+- Building & Contents Insurance (tenant's liability: equipment, stock, public liability — NOT landlord's building)
+
+CATEGORY: Utilities
+- Electricity (lighting, treatment equipment, fridge for toxin storage — aesthetics clinics 600 sq ft: £150-300/mo)
+- Gas / Heating (if gas-heated premises; if electric only, £0)
+- Water Rates / Sewerage (commercial rates for small premises)
+- Broadband / Business Internet (dedicated business fibre: £40-80/mo; do NOT use residential)
+
+CATEGORY: Clinical & Regulatory
+- Medical Indemnity Insurance (Hamilton Fraser, Cosmetic Insure, or MDDUS — ANP prescribers: £150-400/mo depending on treatment volume and revenue)
+- Public & Products Liability Insurance (£1m-£5m cover: £30-60/mo)
+- CQC Registration (if regulated activities — aesthetics clinics often exempt if no CQC-regulated procedures, but prescribing pathways may require it; amortise annual fee monthly)
+- Clinical Waste Disposal Contract (licensed carrier MANDATORY for sharps, clinical waste — Solo clinic: £40-80/mo; name a specific provider e.g. Daniels Sharpsmart, Cannon Hygiene)
+- Sharps Bins & Consumables (yellow bins, yellow bags, collection — often bundled with contract above)
+- CPD / Training Budget (NMC requirement for nurses: minimum 35 hours/yr; aesthetics-specific training: £100-300/mo amortised)
+
+CATEGORY: Software & Technology
+- Practice Management Software (Phorest £100-200/mo, Jane App £70-110/mo, Fresha free but commission-based, Aesthetic Nurse Software £80-150/mo — recommend and price specific)
+- Card Payment Terminal (SumUp Air £0 terminal + 1.69% per transaction; Zettle/iZettle similar; OR PDQ rental £15-30/mo + lower %: choose and justify)
+- Accounting Software (Xero £26-42/mo; QuickBooks £30/mo; FreeAgent £19/mo — specific plan)
+- Email Marketing (Mailchimp, Klaviyo, or ActiveCampaign — small list: £10-30/mo)
+- Website Hosting & Domain (hosting + domain renewal amortised: £10-30/mo)
+- Online Booking System (if separate from practice management: £0-50/mo)
+- Telecoms / Business Mobile (business SIM or phone plan: £15-40/mo)
+
+CATEGORY: Professional Services
+- Accountant / Bookkeeper (monthly bookkeeping + quarterly management accounts + annual accounts for Ltd Co: £200-500/mo depending on complexity)
+- Payroll Administration (even sole director payroll for PAYE optimisation: £20-50/mo via accountant or bureau)
+- Legal / Company Compliance (Companies House filings, registered address service: £10-25/mo amortised)
+
+CATEGORY: Marketing & Brand
+- Digital Marketing Budget (Meta/Instagram ads, Google Ads — essential for new clinic launch: £200-600/mo; state this is the MINIMUM for meaningful reach in 2025/2026)
+- Photography / Content Creation (monthly content shoot or UGC: £100-300/mo; vital for aesthetics social media)
+- Printed Materials (aftercare sheets, consent forms, business cards, leaflets — amortised: £20-50/mo)
+- Gifts / Client Retention (birthday offers, welcome gifts, loyalty rewards — £30-80/mo)
+
+CATEGORY: Operations & Compliance
+- Cleaner / Cleaning Contract (clinical-standard cleaning required: £60-150/mo for weekly or bi-weekly deep clean)
+- Laundry / Linen Service (towels, gowns, couch rolls — either laundry service or disposable linen: £30-80/mo)
+- Stationery & Office Supplies (consent forms, printer ink, paper, pens: £15-30/mo)
+- Postage (prescriptions, letters, lab results: £10-20/mo)
+
+CATEGORY: Financial & Banking
+- Business Bank Account Charges (Starling free; Barclays/HSBC/NatWest £8-15/mo; Tide £0-9.99/mo — specify)
+- Finance Repayments (fit-out loan / equipment finance if applicable — can be £0 if self-funded)
+- Merchant Services / Payment Processing Fees (if percentage-based: estimate based on expected revenue)
+
+CATEGORY: Contingency
+- Miscellaneous / Contingency (5-8% of total fixed costs; covers unexpected costs, repairs, equipment replacement)
+
+Now also provide:
+VARIABLE COSTS (percentage of revenue or fixed monthly):
+- Stock / COGS percent (product cost of toxin, fillers, skin boosters — typically 12-18% for premium aesthetics)
+- Consumables monthly (needles, cannulas, swabs, syringes, PPE — NOT included in stock %)
+- Marketing as % or fixed (if already in fixed costs, set to 0 here)
+
+REVENUE MODEL:
+- Average client visit value (ACV) in £ — be specific to premium ANP-level aesthetics in this location
+- Treatment rooms (based on sq footage)
+- Practitioner hours per day
+- Working days per month
+- Conservative occupancy % (Month 3-6 realistic)
+- Realistic occupancy % (Month 12 target)
+- Aggressive occupancy % (best case Month 12)
+
+RESPOND ONLY IN THIS EXACT JSON — no markdown, no preamble:
 {
   "fixedCosts": [
-    { "name": "exact name matching list above", "amountGbp": 150, "reasoning": "brief UK market justification" }
+    {
+      "name": "Cost item name",
+      "category": "Property & Occupancy",
+      "amountGbp": 2500,
+      "reasoning": "Detailed justification with specific reference — e.g. 'Based on property data: £2,500/mo as stated in lease. Note: if VAT on rent applies, add 20% = £3,000/mo total outgoing.'",
+      "confidence": "high",
+      "isEssential": true,
+      "matchesExisting": true
+    }
   ],
   "variableCosts": {
-    "stockPercent": 10,
+    "stockPercent": 14,
+    "stockPercentReasoning": "Premium botulinum toxin (Botox/Bocouture) ~£7-9/unit, fillers £60-100/ml wholesale — at premium pricing, COGS typically 12-16%.",
     "commissionsPercent": 0,
     "staffingGbp": 0,
-    "consumablesGbp": 80,
+    "consumablesGbp": 95,
+    "consumablesReasoning": "Needles (£0.30-0.80 each), cannulas (£1.50-4 each), syringes, swabs, PPE gloves — solo clinic doing 8-12 appointments/day at full capacity.",
     "marketingGbp": 0
   },
   "revenue": {
-    "wincAcvGbp": 185,
+    "wincAcvGbp": 220,
+    "wincAcvReasoning": "Premium ANP pricing in this market: anti-wrinkle from £200, 1ml filler £350-450, combination treatments common. Average across all service types.",
     "treatmentRoomsCount": 1,
+    "treatmentRoomsReasoning": "600 sq ft total; ~360 sq ft usable (60%); 1 treatment room at ~200 sq ft minimum, reception/retail area.",
     "practitionerHoursPerDay": 7,
-    "workingDaysPerMonth": 22,
-    "conservativeOccupancyPercent": 35,
+    "workingDaysPerMonth": 21,
+    "conservativeOccupancyPercent": 30,
     "realisticOccupancyPercent": 60,
     "aggressiveOccupancyPercent": 80
   },
-  "flags": ["any important financial or compliance notes"]
+  "flags": [
+    "CRITICAL: Medical indemnity must cover prescribing AND all treatments — verify with insurer before opening.",
+    "Any other important financial, regulatory, or compliance flags"
+  ]
 }
 
-Rules:
-- fixedCosts: estimate EVERY item in the list above. Items that are property-specific (Rent, Rates, Service Charge) should match the property data already provided. For zero-value items, provide a realistic estimate.
-- stockPercent: typically 8-14% for aesthetics (product cost of goods sold)
-- commissionsPercent: 0 (solo practitioner, no staff commissions)
-- consumablesGbp: needles, PPE, gloves, cannulas — typically £60-120/month for a solo clinic
-- wincAcvGbp: realistic average treatment value for premium aesthetics in this market (£150-250 range)
-- treatmentRoomsCount: based on floor size — 1 room per ~200-300 sq ft usable (assume 60% of total sq ft is usable)
-- conservativeOccupancyPercent: Month 6-8 realistic target (25-40%)
-- realisticOccupancyPercent: Month 12 target (50-70%)
-- aggressiveOccupancyPercent: best-case Month 12 (65-85%)`;
+CRITICAL RULES:
+- confidence: "high" (industry standard, property-derived, or well-established cost), "medium" (estimated based on typical range), "low" (highly variable, needs Abi's input)
+- isEssential: true if legally required or operationally critical; false if optional/nice-to-have
+- matchesExisting: true if this cost matches one of the existing items listed above
+- reasoning MUST be specific — cite supplier names, regulatory bodies, or specific price benchmarks
+- For Property costs: use EXACT figures from property data provided
+- Do NOT omit any category — include every line item even if £0 (mark with reasoning why it's zero)
+- Flag Small Business Rate Relief eligibility if rateable value suggests it may apply`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.1",
       messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 4000,
+      max_completion_tokens: 8000,
     });
 
     const content = completion.choices[0]?.message?.content ?? "{}";
@@ -586,9 +671,9 @@ Rules:
     try {
       parsed = JSON.parse(clean);
     } catch {
-      const fixedMatch = clean.match(/"fixedCosts"\s*:\s*(\[[\s\S]*?\])/);
-      const varMatch = clean.match(/"variableCosts"\s*:\s*(\{[\s\S]*?\})/);
-      const revMatch = clean.match(/"revenue"\s*:\s*(\{[\s\S]*?\})/);
+      const fixedMatch = clean.match(/"fixedCosts"\s*:\s*(\[[\s\S]*?\](?=\s*[,}]))/);
+      const varMatch = clean.match(/"variableCosts"\s*:\s*(\{[\s\S]*?\}(?=\s*[,}]))/);
+      const revMatch = clean.match(/"revenue"\s*:\s*(\{[\s\S]*?\}(?=\s*[,}]))/);
       const flagsMatch = clean.match(/"flags"\s*:\s*(\[[\s\S]*?\])/);
       parsed = {
         fixedCosts: fixedMatch ? JSON.parse(fixedMatch[1]) : [],
@@ -598,55 +683,17 @@ Rules:
       };
     }
 
-    // ── Apply fixed cost estimates to the fixed_cost_items table ────────────
-    const fixedCostUpdates: Promise<any>[] = [];
-    for (const estimate of (parsed.fixedCosts ?? [])) {
-      // Case-insensitive fuzzy match — AI may vary capitalisation/punctuation
-      const normAI = estimate.name?.toLowerCase().replace(/[^a-z0-9]/g, "");
-      const match = fixedCostItems.find(i =>
-        i.name.toLowerCase().replace(/[^a-z0-9]/g, "") === normAI
-      );
-      if (match && typeof estimate.amountGbp === "number") {
-        fixedCostUpdates.push(
-          db.update(fixedCostItemsTable)
-            .set({ amountGbp: estimate.amountGbp, updatedAt: new Date() })
-            .where(eq(fixedCostItemsTable.id, match.id))
-        );
-      }
-    }
-    await Promise.all(fixedCostUpdates);
-
-    // ── Apply variable costs + revenue to financial model ────────────────────
-    const vc = parsed.variableCosts ?? {};
-    const rev = parsed.revenue ?? {};
-
-    const modelUpdates: Record<string, any> = {
-      updatedAt: new Date(),
-    };
-    if (typeof vc.stockPercent === "number")       modelUpdates.stockPercent = vc.stockPercent;
-    if (typeof vc.commissionsPercent === "number") modelUpdates.commissionsPercent = vc.commissionsPercent;
-    if (typeof vc.staffingGbp === "number")        modelUpdates.staffingGbp = vc.staffingGbp;
-    if (typeof vc.consumablesGbp === "number")     modelUpdates.consumablesGbp = vc.consumablesGbp;
-    if (typeof vc.marketingGbp === "number")       modelUpdates.marketingGbp = vc.marketingGbp;
-    if (typeof rev.wincAcvGbp === "number")                  modelUpdates.wincAcvGbp = rev.wincAcvGbp;
-    if (typeof rev.treatmentRoomsCount === "number")         modelUpdates.treatmentRoomsCount = rev.treatmentRoomsCount;
-    if (typeof rev.practitionerHoursPerDay === "number")     modelUpdates.practitionerHoursPerDay = rev.practitionerHoursPerDay;
-    if (typeof rev.workingDaysPerMonth === "number")         modelUpdates.workingDaysPerMonth = rev.workingDaysPerMonth;
-    if (typeof rev.conservativeOccupancyPercent === "number") modelUpdates.conservativeOccupancyPercent = rev.conservativeOccupancyPercent;
-    if (typeof rev.realisticOccupancyPercent === "number")    modelUpdates.realisticOccupancyPercent = rev.realisticOccupancyPercent;
-    if (typeof rev.aggressiveOccupancyPercent === "number")   modelUpdates.aggressiveOccupancyPercent = rev.aggressiveOccupancyPercent;
-
-    await db.update(financialsTable)
-      .set(modelUpdates)
-      .where(eq(financialsTable.projectId, projectId));
-
-    // Return updated state
-    const [updatedModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
-    const updatedItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
+    // Tag each fixed cost as matching an existing item or new
+    const normName = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const taggedCosts = (parsed.fixedCosts ?? []).map((fc: any) => ({
+      ...fc,
+      existingItemId: existingItems.find(i => normName(i.name) === normName(fc.name))?.id ?? null,
+    }));
 
     return res.json({
-      model: updatedModel,
-      fixedCostItems: updatedItems,
+      fixedCosts: taggedCosts,
+      variableCosts: parsed.variableCosts ?? {},
+      revenue: parsed.revenue ?? {},
       flags: parsed.flags ?? [],
       generatedAt: new Date().toISOString(),
     });
@@ -654,6 +701,61 @@ Rules:
     const msg = err instanceof Error ? err.message : "AI generation failed";
     return res.status(500).json({ error: msg });
   }
+});
+
+// Apply a set of accepted AI proposals to the DB
+router.post("/projects/:projectId/financial/apply-proposal", async (req, res) => {
+  const projectId = parseInt(req.params["projectId"] as string);
+  const { fixedCosts = [], variableCosts = {}, revenue = {} } = req.body;
+
+  const existingItems = await db.select().from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, projectId));
+
+  const normName = (s: string) => (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  for (const fc of fixedCosts) {
+    if (typeof fc.amountGbp !== "number") continue;
+    const match = existingItems.find(i => normName(i.name) === normName(fc.name));
+    if (match) {
+      await db.update(fixedCostItemsTable)
+        .set({ amountGbp: fc.amountGbp, updatedAt: new Date() })
+        .where(eq(fixedCostItemsTable.id, match.id));
+    } else {
+      // New item not in existing list
+      await db.insert(fixedCostItemsTable).values({
+        projectId,
+        name: fc.name,
+        amountGbp: fc.amountGbp,
+        costType: fc.costType ?? "unique",
+        sortOrder: existingItems.length + fixedCosts.indexOf(fc),
+      });
+    }
+  }
+
+  const vc = variableCosts as Record<string, any>;
+  const rev = revenue as Record<string, any>;
+  const modelUpdates: Record<string, any> = { updatedAt: new Date() };
+  if (typeof vc.stockPercent === "number")       modelUpdates.stockPercent = vc.stockPercent;
+  if (typeof vc.commissionsPercent === "number") modelUpdates.commissionsPercent = vc.commissionsPercent;
+  if (typeof vc.staffingGbp === "number")        modelUpdates.staffingGbp = vc.staffingGbp;
+  if (typeof vc.consumablesGbp === "number")     modelUpdates.consumablesGbp = vc.consumablesGbp;
+  if (typeof vc.marketingGbp === "number")       modelUpdates.marketingGbp = vc.marketingGbp;
+  if (typeof rev.wincAcvGbp === "number")                   modelUpdates.wincAcvGbp = rev.wincAcvGbp;
+  if (typeof rev.treatmentRoomsCount === "number")          modelUpdates.treatmentRoomsCount = rev.treatmentRoomsCount;
+  if (typeof rev.practitionerHoursPerDay === "number")      modelUpdates.practitionerHoursPerDay = rev.practitionerHoursPerDay;
+  if (typeof rev.workingDaysPerMonth === "number")          modelUpdates.workingDaysPerMonth = rev.workingDaysPerMonth;
+  if (typeof rev.conservativeOccupancyPercent === "number") modelUpdates.conservativeOccupancyPercent = rev.conservativeOccupancyPercent;
+  if (typeof rev.realisticOccupancyPercent === "number")    modelUpdates.realisticOccupancyPercent = rev.realisticOccupancyPercent;
+  if (typeof rev.aggressiveOccupancyPercent === "number")   modelUpdates.aggressiveOccupancyPercent = rev.aggressiveOccupancyPercent;
+
+  if (Object.keys(modelUpdates).length > 1) {
+    await db.update(financialsTable).set(modelUpdates).where(eq(financialsTable.projectId, projectId));
+  }
+
+  const [updatedModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+  const updatedItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
+
+  return res.json({ model: updatedModel, fixedCostItems: updatedItems });
 });
 
 export default router;

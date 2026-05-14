@@ -342,25 +342,72 @@ export default function FinancialsPage() {
 
   useEffect(() => { if (model) runCalculation(); }, [scenario]);
 
-  // ── AI generating state (triggered externally via URL param after property switch) ─
+  // ── AI Proposal state ──────────────────────────────────────────────────────
+  type AiFixedCost = {
+    name: string; category: string; amountGbp: number; reasoning: string;
+    confidence: "high" | "medium" | "low"; isEssential: boolean;
+    matchesExisting: boolean; existingItemId: number | null;
+    costType?: string;
+  };
+  type AiProposal = {
+    fixedCosts: AiFixedCost[];
+    variableCosts: Record<string, any>;
+    revenue: Record<string, any>;
+    flags: string[];
+    generatedAt: string;
+  };
+
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [aiGenerateFlags, setAiGenerateFlags] = useState<string[]>([]);
+  const [aiProposal, setAiProposal] = useState<AiProposal | null>(null);
+  const [aiChecked, setAiChecked] = useState<Record<string, boolean>>({});
+  const [aiApplying, setAiApplying] = useState(false);
+  const [applyVarRev, setApplyVarRev] = useState(true);
 
   const handleGenerateAssumptions = async () => {
     setAiGenerating(true);
-    setAiGenerateFlags([]);
+    setAiProposal(null);
     try {
       const res = await fetch(`/api/projects/${PROJECT_ID}/financial/generate`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Generation failed");
-      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-      queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
-      if (data.flags?.length) setAiGenerateFlags(data.flags);
-      toast({ title: "AI assumptions generated", description: "Financial model populated — review and save." });
+      setAiProposal(data);
+      // Pre-check all essential items by default
+      const checked: Record<string, boolean> = {};
+      (data.fixedCosts ?? []).forEach((fc: AiFixedCost) => {
+        checked[fc.name] = fc.isEssential !== false;
+      });
+      setAiChecked(checked);
+      setTab("model");
     } catch {
-      toast({ title: "AI generation failed", description: "You can enter assumptions manually.", variant: "destructive" });
+      toast({ title: "AI generation failed", description: "You can still enter assumptions manually.", variant: "destructive" });
     } finally {
       setAiGenerating(false);
+    }
+  };
+
+  const handleApplyProposal = async () => {
+    if (!aiProposal) return;
+    setAiApplying(true);
+    try {
+      const selectedCosts = aiProposal.fixedCosts.filter(fc => aiChecked[fc.name]);
+      const body: any = { fixedCosts: selectedCosts };
+      if (applyVarRev) {
+        body.variableCosts = aiProposal.variableCosts;
+        body.revenue = aiProposal.revenue;
+      }
+      const res = await fetch(`/api/projects/${PROJECT_ID}/financial/apply-proposal`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Apply failed");
+      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+      queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+      setAiProposal(null);
+      toast({ title: `${selectedCosts.length} assumptions applied`, description: "Review the form below and save when ready." });
+    } catch {
+      toast({ title: "Failed to apply assumptions", variant: "destructive" });
+    } finally {
+      setAiApplying(false);
     }
   };
 
@@ -1094,22 +1141,153 @@ export default function FinancialsPage() {
       {tab === "model" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           <div className="lg:col-span-5 space-y-5">
-            {/* AI generating banner */}
+            {/* AI generating spinner */}
             {aiGenerating && (
-              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
-                <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />
+              <div className="flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-4">
+                <Loader2 className="w-5 h-5 text-primary animate-spin shrink-0" />
                 <div>
-                  <p className="font-medium text-primary">Generating assumptions with AI…</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Analysing the property and local market — this takes 10–20 seconds.</p>
+                  <p className="text-sm font-medium text-primary">Generating detailed assumptions…</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Analysing property, location and UK market rates — takes 20–40 seconds.</p>
                 </div>
               </div>
             )}
-            {aiGenerateFlags.length > 0 && !aiGenerating && (
-              <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3 space-y-1">
-                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">AI notes on these assumptions:</p>
-                {aiGenerateFlags.map((f, i) => <p key={i} className="text-xs text-amber-700 dark:text-amber-400">• {f}</p>)}
-              </div>
-            )}
+
+            {/* ── AI Proposal Review Panel ─────────────────────────────────── */}
+            {aiProposal && !aiGenerating && (() => {
+              const categories = [...new Set(aiProposal.fixedCosts.map(fc => fc.category))];
+              const checkedCount = Object.values(aiChecked).filter(Boolean).length;
+              const confBadge = (c: string) =>
+                c === "high" ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300" :
+                c === "medium" ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300" :
+                "bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300";
+
+              return (
+                <div className="rounded-xl border-2 border-primary/20 bg-card shadow-sm overflow-hidden">
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-primary/5 border-b border-primary/10">
+                    <div className="flex items-center gap-2">
+                      <Wand2 className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-semibold">AI Cost Proposal</span>
+                      <span className="text-xs text-muted-foreground">— {aiProposal.fixedCosts.length} line items · review before applying</span>
+                    </div>
+                    <button onClick={() => setAiProposal(null)} className="text-muted-foreground hover:text-foreground text-xs underline">Dismiss</button>
+                  </div>
+
+                  {/* Flags */}
+                  {aiProposal.flags.length > 0 && (
+                    <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800 space-y-1">
+                      {aiProposal.flags.map((f, i) => (
+                        <div key={i} className="flex gap-2 text-xs text-amber-800 dark:text-amber-300">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                          <span>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Select all / deselect all */}
+                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/30 text-xs">
+                    <div className="flex gap-3">
+                      <button className="underline text-primary" onClick={() => {
+                        const all: Record<string, boolean> = {};
+                        aiProposal.fixedCosts.forEach(fc => { all[fc.name] = true; });
+                        setAiChecked(all);
+                      }}>Select all</button>
+                      <button className="underline text-muted-foreground" onClick={() => setAiChecked({})}>Deselect all</button>
+                      <button className="underline text-muted-foreground" onClick={() => {
+                        const ess: Record<string, boolean> = {};
+                        aiProposal.fixedCosts.forEach(fc => { ess[fc.name] = fc.isEssential; });
+                        setAiChecked(ess);
+                      }}>Essential only</button>
+                    </div>
+                    <span className="text-muted-foreground">{checkedCount} of {aiProposal.fixedCosts.length} selected</span>
+                  </div>
+
+                  {/* Cost rows by category */}
+                  <div className="divide-y max-h-[520px] overflow-y-auto">
+                    {categories.map(cat => (
+                      <div key={cat}>
+                        <div className="px-4 py-1.5 bg-muted/40 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{cat}</div>
+                        {aiProposal.fixedCosts.filter(fc => fc.category === cat).map((fc) => (
+                          <label key={fc.name} className={`flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-muted/20 transition-colors ${aiChecked[fc.name] ? "" : "opacity-50"}`}>
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 shrink-0 accent-primary"
+                              checked={!!aiChecked[fc.name]}
+                              onChange={e => setAiChecked(p => ({ ...p, [fc.name]: e.target.checked }))}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-medium">{fc.name}</span>
+                                {fc.existingItemId ? (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-semibold">UPDATE</span>
+                                ) : (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 font-semibold">NEW</span>
+                                )}
+                                {fc.isEssential && (
+                                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">ESSENTIAL</span>
+                                )}
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold ${confBadge(fc.confidence)}`}>{fc.confidence} confidence</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{fc.reasoning}</p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <span className="text-sm font-bold">£{fc.amountGbp.toLocaleString()}</span>
+                              <span className="text-[10px] text-muted-foreground block">/mo</span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Variable costs & revenue summary */}
+                  {(aiProposal.variableCosts || aiProposal.revenue) && (
+                    <div className="border-t px-4 py-3 bg-muted/20">
+                      <label className="flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" className="mt-0.5 accent-primary" checked={applyVarRev} onChange={e => setApplyVarRev(e.target.checked)} />
+                        <div className="text-xs">
+                          <p className="font-semibold mb-1">Also apply variable costs & revenue assumptions</p>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-muted-foreground">
+                            {aiProposal.variableCosts.stockPercent != null && <span>Stock/COGS: {aiProposal.variableCosts.stockPercent}%</span>}
+                            {aiProposal.variableCosts.consumablesGbp != null && <span>Consumables: £{aiProposal.variableCosts.consumablesGbp}/mo</span>}
+                            {aiProposal.revenue.wincAcvGbp != null && <span>Avg visit value: £{aiProposal.revenue.wincAcvGbp}</span>}
+                            {aiProposal.revenue.conservativeOccupancyPercent != null && <span>Conservative occ: {aiProposal.revenue.conservativeOccupancyPercent}%</span>}
+                            {aiProposal.revenue.realisticOccupancyPercent != null && <span>Realistic occ: {aiProposal.revenue.realisticOccupancyPercent}%</span>}
+                            {aiProposal.revenue.aggressiveOccupancyPercent != null && <span>Aggressive occ: {aiProposal.revenue.aggressiveOccupancyPercent}%</span>}
+                          </div>
+                          {aiProposal.variableCosts.stockPercentReasoning && (
+                            <p className="mt-1 text-muted-foreground italic">{aiProposal.variableCosts.stockPercentReasoning}</p>
+                          )}
+                          {aiProposal.variableCosts.consumablesReasoning && (
+                            <p className="mt-0.5 text-muted-foreground italic">{aiProposal.variableCosts.consumablesReasoning}</p>
+                          )}
+                          {aiProposal.revenue.wincAcvReasoning && (
+                            <p className="mt-0.5 text-muted-foreground italic">{aiProposal.revenue.wincAcvReasoning}</p>
+                          )}
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Apply footer */}
+                  <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/30 gap-3">
+                    <span className="text-xs text-muted-foreground">
+                      {checkedCount} cost{checkedCount !== 1 ? "s" : ""} selected · £{
+                        aiProposal.fixedCosts.filter(fc => aiChecked[fc.name]).reduce((s, fc) => s + fc.amountGbp, 0).toLocaleString()
+                      }/mo total
+                    </span>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setAiProposal(null)}>Dismiss</Button>
+                      <Button size="sm" onClick={handleApplyProposal} disabled={aiApplying || checkedCount === 0}>
+                        {aiApplying ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1.5" />}
+                        Apply {checkedCount} selected
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 <div className="flex items-center justify-between sticky top-16 z-30 bg-background/95 py-3 border-b gap-2">
