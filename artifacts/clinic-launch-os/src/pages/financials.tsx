@@ -32,10 +32,11 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
   ResponsiveContainer, LineChart, Line, Legend, ReferenceLine,
   ComposedChart, Bar, ReferenceArea,
 } from "recharts";
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 
 const PROJECT_ID = 1;
@@ -544,49 +545,194 @@ export default function FinancialsPage() {
       )}
 
       {/* ─── Executive Summary Cards ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className={`rounded-xl border p-4 ${(cr?.winc.netProfit ?? 0) > 0 ? "border-border/60 bg-card" : "border-destructive/20 bg-destructive/5"}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{clinicLabel} Net</span>
-            <BarChart3 className="w-4 h-4 text-primary/50" />
-          </div>
-          <div className={`text-xl font-bold ${(cr?.winc.netProfit ?? 0) > 0 ? "text-foreground" : "text-destructive"}`}>{cr ? formatGBP(cr.winc.netProfit) : "—"}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">{cr ? `at ${cr.winc.occupancyUsed}% occupancy` : ""}</div>
-        </div>
+      <TooltipProvider delayDuration={150}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 
-        <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Support</span>
-            <Building2 className="w-4 h-4 text-blue-400" />
-          </div>
-          <div className="text-xl font-bold">{cr ? formatGBP(cr.bedh.netProfit) : "—"}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
-          <div className="text-xs text-muted-foreground mt-0.5">Closes when {clinicLabel} net margin ≥ {cr?.winc.selfFundingBufferPercent ?? 20}% of revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net)</div>
-        </div>
+          {/* Card 1: Winchester Net */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`rounded-xl border p-4 cursor-default ${(cr?.winc.netProfit ?? 0) > 0 ? "border-border/60 bg-card" : "border-destructive/20 bg-destructive/5"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{clinicLabel} Net</span>
+                  <BarChart3 className="w-4 h-4 text-primary/50" />
+                </div>
+                <div className={`text-xl font-bold ${(cr?.winc.netProfit ?? 0) > 0 ? "text-foreground" : "text-destructive"}`}>{cr ? formatGBP(cr.winc.netProfit) : "—"}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {cr ? `${cr.winc.occupancyUsed}% occ · ${cr.winc.slotsPerMonth} slots/mo` : ""}
+                </div>
+              </div>
+            </TooltipTrigger>
+            {cr && (
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-56 font-normal">
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">{clinicLabel} monthly P&L</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gross revenue</span>
+                      <span className="font-medium">{formatGBP(cr.winc.grossRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between text-destructive/70">
+                      <span>Fixed costs</span>
+                      <span>−{formatGBP(cr.winc.fixedCosts)}</span>
+                    </div>
+                    <div className="flex justify-between text-destructive/70">
+                      <span>Variable costs</span>
+                      <span>−{formatGBP(cr.winc.variableCosts)}</span>
+                    </div>
+                    {cr.winc.vatApplied && (
+                      <div className="flex justify-between text-destructive/70">
+                        <span>VAT liability</span>
+                        <span>−{formatGBP(cr.winc.vatLiability)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
+                      <span>Net profit</span>
+                      <span className={(cr.winc.netProfit ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>{formatGBP(cr.winc.netProfit)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Gross margin</span>
+                      <span>{cr.winc.grossMarginPercent.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                  Break-even: {cr.winc.breakEvenOccupancy.toFixed(0)}% occ · {cr.winc.treatmentsPerWeekToBreakeven.toFixed(1)} treatments/wk
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
 
-        <div className={`rounded-xl border p-4 ${cr?.combined.selfFundingMonth ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Closes</span>
-            <Target className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className={`text-xl font-bold ${cr?.combined.selfFundingMonth ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-            {cr ? (cr.combined.selfFundingMonth ? `Month ${cr.combined.selfFundingMonth}` : "> 12 months") : "—"}
-          </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {cr?.combined.selfFundingMonth
-              ? `Abi full-time at ${clinicLabel} from Month ${cr.combined.selfFundingMonth}`
-              : `${clinicLabel} doesn't hit target within 12mo`}
-          </div>
-        </div>
+          {/* Card 2: Bedhampton Support */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20 p-4 cursor-default">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Support</span>
+                  <Building2 className="w-4 h-4 text-blue-400" />
+                </div>
+                <div className="text-xl font-bold">{cr ? formatGBP(cr.bedh.netProfit) : "—"}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  Closes at {cr?.winc.selfFundingBufferPercent ?? 20}% margin · ~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net
+                </div>
+              </div>
+            </TooltipTrigger>
+            {cr && (
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-56 font-normal">
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Bedhampton monthly</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Gross revenue</span>
+                      <span className="font-medium">{formatGBP(cr.bedh.grossRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between text-destructive/70">
+                      <span>Costs (stock + wages)</span>
+                      <span>−{formatGBP(cr.bedh.costs)}</span>
+                    </div>
+                    <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
+                      <span>Net to {clinicLabel}</span>
+                      <span className="text-blue-600 dark:text-blue-400">{formatGBP(cr.bedh.netProfit)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                  Closes when {clinicLabel} net ≥ {cr.winc.selfFundingBufferPercent}% of its own revenue ({formatGBP(cr.winc.sfNetProfitTarget)}/mo)
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
 
-        <div className={`rounded-xl border p-4 ${(cr?.owner.cashRunwayMonths ?? 0) >= 12 ? "border-border/60 bg-card" : "border-amber-200 bg-amber-50 dark:bg-amber-950/20"}`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Runway</span>
-            <Shield className="w-4 h-4 text-primary/50" />
-          </div>
-          <div className="text-xl font-bold">{cr ? (cr.owner.cashRunwayMonths >= 99 ? "Secure" : `${cr.owner.cashRunwayMonths} months`) : "—"}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">{cr ? `${formatGBP(cr.owner.runwaySavings)} savings buffer` : ""}</div>
+          {/* Card 3: Bedhampton Closes */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`rounded-xl border p-4 cursor-default ${cr?.combined.selfFundingMonth ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Closes</span>
+                  <Target className="w-4 h-4 text-emerald-500" />
+                </div>
+                <div className={`text-xl font-bold ${cr?.combined.selfFundingMonth ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                  {cr ? (cr.combined.selfFundingMonth ? `Month ${cr.combined.selfFundingMonth}` : "> 12 months") : "—"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {cr?.combined.selfFundingMonth
+                    ? `Abi full-time at ${clinicLabel} from Month ${cr.combined.selfFundingMonth}`
+                    : `${clinicLabel} doesn't hit ${cr?.winc.selfFundingBufferPercent ?? 20}% margin within 12mo`}
+                </div>
+              </div>
+            </TooltipTrigger>
+            {cr && (
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-60 font-normal">
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Self-funding milestone</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Required net/mo</span>
+                      <span className="font-medium">{formatGBP(cr.winc.sfNetProfitTarget)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Required revenue/mo</span>
+                      <span className="font-medium">{formatGBP(cr.winc.sfRevenueTarget)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Required occupancy</span>
+                      <span className="font-medium">{cr.winc.selfFundingOccupancy.toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Current scenario occ.</span>
+                      <span className={`font-medium ${cr.winc.occupancyUsed >= cr.winc.selfFundingOccupancy ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>{cr.winc.occupancyUsed}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                  Margin threshold: {cr.winc.selfFundingBufferPercent}% net-to-revenue. Once hit, Bedhampton days reduce and {clinicLabel} runs independently.
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+
+          {/* Card 4: Cash Runway */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`rounded-xl border p-4 cursor-default ${(cr?.owner.cashRunwayMonths ?? 0) >= 12 ? "border-border/60 bg-card" : "border-amber-200 bg-amber-50 dark:bg-amber-950/20"}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Runway</span>
+                  <Shield className="w-4 h-4 text-primary/50" />
+                </div>
+                <div className="text-xl font-bold">{cr ? (cr.owner.cashRunwayMonths >= 99 ? "Secure" : `${cr.owner.cashRunwayMonths} months`) : "—"}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{cr ? `${formatGBP(cr.owner.runwaySavings)} savings buffer` : ""}</div>
+              </div>
+            </TooltipTrigger>
+            {cr && (
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-56 font-normal">
+                <div className="px-3 pt-3 pb-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Cash position</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Savings buffer</span>
+                      <span className="font-medium">{formatGBP(cr.owner.runwaySavings)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Min. cash needed</span>
+                      <span className="font-medium">{formatGBP(cr.owner.minimumCashRequired)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Recommended buffer</span>
+                      <span className="font-medium">{formatGBP(cr.owner.recommendedCash)}</span>
+                    </div>
+                    <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
+                      <span>Runway</span>
+                      <span className={(cr.owner.cashRunwayMonths >= 12) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}>
+                        {cr.owner.cashRunwayMonths >= 99 ? "Secure" : `${cr.owner.cashRunwayMonths} months`}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+
         </div>
-      </div>
+      </TooltipProvider>
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
@@ -675,7 +821,7 @@ export default function FinancialsPage() {
                               </linearGradient>
                             </defs>
                             <XAxis dataKey="month" tick={{ fontSize: 9, fill: "currentColor" }} tickFormatter={(v: string) => { const [y, m] = v.split("-"); return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-GB", { month: "short" }); }} axisLine={false} tickLine={false} />
-                            <Tooltip formatter={(v: number) => [formatGBP(v), "Revenue"]} contentStyle={{ fontSize: 11 }} />
+                            <RechartTooltip formatter={(v: number) => [formatGBP(v), "Revenue"]} contentStyle={{ fontSize: 11 }} />
                             <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#bedLiveGrad)" dot={false} />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -795,7 +941,7 @@ export default function FinancialsPage() {
                           />
                         )}
 
-                        <Tooltip
+                        <RechartTooltip
                           content={({ active, payload, label }) => {
                             if (!active || !payload?.length) return null;
                             const d = payload[0]?.payload as CashflowMonth;
@@ -1020,7 +1166,7 @@ export default function FinancialsPage() {
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis dataKey="monthLabel" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} dy={6} />
                         <YAxis tickFormatter={(v) => `${v}%`} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} domain={[0, 100]} />
-                        <Tooltip formatter={(v: number) => [`${v}%`, "Occupancy"]} contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))" }} />
+                        <RechartTooltip formatter={(v: number) => [`${v}%`, "Occupancy"]} contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))" }} />
                         <Area type="monotone" dataKey="occupancy" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#rampGrad)" />
                       </AreaChart>
                     </ResponsiveContainer>
