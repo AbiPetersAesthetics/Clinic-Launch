@@ -192,52 +192,25 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
 
   // ── Gather all data in parallel ───────────────────────────────────────────
+  // NOTE: This analysis is about whether to proceed with property negotiation
+  // and heads of terms — NOT about launch readiness. Task/phase/CQC data is
+  // intentionally excluded; that will be planned after the property decision.
   const [
-    phases,
     allPropertiesRaw,
     financialRaw,
     decisionsRaw,
-    complianceItemsRaw,
-    cqcMilestonesRaw,
     fixedCostsRaw,
     bedhamptonRaw,
   ] = await Promise.all([
-    db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(decisionsTable).where(eq(decisionsTable.projectId, projectId)),
-    db.select().from(complianceItemsTable).where(eq(complianceItemsTable.projectId, projectId)),
-    db.select().from(cqcMilestonesTable).where(eq(cqcMilestonesTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     fetchBedhamptonLive().catch(() => null),
   ]);
 
-  // ── All tasks across phases ───────────────────────────────────────────────
-  const allTasks = (await Promise.all(
-    phases.map((p) => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id)))
-  )).flat();
-
   const financial = financialRaw[0] ?? null;
   const activeProperty = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
-
-  // ── Task summary ─────────────────────────────────────────────────────────
-  const totalTasks = allTasks.length;
-  const completedTasks = allTasks.filter((t) => t.status === "complete").length;
-  const inProgressTasks = allTasks.filter((t) => t.status === "in_progress").length;
-  const blockedTasks = allTasks.filter((t) => t.status === "blocked").length;
-  const criticalIncomplete = allTasks.filter((t) => t.isCriticalRisk && t.status !== "complete");
-  const highRiskIncomplete = allTasks.filter((t) => t.riskLevel === "high" && t.status !== "complete");
-  const launchReadinessPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  const phaseProgress = phases.map((ph) => {
-    const pTasks = allTasks.filter((t) => t.phaseId === ph.id);
-    const done = pTasks.filter((t) => t.status === "complete").length;
-    const blocked = pTasks.filter((t) => t.status === "blocked").length;
-    const pct = pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0;
-    return `${ph.name}: ${done}/${pTasks.length} complete (${pct}%)${blocked > 0 ? ` — ${blocked} blocked` : ""}`;
-  });
-
-  const criticalTaskList = criticalIncomplete.slice(0, 6).map((t) => `  • [${t.status}] ${t.title}`).join("\n");
 
   // ── Financial calculations for all 3 scenarios ───────────────────────────
   function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>) {
@@ -338,21 +311,6 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
     ? `${allPropertiesRaw.length} properties in pipeline:\n${allPropertyLines}\n\nActive property notes: ${activeProperty?.notes || "none"}`
     : "No properties added yet.";
 
-  // ── Compliance context ────────────────────────────────────────────────────
-  const applicable = complianceItemsRaw.filter((i) => i.status !== "not_applicable");
-  const compliant = applicable.filter((i) => i.status === "complete" || i.policyStatus === "signed_off");
-  const complianceGaps = applicable.filter((i) => i.status === "not_started" || i.status === "in_progress");
-  const compliancePct = applicable.length > 0 ? Math.round((compliant.length / applicable.length) * 100) : 0;
-  const cqcNotStarted = cqcMilestonesRaw.filter((m) => m.status === "not_started");
-  const cqcInProgress = cqcMilestonesRaw.filter((m) => m.status === "in_progress");
-  const cqcComplete = cqcMilestonesRaw.filter((m) => m.status === "complete");
-
-  const complianceContext = `CQC registration milestones: ${cqcComplete.length} complete | ${cqcInProgress.length} in progress | ${cqcNotStarted.length} not started
-Compliance items: ${compliancePct}% complete (${compliant.length}/${applicable.length} items)
-Outstanding compliance gaps (first 8):
-${complianceGaps.slice(0, 8).map((i) => `  • [${i.status}] ${i.title ?? "Unnamed"}`).join("\n") || "  None"}
-CQC milestones not yet started (first 5): ${cqcNotStarted.slice(0, 5).map((m) => m.title ?? "Unnamed").join(", ") || "None"}`;
-
   // ── Decisions context ─────────────────────────────────────────────────────
   const decisionsContext = decisionsRaw.length > 0
     ? `${decisionsRaw.length} strategic decisions logged:\n${decisionsRaw.slice(-10).map((d) => `  • [${d.category}] ${d.title}: ${(d.reasoning ?? "").slice(0, 150)}`).join("\n")}`
@@ -379,112 +337,105 @@ CQC milestones not yet started (first 5): ${cqcNotStarted.slice(0, 5).map((m) =>
   Revenue trend: ${revTrend}`;
   }
 
-  // ── Timeline ──────────────────────────────────────────────────────────────
   const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
-  const weeksToOpening = Math.round(daysToOpening / 7);
-  const timelineContext = `Target opening: 1 November 2026 — ${daysToOpening} days (${weeksToOpening} weeks) away
-Overall launch readiness: ${launchReadinessPct}% (${completedTasks} of ${totalTasks} tasks complete, ${inProgressTasks} in progress, ${blockedTasks} blocked)
-Critical incomplete tasks: ${criticalIncomplete.length}
-${criticalTaskList || "  None flagged"}
-High-risk incomplete tasks: ${highRiskIncomplete.length}
-Phase-by-phase progress:
-  ${phaseProgress.join("\n  ")}`;
 
   // ── Master prompt ─────────────────────────────────────────────────────────
-  const masterPrompt = `You are a senior healthcare business consultant and launch advisor with deep expertise in UK private aesthetics clinics, CQC regulation, and SME financial planning. Your client is Abi Peters, a qualified aesthetics practitioner opening her first dedicated clinic at 9A Jewry Street, Winchester, targeting 1 November 2026.
+  const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
-This is a high-stakes, real business decision. Abi has put personal savings and professional reputation on the line. Be thorough, honest, and specific. Do not hedge excessively — give her a clear verdict she can act on.
+THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at 9A Jewry Street, Winchester, targeting an opening of 1 November 2026?
 
-Analyse ALL the data below across five dimensions: Financial Viability, Regulatory Readiness, Operational Preparedness, Timeline Risk, and Market/Strategic Position. Then return a structured JSON assessment.
+IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity in Winchester justifies the risk.
 
-=== DIMENSION 1: TIMELINE & TASK READINESS ===
-${timelineContext}
+Be direct, specific, and commercial. Cite real numbers. Do not hedge excessively — she needs a clear answer she can act on this week.
 
-=== DIMENSION 2: FINANCIAL MODEL (ALL 3 SCENARIOS) ===
+=== FINANCIAL MODEL (all 3 scenarios, pre-calculated) ===
 ${financialContext}
 
-=== DIMENSION 3: FIXED COST DETAIL ===
+=== ITEMISED FIXED COSTS ===
 ${fixedCostContext}
 
-=== DIMENSION 4: PROPERTY PIPELINE ===
+=== PROPERTY PIPELINE ===
 ${propertyContext}
 
-=== DIMENSION 5: CQC & REGULATORY COMPLIANCE ===
-${complianceContext}
-
-=== DIMENSION 6: LIVE BEDHAMPTON CLINIC (existing revenue base — critical financial safety net) ===
+=== LIVE BEDHAMPTON CLINIC PERFORMANCE (her existing business — the financial safety net) ===
 ${bedhContext}
 
-=== DIMENSION 7: STRATEGIC DECISIONS MADE ===
+=== STRATEGIC DECISIONS ALREADY MADE ===
 ${decisionsContext}
 
-=== COMPUTED METRICS (pre-calculated for you) ===
-• Break-even monthly revenue: £${breakEvenRevenue.toLocaleString() || "unknown"}
-• Rent as % of realistic revenue: ${rentToRevenuePct}%
-• Cash runway pre-opening: ${cashRunwayMonths >= 99 ? "secure" : `${cashRunwayMonths} months`}
-• VAT risk: ${vatRisk ? "HIGH" : "LOW"} — ${vatRiskDetail}
-• Bedhampton income coverage of Winchester fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months/yr` : "unknown"}
-• Days to opening: ${daysToOpening}
+=== KEY COMPUTED RATIOS ===
+• Break-even monthly revenue (Winchester): £${breakEvenRevenue.toLocaleString() || "not calculated"}
+• Rent as % of realistic monthly revenue: ${rentToRevenuePct}% (healthy = <15%, stretched = >20%)
+• Personal cash runway (savings covering living costs pre-opening): ${cashRunwayMonths >= 99 ? "secure — income exceeds outgoings" : `${cashRunwayMonths} months`}
+• VAT threshold risk: ${vatRisk ? "HIGH" : "LOW"} — ${vatRiskDetail}
+• Bedhampton income covers ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of Winchester fixed costs per year` : "unknown — set Bedhampton revenue in financial model"}
+• Days until target opening: ${daysToOpening}
 
-Return ONLY valid JSON (no markdown, no commentary outside the JSON). Use this exact schema:
+Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
   "verdict": "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED",
-  "verdictLabel": "<concise verdict label, e.g. 'Proceed with conditions — 4 must-dos before signing lease'>",
-  "confidenceScore": <integer 0-100: probability of a successful, viable launch>,
-  "executiveSummary": "<1 crisp paragraph: the overall picture, the single biggest risk, and your bottom-line recommendation>",
+  "verdictLabel": "<concise label, e.g. 'Proceed to negotiation — 3 must-dos first' or 'Strong proceed — financials support it'>",
+  "confidenceScore": <integer 0-100: your confidence the Winchester clinic will be financially viable if she signs>,
+  "executiveSummary": "<1-2 crisp paragraphs: does the financial model support committing to this property at this rent? What is the single biggest commercial risk? What is your clear recommendation — use numbers>",
   "detailedAssessment": {
-    "financial": "<2-3 sentences: assess all 3 scenarios, break-even, runway, VAT risk, rent burden — use real numbers>",
-    "regulatory": "<2-3 sentences: CQC registration urgency, compliance gaps that could delay opening, realistic timeline to full compliance>",
-    "operational": "<2-3 sentences: property status, task readiness, blocked items, what could derail launch operationally>",
-    "timeline": "<2-3 sentences: is ${daysToOpening} days enough? what's the critical path? where is slack being burned?>",
-    "strategic": "<2 sentences: Bedhampton as safety net, market positioning, long-term viability assessment>"
+    "financial": "<2-3 sentences on the three scenarios: which is realistic given Bedhampton's current trajectory, what the break-even occupancy looks like, and whether the numbers justify the rent commitment — cite figures>",
+    "property": "<2-3 sentences on the property terms: is the rent commercially reasonable for Winchester? What terms matter most in heads of terms negotiations? What should she push back on or clarify before signing?>",
+    "market": "<2-3 sentences on the Winchester market opportunity: is there demand for premium aesthetics in Winchester? How does the location work? What is the competitive risk?>",
+    "strategic": "<2 sentences on strategic fit: does this move make sense for Abi's business at this stage? How does Bedhampton's current performance de-risk or complicate the move?>",
+    "personal": "<2 sentences on her personal financial position: does her runway, nursing income, and Bedhampton income give her enough buffer to safely commit to this lease?>"
   },
   "riskScores": {
-    "financial": <1-10 where 10 = extremely high risk>,
-    "regulatory": <1-10>,
-    "operational": <1-10>,
-    "timeline": <1-10>,
+    "financial": <1-10 where 10 = extremely high risk — assess affordability, break-even realism, VAT exposure>,
+    "property": <1-10 — assess rent level, lease terms known so far, location risk>,
+    "market": <1-10 — assess Winchester demand, competition, pricing power>,
+    "strategic": <1-10 — assess timing, personal readiness, Bedhampton dependency>,
     "overall": <1-10>
   },
   "riskRationale": {
-    "financial": "<one sentence explaining the financial risk score>",
-    "regulatory": "<one sentence>",
-    "operational": "<one sentence>",
-    "timeline": "<one sentence>"
+    "financial": "<one sentence>",
+    "property": "<one sentence>",
+    "market": "<one sentence>",
+    "strategic": "<one sentence>"
   },
   "strengths": [
-    "<specific strength 1 — cite actual numbers from the data>",
+    "<strength 1 — cite actual numbers>",
     "<strength 2>",
     "<strength 3>",
     "<strength 4>",
     "<strength 5 if genuinely warranted>"
   ],
   "concerns": [
-    "<specific concern 1 — use actual numbers, be precise>",
+    "<concern 1 — use real numbers, be precise>",
     "<concern 2>",
     "<concern 3>",
     "<concern 4>",
-    "<concern 5 if genuinely warranted>"
+    "<concern 5 if warranted>"
   ],
   "conditions": [
-    "<non-negotiable condition 1 — only if verdict is PROCEED_WITH_CONDITIONS or DELAY>",
+    "<condition 1 that must be resolved before proceeding — only include if verdict is PROCEED_WITH_CONDITIONS or DELAY>",
     "<condition 2>"
   ],
   "immediateActions": [
-    { "action": "<specific action>", "priority": "critical" | "high" | "medium", "deadline": "<e.g. 'Within 2 weeks', 'Before lease signing', 'By end of June'>", "rationale": "<one sentence why this matters>" },
+    { "action": "<specific action — focused on property negotiation and financial preparation>", "priority": "critical" | "high" | "medium", "deadline": "<e.g. 'Before heads of terms', 'This week', 'Within 2 weeks'>", "rationale": "<one sentence>" },
     { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
     { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
     { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
     { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." }
   ],
   "thirtyDayPlan": [
-    { "week": "Week 1", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
-    { "week": "Week 2", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
-    { "week": "Week 3", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
-    { "week": "Week 4", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] }
+    { "week": "Week 1", "focus": "<negotiation/due diligence theme>", "actions": ["<action>", "<action>", "<action>"] },
+    { "week": "Week 2", "focus": "<theme>", "actions": ["<action>", "<action>", "<action>"] },
+    { "week": "Week 3", "focus": "<theme>", "actions": ["<action>", "<action>", "<action>"] },
+    { "week": "Week 4", "focus": "<theme>", "actions": ["<action>", "<action>", "<action>"] }
   ],
-  "reviewTrigger": "<specific event or metric threshold that should trigger re-running this analysis>",
-  "nextReviewDate": "<ISO 8601 date — suggest a concrete date for the next formal review>"
+  "negotiationPoints": [
+    "<key point to negotiate in heads of terms 1 — e.g. rent-free period, break clause, fit-out contribution>",
+    "<point 2>",
+    "<point 3>",
+    "<point 4 if warranted>"
+  ],
+  "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
+  "nextReviewDate": "<ISO 8601 date>"
 }`;
 
   try {
@@ -507,7 +458,7 @@ Return ONLY valid JSON (no markdown, no commentary outside the JSON). Use this e
         confidenceScore: 0,
         executiveSummary: clean.slice(0, 500),
         detailedAssessment: {},
-        riskScores: { financial: 5, regulatory: 5, operational: 5, timeline: 5, overall: 5 },
+        riskScores: { financial: 5, property: 5, market: 5, strategic: 5, overall: 5 },
         riskRationale: {},
         strengths: [],
         concerns: [],
@@ -519,7 +470,7 @@ Return ONLY valid JSON (no markdown, no commentary outside the JSON). Use this e
       };
     }
 
-    // Also pass computed metrics back so the UI can display them without re-computing
+    // Pass computed metrics back so the UI can display them without re-computing
     return res.json({
       ...parsed,
       _computed: {
@@ -530,8 +481,6 @@ Return ONLY valid JSON (no markdown, no commentary outside the JSON). Use this e
         vatRiskDetail,
         bedhCoverageMonths,
         daysToOpening,
-        launchReadinessPct,
-        compliancePct,
       },
       generatedAt: new Date().toISOString(),
     });

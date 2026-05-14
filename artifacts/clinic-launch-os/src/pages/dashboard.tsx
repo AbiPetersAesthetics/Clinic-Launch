@@ -103,20 +103,21 @@ type GoNoGoResult = {
   verdictLabel: string;
   confidenceScore: number;
   executiveSummary: string;
-  detailedAssessment: { financial?: string; regulatory?: string; operational?: string; timeline?: string; strategic?: string };
-  riskScores: { financial: number; regulatory: number; operational: number; timeline: number; overall: number };
-  riskRationale: { financial?: string; regulatory?: string; operational?: string; timeline?: string };
+  detailedAssessment: { financial?: string; property?: string; market?: string; strategic?: string; personal?: string };
+  riskScores: { financial: number; property: number; market: number; strategic: number; overall: number };
+  riskRationale: { financial?: string; property?: string; market?: string; strategic?: string };
   strengths: string[];
   concerns: string[];
   conditions: string[];
   immediateActions: GoNoGoAction[];
   thirtyDayPlan: GoNoGoWeek[];
+  negotiationPoints: string[];
   reviewTrigger: string;
   nextReviewDate: string;
   _computed: {
     breakEvenRevenue: number; rentToRevenuePct: number; cashRunwayMonths: number;
     vatRisk: boolean; vatRiskDetail: string; bedhCoverageMonths: number;
-    daysToOpening: number; launchReadinessPct: number; compliancePct: number;
+    daysToOpening: number;
   };
   generatedAt: string;
 };
@@ -306,10 +307,10 @@ export default function DashboardPage() {
 
         const assessmentDimensions = [
           { key: "financial" as const, label: "Financial" },
-          { key: "regulatory" as const, label: "Regulatory" },
-          { key: "operational" as const, label: "Operational" },
-          { key: "timeline" as const, label: "Timeline" },
+          { key: "property" as const, label: "Property" },
+          { key: "market" as const, label: "Market" },
           { key: "strategic" as const, label: "Strategic" },
+          { key: "personal" as const, label: "Personal Finance" },
         ];
 
         return (
@@ -333,7 +334,7 @@ export default function DashboardPage() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Analyses all 3 financial scenarios, property pipeline, CQC readiness, tasks, decisions, and live Bedhampton performance — updated on each refresh.
+                Financial viability, property terms, and market analysis for the heads of terms decision — not a launch readiness check.
               </p>
             </CardHeader>
 
@@ -411,15 +412,16 @@ export default function DashboardPage() {
                   {/* ── Risk Matrix ────────────────────────────────────────── */}
                   {goNoGo.riskScores && (
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Risk Assessment</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Risk Assessment — Property Decision</div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {(["financial", "regulatory", "operational", "timeline"] as const).map((dim) => {
+                        {(["financial", "property", "market", "strategic"] as const).map((dim) => {
                           const score = goNoGo.riskScores[dim] ?? 5;
                           const rationale = goNoGo.riskRationale?.[dim];
+                          const label = dim === "financial" ? "Financial" : dim === "property" ? "Property" : dim === "market" ? "Market" : "Strategic";
                           return (
                             <div key={dim} className={`rounded-lg border p-3 ${riskColor(score)}`}>
                               <div className="flex items-center justify-between mb-1">
-                                <div className="text-[10px] font-semibold uppercase tracking-wider capitalize">{dim}</div>
+                                <div className="text-[10px] font-semibold uppercase tracking-wider">{label}</div>
                                 <div className="text-base font-bold">{score}/10</div>
                               </div>
                               <div className="text-[10px] font-semibold">{riskLabel(score)} risk</div>
@@ -530,6 +532,20 @@ export default function DashboardPage() {
                           );
                         })}
                       </div>
+                    </div>
+                  )}
+
+                  {/* ── Negotiation Points ────────────────────────────────── */}
+                  {goNoGo.negotiationPoints?.length > 0 && (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">Heads of Terms — Points to Negotiate</div>
+                      <ul className="space-y-1.5">
+                        {goNoGo.negotiationPoints.map((pt, i) => (
+                          <li key={i} className="flex items-start gap-2 text-xs text-foreground/85">
+                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5 text-primary/60" />{pt}
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
 
