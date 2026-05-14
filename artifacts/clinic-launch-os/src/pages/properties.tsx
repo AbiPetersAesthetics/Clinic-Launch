@@ -26,6 +26,8 @@ import {
   useGetLatestPropertyAnalysis,
   getGetLatestPropertyAnalysisQueryKey,
   useAnalyseBrochure,
+  getGetFinancialModelQueryKey,
+  getListFixedCostItemsQueryKey,
 } from "@workspace/api-client-react";
 import type {
   ClinicProperty,
@@ -1780,7 +1782,9 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
     setPropertyActive.mutate({ id: property.id }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-        toast({ title: "Active property set", description: "Financials have been synced from this property's rent." });
+        queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+        queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+        toast({ title: "Active property set", description: "Financials have been synced from this property's rent and rates." });
         setShowActiveConfirm(false);
         onUpdated();
       },
@@ -2206,7 +2210,11 @@ function PropertyCard({
   const handleSetActive = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPropertyActive.mutate({ id: property.id }, {
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+        queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+        queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+      },
     });
   };
 

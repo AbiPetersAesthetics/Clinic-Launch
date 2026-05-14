@@ -14,6 +14,7 @@ import {
   useCreateFixedCostItem,
   useUpdateFixedCostItem,
   useDeleteFixedCostItem,
+  useListProperties,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -109,16 +110,18 @@ const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color
   stress_test: { label: "Stress Test", description: "5% start, worst-case ramp", color: "text-destructive", badgeClass: "bg-destructive/10 text-destructive" },
 };
 
-const RISKS = [
-  { threat: "Winchester ramp too slow — Bedhampton never closes", likelihood: "High", impact: "Critical", mitigation: "Pre-launch waitlist, soft-open to existing Bedhampton regulars who travel. Set a firm review gate at Month 6: if Winchester net < £8k, activate contingency plan." },
-  { threat: "Cash reserve depleted before Winchester is self-funding", likelihood: "Medium", impact: "Critical", mitigation: "Maintain £20k operating buffer. Do not spend on non-essential capex until Winchester Month 3 revenue is confirmed. Bedhampton support covers this gap." },
-  { threat: "Abi burnout running both clinics simultaneously", likelihood: "High", impact: "Very High", mitigation: "This is the biggest personal risk. Pre-agree with David: if Winchester hits £8k net, immediately reduce Bedhampton days. Do not wait for the self-funding margin target to be hit." },
-  { threat: "VAT registration pressure on Winchester", likelihood: "Medium", impact: "High", mitigation: "Monitor Winchester rolling 12-month revenue. Appoint accountant before hitting 75% of £90k annual threshold." },
-  { threat: "Winchester fit-out overruns delay opening", likelihood: "Medium", impact: "High", mitigation: "Phase-gate spend. Keep £5k contingency unallocated. Dad's labour eliminates the biggest variable. Open date tied to Bedhampton income model." },
-  { threat: "Marketing underperformance — slow first 3 months", likelihood: "High", impact: "Medium", mitigation: "Prioritise Google reviews and organic social. Avoid paid ads until organic baseline is established. Bedhampton income absorbs the shortfall." },
-  { threat: "Bedhampton revenue weakens during dual-clinic phase", likelihood: "Low", impact: "High", mitigation: "Reduced Abi hours at Bedhampton may affect revenue. Model shows Bedhampton income is the safety net — any reduction lengthens the Winchester ramp period." },
-  { threat: "Winchester never hits the self-funding margin — Bedhampton never closes", likelihood: "Low", impact: "High", mitigation: "Set a formal review at Month 9. If Winchester net margin is below the buffer %, consider reducing the target % or accepting a longer Bedhampton exit timeline." },
-];
+function makeRisks(c: string) {
+  return [
+    { threat: `${c} ramp too slow — Bedhampton never closes`, likelihood: "High", impact: "Critical", mitigation: `Pre-launch waitlist, soft-open to existing Bedhampton regulars who travel. Set a firm review gate at Month 6: if ${c} net < £8k, activate contingency plan.` },
+    { threat: `Cash reserve depleted before ${c} is self-funding`, likelihood: "Medium", impact: "Critical", mitigation: "Maintain £20k operating buffer. Do not spend on non-essential capex until Month 3 revenue is confirmed. Bedhampton support covers this gap." },
+    { threat: "Abi burnout running both clinics simultaneously", likelihood: "High", impact: "Very High", mitigation: `This is the biggest personal risk. Pre-agree with David: if ${c} hits £8k net, immediately reduce Bedhampton days. Do not wait for the self-funding margin target to be hit.` },
+    { threat: `VAT registration pressure on ${c}`, likelihood: "Medium", impact: "High", mitigation: `Monitor ${c} rolling 12-month revenue. Appoint accountant before hitting 75% of £90k annual threshold.` },
+    { threat: `${c} fit-out overruns delay opening`, likelihood: "Medium", impact: "High", mitigation: "Phase-gate spend. Keep £5k contingency unallocated. Dad's labour eliminates the biggest variable. Open date tied to Bedhampton income model." },
+    { threat: "Marketing underperformance — slow first 3 months", likelihood: "High", impact: "Medium", mitigation: "Prioritise Google reviews and organic social. Avoid paid ads until organic baseline is established. Bedhampton income absorbs the shortfall." },
+    { threat: "Bedhampton revenue weakens during dual-clinic phase", likelihood: "Low", impact: "High", mitigation: `Reduced Abi hours at Bedhampton may affect revenue. Model shows Bedhampton income is the safety net — any reduction lengthens the ${c} ramp period.` },
+    { threat: `${c} never hits the self-funding margin — Bedhampton never closes`, likelihood: "Low", impact: "High", mitigation: `Set a formal review at Month 9. If ${c} net margin is below the buffer %, consider reducing the target % or accepting a longer Bedhampton exit timeline.` },
+  ];
+}
 
 const LIKELI_COLOR: Record<string, string> = {
   High: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
@@ -148,6 +151,18 @@ export default function FinancialsPage() {
   const { data: fixedCostItems = [] } = useListFixedCostItems(PROJECT_ID, {
     query: { queryKey: getListFixedCostItemsQueryKey(PROJECT_ID), enabled: true },
   });
+  const { data: propertiesData = [] } = useListProperties(PROJECT_ID);
+  const activeProp = (propertiesData as any[]).find((p: any) => p.isActiveForProject);
+  const clinicLabel = activeProp
+    ? (() => {
+        const parts = (activeProp.address || "").split(",");
+        if (parts.length >= 2) return parts[1].trim();
+        if (activeProp.postcode) return activeProp.postcode.split(" ")[0];
+        return parts[0].trim() || "new clinic";
+      })()
+    : "new clinic";
+  const risks = makeRisks(clinicLabel);
+
   const createFixedCostItem = useCreateFixedCostItem();
   const updateFixedCostItem = useUpdateFixedCostItem();
   const deleteFixedCostItem = useDeleteFixedCostItem();
@@ -369,7 +384,7 @@ export default function FinancialsPage() {
       <div className="flex flex-col gap-3">
         <PageHeader
           title="Expansion Modelling"
-          subtitle="Winchester ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when Winchester hits the target."
+          subtitle={`${clinicLabel} ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when ${clinicLabel} hits the target.`}
         />
         {cr?.scenarioNote && (
           <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
@@ -406,7 +421,7 @@ export default function FinancialsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className={`rounded-xl border p-4 ${(cr?.winc.netProfit ?? 0) > 0 ? "border-border/60 bg-card" : "border-destructive/20 bg-destructive/5"}`}>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Winchester Net</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{clinicLabel} Net</span>
             <BarChart3 className="w-4 h-4 text-primary/50" />
           </div>
           <div className={`text-xl font-bold ${(cr?.winc.netProfit ?? 0) > 0 ? "text-foreground" : "text-destructive"}`}>{cr ? formatGBP(cr.winc.netProfit) : "—"}</div>
@@ -419,7 +434,7 @@ export default function FinancialsPage() {
             <Building2 className="w-4 h-4 text-blue-400" />
           </div>
           <div className="text-xl font-bold">{cr ? formatGBP(cr.bedh.netProfit) : "—"}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
-          <div className="text-xs text-muted-foreground mt-0.5">Closes when Winchester net margin ≥ {cr?.winc.selfFundingBufferPercent ?? 20}% of revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net)</div>
+          <div className="text-xs text-muted-foreground mt-0.5">Closes when {clinicLabel} net margin ≥ {cr?.winc.selfFundingBufferPercent ?? 20}% of revenue (~{formatGBP(cr?.winc.sfNetProfitTarget ?? 0)}/mo net)</div>
         </div>
 
         <div className={`rounded-xl border p-4 ${cr?.combined.selfFundingMonth ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
@@ -432,8 +447,8 @@ export default function FinancialsPage() {
           </div>
           <div className="text-xs text-muted-foreground mt-0.5">
             {cr?.combined.selfFundingMonth
-              ? `Abi full-time Winchester from Month ${cr.combined.selfFundingMonth}`
-              : "Winchester doesn't hit target within 12mo"}
+              ? `Abi full-time at ${clinicLabel} from Month ${cr.combined.selfFundingMonth}`
+              : `${clinicLabel} doesn't hit target within 12mo`}
           </div>
         </div>
 
@@ -479,7 +494,7 @@ export default function FinancialsPage() {
                   <RefreshCw className={`w-3.5 h-3.5 ${bLiveLoading ? "animate-spin" : ""}`} />
                 </button>
               </div>
-              <CardDescription className="text-xs">Real-time data from your Bedhampton clinic — the financial foundation for the Winchester launch.</CardDescription>
+              <CardDescription className="text-xs">Real-time data from your Bedhampton clinic — the financial foundation for the {clinicLabel} launch.</CardDescription>
             </CardHeader>
             <CardContent>
               {bLiveLoading && (
@@ -556,9 +571,9 @@ export default function FinancialsPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base">18-Month Cash Position</CardTitle>
               <CardDescription className="text-sm">
-                Business capital burns through project setup costs, partially offset by Bedhampton net income. Winchester opens Nov '26 and starts recovering the position.
+                Business capital burns through project setup costs, partially offset by Bedhampton net income. {clinicLabel} opens Nov '26 and starts recovering the position.
                 {selfFundingPoint && (
-                  <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes {selfFundingPoint.calendarLabel} once Winchester is self-funding.</strong>
+                  <strong className="text-emerald-600 dark:text-emerald-400"> Bedhampton closes {selfFundingPoint.calendarLabel} once {clinicLabel} is self-funding.</strong>
                 )}
                 {" "}Set your <strong>Business Capital</strong> in the Assumptions → Personal &amp; Runway section to see the burndown from your actual starting point.
               </CardDescription>
@@ -639,7 +654,7 @@ export default function FinancialsPage() {
                             stroke="hsl(var(--primary))"
                             strokeWidth={1.5}
                             strokeDasharray="6 3"
-                            label={{ value: "Winchester opens", position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--primary))" }}
+                            label={{ value: `${clinicLabel} opens`, position: "insideTopLeft", fontSize: 9, fill: "hsl(var(--primary))" }}
                           />
                         )}
 
@@ -665,9 +680,9 @@ export default function FinancialsPage() {
                                 <div className="space-y-1">
                                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business capital</span><span className="font-bold">{formatGBP(d.cashBalance)}</span></div>
                                   {d.bedhNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Bedhampton net</span><span className={d.bedhNet >= 0 ? "text-blue-600" : "text-destructive"}>{formatGBP(d.bedhNet)}</span></div>}
-                                  {d.wincRevenue > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winchester revenue</span><span>{formatGBP(d.wincRevenue)}</span></div>}
+                                  {d.wincRevenue > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} revenue</span><span>{formatGBP(d.wincRevenue)}</span></div>}
                                   {d.vatLiability > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">VAT liability (20%)</span><span className="text-amber-600">−{formatGBP(d.vatLiability)}</span></div>}
-                                  {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winchester net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
+                                  {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
                                   {d.projectCostBurn > 0 && (
                                     <div>
                                       <div className="flex justify-between gap-4"><span className="text-muted-foreground">Project spend</span><span className="text-red-500">−{formatGBP(d.projectCostBurn)}</span></div>
@@ -774,7 +789,7 @@ export default function FinancialsPage() {
                 <CardDescription className="text-sm">
                   Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
                   <span className="ml-2 inline-flex items-center gap-1 text-[10px]">
-                    <span className="inline-block w-2 h-2 rounded-sm bg-primary/20 border border-primary/40" /> Winchester opens
+                    <span className="inline-block w-2 h-2 rounded-sm bg-primary/20 border border-primary/40" /> {clinicLabel} opens
                     <span className="inline-block w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-800 border border-emerald-400 ml-1" /> Bedhampton closes
                     <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 border border-amber-400 ml-1" /> VAT registered
                   </span>
@@ -852,7 +867,7 @@ export default function FinancialsPage() {
                   </table>
                 </div>
                 <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground">
-                  Variable costs shown net of VAT. Fixed costs include Winchester running costs. Bedhampton costs shown in Fixed column until closure. Net Profit = combined Winchester + Bedhampton.
+                  Variable costs shown net of VAT. Fixed costs include {clinicLabel} running costs. Bedhampton costs shown in Fixed column until closure. Net Profit = combined {clinicLabel} + Bedhampton.
                 </div>
               </CardContent>
             </Card>
@@ -862,7 +877,7 @@ export default function FinancialsPage() {
             {/* Occupancy ramp */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Winchester Occupancy Ramp</CardTitle>
+                <CardTitle className="text-sm">{clinicLabel} Occupancy Ramp</CardTitle>
                 <CardDescription className="text-xs">How quickly the new clinic fills under this scenario</CardDescription>
               </CardHeader>
               <CardContent>
@@ -891,8 +906,8 @@ export default function FinancialsPage() {
             {/* Winchester journey to self-funding */}
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Winchester Journey to Self-Funding</CardTitle>
-                <CardDescription className="text-xs">Three milestones Winchester must pass before Bedhampton closes</CardDescription>
+                <CardTitle className="text-sm">{clinicLabel} Journey to Self-Funding</CardTitle>
+                <CardDescription className="text-xs">Three milestones {clinicLabel} must pass before Bedhampton closes</CardDescription>
               </CardHeader>
               <CardContent>
                 {cr ? (
@@ -951,7 +966,7 @@ export default function FinancialsPage() {
           {/* Break-even + VAT + Health score */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card className="shadow-sm">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Winchester Break-Even</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">{clinicLabel} Break-Even</CardTitle></CardHeader>
               <CardContent>
                 {cr ? (
                   <div className="space-y-3">
@@ -982,7 +997,7 @@ export default function FinancialsPage() {
                           : cr.combined.monthsUntilVatRegistration >= 99 ? "Not imminent"
                           : `~${cr.combined.monthsUntilVatRegistration} months`}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">until Winchester annual £90k VAT threshold</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">until {clinicLabel} annual £90k VAT threshold</div>
                     </div>
                     <Progress value={Math.min((cr.combined.annualRevenue / VAT_THRESHOLD) * 100, 100)}
                       className={`h-2 ${cr.combined.vatRegistrationWarning ? "[&>div]:bg-amber-500" : ""}`} />
@@ -1046,7 +1061,7 @@ export default function FinancialsPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Fixed Monthly Costs</CardTitle>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Tag each cost as <strong>Unique</strong> (Winchester only) or <strong>Dual</strong> (shared across both clinics — counts once, never double-charged).
+                      Tag each cost as <strong>Unique</strong> ({clinicLabel} only) or <strong>Dual</strong> (shared across both clinics — counts once, never double-charged).
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-3">
@@ -1081,7 +1096,7 @@ export default function FinancialsPage() {
                                   ? "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800"
                                   : "bg-muted text-muted-foreground border-border hover:border-foreground/30"
                               }`}
-                              title={item.costType === "dual" ? "Dual — shared across both clinics, counts once" : "Unique — Winchester only"}
+                              title={item.costType === "dual" ? "Dual — shared across both clinics, counts once" : `Unique — ${clinicLabel} only`}
                             >
                               {item.costType === "dual" ? "Dual" : "Unique"}
                             </button>
@@ -1137,7 +1152,7 @@ export default function FinancialsPage() {
 
                     {/* Legend */}
                     <div className="flex gap-3 text-[10px] text-muted-foreground pt-1">
-                      <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-muted border border-border" />Unique = Winchester only</span>
+                      <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-muted border border-border" />Unique = {clinicLabel} only</span>
                       <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800" />Dual = shared, counted once</span>
                     </div>
 
@@ -1233,7 +1248,7 @@ export default function FinancialsPage() {
                 </Card>
 
                 <Card className="shadow-sm">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Winchester — Variable Costs</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">{clinicLabel} — Variable Costs</CardTitle></CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
@@ -1249,7 +1264,7 @@ export default function FinancialsPage() {
                 </Card>
 
                 <Card className="shadow-sm">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Winchester — Revenue & Self-Funding</CardTitle></CardHeader>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">{clinicLabel} — Revenue & Self-Funding</CardTitle></CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
@@ -1275,7 +1290,7 @@ export default function FinancialsPage() {
                       )} />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-2">
-                      Bedhampton closes when Winchester's net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
+                      Bedhampton closes when {clinicLabel}'s net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
                     </p>
                   </CardContent>
                 </Card>
@@ -1284,7 +1299,7 @@ export default function FinancialsPage() {
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Bedhampton — Revenue</CardTitle>
                     <CardDescription className="text-xs">
-                      Separate patient base. Supports the business during the Winchester ramp. Closes when Winchester hits the self-funding target.
+                      Separate patient base. Supports the business during the {clinicLabel} ramp. Closes when {clinicLabel} hits the self-funding target.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1397,11 +1412,11 @@ export default function FinancialsPage() {
                 <Card className="shadow-md border-primary/20">
                   <div className="bg-primary/5 border-b border-primary/10 px-5 py-3 flex justify-between items-center">
                     <div>
-                      <h3 className={`font-semibold capitalize ${sc.color}`}>{sc.label} — Winchester at Target</h3>
+                      <h3 className={`font-semibold capitalize ${sc.color}`}>{sc.label} — {clinicLabel} at Target</h3>
                       <p className="text-xs text-muted-foreground">{cr.winc.occupancyUsed}% occupancy · {formatGBP(cr.winc.fixedCosts)}/mo fixed</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Winchester Monthly Net</p>
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{clinicLabel} Monthly Net</p>
                       <p className={`text-2xl font-bold ${cr.winc.netProfit > 0 ? "text-primary" : "text-destructive"}`}>{formatGBP(cr.winc.netProfit)}</p>
                     </div>
                   </div>
@@ -1493,7 +1508,7 @@ export default function FinancialsPage() {
                     </div>
                     {cr.combined.totalBedhamptonSupport !== null && (
                       <div className="mt-3 pt-3 border-t text-sm flex justify-between">
-                        <span className="text-muted-foreground">Total support until Winchester self-funding</span>
+                        <span className="text-muted-foreground">Total support until {clinicLabel} self-funding</span>
                         <span className="font-semibold text-blue-600 dark:text-blue-400">{formatGBP(cr.combined.totalBedhamptonSupport)}</span>
                       </div>
                     )}
@@ -1520,36 +1535,36 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 1",
                     title: "During Bedhampton support",
-                    subtitle: "Bedhampton profit + Winchester net (growing). Both clinics running.",
+                    subtitle: `Bedhampton profit + ${clinicLabel} net (growing). Both clinics running.`,
                     income: cr.owner.phase1Income,
                     shortfall: cr.owner.phase1Shortfall,
                     safe: cr.owner.phase1IsSafe,
                     breakdown: [
                       ["Bedhampton net", cr.bedh.netProfit],
-                      ["Winchester net", cr.winc.netProfit],
+                      [`${clinicLabel} net`, cr.winc.netProfit],
                     ] as [string, number][],
                   },
                   {
                     phase: "Phase 2",
                     title: "After Bedhampton closes",
-                    subtitle: `Winchester self-funding (≥${cr.winc.selfFundingBufferPercent}% margin). Solo clinic.`,
+                    subtitle: `${clinicLabel} self-funding (≥${cr.winc.selfFundingBufferPercent}% margin). Solo clinic.`,
                     income: cr.owner.phase2Income,
                     shortfall: cr.owner.phase2Shortfall,
                     safe: cr.owner.phase2IsSafe,
                     breakdown: [
-                      ["Winchester net", cr.winc.netProfit],
+                      [`${clinicLabel} net`, cr.winc.netProfit],
                       ["Bedhampton", 0],
                     ] as [string, number][],
                   },
                   {
                     phase: "Phase 3",
-                    title: "Winchester at full target",
-                    subtitle: "Winchester alone covers desired income. Full financial independence.",
+                    title: `${clinicLabel} at full target`,
+                    subtitle: `${clinicLabel} alone covers desired income. Full financial independence.`,
                     income: cr.owner.phase3Income,
                     shortfall: Math.max(cr.owner.targetDrawings - cr.owner.phase3Income, 0),
                     safe: cr.owner.phase3IsSafe,
                     breakdown: [
-                      ["Winchester net", cr.winc.netProfit],
+                      [`${clinicLabel} net`, cr.winc.netProfit],
                       ["Bedhampton", 0],
                     ] as [string, number][],
                   },
@@ -1654,7 +1669,7 @@ export default function FinancialsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {RISKS.map((r, i) => (
+                {risks.map((r, i) => (
                   <div key={i} className="flex gap-4 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors">
                     <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</div>
                     <div className="flex-1 min-w-0">

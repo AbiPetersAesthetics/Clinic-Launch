@@ -277,7 +277,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       <PageHeader
         title="Command Centre"
-        subtitle="Real-time health, priorities, and decisions for the Winchester clinic launch."
+        subtitle="Real-time health, priorities, and decisions for your new clinic launch."
       />
 
       {/* 0. Go/No-Go Recommendation */}
