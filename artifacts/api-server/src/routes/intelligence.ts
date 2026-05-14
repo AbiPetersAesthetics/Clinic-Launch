@@ -775,7 +775,9 @@ ${JSON.stringify(manualCompetitorsList, null, 2)}
 Score saturation/opportunity based on this known competitor list. Return the competitors array exactly as given above (add distanceMeters: null, rating: null, reviewCount: null for each).`
       : `No competitor data available. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
 
-  const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Analyse this property for use as a premium aesthetics clinic.
+  const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Conduct a thorough, expert-grade analysis of this property for use as a premium aesthetics clinic.
+
+Be highly analytical and specific. Every factor explanation must be 2-4 sentences covering: what the data tells you, why it matters for an aesthetics clinic specifically, and any nuance or caveat. Every verdict, summary, and recommendation must be substantive — no single-sentence answers.
 
 Property:
 ${propertyContext}
@@ -786,82 +788,84 @@ ${competitorContext}
 Return a JSON object with EXACTLY this structure (no markdown, all 8 sections required):
 {
   "locationScore": {
-    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<2-3 sentence summary of the location's overall suitability, citing specific characteristics>",
     "factors": [
-      {"name": "Affluence & Demographics", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Footfall & Visibility", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Parking & Accessibility", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Female Demographic Concentration", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Transport Links", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Proximity to Premium Retail", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Local Spending Power", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Growth Area Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
+      {"name": "Affluence & Demographics", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: local income levels, Acorn/Mosaic profile if inferrable from postcode, relevance to premium aesthetics spend>"},
+      {"name": "Footfall & Visibility", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: type and volume of passing traffic, whether footfall is browsing vs destination, visibility considerations>"},
+      {"name": "Parking & Accessibility", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: nearest car parks, distance, cost, disabled access, how this affects client acquisition for a discretionary appointment clinic>"},
+      {"name": "Female Demographic Concentration", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: proximity to female-skewed footfall generators — gyms, schools, fashion retail, cafes, offices — and the quality of that audience>"},
+      {"name": "Transport Links", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: train/bus access, journey times from nearby towns, whether public transport serves the client profile>"},
+      {"name": "Proximity to Premium Retail", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: nearby premium or aspirational brands, how they validate the location for high-end aesthetics and what halo effect they create>"},
+      {"name": "Local Spending Power", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: evidence of discretionary spend in the area, average treatment price benchmarks for this market, spend per client potential>"},
+      {"name": "Growth Area Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: regeneration, development pipeline, demographic shifts, whether the market will grow over a 3-5 year lease horizon>"}
     ]
   },
   "commercialViabilityScore": {
-    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<2-3 sentence assessment of commercial viability including the rent-to-revenue relationship and key financial risk factors>",
     "factors": [
-      {"name": "Rent vs Revenue Potential", "score": <integer 0-25>, "maxScore": 25, "weight": 25, "explanation": "<brief>"},
-      {"name": "Occupancy Demand", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Unit Size Suitability", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Running Cost Risk", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Market Timing", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"}
+      {"name": "Rent vs Revenue Potential", "score": <integer 0-25>, "maxScore": 25, "weight": 25, "explanation": "<2-3 sentences: rent as % of achievable revenue, what occupancy/throughput is needed to cover rent, whether this is achievable in year 1>"},
+      {"name": "Occupancy Demand", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<2-3 sentences: strength of local demand for premium aesthetics, waiting list dynamics, whether demand is price-sensitive or premium>"},
+      {"name": "Unit Size Suitability", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<2-3 sentences: whether sq footage supports the planned room count and reception, what the optimal layout could achieve, any size-related constraints>"},
+      {"name": "Running Cost Risk", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<2-3 sentences: total occupancy cost including rates, service charge, insurance — as a % of revenue, and hidden cost risks specific to this property type>"},
+      {"name": "Market Timing", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: current aesthetics market conditions in this area, post-regulation environment under the new licensing regime, demand trajectory>"}
     ]
   },
   "clinicSuitabilityScore": {
-    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<one sentence>",
+    "total": <integer 0-100>, "maxTotal": 100, "grade": <"A"|"B"|"C"|"D"|"F">, "summary": "<2-3 sentence assessment of how well the physical space suits a premium nurse-led aesthetics clinic>",
     "factors": [
-      {"name": "Treatment Room Potential", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<brief>"},
-      {"name": "Reception & Client Flow", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Frontage & Discretion", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Luxury & Branding Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Compliance Suitability", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<brief>"},
-      {"name": "Instagrammability", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"},
-      {"name": "Plumbing & Infrastructure", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<brief>"}
+      {"name": "Treatment Room Potential", "score": <integer 0-20>, "maxScore": 20, "weight": 20, "explanation": "<2-3 sentences: estimated treatment rooms achievable from the footprint, minimum viable layout, what room count means for revenue ceiling>"},
+      {"name": "Reception & Client Flow", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: feasibility of a professional reception, client privacy from public areas, flow from entry to treatment room>"},
+      {"name": "Frontage & Discretion", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: prominence vs discretion trade-off for aesthetics clients, signage potential, whether the entrance signals the right brand values>"},
+      {"name": "Luxury & Branding Potential", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: ceiling height, natural light, architectural features, potential for a premium interior finish within a realistic budget>"},
+      {"name": "Compliance Suitability", "score": <integer 0-15>, "maxScore": 15, "weight": 15, "explanation": "<2-3 sentences: CQC-relevant considerations — clinical waste disposal access, ventilation, handwashing facilities, infection control suitability, any obvious red flags>"},
+      {"name": "Instagrammability", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: potential for a photogenic interior that drives social proof, whether the location itself is content-worthy, local influencer/media opportunity>"},
+      {"name": "Plumbing & Infrastructure", "score": <integer 0-10>, "maxScore": 10, "weight": 10, "explanation": "<2-3 sentences: likely state of existing services, what fit-out modifications are needed, risk of unexpected infrastructure costs in an older building>"}
     ]
   },
   "competition": {
     "saturationScore": <integer 0-100>,
     "opportunityScore": <integer 0-100>,
-    "saturationVerdict": "<assessment>",
-    "opportunityVerdict": "<assessment>",
+    "saturationVerdict": "<2-3 sentences: characterise the competitive landscape, note the type and quality of competitors, whether saturation is a real barrier>",
+    "opportunityVerdict": "<2-3 sentences: identify the specific gap in the market, what unmet demand exists, how a nurse-led premium clinic differentiates>",
     "competitors": []
   },
   "executiveSummary": {
-    "strengths": ["<1>", "<2>", "<3>"],
-    "weaknesses": ["<1>", "<2>"],
-    "risks": ["<1>", "<2>"],
-    "hiddenOpportunities": ["<1>", "<2>"],
-    "likelyRevenueCeiling": "<e.g. £35k–£55k/month>",
-    "launchRecommendations": ["<1>", "<2>", "<3>"],
-    "suggestedPositioning": "<positioning statement>",
-    "overallVerdict": "<2-3 sentence verdict>"
+    "strengths": ["<detailed strength 1 — one full sentence>", "<detailed strength 2>", "<detailed strength 3>", "<detailed strength 4>", "<detailed strength 5>"],
+    "weaknesses": ["<detailed weakness 1 — one full sentence>", "<detailed weakness 2>", "<detailed weakness 3>", "<detailed weakness 4>"],
+    "risks": ["<specific risk 1 — one full sentence stating risk and why it matters>", "<risk 2>", "<risk 3>", "<risk 4>"],
+    "hiddenOpportunities": ["<specific opportunity 1 not obvious from the headline data>", "<opportunity 2>", "<opportunity 3>"],
+    "likelyRevenueCeiling": "<specific range e.g. '£38k–£62k/month at full occupancy (2 treatment rooms, 5 days/week, blended £420 ATV)'>",
+    "launchRecommendations": ["<specific recommendation 1>", "<recommendation 2>", "<recommendation 3>", "<recommendation 4>", "<recommendation 5>"],
+    "suggestedPositioning": "<2-3 sentence positioning statement covering brand tier, target client, key differentiators, and price positioning vs local competition>",
+    "overallVerdict": "<4-5 sentence overall verdict: should Abi proceed, what are the critical conditions, what would make this property a strong yes or a pass, and what is the single most important factor>"
   },
   "riskAnalysis": {
     "overall": "<low|medium|high>",
-    "verdict": "<2 sentence overall risk assessment>",
+    "verdict": "<3-4 sentence overall risk assessment covering financial risk, operational risk, regulatory risk, and market risk in aggregate>",
     "risks": [
-      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"},
-      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"},
-      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation step>"}
+      {"risk": "<specific risk — full sentence>", "severity": "<low|medium|high>", "mitigation": "<practical 1-2 sentence mitigation with specific actions>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation>"},
+      {"risk": "<specific risk>", "severity": "<low|medium|high>", "mitigation": "<practical mitigation>"}
     ]
   },
   "negotiationLeverage": {
-    "verdict": "<2 sentence overall negotiation position>",
-    "landlordMotivators": ["<reason landlord may be motivated to negotiate>", "<reason 2>"],
-    "strengths": ["<tenant leverage point 1>", "<tenant leverage point 2>"],
-    "tactics": ["<specific negotiation tactic 1>", "<tactic 2>", "<tactic 3>"],
-    "suggestedOpeningOffer": "<specific guidance e.g. '12% below asking at £X/yr with 6 months rent-free'>",
-    "redLines": ["<lease clause to avoid or insist upon>", "<red line 2>"]
+    "verdict": "<3-4 sentence overall negotiation position: how strong is the tenant's hand, what market conditions favour negotiation, what is the walk-away point>",
+    "landlordMotivators": ["<specific reason landlord may accept below-asking>", "<reason 2>", "<reason 3>"],
+    "strengths": ["<specific tenant leverage point — why Abi is a good tenant>", "<leverage point 2>", "<leverage point 3>"],
+    "tactics": ["<specific tactic 1 — what to ask for and how to frame it>", "<tactic 2>", "<tactic 3>", "<tactic 4>"],
+    "suggestedOpeningOffer": "<specific, calculated guidance: opening offer amount, target rent, concessions to seek (rent-free, fit-out contribution, break clause), and how to sequence the ask>",
+    "redLines": ["<lease clause or condition to refuse or insist on — explain why>", "<red line 2>", "<red line 3>"]
   },
   "launchStrategy": {
-    "estimatedTimeToLaunch": "<e.g. 9-12 months from lease signing>",
-    "firstYearRevenueForecast": "<e.g. £25k-£40k/month by month 12>",
-    "phase1": "<months 1-3: key activities and focus>",
-    "phase2": "<months 4-6: key activities and focus>",
-    "phase3": "<months 7-12: key activities and focus>",
-    "keyMilestones": ["<milestone 1>", "<milestone 2>", "<milestone 3>", "<milestone 4>"],
-    "criticalSuccessFactors": ["<factor 1>", "<factor 2>", "<factor 3>"]
+    "estimatedTimeToLaunch": "<specific range e.g. '9-14 months from lease signing' with explanation of what drives the range>",
+    "firstYearRevenueForecast": "<specific tiered forecast e.g. 'Month 1-3: £8k-£15k/month; Month 4-6: £18k-£28k/month; Month 7-12: £28k-£45k/month'>",
+    "phase1": "<months 1-3: specific activities — fit-out, CQC registration, soft marketing, systems setup, with key milestones and watch-outs>",
+    "phase2": "<months 4-6: specific activities — soft launch, first clients, social proof building, local outreach, with targets>",
+    "phase3": "<months 7-12: specific activities — full trading, marketing scale-up, memberships, referral programme, with revenue targets>",
+    "keyMilestones": ["<specific milestone 1 with target date or trigger>", "<milestone 2>", "<milestone 3>", "<milestone 4>", "<milestone 5>"],
+    "criticalSuccessFactors": ["<factor 1 — why it is critical and what failure looks like>", "<factor 2>", "<factor 3>", "<factor 4>"]
   }
 }`;
 
@@ -869,7 +873,7 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
   try {
     const response = await openai.chat.completions.create({
       model: AI_MODEL,
-      max_completion_tokens: 6000,
+      max_completion_tokens: 12000,
       messages: [{ role: "user", content: analysisPrompt }],
     });
     const content = response.choices[0]?.message?.content ?? "{}";
@@ -983,7 +987,16 @@ Agent: ${property.agentName || "Unknown"} | Notes: ${property.notes || "None"}`;
     "suggest-launch": `As a clinic launch strategist, provide a 90-day launch strategy for this property. Include: pre-opening marketing timeline, soft launch vs hard launch recommendation, local PR strategy, social media launch plan, opening offer/promotion ideas, partnerships to establish, and first 30/60/90 day milestones.`,
   };
 
-  const systemPrompt = `You are an expert advisor specialising in UK aesthetics clinic property acquisition, fit-out, and launch. Provide specific, actionable, UK-market-relevant advice. Be direct and practical.`;
+  const systemPrompt = `You are a senior expert advisor specialising in UK aesthetics clinic property acquisition, fit-out, launch strategy, and clinical governance. Provide thorough, analytical, deeply expert advice specific to the UK aesthetics market.
+
+For every response:
+- Structure your advice with clear bold section headers
+- Include specific cost ranges in GBP (low/mid/high), named suppliers, organisations, or regulatory bodies where relevant
+- Quantify recommendations wherever possible (costs, timelines, dimensions, occupancy rates)
+- Flag CQC, JCCP, or other regulatory implications explicitly and explain their practical impact
+- Include risk factors and how to mitigate them
+- Close with a prioritised list of immediate next steps
+- A thorough response of 500-900 words is expected — do not truncate or oversimplify`;
 
   const userPrompt = customPrompt
     ? `${actionPrompts[action]}\n\nAdditional context from user: ${customPrompt}\n\nProperty details:\n${propertyContext}`
@@ -992,7 +1005,7 @@ Agent: ${property.agentName || "Unknown"} | Notes: ${property.notes || "None"}`;
   try {
     const response = await openai.chat.completions.create({
       model: AI_MODEL,
-      max_completion_tokens: 1500,
+      max_completion_tokens: 4000,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },

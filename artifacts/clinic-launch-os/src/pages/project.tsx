@@ -2495,7 +2495,7 @@ function TaskEditSheet({
                   {(aiResult || aiLoading) && (
                     <div
                       ref={aiResultRef}
-                      className="max-h-64 overflow-y-auto rounded-md bg-muted/60 p-3 text-xs leading-relaxed whitespace-pre-wrap font-mono border border-border/40"
+                      className="max-h-64 overflow-y-auto rounded-md bg-muted/60 p-3 text-xs leading-relaxed whitespace-pre-wrap font-sans border border-border/40"
                     >
                       {aiResult || <span className="text-muted-foreground flex items-center gap-1.5"><Loader2 className="w-3 h-3 animate-spin inline" /> Researching…</span>}
                       {aiLoading && aiResult && <span className="inline-block w-1.5 h-3.5 bg-primary animate-pulse ml-0.5 align-middle" />}

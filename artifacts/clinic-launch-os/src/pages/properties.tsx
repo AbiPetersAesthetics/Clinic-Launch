@@ -855,7 +855,7 @@ function AdvisorPanel({ property }: { property: ClinicProperty }) {
             <Sparkles className="w-4 h-4" />
             <h5 className="text-sm font-semibold capitalize">{selectedAction?.replace(/-/g, " ")} — AI Advice</h5>
           </div>
-          <div className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{result}</div>
+          <div className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap font-sans">{result}</div>
         </div>
       )}
     </div>
