@@ -452,17 +452,28 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     });
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
-    const clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    // Strip markdown fences then extract just the JSON object (handles leading/trailing prose)
+    let clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const firstBrace = clean.indexOf("{");
+    const lastBrace = clean.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.slice(firstBrace, lastBrace + 1);
+    }
 
     let parsed: Record<string, unknown>;
     try {
       parsed = JSON.parse(clean);
     } catch {
+      // Last-resort: try to pull executiveSummary out of the raw text so at least
+      // the card shows something meaningful rather than a JSON blob
+      const summaryMatch = raw.match(/"executiveSummary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
       parsed = {
         verdict: "DELAY",
         verdictLabel: "Unable to assess — try again",
         confidenceScore: 0,
-        executiveSummary: clean.slice(0, 500),
+        executiveSummary: summaryMatch
+          ? summaryMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"')
+          : "Analysis could not be parsed. Please refresh to try again.",
         detailedAssessment: {},
         riskScores: { financial: 5, property: 5, market: 5, strategic: 5, overall: 5 },
         riskRationale: {},
