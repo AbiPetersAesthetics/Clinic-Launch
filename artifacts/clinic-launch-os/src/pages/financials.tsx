@@ -421,10 +421,10 @@ export default function FinancialsPage() {
       </div>
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-muted p-1 rounded-lg w-fit">
+      <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
         {(["overview", "model", "owner", "risks"] as TabKey[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${
+            className={`px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
               tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}>
             {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : "Risks"}
@@ -632,7 +632,7 @@ export default function FinancialsPage() {
                 const startBalance = cashflow[0].cashBalance - cashflow[0].monthlyCashflow;
                 const openMonth = cashflow.find(m => m.isOpeningMonth);
                 return (
-                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t">
+                  <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t">
                     <div className="text-center">
                       <div className="text-xs text-muted-foreground">Starting capital</div>
                       <div className="text-sm font-bold">{formatGBP(startBalance)}</div>
@@ -1336,7 +1336,7 @@ export default function FinancialsPage() {
                       </div>
                     </div>
                     <div className="h-px bg-border" />
-                    <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                       <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
                         <div className="text-[10px] text-muted-foreground uppercase mb-1">Break-Even Rev</div>
                         <div className="font-bold">{formatGBP(cr.winc.breakEvenRevenue)}</div>
@@ -1364,7 +1364,7 @@ export default function FinancialsPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
                       {[
                         ["Monthly Revenue", formatGBP(cr.bedh.grossRevenue)],
                         ["Monthly Costs", formatGBP(cr.bedh.costs)],

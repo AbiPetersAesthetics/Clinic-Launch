@@ -830,40 +830,44 @@ export default function FranchisePage() {
                   <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">Illustrative only</span>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-2 mb-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <span className="col-start-2 text-center">Low</span>
-                  <span className="text-center">High</span>
-                </div>
-                {[
-                  { label: "Fit-out & equipment", low: INVESTMENT_TYPES[investmentType].low, high: INVESTMENT_TYPES[investmentType].high, plain: "Building the rooms and buying all equipment" },
-                  { label: "Property deposit (3 months)", low: (m?.rentGbp ?? 2700) * 3, high: (m?.rentGbp ?? 2700) * 3, plain: "Most landlords require this upfront" },
-                  { label: "Franchise fee — paid to you", low: assumptions.franchiseFeeGbp, high: assumptions.franchiseFeeGbp, plain: "Paid to you on signing" },
-                  { label: "Training — paid to you", low: assumptions.trainingCostGbp, high: assumptions.trainingCostGbp, plain: "Covers your time training them" },
-                  { label: "Franchisee legal costs", low: assumptions.legalSetupGbp, high: assumptions.legalSetupGbp + 2000, plain: "Their own solicitor's review" },
-                  { label: "Working capital", low: monthlyFixedCosts * assumptions.workingCapitalMonths, high: monthlyFixedCosts * assumptions.workingCapitalMonths * 1.3, plain: `${assumptions.workingCapitalMonths} months of running costs in reserve` },
-                  { label: "Contingency", low: Math.round(INVESTMENT_TYPES[investmentType].low * 0.10), high: Math.round(INVESTMENT_TYPES[investmentType].high * 0.10), plain: "Things always cost more than planned" },
-                ].map(line => (
-                  <div key={line.label} className="grid grid-cols-3 gap-2 py-2 border-b border-border/50 last:border-0 items-start">
-                    <div>
-                      <p className="text-sm font-medium">{line.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{line.plain}</p>
+              <CardContent className="p-0 sm:p-6">
+                <div className="overflow-x-auto">
+                  <div className="min-w-[360px] p-4 sm:p-0">
+                    <div className="grid grid-cols-3 gap-2 mb-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <span className="col-start-2 text-center">Low</span>
+                      <span className="text-center">High</span>
                     </div>
-                    <span className="text-sm font-semibold text-center tabular-nums">{formatGBP(line.low)}</span>
-                    <span className="text-sm font-semibold text-center tabular-nums">{formatGBP(line.high)}</span>
+                    {[
+                      { label: "Fit-out & equipment", low: INVESTMENT_TYPES[investmentType].low, high: INVESTMENT_TYPES[investmentType].high, plain: "Building the rooms and buying all equipment" },
+                      { label: "Property deposit (3 months)", low: (m?.rentGbp ?? 2700) * 3, high: (m?.rentGbp ?? 2700) * 3, plain: "Most landlords require this upfront" },
+                      { label: "Franchise fee — paid to you", low: assumptions.franchiseFeeGbp, high: assumptions.franchiseFeeGbp, plain: "Paid to you on signing" },
+                      { label: "Training — paid to you", low: assumptions.trainingCostGbp, high: assumptions.trainingCostGbp, plain: "Covers your time training them" },
+                      { label: "Franchisee legal costs", low: assumptions.legalSetupGbp, high: assumptions.legalSetupGbp + 2000, plain: "Their own solicitor's review" },
+                      { label: "Working capital", low: monthlyFixedCosts * assumptions.workingCapitalMonths, high: monthlyFixedCosts * assumptions.workingCapitalMonths * 1.3, plain: `${assumptions.workingCapitalMonths} months of running costs in reserve` },
+                      { label: "Contingency", low: Math.round(INVESTMENT_TYPES[investmentType].low * 0.10), high: Math.round(INVESTMENT_TYPES[investmentType].high * 0.10), plain: "Things always cost more than planned" },
+                    ].map(line => (
+                      <div key={line.label} className="grid grid-cols-3 gap-2 py-2 border-b border-border/50 last:border-0 items-start">
+                        <div>
+                          <p className="text-sm font-medium">{line.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{line.plain}</p>
+                        </div>
+                        <span className="text-sm font-semibold text-center tabular-nums">{formatGBP(line.low)}</span>
+                        <span className="text-sm font-semibold text-center tabular-nums">{formatGBP(line.high)}</span>
+                      </div>
+                    ))}
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
+                      <div>
+                        <p className="text-sm font-bold">Total range</p>
+                        <p className="text-xs text-muted-foreground">Per franchised clinic</p>
+                      </div>
+                      <span className="text-lg font-bold text-primary text-center tabular-nums">
+                        {formatGBP(INVESTMENT_TYPES[investmentType].low + (m?.rentGbp ?? 2700) * 3 + assumptions.franchiseFeeGbp + assumptions.trainingCostGbp + assumptions.legalSetupGbp + monthlyFixedCosts * assumptions.workingCapitalMonths + Math.round(INVESTMENT_TYPES[investmentType].low * 0.1))}
+                      </span>
+                      <span className="text-lg font-bold text-primary text-center tabular-nums">
+                        {formatGBP(INVESTMENT_TYPES[investmentType].high + (m?.rentGbp ?? 2700) * 3 + assumptions.franchiseFeeGbp + assumptions.trainingCostGbp + assumptions.legalSetupGbp + 2000 + Math.round(monthlyFixedCosts * assumptions.workingCapitalMonths * 1.3) + Math.round(INVESTMENT_TYPES[investmentType].high * 0.1))}
+                      </span>
+                    </div>
                   </div>
-                ))}
-                <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-border">
-                  <div>
-                    <p className="text-sm font-bold">Total range</p>
-                    <p className="text-xs text-muted-foreground">Per franchised clinic</p>
-                  </div>
-                  <span className="text-lg font-bold text-primary text-center tabular-nums">
-                    {formatGBP(INVESTMENT_TYPES[investmentType].low + (m?.rentGbp ?? 2700) * 3 + assumptions.franchiseFeeGbp + assumptions.trainingCostGbp + assumptions.legalSetupGbp + monthlyFixedCosts * assumptions.workingCapitalMonths + Math.round(INVESTMENT_TYPES[investmentType].low * 0.1))}
-                  </span>
-                  <span className="text-lg font-bold text-primary text-center tabular-nums">
-                    {formatGBP(INVESTMENT_TYPES[investmentType].high + (m?.rentGbp ?? 2700) * 3 + assumptions.franchiseFeeGbp + assumptions.trainingCostGbp + assumptions.legalSetupGbp + 2000 + Math.round(monthlyFixedCosts * assumptions.workingCapitalMonths * 1.3) + Math.round(INVESTMENT_TYPES[investmentType].high * 0.1))}
-                  </span>
                 </div>
               </CardContent>
             </Card>

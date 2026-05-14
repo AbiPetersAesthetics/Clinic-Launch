@@ -1151,14 +1151,58 @@ export default function ProjectPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-start justify-between gap-4">
-        <PageHeader
-          title="Project Plan"
-          subtitle="Set your key dates, then manage phases and tasks."
-        />
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <PageHeader
+            title="Project Plan"
+            subtitle="Set your key dates, then manage phases and tasks."
+          />
+          <div className="flex items-center gap-1.5 shrink-0 mt-1 no-print">
+            <button
+              onClick={() => setShowExport(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
+              title="Export plan for Claude"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={() => { setShowImport(true); setImportDiffs(null); setImportError(""); setImportText(""); setImportApplied(0); }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
+              title="Import Claude's response"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Import</span>
+            </button>
+            <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
+                  viewMode === "list"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                onClick={() => setViewMode("gantt")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
+                  viewMode === "gantt"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <GanttChartSquare className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Gantt</span>
+              </button>
+            </div>
+          </div>
+        </div>
         {activeProperty && (
-          <div className={`no-print flex items-center gap-2 px-3 py-2 rounded-lg border text-sm mt-2 ${viewMasterPlan ? "bg-muted/50 border-muted-foreground/20 text-muted-foreground" : "bg-primary/8 border-primary/25 text-foreground"}`}>
-            <Building2 className={`w-3.5 h-3.5 shrink-0 ${viewMasterPlan ? "text-muted-foreground" : "text-primary"}`} />
+          <div className={`no-print flex items-start gap-2 px-3 py-2 rounded-lg border text-sm ${viewMasterPlan ? "bg-muted/50 border-muted-foreground/20 text-muted-foreground" : "bg-primary/8 border-primary/25 text-foreground"}`}>
+            <Building2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${viewMasterPlan ? "text-muted-foreground" : "text-primary"}`} />
             <span className="flex-1 min-w-0">
               {viewMasterPlan
                 ? <span>Viewing <strong>master plan</strong> — changes here update the shared baseline for all properties.</span>
@@ -1167,54 +1211,12 @@ export default function ProjectPage() {
             </span>
             <button
               onClick={() => setViewMasterPlan(v => !v)}
-              className="shrink-0 text-xs font-medium underline underline-offset-2 hover:no-underline"
+              className="shrink-0 text-xs font-medium underline underline-offset-2 hover:no-underline whitespace-nowrap"
             >
-              {viewMasterPlan ? `Switch to ${activeProperty.address}` : "View master plan"}
+              {viewMasterPlan ? "Switch to property" : "Master plan"}
             </button>
           </div>
         )}
-        <div className="flex items-center gap-2 shrink-0 mt-1">
-        <button
-          onClick={() => setShowExport(true)}
-          className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
-          title="Export plan for Claude"
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Export
-        </button>
-        <button
-          onClick={() => { setShowImport(true); setImportDiffs(null); setImportError(""); setImportText(""); setImportApplied(0); }}
-          className="no-print flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium border bg-card shadow-sm text-muted-foreground hover:text-foreground transition-colors"
-          title="Import Claude's response"
-        >
-          <Copy className="w-3.5 h-3.5" />
-          Import
-        </button>
-        <div className="flex items-center gap-1 border rounded-lg p-1 bg-card shadow-sm no-print">
-          <button
-            onClick={() => setViewMode("list")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              viewMode === "list"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            List
-          </button>
-          <button
-            onClick={() => setViewMode("gantt")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-              viewMode === "gantt"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <GanttChartSquare className="w-3.5 h-3.5" />
-            Gantt
-          </button>
-        </div>
-        </div>
       </div>
 
       {criticalRiskCount > 0 && (
@@ -1315,14 +1317,26 @@ export default function ProjectPage() {
       </Card>
 
       {viewMode === "gantt" && phases && (
-        <GanttView
-          key={ganttKey}
-          phases={phases}
-          startDateObj={startDateObj}
-          updateTask={updateTask}
-          invalidateAfterTaskChange={invalidateAfterTaskChange}
-          onTaskClick={setEditingTask}
-        />
+        <>
+          <div className="block sm:hidden rounded-xl border bg-muted/40 p-6 text-center space-y-2">
+            <GanttChartSquare className="w-8 h-8 text-muted-foreground mx-auto" />
+            <p className="font-semibold text-sm">Gantt chart is best on desktop</p>
+            <p className="text-xs text-muted-foreground">Switch to List view to manage tasks on iPhone, or open on a larger screen to use the drag-and-drop Gantt.</p>
+            <button onClick={() => setViewMode("list")} className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-sm font-medium">
+              <List className="w-3.5 h-3.5" />Switch to List
+            </button>
+          </div>
+          <div className="hidden sm:block">
+            <GanttView
+              key={ganttKey}
+              phases={phases}
+              startDateObj={startDateObj}
+              updateTask={updateTask}
+              invalidateAfterTaskChange={invalidateAfterTaskChange}
+              onTaskClick={setEditingTask}
+            />
+          </div>
+        </>
       )}
 
       <Accordion
@@ -2143,7 +2157,7 @@ function TaskEditSheet({
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <Label htmlFor="owner">Owner</Label>
                   <Input id="owner" name="owner" defaultValue={task.owner || ""} className="mt-1" />

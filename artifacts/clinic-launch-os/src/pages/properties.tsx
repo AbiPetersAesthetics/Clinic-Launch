@@ -1962,7 +1962,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
           {/* Tabs */}
           <div className="p-6">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="w-full mb-6 grid grid-cols-6">
+              <TabsList className="w-full mb-6 grid grid-cols-3 sm:grid-cols-6 h-auto gap-0.5 p-1">
                 <TabsTrigger value="details" className="text-xs">Details</TabsTrigger>
                 <TabsTrigger value="checklist" className="text-xs">Checklist</TabsTrigger>
                 <TabsTrigger value="intelligence" className="text-xs">AI Analysis</TabsTrigger>
@@ -2921,7 +2921,7 @@ export default function PropertiesPage() {
     return (
       <div className="space-y-4 animate-pulse">
         <div className="h-12 bg-card rounded-lg" />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="h-48 bg-card rounded-lg" />
           <div className="h-48 bg-card rounded-lg" />
           <div className="h-48 bg-card rounded-lg" />

@@ -11,8 +11,8 @@ export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
     <div className="flex items-start justify-between gap-4 mb-8">
       <div className="min-w-0">
         <h1
-          className="text-foreground leading-tight"
-          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.9rem", fontWeight: 500 }}
+          className="text-foreground leading-tight text-[1.5rem] sm:text-[1.9rem]"
+          style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontWeight: 500 }}
         >
           {title}
         </h1>

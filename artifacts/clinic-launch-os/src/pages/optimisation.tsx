@@ -117,46 +117,48 @@ const TIER_BADGE: Record<string, string> = {
 function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSaving: boolean }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground py-3">No items in this category.</p>;
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Task</TableHead>
-          <TableHead>Phase</TableHead>
-          <TableHead className="text-right">Tier</TableHead>
-          <TableHead className="text-right">Selected</TableHead>
-          {showSaving && <TableHead className="text-right">Saving</TableHead>}
-          <TableHead>Rationale</TableHead>
-          <TableHead className="w-[40px]"></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {items.map(item => (
-          <TableRow key={item.taskId}>
-            <TableCell className="font-medium text-sm max-w-[180px] truncate">{item.taskTitle}</TableCell>
-            <TableCell className="text-xs text-muted-foreground">{item.phaseName}</TableCell>
-            <TableCell className="text-right">
-              <Badge className={`text-[10px] uppercase ${TIER_BADGE[item.costTier] ?? "bg-muted text-muted-foreground"}`}>
-                {item.costTier}
-              </Badge>
-            </TableCell>
-            <TableCell className="text-right text-sm">{formatGBP(item.selectedCost)}</TableCell>
-            {showSaving && (
-              <TableCell className={`text-right text-sm font-medium ${item.potentialSavingGbp > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                {item.potentialSavingGbp > 0 ? `+${formatGBP(item.potentialSavingGbp)}` : "—"}
-              </TableCell>
-            )}
-            <TableCell className="text-xs text-muted-foreground max-w-[260px]">{item.rationale}</TableCell>
-            <TableCell>
-              <Link href={`/project?taskId=${item.taskId}`}>
-                <Button variant="ghost" size="icon" className="h-7 w-7" title="View task in Project Plan">
-                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                </Button>
-              </Link>
-            </TableCell>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="min-w-[140px]">Task</TableHead>
+            <TableHead className="min-w-[100px]">Phase</TableHead>
+            <TableHead className="text-right min-w-[60px]">Tier</TableHead>
+            <TableHead className="text-right min-w-[80px]">Selected</TableHead>
+            {showSaving && <TableHead className="text-right min-w-[70px]">Saving</TableHead>}
+            <TableHead className="min-w-[180px]">Rationale</TableHead>
+            <TableHead className="w-[40px]"></TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {items.map(item => (
+            <TableRow key={item.taskId}>
+              <TableCell className="font-medium text-sm max-w-[180px] truncate">{item.taskTitle}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{item.phaseName}</TableCell>
+              <TableCell className="text-right">
+                <Badge className={`text-[10px] uppercase ${TIER_BADGE[item.costTier] ?? "bg-muted text-muted-foreground"}`}>
+                  {item.costTier}
+                </Badge>
+              </TableCell>
+              <TableCell className="text-right text-sm">{formatGBP(item.selectedCost)}</TableCell>
+              {showSaving && (
+                <TableCell className={`text-right text-sm font-medium ${item.potentialSavingGbp > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                  {item.potentialSavingGbp > 0 ? `+${formatGBP(item.potentialSavingGbp)}` : "—"}
+                </TableCell>
+              )}
+              <TableCell className="text-xs text-muted-foreground max-w-[260px]">{item.rationale}</TableCell>
+              <TableCell>
+                <Link href={`/project?taskId=${item.taskId}`}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" title="View task in Project Plan">
+                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                  </Button>
+                </Link>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
