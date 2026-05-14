@@ -2294,6 +2294,7 @@ function PropertyCard({
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
         navigate(data?.restored ? "/financials" : "/financials?generate=1");
       },
+      onError: () => toast({ title: "Failed to set active property", variant: "destructive" }),
     });
   };
 

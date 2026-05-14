@@ -77,7 +77,9 @@ router.delete("/properties/:id", async (req, res) => {
 // ─── Set Active Property ──────────────────────────────────────────────────────
 
 router.put("/properties/:id/set-active", async (req, res) => {
+  try {
   const id = parseInt(req.params["id"] as string);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
@@ -170,12 +172,18 @@ router.put("/properties/:id/set-active", async (req, res) => {
   });
 
   return res.json({ ...updated, restored: false });
+  } catch (err) {
+    console.error("[set-active] unhandled error:", err);
+    return res.status(500).json({ error: "Failed to set active property" });
+  }
 });
 
 // ─── Unset Active Property ────────────────────────────────────────────────────
 
 router.put("/properties/:id/unset-active", async (req, res) => {
+  try {
   const id = parseInt(req.params["id"] as string);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid property id" });
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
@@ -185,6 +193,10 @@ router.put("/properties/:id/unset-active", async (req, res) => {
     .returning();
 
   return res.json(updated);
+  } catch (err) {
+    console.error("[unset-active] unhandled error:", err);
+    return res.status(500).json({ error: "Failed to unset active property" });
+  }
 });
 
 // ─── Project Scoring Weights API ──────────────────────────────────────────────
