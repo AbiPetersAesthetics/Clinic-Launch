@@ -8,13 +8,11 @@ import {
   useUpdateProperty,
   useDeleteProperty,
   useUploadPropertyDocument,
-  useAnalyseProperty,
   useSetPropertyCompetitors,
   useSetPropertyActive,
   useUnsetPropertyActive,
   useGetPropertyRanking,
   useListPropertyAnalyses,
-  usePropertyAdvisorAction,
   useImportPropertyFromUrl,
   useConfirmPropertyUpload,
   useGetProjectScoringWeights,
@@ -808,15 +806,43 @@ function AdvisorPanel({ property }: { property: ClinicProperty }) {
   const [selectedAction, setSelectedAction] = useState<string | null>(null);
   const [customPrompt, setCustomPrompt] = useState("");
   const [result, setResult] = useState<string | null>(null);
-  const advisorAction = usePropertyAdvisorAction();
+  const [isRunning, setIsRunning] = useState(false);
+  const { toast } = useToast();
 
-  const handleRun = (action: string) => {
+  const handleRun = async (action: string) => {
     setSelectedAction(action);
     setResult(null);
-    advisorAction.mutate(
-      { id: property.id, data: { action: action as AdvisorActionBodyAction, prompt: customPrompt || undefined } },
-      { onSuccess: (data) => setResult(data.response) }
-    );
+    setIsRunning(true);
+    try {
+      const res = await fetch(`/api/properties/${property.id}/advisor-action`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, prompt: customPrompt || undefined }),
+      });
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.error) throw new Error(payload.error);
+            if (payload.content) setResult(prev => (prev ?? "") + payload.content);
+          } catch {}
+        }
+      }
+    } catch (err) {
+      toast({ title: "Advisor failed", description: err instanceof Error ? err.message : "Request failed", variant: "destructive" });
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   return (
@@ -827,7 +853,7 @@ function AdvisorPanel({ property }: { property: ClinicProperty }) {
           <button
             key={key}
             onClick={() => handleRun(key)}
-            disabled={advisorAction.isPending}
+            disabled={isRunning}
             className={`flex items-start gap-3 w-full rounded-lg border p-3 text-left transition-all hover:border-primary/50 hover:bg-primary/5 ${
               selectedAction === key ? "border-primary bg-primary/5" : "bg-card"
             }`}
@@ -837,7 +863,7 @@ function AdvisorPanel({ property }: { property: ClinicProperty }) {
               <p className="text-sm font-medium leading-tight">{label}</p>
               <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{description}</p>
             </div>
-            {advisorAction.isPending && selectedAction === key && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary mt-0.5" />}
+            {isRunning && selectedAction === key && <Loader2 className="w-4 h-4 animate-spin shrink-0 text-primary mt-0.5" />}
           </button>
         ))}
       </div>
@@ -1713,6 +1739,8 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [searchRadiusMeters, setSearchRadiusMeters] = useState(600);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showActiveConfirm, setShowActiveConfirm] = useState(false);
+  const [isAnalysing, setIsAnalysing] = useState(false);
+  const [analyseStage, setAnalyseStage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileName?: string; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
@@ -1722,7 +1750,6 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const setPropertyActive = useSetPropertyActive();
   const unsetPropertyActive = useUnsetPropertyActive();
   const uploadDocument = useUploadPropertyDocument();
-  const analyseProperty = useAnalyseProperty();
 
   const { data: latestAnalysisData } = useGetLatestPropertyAnalysis(
     property?.id ?? 0,
@@ -1800,16 +1827,50 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
     });
   };
 
-  const handleAnalyse = () => {
+  const handleAnalyse = async () => {
     setIntelligenceResult(null);
     setActiveTab("intelligence");
-    analyseProperty.mutate(
-      { id: property.id, data: { searchRadiusMeters } },
-      {
-        onSuccess: (data) => setIntelligenceResult(data),
-        onError: () => toast({ title: "Analysis failed", description: "Could not run AI analysis. Please try again.", variant: "destructive" }),
+    setIsAnalysing(true);
+    setAnalyseStage("Starting…");
+    try {
+      const res = await fetch(`/api/properties/${property.id}/analyse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ searchRadiusMeters }),
+      });
+      if (!res.body) throw new Error("No response body");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const payload = JSON.parse(line.slice(6));
+            if (payload.stage === "geocoding") setAnalyseStage("Locating property…");
+            else if (payload.stage === "competitors") setAnalyseStage("Mapping nearby competitors…");
+            else if (payload.stage === "analysing") setAnalyseStage("Running AI analysis — 60–90 seconds…");
+            else if (payload.stage === "saving") setAnalyseStage("Saving results…");
+            else if (payload.stage === "complete") {
+              setIntelligenceResult(payload.result);
+              queryClient.invalidateQueries({ queryKey: getGetLatestPropertyAnalysisQueryKey(property.id) });
+            } else if (payload.stage === "error") {
+              toast({ title: "Analysis failed", description: payload.error ?? "Please try again.", variant: "destructive" });
+            }
+          } catch {}
+        }
       }
-    );
+    } catch {
+      toast({ title: "Analysis failed", description: "Could not run AI analysis. Please try again.", variant: "destructive" });
+    } finally {
+      setIsAnalysing(false);
+      setAnalyseStage("");
+    }
   };
 
   const handleUploadClick = () => fileInputRef.current?.click();
@@ -1948,9 +2009,9 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                 {uploadDocument.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
                 Upload PDF
               </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleAnalyse} disabled={analyseProperty.isPending}>
-                {analyseProperty.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
-                {analyseProperty.isPending ? "Analysing…" : "Analyse"}
+              <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={handleAnalyse} disabled={isAnalysing}>
+                {isAnalysing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
+                {isAnalysing ? analyseStage ? analyseStage.split("…")[0] + "…" : "Analysing…" : "Analyse"}
               </Button>
               <div className="ml-auto flex gap-2">
                 <Button size="sm" variant="ghost" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => setShowDeleteConfirm(true)}>
@@ -2024,16 +2085,16 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
               </TabsContent>
 
               <TabsContent value="intelligence" className="space-y-4">
-                {analyseProperty.isPending && (
+                {isAnalysing && (
                   <div className="flex flex-col items-center justify-center py-16 gap-4">
                     <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    <div className="text-center">
+                    <div className="text-center space-y-1">
                       <p className="font-medium">Running AI Analysis…</p>
-                      <p className="text-sm text-muted-foreground">This takes 15–30 seconds</p>
+                      <p className="text-sm text-muted-foreground">{analyseStage || "Starting…"}</p>
                     </div>
                   </div>
                 )}
-                {!analyseProperty.isPending && !intelligenceResult && (
+                {!isAnalysing && !intelligenceResult && (
                   <div className="text-center py-12 space-y-4">
                     <Brain className="w-10 h-10 text-muted-foreground mx-auto" />
                     <div>
@@ -2045,7 +2106,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
                     </Button>
                   </div>
                 )}
-                {!analyseProperty.isPending && intelligenceResult && (
+                {!isAnalysing && intelligenceResult && (
                   <>
                     {intelligenceResult.isStale && (
                       <div className="flex items-center justify-between rounded-lg border border-amber-500/40 bg-amber-50 dark:bg-amber-950/30 p-3">

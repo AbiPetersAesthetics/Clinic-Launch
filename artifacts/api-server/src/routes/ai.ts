@@ -153,11 +153,13 @@ Respond in this exact JSON format only, no preamble:
   res.setHeader("Content-Type", "application/json");
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens: 4000,
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+    const completion = await openai.chat.completions.create(
+      { model: "gpt-5.1", messages: [{ role: "user", content: prompt }], max_completion_tokens: 4000 },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
@@ -454,11 +456,13 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      max_completion_tokens: 5000,
-      messages: [{ role: "user", content: masterPrompt }],
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 120_000);
+    const completion = await openai.chat.completions.create(
+      { model: "gpt-5.1", max_completion_tokens: 5000, messages: [{ role: "user", content: masterPrompt }] },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
 
     const raw = completion.choices[0]?.message?.content ?? "{}";
     // Strip markdown fences then extract just the JSON object (handles leading/trailing prose)
@@ -580,11 +584,13 @@ Rules:
   const max_completion_tokens = 3500;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      messages: [{ role: "user", content: prompt }],
-      max_completion_tokens,
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+    const completion = await openai.chat.completions.create(
+      { model: "gpt-5.1", messages: [{ role: "user", content: prompt }], max_completion_tokens },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
 
     const content = completion.choices[0]?.message?.content ?? "{}";
     const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();

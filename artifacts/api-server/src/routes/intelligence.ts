@@ -716,12 +716,18 @@ router.get("/properties/:id/analyses/compare", async (req, res) => {
   return res.json({ v1: analysis1, v2: analysis2 });
 });
 
-// ─── Full AI Property Analysis (persisted, all 8 sections) ───────────────────
+// ─── Full AI Property Analysis (persisted, all 8 sections) — SSE streaming ────
 
 router.post("/properties/:id/analyse", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
+
+  // SSE headers — keeps the connection alive and lets the frontend show progress
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  const send = (data: object) => res.write(`data: ${JSON.stringify(data)}\n\n`);
 
   const rawRadius = req.body?.searchRadiusMeters;
   const searchRadius = typeof rawRadius === "number" && rawRadius >= 200 && rawRadius <= 2000
@@ -743,7 +749,9 @@ Parking Spaces: ${property.parkingSpaces ?? "Unknown"}
 Frontage: ${property.frontageMeters || "Unknown"}m
 Notes: ${property.notes || "None"}`;
 
-  // ── Competition: Google Places → manual entries → empty ──
+  // ── Stage 1: Locate property ───────────────────────────────────────────────
+  send({ stage: "geocoding", message: "Locating property…" });
+
   const placesApiKey = process.env.GOOGLE_PLACES_API_KEY;
   let realCompetitors: PlacesCompetitor[] | null = null;
   let competitionDataSource: "google_places" | "manual" | "ai_estimate" = "ai_estimate";
@@ -752,11 +760,13 @@ Notes: ${property.notes || "None"}`;
     try {
       const coords = await geocodePostcode(property.postcode, placesApiKey);
       if (coords) {
+        // ── Stage 2: Map competitors ──────────────────────────────────────────
+        send({ stage: "competitors", message: `Mapping competitors within ${searchRadius}m…` });
         realCompetitors = await findNearbyCompetitors(coords.lat, coords.lng, placesApiKey, searchRadius);
         competitionDataSource = "google_places";
       }
     } catch {
-      // Fall through
+      // Fall through to AI estimate
     }
   }
 
@@ -777,6 +787,12 @@ Score saturation/opportunity based on this known competitor list. Return the com
       : `No competitor data available. Score saturation and opportunity based on your knowledge of ${property.postcode || property.address || "this area"} and typical UK aesthetics market density. Return an EMPTY competitors array — do not fabricate competitor names.`;
 
   const bedhamptonContext = await getBedhamptonContext();
+
+  // ── Stage 3: AI analysis ────────────────────────────────────────────────────
+  send({ stage: "analysing", message: "Running deep AI analysis — this takes 60–90 seconds…" });
+
+  // Keep connection alive with a heartbeat every 12s while the model works
+  const heartbeat = setInterval(() => send({ stage: "heartbeat" }), 12000);
 
   const analysisPrompt = `You are a senior commercial property consultant specialising in aesthetics clinic acquisitions in the UK. Conduct a thorough, expert-grade analysis of this property for use as a premium aesthetics clinic.
 
@@ -876,27 +892,43 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
 
   let rawAnalysis: unknown;
   try {
-    const response = await openai.chat.completions.create({
-      model: AI_MODEL,
-      max_completion_tokens: 12000,
-      messages: [{ role: "user", content: analysisPrompt }],
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 120_000);
+    const response = await openai.chat.completions.create(
+      {
+        model: AI_MODEL,
+        max_completion_tokens: 5000,
+        messages: [{ role: "user", content: analysisPrompt }],
+      },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
     const content = response.choices[0]?.message?.content ?? "{}";
     rawAnalysis = parseLLMJson(content);
   } catch (err) {
+    clearInterval(heartbeat);
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
-      return res.status(503).json({ error: "AI service is not configured. Please provision the OpenAI AI integration." });
+      send({ stage: "error", error: "AI service is not configured. Please provision the OpenAI AI integration." });
+    } else if (msg.includes("aborted") || msg.includes("AbortError")) {
+      send({ stage: "error", error: "Analysis timed out after 2 minutes. Please try again." });
+    } else {
+      send({ stage: "error", error: "AI analysis failed. Please try again." });
     }
-    return res.status(500).json({ error: "AI analysis failed. Please try again." });
+    res.end();
+    return;
   }
+  clearInterval(heartbeat);
 
   const validated = AnalysisSchema.safeParse(rawAnalysis);
   if (!validated.success) {
-    return res.status(500).json({
+    send({
+      stage: "error",
       error: "AI returned an unexpected response format. Please try again.",
       details: validated.error.issues.map(i => i.message).join("; "),
     });
+    res.end();
+    return;
   }
 
   const analysis = validated.data;
@@ -919,7 +951,9 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
     generatedAt: new Date().toISOString(),
   };
 
-  // Persist analysis to DB
+  // ── Stage 4: Persist ───────────────────────────────────────────────────────
+  send({ stage: "saving", message: "Saving analysis…" });
+
   const [latestExisting] = await db.select()
     .from(propertyAiAnalysesTable)
     .where(eq(propertyAiAnalysesTable.propertyId, id))
@@ -928,7 +962,6 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
 
   const newVersion = latestExisting ? latestExisting.version + 1 : 1;
 
-  // Determine confidence level based on AI grades
   const grades = [analysis.locationScore.grade, analysis.commercialViabilityScore.grade, analysis.clinicSuitabilityScore.grade];
   const aCount = grades.filter(g => g === "A").length;
   const fCount = grades.filter(g => g === "F" || g === "D").length;
@@ -953,15 +986,20 @@ Return a JSON object with EXACTLY this structure (no markdown, all 8 sections re
     } as Record<string, unknown>,
   }).returning();
 
-  return res.json({
-    ...fullResult,
-    analysisId: savedAnalysis.id,
-    version: newVersion,
-    isStale: false,
+  // ── Stage 5: Complete ──────────────────────────────────────────────────────
+  send({
+    stage: "complete",
+    result: {
+      ...fullResult,
+      analysisId: savedAnalysis.id,
+      version: newVersion,
+      isStale: false,
+    },
   });
+  res.end();
 });
 
-// ─── AI Advisor Actions ────────────────────────────────────────────────────────
+// ─── AI Advisor Actions — SSE streaming ───────────────────────────────────────
 
 router.post("/properties/:id/advisor-action", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
@@ -1011,30 +1049,32 @@ ${bedhamptonCtx}`;
     ? `${actionPrompts[action]}\n\nAdditional context from user: ${customPrompt}\n\nProperty details:\n${propertyContext}`
     : `${actionPrompts[action]}\n\nProperty details:\n${propertyContext}`;
 
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
   try {
-    const response = await openai.chat.completions.create({
+    const stream = await openai.chat.completions.create({
       model: AI_MODEL,
-      max_completion_tokens: 4000,
+      max_completion_tokens: 3000,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
+      stream: true,
     });
 
-    const content = response.choices[0]?.message?.content ?? "No response generated.";
-
-    return res.json({
-      action,
-      propertyId: id,
-      response: content,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
-      return res.status(503).json({ error: "AI service is not configured." });
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content;
+      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
     }
-    return res.status(500).json({ error: "AI advisor action failed. Please try again." });
+
+    res.write(`data: ${JSON.stringify({ done: true, action, propertyId: id })}\n\n`);
+    res.end();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
+    res.end();
   }
 });
 
@@ -1108,11 +1148,13 @@ For each result provide these fields exactly:
 Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: AI_MODEL,
-      max_completion_tokens: 3000,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+    const response = await openai.chat.completions.create(
+      { model: AI_MODEL, max_completion_tokens: 3000, messages: [{ role: "user", content: prompt }] },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
     const raw = response.choices[0]?.message?.content ?? '{"results":[]}';
     const parsed = parseLLMJson(raw);
     const validated = SearchResultAISchema.safeParse(parsed);
@@ -1124,6 +1166,9 @@ Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
       return res.status(503).json({ error: "AI service is not configured. Please set up the OpenAI integration." });
+    }
+    if (msg.includes("aborted") || msg.includes("AbortError")) {
+      return res.status(504).json({ error: "Search timed out. Please try again." });
     }
     return res.status(500).json({ error: "Property search failed. Please try again." });
   }
@@ -1239,25 +1284,26 @@ Return ONLY valid JSON, no markdown:
 
   let rawAnalysis: unknown;
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_completion_tokens: 2000,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: visionPrompt },
-            ...imageContent,
-          ],
-        },
-      ],
-    });
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+    const response = await openai.chat.completions.create(
+      {
+        model: "gpt-4o",
+        max_completion_tokens: 2000,
+        messages: [{ role: "user", content: [{ type: "text", text: visionPrompt }, ...imageContent] }],
+      },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
     const content = response.choices[0]?.message?.content ?? "{}";
     rawAnalysis = parseLLMJson(content);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
       return res.status(503).json({ error: "AI service is not configured. Please provision the OpenAI integration." });
+    }
+    if (msg.includes("aborted") || msg.includes("AbortError")) {
+      return res.status(504).json({ error: "Visual analysis timed out. Please try again." });
     }
     return res.status(500).json({ error: "Visual analysis failed. Please try again.", details: msg });
   }
