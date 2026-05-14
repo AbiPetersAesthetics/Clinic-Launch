@@ -388,6 +388,20 @@ export const LaunchTaskCostTier = {
   high: "high",
 } as const;
 
+export type TaskQuoteStatus = "pending" | "accepted" | "rejected";
+
+export interface TaskQuote {
+  id: string;
+  company: string;
+  contact?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  amount?: number | null;
+  notes?: string | null;
+  date?: string | null;
+  status: TaskQuoteStatus;
+}
+
 export interface LaunchTask {
   id: number;
   phaseId: number;
@@ -409,6 +423,7 @@ export interface LaunchTask {
   notes?: string | null;
   /** JSON array of file references [{name, url, type}] */
   files?: string | null;
+  quotes?: TaskQuote[] | null;
   isNonNegotiable: boolean;
   isCriticalRisk: boolean;
   sortOrder: number;

@@ -84,6 +84,10 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     updates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
   }
 
+  if (body.quotes !== undefined) {
+    updates.quotes = body.quotes ?? [];
+  }
+
   const [task] = await db.update(tasksTable)
     .set(updates)
     .where(eq(tasksTable.id, id))

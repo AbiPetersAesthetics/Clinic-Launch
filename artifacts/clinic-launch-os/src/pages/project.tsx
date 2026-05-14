@@ -14,7 +14,7 @@ import {
   getGetProjectDashboardQueryKey,
   getGetOptimisationAnalysisQueryKey,
 } from "@workspace/api-client-react";
-import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks } from "@workspace/api-client-react";
+import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks, TaskQuote } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
 import {
@@ -49,7 +49,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1819,10 +1819,14 @@ function TaskEditSheet({
   const [files, setFiles] = useState<string[]>([]);
   const [newFile, setNewFile] = useState("");
   const [dependencies, setDependencies] = useState<number[]>([]);
+  const [depSearch, setDepSearch] = useState("");
   const [costTier, setCostTier] = useState<"low" | "mid" | "high">("mid");
   const [costLow, setCostLow] = useState(0);
   const [costMid, setCostMid] = useState(0);
   const [costHigh, setCostHigh] = useState(0);
+  const [quotes, setQuotes] = useState<TaskQuote[]>([]);
+  const [addingQuote, setAddingQuote] = useState(false);
+  const [newQuote, setNewQuote] = useState<Partial<TaskQuote>>({ status: "pending" });
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
@@ -1894,18 +1898,32 @@ function TaskEditSheet({
     if (task) {
       setFiles(parseFiles(task.files));
       setDependencies(task.dependencies ?? []);
+      setDepSearch("");
       setCostTier((task.costTier as "low" | "mid" | "high") ?? "mid");
       setCostLow(task.costLow ?? 0);
       setCostMid(task.costMid ?? 0);
       setCostHigh(task.costHigh ?? 0);
+      setQuotes(Array.isArray(task.quotes) ? task.quotes : []);
+      setAddingQuote(false);
+      setNewQuote({ status: "pending" });
     }
   }, [task?.id]);
 
   const previewSelectedCost = costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
 
-  const allTasks = allPhases.flatMap((p) =>
-    (p.tasks ?? []).filter((t) => t.id !== task?.id).map((t) => ({ id: t.id, title: t.title, phaseName: p.name }))
-  );
+  const taskPhaseIndex = allPhases.findIndex((p) => (p.tasks ?? []).some((t) => t.id === task?.id));
+  const depPhases = allPhases
+    .map((p, i) => ({
+      ...p,
+      tasks: (p.tasks ?? [])
+        .filter((t) => t.id !== task?.id)
+        .filter((t) => {
+          const q = depSearch.trim().toLowerCase();
+          return !q || t.title.toLowerCase().includes(q);
+        }),
+      isFuture: taskPhaseIndex >= 0 && i > taskPhaseIndex,
+    }))
+    .filter((p) => p.tasks.length > 0);
 
   const handleAddFile = () => {
     const trimmed = newFile.trim();
@@ -1949,6 +1967,7 @@ function TaskEditSheet({
       isCriticalRisk: formData.get("isCriticalRisk") === "on",
       files: files.length > 0 ? JSON.stringify(files) : null,
       dependencies: dependencies.length > 0 ? dependencies : null,
+      quotes,
     };
 
     updateTask.mutate(
@@ -2146,34 +2165,209 @@ function TaskEditSheet({
 
               {/* Dependencies */}
               <div className="space-y-2">
-                <Label>Task Dependencies</Label>
-                <p className="text-xs text-muted-foreground">Select tasks that must complete before this one.</p>
-                {allTasks.length > 0 ? (
-                  <ScrollArea className="h-44 border rounded-md p-3 mt-1">
-                    <div className="space-y-1">
-                      {allTasks.map((t) => (
-                        <label
-                          key={t.id}
-                          className="flex items-start gap-2.5 cursor-pointer hover:bg-muted/50 rounded px-1 py-1.5 transition-colors"
-                        >
-                          <Checkbox
-                            checked={dependencies.includes(t.id)}
-                            onCheckedChange={() => toggleDependency(t.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 min-w-0">
-                            <span className="text-sm leading-snug">{t.title}</span>
-                            <span className="block text-[11px] text-muted-foreground">{t.phaseName}</span>
+                <div className="flex items-center justify-between">
+                  <Label>Task Dependencies</Label>
+                  {dependencies.length > 0 && (
+                    <span className="text-xs text-primary font-medium">{dependencies.length} selected</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">Select tasks that must be completed before this one can start.</p>
+                <div className="relative mt-1">
+                  <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                  <Input
+                    value={depSearch}
+                    onChange={e => setDepSearch(e.target.value)}
+                    placeholder="Search tasks…"
+                    className="pl-8 h-8 text-sm"
+                  />
+                </div>
+                {depPhases.length > 0 ? (
+                  <ScrollArea className="h-48 border rounded-md mt-1">
+                    <div className="p-2 space-y-3">
+                      {depPhases.map((phase) => (
+                        <div key={phase.id}>
+                          <p className={`text-[10px] font-semibold uppercase tracking-wider px-1 mb-1 ${phase.isFuture ? "text-muted-foreground/50" : "text-muted-foreground"}`}>
+                            {phase.name}{phase.isFuture && " (later phase)"}
+                          </p>
+                          <div className="space-y-0.5">
+                            {phase.tasks.map((t) => (
+                              <label
+                                key={t.id}
+                                className="flex items-start gap-2.5 cursor-pointer hover:bg-muted/50 rounded px-1.5 py-1.5 transition-colors"
+                              >
+                                <Checkbox
+                                  checked={dependencies.includes(t.id)}
+                                  onCheckedChange={() => toggleDependency(t.id)}
+                                  className="mt-0.5 shrink-0"
+                                />
+                                <span className="text-sm leading-snug">{t.title}</span>
+                              </label>
+                            ))}
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                   </ScrollArea>
                 ) : (
-                  <p className="text-xs text-muted-foreground mt-1 border rounded-md p-3">No other tasks available.</p>
+                  <p className="text-xs text-muted-foreground mt-1 border rounded-md p-3">
+                    {depSearch ? "No tasks match your search." : "No other tasks available."}
+                  </p>
                 )}
-                {dependencies.length > 0 && (
-                  <p className="text-xs text-primary mt-1">{dependencies.length} task{dependencies.length !== 1 ? "s" : ""} selected as dependencies.</p>
+              </div>
+
+              {/* Quotes */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Quotes</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs gap-1"
+                    onClick={() => { setAddingQuote(true); setNewQuote({ status: "pending" }); }}
+                  >
+                    <Plus className="w-3 h-3" />Add Quote
+                  </Button>
+                </div>
+
+                {addingQuote && (
+                  <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">New Quote</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Company *</Label>
+                        <div className="relative mt-1">
+                          <Building2 className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input
+                            value={newQuote.company ?? ""}
+                            onChange={e => setNewQuote(q => ({ ...q, company: e.target.value }))}
+                            placeholder="Company name"
+                            className="pl-8 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Contact</Label>
+                        <Input value={newQuote.contact ?? ""} onChange={e => setNewQuote(q => ({ ...q, contact: e.target.value }))} placeholder="Name" className="mt-1 h-8 text-sm" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Amount (£)</Label>
+                        <div className="relative mt-1">
+                          <PoundSterling className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input
+                            type="number"
+                            value={newQuote.amount ?? ""}
+                            onChange={e => setNewQuote(q => ({ ...q, amount: parseFloat(e.target.value) || undefined }))}
+                            placeholder="0"
+                            className="pl-8 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Phone</Label>
+                        <div className="relative mt-1">
+                          <Phone className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input value={newQuote.phone ?? ""} onChange={e => setNewQuote(q => ({ ...q, phone: e.target.value }))} placeholder="Phone" className="pl-8 h-8 text-sm" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Email</Label>
+                        <div className="relative mt-1">
+                          <Mail className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input type="email" value={newQuote.email ?? ""} onChange={e => setNewQuote(q => ({ ...q, email: e.target.value }))} placeholder="Email" className="pl-8 h-8 text-sm" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Date received</Label>
+                        <Input type="date" value={newQuote.date ?? ""} onChange={e => setNewQuote(q => ({ ...q, date: e.target.value }))} className="mt-1 h-8 text-sm" />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Status</Label>
+                        <Select value={newQuote.status ?? "pending"} onValueChange={v => setNewQuote(q => ({ ...q, status: v as TaskQuote["status"] }))}>
+                          <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="accepted">Accepted</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Notes</Label>
+                        <Textarea value={newQuote.notes ?? ""} onChange={e => setNewQuote(q => ({ ...q, notes: e.target.value }))} placeholder="Any additional notes…" className="mt-1 h-16 resize-none text-sm" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingQuote(false)}>Cancel</Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!newQuote.company?.trim()}
+                        onClick={() => {
+                          if (!newQuote.company?.trim()) return;
+                          const quote: TaskQuote = {
+                            id: `q_${Date.now()}`,
+                            company: newQuote.company.trim(),
+                            contact: newQuote.contact || null,
+                            phone: newQuote.phone || null,
+                            email: newQuote.email || null,
+                            amount: newQuote.amount ?? null,
+                            notes: newQuote.notes || null,
+                            date: newQuote.date || null,
+                            status: newQuote.status ?? "pending",
+                          };
+                          setQuotes(prev => [...prev, quote]);
+                          setAddingQuote(false);
+                          setNewQuote({ status: "pending" });
+                        }}
+                      >
+                        Save Quote
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {quotes.length > 0 ? (
+                  <div className="space-y-2">
+                    {quotes.map((q) => (
+                      <div key={q.id} className={`border rounded-lg p-3 space-y-1.5 text-sm ${q.status === "accepted" ? "border-primary/30 bg-primary/5" : q.status === "rejected" ? "opacity-60" : ""}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 font-semibold">
+                            <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            {q.company}
+                            {q.status === "accepted" && <CheckCircle2 className="w-3.5 h-3.5 text-primary shrink-0" />}
+                            {q.status === "pending" && <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Select value={q.status} onValueChange={v => setQuotes(prev => prev.map(x => x.id === q.id ? { ...x, status: v as TaskQuote["status"] } : x))}>
+                              <SelectTrigger className="h-6 text-[10px] w-24 shrink-0"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="accepted">Accepted</SelectItem>
+                                <SelectItem value="rejected">Rejected</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button type="button" size="icon" variant="ghost" className="h-6 w-6 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setQuotes(prev => prev.filter(x => x.id !== q.id))}>
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        {q.amount != null && (
+                          <p className="text-primary font-semibold">{formatGBP(q.amount)}</p>
+                        )}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          {q.contact && <span>{q.contact}</span>}
+                          {q.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{q.phone}</span>}
+                          {q.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{q.email}</span>}
+                          {q.date && <span>{new Date(q.date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>}
+                        </div>
+                        {q.notes && <p className="text-xs text-muted-foreground italic">{q.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : !addingQuote && (
+                  <p className="text-xs text-muted-foreground border rounded-md p-3">No quotes logged yet. Click "Add Quote" to record a supplier quote.</p>
                 )}
               </div>
 

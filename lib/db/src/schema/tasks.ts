@@ -1,6 +1,18 @@
-import { pgTable, serial, integer, text, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+
+export type TaskQuote = {
+  id: string;
+  company: string;
+  contact?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  amount?: number | null;
+  notes?: string | null;
+  date?: string | null;
+  status: "pending" | "accepted" | "rejected";
+};
 
 export const tasksTable = pgTable("launch_tasks", {
   id: serial("id").primaryKey(),
@@ -22,6 +34,7 @@ export const tasksTable = pgTable("launch_tasks", {
   dependencies: text("dependencies"), // JSON array of task IDs
   notes: text("notes"),
   files: text("files"), // JSON array of {name, url, type}
+  quotes: jsonb("quotes").$type<TaskQuote[]>().default([]),
   isNonNegotiable: boolean("is_non_negotiable").notNull().default(false),
   isCriticalRisk: boolean("is_critical_risk").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
