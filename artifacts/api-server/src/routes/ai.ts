@@ -233,6 +233,9 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     return { revenue, fixed, variable, net, occupancyPct, acv };
   }
 
+  // ── Fixed cost itemisation (computed first — used in financial calcs below) ──
+  const totalFixedItemsCost = fixedCostsRaw.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
+
   let financialContext = "No financial model entered yet.";
   let cashRunwayMonths = 0;
   let rentToRevenuePct = 0;
@@ -246,9 +249,14 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     const realistic = calcScenario(financial.realisticOccupancyPercent, financial.averageClientValueGbp, financial);
     const aggressive = calcScenario(financial.aggressiveOccupancyPercent, financial.wincAcvGbp || financial.averageClientValueGbp, financial);
 
-    // Break-even: fixed costs / (1 - variable cost %)
+    // Use itemised fixed cost total when available — the scenario's `fixed` field only
+    // sums legacy individual columns which may be incomplete if the user switched to
+    // the dynamic fixed cost items list.
+    const actualMonthlyFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : realistic.fixed;
+
+    // Break-even: actual fixed costs / (1 - variable cost ratio)
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
-    breakEvenRevenue = Math.round(realistic.fixed / (1 - variableRatio));
+    breakEvenRevenue = Math.round(actualMonthlyFixed / (1 - variableRatio));
 
     // Cash runway pre-opening
     const monthlyCashDrain = (financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp)
@@ -258,7 +266,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     // Rent as % of realistic revenue
     rentToRevenuePct = realistic.revenue > 0 ? Math.round((financial.rentGbp / realistic.revenue) * 100) : 0;
 
-    // VAT risk: current turnover + projected Winchester annual revenue vs £90k
+    // VAT risk: current turnover + projected annual revenue vs £90k
     const projectedAnnualWinc = realistic.revenue * 12;
     const combinedTurnover = (financial.vatCurrentTurnoverGbp || 0) + projectedAnnualWinc;
     vatRisk = combinedTurnover > 85000;
@@ -266,25 +274,30 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
       ? `ALERT: Combined turnover (£${Math.round(combinedTurnover / 1000)}k) likely exceeds £90k VAT threshold — mandatory VAT registration will add ~20% to client prices unless exempt treatments dominate`
       : `Combined annual turnover (£${Math.round(combinedTurnover / 1000)}k) is below the £90k VAT threshold`;
 
-    // Bedhampton coverage: how many months of Winchester fixed costs does Bedh revenue cover
-    bedhCoverageMonths = financial.existingClinicRevenueGbp > 0 && realistic.fixed > 0
-      ? parseFloat((financial.existingClinicRevenueGbp / realistic.fixed * 12).toFixed(1))
+    // Bedhampton coverage ratio: how many times Bedhampton monthly income covers
+    // the new clinic's monthly fixed costs. E.g. 2.4 means Bedh earns 2.4× fixed costs.
+    bedhCoverageMonths = actualMonthlyFixed > 0 && financial.existingClinicRevenueGbp > 0
+      ? parseFloat((financial.existingClinicRevenueGbp / actualMonthlyFixed).toFixed(1))
       : 0;
 
+    const netAfterFixed = (occ: typeof realistic) => occ.revenue - actualMonthlyFixed - occ.variable;
+
     financialContext = `=== THREE-SCENARIO FINANCIAL MODEL (for ${propertyLabel}) ===
+IMPORTANT: Use £${actualMonthlyFixed.toLocaleString()}/mo as the definitive monthly fixed cost figure (from itemised cost list). The scenario 'Fixed:' lines below show legacy category totals which may be incomplete.
 
 Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
-  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${conservative.net.toLocaleString()}/mo
+  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${netAfterFixed(conservative).toLocaleString()}/mo
 
 Realistic (${financial.realisticOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
-  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed: £${realistic.fixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${realistic.net.toLocaleString()}/mo
+  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${netAfterFixed(realistic).toLocaleString()}/mo
 
 Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${(financial.wincAcvGbp || financial.averageClientValueGbp)} ACV):
-  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed: £${aggressive.fixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${aggressive.net.toLocaleString()}/mo
+  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${netAfterFixed(aggressive).toLocaleString()}/mo
 
-Key ratios (Realistic scenario):
+Key ratios (Realistic scenario, using actual fixed costs):
   Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo
   Rent as % of revenue: ${rentToRevenuePct}% (industry guideline: aim for <15%)
+  Bedhampton income vs new clinic fixed costs: ${bedhCoverageMonths}× (Bedh earns ${bedhCoverageMonths}× the new clinic's monthly fixed costs — NOT 4 years' worth)
   Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Target ACV (new clinic): £${financial.wincAcvGbp || "not set"}
   Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
 
@@ -293,7 +306,6 @@ Personal finance:
   Nursing income: £${financial.nursingIncomeGbp}/mo | Cash runway savings: £${financial.runwaySavingsGbp.toLocaleString()}
   Pre-opening cash runway: ${cashRunwayMonths >= 99 ? "Secure (income exceeds burn)" : `${cashRunwayMonths} months`}
   Bedhampton income in model: £${financial.existingClinicRevenueGbp}/mo
-  Bedhampton coverage of new clinic fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of fixed costs covered per year` : "not calculated"}
   Self-funding buffer target: ${financial.selfFundingBufferPercent}% net margin
 
 VAT risk:
@@ -301,9 +313,6 @@ VAT risk:
 
 Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate: ${financial.repeatBookingRatePercent}%`;
   }
-
-  // ── Fixed cost itemisation ────────────────────────────────────────────────
-  const totalFixedItemsCost = fixedCostsRaw.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
   const fixedCostContext = fixedCostsRaw.length > 0
     ? `Itemised fixed costs (${fixedCostsRaw.length} items, £${totalFixedItemsCost.toLocaleString()}/mo total):\n${fixedCostsRaw.map((c) => `  • ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
     : "No itemised fixed costs entered yet — financial model uses category totals only.";

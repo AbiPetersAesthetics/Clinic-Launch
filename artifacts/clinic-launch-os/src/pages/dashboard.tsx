@@ -161,20 +161,62 @@ export default function DashboardPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
 
   // ── Go/No-Go recommendation ───────────────────────────────────────────────
+  const CACHE_KEY = "goNoGoResult_v1";
+  const CACHE_AT_KEY = "goNoGoResultAt_v1";
+  const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
+
   const [goNoGo, setGoNoGo] = useState<GoNoGoResult | null>(null);
   const [goNoGoLoading, setGoNoGoLoading] = useState(false);
   const [goNoGoError, setGoNoGoError] = useState<string | null>(null);
+  const [goNoGoStale, setGoNoGoStale] = useState(false);
+  const [goNoGoCachedAt, setGoNoGoCachedAt] = useState<string | null>(null);
+
+  function formatCachedAge(isoString: string | null): string {
+    if (!isoString) return "";
+    const ms = Date.now() - new Date(isoString).getTime();
+    const h = Math.floor(ms / (1000 * 60 * 60));
+    const m = Math.floor(ms / (1000 * 60));
+    if (h > 0) return `${h}h ago`;
+    if (m > 0) return `${m}m ago`;
+    return "just now";
+  }
 
   const runGoNoGo = useCallback(() => {
     setGoNoGoLoading(true);
     setGoNoGoError(null);
     fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" } })
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
-      .then((d: GoNoGoResult) => { setGoNoGo(d); setGoNoGoLoading(false); })
+      .then((d: GoNoGoResult) => {
+        setGoNoGo(d);
+        setGoNoGoLoading(false);
+        setGoNoGoStale(false);
+        const now = new Date().toISOString();
+        setGoNoGoCachedAt(now);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify(d));
+          localStorage.setItem(CACHE_AT_KEY, now);
+        } catch {}
+      })
       .catch((e: string) => { setGoNoGoError(typeof e === "string" ? e : "Analysis failed"); setGoNoGoLoading(false); });
   }, []);
 
-  useEffect(() => { runGoNoGo(); }, [runGoNoGo]);
+  // On mount: restore from cache if available; only auto-run if no cache exists
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      const cachedAt = localStorage.getItem(CACHE_AT_KEY);
+      if (cached && cachedAt) {
+        const parsed = JSON.parse(cached) as GoNoGoResult;
+        setGoNoGo(parsed);
+        setGoNoGoCachedAt(cachedAt);
+        setGoNoGoStale(Date.now() - new Date(cachedAt).getTime() > STALE_MS);
+        return; // Don't auto-run — user can hit Refresh
+      }
+    } catch {}
+    // No cache — fetch fresh
+    runGoNoGo();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) },
@@ -327,8 +369,18 @@ export default function DashboardPage() {
                       {goNoGo.verdictLabel}
                     </span>
                   )}
+                  {goNoGoStale && !goNoGoLoading && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
+                      Stale · {formatCachedAge(goNoGoCachedAt)}
+                    </span>
+                  )}
+                  {!goNoGoStale && goNoGoCachedAt && !goNoGoLoading && (
+                    <span className="text-[10px] text-muted-foreground">
+                      · {formatCachedAge(goNoGoCachedAt)}
+                    </span>
+                  )}
                 </div>
-                <Button variant="ghost" size="sm" onClick={runGoNoGo} disabled={goNoGoLoading} className="h-7 px-2 text-xs gap-1 shrink-0">
+                <Button variant="ghost" size="sm" onClick={runGoNoGo} disabled={goNoGoLoading} className={`h-7 px-2 text-xs gap-1 shrink-0 ${goNoGoStale ? "text-amber-600 hover:text-amber-700" : ""}`}>
                   <RefreshCw className={`w-3 h-3 ${goNoGoLoading ? "animate-spin" : ""}`} />
                   {goNoGoLoading ? "Analysing…" : "Refresh"}
                 </Button>
@@ -396,7 +448,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Cash Runway</div>
                         {c.bedhCoverageMonths > 0 && (
-                          <div className="text-[10px] text-muted-foreground mt-0.5">Bedh covers {c.bedhCoverageMonths}mo fixed/yr</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Bedh = {c.bedhCoverageMonths}× monthly fixed</div>
                         )}
                       </div>
                       <div className={`rounded-lg border p-3 text-center ${c.vatRisk ? "border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20" : "border-border/60 bg-background/60"}`}>
