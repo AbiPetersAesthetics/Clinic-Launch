@@ -6712,22 +6712,24 @@ export const useSearchProperties = <
 /**
  * @summary Get all phases with their tasks for a project
  */
-export const getGetPhasesWithTasksUrl = (projectId: number) => {
-  return `/api/projects/${projectId}/phases-with-tasks`;
+export const getGetPhasesWithTasksUrl = (projectId: number, propertyId?: number | null) => {
+  const base = `/api/projects/${projectId}/phases-with-tasks`;
+  return propertyId ? `${base}?propertyId=${propertyId}` : base;
 };
 
 export const getPhasesWithTasks = async (
   projectId: number,
+  propertyId?: number | null,
   options?: RequestInit,
 ): Promise<PhaseWithTasks[]> => {
-  return customFetch<PhaseWithTasks[]>(getGetPhasesWithTasksUrl(projectId), {
+  return customFetch<PhaseWithTasks[]>(getGetPhasesWithTasksUrl(projectId, propertyId), {
     ...options,
     method: "GET",
   });
 };
 
-export const getGetPhasesWithTasksQueryKey = (projectId: number) => {
-  return [`/api/projects/${projectId}/phases-with-tasks`] as const;
+export const getGetPhasesWithTasksQueryKey = (projectId: number, propertyId?: number | null) => {
+  return [`/api/projects/${projectId}/phases-with-tasks`, propertyId ?? null] as const;
 };
 
 export const getGetPhasesWithTasksQueryOptions = <
@@ -6735,6 +6737,7 @@ export const getGetPhasesWithTasksQueryOptions = <
   TError = ErrorType<unknown>,
 >(
   projectId: number,
+  propertyId?: number | null,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getPhasesWithTasks>>,
@@ -6747,12 +6750,12 @@ export const getGetPhasesWithTasksQueryOptions = <
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
   const queryKey =
-    queryOptions?.queryKey ?? getGetPhasesWithTasksQueryKey(projectId);
+    queryOptions?.queryKey ?? getGetPhasesWithTasksQueryKey(projectId, propertyId);
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getPhasesWithTasks>>
   > = ({ signal }) =>
-    getPhasesWithTasks(projectId, { signal, ...requestOptions });
+    getPhasesWithTasks(projectId, propertyId, { signal, ...requestOptions });
 
   return {
     queryKey,
@@ -6780,6 +6783,7 @@ export function useGetPhasesWithTasks<
   TError = ErrorType<unknown>,
 >(
   projectId: number,
+  propertyId?: number | null,
   options?: {
     query?: UseQueryOptions<
       Awaited<ReturnType<typeof getPhasesWithTasks>>,
@@ -6789,7 +6793,7 @@ export function useGetPhasesWithTasks<
     request?: SecondParameter<typeof customFetch>;
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
-  const queryOptions = getGetPhasesWithTasksQueryOptions(projectId, options);
+  const queryOptions = getGetPhasesWithTasksQueryOptions(projectId, propertyId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

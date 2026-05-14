@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { tasksTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { tasksTable, propertyTaskOverridesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -71,13 +71,74 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
   if (!existing) return res.status(404).json({ error: "Not found" });
 
   const body = req.body;
+  const propertyId: number | undefined = body.propertyId ? parseInt(body.propertyId) : undefined;
 
+  // If a propertyId is provided, upsert into property_task_overrides instead of the base task
+  if (propertyId) {
+    const overridableFields: Record<string, unknown> = {};
+    const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
+      "costTier", "costLow", "costMid", "costHigh", "dueDate", "durationDays", "files", "quotes"] as const;
+    for (const key of mutableKeys) {
+      if (body[key] !== undefined) overridableFields[key === "costTier" ? "costTier" : key] = body[key];
+    }
+
+    const tier = (body.costTier ?? existing.costTier) as string;
+    const low = body.costLow ?? existing.costLow;
+    const mid = body.costMid ?? existing.costMid;
+    const high = body.costHigh ?? existing.costHigh;
+    overridableFields.selectedCost = getSelectedCost(tier, low, mid, high);
+    overridableFields.updatedAt = new Date();
+
+    // Map camelCase to snake_case column names for Drizzle
+    const overrideRow = {
+      propertyId,
+      taskId: id,
+      status: body.status ?? null,
+      notes: body.notes ?? null,
+      owner: body.owner ?? null,
+      contractor: body.contractor ?? null,
+      supplier: body.supplier ?? null,
+      costTier: body.costTier ?? null,
+      costLow: body.costLow ?? null,
+      costMid: body.costMid ?? null,
+      costHigh: body.costHigh ?? null,
+      selectedCost: overridableFields.selectedCost as number,
+      dueDate: body.dueDate ?? null,
+      durationDays: body.durationDays ?? null,
+      files: body.files ?? null,
+      quotes: body.quotes ?? null,
+      updatedAt: new Date(),
+    };
+
+    const [existing_override] = await db.select().from(propertyTaskOverridesTable)
+      .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, id)));
+
+    if (existing_override) {
+      await db.update(propertyTaskOverridesTable)
+        .set(overrideRow)
+        .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, id)));
+    } else {
+      await db.insert(propertyTaskOverridesTable).values(overrideRow);
+    }
+
+    // Return the merged task
+    const mergedTask = {
+      ...existing,
+      ...overrideRow,
+      dependencies: existing.dependencies ? JSON.parse(existing.dependencies) : [],
+      _hasOverride: true,
+    };
+    return res.json(mergedTask);
+  }
+
+  // No propertyId — update the base task directly
   const tier = body.costTier ?? existing.costTier;
   const low = body.costLow ?? existing.costLow;
   const mid = body.costMid ?? existing.costMid;
   const high = body.costHigh ?? existing.costHigh;
 
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
+  delete updates.propertyId;
   updates.selectedCost = getSelectedCost(tier, low, mid, high);
 
   if (body.dependencies !== undefined) {

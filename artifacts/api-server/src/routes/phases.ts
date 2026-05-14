@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { phasesTable, tasksTable } from "@workspace/db";
-import { eq, sql } from "drizzle-orm";
+import { phasesTable, tasksTable, propertyTaskOverridesTable } from "@workspace/db";
+import { eq, sql, and, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -60,18 +60,49 @@ router.delete("/phases/:id", async (req, res) => {
 
 router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
+  const propertyId = req.query.propertyId ? parseInt(req.query.propertyId as string) : null;
+
   const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)).orderBy(phasesTable.sortOrder);
+
+  // Pre-load property overrides for all tasks if a property context is requested
+  let overrideMap = new Map<number, typeof propertyTaskOverridesTable.$inferSelect>();
+  if (propertyId) {
+    const overrides = await db.select().from(propertyTaskOverridesTable)
+      .where(eq(propertyTaskOverridesTable.propertyId, propertyId));
+    for (const o of overrides) overrideMap.set(o.taskId, o);
+  }
 
   const result = await Promise.all(phases.map(async (phase) => {
     const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id)).orderBy(tasksTable.sortOrder);
-    const parsedTasks = tasks.map(t => ({
-      ...t,
-      dependencies: t.dependencies ? JSON.parse(t.dependencies) : [],
-    }));
-    const totalCostLow = parsedTasks.reduce((sum, t) => sum + t.costLow, 0);
-    const totalCostMid = parsedTasks.reduce((sum, t) => sum + t.costMid, 0);
-    const totalCostHigh = parsedTasks.reduce((sum, t) => sum + t.costHigh, 0);
-    const selectedCostTotal = parsedTasks.reduce((sum, t) => sum + t.selectedCost, 0);
+    const parsedTasks = tasks.map(t => {
+      const o = overrideMap.get(t.id);
+      const merged = o ? {
+        ...t,
+        status: o.status ?? t.status,
+        notes: o.notes !== undefined ? o.notes : t.notes,
+        owner: o.owner !== undefined ? o.owner : t.owner,
+        contractor: o.contractor !== undefined ? o.contractor : t.contractor,
+        supplier: o.supplier !== undefined ? o.supplier : t.supplier,
+        costTier: o.costTier ?? t.costTier,
+        costLow: o.costLow ?? t.costLow,
+        costMid: o.costMid ?? t.costMid,
+        costHigh: o.costHigh ?? t.costHigh,
+        selectedCost: o.selectedCost ?? t.selectedCost,
+        dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
+        durationDays: o.durationDays !== undefined ? o.durationDays : t.durationDays,
+        files: o.files !== undefined ? o.files : t.files,
+        quotes: o.quotes !== undefined ? o.quotes : t.quotes,
+        _hasOverride: true,
+      } : { ...t, _hasOverride: false };
+      return {
+        ...merged,
+        dependencies: t.dependencies ? JSON.parse(t.dependencies) : [],
+      };
+    });
+    const totalCostLow = parsedTasks.reduce((sum, t) => sum + (t.costLow ?? 0), 0);
+    const totalCostMid = parsedTasks.reduce((sum, t) => sum + (t.costMid ?? 0), 0);
+    const totalCostHigh = parsedTasks.reduce((sum, t) => sum + (t.costHigh ?? 0), 0);
+    const selectedCostTotal = parsedTasks.reduce((sum, t) => sum + (t.selectedCost ?? 0), 0);
     const completedTaskCount = parsedTasks.filter(t => t.status === "complete").length;
     return {
       ...phase,

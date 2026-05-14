@@ -530,9 +530,12 @@ export interface UpdateTaskBody {
   dependencies?: number[] | null;
   notes?: string | null;
   files?: string | null;
+  quotes?: TaskQuote[] | null;
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
+  /** When set, saves changes as a property-scoped override instead of updating the base task */
+  propertyId?: number | null;
 }
 
 export interface FinancialModel {

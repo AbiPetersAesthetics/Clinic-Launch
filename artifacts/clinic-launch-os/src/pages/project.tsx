@@ -13,6 +13,8 @@ import {
   useGetProjectDashboard,
   getGetProjectDashboardQueryKey,
   getGetOptimisationAnalysisQueryKey,
+  useListProperties,
+  getListPropertiesQueryKey,
 } from "@workspace/api-client-react";
 import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks, TaskQuote } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
@@ -705,6 +707,7 @@ export default function ProjectPage() {
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
+  const [viewMasterPlan, setViewMasterPlan] = useState(false);
 
   const highlightedTaskId = (() => {
     const params = new URLSearchParams(window.location.search);
@@ -758,8 +761,14 @@ export default function ProjectPage() {
     );
   };
 
-  const { data: phases, isLoading: isPhasesLoading } = useGetPhasesWithTasks(PROJECT_ID, {
-    query: { queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID), enabled: true },
+  const { data: properties } = useListProperties(PROJECT_ID, {
+    query: { queryKey: getListPropertiesQueryKey(PROJECT_ID) },
+  });
+  const activeProperty = properties?.find((p) => p.isActiveForProject) ?? null;
+  const activePropertyId = !viewMasterPlan && activeProperty ? activeProperty.id : null;
+
+  const { data: phases, isLoading: isPhasesLoading } = useGetPhasesWithTasks(PROJECT_ID, activePropertyId, {
+    query: { queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId), enabled: true },
   });
 
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
@@ -786,21 +795,22 @@ export default function ProjectPage() {
   const updateTask = useUpdateTask();
 
   const invalidateAfterTaskChange = () => {
-    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId) });
+    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, null) });
     queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
   };
 
   const handleCostTierChange = (task: LaunchTask, newTier: "low" | "mid" | "high") => {
     updateTask.mutate(
-      { id: task.id, data: { costTier: newTier } },
+      { id: task.id, data: { costTier: newTier, ...(activePropertyId ? { propertyId: activePropertyId } : {}) } },
       { onSuccess: invalidateAfterTaskChange }
     );
   };
 
   const handleStatusChange = (task: LaunchTask, newStatus: UpdateTaskBodyStatus) => {
     updateTask.mutate(
-      { id: task.id, data: { status: newStatus } },
+      { id: task.id, data: { status: newStatus, ...(activePropertyId ? { propertyId: activePropertyId } : {}) } },
       { onSuccess: invalidateAfterTaskChange }
     );
   };
@@ -1146,6 +1156,23 @@ export default function ProjectPage() {
           title="Project Plan"
           subtitle="Set your key dates, then manage phases and tasks."
         />
+        {activeProperty && (
+          <div className={`no-print flex items-center gap-2 px-3 py-2 rounded-lg border text-sm mt-2 ${viewMasterPlan ? "bg-muted/50 border-muted-foreground/20 text-muted-foreground" : "bg-primary/8 border-primary/25 text-foreground"}`}>
+            <Building2 className={`w-3.5 h-3.5 shrink-0 ${viewMasterPlan ? "text-muted-foreground" : "text-primary"}`} />
+            <span className="flex-1 min-w-0">
+              {viewMasterPlan
+                ? <span>Viewing <strong>master plan</strong> — changes here update the shared baseline for all properties.</span>
+                : <span>Viewing plan for <strong className="text-primary">{activeProperty.address}</strong> — task updates are saved for this property only.</span>
+              }
+            </span>
+            <button
+              onClick={() => setViewMasterPlan(v => !v)}
+              className="shrink-0 text-xs font-medium underline underline-offset-2 hover:no-underline"
+            >
+              {viewMasterPlan ? `Switch to ${activeProperty.address}` : "View master plan"}
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-2 shrink-0 mt-1">
         <button
           onClick={() => setShowExport(true)}
@@ -1653,6 +1680,7 @@ export default function ProjectPage() {
       <TaskEditSheet
         task={editingTask}
         allPhases={phases ?? []}
+        activePropertyId={activePropertyId}
         onClose={() => setEditingTask(null)}
       />
 
@@ -1807,10 +1835,12 @@ function AddTaskSheet({
 function TaskEditSheet({
   task,
   allPhases,
+  activePropertyId,
   onClose,
 }: {
   task: LaunchTask | null;
   allPhases: PhaseWithTasks[];
+  activePropertyId: number | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -1968,13 +1998,15 @@ function TaskEditSheet({
       files: files.length > 0 ? JSON.stringify(files) : null,
       dependencies: dependencies.length > 0 ? dependencies : null,
       quotes,
+      ...(activePropertyId ? { propertyId: activePropertyId } : {}),
     };
 
     updateTask.mutate(
       { id: task.id, data },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId) });
+          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, null) });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           onClose();
