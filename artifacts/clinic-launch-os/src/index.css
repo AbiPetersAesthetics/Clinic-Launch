@@ -75,15 +75,15 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Abi Peters Aesthetics — warm off-white body */
-  --background: 36 25% 97%;
-  --foreground: 163 22% 14%;
+  /* Abi Peters Aesthetics — clean neutral white body */
+  --background: 220 20% 97%;
+  --foreground: 220 15% 11%;
 
-  --border: 36 16% 88%;
+  --border: 220 13% 90%;
 
   --card: 0 0% 100%;
-  --card-foreground: 163 22% 14%;
-  --card-border: 36 16% 88%;
+  --card-foreground: 220 15% 11%;
+  --card-border: 220 13% 90%;
 
   /* Sidebar — dark forest green matching their nav */
   --sidebar: 163 28% 12%;
@@ -97,26 +97,26 @@
   --sidebar-ring: 161 40% 52%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 163 22% 14%;
-  --popover-border: 36 16% 88%;
+  --popover-foreground: 220 15% 11%;
+  --popover-border: 220 13% 90%;
 
   /* Primary — forest green accent */
   --primary: 163 35% 33%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 36 18% 92%;
-  --secondary-foreground: 163 22% 14%;
+  --secondary: 220 13% 93%;
+  --secondary-foreground: 220 15% 11%;
 
-  --muted: 36 22% 94%;
-  --muted-foreground: 163 12% 42%;
+  --muted: 220 14% 96%;
+  --muted-foreground: 220 9% 46%;
 
-  --accent: 36 22% 93%;
-  --accent-foreground: 163 22% 14%;
+  --accent: 220 13% 95%;
+  --accent-foreground: 220 15% 11%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 36 16% 88%;
+  --input: 220 13% 90%;
   --ring: 163 35% 33%;
 
   --chart-1: 163 35% 33%;
@@ -131,14 +131,14 @@
 
   --radius: 0.5rem;
 
-  --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
-  --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0px 2px 4px 0px rgba(0, 0, 0, 0.05), 0px 1px 2px -1px rgba(0, 0, 0, 0.05);
-  --shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0px 10px 15px -3px rgba(0, 0, 0, 0.05), 0px 4px 6px -4px rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0px 20px 25px -5px rgba(0, 0, 0, 0.05), 0px 8px 10px -6px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.1);
-  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.05);
+  --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
+  --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.07);
+  --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.05), 0px 1px 4px 0px rgba(0, 0, 0, 0.06);
+  --shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.07), 0px 2px 8px 0px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0px 4px 6px -1px rgba(0, 0, 0, 0.08), 0px 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0px 10px 15px -3px rgba(0, 0, 0, 0.08), 0px 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0px 25px 50px -12px rgba(0, 0, 0, 0.15);
+  --shadow-2xl: 0px 2px 0px 0px rgba(0,0,0,0.06);
 
   --tracking-normal: 0em;
   --spacing: 0.25rem;
