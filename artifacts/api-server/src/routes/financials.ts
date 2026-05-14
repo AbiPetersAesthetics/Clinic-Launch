@@ -268,14 +268,15 @@ function calcOwner(winc: any, bedh: any, model: any, nursingIncome: number) {
 // ─── Property rent/rates fallback ─────────────────────────────────────────────
 
 async function applyPropertyFallback(model: any, projectId: number) {
-  if (model.rentGbp === 0 || model.ratesGbp === 0) {
-    const [activeProperty] = await db.select()
-      .from(propertiesTable)
-      .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-    if (activeProperty) {
-      if (model.rentGbp === 0 && activeProperty.monthlyRentGbp) model.rentGbp = activeProperty.monthlyRentGbp;
-      if (model.ratesGbp === 0 && activeProperty.businessRatesGbp) model.ratesGbp = Math.round(activeProperty.businessRatesGbp / 12);
-    }
+  const [activeProperty] = await db.select()
+    .from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+  if (activeProperty) {
+    // Always derive property-specific fields from the active property record —
+    // these must always reflect the currently selected property.
+    if (activeProperty.monthlyRentGbp != null) model.rentGbp = activeProperty.monthlyRentGbp;
+    if (activeProperty.businessRatesGbp != null) model.ratesGbp = Math.round(activeProperty.businessRatesGbp / 12);
+    model.vatOnRent = activeProperty.vatOnRent ?? false;
   }
   return model;
 }
@@ -303,22 +304,19 @@ router.put("/projects/:projectId/financial", async (req, res) => {
     [model] = await db.insert(financialsTable).values({ ...body, projectId }).returning();
   }
 
-  // Auto-snapshot to the active property so switching back restores this state
+  // Sync property-specific fields back to the active property record so GET
+  // /financial always reads consistent values from the property source of truth.
   try {
     const [activeProperty] = await db.select().from(propertiesTable)
       .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-    if (activeProperty && model) {
-      const currentItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
-      const { id: _id, projectId: _pid, createdAt: _ca, updatedAt: _ua, ...modelFields } = model as any;
-      await db.update(propertiesTable)
-        .set({
-          savedFinancialModel: modelFields,
-          savedFixedCostItems: currentItems.map(({ id: _i, projectId: _p, createdAt: _c, updatedAt: _u, ...rest }) => rest),
-          updatedAt: new Date(),
-        })
-        .where(eq(propertiesTable.id, activeProperty.id));
+    if (activeProperty) {
+      const propUpdates: Record<string, any> = { updatedAt: new Date() };
+      if (typeof body.rentGbp === "number")   propUpdates.monthlyRentGbp = body.rentGbp;
+      if (typeof body.ratesGbp === "number")  propUpdates.businessRatesGbp = body.ratesGbp * 12;
+      if (typeof body.vatOnRent === "boolean") propUpdates.vatOnRent = body.vatOnRent;
+      await db.update(propertiesTable).set(propUpdates).where(eq(propertiesTable.id, activeProperty.id));
     }
-  } catch { /* non-fatal — snapshot failed but save succeeded */ }
+  } catch { /* non-fatal */ }
 
   res.json(model);
 });

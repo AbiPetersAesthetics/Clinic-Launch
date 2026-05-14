@@ -81,32 +81,12 @@ router.put("/properties/:id/set-active", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  // ── Step 1: Snapshot current active property's financial model before switching ──
-  const [currentActive] = await db.select().from(propertiesTable)
-    .where(and(
-      eq(propertiesTable.projectId, property.projectId),
-      eq(propertiesTable.isActiveForProject, true)
-    ));
+  const monthlyRent = property.monthlyRentGbp ?? 0;
+  const monthlyRates = property.businessRatesGbp ? Math.round(property.businessRatesGbp / 12) : 0;
+  const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
+  const vatOnRent = property.vatOnRent ?? false;
 
-  if (currentActive && currentActive.id !== id) {
-    const [currentModel] = await db.select().from(financialsTable)
-      .where(eq(financialsTable.projectId, property.projectId));
-    const currentItems = await db.select().from(fixedCostItemsTable)
-      .where(eq(fixedCostItemsTable.projectId, property.projectId));
-
-    if (currentModel) {
-      const { id: _id, projectId: _pid, createdAt: _ca, updatedAt: _ua, ...modelFields } = currentModel as any;
-      await db.update(propertiesTable)
-        .set({
-          savedFinancialModel: modelFields,
-          savedFixedCostItems: currentItems.map(({ id: _i, projectId: _p, createdAt: _c, updatedAt: _u, ...rest }) => rest),
-          updatedAt: new Date(),
-        })
-        .where(eq(propertiesTable.id, currentActive.id));
-    }
-  }
-
-  // ── Step 2: Clear active flag on all other properties ──────────────────────
+  // ── Step 1: Clear active flag on all other properties ──────────────────────
   await db.update(propertiesTable)
     .set({ isActiveForProject: false })
     .where(and(
@@ -114,98 +94,77 @@ router.put("/properties/:id/set-active", async (req, res) => {
       eq(propertiesTable.isActiveForProject, true)
     ));
 
-  // ── Step 3: Set this property as active ────────────────────────────────────
+  // ── Step 2: Set this property as active ────────────────────────────────────
   const [updated] = await db.update(propertiesTable)
     .set({ isActiveForProject: true, pipelineStatus: "selected", status: "active", updatedAt: new Date() })
     .where(eq(propertiesTable.id, id))
     .returning();
 
-  // ── Step 4: Restore saved assumptions if this property has them ─────────────
-  if (property.savedFinancialModel && property.savedFixedCostItems) {
-    const saved = property.savedFinancialModel as Record<string, any>;
-    const savedItems = property.savedFixedCostItems as Array<Record<string, any>>;
+  // ── Step 3: Update ONLY property-specific fields in the financial model ─────
+  // All other assumptions (variable costs, ACV, occupancy, etc.) are preserved.
+  const [existingModel] = await db.select().from(financialsTable)
+    .where(eq(financialsTable.projectId, property.projectId));
 
-    const [existingModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, property.projectId));
-    if (existingModel) {
-      await db.update(financialsTable).set({ ...saved, updatedAt: new Date() }).where(eq(financialsTable.projectId, property.projectId));
-    } else {
-      await db.insert(financialsTable).values({ projectId: property.projectId, ...saved });
-    }
-
-    await db.delete(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, property.projectId));
-    if (savedItems.length > 0) {
-      await db.insert(fixedCostItemsTable).values(savedItems.map(item => ({ ...item, projectId: property.projectId })));
-    }
-
-    return res.json({ ...updated, restored: true });
-  }
-
-  // ── Step 5: No saved assumptions — full reset, AI will populate ────────────
-  const monthlyRent = property.monthlyRentGbp ?? 0;
-  const monthlyRates = property.businessRatesGbp ? Math.round(property.businessRatesGbp / 12) : 0;
-  const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
-  const vatOnRent = property.vatOnRent ?? false;
-
-  const resetFields = {
-    // Property-derived values (from selected property)
-    rentGbp: monthlyRent,
-    ratesGbp: monthlyRates,
-    vatOnRent,
-    // All assumptions reset to blank/defaults — AI will populate these
-    utilitiesGbp: 0, internetGbp: 0, insuranceGbp: 0, accountantGbp: 0,
-    softwareGbp: 0, wasteContractGbp: 0, cleanerGbp: 0, subscriptionsGbp: 0,
-    financeRepaymentsGbp: 0,
-    stockPercent: 0, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
-    wincAcvGbp: 0, treatmentRoomsCount: 1, practitionerHoursPerDay: 7, workingDaysPerMonth: 22,
-    conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0, aggressiveOccupancyPercent: 0,
-    repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
-    selfFundingBufferPercent: 20,
-    existingClinicRevenueGbp: 0, bedhStockPercent: 35,
-    bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0,
-    bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-    ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0,
-    nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
-    vatCurrentTurnoverGbp: 0,
-    updatedAt: new Date(),
-  };
-
-  const [existingModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, property.projectId));
   if (existingModel) {
-    await db.update(financialsTable).set(resetFields).where(eq(financialsTable.projectId, property.projectId));
+    await db.update(financialsTable)
+      .set({ rentGbp: monthlyRent, ratesGbp: monthlyRates, vatOnRent, updatedAt: new Date() })
+      .where(eq(financialsTable.projectId, property.projectId));
   } else {
-    await db.insert(financialsTable).values({ projectId: property.projectId, ...resetFields });
+    await db.insert(financialsTable).values({
+      projectId: property.projectId,
+      rentGbp: monthlyRent, ratesGbp: monthlyRates, vatOnRent,
+    });
   }
 
-  // ── Full reset of fixed cost items — delete all, re-seed from defaults ─────
-  await db.delete(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, property.projectId));
+  // ── Step 4: Sync property amounts into matching fixed cost items ────────────
+  // Only updates Rent/Lease, Business Rates, Service Charge rows — leaves
+  // every other fixed cost item (utilities, software, etc.) untouched.
+  const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const existingItems = await db.select().from(fixedCostItemsTable)
+    .where(eq(fixedCostItemsTable.projectId, property.projectId));
 
-  const defaultItems: { name: string; amountGbp: number; costType: string; sortOrder: number }[] = [
-    { name: "Rent / Lease",                    amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
-    { name: "Service Charge",                  amountGbp: monthlyServiceCharge, costType: "unique", sortOrder: 1 },
-    { name: "Business Rates",                  amountGbp: monthlyRates,         costType: "unique", sortOrder: 2 },
-    { name: "Utilities (Gas & Electric)",      amountGbp: 0,                    costType: "unique", sortOrder: 3 },
-    { name: "Internet / WiFi",                 amountGbp: 0,                    costType: "unique", sortOrder: 4 },
-    { name: "ANS Software",                    amountGbp: 0,                    costType: "dual",   sortOrder: 5 },
-    { name: "Card Terminal Rental",            amountGbp: 0,                    costType: "dual",   sortOrder: 6 },
-    { name: "Insurance (Indemnity + Premises)",amountGbp: 0,                    costType: "dual",   sortOrder: 7 },
-    { name: "Accountant",                      amountGbp: 0,                    costType: "dual",   sortOrder: 8 },
-    { name: "Waste Contract",                  amountGbp: 0,                    costType: "unique", sortOrder: 9 },
-    { name: "Cleaner",                         amountGbp: 0,                    costType: "unique", sortOrder: 10 },
-    { name: "Marketing Budget",                amountGbp: 0,                    costType: "unique", sortOrder: 11 },
-    { name: "Subscriptions & Sundries",        amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
-  ];
+  if (existingItems.length > 0) {
+    for (const item of existingItems) {
+      const n = normName(item.name);
+      let newAmount: number | null = null;
+      if (n.includes("rent") || n.includes("lease")) newAmount = monthlyRent;
+      else if (n.includes("rate") && !n.includes("stock") && !n.includes("booking") && !n.includes("commission")) newAmount = monthlyRates;
+      else if (n.includes("service") && (n.includes("charge") || n.includes("estate"))) newAmount = monthlyServiceCharge;
+      if (newAmount !== null) {
+        await db.update(fixedCostItemsTable)
+          .set({ amountGbp: newAmount, updatedAt: new Date() })
+          .where(eq(fixedCostItemsTable.id, item.id));
+      }
+    }
+  } else {
+    // First time — no items yet, seed a minimal default list
+    const defaultItems = [
+      { name: "Rent / Lease",                     amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
+      { name: "Service Charge",                   amountGbp: monthlyServiceCharge, costType: "unique", sortOrder: 1 },
+      { name: "Business Rates",                   amountGbp: monthlyRates,         costType: "unique", sortOrder: 2 },
+      { name: "Utilities (Gas & Electric)",       amountGbp: 0,                    costType: "unique", sortOrder: 3 },
+      { name: "Internet / WiFi",                  amountGbp: 0,                    costType: "unique", sortOrder: 4 },
+      { name: "ANS Software",                     amountGbp: 0,                    costType: "dual",   sortOrder: 5 },
+      { name: "Card Terminal Rental",             amountGbp: 0,                    costType: "dual",   sortOrder: 6 },
+      { name: "Insurance (Indemnity + Premises)", amountGbp: 0,                    costType: "dual",   sortOrder: 7 },
+      { name: "Accountant",                       amountGbp: 0,                    costType: "dual",   sortOrder: 8 },
+      { name: "Waste Contract",                   amountGbp: 0,                    costType: "unique", sortOrder: 9 },
+      { name: "Cleaner",                          amountGbp: 0,                    costType: "unique", sortOrder: 10 },
+      { name: "Marketing Budget",                 amountGbp: 0,                    costType: "unique", sortOrder: 11 },
+      { name: "Subscriptions & Sundries",         amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
+    ];
+    await db.insert(fixedCostItemsTable).values(
+      defaultItems.map(item => ({ projectId: property.projectId, ...item }))
+    );
+  }
 
-  await db.insert(fixedCostItemsTable).values(
-    defaultItems.map(item => ({ projectId: property.projectId, ...item }))
-  );
-
-  // Create a Decision Log entry
+  // ── Step 5: Log the property selection decision ─────────────────────────────
   const annualCost = (monthlyRent + monthlyRates) * 12;
   await db.insert(decisionsTable).values({
     projectId: property.projectId,
     title: `Selected ${property.address || "property"} as active clinic location`,
-    reasoning: `Property at ${property.address || "unknown address"} (${property.postcode || "no postcode"}) has been selected as the active project location. Monthly rent: £${monthlyRent.toFixed(0)}, monthly rates: £${monthlyRates.toFixed(0)}. Rent and business rates have been automatically synced into the financial model.`,
-    expectedImpact: `Annual occupancy cost of approximately £${annualCost.toFixed(0)} has been updated in the financial model.`,
+    reasoning: `Property at ${property.address || "unknown address"} (${property.postcode || "no postcode"}) set as active. Monthly rent: £${monthlyRent.toFixed(0)}, monthly rates: £${monthlyRates.toFixed(0)}. Property costs synced — all other financial assumptions preserved.`,
+    expectedImpact: `Annual occupancy cost of approximately £${annualCost.toFixed(0)} synced into the financial model.`,
     financialImpactGbp: -annualCost,
     category: "property",
   });

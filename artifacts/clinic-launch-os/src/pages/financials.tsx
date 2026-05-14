@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -305,9 +305,48 @@ export default function FinancialsPage() {
     }
   });
 
+  // ── Auto-save ──────────────────────────────────────────────────────────────
+  const [saveStatus, setSaveStatus] = useState<"idle" | "unsaved" | "saving" | "saved">("idle");
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isSilentReset = useRef(false);
+
+  const doSave = useCallback((values: Record<string, any>) => {
+    const { vatOnRent: vatOnRentVal, ...rest } = values;
+    const processed = {
+      ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
+      vatOnRent: Boolean(vatOnRentVal),
+    };
+    setSaveStatus("saving");
+    upsertModel.mutate({ projectId: PROJECT_ID, data: processed }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+        queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+        runCalculation();
+        setSaveStatus("saved");
+      },
+      onError: () => setSaveStatus("unsaved"),
+    });
+  }, []);
+
+  useEffect(() => {
+    const subscription = form.watch((values) => {
+      if (isSilentReset.current) return;
+      setSaveStatus("unsaved");
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = setTimeout(() => {
+        doSave(values as Record<string, any>);
+      }, 1500);
+    });
+    return () => {
+      subscription.unsubscribe();
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [form, doSave]);
+
   useEffect(() => {
     if (model) {
       const m = model as any;
+      isSilentReset.current = true;
       form.reset({
         rentGbp: m.rentGbp ?? 0, ratesGbp: m.ratesGbp ?? 0, vatOnRent: m.vatOnRent ?? false,
         utilitiesGbp: m.utilitiesGbp ?? 0, internetGbp: m.internetGbp ?? 0,
@@ -336,6 +375,9 @@ export default function FinancialsPage() {
         nursingIncomeGbp: m.nursingIncomeGbp ?? 4500,
         targetDrawingsGbp: m.targetDrawingsGbp ?? 4000,
       });
+      // Allow watch subscription to fire again after reset settles
+      setTimeout(() => { isSilentReset.current = false; }, 50);
+      setSaveStatus("saved");
       runCalculation();
     }
   }, [model]);
@@ -422,19 +464,9 @@ export default function FinancialsPage() {
   }, []);
 
   const onSubmit = (values: Record<string, any>) => {
-    const { vatOnRent: vatOnRentVal, ...rest } = values;
-    const processed = {
-      ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
-      vatOnRent: Boolean(vatOnRentVal),
-    };
-    upsertModel.mutate({ projectId: PROJECT_ID, data: processed }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-        queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
-        runCalculation();
-        toast({ title: "Model Saved", description: "Assumptions updated and projections recalculated." });
-      },
-    });
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    doSave(values);
+    toast({ title: "Saved", description: "Assumptions updated." });
   };
 
   const watchAll = form.watch();
@@ -1291,15 +1323,30 @@ export default function FinancialsPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 <div className="flex items-center justify-between sticky top-16 z-30 bg-background/95 py-3 border-b gap-2">
-                  <h3 className="font-semibold">Assumptions</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">Assumptions</h3>
+                    {saveStatus === "saving" && (
+                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                        <Loader2 className="w-3 h-3 animate-spin" />Saving…
+                      </span>
+                    )}
+                    {saveStatus === "saved" && (
+                      <span className="flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400">
+                        <CheckCircle2 className="w-3 h-3" />Saved
+                      </span>
+                    )}
+                    {saveStatus === "unsaved" && (
+                      <span className="text-[11px] text-amber-600 dark:text-amber-400">Unsaved changes</span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={handleGenerateAssumptions} disabled={aiGenerating}>
                       {aiGenerating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Wand2 className="w-4 h-4 mr-1.5" />}
                       Generate with AI
                     </Button>
-                    <Button type="submit" disabled={upsertModel.isPending} size="sm">
+                    <Button type="submit" disabled={saveStatus === "saving"} size="sm" variant={saveStatus === "unsaved" ? "default" : "outline"}>
                       <Save className="w-4 h-4 mr-1.5" />
-                      {upsertModel.isPending ? "Saving…" : "Save"}
+                      Save now
                     </Button>
                   </div>
                 </div>
