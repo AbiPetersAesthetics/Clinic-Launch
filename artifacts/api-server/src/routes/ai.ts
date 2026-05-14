@@ -191,7 +191,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const projectId = parseInt(req.params.projectId as string);
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
 
-  // ── Gather all data in parallel ──────────────────────────────────────────
+  // ── Gather all data in parallel ───────────────────────────────────────────
   const [
     phases,
     allPropertiesRaw,
@@ -223,6 +223,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   // ── Task summary ─────────────────────────────────────────────────────────
   const totalTasks = allTasks.length;
   const completedTasks = allTasks.filter((t) => t.status === "complete").length;
+  const inProgressTasks = allTasks.filter((t) => t.status === "in_progress").length;
   const blockedTasks = allTasks.filter((t) => t.status === "blocked").length;
   const criticalIncomplete = allTasks.filter((t) => t.isCriticalRisk && t.status !== "complete");
   const highRiskIncomplete = allTasks.filter((t) => t.riskLevel === "high" && t.status !== "complete");
@@ -231,133 +232,265 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const phaseProgress = phases.map((ph) => {
     const pTasks = allTasks.filter((t) => t.phaseId === ph.id);
     const done = pTasks.filter((t) => t.status === "complete").length;
-    return `${ph.name}: ${done}/${pTasks.length} complete (${pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0}%)`;
+    const blocked = pTasks.filter((t) => t.status === "blocked").length;
+    const pct = pTasks.length > 0 ? Math.round((done / pTasks.length) * 100) : 0;
+    return `${ph.name}: ${done}/${pTasks.length} complete (${pct}%)${blocked > 0 ? ` — ${blocked} blocked` : ""}`;
   });
 
-  // ── Financial context ─────────────────────────────────────────────────────
-  let financialContext = "No financial model entered yet.";
-  let monthlyFixedCosts = 0;
-  let projectedMonthlyRevenue = 0;
-  let projectedMonthlyNet = 0;
-  let cashRunwayMonths = 0;
+  const criticalTaskList = criticalIncomplete.slice(0, 6).map((t) => `  • [${t.status}] ${t.title}`).join("\n");
 
-  if (financial) {
-    const slots = financial.treatmentRoomsCount * financial.practitionerHoursPerDay * financial.workingDaysPerMonth;
-    projectedMonthlyRevenue = Math.round((slots * (financial.realisticOccupancyPercent / 100)) * financial.averageClientValueGbp + financial.membershipRevenueGbp);
-    monthlyFixedCosts = Math.round(
-      financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp +
-      financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp +
-      financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp
+  // ── Financial calculations for all 3 scenarios ───────────────────────────
+  function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>) {
+    const slotsPerMonth = f.treatmentRoomsCount * f.practitionerHoursPerDay * f.workingDaysPerMonth;
+    const revenue = Math.round((slotsPerMonth * (occupancyPct / 100)) * acv + f.membershipRevenueGbp);
+    const fixed = Math.round(
+      f.rentGbp + f.ratesGbp + f.utilitiesGbp + f.internetGbp +
+      f.insuranceGbp + f.accountantGbp + f.softwareGbp +
+      f.wasteContractGbp + f.cleanerGbp + f.subscriptionsGbp + f.financeRepaymentsGbp
     );
-    const monthlyVariable = Math.round(projectedMonthlyRevenue * ((financial.stockPercent + financial.commissionsPercent) / 100) + financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp);
-    projectedMonthlyNet = projectedMonthlyRevenue - monthlyFixedCosts - monthlyVariable;
-    const monthlyCashDrain = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp - financial.existingClinicRevenueGbp;
-    cashRunwayMonths = monthlyCashDrain > 0 ? Math.round(financial.runwaySavingsGbp / monthlyCashDrain) : 99;
-
-    financialContext = `Winchester Financial Model (Realistic scenario):
-• Projected monthly revenue: £${projectedMonthlyRevenue.toLocaleString()} | Monthly fixed costs: £${monthlyFixedCosts.toLocaleString()}
-• Projected monthly net profit: £${projectedMonthlyNet.toLocaleString()} | Annual net: £${(projectedMonthlyNet * 12).toLocaleString()}
-• Cash runway (pre-opening burn): ${cashRunwayMonths >= 99 ? "Secure (no monthly drain)" : `${cashRunwayMonths} months`}
-• Owner drawings target: £${financial.ownerDrawingsGbp}/mo | Nursing income: £${financial.nursingIncomeGbp}/mo
-• Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Realistic occupancy: ${financial.realisticOccupancyPercent}%
-• Runway savings: £${financial.runwaySavingsGbp.toLocaleString()} | Business capital: £${financial.businessCapitalGbp?.toLocaleString() ?? "not set"}
-• Bedhampton existing clinic revenue (in model): £${financial.existingClinicRevenueGbp}/mo`;
+    const variableRate = (f.stockPercent + f.commissionsPercent) / 100;
+    const variable = Math.round(revenue * variableRate + f.marketingGbp + f.staffingGbp + f.consumablesGbp);
+    const net = revenue - fixed - variable;
+    return { revenue, fixed, variable, net, occupancyPct, acv };
   }
 
-  // ── Fixed cost items ──────────────────────────────────────────────────────
+  let financialContext = "No financial model entered yet.";
+  let cashRunwayMonths = 0;
+  let rentToRevenuePct = 0;
+  let breakEvenRevenue = 0;
+  let vatRisk = false;
+  let vatRiskDetail = "";
+  let bedhCoverageMonths = 0;
+
+  if (financial) {
+    const conservative = calcScenario(financial.conservativeOccupancyPercent, financial.averageClientValueGbp, financial);
+    const realistic = calcScenario(financial.realisticOccupancyPercent, financial.averageClientValueGbp, financial);
+    const aggressive = calcScenario(financial.aggressiveOccupancyPercent, financial.wincAcvGbp || financial.averageClientValueGbp, financial);
+
+    // Break-even: fixed costs / (1 - variable cost %)
+    const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
+    breakEvenRevenue = Math.round(realistic.fixed / (1 - variableRatio));
+
+    // Cash runway pre-opening
+    const monthlyCashDrain = (financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp)
+      - (financial.existingClinicRevenueGbp + financial.nursingIncomeGbp);
+    cashRunwayMonths = monthlyCashDrain > 0 ? Math.round(financial.runwaySavingsGbp / monthlyCashDrain) : 99;
+
+    // Rent as % of realistic revenue
+    rentToRevenuePct = realistic.revenue > 0 ? Math.round((financial.rentGbp / realistic.revenue) * 100) : 0;
+
+    // VAT risk: current turnover + projected Winchester annual revenue vs £90k
+    const projectedAnnualWinc = realistic.revenue * 12;
+    const combinedTurnover = (financial.vatCurrentTurnoverGbp || 0) + projectedAnnualWinc;
+    vatRisk = combinedTurnover > 85000;
+    vatRiskDetail = vatRisk
+      ? `ALERT: Combined turnover (£${Math.round(combinedTurnover / 1000)}k) likely exceeds £90k VAT threshold — mandatory VAT registration will add ~20% to client prices unless exempt treatments dominate`
+      : `Combined annual turnover (£${Math.round(combinedTurnover / 1000)}k) is below the £90k VAT threshold`;
+
+    // Bedhampton coverage: how many months of Winchester fixed costs does Bedh revenue cover
+    bedhCoverageMonths = financial.existingClinicRevenueGbp > 0 && realistic.fixed > 0
+      ? parseFloat((financial.existingClinicRevenueGbp / realistic.fixed * 12).toFixed(1))
+      : 0;
+
+    financialContext = `=== THREE-SCENARIO FINANCIAL MODEL ===
+
+Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
+  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${conservative.net.toLocaleString()}/mo
+
+Realistic (${financial.realisticOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
+  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed: £${realistic.fixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${realistic.net.toLocaleString()}/mo
+
+Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${(financial.wincAcvGbp || financial.averageClientValueGbp)} ACV):
+  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed: £${aggressive.fixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${aggressive.net.toLocaleString()}/mo
+
+Key ratios (Realistic scenario):
+  Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo
+  Rent as % of revenue: ${rentToRevenuePct}% (industry guideline: aim for <15%)
+  Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Winchester ACV target: £${financial.wincAcvGbp || "not set"}
+  Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
+
+Personal finance:
+  Owner drawings target: £${financial.ownerDrawingsGbp}/mo | Personal salary needs: £${financial.personalSalaryNeedsGbp}/mo
+  Nursing income: £${financial.nursingIncomeGbp}/mo | Cash runway savings: £${financial.runwaySavingsGbp.toLocaleString()}
+  Pre-opening cash runway: ${cashRunwayMonths >= 99 ? "Secure (income exceeds burn)" : `${cashRunwayMonths} months`}
+  Bedhampton income in model: £${financial.existingClinicRevenueGbp}/mo
+  Bedhampton coverage of Winchester fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of fixed costs covered per year` : "not calculated"}
+  Self-funding buffer target: ${financial.selfFundingBufferPercent}% net margin
+
+VAT risk:
+  ${vatRiskDetail}
+
+Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate: ${financial.repeatBookingRatePercent}%`;
+  }
+
+  // ── Fixed cost itemisation ────────────────────────────────────────────────
+  const totalFixedItemsCost = fixedCostsRaw.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
   const fixedCostContext = fixedCostsRaw.length > 0
-    ? `Fixed cost items entered (${fixedCostsRaw.length} items, total £${fixedCostsRaw.reduce((s, c) => s + (c.amountGbp ?? 0), 0).toLocaleString()}/mo):\n${fixedCostsRaw.map((c) => `• ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
-    : "No detailed fixed cost items entered.";
+    ? `Itemised fixed costs (${fixedCostsRaw.length} items, £${totalFixedItemsCost.toLocaleString()}/mo total):\n${fixedCostsRaw.map((c) => `  • ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
+    : "No itemised fixed costs entered yet — financial model uses category totals only.";
 
   // ── Property context ──────────────────────────────────────────────────────
-  const propertyContext = activeProperty
-    ? `Selected property: ${activeProperty.address || "Unknown"} (${activeProperty.postcode || "no postcode"})
-• Size: ${activeProperty.sqFootage || "?"}sqft | Monthly rent: £${activeProperty.monthlyRentGbp || "?"} | Annual rent: £${activeProperty.annualRentGbp || "?"}
-• Lease status: ${activeProperty.stage || "not set"} | Use class: ${activeProperty.useClass || "unknown"}
-• VAT on rent: ${activeProperty.vatOnRent ? "Yes" : "No/unknown"} | Parking: ${activeProperty.parkingSpaces ?? "?"} spaces
-• Notes: ${activeProperty.notes || "none"}`
-    : `No property selected yet. ${allPropertiesRaw.length} properties in pipeline.`;
+  const allPropertyLines = allPropertiesRaw.map((p) =>
+    `  ${p.isActiveForProject ? "★ SELECTED" : "○"} ${p.address || "Unknown"} (${p.postcode || "?"}): £${p.monthlyRentGbp || "?"}/mo | ${p.sqFootage || "?"}sqft | Stage: ${p.stage || "unknown"} | Use class: ${p.useClass || "?"} | VAT on rent: ${p.vatOnRent ? "Yes" : "No/unknown"}`
+  ).join("\n");
+
+  const propertyContext = allPropertiesRaw.length > 0
+    ? `${allPropertiesRaw.length} properties in pipeline:\n${allPropertyLines}\n\nActive property notes: ${activeProperty?.notes || "none"}`
+    : "No properties added yet.";
 
   // ── Compliance context ────────────────────────────────────────────────────
   const applicable = complianceItemsRaw.filter((i) => i.status !== "not_applicable");
   const compliant = applicable.filter((i) => i.status === "complete" || i.policyStatus === "signed_off");
+  const complianceGaps = applicable.filter((i) => i.status === "not_started" || i.status === "in_progress");
   const compliancePct = applicable.length > 0 ? Math.round((compliant.length / applicable.length) * 100) : 0;
-  const cqcStarted = cqcMilestonesRaw.some((m) => m.status !== "not_started");
-  const criticalComplianceGaps = applicable.filter((i) => i.status === "not_started" || i.status === "in_progress").slice(0, 5).map((i) => i.title ?? "Unnamed item");
+  const cqcNotStarted = cqcMilestonesRaw.filter((m) => m.status === "not_started");
+  const cqcInProgress = cqcMilestonesRaw.filter((m) => m.status === "in_progress");
+  const cqcComplete = cqcMilestonesRaw.filter((m) => m.status === "complete");
 
-  const complianceContext = `CQC & Compliance:
-• Compliance readiness: ${compliancePct}% (${compliant.length}/${applicable.length} items complete)
-• CQC registration process: ${cqcStarted ? "Started" : "Not started yet"}
-• Critical gaps: ${criticalComplianceGaps.length > 0 ? criticalComplianceGaps.join(", ") : "None identified"}`;
+  const complianceContext = `CQC registration milestones: ${cqcComplete.length} complete | ${cqcInProgress.length} in progress | ${cqcNotStarted.length} not started
+Compliance items: ${compliancePct}% complete (${compliant.length}/${applicable.length} items)
+Outstanding compliance gaps (first 8):
+${complianceGaps.slice(0, 8).map((i) => `  • [${i.status}] ${i.title ?? "Unnamed"}`).join("\n") || "  None"}
+CQC milestones not yet started (first 5): ${cqcNotStarted.slice(0, 5).map((m) => m.title ?? "Unnamed").join(", ") || "None"}`;
 
   // ── Decisions context ─────────────────────────────────────────────────────
   const decisionsContext = decisionsRaw.length > 0
-    ? `Key decisions logged (${decisionsRaw.length} total):\n${decisionsRaw.slice(-8).map((d) => `• [${d.category}] ${d.title}: ${d.reasoning?.slice(0, 120) ?? ""}`).join("\n")}`
-    : "No decisions logged yet.";
+    ? `${decisionsRaw.length} strategic decisions logged:\n${decisionsRaw.slice(-10).map((d) => `  • [${d.category}] ${d.title}: ${(d.reasoning ?? "").slice(0, 150)}`).join("\n")}`
+    : "No strategic decisions logged yet.";
 
   // ── Live Bedhampton data ──────────────────────────────────────────────────
-  let bedhContext = "Bedhampton live data unavailable.";
+  let bedhContext = "Live Bedhampton data unavailable.";
   if (bedhamptonRaw) {
     const { summary, recentMonths } = bedhamptonRaw;
     const avg3m = recentMonths.slice(-3).reduce((s, m) => s + m.revenue, 0) / Math.max(recentMonths.slice(-3).length, 1);
-    bedhContext = `Live Bedhampton clinic performance:
-• This month: £${Math.round(summary.projectedMonthRevenue).toLocaleString()} projected | Last month: £${Math.round(summary.lastMonthRevenue).toLocaleString()} | Growth: ${summary.revenueGrowthPct > 0 ? "+" : ""}${summary.revenueGrowthPct}%
-• 3-month average: £${Math.round(avg3m).toLocaleString()}/month | Total revenue to date: £${Math.round(summary.totalRevenue).toLocaleString()}
-• Avg client spend: £${summary.avgClientSpend} | Repeat rate: ${summary.repeatClientPct}%
-• Appointments this month: ${summary.appointmentsThisMonth} | Top treatment: ${summary.topTreatment}`;
+    const avg6m = recentMonths.slice(-6).reduce((s, m) => s + m.revenue, 0) / Math.max(recentMonths.slice(-6).length, 1);
+    const revTrend = recentMonths.slice(-6).map((m) => {
+      const [y, mo] = m.month.split("-");
+      const label = new Date(Number(y), Number(mo) - 1).toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+      return `${label}: £${Math.round(m.revenue).toLocaleString()}`;
+    }).join(" → ");
+
+    bedhContext = `Abi's existing Bedhampton clinic — the financial safety net for Winchester:
+  This month (projected): £${Math.round(summary.projectedMonthRevenue).toLocaleString()} | Last month: £${Math.round(summary.lastMonthRevenue).toLocaleString()} | MoM growth: ${summary.revenueGrowthPct > 0 ? "+" : ""}${summary.revenueGrowthPct}%
+  3-month average: £${Math.round(avg3m).toLocaleString()}/mo | 6-month average: £${Math.round(avg6m).toLocaleString()}/mo
+  Total revenue to date: £${Math.round(summary.totalRevenue).toLocaleString()}
+  Avg client spend: £${summary.avgClientSpend} | Repeat client rate: ${summary.repeatClientPct}%
+  Appointments this month: ${summary.appointmentsThisMonth} | Top treatment: ${summary.topTreatment}
+  Revenue trend: ${revTrend}`;
   }
 
-  // ── Days to opening ───────────────────────────────────────────────────────
+  // ── Timeline ──────────────────────────────────────────────────────────────
   const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
-  const timelineContext = `Target opening: 1 November 2026 (${daysToOpening} days away)
-• Launch readiness: ${launchReadinessPct}% of tasks complete (${completedTasks}/${totalTasks})
-• Blocked tasks: ${blockedTasks} | Critical incomplete tasks: ${criticalIncomplete.length}
-• High-risk incomplete tasks: ${highRiskIncomplete.length}
-• Phase progress:\n  ${phaseProgress.join("\n  ")}`;
+  const weeksToOpening = Math.round(daysToOpening / 7);
+  const timelineContext = `Target opening: 1 November 2026 — ${daysToOpening} days (${weeksToOpening} weeks) away
+Overall launch readiness: ${launchReadinessPct}% (${completedTasks} of ${totalTasks} tasks complete, ${inProgressTasks} in progress, ${blockedTasks} blocked)
+Critical incomplete tasks: ${criticalIncomplete.length}
+${criticalTaskList || "  None flagged"}
+High-risk incomplete tasks: ${highRiskIncomplete.length}
+Phase-by-phase progress:
+  ${phaseProgress.join("\n  ")}`;
 
-  // ── Compose the master prompt ─────────────────────────────────────────────
-  const masterPrompt = `You are a senior business consultant and launch advisor. Your job is to assess whether Abi Peters should proceed with opening a private aesthetics clinic at 9A Jewry Street, Winchester, targeting 1 November 2026.
+  // ── Master prompt ─────────────────────────────────────────────────────────
+  const masterPrompt = `You are a senior healthcare business consultant and launch advisor with deep expertise in UK private aesthetics clinics, CQC regulation, and SME financial planning. Your client is Abi Peters, a qualified aesthetics practitioner opening her first dedicated clinic at 9A Jewry Street, Winchester, targeting 1 November 2026.
 
-Evaluate ALL of the following data holistically and return a structured JSON recommendation. Be direct, honest, and specific — this is a real business decision with significant personal and financial stakes.
+This is a high-stakes, real business decision. Abi has put personal savings and professional reputation on the line. Be thorough, honest, and specific. Do not hedge excessively — give her a clear verdict she can act on.
 
-=== TIMELINE ===
+Analyse ALL the data below across five dimensions: Financial Viability, Regulatory Readiness, Operational Preparedness, Timeline Risk, and Market/Strategic Position. Then return a structured JSON assessment.
+
+=== DIMENSION 1: TIMELINE & TASK READINESS ===
 ${timelineContext}
 
-=== FINANCIAL MODEL ===
+=== DIMENSION 2: FINANCIAL MODEL (ALL 3 SCENARIOS) ===
 ${financialContext}
 
-=== DETAILED FIXED COSTS ===
+=== DIMENSION 3: FIXED COST DETAIL ===
 ${fixedCostContext}
 
-=== PROPERTY ===
+=== DIMENSION 4: PROPERTY PIPELINE ===
 ${propertyContext}
 
-=== CQC & COMPLIANCE ===
+=== DIMENSION 5: CQC & REGULATORY COMPLIANCE ===
 ${complianceContext}
 
-=== LIVE BEDHAMPTON CLINIC (existing business — the financial safety net) ===
+=== DIMENSION 6: LIVE BEDHAMPTON CLINIC (existing revenue base — critical financial safety net) ===
 ${bedhContext}
 
-=== KEY DECISIONS MADE ===
+=== DIMENSION 7: STRATEGIC DECISIONS MADE ===
 ${decisionsContext}
 
-Based on everything above, return ONLY valid JSON in this exact format (no markdown, no preamble):
+=== COMPUTED METRICS (pre-calculated for you) ===
+• Break-even monthly revenue: £${breakEvenRevenue.toLocaleString() || "unknown"}
+• Rent as % of realistic revenue: ${rentToRevenuePct}%
+• Cash runway pre-opening: ${cashRunwayMonths >= 99 ? "secure" : `${cashRunwayMonths} months`}
+• VAT risk: ${vatRisk ? "HIGH" : "LOW"} — ${vatRiskDetail}
+• Bedhampton income coverage of Winchester fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months/yr` : "unknown"}
+• Days to opening: ${daysToOpening}
+
+Return ONLY valid JSON (no markdown, no commentary outside the JSON). Use this exact schema:
 {
   "verdict": "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED",
-  "verdictLabel": "string (e.g. 'Proceed', 'Proceed — with conditions', 'Delay — 3 months', 'Stop and reassess')",
-  "confidenceScore": <integer 0-100, your confidence in a successful launch>,
-  "summary": "<2-3 substantive paragraph assessment covering: the overall picture, the biggest single risk, and your honest recommendation — be direct>",
-  "strengths": ["<specific strength 1, referencing actual data>", "<strength 2>", "<strength 3>", "<strength 4 if warranted>"],
-  "concerns": ["<specific concern 1 — use actual numbers>", "<concern 2>", "<concern 3>", "<concern 4 if warranted>"],
-  "conditions": ["<condition 1 — only include if verdict is PROCEED_WITH_CONDITIONS or DELAY, else empty array>"],
-  "immediateActions": ["<specific action 1 that should happen in the next 30 days>", "<action 2>", "<action 3>", "<action 4>"],
-  "reviewTrigger": "<what specific event or metric should trigger a re-run of this analysis>"
+  "verdictLabel": "<concise verdict label, e.g. 'Proceed with conditions — 4 must-dos before signing lease'>",
+  "confidenceScore": <integer 0-100: probability of a successful, viable launch>,
+  "executiveSummary": "<1 crisp paragraph: the overall picture, the single biggest risk, and your bottom-line recommendation>",
+  "detailedAssessment": {
+    "financial": "<2-3 sentences: assess all 3 scenarios, break-even, runway, VAT risk, rent burden — use real numbers>",
+    "regulatory": "<2-3 sentences: CQC registration urgency, compliance gaps that could delay opening, realistic timeline to full compliance>",
+    "operational": "<2-3 sentences: property status, task readiness, blocked items, what could derail launch operationally>",
+    "timeline": "<2-3 sentences: is ${daysToOpening} days enough? what's the critical path? where is slack being burned?>",
+    "strategic": "<2 sentences: Bedhampton as safety net, market positioning, long-term viability assessment>"
+  },
+  "riskScores": {
+    "financial": <1-10 where 10 = extremely high risk>,
+    "regulatory": <1-10>,
+    "operational": <1-10>,
+    "timeline": <1-10>,
+    "overall": <1-10>
+  },
+  "riskRationale": {
+    "financial": "<one sentence explaining the financial risk score>",
+    "regulatory": "<one sentence>",
+    "operational": "<one sentence>",
+    "timeline": "<one sentence>"
+  },
+  "strengths": [
+    "<specific strength 1 — cite actual numbers from the data>",
+    "<strength 2>",
+    "<strength 3>",
+    "<strength 4>",
+    "<strength 5 if genuinely warranted>"
+  ],
+  "concerns": [
+    "<specific concern 1 — use actual numbers, be precise>",
+    "<concern 2>",
+    "<concern 3>",
+    "<concern 4>",
+    "<concern 5 if genuinely warranted>"
+  ],
+  "conditions": [
+    "<non-negotiable condition 1 — only if verdict is PROCEED_WITH_CONDITIONS or DELAY>",
+    "<condition 2>"
+  ],
+  "immediateActions": [
+    { "action": "<specific action>", "priority": "critical" | "high" | "medium", "deadline": "<e.g. 'Within 2 weeks', 'Before lease signing', 'By end of June'>", "rationale": "<one sentence why this matters>" },
+    { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
+    { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
+    { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." },
+    { "action": "...", "priority": "...", "deadline": "...", "rationale": "..." }
+  ],
+  "thirtyDayPlan": [
+    { "week": "Week 1", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
+    { "week": "Week 2", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
+    { "week": "Week 3", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] },
+    { "week": "Week 4", "focus": "<theme>", "actions": ["<action 1>", "<action 2>", "<action 3>"] }
+  ],
+  "reviewTrigger": "<specific event or metric threshold that should trigger re-running this analysis>",
+  "nextReviewDate": "<ISO 8601 date — suggest a concrete date for the next formal review>"
 }`;
 
   try {
     const completion = await openai.chat.completions.create({
       model: "gpt-5.1",
-      max_completion_tokens: 3000,
+      max_completion_tokens: 5000,
       messages: [{ role: "user", content: masterPrompt }],
     });
 
@@ -368,10 +501,40 @@ Based on everything above, return ONLY valid JSON in this exact format (no markd
     try {
       parsed = JSON.parse(clean);
     } catch {
-      parsed = { verdict: "DELAY", verdictLabel: "Unable to assess — data incomplete", confidenceScore: 0, summary: clean, strengths: [], concerns: [], conditions: [], immediateActions: [], reviewTrigger: "When more data is entered." };
+      parsed = {
+        verdict: "DELAY",
+        verdictLabel: "Unable to assess — try again",
+        confidenceScore: 0,
+        executiveSummary: clean.slice(0, 500),
+        detailedAssessment: {},
+        riskScores: { financial: 5, regulatory: 5, operational: 5, timeline: 5, overall: 5 },
+        riskRationale: {},
+        strengths: [],
+        concerns: [],
+        conditions: [],
+        immediateActions: [],
+        thirtyDayPlan: [],
+        reviewTrigger: "When more project data is entered.",
+        nextReviewDate: new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+      };
     }
 
-    return res.json({ ...parsed, generatedAt: new Date().toISOString() });
+    // Also pass computed metrics back so the UI can display them without re-computing
+    return res.json({
+      ...parsed,
+      _computed: {
+        breakEvenRevenue,
+        rentToRevenuePct,
+        cashRunwayMonths,
+        vatRisk,
+        vatRiskDetail,
+        bedhCoverageMonths,
+        daysToOpening,
+        launchReadinessPct,
+        compliancePct,
+      },
+      generatedAt: new Date().toISOString(),
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "AI request failed";
     return res.status(500).json({ error: msg });

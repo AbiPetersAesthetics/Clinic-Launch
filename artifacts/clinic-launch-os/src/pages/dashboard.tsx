@@ -96,16 +96,28 @@ function ragColors(status: RAGStatus) {
 }
 
 type GoNoGoVerdict = "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED";
+type GoNoGoAction = { action: string; priority: "critical" | "high" | "medium"; deadline: string; rationale: string };
+type GoNoGoWeek = { week: string; focus: string; actions: string[] };
 type GoNoGoResult = {
   verdict: GoNoGoVerdict;
   verdictLabel: string;
   confidenceScore: number;
-  summary: string;
+  executiveSummary: string;
+  detailedAssessment: { financial?: string; regulatory?: string; operational?: string; timeline?: string; strategic?: string };
+  riskScores: { financial: number; regulatory: number; operational: number; timeline: number; overall: number };
+  riskRationale: { financial?: string; regulatory?: string; operational?: string; timeline?: string };
   strengths: string[];
   concerns: string[];
   conditions: string[];
-  immediateActions: string[];
+  immediateActions: GoNoGoAction[];
+  thirtyDayPlan: GoNoGoWeek[];
   reviewTrigger: string;
+  nextReviewDate: string;
+  _computed: {
+    breakEvenRevenue: number; rentToRevenuePct: number; cashRunwayMonths: number;
+    vatRisk: boolean; vatRiskDetail: string; bedhCoverageMonths: number;
+    daysToOpening: number; launchReadinessPct: number; compliancePct: number;
+  };
   generatedAt: string;
 };
 
@@ -270,13 +282,44 @@ export default function DashboardPage() {
       {/* 0. Go/No-Go Recommendation */}
       {(() => {
         const cfg = goNoGo ? VERDICT_CONFIG[goNoGo.verdict] : null;
+        const c = goNoGo?._computed;
+
+        const riskColor = (score: number) => {
+          if (score <= 3) return "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800";
+          if (score <= 6) return "text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800";
+          if (score <= 8) return "text-orange-700 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800";
+          return "text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800";
+        };
+
+        const riskLabel = (score: number) => {
+          if (score <= 3) return "Low";
+          if (score <= 6) return "Medium";
+          if (score <= 8) return "High";
+          return "Critical";
+        };
+
+        const priorityBadge = (p: string) => {
+          if (p === "critical") return "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300";
+          if (p === "high") return "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300";
+          return "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300";
+        };
+
+        const assessmentDimensions = [
+          { key: "financial" as const, label: "Financial" },
+          { key: "regulatory" as const, label: "Regulatory" },
+          { key: "operational" as const, label: "Operational" },
+          { key: "timeline" as const, label: "Timeline" },
+          { key: "strategic" as const, label: "Strategic" },
+        ];
+
         return (
-          <Card className={`shadow-sm border bg-gradient-to-br ${cfg ? `${cfg.bg} ${cfg.border}` : "border-border/60"}`}>
+          <Card className={`shadow-sm border ${cfg ? `bg-gradient-to-br ${cfg.bg} ${cfg.border}` : "border-border/60"}`}>
+            {/* ── Header ──────────────────────────────────────────────────── */}
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Sparkles className="w-4 h-4 text-primary/70 shrink-0" />
-                  <CardTitle className="text-base">Launch Recommendation</CardTitle>
+                  <CardTitle className="text-base">AI Launch Recommendation</CardTitle>
                   {goNoGo && (
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cfg!.badge}`}>
                       {cfg!.icon}
@@ -284,34 +327,37 @@ export default function DashboardPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {goNoGo && (
-                    <span className="text-xs text-muted-foreground">
-                      Confidence: <strong>{goNoGo.confidenceScore}%</strong>
-                    </span>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={runGoNoGo} disabled={goNoGoLoading} className="h-7 px-2 text-xs gap-1">
-                    <RefreshCw className={`w-3 h-3 ${goNoGoLoading ? "animate-spin" : ""}`} />
-                    {goNoGoLoading ? "Analysing…" : "Refresh"}
-                  </Button>
-                </div>
+                <Button variant="ghost" size="sm" onClick={runGoNoGo} disabled={goNoGoLoading} className="h-7 px-2 text-xs gap-1 shrink-0">
+                  <RefreshCw className={`w-3 h-3 ${goNoGoLoading ? "animate-spin" : ""}`} />
+                  {goNoGoLoading ? "Analysing…" : "Refresh"}
+                </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                AI analysis of your financials, property, tasks, compliance, decisions, and live Bedhampton performance — updated each time you refresh.
+                Analyses all 3 financial scenarios, property pipeline, CQC readiness, tasks, decisions, and live Bedhampton performance — updated on each refresh.
               </p>
             </CardHeader>
-            <CardContent>
+
+            <CardContent className="space-y-6">
+              {/* ── Loading skeleton ──────────────────────────────────────── */}
               {goNoGoLoading && (
-                <div className="space-y-3 animate-pulse">
-                  <div className="h-4 bg-muted rounded w-3/4" />
-                  <div className="h-4 bg-muted rounded w-full" />
-                  <div className="h-4 bg-muted rounded w-5/6" />
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
-                    <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
+                <div className="space-y-4 animate-pulse">
+                  <div className="grid grid-cols-4 gap-2">
+                    {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted rounded-lg" />)}
                   </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-muted rounded w-3/4" />
+                    <div className="h-4 bg-muted rounded w-full" />
+                    <div className="h-4 bg-muted rounded w-5/6" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
+                    <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-3 bg-muted rounded" />)}</div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">{[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-lg" />)}</div>
                 </div>
               )}
+
+              {/* ── Error ─────────────────────────────────────────────────── */}
               {goNoGoError && !goNoGoLoading && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                   <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
@@ -319,19 +365,107 @@ export default function DashboardPage() {
                   <button onClick={runGoNoGo} className="underline text-primary ml-1">Try again</button>
                 </div>
               )}
-              {goNoGo && !goNoGoLoading && (
-                <div className="space-y-5">
-                  {/* Summary */}
-                  <div className="text-sm text-foreground/85 leading-relaxed whitespace-pre-line">{goNoGo.summary}</div>
 
-                  {/* Strengths + Concerns */}
+              {goNoGo && !goNoGoLoading && (
+                <>
+                  {/* ── Confidence + Computed Metrics row ─────────────────── */}
+                  {c && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
+                        <div className="text-2xl font-bold text-foreground">{goNoGo.confidenceScore}%</div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Launch Confidence</div>
+                        <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goNoGo.confidenceScore}%` }} />
+                        </div>
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
+                        <div className="text-xl font-bold text-foreground">
+                          {c.breakEvenRevenue > 0 ? `£${Math.round(c.breakEvenRevenue / 1000)}k` : "—"}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Break-even / mo</div>
+                        {c.rentToRevenuePct > 0 && (
+                          <div className={`text-[10px] mt-0.5 ${c.rentToRevenuePct > 20 ? "text-red-500" : c.rentToRevenuePct > 15 ? "text-amber-500" : "text-emerald-600"}`}>
+                            Rent = {c.rentToRevenuePct}% of revenue
+                          </div>
+                        )}
+                      </div>
+                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
+                        <div className={`text-xl font-bold ${c.cashRunwayMonths >= 99 ? "text-emerald-600" : c.cashRunwayMonths >= 6 ? "text-amber-600" : "text-red-600"}`}>
+                          {c.cashRunwayMonths >= 99 ? "Secure" : `${c.cashRunwayMonths}mo`}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Cash Runway</div>
+                        {c.bedhCoverageMonths > 0 && (
+                          <div className="text-[10px] text-muted-foreground mt-0.5">Bedh covers {c.bedhCoverageMonths}mo fixed/yr</div>
+                        )}
+                      </div>
+                      <div className={`rounded-lg border p-3 text-center ${c.vatRisk ? "border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20" : "border-border/60 bg-background/60"}`}>
+                        <div className={`text-xl font-bold ${c.vatRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                          {c.vatRisk ? "At risk" : "Clear"}
+                        </div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">VAT Threshold</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{c.vatRisk ? "May breach £90k" : "Below £90k limit"}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Risk Matrix ────────────────────────────────────────── */}
+                  {goNoGo.riskScores && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Risk Assessment</div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {(["financial", "regulatory", "operational", "timeline"] as const).map((dim) => {
+                          const score = goNoGo.riskScores[dim] ?? 5;
+                          const rationale = goNoGo.riskRationale?.[dim];
+                          return (
+                            <div key={dim} className={`rounded-lg border p-3 ${riskColor(score)}`}>
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="text-[10px] font-semibold uppercase tracking-wider capitalize">{dim}</div>
+                                <div className="text-base font-bold">{score}/10</div>
+                              </div>
+                              <div className="text-[10px] font-semibold">{riskLabel(score)} risk</div>
+                              {rationale && <div className="text-[10px] opacity-80 mt-1 leading-tight">{rationale}</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Executive Summary ─────────────────────────────────── */}
+                  {goNoGo.executiveSummary && (
+                    <div className="rounded-lg border border-border/40 bg-muted/30 p-4">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Executive Summary</div>
+                      <p className="text-sm text-foreground/90 leading-relaxed">{goNoGo.executiveSummary}</p>
+                    </div>
+                  )}
+
+                  {/* ── Detailed Assessment ────────────────────────────────── */}
+                  {goNoGo.detailedAssessment && Object.values(goNoGo.detailedAssessment).some(Boolean) && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Detailed Assessment</div>
+                      <div className="space-y-2">
+                        {assessmentDimensions.map(({ key, label }) => {
+                          const text = goNoGo.detailedAssessment[key];
+                          if (!text) return null;
+                          return (
+                            <div key={key} className="rounded-lg border border-border/40 bg-background/50 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-primary/70 mb-1">{label}</div>
+                              <p className="text-xs text-foreground/80 leading-relaxed">{text}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Strengths + Concerns ───────────────────────────────── */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {goNoGo.strengths.length > 0 && (
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Strengths</div>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2">
                           {goNoGo.strengths.map((s, i) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
+                            <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
                               {s}
                             </li>
@@ -342,9 +476,9 @@ export default function DashboardPage() {
                     {goNoGo.concerns.length > 0 && (
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Concerns</div>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2">
                           {goNoGo.concerns.map((c, i) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-foreground/80">
+                            <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
                               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
                               {c}
                             </li>
@@ -354,41 +488,86 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  {/* Conditions (only if PROCEED_WITH_CONDITIONS or DELAY) */}
+                  {/* ── Conditions ─────────────────────────────────────────── */}
                   {goNoGo.conditions.length > 0 && (
-                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Conditions that must be met</div>
-                      <ul className="space-y-1">
-                        {goNoGo.conditions.map((c, i) => (
+                    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-4">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Non-negotiable conditions</div>
+                      <ul className="space-y-1.5">
+                        {goNoGo.conditions.map((cond, i) => (
                           <li key={i} className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
-                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5" />{c}
+                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5" />{cond}
                           </li>
                         ))}
                       </ul>
                     </div>
                   )}
 
-                  {/* Immediate actions */}
+                  {/* ── Immediate Actions ──────────────────────────────────── */}
                   {goNoGo.immediateActions.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Next 30 days</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {goNoGo.immediateActions.map((a, i) => (
-                          <div key={i} className="flex items-start gap-1.5 text-xs bg-muted/60 rounded-md px-2.5 py-1.5">
-                            <span className="text-primary font-bold shrink-0">{i + 1}.</span>
-                            {a}
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Priority Actions</div>
+                      <div className="space-y-2">
+                        {goNoGo.immediateActions.map((a, i) => {
+                          const action = typeof a === "string" ? { action: a, priority: "high" as const, deadline: "", rationale: "" } : a;
+                          return (
+                            <div key={i} className="rounded-lg border border-border/50 bg-background/60 p-3 flex gap-3 items-start">
+                              <span className="text-primary font-bold text-xs shrink-0 mt-0.5">{i + 1}.</span>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                  <span className="text-xs font-medium text-foreground">{action.action}</span>
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide ${priorityBadge(action.priority)}`}>
+                                    {action.priority}
+                                  </span>
+                                  {action.deadline && (
+                                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                      <Clock className="w-2.5 h-2.5" />{action.deadline}
+                                    </span>
+                                  )}
+                                </div>
+                                {action.rationale && <p className="text-[11px] text-muted-foreground leading-snug">{action.rationale}</p>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── 30-Day Plan ─────────────────────────────────────────── */}
+                  {goNoGo.thirtyDayPlan?.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">30-Day Plan</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {goNoGo.thirtyDayPlan.map((week, i) => (
+                          <div key={i} className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-primary">{week.week}</span>
+                              {week.focus && <span className="text-[10px] text-muted-foreground">— {week.focus}</span>}
+                            </div>
+                            <ul className="space-y-1">
+                              {week.actions.map((act, j) => (
+                                <li key={j} className="flex items-start gap-1 text-[11px] text-foreground/80">
+                                  <span className="text-muted-foreground shrink-0 mt-px">·</span>{act}
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Footer */}
-                  <div className="flex justify-between items-center text-[10px] text-muted-foreground border-t border-border/40 pt-3">
+                  {/* ── Footer ────────────────────────────────────────────── */}
+                  <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-[10px] text-muted-foreground border-t border-border/40 pt-3">
                     <span>Re-run when: {goNoGo.reviewTrigger}</span>
-                    <span>Generated {new Date(goNoGo.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                    <div className="flex gap-3">
+                      {goNoGo.nextReviewDate && (
+                        <span>Next review: <strong>{new Date(goNoGo.nextReviewDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</strong></span>
+                      )}
+                      <span>Generated {new Date(goNoGo.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </CardContent>
           </Card>
