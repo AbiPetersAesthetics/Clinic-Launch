@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, lazy, Suspense } from "react";
+import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListProperties,
@@ -1706,6 +1707,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [activeTab, setActiveTab] = useState("details");
   const [intelligenceResult, setIntelligenceResult] = useState<PropertyIntelligenceResult | null>(null);
   const [searchRadiusMeters, setSearchRadiusMeters] = useState(600);
@@ -1787,8 +1789,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
         toast({ title: "Property selected", description: "Assumptions cleared. Generating financial model with AI…" });
         setShowActiveConfirm(false);
         onUpdated();
-        // Navigate to financials with ?generate=1 so the AI runs automatically
-        window.location.href = `/clinic-launch-os/financials?generate=1`;
+        navigate("/financials?generate=1");
       },
       onError: () => toast({ title: "Failed to set active property", variant: "destructive" }),
     });
@@ -2201,6 +2202,7 @@ function PropertyCard({
   rank?: number;
 }) {
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const setPropertyActive = useSetPropertyActive();
   const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
 
@@ -2216,7 +2218,7 @@ function PropertyCard({
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
-        window.location.href = `/clinic-launch-os/financials?generate=1`;
+        navigate("/financials?generate=1");
       },
     });
   };

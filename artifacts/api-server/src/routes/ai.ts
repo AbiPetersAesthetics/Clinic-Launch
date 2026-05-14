@@ -601,7 +601,11 @@ Rules:
     // ── Apply fixed cost estimates to the fixed_cost_items table ────────────
     const fixedCostUpdates: Promise<any>[] = [];
     for (const estimate of (parsed.fixedCosts ?? [])) {
-      const match = fixedCostItems.find(i => i.name === estimate.name);
+      // Case-insensitive fuzzy match — AI may vary capitalisation/punctuation
+      const normAI = estimate.name?.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const match = fixedCostItems.find(i =>
+        i.name.toLowerCase().replace(/[^a-z0-9]/g, "") === normAI
+      );
       if (match && typeof estimate.amountGbp === "number") {
         fixedCostUpdates.push(
           db.update(fixedCostItemsTable)
