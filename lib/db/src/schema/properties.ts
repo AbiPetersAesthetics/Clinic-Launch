@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, real, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, boolean, timestamp, jsonb, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -78,6 +78,8 @@ export const propertiesTable = pgTable("clinic_properties", {
   mediaFiles: jsonb("media_files").$type<MediaFile[]>().default([]),
   scoringWeights: jsonb("scoring_weights").$type<ScoringWeights>(),
   viewingChecklistData: jsonb("viewing_checklist_data").$type<Record<string, { checked: boolean; note?: string }>>(),
+  savedFinancialModel: jsonb("saved_financial_model").$type<Record<string, any>>(),
+  savedFixedCostItems: jsonb("saved_fixed_cost_items").$type<Array<Record<string, any>>>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
