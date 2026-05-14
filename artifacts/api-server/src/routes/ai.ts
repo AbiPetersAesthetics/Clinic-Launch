@@ -212,6 +212,12 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const financial = financialRaw[0] ?? null;
   const activeProperty = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
 
+  // Dynamic property label used throughout prompts — never hardcode location name
+  const propertyLabel = activeProperty
+    ? [activeProperty.address, activeProperty.postcode].filter(Boolean).join(", ")
+    : "selected property";
+  const propertyTown = activeProperty?.postcode?.split(" ")[0] || activeProperty?.address?.split(",").at(-2)?.trim() || "the selected location";
+
   // ── Financial calculations for all 3 scenarios ───────────────────────────
   function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>) {
     const slotsPerMonth = f.treatmentRoomsCount * f.practitionerHoursPerDay * f.workingDaysPerMonth;
@@ -265,7 +271,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
       ? parseFloat((financial.existingClinicRevenueGbp / realistic.fixed * 12).toFixed(1))
       : 0;
 
-    financialContext = `=== THREE-SCENARIO FINANCIAL MODEL ===
+    financialContext = `=== THREE-SCENARIO FINANCIAL MODEL (for ${propertyLabel}) ===
 
 Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${financial.averageClientValueGbp} ACV):
   Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${conservative.net.toLocaleString()}/mo
@@ -279,7 +285,7 @@ Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${(financial.w
 Key ratios (Realistic scenario):
   Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo
   Rent as % of revenue: ${rentToRevenuePct}% (industry guideline: aim for <15%)
-  Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Winchester ACV target: £${financial.wincAcvGbp || "not set"}
+  Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Target ACV (new clinic): £${financial.wincAcvGbp || "not set"}
   Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
 
 Personal finance:
@@ -287,7 +293,7 @@ Personal finance:
   Nursing income: £${financial.nursingIncomeGbp}/mo | Cash runway savings: £${financial.runwaySavingsGbp.toLocaleString()}
   Pre-opening cash runway: ${cashRunwayMonths >= 99 ? "Secure (income exceeds burn)" : `${cashRunwayMonths} months`}
   Bedhampton income in model: £${financial.existingClinicRevenueGbp}/mo
-  Bedhampton coverage of Winchester fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of fixed costs covered per year` : "not calculated"}
+  Bedhampton coverage of new clinic fixed costs: ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of fixed costs covered per year` : "not calculated"}
   Self-funding buffer target: ${financial.selfFundingBufferPercent}% net margin
 
 VAT risk:
@@ -328,7 +334,7 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
       return `${label}: £${Math.round(m.revenue).toLocaleString()}`;
     }).join(" → ");
 
-    bedhContext = `Abi's existing Bedhampton clinic — the financial safety net for Winchester:
+    bedhContext = `Abi's existing Bedhampton clinic — the financial safety net for the new clinic:
   This month (projected): £${Math.round(summary.projectedMonthRevenue).toLocaleString()} | Last month: £${Math.round(summary.lastMonthRevenue).toLocaleString()} | MoM growth: ${summary.revenueGrowthPct > 0 ? "+" : ""}${summary.revenueGrowthPct}%
   3-month average: £${Math.round(avg3m).toLocaleString()}/mo | 6-month average: £${Math.round(avg6m).toLocaleString()}/mo
   Total revenue to date: £${Math.round(summary.totalRevenue).toLocaleString()}
@@ -342,9 +348,9 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
   // ── Master prompt ─────────────────────────────────────────────────────────
   const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
-THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at 9A Jewry Street, Winchester, targeting an opening of 1 November 2026?
+THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of 1 November 2026?
 
-IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity in Winchester justifies the risk.
+IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity at this location justifies the risk.
 
 Be direct, specific, and commercial. Cite real numbers. Do not hedge excessively — she needs a clear answer she can act on this week.
 
@@ -364,23 +370,23 @@ ${bedhContext}
 ${decisionsContext}
 
 === KEY COMPUTED RATIOS ===
-• Break-even monthly revenue (Winchester): £${breakEvenRevenue.toLocaleString() || "not calculated"}
+• Break-even monthly revenue (${propertyLabel}): £${breakEvenRevenue.toLocaleString() || "not calculated"}
 • Rent as % of realistic monthly revenue: ${rentToRevenuePct}% (healthy = <15%, stretched = >20%)
 • Personal cash runway (savings covering living costs pre-opening): ${cashRunwayMonths >= 99 ? "secure — income exceeds outgoings" : `${cashRunwayMonths} months`}
 • VAT threshold risk: ${vatRisk ? "HIGH" : "LOW"} — ${vatRiskDetail}
-• Bedhampton income covers ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of Winchester fixed costs per year` : "unknown — set Bedhampton revenue in financial model"}
+• Bedhampton income covers ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of new clinic fixed costs per year` : "unknown — set Bedhampton revenue in financial model"}
 • Days until target opening: ${daysToOpening}
 
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
   "verdict": "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED",
   "verdictLabel": "<concise label, e.g. 'Proceed to negotiation — 3 must-dos first' or 'Strong proceed — financials support it'>",
-  "confidenceScore": <integer 0-100: your confidence the Winchester clinic will be financially viable if she signs>,
+  "confidenceScore": <integer 0-100: your confidence the new clinic at this property will be financially viable if she signs>,
   "executiveSummary": "<1-2 crisp paragraphs: does the financial model support committing to this property at this rent? What is the single biggest commercial risk? What is your clear recommendation — use numbers>",
   "detailedAssessment": {
     "financial": "<2-3 sentences on the three scenarios: which is realistic given Bedhampton's current trajectory, what the break-even occupancy looks like, and whether the numbers justify the rent commitment — cite figures>",
-    "property": "<2-3 sentences on the property terms: is the rent commercially reasonable for Winchester? What terms matter most in heads of terms negotiations? What should she push back on or clarify before signing?>",
-    "market": "<2-3 sentences on the Winchester market opportunity: is there demand for premium aesthetics in Winchester? How does the location work? What is the competitive risk?>",
+    "property": "<2-3 sentences on the property terms: is the rent commercially reasonable for this location? What terms matter most in heads of terms negotiations? What should she push back on or clarify before signing?>",
+    "market": "<2-3 sentences on the local market opportunity at ${propertyTown}: is there demand for premium aesthetics here? How does the location work for footfall and client acquisition? What is the competitive risk?>",
     "strategic": "<2 sentences on strategic fit: does this move make sense for Abi's business at this stage? How does Bedhampton's current performance de-risk or complicate the move?>",
     "personal": "<2 sentences on her personal financial position: does her runway, nursing income, and Bedhampton income give her enough buffer to safely commit to this lease?>"
   },
