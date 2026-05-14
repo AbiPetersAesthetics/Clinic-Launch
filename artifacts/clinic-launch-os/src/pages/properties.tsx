@@ -1782,14 +1782,19 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
   const handleSetActive = () => {
     setPropertyActive.mutate({ id: property.id }, {
-      onSuccess: async () => {
+      onSuccess: (data: any) => {
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
-        toast({ title: "Property selected", description: "Assumptions cleared. Generating financial model with AI…" });
         setShowActiveConfirm(false);
         onUpdated();
-        navigate("/financials?generate=1");
+        if (data?.restored) {
+          toast({ title: "Property switched", description: "Your saved assumptions for this property have been restored." });
+          navigate("/financials");
+        } else {
+          toast({ title: "Property selected", description: "Assumptions cleared — generating financial model with AI…" });
+          navigate("/financials?generate=1");
+        }
       },
       onError: () => toast({ title: "Failed to set active property", variant: "destructive" }),
     });
@@ -2214,11 +2219,11 @@ function PropertyCard({
   const handleSetActive = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPropertyActive.mutate({ id: property.id }, {
-      onSuccess: () => {
+      onSuccess: (data: any) => {
         queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
-        navigate("/financials?generate=1");
+        navigate(data?.restored ? "/financials" : "/financials?generate=1");
       },
     });
   };

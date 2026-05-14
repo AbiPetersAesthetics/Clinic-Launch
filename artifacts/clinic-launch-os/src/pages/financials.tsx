@@ -1245,20 +1245,10 @@ export default function FinancialsPage() {
                       <span className="flex items-center gap-1"><span className="inline-block w-2 h-2 rounded-sm bg-blue-100 dark:bg-blue-900 border border-blue-200 dark:border-blue-800" />Dual = shared, counted once</span>
                     </div>
 
-                    {/* AI Assessment */}
-                    <div className="border-t pt-3 space-y-3">
-                      <button
-                        onClick={handleAiAssess}
-                        disabled={aiAssessing}
-                        className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium border border-dashed border-primary/40 text-primary hover:bg-primary/5 transition-colors disabled:opacity-50"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        {aiAssessing ? "Analysing property costs…" : "AI: Estimate costs & suggest missing items"}
-                      </button>
-
-                      {aiSuggestions && (
+                    {/* AI Suggestions panel (only shown when old per-item assess was used) */}
+                    {aiSuggestions && (
+                      <div className="border-t pt-3 space-y-3">
                         <div className="space-y-3 bg-muted/40 rounded-lg p-3 text-xs">
-                          {/* Estimates for existing zero items */}
                           {aiSuggestions.estimates?.filter(e => {
                             const item = fixedCostItems.find(i => i.name === e.name);
                             return item && item.amountGbp === 0;
@@ -1288,8 +1278,6 @@ export default function FinancialsPage() {
                               </div>
                             </div>
                           )}
-
-                          {/* Additional cost suggestions */}
                           {aiSuggestions.additionalCosts?.length > 0 && (
                             <div>
                               <p className="font-semibold text-muted-foreground uppercase tracking-wider text-[10px] mb-2">Suggested additional costs</p>
@@ -1312,8 +1300,6 @@ export default function FinancialsPage() {
                               </div>
                             </div>
                           )}
-
-                          {/* Flags */}
                           {aiSuggestions.flags?.length > 0 && (
                             <div className="border-t pt-2 space-y-1">
                               {aiSuggestions.flags.map((f, i) => (
@@ -1325,8 +1311,8 @@ export default function FinancialsPage() {
                             </div>
                           )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {/* Total */}
                     <div className="flex justify-between items-center border-t pt-2">

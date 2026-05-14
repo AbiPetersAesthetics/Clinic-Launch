@@ -81,7 +81,32 @@ router.put("/properties/:id/set-active", async (req, res) => {
   const [property] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, id));
   if (!property) return res.status(404).json({ error: "Property not found" });
 
-  // Clear active flag on all other properties for this project
+  // ── Step 1: Snapshot current active property's financial model before switching ──
+  const [currentActive] = await db.select().from(propertiesTable)
+    .where(and(
+      eq(propertiesTable.projectId, property.projectId),
+      eq(propertiesTable.isActiveForProject, true)
+    ));
+
+  if (currentActive && currentActive.id !== id) {
+    const [currentModel] = await db.select().from(financialsTable)
+      .where(eq(financialsTable.projectId, property.projectId));
+    const currentItems = await db.select().from(fixedCostItemsTable)
+      .where(eq(fixedCostItemsTable.projectId, property.projectId));
+
+    if (currentModel) {
+      const { id: _id, projectId: _pid, createdAt: _ca, updatedAt: _ua, ...modelFields } = currentModel as any;
+      await db.update(propertiesTable)
+        .set({
+          savedFinancialModel: modelFields,
+          savedFixedCostItems: currentItems.map(({ id: _i, projectId: _p, createdAt: _c, updatedAt: _u, ...rest }) => rest),
+          updatedAt: new Date(),
+        })
+        .where(eq(propertiesTable.id, currentActive.id));
+    }
+  }
+
+  // ── Step 2: Clear active flag on all other properties ──────────────────────
   await db.update(propertiesTable)
     .set({ isActiveForProject: false })
     .where(and(
@@ -89,13 +114,33 @@ router.put("/properties/:id/set-active", async (req, res) => {
       eq(propertiesTable.isActiveForProject, true)
     ));
 
-  // Set this property as active
+  // ── Step 3: Set this property as active ────────────────────────────────────
   const [updated] = await db.update(propertiesTable)
     .set({ isActiveForProject: true, pipelineStatus: "selected", status: "active", updatedAt: new Date() })
     .where(eq(propertiesTable.id, id))
     .returning();
 
-  // Sync property data into financial model — full reset to defaults, keeping only property-derived values
+  // ── Step 4: Restore saved assumptions if this property has them ─────────────
+  if (property.savedFinancialModel && property.savedFixedCostItems) {
+    const saved = property.savedFinancialModel as Record<string, any>;
+    const savedItems = property.savedFixedCostItems as Array<Record<string, any>>;
+
+    const [existingModel] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, property.projectId));
+    if (existingModel) {
+      await db.update(financialsTable).set({ ...saved, updatedAt: new Date() }).where(eq(financialsTable.projectId, property.projectId));
+    } else {
+      await db.insert(financialsTable).values({ projectId: property.projectId, ...saved });
+    }
+
+    await db.delete(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, property.projectId));
+    if (savedItems.length > 0) {
+      await db.insert(fixedCostItemsTable).values(savedItems.map(item => ({ ...item, projectId: property.projectId })));
+    }
+
+    return res.json({ ...updated, restored: true });
+  }
+
+  // ── Step 5: No saved assumptions — full reset, AI will populate ────────────
   const monthlyRent = property.monthlyRentGbp ?? 0;
   const monthlyRates = property.businessRatesGbp ? Math.round(property.businessRatesGbp / 12) : 0;
   const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
@@ -165,7 +210,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
     category: "property",
   });
 
-  return res.json(updated);
+  return res.json({ ...updated, restored: false });
 });
 
 // ─── Unset Active Property ────────────────────────────────────────────────────

@@ -302,6 +302,24 @@ router.put("/projects/:projectId/financial", async (req, res) => {
   } else {
     [model] = await db.insert(financialsTable).values({ ...body, projectId }).returning();
   }
+
+  // Auto-snapshot to the active property so switching back restores this state
+  try {
+    const [activeProperty] = await db.select().from(propertiesTable)
+      .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+    if (activeProperty && model) {
+      const currentItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
+      const { id: _id, projectId: _pid, createdAt: _ca, updatedAt: _ua, ...modelFields } = model as any;
+      await db.update(propertiesTable)
+        .set({
+          savedFinancialModel: modelFields,
+          savedFixedCostItems: currentItems.map(({ id: _i, projectId: _p, createdAt: _c, updatedAt: _u, ...rest }) => rest),
+          updatedAt: new Date(),
+        })
+        .where(eq(propertiesTable.id, activeProperty.id));
+    }
+  } catch { /* non-fatal — snapshot failed but save succeeded */ }
+
   res.json(model);
 });
 
