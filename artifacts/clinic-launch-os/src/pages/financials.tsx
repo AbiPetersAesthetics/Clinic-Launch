@@ -28,7 +28,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw, Loader2, Wand2,
+  RefreshCw, Loader2, Wand2, Lock,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -151,6 +151,39 @@ export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+
+  // ── Lifestyle plan — drives locked financial model fields ─────────────────
+  const [lifestylePlan, setLifestylePlan] = useState<{
+    clinicDays: string | string[];
+    clinicOpenTime: string;
+    clinicCloseTime: string;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/projects/${PROJECT_ID}/lifestyle`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setLifestylePlan(data); })
+      .catch(() => {});
+  }, []);
+
+  const derivedSchedule = useMemo(() => {
+    if (!lifestylePlan) return null;
+    const clinicDays: string[] = (() => {
+      const v = lifestylePlan.clinicDays;
+      if (Array.isArray(v)) return v;
+      try { return JSON.parse(v ?? "[]"); } catch { return []; }
+    })();
+    const open  = lifestylePlan.clinicOpenTime  ?? "09:00";
+    const close = lifestylePlan.clinicCloseTime ?? "18:00";
+    const [oh, om] = open.split(":").map(Number);
+    const [ch, cm] = close.split(":").map(Number);
+    const windowMins = Math.max(0, (ch * 60 + cm) - (oh * 60 + om));
+    return {
+      daysPerMonth:  Math.round(clinicDays.length * (365 / 12 / 7) * 2) / 2,
+      hoursPerDay:   Math.round(windowMins / 60 * 2) / 2,
+      clinicDaysCount: clinicDays.length,
+    };
+  }, [lifestylePlan]);
 
   // ── Fixed cost items (dynamic, replaces hardcoded fixed cost fields) ──────
   const { data: fixedCostItems = [] } = useListFixedCostItems(PROJECT_ID, {
@@ -363,8 +396,9 @@ export default function FinancialsPage() {
         staffingGbp: m.staffingGbp ?? 0, commissionsPercent: m.commissionsPercent ?? 0,
         consumablesGbp: m.consumablesGbp ?? 0,
         wincAcvGbp: m.wincAcvGbp ?? 0, selfFundingBufferPercent: m.selfFundingBufferPercent ?? 20,
-        treatmentRoomsCount: m.treatmentRoomsCount ?? 1, practitionerHoursPerDay: m.practitionerHoursPerDay ?? 7,
-        workingDaysPerMonth: m.workingDaysPerMonth ?? 22,
+        treatmentRoomsCount: m.treatmentRoomsCount ?? 1,
+        practitionerHoursPerDay: derivedSchedule?.hoursPerDay ?? m.practitionerHoursPerDay ?? 7,
+        workingDaysPerMonth: derivedSchedule?.daysPerMonth ?? m.workingDaysPerMonth ?? 22,
         conservativeOccupancyPercent: m.conservativeOccupancyPercent ?? 0,
         realisticOccupancyPercent: m.realisticOccupancyPercent ?? 0,
         aggressiveOccupancyPercent: m.aggressiveOccupancyPercent ?? 0,
@@ -391,6 +425,13 @@ export default function FinancialsPage() {
   }, [model]);
 
   useEffect(() => { if (model) runCalculation(); }, [scenario]);
+
+  // ── Sync derived schedule values into form whenever lifestyle plan updates ─
+  useEffect(() => {
+    if (!derivedSchedule) return;
+    form.setValue("workingDaysPerMonth" as any, derivedSchedule.daysPerMonth);
+    form.setValue("practitionerHoursPerDay" as any, derivedSchedule.hoursPerDay);
+  }, [derivedSchedule]);
 
   // ── AI Proposal state ──────────────────────────────────────────────────────
   type AiFixedCost = {
@@ -1756,8 +1797,8 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["wincAcvGbp","Avg Client Value (£)"],
-                        ["treatmentRoomsCount","Treatment Rooms"],["practitionerHoursPerDay","Hours/Day/Room"],
-                        ["workingDaysPerMonth","Working Days/Mo"],["membershipRevenueGbp","Membership Rev (£/mo)"],
+                        ["treatmentRoomsCount","Treatment Rooms"],
+                        ["membershipRevenueGbp","Membership Rev (£/mo)"],
                         ["conservativeOccupancyPercent","Conservative Occ %"],["realisticOccupancyPercent","Realistic Occ %"],
                         ["aggressiveOccupancyPercent","Aggressive Occ %"],
                       ].map(([name, label]) => (
@@ -1765,7 +1806,37 @@ export default function FinancialsPage() {
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
+
+                      {/* Hours/Day — locked from Life Design */}
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-foreground/80">Hours/Day/Room</p>
+                        <div className="h-8 flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3">
+                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-semibold text-primary">
+                            {derivedSchedule?.hoursPerDay ?? form.watch("practitionerHoursPerDay" as any) ?? "—"}
+                          </span>
+                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold ml-auto">Life Design</span>
+                        </div>
+                      </div>
+
+                      {/* Working days/month — locked from Life Design */}
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-foreground/80">Working Days/Mo</p>
+                        <div className="h-8 flex items-center gap-2 rounded-md border border-border/50 bg-muted/30 px-3">
+                          <Lock className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-semibold text-primary">
+                            {derivedSchedule?.daysPerMonth ?? form.watch("workingDaysPerMonth" as any) ?? "—"}
+                          </span>
+                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 font-semibold ml-auto">Life Design</span>
+                        </div>
+                      </div>
                     </div>
+                    {!derivedSchedule && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 shrink-0" />
+                        Set clinic days on Life Design to auto-populate Hours/Day and Working Days/Mo
+                      </p>
+                    )}
                     <div className="mt-3">
                       <FormField control={form.control} name={"selfFundingBufferPercent" as any} render={({ field }) => (
                         <FormItem>
