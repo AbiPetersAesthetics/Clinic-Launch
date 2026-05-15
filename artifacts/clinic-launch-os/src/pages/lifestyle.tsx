@@ -695,21 +695,24 @@ function ChildScheduleCard({
         )}
         {clinicDayList.map(day => {
           const schedule = viewSchedules[day]?.[childKey] ?? { dropBy: "", pickupBy: "" };
-          const noCover = !schedule.dropBy || !schedule.pickupBy;
           const loc = viewSchedules[day]?.clinicLocation ?? "winchester";
+          const clinicName = loc === "winchester" ? "Winchester" : "Bedhampton";
+          const isSat = day === "Sat";
+          const isSatBedhampton = isSat && loc === "bedhampton";
+          const noCover = isSatBedhampton ? false : (!schedule.dropBy || !schedule.pickupBy);
+
           const travelToClinic = loc === "winchester" ? travelSchoolToWinchesterMins : travelSchoolToBedhamptonMins;
           const travelFromClinic = loc === "winchester" ? travelWinchesterToSchoolMins : travelBedhamptonToSchoolMins;
-          const clinicName = loc === "winchester" ? "Winchester" : "Bedhampton";
 
           const effectiveDropTime = schedule.dropTime ?? schoolStart;
           const effectivePickupTime = schedule.pickupTime ?? schoolFinish;
           const hasClubDrop = !!schedule.dropTime && schedule.dropTime !== schoolStart;
           const hasClubPickup = !!schedule.pickupTime && schedule.pickupTime !== schoolFinish;
 
-          const dropJourney = schedule.dropBy === "Abi"
+          const dropJourney = !isSat && schedule.dropBy === "Abi"
             ? calcDropJourney(effectiveDropTime, travelHomeToSchool, travelToClinic, clinicOpenTime)
             : null;
-          const pickupJourney = schedule.pickupBy === "Abi"
+          const pickupJourney = !isSat && schedule.pickupBy === "Abi"
             ? calcPickupJourney(effectivePickupTime, travelFromClinic)
             : null;
 
@@ -729,60 +732,84 @@ function ChildScheduleCard({
                 }`}>
                   {clinicName}
                 </span>
+                {isSat && <span className="text-[9px] text-muted-foreground px-1.5 py-0.5 rounded bg-muted/60 font-medium">childcare</span>}
                 {noCover && <AlertCircle className="w-3 h-3 text-destructive ml-auto" />}
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <Label className="text-[10px] text-muted-foreground font-medium">Drop-off</Label>
-                    <input
-                      type="time"
-                      value={effectiveDropTime}
-                      onChange={e => handleChange(day, "dropTime", e.target.value)}
-                      className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
-                    />
-                    {hasClubDrop && (
-                      <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
+
+              {isSatBedhampton ? (
+                <div className="rounded-lg bg-teal-50 dark:bg-teal-950/20 border border-teal-200 dark:border-teal-800 px-3 py-2 flex items-start gap-2">
+                  <span className="text-base leading-none mt-0.5">🏠</span>
+                  <div>
+                    <p className="text-[10px] font-semibold text-teal-700 dark:text-teal-400">Working from home base</p>
+                    <p className="text-[9px] text-teal-600 dark:text-teal-500 mt-0.5">Bedhampton is home — no travel needed. Full clinic window available with no commute or timing constraint.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Label className="text-[10px] text-muted-foreground font-medium">
+                        {isSat ? "Morning childcare" : "Drop-off"}
+                      </Label>
+                      {!isSat && (
+                        <>
+                          <input
+                            type="time"
+                            value={effectiveDropTime}
+                            onChange={e => handleChange(day, "dropTime", e.target.value)}
+                            className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
+                          />
+                          {hasClubDrop && (
+                            <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <PersonSelect value={schedule.dropBy} onChange={who => handleChange(day, "dropBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
+                    {dropJourney && (
+                      <JourneyChip
+                        type="drop"
+                        leaveHome={dropJourney.leaveHome}
+                        leaveSchool={dropJourney.leaveSchool}
+                        arriveClinic={dropJourney.arriveClinic}
+                        lateMins={dropJourney.lateMins}
+                        clinicOpenTime={clinicOpenTime}
+                        clinicName={clinicName}
+                      />
                     )}
                   </div>
-                  <PersonSelect value={schedule.dropBy} onChange={who => handleChange(day, "dropBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
-                  {dropJourney && (
-                    <JourneyChip
-                      type="drop"
-                      leaveHome={dropJourney.leaveHome}
-                      leaveSchool={dropJourney.leaveSchool}
-                      arriveClinic={dropJourney.arriveClinic}
-                      lateMins={dropJourney.lateMins}
-                      clinicOpenTime={clinicOpenTime}
-                      clinicName={clinicName}
-                    />
-                  )}
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <Label className="text-[10px] text-muted-foreground font-medium">Pick-up</Label>
-                    <input
-                      type="time"
-                      value={effectivePickupTime}
-                      onChange={e => handleChange(day, "pickupTime", e.target.value)}
-                      className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
-                    />
-                    {hasClubPickup && (
-                      <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Label className="text-[10px] text-muted-foreground font-medium">
+                        {isSat ? "Afternoon childcare" : "Pick-up"}
+                      </Label>
+                      {!isSat && (
+                        <>
+                          <input
+                            type="time"
+                            value={effectivePickupTime}
+                            onChange={e => handleChange(day, "pickupTime", e.target.value)}
+                            className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
+                          />
+                          {hasClubPickup && (
+                            <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
+                          )}
+                        </>
+                      )}
+                    </div>
+                    <PersonSelect value={schedule.pickupBy} onChange={who => handleChange(day, "pickupBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
+                    {pickupJourney && (
+                      <JourneyChip
+                        type="pickup"
+                        mustLeaveClinic={pickupJourney.mustLeaveClinic}
+                        lastApptBy={pickupJourney.lastApptBy}
+                        clinicOpenTime={clinicOpenTime}
+                        clinicName={clinicName}
+                      />
                     )}
                   </div>
-                  <PersonSelect value={schedule.pickupBy} onChange={who => handleChange(day, "pickupBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
-                  {pickupJourney && (
-                    <JourneyChip
-                      type="pickup"
-                      mustLeaveClinic={pickupJourney.mustLeaveClinic}
-                      lastApptBy={pickupJourney.lastApptBy}
-                      clinicOpenTime={clinicOpenTime}
-                      clinicName={clinicName}
-                    />
-                  )}
                 </div>
-              </div>
+              )}
             </div>
           );
         })}
@@ -854,23 +881,26 @@ function AbiWeek({
     type DropEntry = { child: string; dropAt: string; leaveHome: string; arriveReady: string; lateMins: number };
     type PickupEntry = { child: string; pickupAt: string; mustLeave: string; lastAppt: string };
 
+    const isSaturday = day === "Sat";
+    const isSatBedhampton = isSaturday && loc === "bedhampton";
+
     const drops: DropEntry[] = [];
-    if (elsyChild.dropBy === "Abi") {
+    if (!isSaturday && elsyChild.dropBy === "Abi") {
       const j = calcDropJourney(elsyDropT, familySchedule.travelHomeToElsyMins, elsyToClinic, clinicOpenTime);
       drops.push({ child: "Elsy", dropAt: elsyDropT, leaveHome: j.leaveHome, arriveReady: addMins(j.arriveClinic, pw), lateMins: minsBetween(clinicOpenTime, addMins(j.arriveClinic, pw)) });
     }
-    if (eliChild.dropBy === "Abi") {
+    if (!isSaturday && eliChild.dropBy === "Abi") {
       const j = calcDropJourney(eliDropT, familySchedule.travelHomeToEliMins, eliToClinic, clinicOpenTime);
       drops.push({ child: "Eli", dropAt: eliDropT, leaveHome: j.leaveHome, arriveReady: addMins(j.arriveClinic, pw), lateMins: minsBetween(clinicOpenTime, addMins(j.arriveClinic, pw)) });
     }
     drops.sort((a, b) => t2m(a.dropAt) - t2m(b.dropAt));
 
     const pickups: PickupEntry[] = [];
-    if (elsyChild.pickupBy === "Abi") {
+    if (!isSaturday && elsyChild.pickupBy === "Abi") {
       const j = calcPickupJourney(elsyPickupT, elsyFromClinic + pw);
       pickups.push({ child: "Elsy", pickupAt: elsyPickupT, mustLeave: j.mustLeaveClinic, lastAppt: j.lastApptBy });
     }
-    if (eliChild.pickupBy === "Abi") {
+    if (!isSaturday && eliChild.pickupBy === "Abi") {
       const j = calcPickupJourney(eliPickupT, eliFromClinic + pw);
       pickups.push({ child: "Eli", pickupAt: eliPickupT, mustLeave: j.mustLeaveClinic, lastAppt: j.lastApptBy });
     }
@@ -1026,31 +1056,38 @@ function computeDayWindow(
   const eliChild  = ds?.eli  ?? { dropBy: "", pickupBy: "" };
 
   let latestArrival = t2m(baselineOpen);
-  if (elsyChild.dropBy === "Abi") {
-    const drop = elsyChild.dropTime ?? familySchedule.elsySchoolStart;
-    const toCl = loc === "winchester" ? familySchedule.travelElsyToClinicMins : familySchedule.travelElsyToBedhamptonMins;
-    const j = calcDropJourney(drop, familySchedule.travelHomeToElsyMins, toCl, baselineOpen);
-    latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
-  }
-  if (eliChild.dropBy === "Abi") {
-    const drop = eliChild.dropTime ?? familySchedule.eliSchoolStart;
-    const toCl = loc === "winchester" ? familySchedule.travelEliToClinicMins : familySchedule.travelEliToBedhamptonMins;
-    const j = calcDropJourney(drop, familySchedule.travelHomeToEliMins, toCl, baselineOpen);
-    latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
-  }
-
   let earliestDeparture = t2m(baselineClose);
-  if (elsyChild.pickupBy === "Abi") {
-    const pickup = elsyChild.pickupTime ?? familySchedule.elsySchoolFinish;
-    const fromCl = loc === "winchester" ? familySchedule.travelClinicToElsyMins : familySchedule.travelBedhamptonToElsyMins;
-    const j = calcPickupJourney(pickup, fromCl + pw);
-    earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
-  }
-  if (eliChild.pickupBy === "Abi") {
-    const pickup = eliChild.pickupTime ?? familySchedule.eliSchoolFinish;
-    const fromCl = loc === "winchester" ? familySchedule.travelClinicToEliMins : familySchedule.travelBedhamptonToEliMins;
-    const j = calcPickupJourney(pickup, fromCl + pw);
-    earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
+
+  // Saturday: no school run — skip all school-journey constraints
+  // Bedhampton Saturday: Abi lives there, so no travel to clinic either
+  const isSaturday = day === "Sat";
+  const isBedhampton = loc === "bedhampton";
+
+  if (!isSaturday) {
+    if (elsyChild.dropBy === "Abi") {
+      const drop = elsyChild.dropTime ?? familySchedule.elsySchoolStart;
+      const toCl = isBedhampton ? familySchedule.travelElsyToBedhamptonMins : familySchedule.travelElsyToClinicMins;
+      const j = calcDropJourney(drop, familySchedule.travelHomeToElsyMins, toCl, baselineOpen);
+      latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
+    }
+    if (eliChild.dropBy === "Abi") {
+      const drop = eliChild.dropTime ?? familySchedule.eliSchoolStart;
+      const toCl = isBedhampton ? familySchedule.travelEliToBedhamptonMins : familySchedule.travelEliToClinicMins;
+      const j = calcDropJourney(drop, familySchedule.travelHomeToEliMins, toCl, baselineOpen);
+      latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
+    }
+    if (elsyChild.pickupBy === "Abi") {
+      const pickup = elsyChild.pickupTime ?? familySchedule.elsySchoolFinish;
+      const fromCl = isBedhampton ? familySchedule.travelBedhamptonToElsyMins : familySchedule.travelClinicToElsyMins;
+      const j = calcPickupJourney(pickup, fromCl + pw);
+      earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
+    }
+    if (eliChild.pickupBy === "Abi") {
+      const pickup = eliChild.pickupTime ?? familySchedule.eliSchoolFinish;
+      const fromCl = isBedhampton ? familySchedule.travelBedhamptonToEliMins : familySchedule.travelClinicToEliMins;
+      const j = calcPickupJourney(pickup, fromCl + pw);
+      earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
+    }
   }
 
   const hours = Math.max(0, (earliestDeparture - latestArrival) / 60);
@@ -1427,11 +1464,13 @@ function ScheduleAnalytics({
       const [ch, cm] = rawClose.split(":").map(Number);
       return Math.max(0, (ch * 60 + cm - (oh * 60 + om)) / 60);
     })();
-    const real = computeDayWindow(day, familySchedule, rawOpen, rawClose);
+    const win = computeDayWindow(day, familySchedule, rawOpen, rawClose);
+    const real = win.hours;
     const lost = Math.max(0, raw - real);
+    const isSat = day === "Sat";
     const firstAppt = (() => {
       const ds = familySchedule.daySchedules[day];
-      if (!ds) return rawOpen;
+      if (!ds || isSat) return win.arriveTime;
       const pw = familySchedule.parkAndWalkMins;
       const loc = ds.clinicLocation ?? "winchester";
       let latestMins = t2m(rawOpen);
@@ -1448,7 +1487,7 @@ function ScheduleAnalytics({
     })();
     const lastAppt = (() => {
       const ds = familySchedule.daySchedules[day];
-      if (!ds) return rawClose;
+      if (!ds || isSat) return win.leaveTime;
       const pw = familySchedule.parkAndWalkMins;
       const loc = ds.clinicLocation ?? "winchester";
       let earliestMins = t2m(rawClose);
