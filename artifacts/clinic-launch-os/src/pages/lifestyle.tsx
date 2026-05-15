@@ -2031,89 +2031,126 @@ function CoverageMatrix({ clinicDays, daySchedules, weekBDaySchedules, fortnight
 }
 
 // ─── Income Bridge ────────────────────────────────────────────────────────────
-function IncomeBridge({ nursingMonthlyIncome, clinicDays, onChange }: {
+function TransitionPlanner({ nursingMonthlyIncome, clinicDays, onChange }: {
   nursingMonthlyIncome: number; clinicDays: string[];
   onChange: (v: number) => void;
 }) {
-  const [clientsPerDay, setClientsPerDay] = useState(4);
-  const [avgTV, setAvgTV] = useState(150);
-  const daysPerMonth = +(clinicDays.length * 4.333).toFixed(1);
-  const maxPerMonth = daysPerMonth * clientsPerDay;
-  const ramp = [
-    { mo: 1, pct: 15 }, { mo: 2, pct: 25 }, { mo: 3, pct: 40 },
-    { mo: 4, pct: 55 }, { mo: 6, pct: 70 }, { mo: 9, pct: 85 }, { mo: 12, pct: 100 },
-  ];
-  const matchMonth = nursingMonthlyIncome > 0
-    ? (ramp.find(r => (maxPerMonth * r.pct / 100 * avgTV) >= nursingMonthlyIncome)?.mo ?? null)
-    : null;
-  const fmt = (n: number) => `£${Math.round(n).toLocaleString()}`;
+  const [personalCosts, setPersonalCosts] = useState(3500);
+  const [runwaySavings, setRunwaySavings] = useState(35000);
+  const [avgTV, setAvgTV] = useState(155);
+  const [slotsPerDay, setSlotsPerDay] = useState(5);
+  const [varPct, setVarPct] = useState(30);
+
+  // Realistic occupancy ramp for a new aesthetics clinic — months 1-12
+  const RAMP = [18, 28, 40, 50, 58, 64, 70, 74, 78, 83, 88, 93];
+  const daysPerMonth = clinicDays.length * 4.33;
+  const maxRevPerMonth = daysPerMonth * slotsPerDay * avgTV;
+  const fmt = (n: number) => `£${Math.round(Math.max(0, n)).toLocaleString()}`;
+
+  const months = RAMP.map((pct, i) => {
+    const gross = Math.round(maxRevPerMonth * pct / 100);
+    const netClinic = Math.round(gross * (1 - varPct / 100));
+    return { month: i + 1, pct, gross, netClinic };
+  });
+
+  let savingsBalance = runwaySavings;
+  const rows = months.map(m => {
+    const gap = Math.max(0, personalCosts - m.netClinic);
+    savingsBalance = savingsBalance - gap;
+    return { ...m, gap, savingsBalance, covers: m.netClinic >= personalCosts, solvent: savingsBalance >= 0 };
+  });
+
+  const breakEvenMonth = rows.find(r => r.covers)?.month ?? null;
+  const savingsGoneMonth = rows.find(r => !r.solvent)?.month ?? null;
+  const isSafe = savingsGoneMonth === null || (breakEvenMonth !== null && breakEvenMonth < savingsGoneMonth);
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-emerald-500" /> Income Bridge
+          <TrendingUp className="w-4 h-4 text-emerald-500" /> Income Transition Planner
         </CardTitle>
-        <CardDescription className="text-xs">When does clinic income match your nursing take-home pay?</CardDescription>
+        <CardDescription className="text-xs">Month-by-month post-exit: does clinic income replace nursing income before your savings run out?</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-3 gap-2">
-          <div className="space-y-1">
-            <Label className="text-[10px] text-muted-foreground">Nursing net/month</Label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
-              <Input type="number" min={0} step={100} value={nursingMonthlyIncome || ""} onChange={e => onChange(parseFloat(e.target.value) || 0)} className="h-8 text-xs pl-5" placeholder="e.g. 2800" />
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { label: "Nursing net/month", val: nursingMonthlyIncome, set: (v: number) => onChange(v), placeholder: "e.g. 2800" },
+            { label: "Personal costs/month", val: personalCosts, set: setPersonalCosts, placeholder: "e.g. 3500" },
+            { label: "Runway savings", val: runwaySavings, set: setRunwaySavings, placeholder: "e.g. 35000" },
+            { label: "Avg treatment value", val: avgTV, set: setAvgTV, placeholder: "e.g. 155" },
+          ].map(({ label, val, set, placeholder }) => (
+            <div key={label} className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground">{label}</Label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
+                <Input type="number" min={0} step={100} value={val || ""} onChange={e => set(parseFloat(e.target.value) || 0)} className="h-8 text-xs pl-5" placeholder={placeholder} />
+              </div>
             </div>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] text-muted-foreground">Clients/day</Label>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 pt-1">
+          <div className="flex items-center gap-2 flex-1">
+            <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Slots/day</Label>
             <div className="flex items-center gap-1">
-              <button onClick={() => setClientsPerDay(Math.max(1, clientsPerDay - 1))} className="w-7 h-8 rounded-lg border text-sm hover:bg-muted transition-colors shrink-0">−</button>
-              <span className="flex-1 text-center text-sm font-bold">{clientsPerDay}</span>
-              <button onClick={() => setClientsPerDay(Math.min(10, clientsPerDay + 1))} className="w-7 h-8 rounded-lg border text-sm hover:bg-muted transition-colors shrink-0">+</button>
+              <button onClick={() => setSlotsPerDay(Math.max(1, slotsPerDay - 1))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">−</button>
+              <span className="w-5 text-center text-xs font-bold">{slotsPerDay}</span>
+              <button onClick={() => setSlotsPerDay(Math.min(12, slotsPerDay + 1))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">+</button>
             </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-[10px] text-muted-foreground">Avg treatment (£)</Label>
-            <div className="relative">
-              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
-              <Input type="number" min={50} step={10} value={avgTV} onChange={e => setAvgTV(parseInt(e.target.value) || 150)} className="h-8 text-xs pl-5" />
+          <div className="flex items-center gap-2 flex-1">
+            <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Variable costs</Label>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setVarPct(Math.max(5, varPct - 5))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">−</button>
+              <span className="w-7 text-center text-xs font-bold">{varPct}%</span>
+              <button onClick={() => setVarPct(Math.min(60, varPct + 5))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">+</button>
             </div>
           </div>
         </div>
-        {nursingMonthlyIncome > 0 ? (
-          <>
-            <div className="space-y-1.5">
-              {ramp.map(({ mo, pct }) => {
-                const rev = maxPerMonth * pct / 100 * avgTV;
-                const barPct = Math.min(100, Math.round((rev / nursingMonthlyIncome) * 100));
-                const matched = rev >= nursingMonthlyIncome;
-                const isMatchMonth = mo === matchMonth;
-                return (
-                  <div key={mo} className="flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground w-10 shrink-0">Mo {mo}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                      <div className={`h-full rounded-full transition-all ${matched ? "bg-emerald-500" : "bg-primary/60"}`} style={{ width: `${barPct}%` }} />
-                    </div>
-                    <span className={`text-[10px] font-semibold w-14 text-right shrink-0 ${matched ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{fmt(rev)}</span>
-                    {isMatchMonth && <span className="text-[9px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full shrink-0">✓</span>}
-                  </div>
-                );
-              })}
-            </div>
-            {matchMonth !== null ? (
-              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 text-center">
-                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">You'll match nursing income around <strong>Month {matchMonth}</strong> at these assumptions.</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">{daysPerMonth} days/mo · {clientsPerDay} clients/day · {fmt(avgTV)} avg</p>
-              </div>
+
+        {personalCosts > 0 && (
+          <div className={`rounded-xl p-3 ${isSafe ? "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800" : "bg-destructive/5 border border-destructive/20"}`}>
+            {breakEvenMonth ? (
+              <>
+                <p className={`text-xs font-semibold ${isSafe ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>
+                  Clinic covers personal costs from <strong>Month {breakEvenMonth}</strong>
+                  {isSafe ? " — savings hold until then ✓" : ` — but savings run dry at Month ${savingsGoneMonth}`}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  {fmt(maxRevPerMonth)} max/month · {clinicDays.length} days · {slotsPerDay} slots · {varPct}% variable costs
+                </p>
+              </>
             ) : (
-              <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-center">
-                <p className="text-xs text-amber-700 dark:text-amber-400">Nursing income not matched within 12 months at these figures. Try more days, more clients, or higher ATV.</p>
-              </div>
+              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
+                Clinic doesn't cover personal costs within 12 months — adjust days, slots, or treatment value
+              </p>
             )}
-          </>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-2 italic">Enter your monthly nursing net income to see the bridge calculation</p>
+          </div>
         )}
+
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[9px] text-transparent w-8 shrink-0">—</span>
+            <div className="flex-1" />
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground w-16 text-right shrink-0">Net income</span>
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground w-16 text-right shrink-0">Savings left</span>
+          </div>
+          {rows.map(r => {
+            const barPct = personalCosts > 0 ? Math.min(100, Math.round(r.netClinic / personalCosts * 100)) : r.pct;
+            const barColor = r.covers ? "bg-emerald-500" : r.netClinic >= personalCosts * 0.65 ? "bg-primary" : "bg-amber-400";
+            return (
+              <div key={r.month} className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-8 shrink-0 font-medium">Mo {r.month}</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${barPct}%` }} />
+                </div>
+                <span className={`text-[10px] font-semibold w-16 text-right shrink-0 ${r.covers ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{fmt(r.netClinic)}</span>
+                <span className={`text-[10px] w-16 text-right shrink-0 ${!r.solvent ? "text-destructive font-bold" : r.savingsBalance < runwaySavings * 0.3 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{fmt(r.savingsBalance)}</span>
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -2566,6 +2603,174 @@ export default function LifestylePage() {
      domainScores.wellbeing + domainScores.identity) / 5
   );
 
+  // ── Auto-generated tab summaries & overall narrative ──────────────────────
+  const tabSummaries = useMemo(() => {
+    const fmtDate = (s: string) => {
+      const d = parsePlanDate(s);
+      return d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : null;
+    };
+
+    // ── Schedule ──────────────────────────────────────────────────────────
+    const days = plan.clinicDays;
+    const hoursPerDay = days.length > 0 ? Math.round(minsBetween(plan.clinicOpenTime, plan.clinicCloseTime) / 60 * 10) / 10 : 0;
+    const protectedDays = ["Mon","Tue","Wed","Thu","Fri"].filter(d => !days.includes(d));
+    let schedule = "";
+    if (!days.length) {
+      schedule = "No clinic days selected yet. Choose which days you'll see clients to get started.";
+    } else {
+      schedule = `${days.length}-day clinic week (${days.join(", ")}), ${plan.clinicOpenTime}–${plan.clinicCloseTime} (${hoursPerDay}h/day).`;
+      if (protectedDays.length) schedule += ` ${protectedDays.join(", ")} ${protectedDays.length === 1 ? "is" : "are"} fully protected off-clinic days.`;
+      if (schoolDropConflict) schedule += " ⚠ Clinic opens before school drop — cover is needed on clinic days.";
+      else schedule += " No school-drop conflict with current open time.";
+      if (extras.closureDates.length) schedule += ` ${extras.closureDates.length} closure/holiday date${extras.closureDates.length > 1 ? "s" : ""} planned.`;
+      else schedule += " No planned closure dates yet.";
+      if (plan.scheduleNotes.trim().length > 20) schedule += " Schedule vision note written.";
+    }
+
+    // ── Family ────────────────────────────────────────────────────────────
+    const cd = plan.clinicDays;
+    const elsyDrop = cd.length > 0 && cd.every(d => !!familySchedule.daySchedules[d]?.elsy?.dropBy);
+    const elsyPick = cd.length > 0 && cd.every(d => !!familySchedule.daySchedules[d]?.elsy?.pickupBy);
+    const eliDrop  = cd.length > 0 && cd.every(d => !!familySchedule.daySchedules[d]?.eli?.dropBy);
+    const eliPick  = cd.length > 0 && cd.every(d => !!familySchedule.daySchedules[d]?.eli?.pickupBy);
+    const fullyCovered = elsyDrop && elsyPick && eliDrop && eliPick;
+    let family = "";
+    if (!cd.length) {
+      family = "Set your clinic days first, then assign school cover for each one.";
+    } else {
+      const gaps: string[] = [];
+      if (!elsyDrop) gaps.push("Elsy drop");
+      if (!elsyPick) gaps.push("Elsy pickup");
+      if (!eliDrop) gaps.push("Eli drop");
+      if (!eliPick) gaps.push("Eli pickup");
+      family = fullyCovered
+        ? `School cover is fully assigned on all ${cd.length} clinic days — drop and pickup for both Elsy and Eli.`
+        : `School cover has gaps: ${gaps.join(", ")} not yet assigned on all clinic days.`;
+      const backup = familySchedule.backupCarerName;
+      family += backup ? ` Backup carer: ${backup}.` : " No backup carer set.";
+      if (plan.davidRoleNotes.trim().length > 10) family += " David's role is documented.";
+      else family += " David's specific role not yet written down.";
+      if (plan.schoolContingencyPlan.trim().length > 20) family += " Contingency plan written for sick days and INSET days.";
+      else family += " No contingency plan yet for sick children or INSET days.";
+    }
+
+    // ── Nursing ───────────────────────────────────────────────────────────
+    const statusLabels: Record<string, string> = {
+      still_working: "still working as normal",
+      exploring: "mentally starting to plan the exit",
+      notice_given: "notice given — leaving date confirmed",
+      left: "already left nursing",
+    };
+    let nursing = `Currently ${statusLabels[plan.nursingStatus] ?? plan.nursingStatus}.`;
+    if (plan.targetExitDate) {
+      const exitFormatted = fmtDate(plan.targetExitDate);
+      const exitD = parsePlanDate(plan.targetExitDate);
+      if (exitD) {
+        const noticeD = new Date(exitD.getTime() - plan.nursingNoticeWeeks * 7 * 86400000);
+        const noticeFmt = noticeD.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+        const daysToNotice = Math.ceil((noticeD.getTime() - Date.now()) / 86400000);
+        nursing += ` Target exit: ${exitFormatted}.`;
+        nursing += daysToNotice > 0
+          ? ` Hand in notice by ${noticeFmt} (${daysToNotice} days from now).`
+          : ` Notice deadline was ${noticeFmt} — have you handed it in?`;
+      }
+    } else {
+      nursing += " No exit date set yet.";
+    }
+    if (extras.nursingMonthlyIncomeGbp > 0) {
+      nursing += ` Nursing net income to replace: £${extras.nursingMonthlyIncomeGbp.toLocaleString()}/month.`;
+    } else {
+      nursing += " Enter your nursing net income to model the income transition.";
+    }
+    nursing += ` ${plan.nursingChecks.length}/${NURSING_CHECKS.length} exit checklist items confirmed.`;
+
+    // ── Wellbeing ─────────────────────────────────────────────────────────
+    const nns = extras.nonNegotiablesList;
+    let wellbeing = `Maximum ${plan.maxClinicDaysPerWeek} clinic days/week set as absolute limit`;
+    wellbeing += plan.maxClinicDaysPerWeek <= 4 ? " — sustainable." : " — consider reducing to 4.";
+    wellbeing += nns.length > 0 ? ` ${nns.length} non-negotiable${nns.length > 1 ? "s" : ""} locked in` : " No non-negotiables added yet";
+    const catCounts = ["family","health","time","personal"].map(c => ({ c, n: nns.filter((x: NonNegotiableItem) => x.category === c).length })).filter(x => x.n > 0);
+    if (catCounts.length) wellbeing += ` (${catCounts.map(x => `${x.n} ${x.c}`).join(", ")}).`;
+    else wellbeing += ".";
+    wellbeing += plan.sickCoverPlan.trim().length > 20 ? " Sick-day plan written." : " No sick-day plan yet.";
+    wellbeing += plan.holidayPlan.trim().length > 20 ? " Holiday plan written." : " No holiday plan yet.";
+    wellbeing += ` ${plan.wellbeingChecks.length}/${WELLBEING_CHECKS.length} sustainability checklist items confirmed.`;
+
+    // ── Identity ──────────────────────────────────────────────────────────
+    const pitch = extras.thePitch.trim();
+    const vision = extras.successVision12m.trim();
+    const fears = extras.fearInventory;
+    const resolved = fears.filter((f: FearItem) => f.status === "resolved").length;
+    let identity = pitch.length > 20 ? `The Pitch: "${pitch.slice(0, 90)}${pitch.length > 90 ? "…" : ""}".` : "The Pitch not written yet.";
+    identity += vision.length > 50 ? ` 12-month vision written (${vision.length} chars).` : " 12-month success vision not yet written.";
+    identity += plan.mostExcitedAbout.trim().length > 20 ? " What excites her is captured." : " What excites you most — not yet written.";
+    if (fears.length > 0) identity += ` Fear inventory: ${fears.length} fear${fears.length > 1 ? "s" : ""} named, ${resolved} resolved.`;
+    else identity += " Fear inventory empty — name them so you can track them.";
+    identity += plan.supportNetwork.trim().length > 20 ? " Support network documented." : " Support network not yet documented.";
+    identity += ` ${plan.identityChecks.length}/${IDENTITY_CHECKS.length} identity checklist items ticked.`;
+
+    return { schedule, family, nursing, wellbeing, identity };
+  }, [plan, extras, familySchedule, schoolDropConflict]);
+
+  const overallNarrative = useMemo(() => {
+    const days = plan.clinicDays;
+    if (!days.length && plan.nursingStatus === "still_working" && !plan.targetExitDate) {
+      return "Life Design is blank — work through each tab to build a complete picture of how the clinic fits around family, nursing exit, and personal wellbeing. The scorecard above will update as you go.";
+    }
+    const parts: string[] = [];
+
+    // Schedule
+    if (days.length) {
+      parts.push(`${days.length}-day clinic week (${days.join(", ")}), ${plan.clinicOpenTime}–${plan.clinicCloseTime}.`);
+    }
+
+    // Family
+    const covered = days.length > 0 && days.every(d => {
+      const ds = familySchedule.daySchedules[d];
+      return ds?.elsy?.dropBy && ds?.elsy?.pickupBy && ds?.eli?.dropBy && ds?.eli?.pickupBy;
+    });
+    parts.push(covered ? "School run fully covered on all clinic days." : "School run cover still needs assigning on clinic days.");
+
+    // Nursing
+    const statusMap: Record<string, string> = {
+      still_working: "still working full-time as a nurse",
+      exploring: "planning the nursing exit",
+      notice_given: "notice given",
+      left: "already left nursing",
+    };
+    const statusStr = statusMap[plan.nursingStatus] ?? plan.nursingStatus;
+    if (plan.targetExitDate) {
+      const d = parsePlanDate(plan.targetExitDate);
+      const fmt = d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : plan.targetExitDate;
+      parts.push(`Nursing: ${statusStr}, target exit ${fmt}.`);
+    } else {
+      parts.push(`Nursing: ${statusStr} — no exit date set yet.`);
+    }
+
+    // Non-negotiables + max days
+    if (extras.nonNegotiablesList.length > 0 || plan.maxClinicDaysPerWeek) {
+      parts.push(`Max ${plan.maxClinicDaysPerWeek} clinic days/week; ${extras.nonNegotiablesList.length} non-negotiable${extras.nonNegotiablesList.length !== 1 ? "s" : ""} locked in.`);
+    }
+
+    // Identity
+    if (extras.thePitch.trim().length > 20 || extras.successVision12m.trim().length > 50) {
+      parts.push("Identity work is underway — The Pitch and 12-month vision are written.");
+    }
+
+    // Readiness summary
+    const domainsGreen = Object.values(domainScores).filter(v => v >= 70).length;
+    const domainsRed = Object.values(domainScores).filter(v => v < 30).length;
+    if (lifeReadiness >= 70) {
+      parts.push(`Overall readiness ${lifeReadiness}% — ${domainsGreen}/5 domains at 70%+. This is looking solid.`);
+    } else if (lifeReadiness >= 40) {
+      parts.push(`Overall readiness ${lifeReadiness}% — ${domainsGreen}/5 domains above 70%, ${domainsRed} still early. Keep building.`);
+    } else {
+      parts.push(`Overall readiness ${lifeReadiness}% — most domains are early stage. Work through each tab to strengthen the plan.`);
+    }
+
+    return parts.join(" ");
+  }, [plan, extras, familySchedule, domainScores, lifeReadiness]);
+
   const familyConflicts = useMemo(() => {
     const checkWeek = (sched: DaySchedules, label: string) => plan.clinicDays.flatMap(day => {
       const ds = sched[day];
@@ -2662,6 +2867,9 @@ export default function LifestylePage() {
             <p className="text-sm text-muted-foreground mt-1.5 max-w-lg leading-relaxed">
               Opening a clinic is a life change, not just a business decision. Plan the parts that don't appear on a spreadsheet — because these are the things that will actually determine whether this works.
             </p>
+            {overallNarrative && (
+              <p className="text-sm text-foreground/75 mt-2.5 max-w-lg leading-relaxed border-t border-border/40 pt-2.5">{overallNarrative}</p>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span className={`text-xs px-2.5 py-1 rounded-lg border font-medium ${
@@ -2755,25 +2963,15 @@ export default function LifestylePage() {
         </div>
       </div>
 
-      {/* ── Tabs ──────────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-muted/60 p-1 rounded-xl overflow-x-auto scrollbar-none border border-border/40">
-        {tabs.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-1.5 px-3 sm:px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
-              tab === t.key
-                ? "bg-background shadow-sm text-foreground border border-border/40"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
-            }`}>
-            <t.icon className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden sm:inline">{t.label}</span>
-            <TabBadge checks={t.checks} items={t.items} />
-          </button>
-        ))}
-      </div>
-
       {/* ═══ SCHEDULE ═══════════════════════════════════════════════════════════ */}
       {tab === "schedule" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <CalendarDays className="w-3 h-3" /> Schedule Summary
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{tabSummaries.schedule}</p>
+          </div>
           {schoolDropConflict && (
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
@@ -2916,6 +3114,12 @@ export default function LifestylePage() {
       {/* ═══ FAMILY ═════════════════════════════════════════════════════════════ */}
       {tab === "family" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <Users className="w-3 h-3" /> Family Summary
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{tabSummaries.family}</p>
+          </div>
 
           <CoverageMatrix
             clinicDays={plan.clinicDays}
@@ -3417,6 +3621,12 @@ export default function LifestylePage() {
       {/* ═══ NURSING EXIT ════════════════════════════════════════════════════════ */}
       {tab === "nursing" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <Stethoscope className="w-3 h-3" /> Nursing Exit Summary
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{tabSummaries.nursing}</p>
+          </div>
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2"><ArrowRight className="w-4 h-4 text-primary" /> Your Exit Roadmap</CardTitle>
@@ -3514,7 +3724,7 @@ export default function LifestylePage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <IncomeBridge
+            <TransitionPlanner
               nursingMonthlyIncome={extras.nursingMonthlyIncomeGbp}
               clinicDays={plan.clinicDays}
               onChange={v => updateExtras({ nursingMonthlyIncomeGbp: v })}
@@ -3527,6 +3737,12 @@ export default function LifestylePage() {
       {/* ═══ WELLBEING ══════════════════════════════════════════════════════════ */}
       {tab === "wellbeing" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <Heart className="w-3 h-3" /> Wellbeing Summary
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{tabSummaries.wellbeing}</p>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-3 space-y-5">
               <Card className="shadow-sm">
@@ -3621,6 +3837,12 @@ export default function LifestylePage() {
       {/* ═══ IDENTITY ════════════════════════════════════════════════════════════ */}
       {tab === "identity" && (
         <div className="space-y-6">
+          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" /> Identity Summary
+            </p>
+            <p className="text-sm text-foreground/80 leading-relaxed">{tabSummaries.identity}</p>
+          </div>
           {plan.mostExcitedAbout && (
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 via-background to-violet-500/5 p-6">
               <p className="text-[10px] font-semibold text-primary uppercase tracking-widest mb-3 flex items-center gap-1.5">
