@@ -1390,6 +1390,9 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
                           <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT</span>
                         </th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <span title="Winchester only: Revenue − Variable − Fixed − VAT. Positive = Winchester covers its own costs without Bedhampton.">Winc ±</span>
+                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
@@ -1486,6 +1489,13 @@ export default function FinancialsPage() {
                             {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
                             <td className={`text-right px-2 py-1.5 tabular-nums ${m.wincVat > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
                               {m.wincVat > 0 ? <span>({formatGBP(m.wincVat)})</span> : "—"}
+                            </td>
+
+                            {/* Winchester ± — revenue minus all Winchester costs; shows if Winc covers itself */}
+                            <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.wincRevenue === 0 ? "text-muted-foreground/30" : m.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                              {m.wincRevenue === 0
+                                ? "—"
+                                : <span>{m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}</span>}
                             </td>
 
                             {/* Combined Net Profit */}
