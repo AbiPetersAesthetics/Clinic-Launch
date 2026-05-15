@@ -129,6 +129,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     query: {
       enabled: true,
       queryKey: getGetProjectDashboardQueryKey(PROJECT_ID),
+      refetchInterval: 15_000,
+      staleTime: 0,
     },
   });
 

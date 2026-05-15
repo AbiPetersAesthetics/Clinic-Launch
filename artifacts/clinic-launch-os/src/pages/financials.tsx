@@ -9,6 +9,7 @@ import {
   useGetProjectCashflow,
   getGetProjectCashflowQueryKey,
   getGetOptimisationAnalysisQueryKey,
+  getGetProjectDashboardQueryKey,
   useListFixedCostItems,
   getListFixedCostItemsQueryKey,
   useCreateFixedCostItem,
@@ -425,6 +426,7 @@ export default function FinancialsPage() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+        queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
         runCalculation();
         setSaveStatus("saved");
       },
