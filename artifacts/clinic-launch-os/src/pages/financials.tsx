@@ -665,7 +665,7 @@ export default function FinancialsPage() {
         const stressOcc = conservOcc ? Math.max(Math.round(conservOcc * 0.65), 12) : 0;
         return stressOcc ? `${stressOcc}% occ, worst-case` : SCENARIOS.stress_test.description;
       }
-      default: return SCENARIOS[key].description;
+      default: return SCENARIOS[key as ScenarioKey].description;
     }
   };
 
@@ -2197,7 +2197,7 @@ export default function FinancialsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-sm">{clinicLabel} — Variable Costs</CardTitle>
-                      {bLive?.summary.avgGrossMarginPct > 0 && (
+                      {bLive && bLive.summary.avgGrossMarginPct > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                             Live Bedhampton margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong>
@@ -2957,7 +2957,7 @@ export default function FinancialsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-sm">Cost Structure</CardTitle>
-                    {bLive?.summary.avgGrossMarginPct > 0 && (
+                    {bLive && bLive.summary.avgGrossMarginPct > 0 && (
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                           Live margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong>

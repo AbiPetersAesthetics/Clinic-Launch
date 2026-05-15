@@ -1,0 +1,339 @@
+Build a NEW page called:
+
+# “Operational Model”
+
+Route:
+`/operational-model`
+
+IMPORTANT:
+Do NOT modify or break the existing financial modelling page.
+This is a separate advanced modelling layer that sits alongside the current finance dashboard.
+
+The goal is to model the actual clinic engine and operational behaviour that drives the financial outputs.
+
+The page should feel:
+
+* founder-grade
+* analytical
+* premium
+* realistic
+* operationally intelligent
+* similar visual language to the existing dashboard.
+
+Use the existing styling system, cards, spacing, colour palette, typography and component structure already used throughout the app.
+
+---
+
+## PAGE PURPOSE
+
+The current financial model uses mostly static revenue assumptions.
+
+This new page should model:
+
+* demand generation
+* consultations
+* conversion
+* retention
+* treatment mix
+* occupancy
+* clinician capacity
+* client lifetime value
+* repeat behaviour
+* revenue quality
+* stress testing
+* scenario analysis
+
+The output of this page should eventually be capable of feeding the existing finance page.
+
+This is NOT just another finance screen.
+It is an operational simulation engine.
+
+---
+
+## TOP KPI STRIP
+
+Create a sticky top KPI strip similar to the existing financial page.
+
+Include:
+
+1. Monthly Leads
+2. Consultations Booked
+3. Consultation Conversion %
+4. Average Client Value
+5. Repeat Booking Rate
+6. Occupancy %
+7. Monthly Capacity Remaining
+8. Client Lifetime Value
+9. Cash Runway
+10. Risk Level
+
+Use colour coding:
+
+* green = healthy
+* amber = warning
+* red = risk
+
+---
+
+## MAIN PAGE SECTIONS
+
+SECTION 1:
+
+# Demand Engine
+
+Create editable cards/sliders for:
+
+* Meta Leads per Month
+* Google Leads per Month
+* Organic Enquiries
+* Referral Enquiries
+* Website Conversion %
+* Cost Per Lead
+* Lead Response Time
+* Booking Rate %
+* Consultation Show Rate %
+
+Display:
+
+* total leads
+* total consults
+* estimated CAC
+* estimated booked clients
+
+Include:
+
+* trend chart
+* funnel visualisation
+
+---
+
+SECTION 2:
+
+# Consultation & Conversion Model
+
+Create interactive conversion assumptions:
+
+* Consultation Conversion %
+* Existing Client Conversion %
+* Upsell Acceptance %
+* Membership Take-up %
+* Skin Consultation Conversion %
+* Finance Option Uptake %
+
+Outputs:
+
+* monthly new clients
+* monthly repeat clients
+* total treatment plans sold
+* recurring revenue generated
+
+Add:
+
+* best case
+* realistic
+* conservative
+  scenario toggles.
+
+---
+
+SECTION 3:
+
+# Treatment Mix Engine
+
+Create editable treatment mix percentages:
+
+* Anti-Wrinkle
+* Filler
+* Polynucleotides
+* Skin Boosters
+* Microneedling
+* Facials / Skin
+* Skincare Retail
+
+Each treatment type should have:
+
+* average treatment value
+* average treatment duration
+* gross margin %
+* repeat interval
+* course likelihood %
+
+Display:
+
+* weighted average client value
+* weighted average margin
+* revenue contribution pie chart
+* treatment profitability ranking
+
+---
+
+SECTION 4:
+
+# Capacity & Occupancy
+
+This section is CRITICAL.
+
+Model:
+
+* treatment rooms
+* clinician hours
+* opening days
+* appointment durations
+* buffers
+* cancellations
+* no-shows
+
+Include editable assumptions for:
+
+* number of treatment beds
+* clinician hours per week
+* admin time
+* lunch breaks
+* unavailable blocks
+* DNA rate
+
+Outputs:
+
+* maximum monthly appointments
+* current occupancy %
+* unused capacity
+* burnout risk indicator
+* revenue ceiling
+
+Visual:
+
+* occupancy gauge
+* utilisation chart
+* “days until full capacity” estimate
+
+---
+
+SECTION 5:
+
+# Client Retention Engine
+
+Model:
+
+* repeat booking intervals
+* membership retention
+* annual revisit frequency
+* reactivation campaigns
+* client churn
+* dormant clients
+
+Outputs:
+
+* rolling active client base
+* projected returning clients
+* LTV
+* retention health score
+* revenue stability score
+
+Include cohort-style charts.
+
+---
+
+SECTION 6:
+
+# Cashflow Stress Testing
+
+This should be visually important.
+
+Allow toggles for:
+
+* slower occupancy ramp
+* VAT registration earlier
+* 20% drop in leads
+* Abi unavailable for 2 weeks
+* increased rent
+* weak winter period
+* poor conversion month
+* ad account failure
+
+Outputs:
+
+* cash runway
+* minimum bank balance
+* danger month detection
+* break-even shift
+* risk score
+
+Display:
+
+* red warning states
+* survival timeline
+* stress impact chart
+
+---
+
+SECTION 7:
+
+# Strategic Insights Panel
+
+Generate AI-style insights cards based on assumptions.
+
+Examples:
+
+* “Current occupancy suggests second injector required within 11 months.”
+* “Lead conversion below target is causing £3,200/month missed revenue.”
+* “Skin treatments are underrepresented relative to profitability.”
+* “Current pricing model likely undervalues Winchester demographic.”
+* “Client retention improving by 8% increases annual revenue by £42k.”
+
+Make these dynamic and intelligent-feeling.
+
+---
+
+## TECHNICAL REQUIREMENTS
+
+* Do NOT hardcode static values everywhere.
+* Centralise assumptions into a config/state system.
+* Build reusable modelling functions.
+* Ensure future linkage to the finance page is possible.
+* Use realistic calculations.
+* Keep architecture clean and expandable.
+* Preserve responsiveness.
+* Avoid clutter.
+* Maintain premium dashboard feel.
+
+---
+
+## DESIGN DIRECTION
+
+The page should feel like:
+
+* a private equity operational dashboard
+* a clinic operating system
+* serious founder software
+* modern SaaS analytics
+
+NOT:
+
+* a spreadsheet
+* a basic admin panel
+* an amateur calculator.
+
+Use:
+
+* cards
+* charts
+* gauges
+* trend indicators
+* confidence colouring
+* modern data visualisation
+
+Keep it elegant and highly readable.
+
+---
+
+## FINAL IMPORTANT INSTRUCTION
+
+Do NOT remove or replace the existing financial model.
+
+This new Operational Model page should exist as:
+
+* a deeper intelligence layer
+* operational simulation system
+* strategic forecasting engine
+
+that complements the current financial dashboard.

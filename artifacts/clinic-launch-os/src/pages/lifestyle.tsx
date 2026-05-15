@@ -1999,7 +1999,7 @@ function CoverageMatrix({ clinicDays, daySchedules, weekBDaySchedules, fortnight
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-foreground">{day}</span>
                         <span className={`text-[8px] px-1 py-0.5 rounded font-medium ${loc === "winchester" ? "bg-primary/10 text-primary/70" : "bg-teal-500/10 text-teal-700 dark:text-teal-400"}`}>{loc === "winchester" ? "Win" : "Bed"}</span>
-                        {fortnightEnabled && day === "Friday" && (
+                        {fortnightEnabled && day === "Fri" && (
                           <span className="text-[8px] px-1 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Wk {activeWeek}</span>
                         )}
                       </div>
