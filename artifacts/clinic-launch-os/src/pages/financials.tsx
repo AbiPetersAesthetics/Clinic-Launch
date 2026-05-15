@@ -386,7 +386,15 @@ export default function FinancialsPage() {
   useEffect(() => { loadBedhamptonLive(); }, []);
 
   const { data: model, isLoading: isModelLoading } = useGetFinancialModel(PROJECT_ID, {
-    query: { queryKey: getGetFinancialModelQueryKey(PROJECT_ID), enabled: true },
+    query: {
+      queryKey: getGetFinancialModelQueryKey(PROJECT_ID),
+      enabled: true,
+      // Disable focus/reconnect refetches — those are the ones that reset the
+      // form mid-edit. Mount-time refetch is kept so coming back to the page
+      // always loads the latest saved DB values.
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    },
   });
 
   const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
@@ -536,8 +544,12 @@ export default function FinancialsPage() {
   // ── Sync derived schedule values into form whenever lifestyle plan updates ─
   useEffect(() => {
     if (!derivedSchedule) return;
+    // Use isSilentReset so this doesn't trigger "unsaved" or a debounced save.
+    // The values will be included in the next real user-triggered save anyway.
+    isSilentReset.current = true;
     form.setValue("workingDaysPerMonth" as any, derivedSchedule.daysPerMonth);
     form.setValue("practitionerHoursPerDay" as any, derivedSchedule.hoursPerDay);
+    setTimeout(() => { isSilentReset.current = false; }, 50);
   }, [derivedSchedule]);
 
   // ── AI Proposal state ──────────────────────────────────────────────────────
