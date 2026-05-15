@@ -141,11 +141,12 @@ interface PlanExtras {
   energyGivers: string;
   energyDrainers: string;
   dayTimeOverrides: Record<string, DayTimeOverride>;
+  targetHoursPerFortnight: number;
 }
 const DEFAULT_EXTRAS: PlanExtras = {
   closureDates: [], nonNegotiablesList: [], thePitch: "", successVision12m: "",
   fearInventory: [], nursingMonthlyIncomeGbp: 0, energyGivers: "", energyDrainers: "",
-  dayTimeOverrides: {},
+  dayTimeOverrides: {}, targetHoursPerFortnight: 0,
 };
 function parseExtras(s: string): PlanExtras {
   try { return { ...DEFAULT_EXTRAS, ...JSON.parse(s || "{}") }; } catch { return DEFAULT_EXTRAS; }
@@ -1058,15 +1059,17 @@ function computeDayWindow(
 
 function SmartScheduleAdvisor({
   familySchedule, currentDays, currentOpenTime, currentCloseTime,
-  dayTimeOverrides, onApply, onDayOverride,
+  dayTimeOverrides, targetHoursPerFortnight, onApply, onDayOverride, onTargetChange,
 }: {
   familySchedule: FamilySchedule;
   currentDays: string[];
   currentOpenTime: string;
   currentCloseTime: string;
   dayTimeOverrides: Record<string, DayTimeOverride>;
+  targetHoursPerFortnight: number;
   onApply: (days: string[], openTime: string, closeTime: string) => void;
   onDayOverride: (day: string, override: DayTimeOverride | null) => void;
+  onTargetChange: (hours: number) => void;
 }) {
   const BASELINE_OPEN  = "09:00";
   const BASELINE_CLOSE = "19:00";
@@ -1105,8 +1108,34 @@ function SmartScheduleAdvisor({
   });
 
   const sorted = [...dayAnalysis].sort((a, b) => b.score - a.score);
-  const recommended = new Set(sorted.slice(0, 4).map(d => d.day));
-  const recommendedOrdered = DAYS.filter(d => recommended.has(d));
+
+  // Hours per fortnight — each selected day appears twice per fortnight
+  const projectedHpf = +dayAnalysis
+    .filter(d => currentDays.includes(d.day))
+    .reduce((s, d) => s + d.windowHrs * 2, 0)
+    .toFixed(1);
+
+  const hasGoal = targetHoursPerFortnight > 0;
+  const goalPct = hasGoal ? Math.min(100, Math.round((projectedHpf / targetHoursPerFortnight) * 100)) : 0;
+  const goalMet = hasGoal && projectedHpf >= targetHoursPerFortnight;
+
+  // Auto-schedule: if goal set, pick fewest highest-score days to hit it; else top 4
+  const autoScheduleDays = (() => {
+    if (!hasGoal) {
+      return DAYS.filter(d => new Set(sorted.slice(0, 4).map(x => x.day)).has(d));
+    }
+    let hours = 0;
+    const picked: string[] = [];
+    for (const d of sorted) {
+      if (hours >= targetHoursPerFortnight) break;
+      picked.push(d.day);
+      hours += d.windowHrs * 2;
+    }
+    return DAYS.filter(d => picked.includes(d));
+  })();
+
+  const recommended = new Set(autoScheduleDays);
+  const recommendedOrdered = autoScheduleDays;
 
   const toggleDay = (day: string) => {
     const newDays = currentDays.includes(day)
@@ -1118,23 +1147,64 @@ function SmartScheduleAdvisor({
   return (
     <Card className="shadow-sm border-emerald-200 dark:border-emerald-900">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              Smart Schedule Advisor
-            </CardTitle>
-            <CardDescription className="text-xs mt-0.5">
-              Click a day to toggle it on/off · click the clock to set custom hours
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                Smart Schedule Advisor
+              </CardTitle>
+              <Button
+                size="sm"
+                className="h-8 text-xs gap-1.5 shrink-0"
+                onClick={() => onApply(recommendedOrdered, "09:30", "18:30")}
+              >
+                <Wand2 className="w-3.5 h-3.5" /> Auto-schedule
+              </Button>
+            </div>
+            <CardDescription className="text-xs">
+              Click a day to toggle · clock icon for custom hours
             </CardDescription>
+            {/* ── Fortnightly hours goal ── */}
+            <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-2">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide shrink-0">
+                  Target hrs / 2 weeks
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  max={80}
+                  step={0.5}
+                  value={targetHoursPerFortnight || ""}
+                  placeholder="e.g. 30"
+                  onChange={e => onTargetChange(parseFloat(e.target.value) || 0)}
+                  className="h-7 text-xs w-20 ml-auto"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${goalMet ? "bg-emerald-500" : hasGoal ? "bg-primary" : "bg-muted-foreground/30"}`}
+                    style={{ width: hasGoal ? `${goalPct}%` : "0%" }}
+                  />
+                </div>
+                <span className={`text-[10px] font-bold shrink-0 tabular-nums ${goalMet ? "text-emerald-600 dark:text-emerald-400" : hasGoal ? "text-primary" : "text-muted-foreground"}`}>
+                  {projectedHpf}h{hasGoal ? ` / ${targetHoursPerFortnight}h` : " projected"}
+                </span>
+              </div>
+              {hasGoal && !goalMet && (
+                <p className="text-[9px] text-amber-600 dark:text-amber-400">
+                  {(targetHoursPerFortnight - projectedHpf).toFixed(1)}h short — Auto-schedule will pick the right days to hit your goal
+                </p>
+              )}
+              {goalMet && (
+                <p className="text-[9px] text-emerald-600 dark:text-emerald-400">
+                  Goal met ✓ — {(projectedHpf - targetHoursPerFortnight).toFixed(1)}h to spare
+                </p>
+              )}
+            </div>
           </div>
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5 shrink-0"
-            onClick={() => onApply(recommendedOrdered, "09:30", "18:30")}
-          >
-            <Wand2 className="w-3.5 h-3.5" /> Auto-schedule
-          </Button>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -2494,12 +2564,14 @@ export default function LifestylePage() {
                 currentOpenTime={plan.clinicOpenTime}
                 currentCloseTime={plan.clinicCloseTime}
                 dayTimeOverrides={extras.dayTimeOverrides}
+                targetHoursPerFortnight={extras.targetHoursPerFortnight}
                 onApply={(days, open, close) => update({ clinicDays: days, clinicOpenTime: open, clinicCloseTime: close })}
                 onDayOverride={(day, override) => {
                   const next = { ...extras.dayTimeOverrides };
                   if (override === null) delete next[day]; else next[day] = override;
                   updateExtras({ dayTimeOverrides: next });
                 }}
+                onTargetChange={v => updateExtras({ targetHoursPerFortnight: v })}
               />
 
               <ScheduleAnalytics
