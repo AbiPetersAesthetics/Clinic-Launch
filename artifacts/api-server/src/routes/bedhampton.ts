@@ -46,6 +46,8 @@ export interface BedhamptonSummary {
   totalRevenue: number;
   revenueMtdNet: number;
   projectedMonthRevenueNet: number;
+  /** Derived: avg gross margin % computed from net vs gross revenue figures */
+  avgGrossMarginPct: number;
 }
 
 export interface BedhamptonMonthlyRevenue {
@@ -65,10 +67,18 @@ export interface BedhamptonLiveData {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export async function fetchBedhamptonLive(): Promise<BedhamptonLiveData> {
-  const [summary, allMonths] = await Promise.all([
-    fetchWithCache<BedhamptonSummary>(`${EXTERNAL_BASE}/api/analytics/summary`),
+  const [rawSummary, allMonths] = await Promise.all([
+    fetchWithCache<Omit<BedhamptonSummary, "avgGrossMarginPct">>(`${EXTERNAL_BASE}/api/analytics/summary`),
     fetchWithCache<BedhamptonMonthlyRevenue[]>(`${EXTERNAL_BASE}/api/analytics/monthly-revenue`),
   ]);
+
+  // Derive gross margin from net vs gross figures.
+  // Use projected-month figures (more complete); fall back to MTD if projected is 0.
+  const grossBase = rawSummary.projectedMonthRevenue > 0 ? rawSummary.projectedMonthRevenue : rawSummary.revenueMtd;
+  const netBase   = rawSummary.projectedMonthRevenue > 0 ? rawSummary.projectedMonthRevenueNet : rawSummary.revenueMtdNet;
+  const avgGrossMarginPct = grossBase > 0 ? Math.round((netBase / grossBase) * 1000) / 10 : 0;
+
+  const summary: BedhamptonSummary = { ...rawSummary, avgGrossMarginPct };
 
   // Determine the current month in YYYY-MM format so we can exclude it.
   // The current month is always partial (in-progress) — including it biases
@@ -127,17 +137,38 @@ Current performance:
 • Average client spend: ${fmt(summary.avgClientSpend)} | Appointments this month: ${summary.appointmentsThisMonth}
 • Repeat client rate: ${summary.repeatClientPct}% | Total revenue since launch: ${fmt(summary.totalRevenue)}
 • 3-month average revenue (completed months only): ${fmt(avg3)}/month
+• Average gross margin: ${summary.avgGrossMarginPct}% (derived from net vs gross revenue — product/consumable costs included)
 • Top treatment: ${summary.topTreatment}
 
 Recent monthly revenue (last 6 completed months, sorted chronologically):
 ${trendLines}
 
 Use this data when assessing financial viability, rent affordability, cash runway, or launch readiness. Bedhampton income is the financial safety net for the Winchester launch period.
+The ${summary.avgGrossMarginPct}% gross margin is real, live data from the existing clinic and should be used as the assumed margin for both Bedhampton and Winchester financial projections.
 ---`.trim();
   } catch {
     return `Note: Live Bedhampton clinic data is temporarily unavailable. Base financial analysis on the Winchester project assumptions provided in the question.`;
   }
 }
+
+// ─── GET /api/bedhampton/margin ──────────────────────────────────────────────
+// Returns just the live gross margin % — used by financials to auto-populate
+// the variable cost assumption for both Winchester and Bedhampton.
+
+router.get("/bedhampton/margin", async (_req, res) => {
+  try {
+    const { summary } = await fetchBedhamptonLive();
+    return res.json({
+      grossMarginPct: summary.avgGrossMarginPct,
+      impliedVariableCostPct: Math.round((100 - summary.avgGrossMarginPct) * 10) / 10,
+      source: "live" as const,
+      fetchedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Failed to fetch margin data";
+    return res.status(502).json({ error: msg });
+  }
+});
 
 // ─── GET /api/bedhampton/summary ─────────────────────────────────────────────
 

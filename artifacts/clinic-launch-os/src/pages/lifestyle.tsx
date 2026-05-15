@@ -2599,54 +2599,76 @@ export default function LifestylePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-5 pt-5 border-t border-border/50">
+        {/* ── Key stats ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-border/50">
           <div className="space-y-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Clinic days</p>
-            <p className="text-lg font-bold text-foreground">{plan.clinicDays.length}<span className="text-xs font-normal text-muted-foreground">/week</span></p>
+            <p className="text-xl font-bold text-foreground">{plan.clinicDays.length}<span className="text-xs font-normal text-muted-foreground ml-0.5">/week</span></p>
             <p className="text-[10px] text-muted-foreground">{plan.clinicDays.join(", ") || "None set"}</p>
           </div>
           <div className="space-y-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">School run</p>
-            <p className={`text-lg font-bold ${schoolCovered ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
-              {schoolCovered ? "Covered" : "Not set"}
+            <p className={`text-xl font-bold ${schoolCovered ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
+              {schoolCovered ? "✓ Covered" : "Not set"}
             </p>
-            <p className="text-[10px] text-muted-foreground">{schoolCovered ? "All clinic days covered" : "Needs a plan"}</p>
+            <p className="text-[10px] text-muted-foreground">{schoolCovered ? "All clinic days" : "Family tab → assign cover"}</p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nursing</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nursing status</p>
             <p className={`text-sm font-bold ${nursingStatusLabel[plan.nursingStatus]?.color ?? "text-foreground"}`}>
               {nursingStatusLabel[plan.nursingStatus]?.label ?? "—"}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {plan.targetExitDate ? `Target: ${parsePlanDate(plan.targetExitDate)?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) ?? "—"}` : "No date set"}
+              {plan.targetExitDate ? `Target: ${parsePlanDate(plan.targetExitDate)?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) ?? "—"}` : "No exit date set"}
             </p>
           </div>
           <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Clinic hours</p>
-            <p className="text-sm font-bold">{plan.clinicOpenTime}<span className="text-muted-foreground font-normal">–</span>{plan.clinicCloseTime}</p>
-            <p className="text-[10px] text-muted-foreground">{plan.maxClinicDaysPerWeek} days max</p>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Hours</p>
+            <p className="text-sm font-bold">{plan.clinicOpenTime}<span className="text-muted-foreground font-normal mx-0.5">–</span>{plan.clinicCloseTime}</p>
+            <p className="text-[10px] text-muted-foreground">max {plan.maxClinicDaysPerWeek} days/week</p>
           </div>
-          <div className="space-y-1">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Life readiness</p>
-              <p className={`text-xs font-bold ${lifeReadiness >= 70 ? "text-emerald-600 dark:text-emerald-400" : lifeReadiness >= 40 ? "text-primary" : "text-amber-500"}`}>{lifeReadiness}%</p>
-            </div>
+        </div>
+
+        {/* ── 5-domain readiness scorecard ── */}
+        <div className="mt-4 pt-4 border-t border-border/40">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Life Readiness</p>
+            <span className={`text-sm font-bold px-2.5 py-0.5 rounded-full ${
+              lifeReadiness >= 70 ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300"
+              : lifeReadiness >= 40 ? "bg-primary/10 text-primary"
+              : "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300"
+            }`}>{lifeReadiness}% overall</span>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
             {[
-              { label: "Sched", checks: plan.scheduleChecks, items: SCHEDULE_CHECKS },
-              { label: "Family", checks: plan.familyChecks, items: FAMILY_CHECKS },
-              { label: "Nursing", checks: plan.nursingChecks, items: NURSING_CHECKS },
-              { label: "Welbng", checks: plan.wellbeingChecks, items: WELLBEING_CHECKS },
-              { label: "Identity", checks: plan.identityChecks, items: IDENTITY_CHECKS },
-            ].map(({ label, checks, items }) => {
+              { label: "Schedule", icon: CalendarDays, checks: plan.scheduleChecks, items: SCHEDULE_CHECKS, tabKey: "schedule" as TabKey },
+              { label: "Family", icon: Users, checks: plan.familyChecks, items: FAMILY_CHECKS, tabKey: "family" as TabKey },
+              { label: "Nursing", icon: Stethoscope, checks: plan.nursingChecks, items: NURSING_CHECKS, tabKey: "nursing" as TabKey },
+              { label: "Wellbeing", icon: Heart, checks: plan.wellbeingChecks, items: WELLBEING_CHECKS, tabKey: "wellbeing" as TabKey },
+              { label: "Identity", icon: Sparkles, checks: plan.identityChecks, items: IDENTITY_CHECKS, tabKey: "identity" as TabKey },
+            ].map(({ label, icon: Icon, checks, items, tabKey }) => {
               const pct = Math.round((checks.filter(k => items.some(i => i.key === k)).length / Math.max(1, items.length)) * 100);
+              const color = pct >= 70 ? "emerald" : pct >= 40 ? "primary" : "amber";
+              const colorMap: Record<string, string> = {
+                emerald: "bg-emerald-500",
+                primary: "bg-primary",
+                amber: "bg-amber-500",
+              };
+              const textMap: Record<string, string> = {
+                emerald: "text-emerald-600 dark:text-emerald-400",
+                primary: "text-primary",
+                amber: "text-amber-600 dark:text-amber-400",
+              };
               return (
-                <div key={label} className="flex items-center gap-1.5">
-                  <span className="text-[8px] text-muted-foreground w-12 shrink-0">{label}</span>
-                  <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                    <div className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-primary" : "bg-amber-500"}`} style={{ width: `${pct}%` }} />
+                <button key={label} onClick={() => setTab(tabKey)}
+                  className="group flex flex-col items-center gap-1.5 p-2 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/3 transition-all text-center">
+                  <Icon className={`w-3.5 h-3.5 ${textMap[color]} group-hover:scale-110 transition-transform`} />
+                  <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight hidden sm:block">{label}</span>
+                  <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-500 ${colorMap[color]}`} style={{ width: `${pct}%` }} />
                   </div>
-                  <span className={`text-[8px] font-bold w-5 text-right shrink-0 ${pct >= 70 ? "text-emerald-600 dark:text-emerald-400" : pct >= 40 ? "text-primary" : "text-amber-500"}`}>{pct}%</span>
-                </div>
+                  <span className={`text-[10px] font-bold ${textMap[color]}`}>{pct}%</span>
+                </button>
               );
             })}
           </div>

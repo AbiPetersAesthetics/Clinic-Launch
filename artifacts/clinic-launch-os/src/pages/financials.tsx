@@ -351,6 +351,8 @@ export default function FinancialsPage() {
     revenueThisMonth: number; projectedMonthRevenue: number; lastMonthRevenue: number;
     avgClientSpend: number; appointmentsThisMonth: number; repeatClientPct: number;
     revenueGrowthPct: number; topTreatment: string; totalRevenue: number;
+    revenueMtd: number; revenueMtdNet: number; projectedMonthRevenueNet: number;
+    avgGrossMarginPct: number;
   };
   type BLiveMonth = { month: string; revenue: number; appointmentCount: number; };
   type BLiveData = {
@@ -965,7 +967,7 @@ export default function FinancialsPage() {
               {bLive && !bLiveLoading && (
                 <div className="space-y-4">
                   {/* KPI row */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-blue-100 dark:border-blue-900 bg-white/60 dark:bg-blue-950/30 p-3">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">This Month</div>
                       <div className="text-lg font-bold text-foreground">{formatGBP(bLive.summary.projectedMonthRevenue)}</div>
@@ -986,6 +988,18 @@ export default function FinancialsPage() {
                       <div className="text-lg font-bold text-foreground">{bLive.summary.repeatClientPct}%</div>
                       <div className="text-xs text-muted-foreground mt-0.5">client retention</div>
                     </div>
+                    {bLive.summary.avgGrossMarginPct > 0 && (
+                      <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/30 p-3">
+                        <div className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-1">
+                          Gross Margin
+                          <span className="inline-flex items-center gap-0.5 px-1 py-0 text-[9px] font-semibold rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />LIVE
+                          </span>
+                        </div>
+                        <div className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{bLive.summary.avgGrossMarginPct}%</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">{formatGBP(bLive.summary.projectedMonthRevenueNet)} net this month</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Sparkline */}
@@ -1892,7 +1906,30 @@ export default function FinancialsPage() {
                 </Card>
 
                 <Card className="shadow-sm">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">{clinicLabel} — Variable Costs</CardTitle></CardHeader>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm">{clinicLabel} — Variable Costs</CardTitle>
+                      {bLive?.summary.avgGrossMarginPct > 0 && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                            Live Bedhampton margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong>
+                            {" "}→ {(100 - bLive.summary.avgGrossMarginPct).toFixed(1)}% variable cost
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const variablePct = Math.round((100 - bLive.summary.avgGrossMarginPct) * 10) / 10;
+                              form.setValue("stockPercent", variablePct);
+                              form.setValue("commissionsPercent", 0);
+                            }}
+                            className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors font-semibold"
+                          >
+                            Apply live margin
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3">
                       {[
@@ -2630,7 +2667,27 @@ export default function FinancialsPage() {
               {/* Cost structure */}
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Cost Structure</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm">Cost Structure</CardTitle>
+                    {bLive?.summary.avgGrossMarginPct > 0 && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          Live margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const variablePct = Math.round((100 - bLive.summary.avgGrossMarginPct) * 10) / 10;
+                            form.setValue("stockPercent", variablePct);
+                            form.setValue("commissionsPercent", 0);
+                          }}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors font-semibold"
+                        >
+                          Apply live margin
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-3">
