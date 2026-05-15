@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import {
   CheckCircle2, Circle, Clock, Sun, Heart, Users,
   Stethoscope, Leaf, AlertCircle, Star, ChevronRight,
-  CalendarDays, ArrowRight, Shield, Sparkles, MapPin,
+  CalendarDays, ArrowRight, Shield, Sparkles, MapPin, Wand2, TrendingUp,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const PROJECT_ID = 1;
 const API_BASE = "/api";
@@ -319,11 +320,19 @@ function WeekGrid({ clinicDays, openTime, closeTime, schoolStart, schoolEnd }: {
 }
 
 // ─── Nursing timeline ─────────────────────────────────────────────────────────
+/** Handles both "YYYY-MM" (legacy month picker) and "YYYY-MM-DD" (new date picker) */
+function parsePlanDate(d: string): Date | null {
+  if (!d) return null;
+  const s = d.length === 7 ? d + "-01" : d;
+  const p = new Date(s);
+  return isNaN(p.getTime()) ? null : p;
+}
+
 function NursingTimeline({ status, noticeWeeks, exitDate }: {
   status: string; noticeWeeks: number; exitDate: string;
 }) {
   const today = new Date();
-  const exitDateObj = exitDate ? new Date(exitDate + "-01") : null;
+  const exitDateObj = parsePlanDate(exitDate);
   const noticeDeadline = exitDateObj
     ? new Date(exitDateObj.getTime() - noticeWeeks * 7 * 24 * 60 * 60 * 1000)
     : null;
@@ -900,6 +909,184 @@ function AbiWeek({
   );
 }
 
+// ─── Smart Schedule helpers ───────────────────────────────────────────────────
+const FOOTFALL_DATA: Record<string, { score: number; note: string; bestTimes: string }> = {
+  Mon: { score: 5,  note: "Lower demand — post-weekend fatigue, slow bookers",                    bestTimes: "10:00–17:00" },
+  Tue: { score: 9,  note: "Peak midweek — strong demand, pre-weekend energy builds",             bestTimes: "09:30–18:30" },
+  Wed: { score: 8,  note: "Consistently high — great for lunch slots and after-school",          bestTimes: "09:30–18:30" },
+  Thu: { score: 10, note: "Strongest day in UK aesthetics — clients prepping for the weekend",   bestTimes: "09:30–19:00" },
+  Fri: { score: 7,  note: "Afternoon peak (14:00–19:00) — pre-weekend confidence boost",         bestTimes: "10:00–19:00" },
+  Sat: { score: 4,  note: "Busy but intense competition — all competitors also fully open",      bestTimes: "09:00–14:00" },
+};
+
+function computeDayWindow(
+  day: string,
+  familySchedule: FamilySchedule,
+  baselineOpen: string,
+  baselineClose: string,
+): number {
+  const ds = familySchedule.daySchedules[day];
+  const pw = familySchedule.parkAndWalkMins;
+  const loc = ds?.clinicLocation ?? "winchester";
+  const elsyChild = ds?.elsy ?? { dropBy: "", pickupBy: "" };
+  const eliChild  = ds?.eli  ?? { dropBy: "", pickupBy: "" };
+
+  let latestArrival = t2m(baselineOpen);
+  if (elsyChild.dropBy === "Abi") {
+    const drop = elsyChild.dropTime ?? familySchedule.elsySchoolStart;
+    const toCl = loc === "winchester" ? familySchedule.travelElsyToClinicMins : familySchedule.travelElsyToBedhamptonMins;
+    const j = calcDropJourney(drop, familySchedule.travelHomeToElsyMins, toCl, baselineOpen);
+    latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
+  }
+  if (eliChild.dropBy === "Abi") {
+    const drop = eliChild.dropTime ?? familySchedule.eliSchoolStart;
+    const toCl = loc === "winchester" ? familySchedule.travelEliToClinicMins : familySchedule.travelEliToBedhamptonMins;
+    const j = calcDropJourney(drop, familySchedule.travelHomeToEliMins, toCl, baselineOpen);
+    latestArrival = Math.max(latestArrival, t2m(j.arriveClinic) + pw);
+  }
+
+  let earliestDeparture = t2m(baselineClose);
+  if (elsyChild.pickupBy === "Abi") {
+    const pickup = elsyChild.pickupTime ?? familySchedule.elsySchoolFinish;
+    const fromCl = loc === "winchester" ? familySchedule.travelClinicToElsyMins : familySchedule.travelBedhamptonToElsyMins;
+    const j = calcPickupJourney(pickup, fromCl + pw);
+    earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
+  }
+  if (eliChild.pickupBy === "Abi") {
+    const pickup = eliChild.pickupTime ?? familySchedule.eliSchoolFinish;
+    const fromCl = loc === "winchester" ? familySchedule.travelClinicToEliMins : familySchedule.travelBedhamptonToEliMins;
+    const j = calcPickupJourney(pickup, fromCl + pw);
+    earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
+  }
+
+  return Math.max(0, (earliestDeparture - latestArrival) / 60);
+}
+
+function SmartScheduleAdvisor({
+  familySchedule, currentDays, onApply,
+}: {
+  familySchedule: FamilySchedule;
+  currentDays: string[];
+  onApply: (days: string[], openTime: string, closeTime: string) => void;
+}) {
+  const BASELINE_OPEN  = "09:00";
+  const BASELINE_CLOSE = "19:00";
+
+  const dayAnalysis = DAYS.map(day => {
+    const ff = FOOTFALL_DATA[day];
+    const windowHrs = computeDayWindow(day, familySchedule, BASELINE_OPEN, BASELINE_CLOSE);
+    const windowBonus = Math.min(2, Math.max(0, (windowHrs - 5) * 0.5));
+    const score = ff.score + windowBonus;
+    const ds = familySchedule.daySchedules[day];
+    const elsyChild = ds?.elsy ?? { dropBy: "", pickupBy: "" };
+    const eliChild  = ds?.eli  ?? { dropBy: "", pickupBy: "" };
+    const abiDrops   = [elsyChild.dropBy,   eliChild.dropBy  ].filter(x => x === "Abi").length;
+    const abiPickups = [elsyChild.pickupBy, eliChild.pickupBy].filter(x => x === "Abi").length;
+    return { day, ff, windowHrs, score, abiDrops, abiPickups };
+  });
+
+  const sorted = [...dayAnalysis].sort((a, b) => b.score - a.score);
+  const recommended = new Set(sorted.slice(0, 4).map(d => d.day));
+  const recommendedOrdered = DAYS.filter(d => recommended.has(d));
+
+  return (
+    <Card className="shadow-sm border-emerald-200 dark:border-emerald-900">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              Smart Schedule Advisor
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">
+              UK aesthetics foot-fall data combined with your school run windows
+            </CardDescription>
+          </div>
+          <Button
+            size="sm"
+            className="h-8 text-xs gap-1.5 shrink-0"
+            onClick={() => onApply(recommendedOrdered, "09:30", "18:30")}
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Auto-schedule
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          {dayAnalysis.map(({ day, ff, windowHrs, score, abiDrops, abiPickups }) => {
+            const isRec    = recommended.has(day);
+            const isActive = currentDays.includes(day);
+            return (
+              <div key={day} className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 border transition-all ${
+                isRec
+                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+                  : "bg-muted/20 border-border/40"
+              }`}>
+                <span className="text-[11px] font-bold text-foreground w-7 shrink-0 pt-0.5">{day}</span>
+
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${ff.score >= 9 ? "bg-emerald-500" : ff.score >= 7 ? "bg-primary" : ff.score >= 5 ? "bg-amber-400" : "bg-muted-foreground/30"}`}
+                        style={{ width: `${ff.score * 10}%` }}
+                      />
+                    </div>
+                    <span className={`text-[9px] font-bold shrink-0 ${ff.score >= 9 ? "text-emerald-600 dark:text-emerald-400" : ff.score >= 7 ? "text-primary" : "text-muted-foreground"}`}>
+                      {ff.score}/10
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{ff.note}</p>
+                  <p className="text-[9px] text-muted-foreground/70">Best: {ff.bestTimes}</p>
+                </div>
+
+                <div className="text-right shrink-0 space-y-1">
+                  <p className={`text-[10px] font-semibold ${windowHrs >= 6 ? "text-emerald-600 dark:text-emerald-400" : windowHrs >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>
+                    {windowHrs > 0 ? `${windowHrs.toFixed(1)}h` : "—"}
+                  </p>
+                  {(abiDrops > 0 || abiPickups > 0) && (
+                    <p className="text-[9px] text-muted-foreground">
+                      {abiDrops > 0 ? `↓${abiDrops}` : ""}
+                      {abiDrops > 0 && abiPickups > 0 ? " " : ""}
+                      {abiPickups > 0 ? `↑${abiPickups}` : ""}
+                    </p>
+                  )}
+                  {isRec && <span className="inline-block text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">✓ REC</span>}
+                  {isActive && !isRec && <span className="inline-block text-[8px] bg-muted text-muted-foreground px-1 py-0.5 rounded">active</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-1.5">
+          <p className="text-[10px] font-semibold text-foreground uppercase tracking-wide">Peak booking windows — UK aesthetics</p>
+          <div className="grid grid-cols-2 gap-y-1 gap-x-3 text-[10px]">
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" /><span>10:30–13:00 — lunch crowd</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" /><span>17:00–19:00 — after-work peak</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" /><span className="text-muted-foreground">08:00–09:30 — low (school run)</span></div>
+            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" /><span className="text-muted-foreground">14:30–16:30 — low (school pickup)</span></div>
+          </div>
+        </div>
+
+        <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
+          <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">Recommended schedule</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            {recommendedOrdered.map(day => (
+              <span key={day} className="text-xs font-bold bg-emerald-500 text-white px-2 py-1 rounded-lg">{day}</span>
+            ))}
+            <span className="text-xs text-muted-foreground">·</span>
+            <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">09:30–18:30</span>
+          </div>
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-1.5">
+            Highest foot-fall days + your available windows. Click <strong>Auto-schedule</strong> above to apply.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function LifestylePage() {
   const [plan, setPlan] = useState<Plan>(EMPTY);
@@ -1069,7 +1256,7 @@ export default function LifestylePage() {
               {nursingStatusLabel[plan.nursingStatus]?.label ?? "—"}
             </p>
             <p className="text-[10px] text-muted-foreground">
-              {plan.targetExitDate ? `Target: ${new Date(plan.targetExitDate + "-01").toLocaleDateString("en-GB", { month: "short", year: "numeric" })}` : "No date set"}
+              {plan.targetExitDate ? `Target: ${parsePlanDate(plan.targetExitDate)?.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) ?? "—"}` : "No date set"}
             </p>
           </div>
           <div className="space-y-0.5">
@@ -1189,6 +1376,12 @@ export default function LifestylePage() {
             </div>
 
             <div className="lg:col-span-3 space-y-5">
+              <SmartScheduleAdvisor
+                familySchedule={familySchedule}
+                currentDays={plan.clinicDays}
+                onApply={(days, open, close) => update({ clinicDays: days, clinicOpenTime: open, clinicCloseTime: close })}
+              />
+
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Week at a Glance</CardTitle>
@@ -1552,27 +1745,27 @@ export default function LifestylePage() {
                       <Input type="number" min={1} max={52} value={plan.nursingNoticeWeeks} onChange={e => update({ nursingNoticeWeeks: parseInt(e.target.value) || 12 })} className="h-9 text-sm font-medium" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">Target exit</Label>
-                      <Input type="month" value={plan.targetExitDate} onChange={e => update({ targetExitDate: e.target.value })} className="h-9 text-sm font-medium" />
+                      <Label className="text-xs text-muted-foreground">Target exit date</Label>
+                      <Input type="date" value={plan.targetExitDate} onChange={e => update({ targetExitDate: e.target.value })} className="h-9 text-sm font-medium" />
                     </div>
                   </div>
-                  {plan.targetExitDate && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-center">
-                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Give notice by</p>
-                        <p className="text-sm font-bold text-amber-700 dark:text-amber-300 mt-0.5">
-                          {new Date(new Date(plan.targetExitDate + "-01").getTime() - plan.nursingNoticeWeeks * 7 * 24 * 60 * 60 * 1000)
-                            .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                        </p>
+                  {plan.targetExitDate && parsePlanDate(plan.targetExitDate) && (() => {
+                    const exitD = parsePlanDate(plan.targetExitDate)!;
+                    const noticeD = new Date(exitD.getTime() - plan.nursingNoticeWeeks * 7 * 24 * 60 * 60 * 1000);
+                    const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+                    return (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                          <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Give notice by</p>
+                          <p className="text-sm font-bold text-amber-700 dark:text-amber-300 mt-0.5">{fmt(noticeD)}</p>
+                        </div>
+                        <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-center">
+                          <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Last day</p>
+                          <p className="text-sm font-bold text-primary mt-0.5">{fmt(exitD)}</p>
+                        </div>
                       </div>
-                      <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-center">
-                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Last day</p>
-                        <p className="text-sm font-bold text-primary mt-0.5">
-                          {new Date(plan.targetExitDate + "-01").toLocaleDateString("en-GB", { month: "long", year: "numeric" })}
-                        </p>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                   <div className="space-y-1.5">
                     <Label className="text-xs text-muted-foreground">Notes — anything specific to your situation</Label>
                     <Textarea placeholder="e.g. My ward is short-staffed and the manager may try to guilt me into staying. I need to be clear this is happening regardless. I plan to give 14 weeks to soften the blow but my contract says 12." value={plan.nursingExitNotes} onChange={e => update({ nursingExitNotes: e.target.value })} className="min-h-[80px] text-sm resize-none" />
