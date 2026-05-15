@@ -427,21 +427,33 @@ export default function FinancialsPage() {
   const [saveStatus, setSaveStatus] = useState<"idle" | "unsaved" | "saving" | "saved">("idle");
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSilentReset = useRef(false);
+  // Tracks the latest unsaved values so we can flush them on unmount
+  const pendingValuesRef = useRef<Record<string, any> | null>(null);
 
-  const doSave = useCallback((values: Record<string, any>) => {
+  const processValues = (values: Record<string, any>) => {
     const { vatOnRent: vatOnRentVal, ...rest } = values;
-    const processed = {
+    return {
       ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
       vatOnRent: Boolean(vatOnRentVal),
+      // These map to integer DB columns — must be whole numbers
+      workingDaysPerMonth: Math.round(Number(values.workingDaysPerMonth) || 22),
+      practitionerHoursPerDay: Math.round(Number(values.practitionerHoursPerDay) || 7),
     };
+  };
+
+  const doSave = useCallback((values: Record<string, any>) => {
+    const processed = processValues(values);
     setSaveStatus("saving");
     upsertModel.mutate({ projectId: PROJECT_ID, data: processed }, {
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+        // Do NOT invalidate the financial model query — that triggers form.reset()
+        // which overwrites anything the user has typed since the last save started.
+        // The form values already ARE the saved state; no refetch needed.
         queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
         runCalculation();
         setSaveStatus("saved");
+        pendingValuesRef.current = null;
       },
       onError: () => setSaveStatus("unsaved"),
     });
@@ -450,15 +462,27 @@ export default function FinancialsPage() {
   useEffect(() => {
     const subscription = form.watch((values) => {
       if (isSilentReset.current) return;
+      pendingValuesRef.current = values as Record<string, any>;
       setSaveStatus("unsaved");
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         doSave(values as Record<string, any>);
-      }, 1500);
+      }, 800);
     });
     return () => {
       subscription.unsubscribe();
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      // Flush any pending save immediately on unmount.
+      // Use raw fetch — React Query mutation may already be cleaned up.
+      if (pendingValuesRef.current) {
+        const processed = processValues(pendingValuesRef.current);
+        pendingValuesRef.current = null;
+        fetch(`/api/projects/${PROJECT_ID}/financial`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(processed),
+        }).catch(() => {});
+      }
     };
   }, [form, doSave]);
 
@@ -609,9 +633,18 @@ export default function FinancialsPage() {
     const realistOcc = Number(watchAll.realisticOccupancyPercent) || 0;
     const aggressOcc = Number(watchAll.aggressiveOccupancyPercent) || 0;
     switch (key) {
-      case "conservative": return conservOcc ? `${conservOcc}% occ, 8-mo ramp` : SCENARIOS.conservative.description;
-      case "realistic":    return realistOcc ? `${realistOcc}% occ, 6-mo ramp` : SCENARIOS.realistic.description;
-      case "aggressive":   return aggressOcc ? `${aggressOcc}% occ, 4-mo ramp` : SCENARIOS.aggressive.description;
+      case "conservative":     return conservOcc ? `${conservOcc}% occ, 8-mo ramp` : SCENARIOS.conservative.description;
+      case "realistic":        return realistOcc ? `${realistOcc}% occ, 6-mo ramp` : SCENARIOS.realistic.description;
+      case "aggressive":       return aggressOcc ? `${aggressOcc}% occ, 4-mo ramp` : SCENARIOS.aggressive.description;
+      case "delayed_ramp":     return realistOcc ? `${realistOcc}% occ, 12-mo ramp` : SCENARIOS.delayed_ramp.description;
+      case "economic_downturn": {
+        const downturnOcc = conservOcc ? Math.round(conservOcc * 0.8) : 0;
+        return downturnOcc ? `${downturnOcc}% occ, −15% spend` : "−20% on conservative, −15% spend";
+      }
+      case "stress_test": {
+        const stressOcc = conservOcc ? Math.max(Math.round(conservOcc * 0.65), 12) : 0;
+        return stressOcc ? `${stressOcc}% occ, worst-case` : SCENARIOS.stress_test.description;
+      }
       default: return SCENARIOS[key].description;
     }
   };

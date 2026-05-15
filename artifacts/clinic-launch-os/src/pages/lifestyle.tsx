@@ -2963,6 +2963,32 @@ export default function LifestylePage() {
         </div>
       </div>
 
+    {/* ── Tab navigation bar ──────────────────────────────────────────────── */}
+    <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
+      {tabs.map(({ key, label, icon: Icon, checks, items }) => {
+        const done = checks.filter(k => items.some(i => i.key === k)).length;
+        const isActive = tab === key;
+        return (
+          <button key={key} onClick={() => setTab(key)}
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all shrink-0 border ${
+              isActive
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "border-border text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-muted/50"
+            }`}>
+            <Icon className="w-3.5 h-3.5 shrink-0" />
+            <span>{label}</span>
+            {done > 0 && (
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5 ${
+                done === items.length
+                  ? isActive ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : isActive ? "bg-white/20 text-white" : "bg-primary/15 text-primary"
+              }`}>{done}/{items.length}</span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+
       {/* ═══ SCHEDULE ═══════════════════════════════════════════════════════════ */}
       {tab === "schedule" && (
         <div className="space-y-6">
@@ -3830,6 +3856,32 @@ export default function LifestylePage() {
                 familySchedule={familySchedule}
               />
             </div>
+          </div>
+
+          {/* ── Energy givers / drainers ─────────────────────────────────────── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {([
+              { key: "energyGivers", label: "Energy Givers", icon: Zap, color: "emerald", description: "Protect these — non-negotiable.", placeholder: "e.g. Morning walks, creative time, family dinners, reading, being in nature..." },
+              { key: "energyDrainers", label: "Energy Drainers", icon: AlertCircle, color: "amber", description: "Minimise or eliminate these by design.", placeholder: "e.g. Late evenings, decision fatigue, difficult clients, long admin blocks..." },
+            ] as const).map(({ key, label, icon: Icon, color, description, placeholder }) => (
+              <Card key={key} className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Icon className={`w-4 h-4 ${color === "emerald" ? "text-emerald-500" : "text-amber-500"}`} />
+                    {label}
+                  </CardTitle>
+                  <CardDescription className="text-xs">{description}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder={placeholder}
+                    value={extras[key]}
+                    onChange={e => updateExtras({ [key]: e.target.value })}
+                    className="min-h-[100px] text-sm resize-none"
+                  />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       )}
