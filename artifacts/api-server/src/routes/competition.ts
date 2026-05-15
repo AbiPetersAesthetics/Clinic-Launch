@@ -39,6 +39,46 @@ function extractText(html: string, maxLen = 3500): string {
     .slice(0, maxLen);
 }
 
+/** Extract <head> section including meta tags and JSON-LD for GPT */
+function extractHead(html: string): string {
+  const head = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] || "";
+  // Strip style/script except JSON-LD
+  const cleaned = head
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<script(?![^>]*application\/ld\+json)[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.slice(0, 3000);
+}
+
+/** Extract footer/contact section which almost always has the physical address */
+function extractFooterAndContact(html: string): string {
+  const lower = html.toLowerCase();
+  // Try to grab footer element
+  const footerMatch = html.match(/<footer[^>]*>([\s\S]{0,4000}?)<\/footer>/i)?.[1] || "";
+  // Also grab anything near "contact" section
+  const contactIdx = lower.lastIndexOf("contact");
+  const contactSnip = contactIdx > -1 ? html.slice(Math.max(0, contactIdx - 200), contactIdx + 1500) : "";
+  // Also grab last 1500 chars of body (often footer content)
+  const bodyEnd = html.slice(-2000);
+  const combined = [footerMatch, contactSnip, bodyEnd].join("\n");
+  return extractText(combined, 3000);
+}
+
+/** Extract all iframe src URLs (Google Maps embeds) */
+function extractIframeSrcs(html: string): string[] {
+  return [...html.matchAll(/(?:src|data-src)="([^"]*(?:google\.com\/maps|maps\.google)[^"]*)"/gi)]
+    .map(m => m[1]);
+}
+
+/** Extract microdata / itemprop rating values */
+function extractMicrodataRating(html: string): string {
+  const itemprop = html.match(/itemprop="ratingValue"[^>]*content="([\d.]+)"/i)
+    || html.match(/itemprop="ratingValue"[^>]*>([\d.]+)</i)
+    || html.match(/content="([\d.]+)"[^>]*itemprop="ratingValue"/i);
+  return itemprop?.[1] || "";
+}
+
 function extractMeta(html: string): string {
   return (html.match(/<meta[^>]+>/gi) || [])
     .filter(m => /name="(description|keywords|title)"|property="og:|twitter:/i.test(m))
@@ -149,17 +189,19 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     igFetch,
   ]);
 
-  // ── Phase 3a: Google Rating — from website's own JSON-LD (most reliable) ─
+  // Collect all sub-page HTML for use throughout
+  const allSubHtml = subResults.map(r => r.status === "fulfilled" ? (r.value.html || "") : "").join("");
+
+  // ── Phase 3a: Google Rating — multiple extraction strategies ──────────────
   let googleRating = "";
   let googleReviewCount = 0;
 
-  // Check JSON-LD aggregateRating on the main page
+  // 1) JSON-LD aggregateRating on main page + sub-pages
   const ldRating = mainJsonLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
   const ldCount = mainJsonLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
   if (ldRating) googleRating = ldRating[1];
   if (ldCount) googleReviewCount = parseInt(ldCount[1]);
 
-  // Check sub-pages' JSON-LD too
   if (!googleRating) {
     for (const r of subResults) {
       if (r.status === "fulfilled" && r.value.ok) {
@@ -171,32 +213,64 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     }
   }
 
-  // Body text fallback: "4.9 out of 5", "rated 4.8", "4.9 ★", "4.9/5"
+  // 2) HTML microdata (itemprop="ratingValue") on all pages
   if (!googleRating) {
-    const bodyRating = mainBody.match(/\b([45]\.\d)\s*(?:out of 5|\/5|stars?|★|⭐)/i)
-      || mainBody.match(/(?:rated?|rating)\s*[:\s]*([45]\.\d)/i)
-      || mainBody.match(/Google.*?([45]\.\d)/i);
+    const allHtmlForRating = mainHtml + allSubHtml;
+    const mdr = extractMicrodataRating(allHtmlForRating);
+    if (mdr) {
+      googleRating = mdr;
+      const mdc = allHtmlForRating.match(/itemprop="reviewCount"[^>]*content="(\d+)"/i)
+        || allHtmlForRating.match(/itemprop="reviewCount"[^>]*>(\d+)</i);
+      if (mdc) googleReviewCount = parseInt(mdc[1]);
+    }
+  }
+
+  // 3) Body text patterns: "4.9 out of 5", "rated 4.8", "4.9/5", "★ 4.9"
+  if (!googleRating) {
+    const allBodyText = mainBody;
+    const bodyRating = allBodyText.match(/\b([45]\.\d)\s*(?:out of 5|\/5|stars?|★|⭐)/i)
+      || allBodyText.match(/(?:rated?|rating)\s*[:\s]*([45]\.\d)/i)
+      || allBodyText.match(/Google\s+(?:rating|reviews?)[:\s]+([45]\.\d)/i);
     if (bodyRating) googleRating = bodyRating[1];
-    const bodyCount = mainBody.match(/(\d[\d,]+)\s*(?:Google\s+)?reviews?/i);
+    const bodyCount = allBodyText.match(/(\d[\d,]+)\s*(?:Google\s+)?reviews?/i);
     if (bodyCount && !googleReviewCount) googleReviewCount = parseInt(bodyCount[1].replace(/,/g, ""));
   }
 
-  // ── Phase 3b: Google search fallback (only if still no rating) ────────────
+  // 4) Bing search by business name (works even for JS-rendered sites, less bot-blocked than Google)
   if (!googleRating) {
     try {
       const ldNameMatch = mainJsonLd.match(/"name"\s*:\s*"([^"]+)"/);
       const candidateName = ldNameMatch?.[1] || getTitle(mainHtml).split(/[-|·]/)[0].trim();
       if (candidateName) {
-        const q = encodeURIComponent(`${candidateName} aesthetics Winchester reviews`);
-        const googleResult = await fetchPage(`https://www.google.com/search?q=${q}&hl=en-GB`, 6000);
-        if (googleResult.ok) {
-          const gh = googleResult.html;
-          const sr = gh.match(/aria-label="Rated ([\d.]+) out of 5[^"]*,?\s*([\d,]+)\s*reviews?"/i)
-            || gh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
-          const sc = gh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
-            || gh.match(/([\d,]+)\s+Google\s+reviews?/i);
-          if (sr) googleRating = sr[1];
-          if (sc && !googleReviewCount) googleReviewCount = parseInt(sc[1].replace(/,/g, ""));
+        // Bing returns structured knowledge panels with ratings in HTML
+        const bq = encodeURIComponent(`"${candidateName}" aesthetics reviews`);
+        const bingResult = await fetchPage(`https://www.bing.com/search?q=${bq}&mkt=en-GB`, 7000);
+        if (bingResult.ok) {
+          const bh = bingResult.html;
+          // Bing knowledge panel rating: data-val="4.9" near "reviews" or aria-label="4.9 out of 5"
+          const br = bh.match(/(\d\.\d)\s*(?:out of 5|\/5|stars?)/i)
+            || bh.match(/data-[a-z]*rating[^=]*="([\d.]+)"/i)
+            || bh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/)
+            || bh.match(/aria-label="([\d.]+) out of 5/i);
+          const bc = bh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
+            || bh.match(/([\d,]+)\s+(?:Google\s+)?reviews?/i);
+          if (br) googleRating = br[1];
+          if (bc && !googleReviewCount) googleReviewCount = parseInt(bc[1].replace(/,/g, ""));
+        }
+
+        // Fallback to Google search if Bing didn't find it
+        if (!googleRating) {
+          const gq = encodeURIComponent(`${candidateName} aesthetics Google reviews`);
+          const googleResult = await fetchPage(`https://www.google.com/search?q=${gq}&hl=en-GB`, 6000);
+          if (googleResult.ok) {
+            const gh = googleResult.html;
+            const sr = gh.match(/aria-label="Rated ([\d.]+) out of 5[^"]*,?\s*([\d,]+)\s*reviews?"/i)
+              || gh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+            const sc = gh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
+              || gh.match(/([\d,]+)\s+Google\s+reviews?/i);
+            if (sr) googleRating = sr[1];
+            if (sc && !googleReviewCount) googleReviewCount = parseInt(sc[1].replace(/,/g, ""));
+          }
         }
       }
     } catch { /* non-fatal */ }
@@ -205,12 +279,13 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
   // ── Phase 4: Instagram followers ─────────────────────────────────────────
   let igFollowers = 0;
 
-  // A) Check website body text — many clinics show follower count as social proof
-  const bodyIgMatch = mainBody.match(/([\d,.]+[kKmM]?)\s*(?:Instagram\s+)?[Ff]ollowers/)
-    || mainBody.match(/[Ff]ollowers[:\s]+([\d,.]+[kKmM]?)/);
+  // A) Website body text — many clinics show "X followers" as social proof
+  const footerText = extractFooterAndContact(mainHtml);
+  const bodyIgMatch = (mainBody + " " + footerText).match(/([\d,.]+[kKmM]?)\s*(?:Instagram\s+)?[Ff]ollowers/)
+    || (mainBody + " " + footerText).match(/[Ff]ollowers[:\s]+([\d,.]+[kKmM]?)/);
   if (bodyIgMatch) igFollowers = parseFollowers(bodyIgMatch[1]);
 
-  // B) From Instagram page og:description (if we fetched it)
+  // B) Instagram page og:description
   if (!igFollowers) {
     const igHtml = isInstagram ? mainHtml : (igPageResult.ok ? igPageResult.html : "");
     if (igHtml) {
@@ -227,7 +302,8 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     }
   }
 
-  // ── Phase 5: Coordinates & distance ──────────────────────────────────────
+  // ── Phase 5: Pre-extract coordinates from structured data ────────────────
+  // Nominatim geocoding runs AFTER GPT so GPT-extracted address is also available
   let lat = "";
   let lng = "";
   let distanceMiles = "";
@@ -237,52 +313,61 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
   const ldLng = mainJsonLd.match(/"longitude"\s*:\s*"?([-\d.]+)"?/);
   if (ldLat && ldLng) { lat = ldLat[1]; lng = ldLng[1]; }
 
-  // B) Google Maps embed URL in page: @lat,lng,zoom or ?ll=lat,lng or ?q=lat,lng
+  // B) Google Maps iframe src on any page (most reliable coord source after JSON-LD)
   if (!lat) {
-    const mapsEmbed = mainHtml.match(/maps(?:\/embed)?[^"']*@([-\d.]+),([-\d.]+)/i)
-      || mainHtml.match(/maps[^"']*[?&](?:ll|q|center)=([-\d.]+),([-\d.]+)/i)
-      || mainHtml.match(/maps[^"']*[?&](?:pb=[^!]*!3d([-\d.]+)[^!]*!4d([-\d.]+))/i);
-    if (mapsEmbed) { lat = mapsEmbed[1]; lng = mapsEmbed[2]; }
+    const allHtmlForMaps = mainHtml + allSubHtml;
+    const mapSrcs = extractIframeSrcs(allHtmlForMaps);
+    for (const src of mapSrcs) {
+      // pb= format: !3d<lat>!4d<lng>
+      const pb = src.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
+      // @lat,lng,zoom format
+      const at = src.match(/@([-\d.]{4,12}),([-\d.]{4,12})/i);
+      // ?ll=lat,lng or ?q=lat,lng
+      const ll = src.match(/[?&](?:ll|q|center)=([-\d.]{4,12}),([-\d.]{4,12})/i);
+      const match = pb || at || ll;
+      if (match) { lat = match[1]; lng = match[2]; break; }
+    }
   }
 
-  // C) Nominatim geocode from extracted address if still no coords
+  // C) Also scan raw HTML for maps embed patterns not in iframe src (e.g. data-src, JS vars)
   if (!lat) {
-    try {
-      const addrMatch = mainJsonLd.match(/"streetAddress"\s*:\s*"([^"]+)"/)
-        || mainJsonLd.match(/"address"\s*:\s*"([^"]+)"/);
-      if (addrMatch) {
-        const nominatim = await fetchPage(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addrMatch[1] + ", UK")}&format=json&limit=1`,
-          5000
-        );
-        if (nominatim.ok) {
-          const parsed = JSON.parse(nominatim.html.trim())[0];
-          if (parsed?.lat) { lat = parsed.lat; lng = parsed.lon; }
-        }
-      }
-    } catch { /* non-fatal */ }
+    const allHtmlForMaps = mainHtml + allSubHtml;
+    const pb = allHtmlForMaps.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
+    if (pb) { lat = pb[1]; lng = pb[2]; }
   }
 
-  // D) Calculate distance
-  if (lat && lng) {
-    const dist = haversineDistance(parseFloat(lat), parseFloat(lng), APA_LAT, APA_LNG);
-    distanceMiles = dist.toFixed(1);
-  }
-
-  // ── Phase 6: Assemble combined page text ─────────────────────────────────
+  // ── Phase 6: Assemble combined page text for GPT ─────────────────────────
   const allTexts: string[] = [];
 
   const mainTitle = getTitle(mainHtml);
   const mainMeta = extractMeta(mainHtml);
-  allTexts.push(`=== MAIN PAGE: ${url} ===\nTITLE: ${mainTitle}\nMETA:\n${mainMeta}\nSTRUCTURED DATA:\n${mainJsonLd}\nBODY:\n${mainBody}`);
+  const mainHead = extractHead(mainHtml);
+  const mainFooter = extractFooterAndContact(mainHtml);
+  const mapIframeSrcs = extractIframeSrcs(mainHtml + allSubHtml);
+
+  allTexts.push(
+    `=== MAIN PAGE: ${url} ===` +
+    `\nTITLE: ${mainTitle}` +
+    `\nHEAD (meta/JSON-LD):\n${mainHead}` +
+    `\nBODY TEXT:\n${mainBody}` +
+    `\nFOOTER/CONTACT AREA:\n${mainFooter}` +
+    (mapIframeSrcs.length ? `\nGOOGLE MAPS EMBED URLS:\n${mapIframeSrcs.join("\n")}` : "")
+  );
 
   subResults.forEach((result, i) => {
     if (result.status === "fulfilled" && result.value.ok && result.value.html) {
       const href = subPageHrefs[i];
       const t = getTitle(result.value.html);
       const body = extractText(result.value.html, 2000);
-      const jsonLd = extractJsonLd(result.value.html).slice(0, 800);
-      allTexts.push(`=== SUB-PAGE: ${baseUrl}${href} ===\nTITLE: ${t}\nSTRUCTURED DATA:\n${jsonLd}\nBODY:\n${body}`);
+      const footer = extractFooterAndContact(result.value.html);
+      const jsonLd = extractJsonLd(result.value.html).slice(0, 600);
+      allTexts.push(
+        `=== SUB-PAGE: ${baseUrl}${href} ===` +
+        `\nTITLE: ${t}` +
+        `\nSTRUCTURED DATA:\n${jsonLd}` +
+        `\nBODY:\n${body}` +
+        (footer ? `\nFOOTER/CONTACT:\n${footer}` : "")
+      );
       sources.push(`${baseUrl}${href}`);
     }
   });
@@ -291,7 +376,7 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     allTexts.push(`=== INSTAGRAM DATA ===\nHandle: @${igHandle}\nFollowers extracted: ${igFollowers}`);
   }
 
-  const combinedText = allTexts.join("\n\n").slice(0, 16000);
+  const combinedText = allTexts.join("\n\n").slice(0, 18000);
 
   // ── Phase 6: GPT extraction ───────────────────────────────────────────────
   const completion = await openai.chat.completions.create({
@@ -317,14 +402,14 @@ ${combinedText}
 Return ONLY valid JSON with these fields (use defaults if absent):
 {
   "name": "",
-  "address": "",
+  "address": "FULL street address including postcode — look in footer, contact page, Google Maps iframe title, JSON-LD, or anywhere in body text",
   "phone": "",
   "website": "${isInstagram ? "" : url}",
   "instagram": "${igHandle}",
   "facebook": "",
   "bookingLink": "online booking URL if different from main website, else ''",
-  "googleRating": "${googleRating}",
-  "googleReviewCount": ${googleReviewCount},
+  "googleRating": "${googleRating || "look hard — check for star ratings, Google review widgets, Trustpilot score, or any rating mentioned as X/5 or X out of 5 in the body text; use the numeric value only e.g. 4.9"}",
+  "googleReviewCount": ${googleReviewCount || 0},
   "instagramFollowers": ${igFollowers},
   "clinicType": "nurse-led | doctor-led | dentist-led | beautician-led | mixed practitioner | laser/skin specialist | injectables-only | salon-led aesthetics | chain/brand clinic | unknown",
   "premisesType": "high street shopfront | medical clinic | rented room | beauty salon room | home clinic | dental clinic | chain clinic | destination clinic | unknown",
@@ -361,7 +446,30 @@ Return ONLY valid JSON with these fields (use defaults if absent):
   let data: Record<string, unknown> = {};
   try { data = JSON.parse(raw); } catch { data = {}; }
 
-  // Override with directly-extracted values (don't let GPT hallucinate these)
+  // ── Post-GPT: Geocode GPT-extracted address if we still have no coordinates ─
+  if (!lat) {
+    const gpAddr = (data.address as string || "").trim();
+    if (gpAddr && gpAddr.length > 5) {
+      try {
+        const nominatim = await fetchPage(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(gpAddr + ", UK")}&format=json&limit=1`,
+          5000
+        );
+        if (nominatim.ok && nominatim.html.trim().startsWith("[")) {
+          const parsed = JSON.parse(nominatim.html.trim())[0];
+          if (parsed?.lat) { lat = parsed.lat; lng = parsed.lon; }
+        }
+      } catch { /* non-fatal */ }
+    }
+  }
+
+  // Calculate Haversine distance once we have coords (from any source)
+  if (lat && lng && !distanceMiles) {
+    const dist = haversineDistance(parseFloat(lat), parseFloat(lng), APA_LAT, APA_LNG);
+    distanceMiles = dist.toFixed(1);
+  }
+
+  // Override GPT values with hard-extracted / calculated ones
   if (googleRating) data.googleRating = googleRating;
   if (googleReviewCount) data.googleReviewCount = googleReviewCount;
   if (igFollowers > 0) data.instagramFollowers = igFollowers;
@@ -370,9 +478,13 @@ Return ONLY valid JSON with these fields (use defaults if absent):
   if (lng) data.lng = lng;
   if (distanceMiles) data.distanceMiles = distanceMiles;
 
+  // If GPT found a googleRating that we didn't hard-extract, keep it (don't blank it)
+  const finalRating = googleRating || (data.googleRating as string || "");
+  if (finalRating) data.googleRating = finalRating;
+
   serialiseFields(data);
 
-  return { data, sources, igFollowers, googleRating, googleReviewCount, lat, lng, distanceMiles };
+  return { data, sources, igFollowers, googleRating: finalRating, googleReviewCount, lat, lng, distanceMiles };
 }
 
 // ── Property filter helper ─────────────────────────────────────────────────
