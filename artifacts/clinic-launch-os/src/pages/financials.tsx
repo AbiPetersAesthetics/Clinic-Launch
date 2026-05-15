@@ -1437,11 +1437,50 @@ export default function FinancialsPage() {
                                 : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
-                            {/* Bedhampton Net — already net of stock, running costs, and Bedhampton VAT */}
+                            {/* Bedhampton Net — tooltip shows full breakdown */}
                             <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30 line-through" : m.bedhNet > 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>
-                              {m.bedhClosed
-                                ? "closed"
-                                : m.bedhNet !== 0 ? formatGBP(m.bedhNet) : <span className="text-muted-foreground/30">—</span>}
+                              {m.bedhClosed ? (
+                                "closed"
+                              ) : m.bedhRevenue === 0 ? (
+                                <span className="text-muted-foreground/30">—</span>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted decoration-blue-400/60 underline-offset-2">
+                                      {formatGBP(m.bedhNet)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="p-0 w-52">
+                                    <div className="px-3 py-2 border-b border-border/60 bg-muted/40">
+                                      <p className="text-[11px] font-semibold text-foreground">Bedhampton breakdown</p>
+                                      <p className="text-[10px] text-muted-foreground">{m.calendarLabel}</p>
+                                    </div>
+                                    <div className="px-3 py-2 space-y-1 text-[11px]">
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Gross revenue</span>
+                                        <span className="tabular-nums font-medium">{formatGBP(m.bedhRevenue)}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Stock &amp; running</span>
+                                        <span className="tabular-nums text-red-500/80">({formatGBP(m.bedhCosts)})</span>
+                                      </div>
+                                      {(() => {
+                                        const bedhVat = m.bedhRevenue - m.bedhCosts - m.bedhNet;
+                                        return bedhVat > 0 ? (
+                                          <div className="flex justify-between">
+                                            <span className="text-muted-foreground">VAT liability</span>
+                                            <span className="tabular-nums text-amber-600 dark:text-amber-400">({formatGBP(bedhVat)})</span>
+                                          </div>
+                                        ) : null;
+                                      })()}
+                                      <div className="flex justify-between border-t border-border/40 pt-1 mt-1">
+                                        <span className="font-semibold text-foreground">Net</span>
+                                        <span className={`tabular-nums font-semibold ${m.bedhNet >= 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>{formatGBP(m.bedhNet)}</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
                             </td>
 
                             {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
