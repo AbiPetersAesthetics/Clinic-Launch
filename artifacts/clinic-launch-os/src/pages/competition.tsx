@@ -3,7 +3,7 @@ import {
   Target, Plus, Edit, Trash2, Star, MapPin, Globe, Phone, Instagram,
   Shield, ChevronDown, ChevronUp, X, Bookmark, BookmarkCheck, ExternalLink,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, BarChart3,
-  Eye, Search, Info, Users,
+  Eye, Search, Info, Users, Bot, Loader2, Building2, Sparkles,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -23,8 +23,36 @@ const CLINIC_LAT = 51.0638;
 const CLINIC_LNG = -1.3082;
 
 // ── Types ───────────────────────────────────────────────────────────────────
+interface Property {
+  id: number;
+  address: string;
+  postcode: string;
+  isActiveForProject: boolean;
+}
+
+interface AISearchResult {
+  name: string;
+  address: string;
+  distanceMiles: string;
+  website: string;
+  clinicType: string;
+  premisesType: string;
+  positioningCategory: string;
+  estimatedThreatScore: number;
+  threatReason: string;
+  heroTreatments: string;
+  saveFace: boolean;
+  independentPrescriber: boolean;
+  instagramFollowers: number;
+  googleRating: string;
+  googleReviewCount: number;
+  confidenceLevel: string;
+  importantNote: string;
+  treatmentFocus: string;
+}
+
 interface Competitor {
-  id: number; projectId: number;
+  id: number; projectId: number; propertyId: number | null;
   name: string; address: string; lat: string; lng: string; distanceMiles: string;
   website: string; bookingLink: string; phone: string; instagram: string; facebook: string;
   googleRating: string; googleReviewCount: number;
@@ -190,10 +218,12 @@ const EMPTY_FORM: FormData = {
 };
 
 // ── Competitor Form Modal ────────────────────────────────────────────────────
-function CompetitorModal({ competitor, onClose, onSave }: {
-  competitor: Competitor | null; onClose: () => void; onSave: (data: FormData) => Promise<void>;
+function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
+  competitor: Competitor | null; initialFormData?: Partial<FormData> | null; onClose: () => void; onSave: (data: FormData) => Promise<void>;
 }) {
-  const [form, setForm] = useState<FormData>(competitor ? { ...competitor } : { ...EMPTY_FORM });
+  const [form, setForm] = useState<FormData>(
+    competitor ? { ...competitor } : initialFormData ? { ...EMPTY_FORM, ...initialFormData } : { ...EMPTY_FORM }
+  );
   const [tab, setTab] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -808,33 +838,286 @@ function WatchlistTab({ competitors, onEdit, onToggle }: { competitors: Competit
   );
 }
 
+// ── AI Search Modal ──────────────────────────────────────────────────────────
+function AISearchModal({
+  defaultLocation,
+  onClose,
+  onImport,
+}: {
+  defaultLocation: string;
+  onClose: () => void;
+  onImport: (data: Partial<FormData>) => void;
+}) {
+  const [location, setLocation] = useState(defaultLocation);
+  const [radius, setRadius] = useState(5);
+  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<AISearchResult[]>([]);
+  const [marketNote, setMarketNote] = useState("");
+  const [dataWarning, setDataWarning] = useState("");
+  const [disclaimer, setDisclaimer] = useState("");
+  const [error, setError] = useState("");
+  const [searched, setSearched] = useState(false);
+  const [importing, setImporting] = useState<number | null>(null);
+
+  const runSearch = async () => {
+    setLoading(true); setError(""); setResults([]); setSearched(false);
+    try {
+      const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/ai-search`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ location, radiusMiles: radius }),
+      });
+      if (!r.ok) throw new Error("Search failed");
+      const d = await r.json();
+      setResults(d.competitors ?? []);
+      setMarketNote(d.marketNote ?? "");
+      setDataWarning(d.dataWarning ?? "");
+      setDisclaimer(d.disclaimer ?? "");
+      setSearched(true);
+    } catch {
+      setError("Search failed. Check the API server is running.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImport = (r: AISearchResult, idx: number) => {
+    setImporting(idx);
+    const prefill: Partial<FormData> = {
+      name: r.name,
+      address: r.address,
+      distanceMiles: r.distanceMiles,
+      website: r.website,
+      clinicType: r.clinicType as FormData["clinicType"],
+      premisesType: r.premisesType as FormData["premisesType"],
+      positioningCategory: r.positioningCategory,
+      heroTreatments: r.heroTreatments,
+      saveFace: r.saveFace,
+      independentPrescriber: r.independentPrescriber,
+      instagramFollowers: r.instagramFollowers,
+      googleRating: r.googleRating,
+      googleReviewCount: r.googleReviewCount,
+      confidenceLevel: r.confidenceLevel as FormData["confidenceLevel"],
+      notes: r.importantNote ? `AI note: ${r.importantNote}` : "",
+      manuallyVerified: false,
+    };
+    onImport(prefill);
+  };
+
+  const getScoreColor = (score: number) =>
+    score >= 68 ? "text-red-500 bg-red-500/10 border-red-500/30"
+    : score >= 42 ? "text-amber-500 bg-amber-500/10 border-amber-500/30"
+    : "text-emerald-500 bg-emerald-500/10 border-emerald-500/30";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-8">
+      <div className="relative bg-card border border-border rounded-xl w-full max-w-2xl shadow-2xl mx-4">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <Bot className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold">AI Competitor Discovery</h2>
+              <p className="text-xs text-muted-foreground">GPT knowledge base — not a live internet search</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+          {/* Prominent disclaimer */}
+          <div className="rounded-xl border-2 border-amber-400 dark:border-amber-600 bg-amber-50 dark:bg-amber-950/30 p-4">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1">AI training data — not live data</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">This uses GPT's training knowledge, which may be months or years old. Businesses may have opened, closed, or changed. Every entry must be independently verified before acting on it. This is a discovery starting point, not ground truth.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Search inputs */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2 space-y-1">
+              <label className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Location</label>
+              <input
+                className="w-full text-sm bg-muted border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                placeholder="9A Jewry Street, Winchester, Hampshire, UK"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Radius (miles)</label>
+              <input
+                type="number" min={1} max={20}
+                className="w-full text-sm bg-muted border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                value={radius}
+                onChange={e => setRadius(parseInt(e.target.value) || 5)}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={runSearch}
+            disabled={loading || !location.trim()}
+            className="w-full flex items-center justify-center gap-2 bg-primary text-primary-foreground py-2.5 rounded-lg font-medium text-sm hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {loading ? <><Loader2 className="w-4 h-4 animate-spin" />Searching…</> : <><Sparkles className="w-4 h-4" />Search for Competitors</>}
+          </button>
+
+          {error && (
+            <div className="text-sm text-destructive text-center py-3">{error}</div>
+          )}
+
+          {/* Results */}
+          {searched && results.length > 0 && (
+            <div className="space-y-4">
+              {marketNote && (
+                <div className="rounded-lg border border-border bg-muted/40 p-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Market Assessment</p>
+                  <p className="text-sm text-foreground/80">{marketNote}</p>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground mb-3">{results.length} competitors found — ranked by estimated threat</p>
+                <div className="space-y-3">
+                  {results.map((r, i) => (
+                    <div key={i} className="rounded-xl border border-border bg-card p-4">
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h4 className="font-semibold text-sm">{r.name}</h4>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getScoreColor(r.estimatedThreatScore)}`}>
+                              Threat ~{r.estimatedThreatScore}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-full">
+                              {r.confidenceLevel}
+                            </span>
+                          </div>
+                          {r.address && r.address !== "Address not confirmed" && (
+                            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                              <MapPin className="w-3 h-3 shrink-0" />{r.address}{r.distanceMiles ? ` · ~${r.distanceMiles}mi` : ""}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => handleImport(r, i)}
+                          disabled={importing === i}
+                          className="shrink-0 flex items-center gap-1.5 text-xs bg-primary/10 text-primary border border-primary/30 px-3 py-1.5 rounded-lg hover:bg-primary/20 disabled:opacity-50 transition-colors"
+                        >
+                          {importing === i ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                          Import
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {r.clinicType && r.clinicType !== "unknown" && <span className="text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">{r.clinicType}</span>}
+                        {r.premisesType && r.premisesType !== "unknown" && <span className="text-[10px] bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full">{r.premisesType}</span>}
+                        {r.saveFace && <span className="text-[10px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 px-2 py-0.5 rounded-full">Save Face ✓</span>}
+                        {r.independentPrescriber && <span className="text-[10px] bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 rounded-full">IP ✓</span>}
+                        {r.googleRating && <span className="text-[10px] text-muted-foreground">⭐ {r.googleRating}</span>}
+                      </div>
+
+                      {r.threatReason && (
+                        <p className="text-xs text-muted-foreground italic mb-1.5">"{r.threatReason}"</p>
+                      )}
+                      {r.importantNote && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3 shrink-0" />{r.importantNote}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {dataWarning && (
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                  <p className="text-xs text-amber-700 dark:text-amber-400"><span className="font-semibold">Data limitation: </span>{dataWarning}</p>
+                </div>
+              )}
+
+              {disclaimer && (
+                <p className="text-[10px] text-muted-foreground leading-relaxed border-t border-border pt-3">{disclaimer}</p>
+              )}
+            </div>
+          )}
+
+          {searched && results.length === 0 && !loading && (
+            <div className="text-center py-8 text-muted-foreground text-sm">
+              <Bot className="w-10 h-10 mx-auto mb-3 opacity-30" />
+              No competitors returned. Try a different location or radius.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function CompetitionPage() {
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Competitor|null>(null);
+  const [prefillData, setPrefillData] = useState<Partial<FormData> | null>(null);
+  const [aiSearchOpen, setAiSearchOpen] = useState(false);
 
-  useEffect(() => { fetchCompetitors(); }, []);
+  useEffect(() => {
+    Promise.all([
+      fetchCompetitors(),
+      fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
+        .then(r => r.ok ? r.json() : [])
+        .then((props: Property[]) => {
+          setProperties(props);
+          const active = props.find(p => p.isActiveForProject) ?? props[0];
+          if (active) setSelectedPropertyId(active.id);
+        })
+        .catch(() => {}),
+    ]);
+  }, []);
 
-  const fetchCompetitors = async () => {
+  const fetchCompetitors = async (propId?: number | null) => {
+    const pid = propId !== undefined ? propId : selectedPropertyId;
     try {
-      const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`);
+      const qs = pid != null ? `?propertyId=${pid}` : "";
+      const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors${qs}`);
       const d = await r.json();
       setCompetitors(d.competitors ?? []);
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
-  const openAdd = () => { setEditing(null); setModalOpen(true); };
-  const openEdit = (c: Competitor) => { setEditing(c); setModalOpen(true); };
-  const closeModal = () => { setModalOpen(false); setEditing(null); };
+  const handlePropertyChange = (id: number | null) => {
+    setSelectedPropertyId(id);
+    setLoading(true);
+    fetchCompetitors(id);
+  };
+
+  const openAdd = () => { setPrefillData(null); setEditing(null); setModalOpen(true); };
+  const openEdit = (c: Competitor) => { setPrefillData(null); setEditing(c); setModalOpen(true); };
+  const closeModal = () => { setModalOpen(false); setEditing(null); setPrefillData(null); };
+
+  const handleAIImport = (data: Partial<FormData>) => {
+    setAiSearchOpen(false);
+    setPrefillData(data);
+    setEditing(null);
+    setModalOpen(true);
+  };
 
   const handleSave = async (data: FormData) => {
     if (editing) {
       await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/${editing.id}`, { method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
     } else {
-      await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(data) });
+      const body = selectedPropertyId != null ? { ...data, propertyId: selectedPropertyId } : data;
+      await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body) });
     }
     await fetchCompetitors();
     closeModal();
@@ -853,18 +1136,65 @@ export default function CompetitionPage() {
 
   const TABS = ["Overview","Competitors","Pricing","Comparison","Market Gap","Map","Watchlist"];
 
+  // Build default location for AI search from selected property
+  const selectedProperty = properties.find(p => p.id === selectedPropertyId);
+  const aiDefaultLocation = selectedProperty
+    ? `${selectedProperty.address}${selectedProperty.postcode ? ", " + selectedProperty.postcode : ""}, UK`
+    : "9A Jewry Street, Winchester, Hampshire, UK";
+
   return (
     <div className="space-y-6">
+      {/* ── Page header ── */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <Target className="w-6 h-6 text-primary" />
             <h1 className="text-2xl font-bold">Competition Intelligence</h1>
           </div>
-          <p className="text-muted-foreground text-sm">Is there genuinely room for Abi Peters Aesthetics in Winchester? Who are the biggest threats?</p>
+          <p className="text-muted-foreground text-sm">Is there genuinely room for Abi Peters Aesthetics? Who are the real threats?</p>
         </div>
-        <button onClick={openAdd} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-primary/90 shrink-0"><Plus className="w-4 h-4" />Add Competitor</button>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Property selector */}
+          {properties.length > 0 && (
+            <div className="flex items-center gap-2 bg-muted border border-border rounded-lg px-3 py-2">
+              <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <select
+                className="text-sm bg-transparent text-foreground focus:outline-none cursor-pointer"
+                value={selectedPropertyId ?? ""}
+                onChange={e => handlePropertyChange(e.target.value ? parseInt(e.target.value) : null)}
+              >
+                <option value="">All properties</option>
+                {properties.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.address.split(",")[0].trim()}{p.isActiveForProject ? " ★" : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button
+            onClick={() => setAiSearchOpen(true)}
+            className="flex items-center gap-2 border border-primary/40 text-primary bg-primary/5 hover:bg-primary/10 px-3.5 py-2 rounded-lg text-sm font-medium transition-colors shrink-0"
+          >
+            <Bot className="w-4 h-4" />AI Search
+          </button>
+          <button
+            onClick={openAdd}
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 shrink-0"
+          >
+            <Plus className="w-4 h-4" />Add Competitor
+          </button>
+        </div>
       </div>
+
+      {/* ── Property filter notice ── */}
+      {selectedPropertyId != null && properties.length > 1 && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 text-xs text-primary">
+          <Building2 className="w-3.5 h-3.5 shrink-0" />
+          Showing competitors linked to <span className="font-semibold">{selectedProperty?.address.split(",")[0]}</span>.
+          <button onClick={() => handlePropertyChange(null)} className="ml-auto text-muted-foreground hover:text-foreground underline underline-offset-2">Show all</button>
+        </div>
+      )}
 
       <div className="flex border-b border-border overflow-x-auto gap-0 -mb-0">
         {TABS.map((t,i)=>(
@@ -874,7 +1204,7 @@ export default function CompetitionPage() {
 
       <div className="pt-2">
         {loading ? (
-          <div className="flex items-center justify-center py-20 text-muted-foreground">Loading…</div>
+          <div className="flex items-center justify-center py-20 text-muted-foreground"><Loader2 className="w-5 h-5 animate-spin mr-2" />Loading…</div>
         ) : (
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
@@ -888,7 +1218,21 @@ export default function CompetitionPage() {
         )}
       </div>
 
-      {modalOpen && <CompetitorModal competitor={editing} onClose={closeModal} onSave={handleSave} />}
+      {modalOpen && (
+        <CompetitorModal
+          competitor={editing}
+          initialFormData={prefillData}
+          onClose={closeModal}
+          onSave={handleSave}
+        />
+      )}
+      {aiSearchOpen && (
+        <AISearchModal
+          defaultLocation={aiDefaultLocation}
+          onClose={() => setAiSearchOpen(false)}
+          onImport={handleAIImport}
+        />
+      )}
     </div>
   );
 }

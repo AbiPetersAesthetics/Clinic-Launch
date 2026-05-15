@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable } from "@workspace/db";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
 
 const router = Router();
@@ -42,10 +42,12 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     [financial],
     allProperties,
     fixedCostItems,
+    allCompetitors,
   ] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId)),
   ]);
 
   const activeProperty = allProperties.find(p => p.isActiveForProject) ?? allProperties[0] ?? null;
@@ -130,6 +132,57 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
       : null;
   }
 
+  // Competition summary
+  let competitionSummary: {
+    hasData: boolean;
+    competitorCount: number;
+    highThreatCount: number;
+    marketSpaceScore: number | null;
+    topThreatName: string | null;
+    topThreatScore: number | null;
+    avgCompRating: number | null;
+    nurseLedIPCount: number;
+    verifiedCount: number;
+  } = {
+    hasData: false,
+    competitorCount: 0,
+    highThreatCount: 0,
+    marketSpaceScore: null,
+    topThreatName: null,
+    topThreatScore: null,
+    avgCompRating: null,
+    nurseLedIPCount: 0,
+    verifiedCount: 0,
+  };
+  if (allCompetitors.length > 0) {
+    const scored = allCompetitors.map(c => {
+      const dist = parseFloat(c.distanceMiles || "5") || 5;
+      const proxScore = dist <= 0.5 ? 88 : dist <= 1 ? 76 : dist <= 2 ? 62 : dist <= 3 ? 48 : 32;
+      const rating = parseFloat(c.googleRating || "0") || 0;
+      const reviewScore = Math.min((rating / 5) * 60 + Math.min((c.googleReviewCount || 0) / 300, 1) * 40, 100);
+      const score = Math.round(proxScore * 0.15 + (c.clinicalAuthorityScore || 50) * 0.15 + reviewScore * 0.15 + (c.brandStrengthScore || 50) * 0.15 + (c.premisesStrengthScore || 50) * 0.10 + Math.min((c.instagramFollowers || 0) / 5000, 1) * 100 * 0.05 + 50 * 0.25);
+      return { ...c, threatScore: score };
+    }).sort((a, b) => b.threatScore - a.threatScore);
+
+    const nurseLedIP = allCompetitors.filter(c => c.clinicType === "nurse-led" && c.independentPrescriber).length;
+    const saturation = nurseLedIP / Math.max(allCompetitors.length, 1);
+    const marketSpaceScore = Math.round(Math.max(25, Math.min(90, (1 - saturation * 0.6) * 75 + 15)));
+    const ratedComps = allCompetitors.filter(c => parseFloat(c.googleRating || "0") > 0);
+    const avgRating = ratedComps.length ? Math.round((ratedComps.reduce((s, c) => s + parseFloat(c.googleRating || "0"), 0) / ratedComps.length) * 10) / 10 : null;
+
+    competitionSummary = {
+      hasData: true,
+      competitorCount: allCompetitors.length,
+      highThreatCount: scored.filter(c => c.threatScore >= 68).length,
+      marketSpaceScore,
+      topThreatName: scored[0]?.name ?? null,
+      topThreatScore: scored[0]?.threatScore ?? null,
+      avgCompRating: avgRating,
+      nurseLedIPCount: nurseLedIP,
+      verifiedCount: allCompetitors.filter(c => c.manuallyVerified).length,
+    };
+  }
+
   // Confidence score (0-100)
   const completionScore = launchReadinessPercent * 0.4;
   const riskPenalty = Math.min(highRiskTaskCount * 3, 20);
@@ -197,6 +250,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     vatRisk,
     vatHeadroomGbp,
     vatMonthsToThreshold,
+    competitionSummary,
   });
 });
 
