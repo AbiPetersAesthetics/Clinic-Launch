@@ -3,7 +3,8 @@ import {
   Target, Plus, Edit, Trash2, Star, MapPin, Globe, Phone, Instagram,
   Shield, ChevronDown, ChevronUp, X, Bookmark, BookmarkCheck, ExternalLink,
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, BarChart3,
-  Eye, Search, Info, Users, Bot, Loader2, Building2, Sparkles,
+  Eye, Search, Info, Users, Bot, Loader2, Building2, Sparkles, RefreshCw,
+  SlidersHorizontal, ArrowUpDown,
 } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
 import L from "leaflet";
@@ -247,10 +248,13 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
         return;
       }
       const d = json.data as Partial<FormData>;
-      const filled = Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}"));
+      const filled = Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}" && v !== "unknown" && v !== "Unclear"));
       setForm(f => ({ ...f, ...filled }));
       const count = Object.keys(filled).length;
-      setLookupMsg({ type: "ok", text: `${count} fields auto-filled — review and adjust as needed, then save.` });
+      const srcCount = json.sourceCount ?? 1;
+      const gRating = json.googleRating ? ` · Google ${json.googleRating}★` : "";
+      const igF = json.igFollowers > 0 ? ` · ${json.igFollowers.toLocaleString()} IG followers` : "";
+      setLookupMsg({ type: "ok", text: `${count} fields filled from ${srcCount} page${srcCount !== 1 ? "s" : ""}${gRating}${igF} — review and save.` });
     } catch (e) {
       setLookupMsg({ type: "err", text: "Network error — could not reach lookup service." });
     } finally {
@@ -554,20 +558,63 @@ function OverviewTab({ competitors, onEdit, onAdd }: { competitors: Competitor[]
 }
 
 // ── Competitors Tab ───────────────────────────────────────────────────────────
-function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAdd }: {
-  competitors: Competitor[]; onEdit:(c:Competitor)=>void; onDelete:(id:number)=>void; onToggleWatchlist:(c:Competitor)=>void; onAdd:()=>void;
+function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAdd, onEnrich, enrichingId }: {
+  competitors: Competitor[]; onEdit:(c:Competitor)=>void; onDelete:(id:number)=>void;
+  onToggleWatchlist:(c:Competitor)=>void; onAdd:()=>void;
+  onEnrich:(c:Competitor)=>void; enrichingId:number|null;
 }) {
   const [search, setSearch] = useState("");
-  const filtered = competitors.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.address.toLowerCase().includes(search.toLowerCase()));
+  const [sort, setSort] = useState<"threat"|"distance"|"rating"|"name">("threat");
+  const [filterType, setFilterType] = useState<"all"|"high"|"moderate"|"low"|"verified"|"watchlist">("all");
+
+  const scored = useMemo(() => competitors.map(c => ({ ...c, score: computeThreatScore(c) })), [competitors]);
+
+  const visible = useMemo(() => {
+    let list = scored.filter(c =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.address || "").toLowerCase().includes(search.toLowerCase())
+    );
+    if (filterType === "high") list = list.filter(c => c.score >= 68);
+    else if (filterType === "moderate") list = list.filter(c => c.score >= 42 && c.score < 68);
+    else if (filterType === "low") list = list.filter(c => c.score < 42);
+    else if (filterType === "verified") list = list.filter(c => c.manuallyVerified);
+    else if (filterType === "watchlist") list = list.filter(c => c.onWatchlist);
+    if (sort === "threat") list = [...list].sort((a, b) => b.score - a.score);
+    else if (sort === "distance") list = [...list].sort((a, b) => (parseFloat(a.distanceMiles)||99) - (parseFloat(b.distanceMiles)||99));
+    else if (sort === "rating") list = [...list].sort((a, b) => (parseFloat(b.googleRating)||0) - (parseFloat(a.googleRating)||0));
+    else if (sort === "name") list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    return list;
+  }, [scored, search, sort, filterType]);
+
+  const filterBtns: { id: typeof filterType; label: string }[] = [
+    { id: "all", label: `All (${scored.length})` },
+    { id: "high", label: `High Threat (${scored.filter(c=>c.score>=68).length})` },
+    { id: "moderate", label: `Moderate (${scored.filter(c=>c.score>=42&&c.score<68).length})` },
+    { id: "low", label: `Low (${scored.filter(c=>c.score<42).length})` },
+    { id: "verified", label: `Verified (${scored.filter(c=>c.manuallyVerified).length})` },
+    { id: "watchlist", label: `Watching (${scored.filter(c=>c.onWatchlist).length})` },
+  ];
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-3">
-        <div className="relative flex-1"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input className="w-full pl-9 pr-4 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search competitors…" /></div>
-        <button onClick={onAdd} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90"><Plus className="w-4 h-4" />Add</button>
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-48"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" /><input className="w-full pl-9 pr-4 py-2 text-sm bg-muted border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-primary" value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search competitors…" /></div>
+        <select value={sort} onChange={e=>setSort(e.target.value as typeof sort)} className="text-sm bg-muted border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
+          <option value="threat">Sort: Threat ↓</option>
+          <option value="distance">Sort: Distance</option>
+          <option value="rating">Sort: Rating ↓</option>
+          <option value="name">Sort: Name A–Z</option>
+        </select>
+        <button onClick={onAdd} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 shrink-0"><Plus className="w-4 h-4" />Add</button>
       </div>
-      {filtered.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">No competitors found.</div>}
+      <div className="flex gap-2 flex-wrap">
+        {filterBtns.map(f => (
+          <button key={f.id} onClick={() => setFilterType(f.id)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${filterType===f.id ? "bg-primary/20 border-primary/50 text-primary font-medium" : "bg-muted border-border text-muted-foreground hover:border-primary/30"}`}>{f.label}</button>
+        ))}
+      </div>
+      {visible.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{search || filterType !== "all" ? "No competitors match your filters." : "No competitors yet — click Add to get started."}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {filtered.map(c=>{ const score = computeThreatScore(c); const rag = getRAG(score); const strengths = parseJson<string[]>(c.strengthsJson,[]); const weaknesses = parseJson<string[]>(c.weaknessesJson,[]); return (
+        {visible.map(c=>{ const score = c.score; const rag = getRAG(score); const strengths = parseJson<string[]>(c.strengthsJson,[]); const weaknesses = parseJson<string[]>(c.weaknessesJson,[]); return (
           <div key={c.id} className={`bg-card border rounded-xl overflow-hidden ${rag.border}`}>
             <div className="p-4">
               <div className="flex items-start justify-between gap-2 mb-3">
@@ -606,11 +653,20 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
             </div>
             <div className="border-t border-border px-4 py-2 flex items-center gap-2 bg-muted/30">
               <button onClick={()=>onEdit(c)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"><Edit className="w-3.5 h-3.5" />Edit</button>
-              <button onClick={()=>onToggleWatchlist(c)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors ml-2">{c.onWatchlist ? <BookmarkCheck className="w-3.5 h-3.5 text-primary" /> : <Bookmark className="w-3.5 h-3.5" />}{c.onWatchlist?"Watching":"Watch"}</button>
+              <button onClick={()=>onToggleWatchlist(c)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors ml-1">{c.onWatchlist ? <BookmarkCheck className="w-3.5 h-3.5 text-primary" /> : <Bookmark className="w-3.5 h-3.5" />}{c.onWatchlist?"Watching":"Watch"}</button>
+              <button
+                onClick={()=>onEnrich(c)}
+                disabled={enrichingId === c.id}
+                title={(c.website || c.instagram) ? "Re-scrape website & Instagram for latest data" : "Add a website or Instagram URL first"}
+                className={`flex items-center gap-1.5 text-xs ml-1 transition-colors ${(c.website||c.instagram) ? "text-muted-foreground hover:text-primary" : "text-muted-foreground/40 cursor-not-allowed"}`}
+              >
+                {enrichingId === c.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                {enrichingId === c.id ? "Enriching…" : "Enrich"}
+              </button>
               <div className="flex-1" />
-              {c.website && <a href={c.website.startsWith("http") ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground"><Globe className="w-3.5 h-3.5" /></a>}
-              {c.instagram && <a href={`https://instagram.com/${c.instagram.replace("@","")}`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground"><Instagram className="w-3.5 h-3.5" /></a>}
-              <button onClick={()=>onDelete(c.id)} className="text-xs text-muted-foreground hover:text-red-500 transition-colors ml-1"><Trash2 className="w-3.5 h-3.5" /></button>
+              {c.website && <a href={c.website.startsWith("http") ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground" title="Open website"><Globe className="w-3.5 h-3.5" /></a>}
+              {c.instagram && <a href={`https://instagram.com/${c.instagram.replace("@","")}`} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground hover:text-foreground" title="Open Instagram"><Instagram className="w-3.5 h-3.5" /></a>}
+              <button onClick={()=>onDelete(c.id)} className="text-xs text-muted-foreground hover:text-red-500 transition-colors ml-1" title="Delete competitor"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
           </div>
         );})}
@@ -1128,19 +1184,22 @@ export default function CompetitionPage() {
   const [editing, setEditing] = useState<Competitor|null>(null);
   const [prefillData, setPrefillData] = useState<Partial<FormData> | null>(null);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
+  const [enrichingId, setEnrichingId] = useState<number | null>(null);
 
   useEffect(() => {
-    Promise.all([
-      fetchCompetitors(),
-      fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
-        .then(r => r.ok ? r.json() : [])
-        .then((props: Property[]) => {
-          setProperties(props);
-          const active = props.find(p => p.isActiveForProject) ?? props[0];
-          if (active) setSelectedPropertyId(active.id);
-        })
-        .catch(() => {}),
-    ]);
+    fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
+      .then(r => r.ok ? r.json() : [])
+      .then((props: Property[]) => {
+        setProperties(props);
+        const active = props.find(p => p.isActiveForProject) ?? props[0];
+        if (active) {
+          setSelectedPropertyId(active.id);
+          fetchCompetitors(active.id);
+        } else {
+          fetchCompetitors();
+        }
+      })
+      .catch(() => fetchCompetitors());
   }, []);
 
   const fetchCompetitors = async (propId?: number | null) => {
@@ -1168,6 +1227,23 @@ export default function CompetitionPage() {
     setPrefillData(data);
     setEditing(null);
     setModalOpen(true);
+  };
+
+  const handleEnrich = async (c: Competitor) => {
+    const lookupUrl = c.website || (c.instagram ? `https://instagram.com/${c.instagram}` : "");
+    if (!lookupUrl) {
+      alert("No website or Instagram stored for this competitor — add a URL to their profile first, then save, then click Enrich.");
+      return;
+    }
+    setEnrichingId(c.id);
+    try {
+      const resp = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/${c.id}/enrich`, { method: "POST" });
+      const json = await resp.json();
+      if (!resp.ok) { alert(json.error || "Enrichment failed"); return; }
+      setCompetitors(cs => cs.map(x => x.id === c.id ? { ...x, ...json.competitor } : x));
+    } finally {
+      setEnrichingId(null);
+    }
   };
 
   const handleSave = async (data: FormData) => {
@@ -1266,7 +1342,7 @@ export default function CompetitionPage() {
         ) : (
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
-            {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} />}
+            {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} onEnrich={handleEnrich} enrichingId={enrichingId} />}
             {tab === 2 && <PricingTab competitors={competitors} />}
             {tab === 3 && <ComparisonTab competitors={competitors} />}
             {tab === 4 && <MarketGapTab competitors={competitors} />}
