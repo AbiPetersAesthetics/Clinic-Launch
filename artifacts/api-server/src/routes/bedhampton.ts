@@ -20,7 +20,9 @@ async function fetchWithCache<T>(url: string): Promise<T> {
   if (cached && now - cached.fetchedAt < CACHE_TTL_MS) {
     return cached.data as T;
   }
-  const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  const apiKey = process.env.BEDHAMPTON_API_KEY;
+  const headers: Record<string, string> = apiKey ? { "x-api-key": apiKey } : {};
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), headers });
   if (!res.ok) throw new Error(`External API error: ${res.status} ${url}`);
   const data = (await res.json()) as T;
   cache.set(url, { data, fetchedAt: now });
