@@ -33,18 +33,21 @@ interface FamilySchedule {
   elsySchoolFinish: string;
   eliSchoolStart: string;
   eliSchoolFinish: string;
-  // Winchester travel times
+  // Winchester travel times (Google Maps + 5 min buffer)
   travelHomeToElsyMins: number;
   travelElsyToClinicMins: number;
   travelClinicToElsyMins: number;
   travelHomeToEliMins: number;
   travelEliToClinicMins: number;
   travelClinicToEliMins: number;
-  // Bedhampton travel times (much shorter — local)
+  // Bedhampton travel times
   travelElsyToBedhamptonMins: number;
   travelBedhamptonToElsyMins: number;
   travelEliToBedhamptonMins: number;
   travelBedhamptonToEliMins: number;
+  // Chain pickup — Horndean ↔ Clanfield (3.9 km, ~8–12 min + buffer)
+  travelEliToElsyMins: number;
+  travelElsyToEliMins: number;
   parkAndWalkMins: number;
   contingencyPlan: string;
   davidAvailabilityDays: number;
@@ -58,22 +61,29 @@ const DEFAULT_DAY_ENTRY = {
   clinicLocation: "winchester" as ClinicLocation,
 };
 
+// Google Maps verified distances (May 2026) + 5 min buffer applied to each leg
+// Horndean Tech (PO8 9PQ) → Winchester SO23: ~32 min → 37 stored
+// Clanfield Junior (PO8 0RE) → Winchester SO23: ~38 min → 43 stored
+// Home (PO9 3FQ) → schools: ~8–10 min → 13 stored
+// Horndean ↔ Clanfield (3.9 km via B2149): ~9 min → 14 stored
 const DEFAULT_FAMILY_SCHEDULE: FamilySchedule = {
   elsySchoolStart: "08:45",
   elsySchoolFinish: "15:15",
   eliSchoolStart: "08:30",
   eliSchoolFinish: "14:50",
-  travelHomeToElsyMins: 8,
-  travelElsyToClinicMins: 28,
-  travelClinicToElsyMins: 30,
-  travelHomeToEliMins: 10,
-  travelEliToClinicMins: 28,
-  travelClinicToEliMins: 30,
-  travelElsyToBedhamptonMins: 5,
-  travelBedhamptonToElsyMins: 5,
-  travelEliToBedhamptonMins: 8,
-  travelBedhamptonToEliMins: 8,
-  parkAndWalkMins: 10,
+  travelHomeToElsyMins: 13,
+  travelElsyToClinicMins: 43,
+  travelClinicToElsyMins: 43,
+  travelHomeToEliMins: 13,
+  travelEliToClinicMins: 37,
+  travelClinicToEliMins: 37,
+  travelElsyToBedhamptonMins: 10,
+  travelBedhamptonToElsyMins: 10,
+  travelEliToBedhamptonMins: 13,
+  travelBedhamptonToEliMins: 13,
+  travelEliToElsyMins: 14,
+  travelElsyToEliMins: 14,
+  parkAndWalkMins: 5,
   contingencyPlan: "",
   davidAvailabilityDays: 5,
   davidRoleNotes: "",
@@ -2079,6 +2089,41 @@ export default function LifestylePage() {
     return issues;
   }), [plan.clinicDays, familySchedule.daySchedules]);
 
+  // ── Chain pickup detection ─────────────────────────────────────────────────
+  const chainPickupWarnings = useMemo(() => {
+    return plan.clinicDays.flatMap(day => {
+      const ds = familySchedule.daySchedules[day];
+      if (!ds) return [];
+      const elsyPickup = ds.elsy?.pickupBy === "Abi";
+      const eliPickup  = ds.eli?.pickupBy  === "Abi";
+      if (!elsyPickup || !eliPickup) return [];
+
+      const elsyFinish = t2m(ds.elsy?.pickupTime ?? familySchedule.elsySchoolFinish);
+      const eliFinish  = t2m(ds.eli?.pickupTime  ?? familySchedule.eliSchoolFinish);
+      const gap = Math.abs(elsyFinish - eliFinish);
+      if (gap > 90) return []; // More than 90 min apart — not a chain pickup issue
+
+      // Determine which child finishes first
+      const firstIsEli = eliFinish <= elsyFinish;
+      const firstChild = firstIsEli ? "Eli" : "Elsy";
+      const secondChild = firstIsEli ? "Elsy" : "Eli";
+      const firstFinish = firstIsEli ? eliFinish : elsyFinish;
+      const secondFinish = firstIsEli ? elsyFinish : eliFinish;
+      const driveToSecond = firstIsEli ? familySchedule.travelEliToElsyMins : familySchedule.travelElsyToEliMins;
+      const arriveAtSecond = firstFinish + driveToSecond;
+      const bufferMins = secondFinish - arriveAtSecond;
+      const feasible = arriveAtSecond <= secondFinish;
+
+      return [{
+        day, firstChild, secondChild,
+        firstFinish: m2t(firstFinish), secondFinish: m2t(secondFinish),
+        driveToSecond, arriveAtSecond: m2t(arriveAtSecond),
+        bufferMins: Math.round(bufferMins), feasible,
+        gap,
+      }];
+    });
+  }, [plan.clinicDays, familySchedule]);
+
   const nursingStatusLabel: Record<string, { label: string; color: string }> = {
     still_working: { label: "Still nursing", color: "text-amber-600 dark:text-amber-400" },
     exploring: { label: "Planning exit", color: "text-blue-600 dark:text-blue-400" },
@@ -2415,6 +2460,42 @@ export default function LifestylePage() {
                   />
                 </div>
               </div>
+
+              {/* Chain pickup row — shown when both schools finish within 60 min */}
+              {(() => {
+                const elsyFinish = t2m(familySchedule.elsySchoolFinish);
+                const eliFinish  = t2m(familySchedule.eliSchoolFinish);
+                const gap = Math.abs(elsyFinish - eliFinish);
+                if (gap > 60) return null;
+                const firstIsEli = eliFinish <= elsyFinish;
+                return (
+                  <div className="space-y-1 mt-1 pt-3 border-t border-amber-200 dark:border-amber-800">
+                    <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                      <AlertCircle className="w-3 h-3" />
+                      Chain pickup — {firstIsEli ? "Eli" : "Elsy"} finishes first ({gap} min gap)
+                    </p>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <LocationNode
+                        icon="🏫"
+                        label={firstIsEli ? "Horndean Tech" : "Clanfield Junior"}
+                        sub={firstIsEli ? familySchedule.eliSchoolFinish : familySchedule.elsySchoolFinish}
+                        color="bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800"
+                      />
+                      <TravelBadge mins={firstIsEli ? familySchedule.travelEliToElsyMins : familySchedule.travelElsyToEliMins} />
+                      <LocationNode
+                        icon="🏫"
+                        label={firstIsEli ? "Clanfield Junior" : "Horndean Tech"}
+                        sub={firstIsEli ? familySchedule.elsySchoolFinish : familySchedule.eliSchoolFinish}
+                        color="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800"
+                      />
+                      <span className="text-[9px] text-muted-foreground ml-1">
+                        arrive {m2t(Math.min(elsyFinish, eliFinish) + (firstIsEli ? familySchedule.travelEliToElsyMins : familySchedule.travelElsyToEliMins))}
+                        {" "}(vs {m2t(Math.max(elsyFinish, eliFinish))} finish)
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
 
@@ -2430,6 +2511,65 @@ export default function LifestylePage() {
                   <p key={i} className="text-xs text-destructive/80 pl-6">• {c}</p>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── Chain pickup warnings ── */}
+          {chainPickupWarnings.length > 0 && (
+            <div className="space-y-3">
+              {chainPickupWarnings.map(w => (
+                <div key={w.day} className={`rounded-xl border p-4 space-y-3 ${
+                  w.feasible
+                    ? "border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
+                    : "border-destructive/40 bg-destructive/5"
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${w.feasible ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-semibold ${w.feasible ? "text-amber-700 dark:text-amber-300" : "text-destructive"}`}>
+                        {w.day}: Chain pickup — {w.firstChild} then {w.secondChild}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${w.feasible ? "text-amber-600/80 dark:text-amber-400/80" : "text-destructive/80"}`}>
+                        Both children assigned to Abi, finishing {w.gap} min apart — driving {w.firstChild}→{w.secondChild} ({w.driveToSecond} min)
+                      </p>
+                    </div>
+                    <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-full ${
+                      w.feasible
+                        ? w.bufferMins >= 10 ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400"
+                          : "bg-amber-200 dark:bg-amber-800/60 text-amber-800 dark:text-amber-300"
+                        : "bg-destructive/15 text-destructive"
+                    }`}>
+                      {w.feasible ? (w.bufferMins >= 0 ? `+${w.bufferMins} min` : "tight") : `${Math.abs(w.bufferMins)} min late`}
+                    </span>
+                  </div>
+
+                  {/* Chain timing diagram */}
+                  <div className="flex items-center gap-1.5 text-[10px] flex-wrap ml-7">
+                    <span className="font-bold px-2 py-1 rounded bg-violet-100 dark:bg-violet-900/40 text-violet-700 dark:text-violet-300">{w.firstChild} out {w.firstFinish}</span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">drive {w.driveToSecond} min</span>
+                    <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+                    <span className={`font-bold px-2 py-1 rounded ${
+                      w.feasible
+                        ? "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300"
+                        : "bg-destructive/15 text-destructive"
+                    }`}>arrive {w.arriveAtSecond}</span>
+                    <span className="text-muted-foreground">(vs {w.secondChild} out {w.secondFinish})</span>
+                    {w.feasible && w.bufferMins > 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400">· {w.bufferMins} min to spare</span>
+                    )}
+                    {!w.feasible && (
+                      <span className="text-destructive font-medium">· {Math.abs(w.bufferMins)} min too late — needs cover</span>
+                    )}
+                  </div>
+
+                  {!w.feasible && (
+                    <p className="text-xs text-destructive/80 ml-7">
+                      Abi can't collect both children alone on {w.day}. Assign one pickup to David or arrange school club/another carer.
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           )}
 
@@ -2523,6 +2663,13 @@ export default function LifestylePage() {
                   Added to every arrival and departure time — affects Abi's first client window and last appointment cut-off
                 </p>
               </div>
+              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-3 mb-4 space-y-1.5">
+                <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <MapPin className="w-3 h-3" /> Google Maps verified · 5 min buffer applied
+                </p>
+                <p className="text-[10px] text-muted-foreground">Horndean Tech (PO8 9PQ) · Clanfield Junior (PO8 0RE) · Home (PO9 3FQ) · Winchester SO23. Adjust below if your live times differ.</p>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {/* Elsy */}
                 <div className="space-y-3">
@@ -2573,6 +2720,18 @@ export default function LifestylePage() {
                       <TravelInput label="Clinic → school (min)" value={familySchedule.travelBedhamptonToEliMins} onChange={v => updateFS({ travelBedhamptonToEliMins: +v })} />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Chain pickup travel time */}
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-3 space-y-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Chain pickup — between schools (Horndean ↔ Clanfield, ~3.9 km via B2149)</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <TravelInput label="Eli → Elsy school (min)" value={familySchedule.travelEliToElsyMins} onChange={v => updateFS({ travelEliToElsyMins: +v })} />
+                    <TravelInput label="Elsy → Eli school (min)" value={familySchedule.travelElsyToEliMins} onChange={v => updateFS({ travelElsyToEliMins: +v })} />
+                  </div>
+                  <p className="text-[9px] text-muted-foreground">Used to check whether Abi can feasibly collect both children on the same day when both pickups are assigned to her.</p>
                 </div>
               </div>
             </CardContent>
