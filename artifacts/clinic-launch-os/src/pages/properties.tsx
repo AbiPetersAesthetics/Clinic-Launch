@@ -2277,6 +2277,7 @@ function PropertyCard({
 }) {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const { toast } = useToast();
   const setPropertyActive = useSetPropertyActive();
   const stage = pipelineStageInfo(property.pipelineStatus ?? "found");
 

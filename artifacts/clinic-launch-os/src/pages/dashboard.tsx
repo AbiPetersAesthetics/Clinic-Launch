@@ -238,7 +238,7 @@ export default function DashboardPage() {
     query: { enabled: true, queryKey: getListPropertiesQueryKey(PROJECT_ID) },
   });
 
-  const { data: phases } = useGetPhasesWithTasks(PROJECT_ID, {
+  const { data: phases } = useGetPhasesWithTasks(PROJECT_ID, null, {
     query: { enabled: true, queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) },
   });
 

@@ -604,6 +604,12 @@ export interface UpsertFinancialModelBody {
   ownerDrawingsGbp?: number;
   runwaySavingsGbp?: number;
   personalSalaryNeedsGbp?: number;
+  vatOnRent?: boolean;
+  vatCurrentTurnoverGbp?: number;
+  wincAcvGbp?: number;
+  bedhRentGbp?: number;
+  bedhMarketingGbp?: number;
+  bedhamptonCostsGbp?: number;
 }
 
 export type CalculateFinancialsBodyScenario =
@@ -613,6 +619,9 @@ export const CalculateFinancialsBodyScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
+  delayed_ramp: "delayed_ramp",
+  economic_downturn: "economic_downturn",
+  stress_test: "stress_test",
 } as const;
 
 export interface CalculateFinancialsBody {
@@ -626,6 +635,9 @@ export const FinancialCalculationScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
+  delayed_ramp: "delayed_ramp",
+  economic_downturn: "economic_downturn",
+  stress_test: "stress_test",
 } as const;
 
 export interface FinancialCalculation {
@@ -1766,4 +1778,7 @@ export const GetProjectCashflowScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
+  delayed_ramp: "delayed_ramp",
+  economic_downturn: "economic_downturn",
+  stress_test: "stress_test",
 } as const;
