@@ -872,12 +872,13 @@ function m2t(m: number): string {
 }
 
 function AbiWeek({
-  clinicDays, clinicOpenTime, clinicCloseTime, familySchedule,
+  clinicDays, clinicOpenTime, clinicCloseTime, familySchedule, dayTimeOverrides = {},
 }: {
   clinicDays: string[];
   clinicOpenTime: string;
   clinicCloseTime: string;
   familySchedule: FamilySchedule;
+  dayTimeOverrides?: Record<string, DayTimeOverride>;
 }) {
   const [activeWeek, setActiveWeek] = useState<"A" | "B">("A");
   const [hovered, setHovered] = useState<string | null>(null);
@@ -917,17 +918,20 @@ function AbiWeek({
     const elsyFrC = loc === "winchester" ? familySchedule.travelClinicToElsyMins     : familySchedule.travelBedhamptonToElsyMins;
     const eliFrC  = loc === "winchester" ? familySchedule.travelClinicToEliMins      : familySchedule.travelBedhamptonToEliMins;
 
+    const dayOpen  = dayTimeOverrides[day]?.open  ?? clinicOpenTime;
+    const dayClose = dayTimeOverrides[day]?.close ?? clinicCloseTime;
+
     const elsyDropJ = !isSat && elsyC.dropBy === "Abi"
-      ? calcDropJourney(elsyDropT, familySchedule.travelHomeToElsyMins, elsyToC, clinicOpenTime) : null;
+      ? calcDropJourney(elsyDropT, familySchedule.travelHomeToElsyMins, elsyToC, dayOpen) : null;
     const eliDropJ  = !isSat && eliC.dropBy === "Abi"
-      ? calcDropJourney(eliDropT,  familySchedule.travelHomeToEliMins,  eliToC,  clinicOpenTime) : null;
+      ? calcDropJourney(eliDropT,  familySchedule.travelHomeToEliMins,  eliToC,  dayOpen) : null;
     const elsyPickJ = !isSat && elsyC.pickupBy === "Abi"
       ? calcPickupJourney(elsyPickupT, elsyFrC + pw) : null;
     const eliPickJ  = !isSat && eliC.pickupBy === "Abi"
       ? calcPickupJourney(eliPickupT,  eliFrC  + pw) : null;
 
-    let latestArrMins   = t2m(clinicOpenTime);
-    let earliestDepMins = t2m(clinicCloseTime);
+    let latestArrMins   = t2m(dayOpen);
+    let earliestDepMins = t2m(dayClose);
     if (!isSat) {
       if (elsyDropJ) latestArrMins   = Math.max(latestArrMins,   t2m(addMins(elsyDropJ.arriveClinic, pw)));
       if (eliDropJ)  latestArrMins   = Math.max(latestArrMins,   t2m(addMins(eliDropJ.arriveClinic,  pw)));
@@ -2802,6 +2806,7 @@ export default function LifestylePage() {
             clinicOpenTime={plan.clinicOpenTime}
             clinicCloseTime={plan.clinicCloseTime}
             familySchedule={familySchedule}
+            dayTimeOverrides={extras.dayTimeOverrides}
           />
         </div>
       )}
@@ -3129,6 +3134,7 @@ export default function LifestylePage() {
             clinicOpenTime={plan.clinicOpenTime}
             clinicCloseTime={plan.clinicCloseTime}
             familySchedule={familySchedule}
+            dayTimeOverrides={extras.dayTimeOverrides}
           />
 
           {/* ── Travel & school time config ── */}
