@@ -310,8 +310,13 @@ Key ratios (Realistic scenario, using actual fixed costs):
   Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Target ACV (new clinic): £${financial.wincAcvGbp || "not set"}
   Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
 
-Personal finance:
-  Owner drawings target: £${financial.ownerDrawingsGbp}/mo | Personal salary needs: £${financial.personalSalaryNeedsGbp}/mo
+Personal finance & domestic commitments:
+  Salary target (drawings): £${financial.targetDrawingsGbp || financial.ownerDrawingsGbp}/mo
+  School fees: £${(financial as any).schoolFeesGbp || 0}/mo
+  Travel: £${(financial as any).travelGbp || 0}/mo
+  Other household: £${(financial as any).otherHouseholdGbp || 0}/mo
+  Total monthly household need: £${((financial.targetDrawingsGbp || financial.ownerDrawingsGbp || 0) + ((financial as any).schoolFeesGbp || 0) + ((financial as any).travelGbp || 0) + ((financial as any).otherHouseholdGbp || 0)).toLocaleString()}/mo
+  Personal salary needs (min): £${financial.personalSalaryNeedsGbp}/mo
   Nursing income: £${financial.nursingIncomeGbp}/mo | Cash runway savings: £${financial.runwaySavingsGbp.toLocaleString()}
   Pre-opening cash runway: ${cashRunwayMonths >= 99 ? "Secure (income exceeds burn)" : `${cashRunwayMonths} months`}
   Bedhampton income in model: £${financial.existingClinicRevenueGbp}/mo

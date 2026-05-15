@@ -1074,6 +1074,9 @@ export const UpsertFinancialModelBody = zod.object({
   ownerDrawingsGbp: zod.number().optional(),
   runwaySavingsGbp: zod.number().optional(),
   personalSalaryNeedsGbp: zod.number().optional(),
+  schoolFeesGbp: zod.number().optional(),
+  travelGbp: zod.number().optional(),
+  otherHouseholdGbp: zod.number().optional(),
 });
 
 export const UpsertFinancialModelResponse = zod.object({

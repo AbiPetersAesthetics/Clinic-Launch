@@ -45,7 +45,7 @@ const VAT_THRESHOLD = 90000;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "stress_test";
-type TabKey = "overview" | "model" | "owner" | "risks";
+type TabKey = "overview" | "model" | "owner" | "domestics" | "risks";
 
 type WincMetrics = {
   grossRevenue: number; fixedCosts: number; variableCosts: number;
@@ -306,6 +306,7 @@ export default function FinancialsPage() {
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
       ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
+      schoolFeesGbp: 0, travelGbp: 0, otherHouseholdGbp: 0,
     }
   });
 
@@ -378,6 +379,9 @@ export default function FinancialsPage() {
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
         nursingIncomeGbp: m.nursingIncomeGbp ?? 4500,
         targetDrawingsGbp: m.targetDrawingsGbp ?? 4000,
+        schoolFeesGbp: (m as any).schoolFeesGbp ?? 0,
+        travelGbp: (m as any).travelGbp ?? 0,
+        otherHouseholdGbp: (m as any).otherHouseholdGbp ?? 0,
       });
       // Allow watch subscription to fire again after reset settles
       setTimeout(() => { isSilentReset.current = false; }, 50);
@@ -756,12 +760,12 @@ export default function FinancialsPage() {
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
-        {(["overview", "model", "owner", "risks"] as TabKey[]).map((t) => (
+        {(["overview", "model", "owner", "domestics", "risks"] as TabKey[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
               tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}>
-            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : "Risks"}
+            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : "Risks"}
           </button>
         ))}
       </div>
@@ -2137,6 +2141,178 @@ export default function FinancialsPage() {
           ) : (
             <div className="py-20 text-center text-muted-foreground">Save assumptions to see owner analysis.</div>
           )}
+        </div>
+      )}
+
+      {/* ═══ TAB: DOMESTICS ══════════════════════════════════════════════════ */}
+      {tab === "domestics" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: input form */}
+            <div className="space-y-5">
+              <Form {...form}>
+                <form className="space-y-4">
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Personal Salary</CardTitle>
+                      <CardDescription className="text-xs">The income you need to draw from the business each month</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField control={form.control} name={"targetDrawingsGbp" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Target monthly drawings (£)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                          <p className="text-[10px] text-muted-foreground mt-1">The amount you want to take home each month once the clinic is running</p>
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">School & Childcare</CardTitle>
+                      <CardDescription className="text-xs">Monthly school fees, wrap care, or childcare costs</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField control={form.control} name={"schoolFeesGbp" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">School / childcare (£/mo)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                          <p className="text-[10px] text-muted-foreground mt-1">School fees, breakfast/after-school clubs, holiday clubs, childminder</p>
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Travel</CardTitle>
+                      <CardDescription className="text-xs">Monthly cost of getting around — commuting, school run, personal travel</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField control={form.control} name={"travelGbp" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Travel costs (£/mo)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                          <p className="text-[10px] text-muted-foreground mt-1">Fuel, train/bus passes, school drop-off travel, car costs</p>
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+
+                  <Card className="shadow-sm">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm">Other Household</CardTitle>
+                      <CardDescription className="text-xs">Any other regular personal or household commitments</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <FormField control={form.control} name={"otherHouseholdGbp" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Other household costs (£/mo)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                          <p className="text-[10px] text-muted-foreground mt-1">Mortgage/rent contribution, groceries, gym, subscriptions, etc.</p>
+                        </FormItem>
+                      )} />
+                    </CardContent>
+                  </Card>
+                </form>
+              </Form>
+              <p className="text-[11px] text-muted-foreground">Changes save automatically and instantly update your Owner phase analysis and the AI on the dashboard.</p>
+            </div>
+
+            {/* Right: live summary */}
+            <div className="space-y-5">
+              {(() => {
+                const salary = Number(form.watch("targetDrawingsGbp" as any)) || 0;
+                const school = Number(form.watch("schoolFeesGbp" as any)) || 0;
+                const travel = Number(form.watch("travelGbp" as any)) || 0;
+                const other = Number(form.watch("otherHouseholdGbp" as any)) || 0;
+                const total = salary + school + travel + other;
+                const phase1Income = cr?.owner.phase1Income ?? 0;
+                const phase2Income = cr?.owner.phase2Income ?? 0;
+                const phase3Income = cr?.owner.phase3Income ?? 0;
+                const surplus1 = phase1Income - total;
+                const surplus2 = phase2Income - total;
+                const surplus3 = phase3Income - total;
+                const rows = [
+                  { label: "Salary (drawings)", value: salary, color: "text-foreground" },
+                  { label: "School / childcare", value: school, color: "text-foreground" },
+                  { label: "Travel", value: travel, color: "text-foreground" },
+                  { label: "Other household", value: other, color: "text-foreground" },
+                ];
+                return (
+                  <>
+                    <Card className="shadow-md border-primary/20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Total Monthly Household Need</CardTitle>
+                        <CardDescription className="text-xs">Everything you need the business to cover each month</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-1">
+                        <div className="rounded-lg border border-border overflow-hidden text-sm">
+                          {rows.map((r, i) => (
+                            <div key={r.label} className={`flex justify-between items-center px-3 py-2 ${i > 0 ? "border-t border-border/50" : ""} ${r.value === 0 ? "opacity-40" : ""}`}>
+                              <span className="text-muted-foreground">{r.label}</span>
+                              <span className={`font-medium ${r.color}`}>{formatGBP(r.value)}</span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between items-center px-3 py-2.5 border-t-2 border-border bg-muted/30">
+                            <span className="font-semibold text-sm">Total need</span>
+                            <span className="text-xl font-bold text-primary">{formatGBP(total)}</span>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    <Card className={`shadow-sm ${cr ? "" : "opacity-60"}`}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm">Can the Business Cover It?</CardTitle>
+                        <CardDescription className="text-xs">How your household need compares across the three launch phases ({SCENARIOS[scenario].label} scenario)</CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {cr ? (
+                          <>
+                            {[
+                              { phase: "Phase 1", label: "Bedhampton + Winchester running", income: phase1Income, surplus: surplus1 },
+                              { phase: "Phase 2", label: "Winchester only (Bedhampton closed)", income: phase2Income, surplus: surplus2 },
+                              { phase: "Phase 3", label: "Winchester at full target", income: phase3Income, surplus: surplus3 },
+                            ].map(({ phase, label, income, surplus }) => {
+                              const ok = surplus >= 0;
+                              return (
+                                <div key={phase} className={`rounded-lg border p-3 ${ok ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20" : "border-red-200 dark:border-red-800 bg-red-50/40 dark:bg-red-950/20"}`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="text-xs font-semibold">{phase}</span>
+                                    {ok
+                                      ? <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                      : <XCircle className="w-4 h-4 text-destructive" />}
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground mb-2">{label}</p>
+                                  <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Business income</span>
+                                    <span className="font-medium">{formatGBP(income)}</span>
+                                  </div>
+                                  <div className="flex justify-between text-xs mt-0.5">
+                                    <span className="text-muted-foreground">Household need</span>
+                                    <span className="font-medium">{formatGBP(total)}</span>
+                                  </div>
+                                  <div className={`flex justify-between text-sm font-semibold mt-1.5 pt-1.5 border-t ${ok ? "border-emerald-200 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400" : "border-red-200 dark:border-red-700 text-destructive"}`}>
+                                    <span>{ok ? "Surplus" : "Shortfall"}</span>
+                                    <span>{ok ? "+" : ""}{formatGBP(surplus)}</span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            <p className="text-[10px] text-muted-foreground pt-1">These figures update your Owner tab and feed into the AI analysis on the dashboard.</p>
+                          </>
+                        ) : (
+                          <div className="py-8 text-center text-muted-foreground text-sm">Save assumptions to see phase comparison.</div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
         </div>
       )}
 

@@ -238,7 +238,13 @@ export function calcOwner(
   nursingIncome: number,
   injectedFixedCosts?: number,
 ) {
-  const target = model.targetDrawingsGbp || model.personalSalaryNeedsGbp || 4000;
+  // Decomposed household need: salary target + domestic costs
+  const salaryTarget = model.targetDrawingsGbp || model.personalSalaryNeedsGbp || 4000;
+  const schoolFeesGbp = model.schoolFeesGbp || 0;
+  const travelGbp = model.travelGbp || 0;
+  const otherHouseholdGbp = model.otherHouseholdGbp || 0;
+  const domesticTotal = schoolFeesGbp + travelGbp + otherHouseholdGbp;
+  const target = salaryTarget + domesticTotal;
 
   // Phase 1: Winchester ramping + Bedhampton still open + nursing
   const phase1Income = winc.netProfit + bedh.netProfit + nursingIncome;
@@ -276,6 +282,11 @@ export function calcOwner(
     phase3Income: Math.round(phase3Income),
     phase3IsSafe,
     targetDrawings: Math.round(target),
+    salaryTarget: Math.round(salaryTarget),
+    domesticTotal: Math.round(domesticTotal),
+    schoolFeesGbp: Math.round(schoolFeesGbp),
+    travelGbp: Math.round(travelGbp),
+    otherHouseholdGbp: Math.round(otherHouseholdGbp),
     cashRunwayMonths: Math.round(cashRunway),
     minimumCashRequired: Math.round(minimumCashRequired),
     recommendedCash: Math.round(recommendedCash),

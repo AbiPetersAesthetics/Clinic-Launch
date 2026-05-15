@@ -610,6 +610,9 @@ export interface UpsertFinancialModelBody {
   bedhRentGbp?: number;
   bedhMarketingGbp?: number;
   bedhamptonCostsGbp?: number;
+  schoolFeesGbp?: number;
+  travelGbp?: number;
+  otherHouseholdGbp?: number;
 }
 
 export type CalculateFinancialsBodyScenario =
