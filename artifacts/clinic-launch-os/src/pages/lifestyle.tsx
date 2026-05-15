@@ -2084,7 +2084,7 @@ function CapacityCalculator({ clinicDays, clinicOpenTime, clinicCloseTime, famil
 }) {
   const [treatmentMins, setTreatmentMins] = useState(45);
   const [targetATV, setTargetATV] = useState(150);
-  const windowData = DAYS.filter(d => clinicDays.includes(d)).map(day => ({ day, hours: computeDayWindow(day, familySchedule, clinicOpenTime, clinicCloseTime) }));
+  const windowData = DAYS.filter(d => clinicDays.includes(d)).map(day => ({ day, hours: computeDayWindow(day, familySchedule, clinicOpenTime, clinicCloseTime).hours }));
   const totalWeeklyHours = windowData.reduce((s, d) => s + d.hours, 0);
   const hoursPerDay = clinicDays.length > 0 ? totalWeeklyHours / clinicDays.length : 0;
   const daysPerMonth = +(clinicDays.length * 4.333).toFixed(1);
