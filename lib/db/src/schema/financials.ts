@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, real, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, real, timestamp, boolean, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -66,6 +66,8 @@ export const financialsTable = pgTable("financial_models", {
   vatCurrentTurnoverGbp: real("vat_current_turnover_gbp").notNull().default(75000),
   // VAT on rent — synced from active property; whether landlord charges VAT on rent
   vatOnRent: boolean("vat_on_rent").notNull().default(false),
+  // Scenario selection — persisted so the banner always reflects the user's chosen model
+  selectedScenario: text("selected_scenario").notNull().default("realistic"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

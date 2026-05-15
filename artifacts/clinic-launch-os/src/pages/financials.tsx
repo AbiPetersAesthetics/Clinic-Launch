@@ -153,6 +153,17 @@ export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+
+  const saveScenario = (key: ScenarioKey) => {
+    setScenario(key);
+    fetch(`/api/projects/${PROJECT_ID}/financial/scenario`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ scenario: key }),
+    }).then(() => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard", PROJECT_ID] });
+    }).catch(() => { /* non-fatal */ });
+  };
   const [customOcc, setCustomOcc] = useState(65);
   const [aiQA, setAiQA] = useState({ q1: "", q2: "", q3: "", q4: "", q5: "" });
 
@@ -487,6 +498,8 @@ export default function FinancialsPage() {
         travelGbp: (m as any).travelGbp ?? 0,
         otherHouseholdGbp: (m as any).otherHouseholdGbp ?? 0,
       });
+      // Restore the previously selected scenario
+      if (m.selectedScenario) setScenario(m.selectedScenario as ScenarioKey);
       // Allow watch subscription to fire again after reset settles
       setTimeout(() => { isSilentReset.current = false; }, 50);
       setSaveStatus("saved");
@@ -704,7 +717,7 @@ export default function FinancialsPage() {
         )}
         <div className="flex flex-wrap gap-1.5">
           {(Object.entries(SCENARIOS) as [ScenarioKey, typeof SCENARIOS[ScenarioKey]][]).map(([key, s]) => (
-            <button key={key} onClick={() => setScenario(key)}
+            <button key={key} onClick={() => saveScenario(key)}
               className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap ${
                 scenario === key ? `${s.badgeClass} border-current` : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
               }`}>
@@ -2352,7 +2365,7 @@ export default function FinancialsPage() {
                       ["delayed_ramp", "Delayed Ramp — how long is the dual-clinic burden?"],
                       ["economic_downturn", "Downturn — reduced spend, lower occupancy"],
                     ].map(([key, desc]) => (
-                      <Button key={key} variant="outline" size="sm" className="w-full justify-between text-xs h-auto py-2" onClick={() => { setScenario(key as ScenarioKey); setTab("owner"); }}>
+                      <Button key={key} variant="outline" size="sm" className="w-full justify-between text-xs h-auto py-2" onClick={() => { saveScenario(key as ScenarioKey); setTab("owner"); }}>
                         <span className={SCENARIOS[key as ScenarioKey].color}>{SCENARIOS[key as ScenarioKey].label}</span>
                         <span className="text-muted-foreground text-[10px] ml-2 text-right hidden sm:block">{desc}</span>
                         <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-50" />
@@ -2573,7 +2586,7 @@ export default function FinancialsPage() {
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {(Object.entries(SCENARIOS) as [ScenarioKey, typeof SCENARIOS[ScenarioKey]][]).map(([key, s]) => (
-                  <Button key={key} variant="outline" size="sm" onClick={() => { setScenario(key); setTab("overview"); }}>
+                  <Button key={key} variant="outline" size="sm" onClick={() => { saveScenario(key); setTab("overview"); }}>
                     <span className={s.color}>{s.label}</span>
                     <ChevronRight className="w-3.5 h-3.5 ml-1 opacity-50" />
                   </Button>

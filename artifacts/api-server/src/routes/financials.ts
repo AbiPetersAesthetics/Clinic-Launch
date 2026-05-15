@@ -111,6 +111,19 @@ router.put("/projects/:projectId/financial", async (req, res) => {
   res.json(model);
 });
 
+// ─── PATCH /projects/:id/financial/scenario ──────────────────────────────────
+// Lightweight endpoint — only persists the selected scenario key.
+router.patch("/projects/:projectId/financial/scenario", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const { scenario } = req.body as { scenario: string };
+  const valid = ["conservative", "realistic", "aggressive", "delayed_ramp", "economic_downturn", "stress_test"];
+  if (!valid.includes(scenario)) return res.status(400).json({ error: "Invalid scenario" });
+  const [existing] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+  if (!existing) return res.status(404).json({ error: "No financial model found" });
+  await db.update(financialsTable).set({ selectedScenario: scenario, updatedAt: new Date() }).where(eq(financialsTable.projectId, projectId));
+  return res.json({ selectedScenario: scenario });
+});
+
 // ─── POST /projects/:id/financial/calculate ──────────────────────────────────
 
 router.post("/projects/:projectId/financial/calculate", async (req, res) => {

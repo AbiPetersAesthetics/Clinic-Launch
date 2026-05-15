@@ -260,15 +260,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </>
                 )}
 
-                {/* ── Net profit at realistic scenario ── */}
-                {dashboard.realisticNetProfit != null && (
+                {/* ── Net profit at selected scenario ── */}
+                {(dashboard as any).selectedNetProfit != null && (
                   <>
                     <div className="shrink-0">
-                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">Net (Realistic)</p>
+                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap capitalize">
+                        Net ({(dashboard as any).selectedScenario ?? "Realistic"})
+                      </p>
                       <div className="flex items-center gap-1 mt-0.5">
-                        <TrendingUp className={`w-3 h-3 shrink-0 ${dashboard.realisticNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`} />
-                        <p className={`text-xs md:text-sm font-semibold whitespace-nowrap ${dashboard.realisticNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                          {dashboard.realisticNetProfit >= 0 ? "+" : ""}{formatGBP(dashboard.realisticNetProfit)}<span className="text-muted-foreground font-normal text-[10px]">/mo</span>
+                        <TrendingUp className={`w-3 h-3 shrink-0 ${(dashboard as any).selectedNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`} />
+                        <p className={`text-xs md:text-sm font-semibold whitespace-nowrap ${(dashboard as any).selectedNetProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                          {(dashboard as any).selectedNetProfit >= 0 ? "+" : ""}{formatGBP((dashboard as any).selectedNetProfit)}<span className="text-muted-foreground font-normal text-[10px]">/mo</span>
                         </p>
                       </div>
                     </div>

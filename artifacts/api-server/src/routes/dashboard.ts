@@ -63,6 +63,11 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   let breakEvenRevenue: number | null = null;
   let realisticRevenue: number | null = null;
   let realisticNetProfit: number | null = null;
+  let conservativeNetProfit: number | null = null;
+  let aggressiveNetProfit: number | null = null;
+  let selectedScenario: string = "realistic";
+  let selectedNetProfit: number | null = null;
+  let selectedRevenue: number | null = null;
   let vatRisk: boolean | null = null;
   let vatHeadroomGbp: number | null = null;
   let vatMonthsToThreshold: number | null = null;
@@ -79,12 +84,34 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
     const fixedVarItems = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
 
-    realisticRevenue = Math.round((slotsPerMonth * (financial.realisticOccupancyPercent / 100)) * acv + financial.membershipRevenueGbp);
-    const realisticVariable = Math.round(realisticRevenue * variableRatio + fixedVarItems);
-    realisticNetProfit = realisticRevenue - actualFixed - realisticVariable;
+    const calcNet = (occupancyPct: number) => {
+      const rev = Math.round((slotsPerMonth * (occupancyPct / 100)) * acv + financial.membershipRevenueGbp);
+      const variable = Math.round(rev * variableRatio + fixedVarItems);
+      return { rev, net: rev - actualFixed - variable };
+    };
 
-    monthlyBurnRate = actualFixed + realisticVariable;
-    projectedFirstYearProfit = realisticNetProfit * 12;
+    const conservative = calcNet(financial.conservativeOccupancyPercent);
+    const realistic = calcNet(financial.realisticOccupancyPercent);
+    const aggressive = calcNet(financial.aggressiveOccupancyPercent);
+
+    realisticRevenue = realistic.rev;
+    realisticNetProfit = realistic.net;
+    conservativeNetProfit = conservative.net;
+    aggressiveNetProfit = aggressive.net;
+
+    // Read which scenario the user last selected (persisted in DB)
+    selectedScenario = (financial as any).selectedScenario ?? "realistic";
+    const scenarioMap: Record<string, { rev: number; net: number }> = {
+      conservative, realistic, aggressive,
+      // stress tests fall back to conservative figures
+      delayed_ramp: conservative, economic_downturn: conservative, stress_test: conservative,
+    };
+    const sel = scenarioMap[selectedScenario] ?? realistic;
+    selectedNetProfit = sel.net;
+    selectedRevenue = sel.rev;
+
+    monthlyBurnRate = actualFixed + Math.round(realistic.rev * variableRatio + fixedVarItems);
+    projectedFirstYearProfit = realistic.net * 12;
 
     // Break-even: revenue at which net = 0 (covers fixed + variable overheads)
     breakEvenRevenue = Math.round((actualFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
@@ -93,13 +120,13 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     cashRunwayMonths = monthlyCashDrain > 0 ? financial.runwaySavingsGbp / monthlyCashDrain : 99;
 
     // VAT awareness: forecast months until threshold from current turnover + projected Winc revenue
-    const projectedAnnualWinc = (realisticRevenue ?? 0) * 12;
+    const projectedAnnualWinc = realistic.rev * 12;
     const vatCurrentTurnover = financial.vatCurrentTurnoverGbp || 0;
     const combinedTurnover = vatCurrentTurnover + projectedAnnualWinc;
     vatRisk = combinedTurnover > 85000;
     vatHeadroomGbp = Math.max(0, 90000 - combinedTurnover);
-    vatMonthsToThreshold = (realisticRevenue ?? 0) > 0
-      ? Math.max(0, Math.ceil((90000 - vatCurrentTurnover) / (realisticRevenue ?? 1)))
+    vatMonthsToThreshold = realistic.rev > 0
+      ? Math.max(0, Math.ceil((90000 - vatCurrentTurnover) / realistic.rev))
       : null;
   }
 
@@ -162,6 +189,11 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     breakEvenRevenue,
     realisticRevenue,
     realisticNetProfit,
+    conservativeNetProfit,
+    aggressiveNetProfit,
+    selectedScenario,
+    selectedNetProfit,
+    selectedRevenue,
     vatRisk,
     vatHeadroomGbp,
     vatMonthsToThreshold,
