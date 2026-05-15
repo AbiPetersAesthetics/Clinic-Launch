@@ -504,6 +504,8 @@ function PersonSelect({ value, onChange, backupName, showDad }: {
           ? "border-primary/50 text-primary font-semibold"
           : value === "Dad"
           ? "border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 font-semibold"
+          : value === "Mum"
+          ? "border-rose-400 dark:border-rose-600 text-rose-700 dark:text-rose-300 font-semibold"
           : "border-border text-foreground"
       }`}
     >
@@ -511,6 +513,7 @@ function PersonSelect({ value, onChange, backupName, showDad }: {
       <option value="Abi">Abi</option>
       <option value="David">David</option>
       {showDad && <option value="Dad">Dad</option>}
+      {showDad && <option value="Mum">Mum</option>}
       <option value={backupValue}>{backupLabel}</option>
     </select>
   );
@@ -1621,6 +1624,7 @@ function CoverageMatrix({ clinicDays, daySchedules, weekBDaySchedules, fortnight
       who === "Abi" ? "bg-primary/10 text-primary"
       : who === "David" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
       : who === "Dad" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+      : who === "Mum" ? "bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300"
       : "bg-muted text-muted-foreground"
     }`}>{who}</span>
   );
@@ -3208,6 +3212,46 @@ export default function LifestylePage() {
                 value={extras.thePitch}
                 onChange={v => updateExtras({ thePitch: v })}
               />
+
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <Star className="w-4 h-4 text-violet-500" /> 12-Month Success Vision
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        It's November 2027 — one year after opening. Paint the picture in vivid detail. What does a day look like? What has changed?
+                      </CardDescription>
+                    </div>
+                    {extras.successVision12m && (
+                      <span className="shrink-0 text-[10px] font-semibold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-700 px-2 py-0.5 rounded-full">
+                        {extras.successVision12m.length} chars
+                      </span>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Textarea
+                      placeholder={`e.g. I'm doing 3 clinic days a week — Tuesday, Wednesday, Thursday. The diary books 3–4 weeks out without me doing anything. I'm home by 5:30 every day and I'm actually present when I get there. Eli and Elsy know their routine — it's stable, predictable, theirs.\n\nI've cleared the nursing income gap. David is doing 2 school runs a week and it doesn't feel like a favour anymore — it's just how we work. I've done my first real holiday without my phone.\n\nI feel like myself again. Not "Abi-who-works-at-the-hospital". Just Abi.`}
+                      value={extras.successVision12m}
+                      onChange={e => updateExtras({ successVision12m: e.target.value })}
+                      className="min-h-[160px] text-sm resize-none border-violet-200/60 dark:border-violet-800/40 focus-visible:ring-violet-500/20"
+                    />
+                    <p className="text-[10px] text-muted-foreground">Write it in the present tense, as if it's already happened. Be specific — people, places, feelings. Don't make it about numbers.</p>
+                  </div>
+                  {extras.successVision12m && extras.successVision12m.length > 50 && (
+                    <div className="rounded-xl border border-violet-200 dark:border-violet-800 bg-violet-50/40 dark:bg-violet-950/20 p-4">
+                      <p className="text-[10px] font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3" /> Your vision, November 2027
+                      </p>
+                      <p className="text-sm leading-relaxed text-foreground/80 italic whitespace-pre-line">"{extras.successVision12m}"</p>
+                      <p className="text-[10px] text-muted-foreground mt-2">— Abi Peters, written {new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
