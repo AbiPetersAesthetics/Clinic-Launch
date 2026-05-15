@@ -65,7 +65,7 @@ router.get("/tasks/:id", async (req, res) => {
 });
 
 async function handleTaskUpdate(req: import("express").Request, res: import("express").Response) {
-  const id = parseInt(req.params.id);
+  const id = parseInt(req.params["id"] as string);
 
   const [existing] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
   if (!existing) return res.status(404).json({ error: "Not found" });

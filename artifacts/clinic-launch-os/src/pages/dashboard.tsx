@@ -103,9 +103,9 @@ type GoNoGoResult = {
   verdictLabel: string;
   confidenceScore: number;
   executiveSummary: string;
-  detailedAssessment: { financial?: string; property?: string; market?: string; strategic?: string; personal?: string };
-  riskScores: { financial: number; property: number; market: number; strategic: number; overall: number };
-  riskRationale: { financial?: string; property?: string; market?: string; strategic?: string };
+  detailedAssessment: { financial?: string; property?: string; market?: string; strategic?: string; personal?: string; lifeDesign?: string };
+  riskScores: { financial: number; property: number; market: number; strategic: number; lifeDesign?: number; overall: number };
+  riskRationale: { financial?: string; property?: string; market?: string; strategic?: string; lifeDesign?: string };
   strengths: string[];
   concerns: string[];
   conditions: string[];
@@ -353,6 +353,7 @@ export default function DashboardPage() {
           { key: "market" as const, label: "Market" },
           { key: "strategic" as const, label: "Strategic" },
           { key: "personal" as const, label: "Personal Finance" },
+          { key: "lifeDesign" as const, label: "Life Design" },
         ];
 
         return (
@@ -465,11 +466,16 @@ export default function DashboardPage() {
                   {goNoGo.riskScores && (
                     <div>
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Risk Assessment — Property Decision</div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {(["financial", "property", "market", "strategic"] as const).map((dim) => {
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {([
+                          { dim: "financial" as const, label: "Financial" },
+                          { dim: "property" as const, label: "Property" },
+                          { dim: "market" as const, label: "Market" },
+                          { dim: "strategic" as const, label: "Strategic" },
+                          { dim: "lifeDesign" as const, label: "Life Design" },
+                        ]).map(({ dim, label }) => {
                           const score = goNoGo.riskScores[dim] ?? 5;
                           const rationale = goNoGo.riskRationale?.[dim];
-                          const label = dim === "financial" ? "Financial" : dim === "property" ? "Property" : dim === "market" ? "Market" : "Strategic";
                           return (
                             <div key={dim} className={`rounded-lg border p-3 ${riskColor(score)}`}>
                               <div className="flex items-center justify-between mb-1">

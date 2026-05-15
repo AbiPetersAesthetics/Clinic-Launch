@@ -5,6 +5,7 @@ import {
   fixedCostItemsTable, propertiesTable, financialsTable,
   phasesTable, tasksTable, decisionsTable,
   complianceItemsTable, cqcMilestonesTable,
+  lifestylePlanTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
@@ -203,12 +204,14 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     decisionsRaw,
     fixedCostsRaw,
     bedhamptonRaw,
+    lifestyleRaw,
   ] = await Promise.all([
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(decisionsTable).where(eq(decisionsTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     fetchBedhamptonLive().catch(() => null),
+    db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
   ]);
 
   const financial = financialRaw[0] ?? null;
@@ -333,7 +336,7 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
 
   // ── Property context ──────────────────────────────────────────────────────
   const allPropertyLines = allPropertiesRaw.map((p) =>
-    `  ${p.isActiveForProject ? "★ SELECTED" : "○"} ${p.address || "Unknown"} (${p.postcode || "?"}): £${p.monthlyRentGbp || "?"}/mo | ${p.sqFootage || "?"}sqft | Stage: ${p.stage || "unknown"} | Use class: ${p.useClass || "?"} | VAT on rent: ${p.vatOnRent ? "Yes" : "No/unknown"}`
+    `  ${p.isActiveForProject ? "★ SELECTED" : "○"} ${p.address || "Unknown"} (${p.postcode || "?"}): £${p.monthlyRentGbp || "?"}/mo | ${p.sqFootage || "?"}sqft | Stage: ${p.status || "unknown"} | Use class: ${p.useClass || "?"} | VAT on rent: ${p.vatOnRent ? "Yes" : "No/unknown"}`
   ).join("\n");
 
   const propertyContext = allPropertiesRaw.length > 0
@@ -368,6 +371,90 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
 
   const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
 
+  // ── Lifestyle / life-design context ───────────────────────────────────────
+  let lifestyleContext = "Life design plan: not completed yet.";
+  if (lifestyleRaw) {
+    const ls = lifestyleRaw;
+
+    // Parse checklist arrays
+    const parseArr = (v: unknown): string[] => {
+      if (Array.isArray(v)) return v;
+      try { return v ? JSON.parse(v as string) : []; } catch { return []; }
+    };
+    const schedChecks = parseArr(ls.scheduleChecks);
+    const famChecks = parseArr(ls.familyChecks);
+    const nurChecks = parseArr(ls.nursingChecks);
+    const wbChecks = parseArr(ls.wellbeingChecks);
+    const idChecks = parseArr(ls.identityChecks);
+    const clinicDays = parseArr(ls.clinicDays);
+    const totalChecks = 5 + 8 + 8 + 6 + 7; // total items across all checklists
+    const doneChecks = schedChecks.length + famChecks.length + nurChecks.length + wbChecks.length + idChecks.length;
+    const lifeReadinessPct = Math.round((doneChecks / totalChecks) * 100);
+
+    // Nursing income implications
+    const nursingStatusLabels: Record<string, string> = {
+      still_working: "Still working full nursing shifts — nursing income is active",
+      exploring: "Mentally winding down from nursing — no formal steps yet",
+      notice_given: "Notice given to nursing employer — income will stop",
+      left: "Already left nursing — no nursing income",
+    };
+    const nursingIncomeActive = ls.nursingStatus === "still_working" || ls.nursingStatus === "exploring";
+
+    // Calculate notice deadline from target exit date + notice period
+    let noticeDeadlineStr = "Not calculated — no target exit date set";
+    if (ls.targetExitDate) {
+      const exitMs = new Date(ls.targetExitDate + "-01").getTime();
+      const noticeMs = (ls.nursingNoticeWeeks ?? 12) * 7 * 24 * 60 * 60 * 1000;
+      const deadline = new Date(exitMs - noticeMs);
+      noticeDeadlineStr = deadline.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+    }
+
+    // Revenue ceiling check: does the financial model's working days match the lifestyle max?
+    const financialWorkingDays = financial?.workingDaysPerMonth ?? 0;
+    const maxMonthlyClinicDays = (ls.maxClinicDaysPerWeek ?? 4) * 4.3;
+    const revenueCeilingConflict = financialWorkingDays > maxMonthlyClinicDays;
+
+    const schoolCovered = (ls.dropCoveredBy ?? "").trim().length > 0 && (ls.pickupCoveredBy ?? "").trim().length > 0;
+
+    lifestyleContext = `=== LIFE DESIGN PLAN (personal readiness — feeds directly into launch viability) ===
+
+NURSING EXIT STATUS: ${nursingStatusLabels[ls.nursingStatus ?? "still_working"] ?? ls.nursingStatus}
+  Notice period: ${ls.nursingNoticeWeeks ?? 12} weeks | Target exit: ${ls.targetExitDate || "not set"} | Give-notice deadline: ${noticeDeadlineStr}
+  Nursing income currently in model: £${financial?.nursingIncomeGbp ?? 0}/mo
+  ${nursingIncomeActive ? "⚠ Nursing income is still live — if she exits before opening, the runway calculation must be revised downward" : "⚠ Nursing income has stopped or will stop — runway is now dependent on Bedhampton income and savings only"}
+  ${ls.nursingExitNotes ? `Exit notes: "${ls.nursingExitNotes}"` : ""}
+
+CLINIC SCHEDULE:
+  Planned clinic days: ${clinicDays.join(", ") || "not set"} (${clinicDays.length} days/week)
+  Opening hours: ${ls.clinicOpenTime}–${ls.clinicCloseTime}
+  Hard personal maximum: ${ls.maxClinicDaysPerWeek ?? 4} clinic days/week (≈${Math.round(maxMonthlyClinicDays)} days/month)
+  Financial model uses: ${financialWorkingDays} working days/month
+  ${revenueCeilingConflict ? `⚠ REVENUE CEILING CONFLICT: financial model assumes ${financialWorkingDays} days/month but personal max is ~${Math.round(maxMonthlyClinicDays)} days/month — the revenue projections are OVERSTATED and must be revised` : `✓ Schedule model is consistent with personal maximum`}
+  ${ls.scheduleNotes ? `Schedule vision: "${ls.scheduleNotes.slice(0, 200)}"` : ""}
+
+FAMILY & SCHOOL LOGISTICS (Eli & Elsy):
+  School: ${ls.schoolStartTime}–${ls.schoolFinishTime}
+  Drop-off covered by: ${ls.dropCoveredBy || "NOT SPECIFIED"}
+  Pick-up covered by: ${ls.pickupCoveredBy || "NOT SPECIFIED"}
+  ${!schoolCovered ? "⚠ School run not yet allocated — this is an operational risk. No cover plan = cancellations or client-time conflicts" : "✓ School run coverage is allocated"}
+  Contingency plan: ${ls.schoolContingencyPlan ? `"${ls.schoolContingencyPlan.slice(0, 150)}"` : "not written"}
+  David's support: ${ls.davidAvailabilityDays ?? 5} days/week available
+  ${ls.davidRoleNotes ? `David's specific role: "${ls.davidRoleNotes.slice(0, 200)}"` : "David's specific commitments: not documented"}
+
+WELLBEING & SUSTAINABILITY:
+  Sick cover plan: ${ls.sickCoverPlan ? `"${ls.sickCoverPlan.slice(0, 150)}"` : "not written"}
+  Holiday plan: ${ls.holidayPlan ? `"${ls.holidayPlan.slice(0, 150)}"` : "not written"}
+  Non-negotiables: ${ls.nonNegotiables ? `"${ls.nonNegotiables.slice(0, 200)}"` : "not written"}
+
+PERSONAL MOTIVATION & CONCERNS:
+  Most excited about: ${ls.mostExcitedAbout ? `"${ls.mostExcitedAbout.slice(0, 200)}"` : "not written"}
+  Biggest concerns: ${ls.biggestConcerns ? `"${ls.biggestConcerns.slice(0, 200)}"` : "not written"}
+  Support network: ${ls.supportNetwork ? `"${ls.supportNetwork.slice(0, 200)}"` : "not written"}
+
+LIFE READINESS SCORE: ${lifeReadinessPct}% (${doneChecks}/${totalChecks} considerations addressed)
+  Schedule: ${schedChecks.length}/5 | Family: ${famChecks.length}/8 | Nursing exit: ${nurChecks.length}/8 | Wellbeing: ${wbChecks.length}/6 | Identity: ${idChecks.length}/7`;
+  }
+
   // ── Master prompt ─────────────────────────────────────────────────────────
   const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
@@ -392,6 +479,8 @@ ${bedhContext}
 === STRATEGIC DECISIONS ALREADY MADE ===
 ${decisionsContext}
 
+${lifestyleContext}
+
 === KEY COMPUTED RATIOS ===
 • Break-even monthly revenue (${propertyLabel}): £${breakEvenRevenue.toLocaleString() || "not calculated"}
 • Rent as % of realistic monthly revenue: ${rentToRevenuePct}% (healthy = <15%, stretched = >20%)
@@ -411,20 +500,23 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "property": "<2-3 sentences on the property terms: is the rent commercially reasonable for this location? What terms matter most in heads of terms negotiations? What should she push back on or clarify before signing?>",
     "market": "<2-3 sentences on the local market opportunity at ${propertyTown}: is there demand for premium aesthetics here? How does the location work for footfall and client acquisition? What is the competitive risk?>",
     "strategic": "<2 sentences on strategic fit: does this move make sense for Abi's business at this stage? How does Bedhampton's current performance de-risk or complicate the move?>",
-    "personal": "<2 sentences on her personal financial position: does her runway, nursing income, and Bedhampton income give her enough buffer to safely commit to this lease?>"
+    "personal": "<2 sentences on her personal financial position: does her runway, nursing income, and Bedhampton income give her enough buffer to safely commit to this lease?>",
+    "lifeDesign": "<2-3 sentences on personal readiness: does the nursing exit timeline align with the opening date? Is the clinic schedule model consistent with her personal maximum? Are there unresolved family logistics (school run, David's role) that represent operational risk? Flag any revenue ceiling conflicts between the financial model and her personal day-limit.>"
   },
   "riskScores": {
     "financial": <1-10 where 10 = extremely high risk — assess affordability, break-even realism, VAT exposure>,
     "property": <1-10 — assess rent level, lease terms known so far, location risk>,
     "market": <1-10 — assess Winchester demand, competition, pricing power>,
     "strategic": <1-10 — assess timing, personal readiness, Bedhampton dependency>,
+    "lifeDesign": <1-10 — assess nursing exit timing, schedule model realism, school run coverage, family support solidity>,
     "overall": <1-10>
   },
   "riskRationale": {
     "financial": "<one sentence>",
     "property": "<one sentence>",
     "market": "<one sentence>",
-    "strategic": "<one sentence>"
+    "strategic": "<one sentence>",
+    "lifeDesign": "<one sentence — nursing exit timing, schedule realism, family logistics>"
   },
   "strengths": [
     "<strength 1 — cite actual numbers>",

@@ -969,6 +969,7 @@ Return a JSON object with EXACTLY this structure (no markdown, no code fences, a
 
   // Analysis saved — client will fetch it via GET /analyses/latest on next poll
   console.info(`[analyse] property ${id} analysis saved (v${newVersion})`);
+  return;
 });
 
 // ─── AI Advisor Actions — SSE streaming ───────────────────────────────────────
@@ -1048,6 +1049,7 @@ ${bedhamptonCtx}`;
     res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
     res.end();
   }
+  return;
 });
 
 // ─── Property Location Search ─────────────────────────────────────────────────
