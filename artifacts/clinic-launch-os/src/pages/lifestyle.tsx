@@ -1017,7 +1017,7 @@ function computeDayWindow(
   familySchedule: FamilySchedule,
   baselineOpen: string,
   baselineClose: string,
-): number {
+): { hours: number; arriveTime: string; leaveTime: string } {
   const ds = familySchedule.daySchedules[day];
   const pw = familySchedule.parkAndWalkMins;
   const loc = ds?.clinicLocation ?? "winchester";
@@ -1052,7 +1052,8 @@ function computeDayWindow(
     earliestDeparture = Math.min(earliestDeparture, t2m(j.mustLeaveClinic));
   }
 
-  return Math.max(0, (earliestDeparture - latestArrival) / 60);
+  const hours = Math.max(0, (earliestDeparture - latestArrival) / 60);
+  return { hours, arriveTime: m2t(latestArrival), leaveTime: m2t(earliestDeparture) };
 }
 
 function SmartScheduleAdvisor({
@@ -1092,7 +1093,7 @@ function SmartScheduleAdvisor({
   const dayAnalysis = DAYS.map(day => {
     const ff = FOOTFALL_DATA[day];
     const ov = dayTimeOverrides[day];
-    const windowHrs = computeDayWindow(day, familySchedule, ov?.open ?? BASELINE_OPEN, ov?.close ?? BASELINE_CLOSE);
+    const { hours: windowHrs, arriveTime, leaveTime } = computeDayWindow(day, familySchedule, ov?.open ?? BASELINE_OPEN, ov?.close ?? BASELINE_CLOSE);
     const windowBonus = Math.min(2, Math.max(0, (windowHrs - 5) * 0.5));
     const score = ff.score + windowBonus;
     const ds = familySchedule.daySchedules[day];
@@ -1100,7 +1101,7 @@ function SmartScheduleAdvisor({
     const eliChild  = ds?.eli  ?? { dropBy: "", pickupBy: "" };
     const abiDrops   = [elsyChild.dropBy,   eliChild.dropBy  ].filter(x => x === "Abi").length;
     const abiPickups = [elsyChild.pickupBy, eliChild.pickupBy].filter(x => x === "Abi").length;
-    return { day, ff, windowHrs, score, abiDrops, abiPickups };
+    return { day, ff, windowHrs, arriveTime, leaveTime, score, abiDrops, abiPickups };
   });
 
   const sorted = [...dayAnalysis].sort((a, b) => b.score - a.score);
@@ -1138,7 +1139,7 @@ function SmartScheduleAdvisor({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1.5">
-          {dayAnalysis.map(({ day, ff, windowHrs, abiDrops, abiPickups }) => {
+          {dayAnalysis.map(({ day, ff, windowHrs, arriveTime, leaveTime, abiDrops, abiPickups }) => {
             const isRec     = recommended.has(day);
             const isActive  = currentDays.includes(day);
             const hasOverride = !!dayTimeOverrides[day];
@@ -1182,18 +1183,19 @@ function SmartScheduleAdvisor({
                     <p className="text-[9px] text-muted-foreground/70">Best: {ff.bestTimes}</p>
                   </div>
 
-                  <div className="text-right shrink-0 space-y-1">
-                    <p className={`text-[10px] font-semibold ${windowHrs >= 6 ? "text-emerald-600 dark:text-emerald-400" : windowHrs >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>
-                      {windowHrs > 0 ? `${windowHrs.toFixed(1)}h` : "—"}
-                    </p>
-                    {(abiDrops > 0 || abiPickups > 0) && (
-                      <p className="text-[9px] text-muted-foreground">
-                        {abiDrops > 0 ? `↓${abiDrops}` : ""}
-                        {abiDrops > 0 && abiPickups > 0 ? " " : ""}
-                        {abiPickups > 0 ? `↑${abiPickups}` : ""}
-                      </p>
+                  <div className="text-right shrink-0 space-y-0.5 min-w-[72px]">
+                    {windowHrs > 0 ? (
+                      <>
+                        <p className="text-[9px] text-muted-foreground font-mono leading-tight">{arriveTime}</p>
+                        <p className={`text-[10px] font-bold leading-tight ${windowHrs >= 6 ? "text-emerald-600 dark:text-emerald-400" : windowHrs >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>
+                          {windowHrs.toFixed(1)}h
+                        </p>
+                        <p className="text-[9px] text-muted-foreground font-mono leading-tight">{leaveTime}</p>
+                      </>
+                    ) : (
+                      <p className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">—</p>
                     )}
-                    <div className="flex items-center gap-1 justify-end">
+                    <div className="flex items-center gap-1 justify-end pt-0.5">
                       {isRec && <span className="text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">REC</span>}
                       {hasOverride && <span className="text-[8px] bg-violet-500 text-white px-1 py-0.5 rounded font-bold">custom</span>}
                     </div>
@@ -1253,14 +1255,65 @@ function SmartScheduleAdvisor({
           })}
         </div>
 
-        <div className="rounded-lg border border-border/60 bg-muted/20 p-3 space-y-1.5">
-          <p className="text-[10px] font-semibold text-foreground uppercase tracking-wide">Peak booking windows — UK aesthetics</p>
-          <div className="grid grid-cols-2 gap-y-1 gap-x-3 text-[10px]">
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" /><span>10:30–13:00 — lunch crowd</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" /><span>17:00–19:00 — after-work peak</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" /><span className="text-muted-foreground">08:00–09:30 — low (school run)</span></div>
-            <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-amber-400 shrink-0" /><span className="text-muted-foreground">14:30–16:30 — low (school pickup)</span></div>
+        {/* ── Realistic Week Timeline ─────────────────────────────────────── */}
+        <div className="rounded-lg border border-border/60 bg-muted/10 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold text-foreground uppercase tracking-wide">Your realistic clinic windows</p>
+            <p className="text-[9px] text-muted-foreground">Derived from school runs &amp; travel times you entered</p>
           </div>
+          {/* Time axis */}
+          {(() => {
+            const DAY_START = 7 * 60;   // 07:00
+            const DAY_END   = 19 * 60;  // 19:00
+            const RANGE     = DAY_END - DAY_START; // 720 mins
+            const pct = (mins: number) => `${Math.max(0, Math.min(100, (mins - DAY_START) / RANGE * 100)).toFixed(2)}%`;
+            const LUNCH_L  = pct(10 * 60 + 30); const LUNCH_W  = `${(2.5 * 60 / RANGE * 100).toFixed(2)}%`;
+            const EVE_L    = pct(17 * 60);       const EVE_W    = `${(2 * 60 / RANGE * 100).toFixed(2)}%`;
+            const axisTimes = ["07:00","09:00","11:00","13:00","15:00","17:00","19:00"];
+            return (
+              <div className="space-y-1.5">
+                {dayAnalysis.map(({ day, windowHrs, arriveTime, leaveTime }) => {
+                  const isActive = currentDays.includes(day);
+                  const isRec    = recommended.has(day);
+                  const arrMins  = t2m(arriveTime);
+                  const leavMins = t2m(leaveTime);
+                  const leftPct  = pct(arrMins);
+                  const midW     = `${Math.max(0, (leavMins - arrMins) / RANGE * 100).toFixed(2)}%`;
+                  return (
+                    <div key={day} className={`flex items-center gap-2 ${!isActive ? "opacity-35" : ""}`}>
+                      <span className={`text-[10px] font-bold w-7 shrink-0 ${isRec && isActive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{day}</span>
+                      <div className="relative flex-1 h-4 bg-muted/60 rounded-sm overflow-hidden">
+                        {/* peak overlays (behind clinic bar) */}
+                        <div className="absolute inset-y-0 opacity-20 bg-emerald-400 rounded-sm" style={{ left: LUNCH_L, width: LUNCH_W }} />
+                        <div className="absolute inset-y-0 opacity-20 bg-emerald-400 rounded-sm" style={{ left: EVE_L, width: EVE_W }} />
+                        {/* clinic window */}
+                        {windowHrs > 0 && (
+                          <div
+                            className={`absolute inset-y-0 rounded-sm ${isRec && isActive ? "bg-emerald-500" : isActive ? "bg-primary" : "bg-muted-foreground/40"}`}
+                            style={{ left: leftPct, width: midW }}
+                          />
+                        )}
+                      </div>
+                      <span className="text-[9px] font-mono text-muted-foreground w-[72px] shrink-0 text-right">
+                        {windowHrs > 0 ? `${arriveTime}–${leaveTime}` : "no data"}
+                      </span>
+                    </div>
+                  );
+                })}
+                {/* axis labels */}
+                <div className="flex ml-9 text-[8px] text-muted-foreground/60 pr-[80px]">
+                  {axisTimes.map((t, i) => (
+                    <span key={t} className="flex-1 text-center" style={i === axisTimes.length - 1 ? { textAlign: "right" } : {}}>{t}</span>
+                  ))}
+                </div>
+                {/* legend */}
+                <div className="flex items-center gap-3 ml-9 text-[9px] text-muted-foreground">
+                  <div className="flex items-center gap-1"><div className="w-2.5 h-1.5 rounded-sm bg-emerald-500/30" /><span>Peak booking window</span></div>
+                  <div className="flex items-center gap-1"><div className="w-2.5 h-1.5 rounded-sm bg-emerald-500" /><span>Abi's clinic time</span></div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
