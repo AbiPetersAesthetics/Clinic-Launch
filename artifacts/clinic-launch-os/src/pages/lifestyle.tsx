@@ -1191,16 +1191,9 @@ function SmartScheduleAdvisor({
                 <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                 Smart Schedule Advisor
               </CardTitle>
-              <Button
-                size="sm"
-                className="h-8 text-xs gap-1.5 shrink-0"
-                onClick={() => onApply(recommendedOrdered, "09:30", "18:30")}
-              >
-                <Wand2 className="w-3.5 h-3.5" /> Auto-schedule
-              </Button>
             </div>
             <CardDescription className="text-xs">
-              Click a day to toggle · clock icon for custom hours
+              Set your clinic days and opening hours above · clock icon to override hours for a specific day
             </CardDescription>
             {/* ── Fortnightly hours goal ── */}
             <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-2">
@@ -1232,7 +1225,7 @@ function SmartScheduleAdvisor({
               </div>
               {hasGoal && !goalMet && (
                 <p className="text-[9px] text-amber-600 dark:text-amber-400">
-                  {(targetHoursPerFortnight - projectedHpf).toFixed(1)}h short — Auto-schedule will pick the right days to hit your goal
+                  {(targetHoursPerFortnight - projectedHpf).toFixed(1)}h short of your fortnightly goal — add more clinic days above
                 </p>
               )}
               {goalMet && (
@@ -1259,19 +1252,7 @@ function SmartScheduleAdvisor({
                     : "bg-primary/5 border-primary/30"
                   : "bg-muted/20 border-border/40 opacity-60"
               }`}>
-                <button
-                  type="button"
-                  className="w-full flex items-start gap-2.5 px-3 py-2.5 text-left"
-                  onClick={() => { if (!isEditing) toggleDay(day); }}
-                >
-                  <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    isActive
-                      ? isRec ? "bg-emerald-500 border-emerald-500" : "bg-primary border-primary"
-                      : "border-muted-foreground/30"
-                  }`}>
-                    {isActive && <Check className="w-2.5 h-2.5 text-white" />}
-                  </div>
-
+                <div className="w-full flex items-start gap-2.5 px-3 py-2.5">
                   <span className="text-[11px] font-bold text-foreground w-7 shrink-0 pt-0.5">{day}</span>
 
                   <div className="flex-1 min-w-0 space-y-1">
@@ -1322,7 +1303,7 @@ function SmartScheduleAdvisor({
                       <Clock className="w-3.5 h-3.5" />
                     </button>
                   )}
-                </button>
+                </div>
 
                 {isEditing && (
                   <div className="border-t border-border/60 px-3 py-3 bg-background/60 rounded-b-lg space-y-3">
@@ -1424,16 +1405,14 @@ function SmartScheduleAdvisor({
         </div>
 
         <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3">
-          <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">Recommended schedule</p>
+          <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">Highest footfall suggestion</p>
           <div className="flex items-center gap-2 flex-wrap">
             {recommendedOrdered.map(day => (
               <span key={day} className="text-xs font-bold bg-emerald-500 text-white px-2 py-1 rounded-lg">{day}</span>
             ))}
-            <span className="text-xs text-muted-foreground">·</span>
-            <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">09:30–18:30</span>
           </div>
           <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-1.5">
-            Highest foot-fall days + your available windows. Click <strong>Auto-schedule</strong> to apply, or toggle days above.
+            These days have the strongest client demand in UK aesthetics. Use as a reference — your days and hours are set above.
           </p>
         </div>
       </CardContent>
