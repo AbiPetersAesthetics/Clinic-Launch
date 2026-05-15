@@ -38,6 +38,9 @@ export const lifestylePlanTable = pgTable("lifestyle_plan", {
   biggestConcerns: text("biggest_concerns").default(""),
   supportNetwork: text("support_network").default(""),
 
+  // Family schedule — per-child, per-day JSON (replaces flat school fields)
+  familyScheduleJson: text("family_schedule_json").default("{}"),
+
   // Checklists — JSON arrays of ticked item keys
   scheduleChecks: text("schedule_checks").default("[]"),
   familyChecks: text("family_checks").default("[]"),

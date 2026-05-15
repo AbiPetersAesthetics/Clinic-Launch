@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import {
   CheckCircle2, Circle, Clock, Sun, Heart, Users,
   Stethoscope, Leaf, AlertCircle, Star, ChevronRight,
-  CalendarDays, ArrowRight, Shield, Sparkles,
+  CalendarDays, ArrowRight, Shield, Sparkles, MapPin,
 } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -15,6 +15,75 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 type Day = typeof DAYS[number];
 type TabKey = "schedule" | "family" | "nursing" | "wellbeing" | "identity";
 
+// ─── Family schedule types ────────────────────────────────────────────────────
+interface ChildSchedule { dropBy: string; pickupBy: string; }
+type DaySchedules = Record<string, { elsy: ChildSchedule; eli: ChildSchedule }>;
+
+interface FamilySchedule {
+  elsySchoolStart: string;
+  elsySchoolFinish: string;
+  eliSchoolStart: string;
+  eliSchoolFinish: string;
+  travelHomeToElsyMins: number;
+  travelElsyToClinicMins: number;
+  travelClinicToElsyMins: number;
+  travelHomeToEliMins: number;
+  travelEliToClinicMins: number;
+  travelClinicToEliMins: number;
+  contingencyPlan: string;
+  davidAvailabilityDays: number;
+  davidRoleNotes: string;
+  daySchedules: DaySchedules;
+}
+
+const DEFAULT_DAY_ENTRY = { elsy: { dropBy: "", pickupBy: "" }, eli: { dropBy: "", pickupBy: "" } };
+
+const DEFAULT_FAMILY_SCHEDULE: FamilySchedule = {
+  elsySchoolStart: "08:45",
+  elsySchoolFinish: "15:15",
+  eliSchoolStart: "08:30",
+  eliSchoolFinish: "14:50",
+  travelHomeToElsyMins: 8,
+  travelElsyToClinicMins: 28,
+  travelClinicToElsyMins: 30,
+  travelHomeToEliMins: 10,
+  travelEliToClinicMins: 28,
+  travelClinicToEliMins: 30,
+  contingencyPlan: "",
+  davidAvailabilityDays: 5,
+  davidRoleNotes: "",
+  daySchedules: Object.fromEntries(DAYS.map(d => [d, { ...DEFAULT_DAY_ENTRY }])),
+};
+
+// ─── Time helpers ─────────────────────────────────────────────────────────────
+function addMins(t: string, m: number): string {
+  const [h, min] = t.split(":").map(Number);
+  const total = h * 60 + min + m;
+  const hours = Math.floor(((total % 1440) + 1440) % 1440 / 60);
+  const mins = ((total % 60) + 60) % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+function minsBetween(from: string, to: string): number {
+  const [fh, fm] = from.split(":").map(Number);
+  const [th, tm] = to.split(":").map(Number);
+  return (th * 60 + tm) - (fh * 60 + fm);
+}
+
+// ─── Journey calculators ──────────────────────────────────────────────────────
+function calcDropJourney(schoolStart: string, homeToSchool: number, schoolToClinic: number, clinicOpen: string) {
+  const leaveHome = addMins(schoolStart, -(homeToSchool + 5));
+  const leaveSchool = addMins(schoolStart, 5);
+  const arriveClinic = addMins(leaveSchool, schoolToClinic);
+  const lateMins = minsBetween(clinicOpen, arriveClinic);
+  return { leaveHome, leaveSchool, arriveClinic, lateMins };
+}
+function calcPickupJourney(schoolFinish: string, clinicToSchool: number) {
+  const mustLeaveClinic = addMins(schoolFinish, -(clinicToSchool + 5));
+  const lastApptBy = addMins(mustLeaveClinic, -10);
+  return { mustLeaveClinic, lastApptBy };
+}
+
+// ─── Plan interface ───────────────────────────────────────────────────────────
 interface Plan {
   clinicDays: string[]; clinicOpenTime: string; clinicCloseTime: string; scheduleNotes: string;
   schoolStartTime: string; schoolFinishTime: string; dropCoveredBy: string; pickupCoveredBy: string;
@@ -24,6 +93,7 @@ interface Plan {
   mostExcitedAbout: string; biggestConcerns: string; supportNetwork: string;
   scheduleChecks: string[]; familyChecks: string[]; nursingChecks: string[];
   wellbeingChecks: string[]; identityChecks: string[];
+  familyScheduleJson: string;
 }
 
 const EMPTY: Plan = {
@@ -34,6 +104,7 @@ const EMPTY: Plan = {
   maxClinicDaysPerWeek: 4, sickCoverPlan: "", holidayPlan: "", nonNegotiables: "",
   mostExcitedAbout: "", biggestConcerns: "", supportNetwork: "",
   scheduleChecks: [], familyChecks: [], nursingChecks: [], wellbeingChecks: [], identityChecks: [],
+  familyScheduleJson: "{}",
 };
 
 function parseJson(s: unknown, fallback: string[]): string[] {
@@ -46,6 +117,7 @@ function fromApi(raw: Record<string, unknown>): Plan {
     scheduleChecks: parseJson(raw.scheduleChecks, []), familyChecks: parseJson(raw.familyChecks, []),
     nursingChecks: parseJson(raw.nursingChecks, []), wellbeingChecks: parseJson(raw.wellbeingChecks, []),
     identityChecks: parseJson(raw.identityChecks, []),
+    familyScheduleJson: typeof raw.familyScheduleJson === "string" ? raw.familyScheduleJson : "{}",
   } as Plan;
 }
 function toApi(p: Plan) {
@@ -123,7 +195,7 @@ function Checklist({ items, checked, onChange, accent = "emerald" }: {
         </div>
         <span className="text-xs font-semibold text-muted-foreground w-16 text-right">{done}/{items.length} done</span>
       </div>
-      {items.map((item, i) => {
+      {items.map((item) => {
         const ticked = checked.includes(item.key);
         return (
           <button key={item.key} onClick={() => toggle(item.key)}
@@ -161,8 +233,8 @@ function TabBadge({ checks, items }: { checks: string[]; items: { key: string }[
 function WeekGrid({ clinicDays, openTime, closeTime, schoolStart, schoolEnd }: {
   clinicDays: string[]; openTime: string; closeTime: string; schoolStart: string; schoolEnd: string;
 }) {
-  const DAY_RANGE_START = 7; // 7am
-  const DAY_RANGE_END = 20;  // 8pm
+  const DAY_RANGE_START = 7;
+  const DAY_RANGE_END = 20;
   const totalMins = (DAY_RANGE_END - DAY_RANGE_START) * 60;
 
   const toMins = (t: string) => {
@@ -178,7 +250,6 @@ function WeekGrid({ clinicDays, openTime, closeTime, schoolStart, schoolEnd }: {
   const pickupEndMins = Math.min(totalMins, toMins(schoolEnd) + 30);
 
   const pct = (m: number) => `${(m / totalMins) * 100}%`;
-
   const hours = Array.from({ length: DAY_RANGE_END - DAY_RANGE_START + 1 }, (_, i) => i + DAY_RANGE_START);
 
   return (
@@ -190,13 +261,11 @@ function WeekGrid({ clinicDays, openTime, closeTime, schoolStart, schoolEnd }: {
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-muted/60 border inline-block" /> Off</span>
       </div>
       <div className="flex gap-1 items-stretch">
-        {/* Y-axis labels */}
         <div className="flex flex-col justify-between text-[9px] text-muted-foreground w-6 shrink-0 pt-5 pb-0.5">
           {hours.filter((_, i) => i % 2 === 0).map(h => (
             <span key={h}>{h}</span>
           ))}
         </div>
-        {/* Day columns */}
         {DAYS.map(day => {
           const isClinic = clinicDays.includes(day);
           return (
@@ -208,15 +277,12 @@ function WeekGrid({ clinicDays, openTime, closeTime, schoolStart, schoolEnd }: {
                     top: pct(openMins), height: pct(closeMins - openMins),
                   }} />
                 )}
-                {/* School drop window */}
                 <div className="absolute left-0 right-0 bg-amber-400/40" style={{
                   top: pct(dropMins), height: pct(dropEndMins - dropMins),
                 }} />
-                {/* School pickup window */}
                 <div className="absolute left-0 right-0 bg-violet-400/35" style={{
                   top: pct(pickupMins), height: pct(pickupEndMins - pickupMins),
                 }} />
-                {/* Hour lines */}
                 {hours.filter((_, i) => i % 2 === 0).map((_, i) => (
                   <div key={i} className="absolute left-0 right-0 border-t border-border/20" style={{ top: `${(i / ((DAY_RANGE_END - DAY_RANGE_START) / 2)) * 100}%` }} />
                 ))}
@@ -247,52 +313,34 @@ function NursingTimeline({ status, noticeWeeks, exitDate }: {
 
   const milestones = [
     {
-      label: "Today",
-      date: today,
-      done: true,
-      color: "bg-emerald-500",
-      ring: "ring-emerald-400",
+      label: "Today", date: today, done: true, color: "bg-emerald-500", ring: "ring-emerald-400",
       note: status === "left" ? "Already left nursing" : status === "notice_given" ? "Notice given" : status === "exploring" ? "Planning your exit" : "Still working as normal",
     },
     {
-      label: "Give Notice",
-      date: noticeDeadline,
-      done: noticeDeadline ? today >= noticeDeadline : false,
-      color: noticeDeadline && today >= noticeDeadline ? "bg-emerald-500" : "bg-primary",
-      ring: "ring-primary/40",
+      label: "Give Notice", date: noticeDeadline, done: noticeDeadline ? today >= noticeDeadline : false,
+      color: noticeDeadline && today >= noticeDeadline ? "bg-emerald-500" : "bg-primary", ring: "ring-primary/40",
       note: noticeDeadline ? `Deadline: ${fmtDate(noticeDeadline)}` : "Set your exit date to calculate",
     },
     {
-      label: "Last Day",
-      date: exitDateObj,
-      done: exitDateObj ? today >= exitDateObj : false,
-      color: exitDateObj && today >= exitDateObj ? "bg-emerald-500" : "bg-amber-500",
-      ring: "ring-amber-400/40",
+      label: "Last Day", date: exitDateObj, done: exitDateObj ? today >= exitDateObj : false,
+      color: exitDateObj && today >= exitDateObj ? "bg-emerald-500" : "bg-amber-500", ring: "ring-amber-400/40",
       note: exitDateObj ? fmtDate(exitDateObj) : "Set your target exit date",
     },
     {
-      label: "Clinic Opens",
-      date: clinicOpen,
-      done: today >= clinicOpen,
-      color: today >= clinicOpen ? "bg-emerald-500" : "bg-violet-500",
-      ring: "ring-violet-400/40",
+      label: "Clinic Opens", date: clinicOpen, done: today >= clinicOpen,
+      color: today >= clinicOpen ? "bg-emerald-500" : "bg-violet-500", ring: "ring-violet-400/40",
       note: "Target: 1 Nov 2026",
     },
   ];
 
   return (
     <div className="relative py-6 px-2">
-      {/* Connecting line */}
       <div className="absolute top-1/2 left-8 right-8 h-0.5 bg-border -translate-y-1/2 mt-3" />
       <div className="grid grid-cols-4 gap-2 relative z-10">
         {milestones.map((m, i) => (
           <div key={i} className="flex flex-col items-center text-center gap-2">
             <div className={`w-9 h-9 rounded-full ${m.done ? "bg-emerald-500" : i === 1 ? "bg-primary" : i === 2 ? "bg-amber-400" : "bg-violet-500"} ring-4 ${m.ring} flex items-center justify-center shadow-md`}>
-              {m.done ? (
-                <CheckCircle2 className="w-5 h-5 text-white" />
-              ) : (
-                <span className="text-white text-xs font-bold">{i + 1}</span>
-              )}
+              {m.done ? <CheckCircle2 className="w-5 h-5 text-white" /> : <span className="text-white text-xs font-bold">{i + 1}</span>}
             </div>
             <div>
               <p className="text-xs font-semibold">{m.label}</p>
@@ -312,7 +360,6 @@ function ProtectedWeek({ clinicDays, maxDays }: { clinicDays: string[]; maxDays:
       <div className="grid grid-cols-7 gap-1">
         {(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const).map(day => {
           const isClinic = clinicDays.includes(day);
-          const isMax = !isClinic && clinicDays.length >= maxDays;
           return (
             <div key={day} className={`rounded-lg p-2 flex flex-col items-center gap-1 ${
               isClinic ? "bg-primary/20 border border-primary/40" : "bg-emerald-500/10 border border-emerald-500/30"
@@ -334,18 +381,243 @@ function ProtectedWeek({ clinicDays, maxDays }: { clinicDays: string[]; maxDays:
   );
 }
 
+// ─── Family tab sub-components ────────────────────────────────────────────────
+function LocationNode({ icon, label, sub, color, childName }: {
+  icon: string; label: string; sub: string; color: string; childName?: string;
+}) {
+  return (
+    <div className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border ${color} shrink-0 min-w-0`}>
+      <span className="text-lg shrink-0">{icon}</span>
+      <div className="min-w-0">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className="text-xs font-semibold text-foreground leading-none">{label}</p>
+          {childName && (
+            <span className="text-[9px] font-bold text-white px-1.5 py-0.5 rounded-full bg-amber-400 dark:bg-amber-500 shrink-0">{childName}</span>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+function TravelBadge({ mins }: { mins: number }) {
+  return (
+    <div className="flex items-center gap-0.5 text-[10px] text-muted-foreground shrink-0">
+      <div className="h-px w-3 bg-border" />
+      <span className="font-medium whitespace-nowrap">{mins}min</span>
+      <ChevronRight className="w-3 h-3" />
+    </div>
+  );
+}
+
+function PersonSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      className={`w-full h-7 text-xs rounded-lg border px-2 bg-background focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer ${
+        !value
+          ? "border-destructive/50 text-muted-foreground"
+          : value === "Abi"
+          ? "border-primary/50 text-primary font-semibold"
+          : "border-border text-foreground"
+      }`}
+    >
+      <option value="">— assign —</option>
+      <option value="Abi">Abi</option>
+      <option value="David">David</option>
+      <option value="Other / backup">Other / backup</option>
+    </select>
+  );
+}
+
+function JourneyChip({ type, leaveHome, leaveSchool, arriveClinic, lateMins, mustLeaveClinic, lastApptBy, clinicOpenTime }: {
+  type: "drop" | "pickup";
+  leaveHome?: string; leaveSchool?: string; arriveClinic?: string; lateMins?: number;
+  mustLeaveClinic?: string; lastApptBy?: string;
+  clinicOpenTime: string;
+}) {
+  if (type === "drop") {
+    const late = (lateMins ?? 0) > 0;
+    return (
+      <div className={`mt-1.5 rounded-lg px-2.5 py-2 text-[10px] space-y-1 border ${
+        late
+          ? "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800"
+          : "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
+      }`}>
+        <p className="font-medium text-foreground flex items-center gap-1 flex-wrap">
+          <span>🏠 {leaveHome}</span>
+          <ChevronRight className="w-2.5 h-2.5 text-muted-foreground" />
+          <span>🏫 drop</span>
+          <ChevronRight className="w-2.5 h-2.5 text-muted-foreground" />
+          <span>🏥 {arriveClinic}</span>
+        </p>
+        {late ? (
+          <p className="text-red-600 dark:text-red-400 font-medium">
+            ⚠ {lateMins}min after clinic opens ({clinicOpenTime})
+          </p>
+        ) : (
+          <p className="text-emerald-600 dark:text-emerald-400 font-medium">
+            ✓ {Math.abs(lateMins ?? 0)}min before clinic opens
+          </p>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="mt-1.5 rounded-lg px-2.5 py-2 text-[10px] space-y-1 border bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+      <p className="font-medium text-foreground">🏥 Leave clinic by {mustLeaveClinic}</p>
+      <p className="text-blue-700 dark:text-blue-400">Last appt ends by {lastApptBy}</p>
+    </div>
+  );
+}
+
+function ChildScheduleCard({
+  childName, school, schoolStart, schoolFinish,
+  travelHomeToSchool, travelSchoolToClinic, travelClinicToSchool,
+  clinicDays, clinicOpenTime, daySchedules, onDayChange, childKey, accentColor,
+}: {
+  childName: string; school: string;
+  schoolStart: string; schoolFinish: string;
+  travelHomeToSchool: number; travelSchoolToClinic: number; travelClinicToSchool: number;
+  clinicDays: string[]; clinicOpenTime: string;
+  daySchedules: DaySchedules;
+  onDayChange: (day: string, role: "dropBy" | "pickupBy", who: string) => void;
+  childKey: "elsy" | "eli";
+  accentColor: "amber" | "violet";
+}) {
+  const isAmber = accentColor === "amber";
+  const accent = isAmber
+    ? { bg: "bg-amber-50 dark:bg-amber-950/20", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-400" }
+    : { bg: "bg-violet-50 dark:bg-violet-950/20", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-400", dot: "bg-violet-400" };
+
+  const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${accent.dot}`} />
+            <CardTitle className="text-sm">{childName}</CardTitle>
+          </div>
+          <span className={`text-[9px] px-2 py-0.5 rounded-full border ${accent.bg} ${accent.border} ${accent.text} font-semibold shrink-0`}>
+            {school}
+          </span>
+        </div>
+        <CardDescription className="text-xs pl-4">
+          School hours: {schoolStart} – {schoolFinish}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2.5">
+        {clinicDayList.length === 0 && (
+          <p className="text-xs text-muted-foreground italic text-center py-3">
+            No clinic days selected — set them on the Schedule tab
+          </p>
+        )}
+        {clinicDayList.map(day => {
+          const schedule = daySchedules[day]?.[childKey] ?? { dropBy: "", pickupBy: "" };
+          const noCover = !schedule.dropBy || !schedule.pickupBy;
+
+          const dropJourney = schedule.dropBy === "Abi"
+            ? calcDropJourney(schoolStart, travelHomeToSchool, travelSchoolToClinic, clinicOpenTime)
+            : null;
+          const pickupJourney = schedule.pickupBy === "Abi"
+            ? calcPickupJourney(schoolFinish, travelClinicToSchool)
+            : null;
+
+          return (
+            <div
+              key={day}
+              className={`rounded-xl border p-3 space-y-2.5 transition-colors ${
+                noCover ? "border-destructive/30 bg-destructive/5" : "border-border/60 bg-muted/20"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-foreground w-7 shrink-0">{day}</span>
+                <span className="text-[9px] text-primary/80 font-semibold bg-primary/10 px-1.5 py-0.5 rounded">clinic</span>
+                {noCover && <AlertCircle className="w-3 h-3 text-destructive ml-auto" />}
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground font-medium">
+                    Drop-off <span className="text-foreground/60">{schoolStart}</span>
+                  </Label>
+                  <PersonSelect value={schedule.dropBy} onChange={who => onDayChange(day, "dropBy", who)} />
+                  {dropJourney && (
+                    <JourneyChip
+                      type="drop"
+                      leaveHome={dropJourney.leaveHome}
+                      leaveSchool={dropJourney.leaveSchool}
+                      arriveClinic={dropJourney.arriveClinic}
+                      lateMins={dropJourney.lateMins}
+                      clinicOpenTime={clinicOpenTime}
+                    />
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] text-muted-foreground font-medium">
+                    Pick-up <span className="text-foreground/60">{schoolFinish}</span>
+                  </Label>
+                  <PersonSelect value={schedule.pickupBy} onChange={who => onDayChange(day, "pickupBy", who)} />
+                  {pickupJourney && (
+                    <JourneyChip
+                      type="pickup"
+                      mustLeaveClinic={pickupJourney.mustLeaveClinic}
+                      lastApptBy={pickupJourney.lastApptBy}
+                      clinicOpenTime={clinicOpenTime}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TravelInput({ label, value, isTime, onChange }: {
+  label: string; value: string | number; isTime?: boolean; onChange: (v: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] text-muted-foreground">{label}</Label>
+      <Input
+        type={isTime ? "time" : "number"}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="h-7 text-xs"
+        min={isTime ? undefined : 1}
+        max={isTime ? undefined : 120}
+      />
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function LifestylePage() {
   const [plan, setPlan] = useState<Plan>(EMPTY);
   const [tab, setTab] = useState<TabKey>("schedule");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "unsaved">("idle");
   const [loaded, setLoaded] = useState(false);
+  const [activeProperty, setActiveProperty] = useState<{ address: string; postcode: string } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`)
       .then(r => r.ok ? r.json() : null)
       .then(data => { if (data) setPlan(fromApi(data)); setLoaded(true); setSaveStatus("idle"); });
+
+    fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
+      .then(r => r.ok ? r.json() : [])
+      .then((props: Array<{ address?: string; postcode?: string; isActiveForProject?: boolean }>) => {
+        const active = props.find(p => p.isActiveForProject) ?? props[0];
+        if (active) setActiveProperty({ address: active.address ?? "", postcode: active.postcode ?? "" });
+      })
+      .catch(() => {});
   }, []);
 
   const save = useCallback((p: Plan) => {
@@ -365,7 +637,29 @@ export default function LifestylePage() {
     });
   }, [save]);
 
-  // Computed status signals
+  // ── Family schedule derived state ──────────────────────────────────────────
+  const familySchedule = useMemo((): FamilySchedule => {
+    try {
+      const parsed = JSON.parse(plan.familyScheduleJson || "{}");
+      return {
+        ...DEFAULT_FAMILY_SCHEDULE,
+        ...parsed,
+        daySchedules: {
+          ...DEFAULT_FAMILY_SCHEDULE.daySchedules,
+          ...(parsed.daySchedules ?? {}),
+        },
+      };
+    } catch {
+      return DEFAULT_FAMILY_SCHEDULE;
+    }
+  }, [plan.familyScheduleJson]);
+
+  const updateFS = useCallback((patch: Partial<FamilySchedule>) => {
+    const next = { ...familySchedule, ...patch };
+    update({ familyScheduleJson: JSON.stringify(next) });
+  }, [familySchedule, update]);
+
+  // ── Computed signals ───────────────────────────────────────────────────────
   const allChecks = [
     ...plan.scheduleChecks.filter(k => SCHEDULE_CHECKS.some(i => i.key === k)),
     ...plan.familyChecks.filter(k => FAMILY_CHECKS.some(i => i.key === k)),
@@ -378,9 +672,25 @@ export default function LifestylePage() {
 
   const schoolDropConflict = plan.clinicDays.length > 0 && (() => {
     const openH = parseInt(plan.clinicOpenTime);
-    const schoolH = parseInt(plan.schoolStartTime);
+    const schoolH = parseInt(familySchedule.elsySchoolStart);
     return openH <= schoolH;
   })();
+
+  const schoolCovered = plan.clinicDays.length > 0 && plan.clinicDays.every(day => {
+    const ds = familySchedule.daySchedules[day];
+    return ds?.elsy?.dropBy && ds?.elsy?.pickupBy && ds?.eli?.dropBy && ds?.eli?.pickupBy;
+  });
+
+  const familyConflicts = useMemo(() => plan.clinicDays.flatMap(day => {
+    const ds = familySchedule.daySchedules[day];
+    if (!ds) return [`${day}: no schedule configured`];
+    const issues: string[] = [];
+    if (!ds.elsy?.dropBy) issues.push(`${day}: Elsy's drop-off not assigned`);
+    if (!ds.elsy?.pickupBy) issues.push(`${day}: Elsy's pick-up not assigned`);
+    if (!ds.eli?.dropBy) issues.push(`${day}: Eli's drop-off not assigned`);
+    if (!ds.eli?.pickupBy) issues.push(`${day}: Eli's pick-up not assigned`);
+    return issues;
+  }), [plan.clinicDays, familySchedule.daySchedules]);
 
   const nursingStatusLabel: Record<string, { label: string; color: string }> = {
     still_working: { label: "Still nursing", color: "text-amber-600 dark:text-amber-400" },
@@ -388,8 +698,6 @@ export default function LifestylePage() {
     notice_given: { label: "Notice given", color: "text-emerald-600 dark:text-emerald-400" },
     left: { label: "Left nursing", color: "text-emerald-600 dark:text-emerald-400" },
   };
-
-  const schoolCovered = plan.dropCoveredBy.length > 0 && plan.pickupCoveredBy.length > 0;
 
   const tabs: { key: TabKey; label: string; icon: React.ElementType; checks: string[]; items: { key: string }[] }[] = [
     { key: "schedule", label: "Schedule", icon: CalendarDays, checks: plan.scheduleChecks, items: SCHEDULE_CHECKS },
@@ -439,7 +747,6 @@ export default function LifestylePage() {
           </div>
         </div>
 
-        {/* Status metrics strip */}
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-5 pt-5 border-t border-border/50">
           <div className="space-y-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Clinic days</p>
@@ -451,7 +758,7 @@ export default function LifestylePage() {
             <p className={`text-lg font-bold ${schoolCovered ? "text-emerald-600 dark:text-emerald-400" : "text-amber-500"}`}>
               {schoolCovered ? "Covered" : "Not set"}
             </p>
-            <p className="text-[10px] text-muted-foreground">{schoolCovered ? "Drop & pickup agreed" : "Needs a plan"}</p>
+            <p className="text-[10px] text-muted-foreground">{schoolCovered ? "All clinic days covered" : "Needs a plan"}</p>
           </div>
           <div className="space-y-0.5">
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Nursing</p>
@@ -498,21 +805,19 @@ export default function LifestylePage() {
       {/* ═══ SCHEDULE ═══════════════════════════════════════════════════════════ */}
       {tab === "schedule" && (
         <div className="space-y-6">
-          {/* Conflict alert */}
           {schoolDropConflict && (
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20 p-4">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
                 <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">School run clash detected</p>
                 <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
-                  Clinic opens at {plan.clinicOpenTime} — school drop is at {plan.schoolStartTime}. On clinic days someone else needs to cover the drop. Sort this on the Family tab.
+                  Clinic opens at {plan.clinicOpenTime} — school drop is at {familySchedule.elsySchoolStart}. On clinic days someone else needs to cover the drop. Sort this on the Family tab.
                 </p>
               </div>
             </div>
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            {/* Left: inputs */}
             <div className="lg:col-span-2 space-y-4">
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
@@ -580,7 +885,6 @@ export default function LifestylePage() {
               </Card>
             </div>
 
-            {/* Right: visual week + checklist */}
             <div className="lg:col-span-3 space-y-5">
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
@@ -592,8 +896,8 @@ export default function LifestylePage() {
                     clinicDays={plan.clinicDays}
                     openTime={plan.clinicOpenTime}
                     closeTime={plan.clinicCloseTime}
-                    schoolStart={plan.schoolStartTime}
-                    schoolEnd={plan.schoolFinishTime}
+                    schoolStart={familySchedule.elsySchoolStart}
+                    schoolEnd={familySchedule.elsySchoolFinish}
                   />
                 </CardContent>
               </Card>
@@ -620,72 +924,157 @@ export default function LifestylePage() {
       {/* ═══ FAMILY ═════════════════════════════════════════════════════════════ */}
       {tab === "family" && (
         <div className="space-y-6">
+
+          {/* ── Location triangle ── */}
+          <Card className="shadow-sm border-border/60">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-primary" /> Logistics Triangle
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Home → school → clinic. Every clinic day this triangle needs to close — someone has to cover each leg.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Elsy row */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Elsy</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <LocationNode icon="🏠" label="Home" sub="4 Masons Ave, PO9 3FQ" color="bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700" />
+                  <TravelBadge mins={familySchedule.travelHomeToElsyMins} />
+                  <LocationNode icon="🏫" label="Clanfield Junior" sub={`${familySchedule.elsySchoolStart}–${familySchedule.elsySchoolFinish}`} color="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800" childName="Elsy" />
+                  <TravelBadge mins={familySchedule.travelElsyToClinicMins} />
+                  <LocationNode
+                    icon="🏥"
+                    label={activeProperty?.address || "Clinic"}
+                    sub={activeProperty?.postcode || "Winchester"}
+                    color="bg-primary/5 border-primary/20"
+                  />
+                </div>
+              </div>
+              {/* Eli row */}
+              <div className="space-y-1">
+                <p className="text-[10px] font-semibold text-violet-700 dark:text-violet-400 uppercase tracking-wide">Eli</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <LocationNode icon="🏠" label="Home" sub="4 Masons Ave, PO9 3FQ" color="bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-700" />
+                  <TravelBadge mins={familySchedule.travelHomeToEliMins} />
+                  <LocationNode icon="🏫" label="Horndean Tech" sub={`${familySchedule.eliSchoolStart}–${familySchedule.eliSchoolFinish}`} color="bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800" childName="Eli" />
+                  <TravelBadge mins={familySchedule.travelEliToClinicMins} />
+                  <LocationNode
+                    icon="🏥"
+                    label={activeProperty?.address || "Clinic"}
+                    sub={activeProperty?.postcode || "Winchester"}
+                    color="bg-primary/5 border-primary/20"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Conflict banner ── */}
+          {familyConflicts.length > 0 && (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-1.5">
+              <p className="text-sm font-semibold text-destructive flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {familyConflicts.length} unassigned school run{familyConflicts.length > 1 ? "s" : ""} on clinic days
+              </p>
+              <div className="space-y-0.5">
+                {familyConflicts.map((c, i) => (
+                  <p key={i} className="text-xs text-destructive/80 pl-6">• {c}</p>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Per-child schedule ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <ChildScheduleCard
+              childName="Elsy"
+              school="Clanfield Junior School"
+              schoolStart={familySchedule.elsySchoolStart}
+              schoolFinish={familySchedule.elsySchoolFinish}
+              travelHomeToSchool={familySchedule.travelHomeToElsyMins}
+              travelSchoolToClinic={familySchedule.travelElsyToClinicMins}
+              travelClinicToSchool={familySchedule.travelClinicToElsyMins}
+              clinicDays={plan.clinicDays}
+              clinicOpenTime={plan.clinicOpenTime}
+              daySchedules={familySchedule.daySchedules}
+              onDayChange={(day, role, who) => {
+                const next = { ...familySchedule.daySchedules };
+                next[day] = { ...next[day], elsy: { ...(next[day]?.elsy ?? { dropBy: "", pickupBy: "" }), [role]: who } };
+                updateFS({ daySchedules: next });
+              }}
+              childKey="elsy"
+              accentColor="amber"
+            />
+            <ChildScheduleCard
+              childName="Eli"
+              school="Horndean Technology College"
+              schoolStart={familySchedule.eliSchoolStart}
+              schoolFinish={familySchedule.eliSchoolFinish}
+              travelHomeToSchool={familySchedule.travelHomeToEliMins}
+              travelSchoolToClinic={familySchedule.travelEliToClinicMins}
+              travelClinicToSchool={familySchedule.travelClinicToEliMins}
+              clinicDays={plan.clinicDays}
+              clinicOpenTime={plan.clinicOpenTime}
+              daySchedules={familySchedule.daySchedules}
+              onDayChange={(day, role, who) => {
+                const next = { ...familySchedule.daySchedules };
+                next[day] = { ...next[day], eli: { ...(next[day]?.eli ?? { dropBy: "", pickupBy: "" }), [role]: who } };
+                updateFS({ daySchedules: next });
+              }}
+              childKey="eli"
+              accentColor="violet"
+            />
+          </div>
+
+          {/* ── Travel & school time config ── */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Clock className="w-4 h-4 text-muted-foreground" /> School Times & Travel Estimates
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Adjust to match actual journey times — these affect the conflict and timing calculations above
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Elsy — Clanfield Junior School</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <TravelInput label="School starts" value={familySchedule.elsySchoolStart} isTime onChange={v => updateFS({ elsySchoolStart: v })} />
+                    <TravelInput label="School finishes" value={familySchedule.elsySchoolFinish} isTime onChange={v => updateFS({ elsySchoolFinish: v })} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <TravelInput label="Home → school (min)" value={familySchedule.travelHomeToElsyMins} onChange={v => updateFS({ travelHomeToElsyMins: +v })} />
+                    <TravelInput label="School → clinic (min)" value={familySchedule.travelElsyToClinicMins} onChange={v => updateFS({ travelElsyToClinicMins: +v })} />
+                    <TravelInput label="Clinic → school (min)" value={familySchedule.travelClinicToElsyMins} onChange={v => updateFS({ travelClinicToElsyMins: +v })} />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <p className="text-xs font-semibold text-violet-700 dark:text-violet-400">Eli — Horndean Technology College</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <TravelInput label="School starts" value={familySchedule.eliSchoolStart} isTime onChange={v => updateFS({ eliSchoolStart: v })} />
+                    <TravelInput label="School finishes" value={familySchedule.eliSchoolFinish} isTime onChange={v => updateFS({ eliSchoolFinish: v })} />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <TravelInput label="Home → school (min)" value={familySchedule.travelHomeToEliMins} onChange={v => updateFS({ travelHomeToEliMins: +v })} />
+                    <TravelInput label="School → clinic (min)" value={familySchedule.travelEliToClinicMins} onChange={v => updateFS({ travelEliToClinicMins: +v })} />
+                    <TravelInput label="Clinic → school (min)" value={familySchedule.travelClinicToEliMins} onChange={v => updateFS({ travelClinicToEliMins: +v })} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── David + contingency + checklist ── */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-3 space-y-5">
-              <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4 text-primary" /> The School Run — Eli & Elsy</CardTitle>
-                  <CardDescription className="text-xs">The most common thing people say they wished they'd sorted properly before opening</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">School starts</Label>
-                      <Input type="time" value={plan.schoolStartTime} onChange={e => update({ schoolStartTime: e.target.value })} className="h-9 text-sm font-medium" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">School finishes</Label>
-                      <Input type="time" value={plan.schoolFinishTime} onChange={e => update({ schoolFinishTime: e.target.value })} className="h-9 text-sm font-medium" />
-                    </div>
-                  </div>
-
-                  {/* Coverage matrix */}
-                  <div className="rounded-xl border border-border overflow-hidden">
-                    <div className="grid grid-cols-3 bg-muted/50 px-3 py-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                      <span>Day</span>
-                      <span>Drop-off ({plan.schoolStartTime})</span>
-                      <span>Pick-up ({plan.schoolFinishTime})</span>
-                    </div>
-                    {DAYS.map((day, i) => {
-                      const isClinic = plan.clinicDays.includes(day);
-                      return (
-                        <div key={day} className={`grid grid-cols-3 px-3 py-2.5 items-center ${i > 0 ? "border-t border-border/50" : ""} ${isClinic ? "" : "opacity-40"}`}>
-                          <div className="flex items-center gap-2">
-                            <div className={`w-2 h-2 rounded-full ${isClinic ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                            <span className={`text-xs font-medium ${isClinic ? "text-foreground" : "text-muted-foreground"}`}>{day}</span>
-                            {isClinic && <span className="text-[9px] text-primary/70 font-medium">clinic</span>}
-                          </div>
-                          {isClinic ? (
-                            <>
-                              <div className="pr-3">
-                                <Input placeholder="who covers?" value={plan.dropCoveredBy} onChange={e => update({ dropCoveredBy: e.target.value })} className="h-6 text-xs border-0 border-b border-border/60 rounded-none px-0 focus-visible:ring-0 bg-transparent" />
-                              </div>
-                              <div className="pr-2">
-                                <Input placeholder="who covers?" value={plan.pickupCoveredBy} onChange={e => update({ pickupCoveredBy: e.target.value })} className="h-6 text-xs border-0 border-b border-border/60 rounded-none px-0 focus-visible:ring-0 bg-transparent" />
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs text-muted-foreground/50">Abi (not clinic)</span>
-                              <span className="text-xs text-muted-foreground/50">Abi (not clinic)</span>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Contingency plan — illness, INSET days, school events</Label>
-                    <Textarea placeholder="e.g. Mum covers if David unavailable. INSET days: David WFH. Sports day / assemblies: I attend unless I have back-to-back bookings I can't move. If child is sick: David's first call, then Mum, then I cancel last-resort." value={plan.schoolContingencyPlan} onChange={e => update({ schoolContingencyPlan: e.target.value })} className="min-h-[80px] text-sm resize-none" />
-                  </div>
-                </CardContent>
-              </Card>
-
+            <div className="lg:col-span-3 space-y-4">
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">David's Role — The Specific Version</CardTitle>
+                    <CardTitle className="text-sm">David's Role</CardTitle>
                     <span className="text-[10px] bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full font-medium">Be concrete</span>
                   </div>
                   <CardDescription className="text-xs">"He'll help" is not a plan. "He does school run Mon–Thu and checks school email on clinic days" is.</CardDescription>
@@ -694,18 +1083,38 @@ export default function LifestylePage() {
                   <div className="flex items-center gap-3">
                     <Label className="text-xs text-muted-foreground shrink-0">Days available to support</Label>
                     <div className="flex-1 flex items-center gap-2">
-                      <input type="range" min={1} max={7} value={plan.davidAvailabilityDays} onChange={e => update({ davidAvailabilityDays: parseInt(e.target.value) })} className="flex-1 accent-primary" />
-                      <span className={`text-sm font-bold w-16 text-right ${plan.davidAvailabilityDays >= 5 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>
-                        {plan.davidAvailabilityDays} days
+                      <input type="range" min={1} max={7} value={familySchedule.davidAvailabilityDays} onChange={e => updateFS({ davidAvailabilityDays: +e.target.value })} className="flex-1 accent-primary" />
+                      <span className={`text-sm font-bold w-12 text-right ${familySchedule.davidAvailabilityDays >= 4 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>
+                        {familySchedule.davidAvailabilityDays}d
                       </span>
                     </div>
                   </div>
-                  <Textarea placeholder="Write it down as if you were explaining it to someone else: 'David does X on Y days. He handles Z. He does NOT do W. After 7pm, clinic is not his problem.'" value={plan.davidRoleNotes} onChange={e => update({ davidRoleNotes: e.target.value })} className="min-h-[110px] text-sm resize-none" />
+                  <Textarea
+                    placeholder="Write it down as if explaining to someone else: 'David does X on Y days. He handles Z. He does NOT do W. After 7pm, clinic is not his problem.'"
+                    value={familySchedule.davidRoleNotes}
+                    onChange={e => updateFS({ davidRoleNotes: e.target.value })}
+                    className="min-h-[100px] text-sm resize-none"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Contingency Plan</CardTitle>
+                  <CardDescription className="text-xs">INSET days, illness, school events — what's the fallback when the normal plan breaks?</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="e.g. Mum covers if David unavailable. INSET days: David WFH. Sports day / assemblies: I attend unless back-to-back bookings. If child is sick: David first call, then Mum, then I cancel last-resort."
+                    value={familySchedule.contingencyPlan}
+                    onChange={e => updateFS({ contingencyPlan: e.target.value })}
+                    className="min-h-[90px] text-sm resize-none"
+                  />
                 </CardContent>
               </Card>
             </div>
 
-            <div className="lg:col-span-2 space-y-5">
+            <div className="lg:col-span-2 space-y-4">
               <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Family Logistics Checklist</CardTitle>
@@ -718,15 +1127,8 @@ export default function LifestylePage() {
 
               <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4">
                 <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mb-1.5">The honest version</p>
-                <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed italic">"'David will figure it out' is not a plan. Clinics fail because the practitioner discovered — in month two, during a full book — that there was no actual arrangement for who picks up the children. This is the most important logistics conversation you'll have."</p>
+                <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed italic">"'David will figure it out' is not a plan. Clinics fail because the practitioner discovered — in month two, during a full book — that there was no actual arrangement for who picks up the children."</p>
               </div>
-
-              {plan.davidRoleNotes && (
-                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4">
-                  <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-2">David's agreed role</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">"{plan.davidRoleNotes}"</p>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -735,7 +1137,6 @@ export default function LifestylePage() {
       {/* ═══ NURSING EXIT ════════════════════════════════════════════════════════ */}
       {tab === "nursing" && (
         <div className="space-y-6">
-          {/* Timeline — full width */}
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2"><ArrowRight className="w-4 h-4 text-primary" /> Your Exit Roadmap</CardTitle>
@@ -928,7 +1329,6 @@ export default function LifestylePage() {
       {/* ═══ IDENTITY ════════════════════════════════════════════════════════════ */}
       {tab === "identity" && (
         <div className="space-y-6">
-          {/* Why you're doing this — hero if filled */}
           {plan.mostExcitedAbout && (
             <div className="rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/8 via-background to-violet-500/5 p-6">
               <p className="text-[10px] font-semibold text-primary uppercase tracking-widest mb-3 flex items-center gap-1.5">
