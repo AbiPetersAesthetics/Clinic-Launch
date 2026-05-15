@@ -3,6 +3,7 @@ import { pgTable, serial, integer, text, boolean, timestamp, index } from "drizz
 export const competitorsTable = pgTable("competitors", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull(),
+  propertyId: integer("property_id"),
 
   // Identity
   name: text("name").notNull().default(""),
