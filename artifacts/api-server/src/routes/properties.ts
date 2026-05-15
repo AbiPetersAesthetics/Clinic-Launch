@@ -88,9 +88,9 @@ router.put("/properties/:id/set-active", async (req, res) => {
   const monthlyServiceCharge = property.serviceChargeGbp ? Math.round(property.serviceChargeGbp / 12) : 0;
   const vatOnRent = property.vatOnRent ?? false;
 
-  // ── Step 1: Clear active flag on all other properties ──────────────────────
+  // ── Step 1: Clear active flag + reset pipelineStatus on previously active property ──
   await db.update(propertiesTable)
-    .set({ isActiveForProject: false })
+    .set({ isActiveForProject: false, pipelineStatus: "viewing", updatedAt: new Date() })
     .where(and(
       eq(propertiesTable.projectId, property.projectId),
       eq(propertiesTable.isActiveForProject, true)

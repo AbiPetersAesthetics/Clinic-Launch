@@ -64,6 +64,8 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   let realisticRevenue: number | null = null;
   let realisticNetProfit: number | null = null;
   let vatRisk: boolean | null = null;
+  let vatHeadroomGbp: number | null = null;
+  let vatMonthsToThreshold: number | null = null;
 
   if (financial) {
     const slotsPerMonth = financial.treatmentRoomsCount * financial.practitionerHoursPerDay * financial.workingDaysPerMonth;
@@ -90,10 +92,15 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     const monthlyCashDrain = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp - financial.existingClinicRevenueGbp;
     cashRunwayMonths = monthlyCashDrain > 0 ? financial.runwaySavingsGbp / monthlyCashDrain : 99;
 
-    // VAT risk: if combined annual revenue likely exceeds £85k (warn before £90k threshold)
+    // VAT awareness: forecast months until threshold from current turnover + projected Winc revenue
     const projectedAnnualWinc = (realisticRevenue ?? 0) * 12;
-    const combinedTurnover = (financial.vatCurrentTurnoverGbp || 0) + projectedAnnualWinc;
+    const vatCurrentTurnover = financial.vatCurrentTurnoverGbp || 0;
+    const combinedTurnover = vatCurrentTurnover + projectedAnnualWinc;
     vatRisk = combinedTurnover > 85000;
+    vatHeadroomGbp = Math.max(0, 90000 - combinedTurnover);
+    vatMonthsToThreshold = (realisticRevenue ?? 0) > 0
+      ? Math.max(0, Math.ceil((90000 - vatCurrentTurnover) / (realisticRevenue ?? 1)))
+      : null;
   }
 
   // Confidence score (0-100)
@@ -156,6 +163,8 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     realisticRevenue,
     realisticNetProfit,
     vatRisk,
+    vatHeadroomGbp,
+    vatMonthsToThreshold,
   });
 });
 

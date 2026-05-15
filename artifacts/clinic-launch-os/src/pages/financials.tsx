@@ -28,7 +28,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw, Loader2, Wand2, Lock,
+  RefreshCw, Loader2, Wand2, Lock, Sliders,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -45,7 +45,7 @@ const VAT_THRESHOLD = 90000;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "stress_test";
-type TabKey = "overview" | "model" | "owner" | "domestics" | "risks";
+type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom";
 
 type WincMetrics = {
   grossRevenue: number; fixedCosts: number; variableCosts: number;
@@ -151,6 +151,8 @@ export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+  const [customOcc, setCustomOcc] = useState(65);
+  const [aiQA, setAiQA] = useState({ q1: "", q2: "", q3: "", q4: "", q5: "" });
 
   // ── Lifestyle plan — drives locked financial model fields ─────────────────
   const [lifestylePlan, setLifestylePlan] = useState<{
@@ -519,6 +521,47 @@ export default function FinancialsPage() {
   };
 
   const watchAll = form.watch();
+
+  // Dynamic scenario descriptions — show actual % from assumptions inputs
+  const getScenarioDesc = (key: ScenarioKey): string => {
+    const conservOcc = Number(watchAll.conservativeOccupancyPercent) || 0;
+    const realistOcc = Number(watchAll.realisticOccupancyPercent) || 0;
+    const aggressOcc = Number(watchAll.aggressiveOccupancyPercent) || 0;
+    switch (key) {
+      case "conservative": return conservOcc ? `${conservOcc}% occ, 8-mo ramp` : SCENARIOS.conservative.description;
+      case "realistic":    return realistOcc ? `${realistOcc}% occ, 6-mo ramp` : SCENARIOS.realistic.description;
+      case "aggressive":   return aggressOcc ? `${aggressOcc}% occ, 4-mo ramp` : SCENARIOS.aggressive.description;
+      default: return SCENARIOS[key].description;
+    }
+  };
+
+  // Custom model tab — live P&L (client-side, no server call needed)
+  const cp_acv    = Number(watchAll.wincAcvGbp) || 0;
+  const cp_rooms  = Number(watchAll.treatmentRoomsCount) || 1;
+  const cp_hpd    = Number(watchAll.practitionerHoursPerDay) || 7;
+  const cp_dpm    = Number(watchAll.workingDaysPerMonth) || 22;
+  const cp_stock  = Number(watchAll.stockPercent) || 0;
+  const cp_comm   = Number(watchAll.commissionsPercent) || 0;
+  const cp_mkt    = Number(watchAll.marketingGbp) || 0;
+  const cp_staff  = Number(watchAll.staffingGbp) || 0;
+  const cp_cons   = Number(watchAll.consumablesGbp) || 0;
+  const cp_memb   = Number(watchAll.membershipRevenueGbp) || 0;
+  const cp_slots  = cp_rooms * cp_hpd * cp_dpm;
+  const cp_booked = cp_slots * (customOcc / 100);
+  const cp_rev    = cp_booked * cp_acv + cp_memb;
+  const cp_varRatio = (cp_stock + cp_comm) / 100;
+  const cp_varCost  = cp_rev * cp_varRatio + cp_mkt + cp_staff + cp_cons;
+  const cp_fixCost  = totalDynamicFixedCosts;
+  const cp_net      = cp_rev - cp_varCost - cp_fixCost;
+  const cp_margin   = cp_rev > 0 ? ((cp_rev - cp_varCost) / cp_rev) * 100 : 0;
+  const cp_denom    = cp_acv * cp_slots * (1 - cp_varRatio);
+  const cp_beOcc    = cp_denom > 0 ? Math.min(Math.round(((cp_fixCost + cp_mkt + cp_staff + cp_cons) / cp_denom) * 100), 999) : 0;
+  const customPnl = {
+    slotsPerMonth: cp_slots, bookedSlots: cp_booked, grossRevenue: cp_rev,
+    variableCosts: cp_varCost, fixedCosts: cp_fixCost, netProfit: cp_net,
+    grossMargin: cp_margin, breakEvenOcc: cp_beOcc,
+  };
+
   const totalFixedCosts = ['rentGbp','ratesGbp','utilitiesGbp','internetGbp','insuranceGbp','accountantGbp','softwareGbp','wasteContractGbp','cleanerGbp','subscriptionsGbp','financeRepaymentsGbp']
     .reduce((s, k) => s + (Number(watchAll[k as keyof typeof watchAll]) || 0), 0);
 
@@ -591,7 +634,7 @@ export default function FinancialsPage() {
                 scenario === key ? `${s.badgeClass} border-current` : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
               }`}>
               {s.label}
-              <span className="ml-1.5 opacity-60 hidden sm:inline">{s.description}</span>
+              <span className="ml-1.5 opacity-60 hidden sm:inline">{getScenarioDesc(key)}</span>
             </button>
           ))}
         </div>
@@ -801,12 +844,12 @@ export default function FinancialsPage() {
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
-        {(["overview", "model", "owner", "domestics", "risks"] as TabKey[]).map((t) => (
+        {(["overview", "model", "owner", "domestics", "risks", "custom"] as TabKey[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
               tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}>
-            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : "Risks"}
+            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : t === "risks" ? "Risks" : "Custom Model"}
           </button>
         ))}
       </div>
@@ -2431,6 +2474,268 @@ export default function FinancialsPage() {
           </Card>
         </div>
       )}
+
+      {/* ═══ TAB: CUSTOM MODEL ════════════════════════════════════════════════ */}
+      {tab === "custom" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+            {/* ── LEFT: Inputs ───────────────────────────────────────────────── */}
+            <div className="lg:col-span-5 space-y-5">
+
+              {/* Occupancy slider */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-primary" />
+                    Target Occupancy
+                  </CardTitle>
+                  <CardDescription className="text-xs">Drag to model any scenario — results update instantly.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <input
+                      type="range" min={5} max={100} step={5} value={customOcc}
+                      onChange={(e) => setCustomOcc(Number(e.target.value))}
+                      className="flex-1 accent-primary h-2 cursor-pointer"
+                    />
+                    <div className="w-20 text-center shrink-0">
+                      <span className="text-3xl font-bold text-primary">{customOcc}</span>
+                      <span className="text-lg text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-2">
+                    <button onClick={() => setCustomOcc(Number(watchAll.conservativeOccupancyPercent) || 40)}
+                      className="hover:text-blue-600 transition-colors">
+                      Conservative: {Number(watchAll.conservativeOccupancyPercent) || 40}%
+                    </button>
+                    <button onClick={() => setCustomOcc(Number(watchAll.realisticOccupancyPercent) || 65)}
+                      className="hover:text-primary transition-colors">
+                      Realistic: {Number(watchAll.realisticOccupancyPercent) || 65}%
+                    </button>
+                    <button onClick={() => setCustomOcc(Number(watchAll.aggressiveOccupancyPercent) || 85)}
+                      className="hover:text-emerald-600 transition-colors">
+                      Strong: {Number(watchAll.aggressiveOccupancyPercent) || 85}%
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Revenue drivers */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Revenue Drivers</CardTitle>
+                  <CardDescription className="text-xs">Changes save automatically to your assumptions.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      ["wincAcvGbp",             "Avg Client Value",  "£", ""],
+                      ["treatmentRoomsCount",     "Treatment Rooms",   "",  ""],
+                      ["practitionerHoursPerDay", "Hours / Day",       "",  "hr"],
+                      ["workingDaysPerMonth",      "Working Days / Mo", "",  "d"],
+                      ["membershipRevenueGbp",     "Membership Rev",    "£", "/mo"],
+                    ] as [string, string, string, string][]).map(([key, label, pre, post]) => (
+                      <div key={key} className="space-y-1">
+                        <label className="text-xs font-medium text-foreground/80">{label}</label>
+                        <div className="relative">
+                          {pre && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{pre}</span>}
+                          <input
+                            type="number"
+                            value={Number((watchAll as any)[key]) || 0}
+                            onChange={(e) => form.setValue(key as any, Number(e.target.value))}
+                            className={`h-8 w-full rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${pre ? "pl-5" : "pl-3"} ${post ? "pr-8" : "pr-3"}`}
+                          />
+                          {post && <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{post}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Cost structure */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Cost Structure</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-3">
+                    {([
+                      ["stockPercent",       "Stock (% of rev)",     "", "%"],
+                      ["commissionsPercent", "Commission (% of rev)", "", "%"],
+                      ["marketingGbp",       "Marketing",            "£", "/mo"],
+                      ["staffingGbp",        "Staffing",             "£", "/mo"],
+                      ["consumablesGbp",     "Consumables",          "£", "/mo"],
+                    ] as [string, string, string, string][]).map(([key, label, pre, post]) => (
+                      <div key={key} className="space-y-1">
+                        <label className="text-xs font-medium text-foreground/80">{label}</label>
+                        <div className="relative">
+                          {pre && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{pre}</span>}
+                          <input
+                            type="number"
+                            value={Number((watchAll as any)[key]) || 0}
+                            onChange={(e) => form.setValue(key as any, Number(e.target.value))}
+                            className={`h-8 w-full rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${pre ? "pl-5" : "pl-3"} ${post ? "pr-10" : "pr-3"}`}
+                          />
+                          {post && <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{post}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-between items-center border-t pt-2">
+                    <span className="text-xs text-muted-foreground">Fixed costs total (from Assumptions)</span>
+                    <span className="text-sm font-semibold">{formatGBP(totalDynamicFixedCosts)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* ── RIGHT: Live P&L + AI Setup ─────────────────────────────────── */}
+            <div className="lg:col-span-7 space-y-5 sticky top-6">
+
+              {/* Live P&L card */}
+              <Card className="shadow-md border-primary/20">
+                <div className="bg-primary/5 border-b border-primary/10 px-5 py-3 flex justify-between items-center">
+                  <div>
+                    <h3 className="font-semibold text-sm">Live P&L — Custom Scenario</h3>
+                    <p className="text-xs text-muted-foreground">
+                      {customOcc}% occupancy · {customPnl.bookedSlots.toFixed(0)} of {customPnl.slotsPerMonth.toFixed(0)} slots/mo booked
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">Monthly Net</p>
+                    <p className={`text-2xl font-bold ${customPnl.netProfit >= 0 ? "text-primary" : "text-destructive"}`}>
+                      {formatGBP(customPnl.netProfit)}
+                    </p>
+                  </div>
+                </div>
+                <CardContent className="p-5 space-y-4">
+                  <div className="rounded-lg border border-border overflow-hidden text-sm">
+                    <div className="flex justify-between items-center px-3 py-2 bg-muted/30">
+                      <span className="text-muted-foreground font-medium">Gross Revenue</span>
+                      <span className="font-bold">{formatGBP(customPnl.grossRevenue)}</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50">
+                      <span className="text-muted-foreground pl-3">− Variable Costs</span>
+                      <span className="text-destructive/80">({formatGBP(customPnl.variableCosts)})</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50">
+                      <span className="text-muted-foreground pl-3">− Fixed Costs</span>
+                      <span className="text-destructive/80">({formatGBP(customPnl.fixedCosts)})</span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-2.5 border-t-2 border-border">
+                      <span className="font-bold">Monthly Net Profit</span>
+                      <span className={`font-bold text-base ${customPnl.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                        {formatGBP(customPnl.netProfit)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50 bg-muted/10">
+                      <span className="text-muted-foreground text-xs">Annual net · Gross margin {customPnl.grossMargin.toFixed(0)}%</span>
+                      <span className="font-semibold text-xs">{formatGBP(customPnl.netProfit * 12)}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase mb-1">Slot Capacity</div>
+                      <div className="font-bold">{customPnl.slotsPerMonth.toFixed(0)}</div>
+                      <div className="text-[10px] text-muted-foreground">slots / mo</div>
+                    </div>
+                    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-center">
+                      <div className="text-[10px] text-muted-foreground uppercase mb-1">Break-Even</div>
+                      <div className="font-bold">{customPnl.breakEvenOcc}%</div>
+                      <div className="text-[10px] text-muted-foreground">occupancy</div>
+                    </div>
+                    <div className={`rounded-lg border p-3 text-center ${customPnl.netProfit >= 0 ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30" : "border-destructive/20 bg-destructive/5"}`}>
+                      <div className="text-[10px] text-muted-foreground uppercase mb-1">Status</div>
+                      <div className={`font-bold text-xs ${customPnl.netProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                        {customPnl.netProfit >= 0 ? "Profitable" : "Loss-making"}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">at {customOcc}%</div>
+                    </div>
+                  </div>
+
+                  {/* Break-even vs target occupancy bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Break-even ({customPnl.breakEvenOcc}%)</span>
+                      <span>Target ({customOcc}%)</span>
+                      <span>Full (100%)</span>
+                    </div>
+                    <div className="relative h-3 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className="absolute left-0 top-0 h-full bg-destructive/30 rounded-full"
+                        style={{ width: `${Math.min(customPnl.breakEvenOcc, 100)}%` }}
+                      />
+                      <div
+                        className={`absolute left-0 top-0 h-full rounded-full transition-all duration-200 ${customPnl.netProfit >= 0 ? "bg-primary" : "bg-amber-500"}`}
+                        style={{ width: `${customOcc}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {customOcc > customPnl.breakEvenOcc
+                        ? `${customOcc - customPnl.breakEvenOcc}% above break-even — in profit territory`
+                        : customOcc === customPnl.breakEvenOcc
+                          ? "Exactly at break-even"
+                          : `${customPnl.breakEvenOcc - customOcc}% below break-even — needs more bookings to cover costs`}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* AI Smart Setup */}
+              <Card className="shadow-sm border-primary/20">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <Wand2 className="w-4 h-4 text-primary" />
+                    AI Smart Setup
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Answer these questions about your vision — then let AI generate a full, market-calibrated cost breakdown in ~30 seconds.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {([
+                    ["q1", "What treatments will you offer? (e.g. injectables, laser, facials)"],
+                    ["q2", "What's your target monthly income from the clinic?"],
+                    ["q3", "How many days per week will the clinic operate?"],
+                    ["q4", "Any specific cost concerns or constraints?"],
+                    ["q5", "Anything else AI should factor in (goals, timeline, team size)?"],
+                  ] as [keyof typeof aiQA, string][]).map(([key, label]) => (
+                    <div key={key} className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">{label}</label>
+                      <input
+                        type="text"
+                        value={aiQA[key]}
+                        onChange={(e) => setAiQA(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="Type your answer…"
+                        className="h-8 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/50"
+                      />
+                    </div>
+                  ))}
+                  <div className="pt-2 space-y-2">
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => { setTab("model"); handleGenerateAssumptions(); }}
+                      disabled={aiGenerating}
+                    >
+                      {aiGenerating
+                        ? <><Loader2 className="w-4 h-4 animate-spin" />Generating full model…</>
+                        : <><Wand2 className="w-4 h-4" />Generate Full Model with AI</>}
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Analyses your property, location and UK market rates. Opens Assumptions tab — review all items before applying.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

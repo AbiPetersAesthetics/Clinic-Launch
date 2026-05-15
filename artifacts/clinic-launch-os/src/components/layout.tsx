@@ -274,12 +274,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   </>
                 )}
 
-                {/* ── VAT risk indicator (if approaching threshold) ── */}
-                {dashboard.vatRisk && (
+                {/* ── VAT horizon (awareness, not alarm) ── */}
+                {(dashboard as any).vatMonthsToThreshold != null && (
                   <>
                     <div className="shrink-0 hidden sm:block">
-                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-amber-600 font-semibold whitespace-nowrap">VAT Risk</p>
-                      <p className="text-xs md:text-sm font-semibold mt-0.5 text-amber-600 whitespace-nowrap">£90k threshold</p>
+                      <p className="text-[9px] md:text-[10px] uppercase tracking-wider text-muted-foreground font-semibold whitespace-nowrap">VAT Horizon</p>
+                      <p className={`text-xs md:text-sm font-semibold mt-0.5 whitespace-nowrap ${(dashboard as any).vatHeadroomGbp <= 5000 ? "text-amber-600" : "text-foreground"}`}>
+                        {(dashboard as any).vatHeadroomGbp <= 0
+                          ? "Threshold reached"
+                          : `~${(dashboard as any).vatMonthsToThreshold}mo`}
+                      </p>
                     </div>
                     <div className="w-px h-7 bg-border shrink-0 hidden sm:block" />
                   </>
