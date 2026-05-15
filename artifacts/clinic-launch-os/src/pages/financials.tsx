@@ -31,6 +31,7 @@ import {
   RefreshCw, Loader2, Wand2, Lock, Sliders,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ResetPageButton } from "@/components/reset-page-button";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip,
   ResponsiveContainer, LineChart, Line, Legend, ReferenceLine,
@@ -153,6 +154,12 @@ export default function FinancialsPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
   const [customOcc, setCustomOcc] = useState(65);
   const [aiQA, setAiQA] = useState({ q1: "", q2: "", q3: "", q4: "", q5: "" });
+
+  async function resetFinancials() {
+    await fetch(`/api/projects/1/reset/financials`, { method: "POST" });
+    queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+  }
 
   // ── Lifestyle plan — drives locked financial model fields ─────────────────
   const [lifestylePlan, setLifestylePlan] = useState<{
@@ -620,6 +627,13 @@ export default function FinancialsPage() {
         <PageHeader
           title="Expansion Modelling"
           subtitle={`${clinicLabel} ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when ${clinicLabel} hits the target.`}
+          action={
+            <ResetPageButton
+              pageLabel="Financial Model"
+              description="Resets all financial assumptions back to their starting defaults and removes any custom fixed cost items you have added. Your property data, project plan, and all other pages are completely untouched."
+              onReset={resetFinancials}
+            />
+          }
         />
         {cr?.scenarioNote && (
           <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">

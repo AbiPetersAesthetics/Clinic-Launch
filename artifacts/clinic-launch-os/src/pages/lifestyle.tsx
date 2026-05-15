@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { ResetPageButton } from "@/components/reset-page-button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -2096,6 +2097,11 @@ export default function LifestylePage() {
     }).then(() => setSaveStatus("saved")).catch(() => setSaveStatus("unsaved"));
   }, []);
 
+  async function resetLifestyle() {
+    await fetch(`${API_BASE}/projects/${PROJECT_ID}/reset/lifestyle`, { method: "POST" });
+    setPlan(EMPTY);
+  }
+
   const update = useCallback((patch: Partial<Plan>) => {
     setPlan(prev => {
       const next = { ...prev, ...patch };
@@ -2261,6 +2267,11 @@ export default function LifestylePage() {
             }`}>
               {saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving…" : saveStatus === "unsaved" ? "Unsaved" : ""}
             </span>
+            <ResetPageButton
+              pageLabel="Life Design"
+              description="Resets all Life Design data — schedule, family cover, nursing exit, wellbeing, and identity entries — back to blank. Your financial model, property pipeline, project plan, and all other pages are untouched."
+              onReset={resetLifestyle}
+            />
           </div>
         </div>
 

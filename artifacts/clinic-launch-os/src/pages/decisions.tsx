@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Pencil, Trash2, Search, TrendingUp, TrendingDown, Minus, BookOpen } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ResetPageButton } from "@/components/reset-page-button";
 import { useToast } from "@/hooks/use-toast";
 
 const PROJECT_ID = 1;
@@ -90,6 +91,11 @@ export default function DecisionsPage() {
   const [editingDecision, setEditingDecision] = useState<Decision | null>(null);
   const [form, setForm] = useState<CreateDecisionBody>({ ...EMPTY_FORM });
   const [deleteTarget, setDeleteTarget] = useState<Decision | null>(null);
+
+  async function resetDecisions() {
+    await fetch(`/api/projects/1/reset/decisions`, { method: "POST" });
+    queryClient.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes("decision") });
+  }
 
   const params = {
     ...(categoryFilter !== "all" ? { category: categoryFilter } : {}),
@@ -180,10 +186,17 @@ export default function DecisionsPage() {
         title="Decision Log"
         subtitle="Record and track strategic decisions throughout your clinic launch."
         action={
-          <Button onClick={openNew} size="sm" className="gap-2">
-            <Plus className="w-4 h-4" />
-            Log Decision
-          </Button>
+          <div className="flex items-center gap-2">
+            <ResetPageButton
+              pageLabel="Decision Log"
+              description="This permanently deletes all logged decisions. Your project plan, financial model, properties, and all other data are untouched."
+              onReset={resetDecisions}
+            />
+            <Button onClick={openNew} size="sm" className="gap-2">
+              <Plus className="w-4 h-4" />
+              Log Decision
+            </Button>
+          </div>
         }
       />
 

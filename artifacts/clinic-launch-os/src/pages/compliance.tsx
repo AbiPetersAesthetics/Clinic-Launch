@@ -31,6 +31,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ResetPageButton } from "@/components/reset-page-button";
 
 const PROJECT_ID = 1;
 
@@ -128,6 +129,13 @@ export default function CompliancePage() {
   const [editingMilestone, setEditingMilestone] = useState<number | null>(null);
   const [editMilestoneNotes, setEditMilestoneNotes] = useState("");
   const [editMilestoneDate, setEditMilestoneDate] = useState("");
+
+  async function resetCompliance() {
+    await fetch(`/api/projects/1/reset/compliance`, { method: "POST" });
+    queryClient.invalidateQueries({ queryKey: getListComplianceItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getGetComplianceSummaryQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: getListCqcMilestonesQueryKey(PROJECT_ID) });
+  }
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: { queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) },
@@ -235,6 +243,13 @@ export default function CompliancePage() {
       <PageHeader
         title="CQC & Compliance"
         subtitle="Track every regulatory requirement before the clinic can legally open."
+        action={
+          <ResetPageButton
+            pageLabel="CQC & Compliance"
+            description="Resets all compliance item statuses back to 'Not Started' and clears any notes or milestone dates you have entered. The list of items and milestones themselves are preserved — only your progress is cleared."
+            onReset={resetCompliance}
+          />
+        }
       />
 
       {/* Score + CQC Warning */}

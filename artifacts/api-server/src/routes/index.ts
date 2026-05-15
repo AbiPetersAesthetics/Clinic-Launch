@@ -17,6 +17,7 @@ import aiRouter from "./ai";
 import fixedCostItemsRouter from "./fixed_cost_items";
 import bedhamptonRouter from "./bedhampton";
 import lifestyleRouter from "./lifestyle";
+import resetRouter from "./reset";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(aiRouter);
 router.use(fixedCostItemsRouter);
 router.use(bedhamptonRouter);
 router.use(lifestyleRouter);
+router.use(resetRouter);
 
 export default router;

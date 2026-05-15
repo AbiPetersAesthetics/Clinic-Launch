@@ -129,6 +129,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/page-header";
+import { ResetPageButton } from "@/components/reset-page-button";
 
 const PropertyMapView = lazy(() => import("@/components/property-map-view"));
 
@@ -2949,6 +2950,11 @@ export default function PropertiesPage() {
 
   const MAX_COMPARE = 4;
 
+  async function resetPropertiesNotes() {
+    await fetch(`/api/projects/1/reset/properties-notes`, { method: "POST" });
+    queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+  }
+
   const toggleCompareSelect = (id: number) => {
     setCompareSelected(prev => {
       const next = new Set(prev);
@@ -3025,7 +3031,12 @@ export default function PropertiesPage() {
         title="Property Pipeline"
         subtitle={`${nonRejected.length} active · ${rejected.length} rejected${activeProperty ? ` · Active: ${activeProperty.address ?? "Property selected"}` : ""}`}
         action={
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
+          <ResetPageButton
+            pageLabel="Property Pipeline"
+            description="Clears viewing checklist responses, viewing notes, negotiation notes, competitor data, and scoring weight overrides for all properties. The property records themselves (address, rent, pipeline status) are kept intact."
+            onReset={resetPropertiesNotes}
+          />
           {compareMode ? (
             <>
               {compareSelected.size >= 2 && (

@@ -41,6 +41,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { ResetPageButton } from "@/components/reset-page-button";
 import {
   AreaChart,
   Area,
@@ -200,6 +201,14 @@ export default function DashboardPage() {
       .catch((e: string) => { setGoNoGoError(typeof e === "string" ? e : "Analysis failed"); setGoNoGoLoading(false); });
   }, []);
 
+  function clearDashboardCache() {
+    try { localStorage.removeItem(CACHE_KEY); } catch {}
+    try { localStorage.removeItem(CACHE_AT_KEY); } catch {}
+    setGoNoGo(null);
+    setGoNoGoCachedAt(null);
+    setGoNoGoStale(false);
+  }
+
   // On mount: restore from cache if available; only auto-run if no cache exists
   useEffect(() => {
     try {
@@ -320,6 +329,13 @@ export default function DashboardPage() {
       <PageHeader
         title="Command Centre"
         subtitle="Real-time health, priorities, and decisions for your new clinic launch."
+        action={
+          <ResetPageButton
+            pageLabel="Command Centre"
+            description="This clears the cached AI Launch Recommendation only. Your project plan, properties, financial model, and all other data are completely untouched. You can regenerate the recommendation at any time by clicking Refresh."
+            onReset={async () => clearDashboardCache()}
+          />
+        }
       />
 
       {/* 0. Go/No-Go Recommendation */}
