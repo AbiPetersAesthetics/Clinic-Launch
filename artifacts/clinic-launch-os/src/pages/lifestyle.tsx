@@ -1216,6 +1216,169 @@ function SmartScheduleAdvisor({
   );
 }
 
+// ─── Schedule Analytics ───────────────────────────────────────────────────────
+function ScheduleAnalytics({
+  clinicDays, clinicOpenTime, clinicCloseTime, familySchedule, dayTimeOverrides,
+}: {
+  clinicDays: string[];
+  clinicOpenTime: string;
+  clinicCloseTime: string;
+  familySchedule: FamilySchedule;
+  dayTimeOverrides: Record<string, DayTimeOverride>;
+}) {
+  const [slot, setSlot] = useState<30 | 45 | 60 | 90>(45);
+
+  if (clinicDays.length === 0) return null;
+
+  const perDay = DAYS.filter(d => clinicDays.includes(d)).map(day => {
+    const ov = dayTimeOverrides[day];
+    const rawOpen  = ov?.open  ?? clinicOpenTime;
+    const rawClose = ov?.close ?? clinicCloseTime;
+    const raw = (() => {
+      const [oh, om] = rawOpen.split(":").map(Number);
+      const [ch, cm] = rawClose.split(":").map(Number);
+      return Math.max(0, (ch * 60 + cm - (oh * 60 + om)) / 60);
+    })();
+    const real = computeDayWindow(day, familySchedule, rawOpen, rawClose);
+    const lost = Math.max(0, raw - real);
+    const firstAppt = (() => {
+      const ds = familySchedule.daySchedules[day];
+      if (!ds) return rawOpen;
+      const pw = familySchedule.parkAndWalkMins;
+      const loc = ds.clinicLocation ?? "winchester";
+      let latestMins = t2m(rawOpen);
+      const kids = [
+        { child: ds.elsy, homeToSchool: familySchedule.travelHomeToElsyMins, schoolFinish: familySchedule.elsySchoolStart, toClinic: loc === "winchester" ? familySchedule.travelElsyToClinicMins : familySchedule.travelElsyToBedhamptonMins },
+        { child: ds.eli,  homeToSchool: familySchedule.travelHomeToEliMins,  schoolFinish: familySchedule.eliSchoolStart,  toClinic: loc === "winchester" ? familySchedule.travelEliToClinicMins  : familySchedule.travelEliToBedhamptonMins  },
+      ];
+      kids.forEach(({ child, homeToSchool, schoolFinish, toClinic }) => {
+        if (!child || child.dropBy !== "Abi") return;
+        const j = calcDropJourney(child.dropTime ?? schoolFinish, homeToSchool, toClinic, rawOpen);
+        latestMins = Math.max(latestMins, t2m(j.arriveClinic) + pw);
+      });
+      return m2t(latestMins);
+    })();
+    const lastAppt = (() => {
+      const ds = familySchedule.daySchedules[day];
+      if (!ds) return rawClose;
+      const pw = familySchedule.parkAndWalkMins;
+      const loc = ds.clinicLocation ?? "winchester";
+      let earliestMins = t2m(rawClose);
+      const kids = [
+        { child: ds.elsy, schoolFinish: familySchedule.elsySchoolFinish, fromClinic: loc === "winchester" ? familySchedule.travelClinicToElsyMins : familySchedule.travelBedhamptonToElsyMins },
+        { child: ds.eli,  schoolFinish: familySchedule.eliSchoolFinish,  fromClinic: loc === "winchester" ? familySchedule.travelClinicToEliMins  : familySchedule.travelBedhamptonToEliMins  },
+      ];
+      kids.forEach(({ child, schoolFinish, fromClinic }) => {
+        if (!child || child.pickupBy !== "Abi") return;
+        const j = calcPickupJourney(child.pickupTime ?? schoolFinish, fromClinic + pw);
+        earliestMins = Math.min(earliestMins, t2m(j.mustLeaveClinic));
+      });
+      return m2t(earliestMins);
+    })();
+    const hasOverride = !!dayTimeOverrides[day];
+    return { day, raw, real, lost, firstAppt, lastAppt, hasOverride };
+  });
+
+  const totalRawWeek    = perDay.reduce((s, d) => s + d.raw,  0);
+  const totalRealWeek   = perDay.reduce((s, d) => s + d.real, 0);
+  const daysPerMonth    = +(clinicDays.length * 4.333).toFixed(1);
+  const avgHrsPerDay    = clinicDays.length > 0 ? totalRealWeek / clinicDays.length : 0;
+  const hrsPerMonth     = +(totalRealWeek * 4.333).toFixed(1);
+  const hrsPerYear      = +(totalRealWeek * 52).toFixed(0);
+  const deadHrsPerWeek  = +(totalRawWeek - totalRealWeek).toFixed(1);
+  const deadPct         = totalRawWeek > 0 ? Math.round((deadHrsPerWeek / totalRawWeek) * 100) : 0;
+  const apptPerMonth    = Math.floor((hrsPerMonth * 60) / slot);
+  const apptPerYear     = Math.floor((+hrsPerYear * 60) / slot);
+  const maxBarHrs       = Math.max(...perDay.map(d => d.raw), 1);
+
+  const statCells = [
+    { label: "Days / week",   value: clinicDays.length,           sub: clinicDays.join(", "),          color: "text-primary" },
+    { label: "Days / month",  value: daysPerMonth,                sub: "@ 4.33 wks/mo",                color: "text-primary" },
+    { label: "Avg hrs / day", value: avgHrsPerDay.toFixed(1)+"h", sub: "real window",                  color: avgHrsPerDay >= 6 ? "text-emerald-600 dark:text-emerald-400" : avgHrsPerDay >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400" },
+    { label: "Hrs / week",    value: totalRealWeek.toFixed(1)+"h",sub: `${deadHrsPerWeek}h lost`,       color: totalRealWeek >= 20 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground" },
+    { label: "Hrs / month",   value: hrsPerMonth+"h",             sub: "real available",               color: "text-foreground" },
+    { label: "Hrs / year",    value: (+hrsPerYear).toLocaleString()+"h", sub: "50 working wks",         color: "text-foreground" },
+  ];
+
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Clock className="w-4 h-4 text-primary" /> Schedule Analytics
+        </CardTitle>
+        <CardDescription className="text-xs">Your real working time after school-run constraints</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+
+        <div className="grid grid-cols-3 gap-2">
+          {statCells.map(({ label, value, sub, color }) => (
+            <div key={label} className="rounded-xl bg-muted/30 border border-border/40 p-3 text-center">
+              <p className={`text-xl font-black leading-none ${color}`}>{value}</p>
+              <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide mt-1">{label}</p>
+              <p className="text-[9px] text-muted-foreground/70 mt-0.5 leading-tight">{sub}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Real window per day</p>
+          {perDay.map(({ day, raw, real, lost, firstAppt, lastAppt, hasOverride }) => (
+            <div key={day} className="space-y-1">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-foreground w-7">{day}</span>
+                  {hasOverride && <span className="text-[8px] bg-violet-500 text-white px-1 py-0.5 rounded font-bold">custom</span>}
+                </div>
+                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                  <span>{firstAppt}–{lastAppt}</span>
+                  {lost > 0 && <span className="text-amber-600 dark:text-amber-400">−{lost.toFixed(1)}h runs</span>}
+                  <span className={`font-semibold ${real >= 6 ? "text-emerald-600 dark:text-emerald-400" : real >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>{real.toFixed(1)}h</span>
+                </div>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden flex">
+                <div className="h-full bg-primary/70 rounded-l-full transition-all" style={{ width: `${(real / maxBarHrs) * 100}%` }} />
+                {lost > 0 && <div className="h-full bg-amber-400/50" style={{ width: `${(lost / maxBarHrs) * 100}%` }} />}
+              </div>
+            </div>
+          ))}
+          {deadPct > 0 && (
+            <p className="text-[9px] text-muted-foreground pt-1">
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-400/50 mr-1 align-middle" />
+              {deadPct}% of scheduled hours ({deadHrsPerWeek}h/wk) lost to school runs — shown in amber above
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Appointment capacity</p>
+            <div className="flex gap-1">
+              {([30, 45, 60, 90] as const).map(m => (
+                <button key={m} onClick={() => setSlot(m)} className={`px-2 py-0.5 rounded text-[10px] font-semibold border transition-all ${slot === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}>{m}m</button>
+              ))}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: `Appts / week`, value: Math.floor((totalRealWeek * 60) / slot) },
+              { label: `Appts / month`, value: apptPerMonth },
+              { label: `Appts / year`, value: apptPerYear.toLocaleString() },
+              { label: `Yr revenue @ £150 ATV`, value: `£${(apptPerYear * 150).toLocaleString()}` },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex items-center justify-between gap-2">
+                <span className="text-[10px] text-muted-foreground">{label}</span>
+                <span className="text-sm font-bold text-foreground">{value}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[9px] text-muted-foreground">Ceiling figures — no admin or lunch buffers. Year-one fill rate is typically 40–60%.</p>
+        </div>
+
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Launch Countdown ─────────────────────────────────────────────────────────
 function LaunchCountdown({ targetExitDate, noticeWeeks }: {
   targetExitDate: string; noticeWeeks: number;
@@ -2143,6 +2306,14 @@ export default function LifestylePage() {
                   if (override === null) delete next[day]; else next[day] = override;
                   updateExtras({ dayTimeOverrides: next });
                 }}
+              />
+
+              <ScheduleAnalytics
+                clinicDays={plan.clinicDays}
+                clinicOpenTime={plan.clinicOpenTime}
+                clinicCloseTime={plan.clinicCloseTime}
+                familySchedule={familySchedule}
+                dayTimeOverrides={extras.dayTimeOverrides}
               />
 
               <Card className="shadow-sm">
