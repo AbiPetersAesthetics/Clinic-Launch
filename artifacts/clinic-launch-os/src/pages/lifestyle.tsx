@@ -7,6 +7,8 @@ import {
   CheckCircle2, Circle, Clock, Sun, Heart, Users,
   Stethoscope, Leaf, AlertCircle, Star, ChevronRight,
   CalendarDays, ArrowRight, Shield, Sparkles, MapPin, Wand2, TrendingUp,
+  Plus, Trash2, X, ChevronDown, ChevronUp, Target, Copy, Check,
+  Rocket, BriefcaseMedical, GraduationCap, Flame, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -106,6 +108,27 @@ function calcPickupJourney(schoolFinish: string, clinicToSchool: number) {
   return { mustLeaveClinic, lastApptBy };
 }
 
+// ─── Plan extras (stored as extrasJson blob) ──────────────────────────────────
+interface NonNegotiableItem { id: string; text: string; category: "family" | "health" | "time" | "personal" }
+interface FearItem { id: string; fear: string; status: "unresolved" | "working" | "resolved" }
+interface PlanExtras {
+  closureDates: string[];
+  nonNegotiablesList: NonNegotiableItem[];
+  thePitch: string;
+  successVision12m: string;
+  fearInventory: FearItem[];
+  nursingMonthlyIncomeGbp: number;
+  energyGivers: string;
+  energyDrainers: string;
+}
+const DEFAULT_EXTRAS: PlanExtras = {
+  closureDates: [], nonNegotiablesList: [], thePitch: "", successVision12m: "",
+  fearInventory: [], nursingMonthlyIncomeGbp: 0, energyGivers: "", energyDrainers: "",
+};
+function parseExtras(s: string): PlanExtras {
+  try { return { ...DEFAULT_EXTRAS, ...JSON.parse(s || "{}") }; } catch { return DEFAULT_EXTRAS; }
+}
+
 // ─── Plan interface ───────────────────────────────────────────────────────────
 interface Plan {
   clinicDays: string[]; clinicOpenTime: string; clinicCloseTime: string; scheduleNotes: string;
@@ -117,6 +140,7 @@ interface Plan {
   scheduleChecks: string[]; familyChecks: string[]; nursingChecks: string[];
   wellbeingChecks: string[]; identityChecks: string[];
   familyScheduleJson: string;
+  extrasJson: string;
 }
 
 const EMPTY: Plan = {
@@ -127,7 +151,7 @@ const EMPTY: Plan = {
   maxClinicDaysPerWeek: 4, sickCoverPlan: "", holidayPlan: "", nonNegotiables: "",
   mostExcitedAbout: "", biggestConcerns: "", supportNetwork: "",
   scheduleChecks: [], familyChecks: [], nursingChecks: [], wellbeingChecks: [], identityChecks: [],
-  familyScheduleJson: "{}",
+  familyScheduleJson: "{}", extrasJson: "{}",
 };
 
 function parseJson(s: unknown, fallback: string[]): string[] {
@@ -141,6 +165,7 @@ function fromApi(raw: Record<string, unknown>): Plan {
     nursingChecks: parseJson(raw.nursingChecks, []), wellbeingChecks: parseJson(raw.wellbeingChecks, []),
     identityChecks: parseJson(raw.identityChecks, []),
     familyScheduleJson: typeof raw.familyScheduleJson === "string" ? raw.familyScheduleJson : "{}",
+    extrasJson: typeof raw.extrasJson === "string" ? raw.extrasJson : "{}",
   } as Plan;
 }
 function toApi(p: Plan) {
@@ -1087,6 +1112,606 @@ function SmartScheduleAdvisor({
   );
 }
 
+// ─── Launch Countdown ─────────────────────────────────────────────────────────
+function LaunchCountdown({ targetExitDate, noticeWeeks }: {
+  targetExitDate: string; noticeWeeks: number;
+}) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const clinicOpen = new Date("2026-11-01");
+  const exitDateObj = parsePlanDate(targetExitDate);
+  const noticeDeadline = exitDateObj
+    ? new Date(exitDateObj.getTime() - noticeWeeks * 7 * 24 * 60 * 60 * 1000)
+    : null;
+  const daysTo = (d: Date | null) => d ? Math.ceil((d.getTime() - today.getTime()) / 86400000) : null;
+  const fmt = (d: Date | null) => d ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }) : "";
+  const milestones = [
+    { label: "Give Notice", sub: "Deadline to hand in your notice", date: noticeDeadline, days: daysTo(noticeDeadline), bgClass: "bg-primary/5 border-primary/20", numClass: "text-primary", icon: BriefcaseMedical },
+    { label: "Last Nursing Day", sub: "Your target exit from NHS", date: exitDateObj, days: daysTo(exitDateObj), bgClass: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800", numClass: "text-amber-600 dark:text-amber-400", icon: GraduationCap },
+    { label: "Clinic Opens", sub: "Target: 1 November 2026", date: clinicOpen, days: daysTo(clinicOpen), bgClass: "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800", numClass: "text-violet-600 dark:text-violet-400", icon: Rocket },
+  ];
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Rocket className="w-4 h-4 text-violet-500" /> Launch Countdown
+        </CardTitle>
+        <CardDescription className="text-xs">Set your nursing exit date on the Leaving Nursing tab to see all milestones</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-3">
+          {milestones.map(({ label, sub, date, days, bgClass, numClass, icon: Icon }) => {
+            const done = days !== null && days <= 0;
+            return (
+              <div key={label} className={`rounded-xl border p-3 text-center space-y-1.5 ${bgClass}`}>
+                <Icon className={`w-5 h-5 mx-auto ${numClass}`} />
+                {done ? (
+                  <>
+                    <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">✓</p>
+                    <p className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">Done</p>
+                  </>
+                ) : days !== null ? (
+                  <>
+                    <p className={`text-3xl font-black leading-none ${numClass}`}>{days}</p>
+                    <p className="text-[10px] text-muted-foreground font-medium">days</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-muted-foreground/30">—</p>
+                    <p className="text-[10px] text-muted-foreground">not set</p>
+                  </>
+                )}
+                <p className="text-[11px] font-semibold text-foreground leading-tight">{label}</p>
+                <p className="text-[9px] text-muted-foreground leading-tight">{date ? fmt(date) : sub}</p>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Closure Planner ──────────────────────────────────────────────────────────
+const UK_SCHOOL_HOLIDAYS_2026: { name: string; dates: string[] }[] = [
+  { name: "Spring Half Term",  dates: ["2026-02-16","2026-02-17","2026-02-18","2026-02-19","2026-02-20"] },
+  { name: "Easter Break",      dates: ["2026-04-06","2026-04-07","2026-04-08","2026-04-09","2026-04-10","2026-04-14","2026-04-15","2026-04-16","2026-04-17"] },
+  { name: "May Half Term",     dates: ["2026-05-25","2026-05-26","2026-05-27","2026-05-28","2026-05-29"] },
+  { name: "Summer Holiday",    dates: (() => { const ds: string[] = []; const d = new Date("2026-07-23"); while (d <= new Date("2026-09-04")) { if (d.getDay() > 0 && d.getDay() < 6) ds.push(d.toISOString().slice(0,10)); d.setDate(d.getDate()+1); } return ds; })() },
+  { name: "Autumn Half Term",  dates: ["2026-10-26","2026-10-27","2026-10-28","2026-10-29","2026-10-30"] },
+  { name: "Christmas Break",   dates: ["2026-12-21","2026-12-22","2026-12-23","2026-12-24","2026-12-28","2026-12-29","2026-12-30","2026-12-31"] },
+];
+
+function ClosurePlanner({ closureDates, onChange }: {
+  closureDates: string[]; onChange: (dates: string[]) => void;
+}) {
+  const [customDate, setCustomDate] = useState("");
+  const set = new Set(closureDates);
+  const toggleHoliday = (dates: string[]) => {
+    const allIn = dates.every(d => set.has(d));
+    const next = new Set(set);
+    allIn ? dates.forEach(d => next.delete(d)) : dates.forEach(d => next.add(d));
+    onChange(Array.from(next).sort());
+  };
+  const toggleDate = (d: string) => {
+    const next = new Set(set);
+    next.has(d) ? next.delete(d) : next.add(d);
+    onChange(Array.from(next).sort());
+  };
+  const addCustom = () => {
+    if (!customDate) return;
+    const next = new Set(set); next.add(customDate);
+    onChange(Array.from(next).sort()); setCustomDate("");
+  };
+  const fmtD = (d: string) => { const p = new Date(d); return p.toLocaleDateString("en-GB", { day: "numeric", month: "short" }); };
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-primary" /> Planned Closure Days
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Mark school holidays and personal time — design your year from the start</CardDescription>
+          </div>
+          {closureDates.length > 0 && (
+            <span className="text-xs font-bold bg-primary/10 text-primary px-2.5 py-1 rounded-full">{closureDates.length} days</span>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Hampshire school holidays 2026</p>
+          {UK_SCHOOL_HOLIDAYS_2026.map(hol => {
+            const allIn = hol.dates.every(d => set.has(d));
+            const someIn = hol.dates.some(d => set.has(d));
+            const count = hol.dates.filter(d => set.has(d)).length;
+            return (
+              <button key={hol.name} onClick={() => toggleHoliday(hol.dates)}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg border text-left transition-all ${
+                  allIn ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700"
+                  : someIn ? "bg-primary/5 border-primary/30"
+                  : "border-border hover:border-primary/30 hover:bg-muted/30"
+                }`}>
+                <div className="flex items-center gap-2">
+                  <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 ${
+                    allIn ? "bg-emerald-500 border-emerald-500" : someIn ? "bg-primary/30 border-primary/50" : "border-muted-foreground/30"
+                  }`}>{(allIn || someIn) && <Check className="w-2 h-2 text-white" />}</div>
+                  <span className="text-xs font-medium">{hol.name}</span>
+                </div>
+                <span className="text-[10px] text-muted-foreground shrink-0">
+                  {allIn ? `${count} days ✓` : someIn ? `${count}/${hol.dates.length}` : `${hol.dates.length} days`}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2">
+          <Input type="date" value={customDate} onChange={e => setCustomDate(e.target.value)} className="h-8 text-xs flex-1" />
+          <Button size="sm" onClick={addCustom} disabled={!customDate} className="h-8 px-3"><Plus className="w-3.5 h-3.5" /></Button>
+        </div>
+        {closureDates.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Selected ({closureDates.length} days)</p>
+            <div className="flex flex-wrap gap-1.5">
+              {closureDates.slice(0, 24).map(d => (
+                <button key={d} onClick={() => toggleDate(d)}
+                  className="flex items-center gap-1 text-[10px] font-medium bg-primary/10 text-primary border border-primary/20 rounded-full px-2 py-0.5 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors">
+                  {fmtD(d)} <X className="w-2.5 h-2.5" />
+                </button>
+              ))}
+              {closureDates.length > 24 && <span className="text-[10px] text-muted-foreground px-2 py-0.5">+{closureDates.length - 24} more</span>}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Coverage Matrix ──────────────────────────────────────────────────────────
+function CoverageMatrix({ clinicDays, daySchedules }: {
+  clinicDays: string[]; daySchedules: DaySchedules;
+}) {
+  const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
+  if (clinicDayList.length === 0) return null;
+  const cols = [
+    { key: "ed", label: "Elsy ↓", get: (ds: DaySchedules[string]) => ds?.elsy?.dropBy },
+    { key: "ep", label: "Elsy ↑", get: (ds: DaySchedules[string]) => ds?.elsy?.pickupBy },
+    { key: "ld", label: "Eli ↓",  get: (ds: DaySchedules[string]) => ds?.eli?.dropBy },
+    { key: "lp", label: "Eli ↑",  get: (ds: DaySchedules[string]) => ds?.eli?.pickupBy },
+  ];
+  const totalCells = clinicDayList.length * cols.length;
+  const coveredCells = clinicDayList.reduce((s, day) => s + cols.filter(c => !!c.get(daySchedules[day])).length, 0);
+  const pct = Math.round((coveredCells / totalCells) * 100);
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" /> School Run Coverage
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Every clinic day needs all four cells filled — at a glance</CardDescription>
+          </div>
+          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+            pct === 100 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+          }`}>{pct}% covered</span>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs min-w-[280px]">
+            <thead>
+              <tr>
+                <th className="text-left pb-2 pr-3 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Day</th>
+                {cols.map(c => <th key={c.key} className="pb-2 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide text-center">{c.label}</th>)}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/30">
+              {clinicDayList.map(day => {
+                const ds = daySchedules[day];
+                const loc = ds?.clinicLocation ?? "winchester";
+                return (
+                  <tr key={day}>
+                    <td className="py-2 pr-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-foreground">{day}</span>
+                        <span className={`text-[8px] px-1 py-0.5 rounded font-medium ${loc === "winchester" ? "bg-primary/10 text-primary/70" : "bg-teal-500/10 text-teal-700 dark:text-teal-400"}`}>{loc === "winchester" ? "Win" : "Bed"}</span>
+                      </div>
+                    </td>
+                    {cols.map(col => {
+                      const who = col.get(ds);
+                      return (
+                        <td key={col.key} className="py-2 text-center">
+                          {who ? (
+                            <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                              who === "Abi" ? "bg-primary/10 text-primary"
+                              : who === "David" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                              : "bg-muted text-muted-foreground"
+                            }`}>{who === "Other / backup" ? "Other" : who}</span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-destructive/10 text-destructive text-[10px] font-bold">!</span>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {pct === 100 && (
+          <div className="mt-3 flex items-center gap-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5" /> All clinic days fully covered
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Income Bridge ────────────────────────────────────────────────────────────
+function IncomeBridge({ nursingMonthlyIncome, clinicDays, onChange }: {
+  nursingMonthlyIncome: number; clinicDays: string[];
+  onChange: (v: number) => void;
+}) {
+  const [clientsPerDay, setClientsPerDay] = useState(4);
+  const [avgTV, setAvgTV] = useState(150);
+  const daysPerMonth = +(clinicDays.length * 4.333).toFixed(1);
+  const maxPerMonth = daysPerMonth * clientsPerDay;
+  const ramp = [
+    { mo: 1, pct: 15 }, { mo: 2, pct: 25 }, { mo: 3, pct: 40 },
+    { mo: 4, pct: 55 }, { mo: 6, pct: 70 }, { mo: 9, pct: 85 }, { mo: 12, pct: 100 },
+  ];
+  const matchMonth = nursingMonthlyIncome > 0
+    ? (ramp.find(r => (maxPerMonth * r.pct / 100 * avgTV) >= nursingMonthlyIncome)?.mo ?? null)
+    : null;
+  const fmt = (n: number) => `£${Math.round(n).toLocaleString()}`;
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-emerald-500" /> Income Bridge
+        </CardTitle>
+        <CardDescription className="text-xs">When does clinic income match your nursing take-home pay?</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Nursing net/month</Label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
+              <Input type="number" min={0} step={100} value={nursingMonthlyIncome || ""} onChange={e => onChange(parseFloat(e.target.value) || 0)} className="h-8 text-xs pl-5" placeholder="e.g. 2800" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Clients/day</Label>
+            <div className="flex items-center gap-1">
+              <button onClick={() => setClientsPerDay(Math.max(1, clientsPerDay - 1))} className="w-7 h-8 rounded-lg border text-sm hover:bg-muted transition-colors shrink-0">−</button>
+              <span className="flex-1 text-center text-sm font-bold">{clientsPerDay}</span>
+              <button onClick={() => setClientsPerDay(Math.min(10, clientsPerDay + 1))} className="w-7 h-8 rounded-lg border text-sm hover:bg-muted transition-colors shrink-0">+</button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-[10px] text-muted-foreground">Avg treatment (£)</Label>
+            <div className="relative">
+              <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
+              <Input type="number" min={50} step={10} value={avgTV} onChange={e => setAvgTV(parseInt(e.target.value) || 150)} className="h-8 text-xs pl-5" />
+            </div>
+          </div>
+        </div>
+        {nursingMonthlyIncome > 0 ? (
+          <>
+            <div className="space-y-1.5">
+              {ramp.map(({ mo, pct }) => {
+                const rev = maxPerMonth * pct / 100 * avgTV;
+                const barPct = Math.min(100, Math.round((rev / nursingMonthlyIncome) * 100));
+                const matched = rev >= nursingMonthlyIncome;
+                const isMatchMonth = mo === matchMonth;
+                return (
+                  <div key={mo} className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground w-10 shrink-0">Mo {mo}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${matched ? "bg-emerald-500" : "bg-primary/60"}`} style={{ width: `${barPct}%` }} />
+                    </div>
+                    <span className={`text-[10px] font-semibold w-14 text-right shrink-0 ${matched ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{fmt(rev)}</span>
+                    {isMatchMonth && <span className="text-[9px] font-bold bg-emerald-500 text-white px-1.5 py-0.5 rounded-full shrink-0">✓</span>}
+                  </div>
+                );
+              })}
+            </div>
+            {matchMonth !== null ? (
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 text-center">
+                <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">You'll match nursing income around <strong>Month {matchMonth}</strong> at these assumptions.</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{daysPerMonth} days/mo · {clientsPerDay} clients/day · {fmt(avgTV)} avg</p>
+              </div>
+            ) : (
+              <div className="rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3 text-center">
+                <p className="text-xs text-amber-700 dark:text-amber-400">Nursing income not matched within 12 months at these figures. Try more days, more clients, or higher ATV.</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground text-center py-2 italic">Enter your monthly nursing net income to see the bridge calculation</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Notice Scripts ───────────────────────────────────────────────────────────
+const NOTICE_SCRIPTS_DATA = [
+  {
+    title: "The ward manager conversation",
+    icon: "🏥",
+    context: "Keep it short, certain, and kind — but unmovable. Don't justify. Don't negotiate. Just be clear.",
+    script: `"I wanted to speak to you directly before putting anything in writing. I'm resigning from my position to open my own aesthetics clinic. I've given this a lot of thought and it's the right decision for me. I'm giving [X] weeks' notice — more than my contract requires — because I want to ensure a proper handover. I'm proud of what we've achieved here and I want to leave on good terms."
+
+If they try to persuade you to stay:
+"I understand this creates pressure, and I'm sorry for that. But my leaving date is [DATE]. I'm committed to making the handover as smooth as possible within that time."`,
+    borderClass: "border-primary/20 bg-primary/5",
+  },
+  {
+    title: "Telling nursing colleagues",
+    icon: "👩‍⚕️",
+    context: "Tell the people who matter directly — before they hear it from someone else.",
+    script: `"I wanted to tell you properly rather than you hearing second-hand. I'm leaving the ward to open my own aesthetics clinic. [DATE] will be my last day.
+
+I'm excited but also sad to be leaving — I'll miss working with you. I'm not abandoning nursing; I'm using my clinical skills in a different context. And honestly? I'm terrified. But I'm doing it anyway."
+
+You don't owe anyone an apology. You don't have to justify your decision. Direct and warm is enough.`,
+    borderClass: "border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20",
+  },
+  {
+    title: "Telling family and friends",
+    icon: "❤️",
+    context: "Sometimes the people who love you most are the hardest to convince. Lead with facts, not apologies.",
+    script: `"I'm opening my own aesthetics clinic. I know that might sound unexpected, but I've been planning this carefully for [X months]. The finances are modelled, the qualifications are in place, the premises are sorted.
+
+Is there risk? Yes. But I've done the work to understand it and manage it. What I need from you isn't advice about the risks — I know them. What I need is your support while I build something I believe in."
+
+If they push back on qualifications:
+"I'm a nurse with [X] years of clinical experience and [relevant aesthetics qualifications]. I've done this properly, not impulsively."`,
+    borderClass: "border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20",
+  },
+];
+
+function NoticeScripts() {
+  const [open, setOpen] = useState<number | null>(null);
+  const [copied, setCopied] = useState<number | null>(null);
+  const copyScript = (i: number, text: string) => {
+    navigator.clipboard.writeText(text).then(() => { setCopied(i); setTimeout(() => setCopied(null), 2000); });
+  };
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Zap className="w-4 h-4 text-amber-500" /> Notice Conversation Scripts
+        </CardTitle>
+        <CardDescription className="text-xs">The three conversations you need to have. Adapt them — starting points, not scripts to read aloud.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {NOTICE_SCRIPTS_DATA.map((s, i) => (
+          <div key={i} className={`rounded-xl border overflow-hidden ${s.borderClass}`}>
+            <button className="w-full flex items-center gap-3 px-4 py-3 text-left" onClick={() => setOpen(open === i ? null : i)}>
+              <span className="text-lg shrink-0">{s.icon}</span>
+              <span className="flex-1 text-sm font-semibold">{s.title}</span>
+              {open === i ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
+            </button>
+            {open === i && (
+              <div className="px-4 pb-4 space-y-3">
+                <p className="text-xs text-muted-foreground italic">{s.context}</p>
+                <div className="rounded-lg bg-background/60 border border-border/40 p-3">
+                  <pre className="text-xs text-foreground/80 whitespace-pre-wrap font-sans leading-relaxed">{s.script}</pre>
+                </div>
+                <button onClick={() => copyScript(i, s.script)} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  {copied === i ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copied === i ? "Copied!" : "Copy to clipboard"}
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Non-Negotiables List ─────────────────────────────────────────────────────
+const NN_CATEGORIES: { key: NonNegotiableItem["category"]; label: string; icon: string; color: string }[] = [
+  { key: "family",   label: "Family",   icon: "👨‍👩‍👧‍👦", color: "bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700" },
+  { key: "health",   label: "Health",   icon: "🌿",     color: "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700" },
+  { key: "time",     label: "Time",     icon: "⏰",     color: "bg-primary/5 text-primary border-primary/20" },
+  { key: "personal", label: "Personal", icon: "✨",     color: "bg-violet-50 dark:bg-violet-950/20 text-violet-700 dark:text-violet-400 border-violet-200 dark:border-violet-700" },
+];
+
+function NonNegotiablesList({ items, onChange }: {
+  items: NonNegotiableItem[]; onChange: (items: NonNegotiableItem[]) => void;
+}) {
+  const [text, setText] = useState("");
+  const [cat, setCat] = useState<NonNegotiableItem["category"]>("family");
+  const add = () => { if (!text.trim()) return; onChange([...items, { id: `${Date.now()}`, text: text.trim(), category: cat }]); setText(""); };
+  const remove = (id: string) => onChange(items.filter(i => i.id !== id));
+  const byCategory = NN_CATEGORIES.map(c => ({ ...c, items: items.filter(i => i.category === c.key) })).filter(c => c.items.length > 0);
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Input placeholder="e.g. Eli's school play — always attend" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} className="h-9 text-sm flex-1" />
+        <select value={cat} onChange={e => setCat(e.target.value as NonNegotiableItem["category"])}
+          className="h-9 text-xs rounded-md border border-input bg-background px-2 focus:outline-none focus:ring-1 focus:ring-primary shrink-0">
+          {NN_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
+        </select>
+        <Button size="sm" onClick={add} disabled={!text.trim()} className="h-9 px-3 shrink-0"><Plus className="w-3.5 h-3.5" /></Button>
+      </div>
+      {items.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-2">Things that don't move for the clinic. Ever. Add them so you don't have to fight for them later.</p>}
+      {byCategory.map(({ key, label, icon, color, items: catItems }) => (
+        <div key={key} className="space-y-1.5">
+          <div className="flex items-center gap-1.5"><span className="text-sm">{icon}</span><span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{label}</span></div>
+          {catItems.map(item => (
+            <div key={item.id} className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-sm ${color}`}>
+              <span className="flex-1 leading-snug">{item.text}</span>
+              <button onClick={() => remove(item.id)} className="shrink-0 text-muted-foreground/40 hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+          ))}
+        </div>
+      ))}
+      {items.length > 0 && <p className="text-[10px] text-muted-foreground italic text-center">{items.length} non-negotiable{items.length > 1 ? "s" : ""} protected from day one.</p>}
+    </div>
+  );
+}
+
+// ─── Capacity Calculator ──────────────────────────────────────────────────────
+function CapacityCalculator({ clinicDays, clinicOpenTime, clinicCloseTime, familySchedule }: {
+  clinicDays: string[]; clinicOpenTime: string; clinicCloseTime: string; familySchedule: FamilySchedule;
+}) {
+  const [treatmentMins, setTreatmentMins] = useState(45);
+  const [targetATV, setTargetATV] = useState(150);
+  const windowData = DAYS.filter(d => clinicDays.includes(d)).map(day => ({ day, hours: computeDayWindow(day, familySchedule, clinicOpenTime, clinicCloseTime) }));
+  const totalWeeklyHours = windowData.reduce((s, d) => s + d.hours, 0);
+  const hoursPerDay = clinicDays.length > 0 ? totalWeeklyHours / clinicDays.length : 0;
+  const daysPerMonth = +(clinicDays.length * 4.333).toFixed(1);
+  const maxClientsPerMonth = Math.floor((daysPerMonth * hoursPerDay * 60) / treatmentMins);
+  const occupancies = [0.5, 0.65, 0.75, 0.85, 1.0];
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" /> Capacity & Revenue Potential
+        </CardTitle>
+        <CardDescription className="text-xs">Based on your actual clinic window after school runs — your real ceiling</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Treatment slot (mins)</Label>
+            <div className="flex gap-1">
+              {[30, 45, 60, 90].map(m => (
+                <button key={m} onClick={() => setTreatmentMins(m)} className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${treatmentMins === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}>{m}</button>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Average treatment value</Label>
+            <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span><Input type="number" min={50} step={10} value={targetATV} onChange={e => setTargetATV(parseInt(e.target.value)||150)} className="h-8 text-sm pl-6" /></div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            { val: +(totalWeeklyHours).toFixed(1), label: "hrs/week" },
+            { val: Math.floor((totalWeeklyHours * 60) / treatmentMins), label: "max clients/wk" },
+            { val: maxClientsPerMonth, label: "max clients/mo" },
+          ].map(({ val, label }) => (
+            <div key={label} className="rounded-xl bg-muted/30 border border-border/40 p-3">
+              <p className="text-xl font-black text-primary leading-none">{val}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
+            </div>
+          ))}
+        </div>
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Monthly revenue at occupancy</p>
+          {occupancies.map(occ => {
+            const rev = Math.round(maxClientsPerMonth * occ * targetATV);
+            return (
+              <div key={occ} className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-10 shrink-0">{Math.round(occ * 100)}%</span>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full ${occ >= 0.75 ? "bg-emerald-500" : "bg-primary/60"}`} style={{ width: `${occ * 100}%` }} />
+                </div>
+                <span className="text-[10px] font-semibold text-foreground w-16 text-right shrink-0">£{rev.toLocaleString()}/mo</span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-muted-foreground">These are ceiling figures — no lunch or admin time included. Year-one occupancy is typically 40–60%. The value is understanding your ceiling, not assuming you'll hit it.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── The Pitch ────────────────────────────────────────────────────────────────
+function ThePitch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+  const quality = wordCount === 0 ? null : wordCount <= 15 ? "perfect" : wordCount <= 22 ? "good" : "too long";
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Flame className="w-4 h-4 text-orange-500" /> Your One-Sentence Pitch
+        </CardTitle>
+        <CardDescription className="text-xs">What do you say when someone asks what you do? Under 20 words. No "just" or "only". Say it like you mean it.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Textarea placeholder={`"I run an aesthetics clinic in Winchester — I help people feel genuinely confident in their skin."`} value={value} onChange={e => onChange(e.target.value)} className="min-h-[80px] text-sm resize-none" />
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] text-muted-foreground">{wordCount > 0 ? `${wordCount} words` : "Start typing…"}</p>
+          {quality && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${quality === "perfect" ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400" : quality === "good" ? "bg-primary/10 text-primary" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"}`}>{quality}</span>}
+        </div>
+        {value && (
+          <div className="rounded-xl border border-border/40 bg-muted/20 p-4">
+            <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-widest mb-2">How it sounds</p>
+            <p className="text-base font-medium leading-relaxed text-foreground">"{value}"</p>
+            <p className="text-[10px] text-muted-foreground mt-2">— Abi Peters, Abi Peters Aesthetics</p>
+          </div>
+        )}
+        <div className="rounded-lg bg-muted/30 border border-border/40 p-3">
+          <p className="text-[10px] font-semibold text-muted-foreground mb-1">Formula that works</p>
+          <p className="text-[11px] text-foreground/70">"I run [what] in [where] — I help [who] [feel/achieve something]."</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Fear Inventory ───────────────────────────────────────────────────────────
+const FEAR_STATUSES: { key: FearItem["status"]; label: string; color: string }[] = [
+  { key: "unresolved", label: "Named",        color: "bg-muted text-muted-foreground border-border" },
+  { key: "working",    label: "Working on it", color: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700" },
+  { key: "resolved",   label: "Resolved",     color: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700" },
+];
+
+function FearInventory({ items, onChange }: { items: FearItem[]; onChange: (items: FearItem[]) => void }) {
+  const [text, setText] = useState("");
+  const add = () => { if (!text.trim()) return; onChange([...items, { id: `${Date.now()}`, fear: text.trim(), status: "unresolved" }]); setText(""); };
+  const cycle = (id: string) => onChange(items.map(i => {
+    if (i.id !== id) return i;
+    const ss: FearItem["status"][] = ["unresolved", "working", "resolved"];
+    return { ...i, status: ss[(ss.indexOf(i.status) + 1) % 3] };
+  }));
+  const remove = (id: string) => onChange(items.filter(i => i.id !== id));
+  const resolved = items.filter(i => i.status === "resolved").length;
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Input placeholder="Name a fear — naming it makes it smaller" value={text} onChange={e => setText(e.target.value)} onKeyDown={e => e.key === "Enter" && add()} className="h-9 text-sm flex-1" />
+        <Button size="sm" onClick={add} disabled={!text.trim()} className="h-9 px-3 shrink-0"><Plus className="w-3.5 h-3.5" /></Button>
+      </div>
+      {items.length > 0 && (
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${Math.round((resolved / items.length) * 100)}%` }} />
+          </div>
+          <span>{resolved}/{items.length} resolved</span>
+        </div>
+      )}
+      {items.length === 0 && <p className="text-xs text-muted-foreground italic text-center py-2">The fears you haven't said out loud are the ones with the most power over you.</p>}
+      <div className="space-y-2">
+        {items.map(item => {
+          const si = FEAR_STATUSES.find(s => s.key === item.status)!;
+          return (
+            <div key={item.id} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all ${item.status === "resolved" ? "border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/10" : "border-border/60 bg-muted/10"}`}>
+              <p className={`flex-1 text-sm leading-snug ${item.status === "resolved" ? "line-through text-muted-foreground" : ""}`}>{item.fear}</p>
+              <button onClick={() => cycle(item.id)} className={`text-[9px] font-bold px-2 py-1 rounded-full border shrink-0 transition-all ${si.color}`}>{si.label}</button>
+              <button onClick={() => remove(item.id)} className="text-muted-foreground/40 hover:text-destructive transition-colors shrink-0"><X className="w-3 h-3" /></button>
+            </div>
+          );
+        })}
+      </div>
+      {resolved > 0 && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 text-center font-medium">{resolved === items.length ? "Every fear named and resolved. That's real work." : `${resolved} resolved — that's progress.`}</p>}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function LifestylePage() {
   const [plan, setPlan] = useState<Plan>(EMPTY);
@@ -1148,6 +1773,11 @@ export default function LifestylePage() {
     const next = { ...familySchedule, ...patch };
     update({ familyScheduleJson: JSON.stringify(next) });
   }, [familySchedule, update]);
+
+  const extras = useMemo(() => parseExtras(plan.extrasJson), [plan.extrasJson]);
+  const updateExtras = useCallback((patch: Partial<PlanExtras>) => {
+    update({ extrasJson: JSON.stringify({ ...extras, ...patch }) });
+  }, [extras, update]);
 
   // ── Computed signals ───────────────────────────────────────────────────────
   const allChecks = [
@@ -1264,14 +1894,29 @@ export default function LifestylePage() {
             <p className="text-sm font-bold">{plan.clinicOpenTime}<span className="text-muted-foreground font-normal">–</span>{plan.clinicCloseTime}</p>
             <p className="text-[10px] text-muted-foreground">{plan.maxClinicDaysPerWeek} days max</p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Life readiness</p>
-            <div className="flex items-baseline gap-1">
-              <p className={`text-lg font-bold ${lifeReadiness >= 70 ? "text-emerald-600 dark:text-emerald-400" : lifeReadiness >= 40 ? "text-primary" : "text-amber-500"}`}>{lifeReadiness}%</p>
+          <div className="space-y-1">
+            <div className="flex items-baseline justify-between">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Life readiness</p>
+              <p className={`text-xs font-bold ${lifeReadiness >= 70 ? "text-emerald-600 dark:text-emerald-400" : lifeReadiness >= 40 ? "text-primary" : "text-amber-500"}`}>{lifeReadiness}%</p>
             </div>
-            <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${lifeReadiness >= 70 ? "bg-emerald-500" : lifeReadiness >= 40 ? "bg-primary" : "bg-amber-500"}`} style={{ width: `${lifeReadiness}%` }} />
-            </div>
+            {[
+              { label: "Sched", checks: plan.scheduleChecks, items: SCHEDULE_CHECKS },
+              { label: "Family", checks: plan.familyChecks, items: FAMILY_CHECKS },
+              { label: "Nursing", checks: plan.nursingChecks, items: NURSING_CHECKS },
+              { label: "Welbng", checks: plan.wellbeingChecks, items: WELLBEING_CHECKS },
+              { label: "Identity", checks: plan.identityChecks, items: IDENTITY_CHECKS },
+            ].map(({ label, checks, items }) => {
+              const pct = Math.round((checks.filter(k => items.some(i => i.key === k)).length / Math.max(1, items.length)) * 100);
+              return (
+                <div key={label} className="flex items-center gap-1.5">
+                  <span className="text-[8px] text-muted-foreground w-12 shrink-0">{label}</span>
+                  <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                    <div className={`h-full rounded-full transition-all ${pct >= 70 ? "bg-emerald-500" : pct >= 40 ? "bg-primary" : "bg-amber-500"}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className={`text-[8px] font-bold w-5 text-right shrink-0 ${pct >= 70 ? "text-emerald-600 dark:text-emerald-400" : pct >= 40 ? "text-primary" : "text-amber-500"}`}>{pct}%</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1373,9 +2018,15 @@ export default function LifestylePage() {
                   <Textarea placeholder="e.g. Start at 9:30 after drop-off. Always a proper 30-min lunch with no phone. Finish by 5pm. Fridays are admin + prep only — no clients. Every week has one day that's entirely mine." value={plan.scheduleNotes} onChange={e => update({ scheduleNotes: e.target.value })} className="min-h-[100px] text-sm resize-none" />
                 </CardContent>
               </Card>
+
+              <ClosurePlanner
+                closureDates={extras.closureDates}
+                onChange={dates => updateExtras({ closureDates: dates })}
+              />
             </div>
 
             <div className="lg:col-span-3 space-y-5">
+              <LaunchCountdown targetExitDate={plan.targetExitDate} noticeWeeks={plan.nursingNoticeWeeks} />
               <SmartScheduleAdvisor
                 familySchedule={familySchedule}
                 currentDays={plan.clinicDays}
@@ -1394,6 +2045,21 @@ export default function LifestylePage() {
                     closeTime={plan.clinicCloseTime}
                     schoolStart={familySchedule.elsySchoolStart}
                     schoolEnd={familySchedule.elsySchoolFinish}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Abi's Working Week</CardTitle>
+                  <CardDescription className="text-xs">Your real clinic window after school runs — your actual daily capacity</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AbiWeek
+                    clinicDays={plan.clinicDays}
+                    clinicOpenTime={plan.clinicOpenTime}
+                    clinicCloseTime={plan.clinicCloseTime}
+                    familySchedule={familySchedule}
                   />
                 </CardContent>
               </Card>
@@ -1420,6 +2086,8 @@ export default function LifestylePage() {
       {/* ═══ FAMILY ═════════════════════════════════════════════════════════════ */}
       {tab === "family" && (
         <div className="space-y-6">
+
+          <CoverageMatrix clinicDays={plan.clinicDays} daySchedules={familySchedule.daySchedules} />
 
           {/* ── Location triangle ── */}
           <Card className="shadow-sm border-border/60">
@@ -1791,6 +2459,15 @@ export default function LifestylePage() {
               </div>
             </div>
           </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <IncomeBridge
+              nursingMonthlyIncome={extras.nursingMonthlyIncomeGbp}
+              clinicDays={plan.clinicDays}
+              onChange={v => updateExtras({ nursingMonthlyIncomeGbp: v })}
+            />
+            <NoticeScripts />
+          </div>
         </div>
       )}
 
@@ -1847,10 +2524,13 @@ export default function LifestylePage() {
               <Card className="shadow-sm">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm">Non-Negotiables</CardTitle>
-                  <CardDescription className="text-xs">Things that don't move for the clinic. Ever. Write them down so you don't have to fight for them later.</CardDescription>
+                  <CardDescription className="text-xs">Things that don't move for the clinic. Ever. Add them here so you don't have to fight for them later.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Textarea placeholder="e.g. Eli's school play (always attend). Dentist/GP appointments (kept). Thursday evenings with David (sacred). First day of every school holiday off. Christmas week closed — no exceptions." value={plan.nonNegotiables} onChange={e => update({ nonNegotiables: e.target.value })} className="min-h-[100px] text-sm resize-none" />
+                  <NonNegotiablesList
+                    items={extras.nonNegotiablesList}
+                    onChange={items => updateExtras({ nonNegotiablesList: items })}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -1874,12 +2554,12 @@ export default function LifestylePage() {
                 <p className="text-sm text-foreground/80 leading-relaxed mt-2 font-medium">The fix is simple but hard: protect the non-clinic days before you need to, not after.</p>
               </div>
 
-              {plan.nonNegotiables && (
-                <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4">
-                  <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-2">Your non-negotiables</p>
-                  <p className="text-sm text-foreground/80 leading-relaxed">"{plan.nonNegotiables}"</p>
-                </div>
-              )}
+              <CapacityCalculator
+                clinicDays={plan.clinicDays}
+                clinicOpenTime={plan.clinicOpenTime}
+                clinicCloseTime={plan.clinicCloseTime}
+                familySchedule={familySchedule}
+              />
             </div>
           </div>
         </div>
@@ -1900,6 +2580,11 @@ export default function LifestylePage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             <div className="lg:col-span-3 space-y-5">
+              <ThePitch
+                value={extras.thePitch}
+                onChange={v => updateExtras({ thePitch: v })}
+              />
+
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
@@ -1915,9 +2600,12 @@ export default function LifestylePage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium">What worries you most — honestly?</Label>
-                    <p className="text-xs text-muted-foreground">The fears you haven't said out loud yet. Naming them makes them smaller.</p>
-                    <Textarea placeholder="e.g. What if the clients don't come? What if I'm not as good as I think? What if I've made a huge mistake and we can't afford it? What will people think when I tell them I've left nursing?" value={plan.biggestConcerns} onChange={e => update({ biggestConcerns: e.target.value })} className="min-h-[110px] text-sm resize-none border-amber-200 dark:border-amber-800 focus-visible:ring-amber-400/20" />
+                    <Label className="text-sm font-medium">Fear Inventory</Label>
+                    <p className="text-xs text-muted-foreground">Name every fear — then track it. What's named can be managed.</p>
+                    <FearInventory
+                      items={extras.fearInventory}
+                      onChange={items => updateExtras({ fearInventory: items })}
+                    />
                   </div>
 
                   <div className="space-y-2">
@@ -1947,11 +2635,10 @@ export default function LifestylePage() {
                 <p className="text-sm text-foreground/80 leading-relaxed italic">"In 12 months, Eli and Elsy will know you as the person who built something. That's a story you'll tell them about what's possible — not in a big speech, just by how you are. The financial model matters. But this is actually what you're doing it for."</p>
               </div>
 
-              {plan.biggestConcerns && (
+              {extras.fearInventory.length > 0 && (
                 <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50/40 dark:bg-amber-950/20 p-4">
-                  <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">Your honest worries</p>
-                  <p className="text-sm text-foreground/80 italic leading-relaxed">"{plan.biggestConcerns}"</p>
-                  <p className="text-[11px] text-amber-600/80 dark:text-amber-500/80 mt-3">Named. Known. Now make a plan for each one.</p>
+                  <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-2">Fear inventory</p>
+                  <p className="text-xs text-muted-foreground">{extras.fearInventory.filter(f => f.status === "resolved").length}/{extras.fearInventory.length} fears resolved — keep going.</p>
                 </div>
               )}
             </div>

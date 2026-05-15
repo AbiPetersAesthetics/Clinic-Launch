@@ -152,13 +152,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/project", label: "Project Plan", icon: ListTodo },
+    { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/financials", label: "Financials", icon: Calculator },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/franchise", label: "Franchise Model", icon: Network },
-    { href: "/lifestyle", label: "Life Design", icon: Leaf },
   ];
 
   return (
