@@ -52,6 +52,7 @@ interface FamilySchedule {
   contingencyPlan: string;
   davidAvailabilityDays: number;
   davidRoleNotes: string;
+  backupCarerName: string;
   daySchedules: DaySchedules;
 }
 
@@ -87,6 +88,7 @@ const DEFAULT_FAMILY_SCHEDULE: FamilySchedule = {
   contingencyPlan: "",
   davidAvailabilityDays: 5,
   davidRoleNotes: "",
+  backupCarerName: "",
   daySchedules: Object.fromEntries(DAYS.map(d => [d, { ...DEFAULT_DAY_ENTRY }])),
 };
 
@@ -480,7 +482,9 @@ function TravelBadge({ mins }: { mins: number }) {
   );
 }
 
-function PersonSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+function PersonSelect({ value, onChange, backupName }: { value: string; onChange: (v: string) => void; backupName?: string }) {
+  const backupLabel = backupName?.trim() || "Other / backup";
+  const backupValue = backupName?.trim() || "Other / backup";
   return (
     <select
       value={value}
@@ -496,7 +500,7 @@ function PersonSelect({ value, onChange }: { value: string; onChange: (v: string
       <option value="">— assign —</option>
       <option value="Abi">Abi</option>
       <option value="David">David</option>
-      <option value="Other / backup">Other / backup</option>
+      <option value={backupValue}>{backupLabel}</option>
     </select>
   );
 }
@@ -607,7 +611,7 @@ function ChildScheduleCard({
   travelHomeToSchool,
   travelSchoolToWinchesterMins, travelWinchesterToSchoolMins,
   travelSchoolToBedhamptonMins, travelBedhamptonToSchoolMins,
-  clinicDays, clinicOpenTime, daySchedules, onDayChange, childKey, accentColor,
+  clinicDays, clinicOpenTime, daySchedules, onDayChange, childKey, accentColor, backupCarerName,
 }: {
   childName: string; school: string;
   schoolStart: string; schoolFinish: string;
@@ -619,6 +623,7 @@ function ChildScheduleCard({
   onDayChange: (day: string, role: keyof ChildSchedule, value: string) => void;
   childKey: "elsy" | "eli";
   accentColor: "amber" | "violet";
+  backupCarerName?: string;
 }) {
   const isAmber = accentColor === "amber";
   const accent = isAmber
@@ -701,7 +706,7 @@ function ChildScheduleCard({
                       <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
                     )}
                   </div>
-                  <PersonSelect value={schedule.dropBy} onChange={who => onDayChange(day, "dropBy", who)} />
+                  <PersonSelect value={schedule.dropBy} onChange={who => onDayChange(day, "dropBy", who)} backupName={backupCarerName} />
                   {dropJourney && (
                     <JourneyChip
                       type="drop"
@@ -727,7 +732,7 @@ function ChildScheduleCard({
                       <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
                     )}
                   </div>
-                  <PersonSelect value={schedule.pickupBy} onChange={who => onDayChange(day, "pickupBy", who)} />
+                  <PersonSelect value={schedule.pickupBy} onChange={who => onDayChange(day, "pickupBy", who)} backupName={backupCarerName} />
                   {pickupJourney && (
                     <JourneyChip
                       type="pickup"
@@ -1605,7 +1610,7 @@ function CoverageMatrix({ clinicDays, daySchedules }: {
                               who === "Abi" ? "bg-primary/10 text-primary"
                               : who === "David" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                               : "bg-muted text-muted-foreground"
-                            }`}>{who === "Other / backup" ? "Other" : who}</span>
+                            }`}>{who}</span>
                           ) : (
                             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-destructive/10 text-destructive text-[10px] font-bold">!</span>
                           )}
@@ -2606,6 +2611,7 @@ export default function LifestylePage() {
               }}
               childKey="elsy"
               accentColor="amber"
+              backupCarerName={familySchedule.backupCarerName}
             />
             <ChildScheduleCard
               childName="Eli"
@@ -2627,6 +2633,7 @@ export default function LifestylePage() {
               }}
               childKey="eli"
               accentColor="violet"
+              backupCarerName={familySchedule.backupCarerName}
             />
           </div>
 
@@ -2749,6 +2756,16 @@ export default function LifestylePage() {
                   <CardDescription className="text-xs">"He'll help" is not a plan. "He does school run Mon–Thu and checks school email on clinic days" is.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <Label className="text-xs text-muted-foreground shrink-0 w-32">Backup carer name</Label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Grandma, Sandra, Childminder…"
+                      value={familySchedule.backupCarerName}
+                      onChange={e => updateFS({ backupCarerName: e.target.value })}
+                      className="flex-1 h-8 text-sm rounded-lg border border-border px-3 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
                   <div className="flex items-center gap-3">
                     <Label className="text-xs text-muted-foreground shrink-0">Days available to support</Label>
                     <div className="flex-1 flex items-center gap-2">
