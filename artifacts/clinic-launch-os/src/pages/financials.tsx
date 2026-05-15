@@ -1402,6 +1402,23 @@ export default function FinancialsPage() {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet;
+
+                        // ── Bedhampton cost breakdown ──────────────────────
+                        const _bedhStockPct  = (model as any)?.bedhStockPercent ?? 35;
+                        const _bedhStock     = Math.round(m.bedhRevenue * _bedhStockPct / 100);
+                        const _bedhRent      = (model as any)?.bedhRentGbp ?? 0;
+                        const _bedhMarketing = (model as any)?.bedhMarketingGbp ?? 0;
+                        const _bedhOther     = (model as any)?.bedhamptonCostsGbp ?? 0;
+                        const _bedhVat       = Math.round(m.bedhRevenue - m.bedhCosts - m.bedhNet);
+
+                        // ── Winchester variable cost breakdown ─────────────
+                        const _wincStockPct  = (model as any)?.stockPercent ?? 0;
+                        const _wincCommPct   = (model as any)?.commissionsPercent ?? 0;
+                        const _wincStock     = Math.round(m.wincRevenue * _wincStockPct / 100);
+                        const _wincComm      = Math.round(m.wincRevenue * _wincCommPct / 100);
+                        const _wincMarketing = (model as any)?.marketingGbp ?? 0;
+                        const _wincStaffing  = (model as any)?.staffingGbp ?? 0;
+                        const _wincConsumables = (model as any)?.consumablesGbp ?? 0;
                         const rowBg = isClose
                           ? "bg-emerald-50 dark:bg-emerald-950/30"
                           : isOpen
@@ -1440,7 +1457,7 @@ export default function FinancialsPage() {
                                 : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
-                            {/* Bedhampton Net — tooltip shows full breakdown */}
+                            {/* Bedhampton Net — rich hover breakdown */}
                             <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30 line-through" : m.bedhNet > 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>
                               {m.bedhClosed ? (
                                 "closed"
@@ -1453,32 +1470,53 @@ export default function FinancialsPage() {
                                       {formatGBP(m.bedhNet)}
                                     </span>
                                   </TooltipTrigger>
-                                  <TooltipContent side="left" className="p-0 w-52">
-                                    <div className="px-3 py-2 border-b border-border/60 bg-muted/40">
-                                      <p className="text-[11px] font-semibold text-foreground">Bedhampton breakdown</p>
-                                      <p className="text-[10px] text-muted-foreground">{m.calendarLabel}</p>
+                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Bedhampton breakdown</p>
+                                      <p className="text-[10px] text-gray-500">{m.calendarLabel}</p>
                                     </div>
-                                    <div className="px-3 py-2 space-y-1 text-[11px]">
-                                      <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Gross revenue</span>
-                                        <span className="tabular-nums font-medium">{formatGBP(m.bedhRevenue)}</span>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Gross revenue</span>
+                                        <span className="tabular-nums font-semibold text-gray-900">{formatGBP(m.bedhRevenue)}</span>
                                       </div>
-                                      <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Stock &amp; running</span>
-                                        <span className="tabular-nums text-red-500/80">({formatGBP(m.bedhCosts)})</span>
-                                      </div>
-                                      {(() => {
-                                        const bedhVat = m.bedhRevenue - m.bedhCosts - m.bedhNet;
-                                        return bedhVat > 0 ? (
-                                          <div className="flex justify-between">
-                                            <span className="text-muted-foreground">VAT liability</span>
-                                            <span className="tabular-nums text-amber-600 dark:text-amber-400">({formatGBP(bedhVat)})</span>
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Costs</div>
+                                      {_bedhStock > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Stock / products ({_bedhStockPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhStock)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhRent > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Rent / premises</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhRent)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhMarketing > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Marketing</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhMarketing)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhOther > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Other running</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhOther)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhVat > 0 && (
+                                        <>
+                                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
+                                          <div className="flex justify-between items-center pl-1">
+                                            <span className="text-gray-500">VAT liability (20%)</span>
+                                            <span className="tabular-nums text-amber-600">({formatGBP(_bedhVat)})</span>
                                           </div>
-                                        ) : null;
-                                      })()}
-                                      <div className="flex justify-between border-t border-border/40 pt-1 mt-1">
-                                        <span className="font-semibold text-foreground">Net</span>
-                                        <span className={`tabular-nums font-semibold ${m.bedhNet >= 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>{formatGBP(m.bedhNet)}</span>
+                                        </>
+                                      )}
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
+                                        <span className="font-bold text-gray-900">Net</span>
+                                        <span className={`tabular-nums font-bold ${m.bedhNet >= 0 ? "text-blue-600" : "text-red-600"}`}>{formatGBP(m.bedhNet)}</span>
                                       </div>
                                     </div>
                                   </TooltipContent>
@@ -1491,11 +1529,88 @@ export default function FinancialsPage() {
                               {m.wincVat > 0 ? <span>({formatGBP(m.wincVat)})</span> : "—"}
                             </td>
 
-                            {/* Winchester ± — revenue minus all Winchester costs; shows if Winc covers itself */}
+                            {/* Winchester ± — rich hover showing full Winchester P&L */}
                             <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.wincRevenue === 0 ? "text-muted-foreground/30" : m.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
-                              {m.wincRevenue === 0
-                                ? "—"
-                                : <span>{m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}</span>}
+                              {m.wincRevenue === 0 ? "—" : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted decoration-emerald-400/60 underline-offset-2">
+                                      {m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Winchester breakdown</p>
+                                      <p className="text-[10px] text-gray-500">{m.calendarLabel}</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Revenue</span>
+                                        <span className="tabular-nums font-semibold text-gray-900">{formatGBP(m.wincRevenue)}</span>
+                                      </div>
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Variable costs</div>
+                                      {_wincStock > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Stock ({_wincStockPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincStock)})</span>
+                                        </div>
+                                      )}
+                                      {_wincComm > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Commissions ({_wincCommPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincComm)})</span>
+                                        </div>
+                                      )}
+                                      {_wincMarketing > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Marketing</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincMarketing)})</span>
+                                        </div>
+                                      )}
+                                      {_wincStaffing > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Staffing</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincStaffing)})</span>
+                                        </div>
+                                      )}
+                                      {_wincConsumables > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Consumables</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincConsumables)})</span>
+                                        </div>
+                                      )}
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Fixed costs</div>
+                                      {fixedCostItems.length > 0
+                                        ? fixedCostItems.map((item) => (
+                                            <div key={item.id} className="flex justify-between items-center pl-1">
+                                              <span className="text-gray-500 truncate max-w-[55%]">{item.name}</span>
+                                              <span className="tabular-nums text-red-600">({formatGBP(item.amountGbp || 0)})</span>
+                                            </div>
+                                          ))
+                                        : (
+                                            <div className="flex justify-between items-center pl-1">
+                                              <span className="text-gray-500">Total fixed</span>
+                                              <span className="tabular-nums text-red-600">({formatGBP(m.wincFixedCosts)})</span>
+                                            </div>
+                                          )
+                                      }
+                                      {m.wincVat > 0 && (
+                                        <>
+                                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
+                                          <div className="flex justify-between items-center pl-1">
+                                            <span className="text-gray-500">VAT liability (20%)</span>
+                                            <span className="tabular-nums text-amber-600">({formatGBP(m.wincVat)})</span>
+                                          </div>
+                                        </>
+                                      )}
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
+                                        <span className="font-bold text-gray-900">Winchester net</span>
+                                        <span className={`tabular-nums font-bold ${m.wincNet >= 0 ? "text-emerald-600" : "text-red-600"}`}>{m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
                             </td>
 
                             {/* Combined Net Profit */}
