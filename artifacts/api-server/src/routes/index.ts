@@ -16,6 +16,7 @@ import complianceRouter from "./compliance";
 import aiRouter from "./ai";
 import fixedCostItemsRouter from "./fixed_cost_items";
 import bedhamptonRouter from "./bedhampton";
+import lifestyleRouter from "./lifestyle";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(complianceRouter);
 router.use(aiRouter);
 router.use(fixedCostItemsRouter);
 router.use(bedhamptonRouter);
+router.use(lifestyleRouter);
 
 export default router;

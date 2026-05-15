@@ -12,3 +12,4 @@ export * from "./compliance_items";
 export * from "./cqc_milestones";
 export * from "./fixed_cost_items";
 export * from "./property_task_overrides";
+export * from "./lifestyle";

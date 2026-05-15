@@ -23,6 +23,7 @@ import {
   LogOut,
   MapPin,
   TrendingUp,
+  Leaf,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { formatGBP, formatPercent } from "@/lib/format";
@@ -157,6 +158,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/franchise", label: "Franchise Model", icon: Network },
+    { href: "/lifestyle", label: "Life Design", icon: Leaf },
   ];
 
   return (
