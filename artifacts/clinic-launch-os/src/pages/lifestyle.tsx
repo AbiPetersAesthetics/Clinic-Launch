@@ -2463,17 +2463,7 @@ export default function LifestylePage() {
     update({ extrasJson: JSON.stringify({ ...extras, ...patch }) });
   }, [extras, update]);
 
-  // ── Computed signals ───────────────────────────────────────────────────────
-  const allChecks = [
-    ...plan.scheduleChecks.filter(k => SCHEDULE_CHECKS.some(i => i.key === k)),
-    ...plan.familyChecks.filter(k => FAMILY_CHECKS.some(i => i.key === k)),
-    ...plan.nursingChecks.filter(k => NURSING_CHECKS.some(i => i.key === k)),
-    ...plan.wellbeingChecks.filter(k => WELLBEING_CHECKS.some(i => i.key === k)),
-    ...plan.identityChecks.filter(k => IDENTITY_CHECKS.some(i => i.key === k)),
-  ];
-  const totalChecks = SCHEDULE_CHECKS.length + FAMILY_CHECKS.length + NURSING_CHECKS.length + WELLBEING_CHECKS.length + IDENTITY_CHECKS.length;
-  const lifeReadiness = Math.round((allChecks.length / totalChecks) * 100);
-
+  // ── Conflict / coverage signals (must be declared before domainScores) ──────
   const schoolDropConflict = plan.clinicDays.length > 0 && (() => {
     const openH = parseInt(plan.clinicOpenTime);
     const schoolH = parseInt(familySchedule.elsySchoolStart);
@@ -2484,6 +2474,97 @@ export default function LifestylePage() {
     const ds = familySchedule.daySchedules[day];
     return ds?.elsy?.dropBy && ds?.elsy?.pickupBy && ds?.eli?.dropBy && ds?.eli?.pickupBy;
   });
+
+  // ── Smart readiness scoring ────────────────────────────────────────────────
+  // Combines automatic data-driven signals (did you fill this in?) with
+  // manual checklist ticks (have you consciously confirmed this?).
+  // Each signal/tick is weighted equally within its domain.
+  const domainScores = useMemo(() => {
+    const score = (signals: boolean[]) =>
+      Math.round(signals.filter(Boolean).length / Math.max(1, signals.length) * 100);
+
+    // ── Schedule ──────────────────────────────────────────────────────────
+    const scheduleSignals: boolean[] = [
+      // Data signals
+      plan.clinicDays.length > 0,
+      plan.clinicDays.length <= 4,
+      !schoolDropConflict,
+      plan.scheduleNotes.trim().length > 20,
+      extras.closureDates.length > 0,
+      // Manual checklist ticks
+      ...SCHEDULE_CHECKS.map(c => plan.scheduleChecks.includes(c.key)),
+    ];
+
+    // ── Family ────────────────────────────────────────────────────────────
+    const elsyDropCovered = plan.clinicDays.length > 0 &&
+      plan.clinicDays.every(day => !!familySchedule.daySchedules[day]?.elsy?.dropBy);
+    const elsyPickupCovered = plan.clinicDays.length > 0 &&
+      plan.clinicDays.every(day => !!familySchedule.daySchedules[day]?.elsy?.pickupBy);
+    const eliDropCovered = plan.clinicDays.length > 0 &&
+      plan.clinicDays.every(day => !!familySchedule.daySchedules[day]?.eli?.dropBy);
+    const eliPickupCovered = plan.clinicDays.length > 0 &&
+      plan.clinicDays.every(day => !!familySchedule.daySchedules[day]?.eli?.pickupBy);
+    const familySignals: boolean[] = [
+      // Data signals
+      elsyDropCovered,
+      elsyPickupCovered,
+      eliDropCovered,
+      eliPickupCovered,
+      plan.schoolContingencyPlan.trim().length > 10,
+      plan.davidRoleNotes.trim().length > 10,
+      // Manual checklist ticks
+      ...FAMILY_CHECKS.map(c => plan.familyChecks.includes(c.key)),
+    ];
+
+    // ── Nursing ───────────────────────────────────────────────────────────
+    const nursingSignals: boolean[] = [
+      // Data signals
+      plan.nursingStatus !== "still_working",
+      !!plan.targetExitDate,
+      plan.nursingNoticeWeeks > 0 && plan.nursingNoticeWeeks !== 12,
+      plan.nursingExitNotes.trim().length > 20,
+      extras.nursingMonthlyIncomeGbp > 0,
+      // Manual checklist ticks
+      ...NURSING_CHECKS.map(c => plan.nursingChecks.includes(c.key)),
+    ];
+
+    // ── Wellbeing ─────────────────────────────────────────────────────────
+    const wellbeingSignals: boolean[] = [
+      // Data signals
+      plan.maxClinicDaysPerWeek <= 4,
+      extras.nonNegotiablesList.length > 0,
+      plan.sickCoverPlan.trim().length > 20,
+      plan.holidayPlan.trim().length > 20,
+      extras.targetHoursPerFortnight > 0,
+      // Manual checklist ticks
+      ...WELLBEING_CHECKS.map(c => plan.wellbeingChecks.includes(c.key)),
+    ];
+
+    // ── Identity ──────────────────────────────────────────────────────────
+    const identitySignals: boolean[] = [
+      // Data signals
+      plan.mostExcitedAbout.trim().length > 20,
+      extras.thePitch.trim().length > 20,
+      extras.successVision12m.trim().length > 50,
+      plan.supportNetwork.trim().length > 20,
+      extras.fearInventory.length > 0,
+      // Manual checklist ticks
+      ...IDENTITY_CHECKS.map(c => plan.identityChecks.includes(c.key)),
+    ];
+
+    return {
+      schedule: score(scheduleSignals),
+      family: score(familySignals),
+      nursing: score(nursingSignals),
+      wellbeing: score(wellbeingSignals),
+      identity: score(identitySignals),
+    };
+  }, [plan, extras, familySchedule, schoolDropConflict]);
+
+  const lifeReadiness = Math.round(
+    (domainScores.schedule + domainScores.family + domainScores.nursing +
+     domainScores.wellbeing + domainScores.identity) / 5
+  );
 
   const familyConflicts = useMemo(() => {
     const checkWeek = (sched: DaySchedules, label: string) => plan.clinicDays.flatMap(day => {
@@ -2641,13 +2722,12 @@ export default function LifestylePage() {
           </div>
           <div className="grid grid-cols-5 gap-2">
             {[
-              { label: "Schedule", icon: CalendarDays, checks: plan.scheduleChecks, items: SCHEDULE_CHECKS, tabKey: "schedule" as TabKey },
-              { label: "Family", icon: Users, checks: plan.familyChecks, items: FAMILY_CHECKS, tabKey: "family" as TabKey },
-              { label: "Nursing", icon: Stethoscope, checks: plan.nursingChecks, items: NURSING_CHECKS, tabKey: "nursing" as TabKey },
-              { label: "Wellbeing", icon: Heart, checks: plan.wellbeingChecks, items: WELLBEING_CHECKS, tabKey: "wellbeing" as TabKey },
-              { label: "Identity", icon: Sparkles, checks: plan.identityChecks, items: IDENTITY_CHECKS, tabKey: "identity" as TabKey },
-            ].map(({ label, icon: Icon, checks, items, tabKey }) => {
-              const pct = Math.round((checks.filter(k => items.some(i => i.key === k)).length / Math.max(1, items.length)) * 100);
+              { label: "Schedule", icon: CalendarDays, pct: domainScores.schedule, tabKey: "schedule" as TabKey },
+              { label: "Family", icon: Users, pct: domainScores.family, tabKey: "family" as TabKey },
+              { label: "Nursing", icon: Stethoscope, pct: domainScores.nursing, tabKey: "nursing" as TabKey },
+              { label: "Wellbeing", icon: Heart, pct: domainScores.wellbeing, tabKey: "wellbeing" as TabKey },
+              { label: "Identity", icon: Sparkles, pct: domainScores.identity, tabKey: "identity" as TabKey },
+            ].map(({ label, icon: Icon, pct, tabKey }) => {
               const color = pct >= 70 ? "emerald" : pct >= 40 ? "primary" : "amber";
               const colorMap: Record<string, string> = {
                 emerald: "bg-emerald-500",
