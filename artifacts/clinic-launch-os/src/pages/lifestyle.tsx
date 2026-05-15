@@ -111,6 +111,7 @@ function calcPickupJourney(schoolFinish: string, clinicToSchool: number) {
 // ─── Plan extras (stored as extrasJson blob) ──────────────────────────────────
 interface NonNegotiableItem { id: string; text: string; category: "family" | "health" | "time" | "personal" }
 interface FearItem { id: string; fear: string; status: "unresolved" | "working" | "resolved" }
+interface DayTimeOverride { open: string; close: string; }
 interface PlanExtras {
   closureDates: string[];
   nonNegotiablesList: NonNegotiableItem[];
@@ -120,10 +121,12 @@ interface PlanExtras {
   nursingMonthlyIncomeGbp: number;
   energyGivers: string;
   energyDrainers: string;
+  dayTimeOverrides: Record<string, DayTimeOverride>;
 }
 const DEFAULT_EXTRAS: PlanExtras = {
   closureDates: [], nonNegotiablesList: [], thePitch: "", successVision12m: "",
   fearInventory: [], nursingMonthlyIncomeGbp: 0, energyGivers: "", energyDrainers: "",
+  dayTimeOverrides: {},
 };
 function parseExtras(s: string): PlanExtras {
   try { return { ...DEFAULT_EXTRAS, ...JSON.parse(s || "{}") }; } catch { return DEFAULT_EXTRAS; }
@@ -988,18 +991,43 @@ function computeDayWindow(
 }
 
 function SmartScheduleAdvisor({
-  familySchedule, currentDays, onApply,
+  familySchedule, currentDays, currentOpenTime, currentCloseTime,
+  dayTimeOverrides, onApply, onDayOverride,
 }: {
   familySchedule: FamilySchedule;
   currentDays: string[];
+  currentOpenTime: string;
+  currentCloseTime: string;
+  dayTimeOverrides: Record<string, DayTimeOverride>;
   onApply: (days: string[], openTime: string, closeTime: string) => void;
+  onDayOverride: (day: string, override: DayTimeOverride | null) => void;
 }) {
   const BASELINE_OPEN  = "09:00";
   const BASELINE_CLOSE = "19:00";
 
+  const [editingDay, setEditingDay] = useState<string | null>(null);
+  const [editOpen, setEditOpen]     = useState("");
+  const [editClose, setEditClose]   = useState("");
+
+  const openEdit = (day: string) => {
+    const ov = dayTimeOverrides[day];
+    setEditOpen(ov?.open ?? currentOpenTime);
+    setEditClose(ov?.close ?? currentCloseTime);
+    setEditingDay(day);
+  };
+  const saveEdit = (day: string) => {
+    onDayOverride(day, { open: editOpen, close: editClose });
+    setEditingDay(null);
+  };
+  const clearOverride = (day: string) => {
+    onDayOverride(day, null);
+    setEditingDay(null);
+  };
+
   const dayAnalysis = DAYS.map(day => {
     const ff = FOOTFALL_DATA[day];
-    const windowHrs = computeDayWindow(day, familySchedule, BASELINE_OPEN, BASELINE_CLOSE);
+    const ov = dayTimeOverrides[day];
+    const windowHrs = computeDayWindow(day, familySchedule, ov?.open ?? BASELINE_OPEN, ov?.close ?? BASELINE_CLOSE);
     const windowBonus = Math.min(2, Math.max(0, (windowHrs - 5) * 0.5));
     const score = ff.score + windowBonus;
     const ds = familySchedule.daySchedules[day];
@@ -1014,6 +1042,13 @@ function SmartScheduleAdvisor({
   const recommended = new Set(sorted.slice(0, 4).map(d => d.day));
   const recommendedOrdered = DAYS.filter(d => recommended.has(d));
 
+  const toggleDay = (day: string) => {
+    const newDays = currentDays.includes(day)
+      ? currentDays.filter(d => d !== day)
+      : DAYS.filter(d => [...currentDays, day].includes(d));
+    onApply(newDays, currentOpenTime, currentCloseTime);
+  };
+
   return (
     <Card className="shadow-sm border-emerald-200 dark:border-emerald-900">
       <CardHeader className="pb-3">
@@ -1024,7 +1059,7 @@ function SmartScheduleAdvisor({
               Smart Schedule Advisor
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">
-              UK aesthetics foot-fall data combined with your school run windows
+              Click a day to toggle it on/off · click the clock to set custom hours
             </CardDescription>
           </div>
           <Button
@@ -1038,47 +1073,116 @@ function SmartScheduleAdvisor({
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="space-y-1.5">
-          {dayAnalysis.map(({ day, ff, windowHrs, score, abiDrops, abiPickups }) => {
-            const isRec    = recommended.has(day);
-            const isActive = currentDays.includes(day);
+          {dayAnalysis.map(({ day, ff, windowHrs, abiDrops, abiPickups }) => {
+            const isRec     = recommended.has(day);
+            const isActive  = currentDays.includes(day);
+            const hasOverride = !!dayTimeOverrides[day];
+            const isEditing = editingDay === day;
             return (
-              <div key={day} className={`flex items-start gap-2.5 rounded-lg px-3 py-2.5 border transition-all ${
-                isRec
-                  ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800"
-                  : "bg-muted/20 border-border/40"
+              <div key={day} className={`rounded-lg border transition-all ${
+                isActive
+                  ? isRec
+                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-700"
+                    : "bg-primary/5 border-primary/30"
+                  : "bg-muted/20 border-border/40 opacity-60"
               }`}>
-                <span className="text-[11px] font-bold text-foreground w-7 shrink-0 pt-0.5">{day}</span>
-
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${ff.score >= 9 ? "bg-emerald-500" : ff.score >= 7 ? "bg-primary" : ff.score >= 5 ? "bg-amber-400" : "bg-muted-foreground/30"}`}
-                        style={{ width: `${ff.score * 10}%` }}
-                      />
-                    </div>
-                    <span className={`text-[9px] font-bold shrink-0 ${ff.score >= 9 ? "text-emerald-600 dark:text-emerald-400" : ff.score >= 7 ? "text-primary" : "text-muted-foreground"}`}>
-                      {ff.score}/10
-                    </span>
+                <button
+                  type="button"
+                  className="w-full flex items-start gap-2.5 px-3 py-2.5 text-left"
+                  onClick={() => { if (!isEditing) toggleDay(day); }}
+                >
+                  <div className={`mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                    isActive
+                      ? isRec ? "bg-emerald-500 border-emerald-500" : "bg-primary border-primary"
+                      : "border-muted-foreground/30"
+                  }`}>
+                    {isActive && <Check className="w-2.5 h-2.5 text-white" />}
                   </div>
-                  <p className="text-[10px] text-muted-foreground leading-tight">{ff.note}</p>
-                  <p className="text-[9px] text-muted-foreground/70">Best: {ff.bestTimes}</p>
-                </div>
 
-                <div className="text-right shrink-0 space-y-1">
-                  <p className={`text-[10px] font-semibold ${windowHrs >= 6 ? "text-emerald-600 dark:text-emerald-400" : windowHrs >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>
-                    {windowHrs > 0 ? `${windowHrs.toFixed(1)}h` : "—"}
-                  </p>
-                  {(abiDrops > 0 || abiPickups > 0) && (
-                    <p className="text-[9px] text-muted-foreground">
-                      {abiDrops > 0 ? `↓${abiDrops}` : ""}
-                      {abiDrops > 0 && abiPickups > 0 ? " " : ""}
-                      {abiPickups > 0 ? `↑${abiPickups}` : ""}
+                  <span className="text-[11px] font-bold text-foreground w-7 shrink-0 pt-0.5">{day}</span>
+
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${ff.score >= 9 ? "bg-emerald-500" : ff.score >= 7 ? "bg-primary" : ff.score >= 5 ? "bg-amber-400" : "bg-muted-foreground/30"}`}
+                          style={{ width: `${ff.score * 10}%` }}
+                        />
+                      </div>
+                      <span className={`text-[9px] font-bold shrink-0 ${ff.score >= 9 ? "text-emerald-600 dark:text-emerald-400" : ff.score >= 7 ? "text-primary" : "text-muted-foreground"}`}>
+                        {ff.score}/10
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{ff.note}</p>
+                    <p className="text-[9px] text-muted-foreground/70">Best: {ff.bestTimes}</p>
+                  </div>
+
+                  <div className="text-right shrink-0 space-y-1">
+                    <p className={`text-[10px] font-semibold ${windowHrs >= 6 ? "text-emerald-600 dark:text-emerald-400" : windowHrs >= 4 ? "text-foreground" : "text-amber-600 dark:text-amber-400"}`}>
+                      {windowHrs > 0 ? `${windowHrs.toFixed(1)}h` : "—"}
                     </p>
+                    {(abiDrops > 0 || abiPickups > 0) && (
+                      <p className="text-[9px] text-muted-foreground">
+                        {abiDrops > 0 ? `↓${abiDrops}` : ""}
+                        {abiDrops > 0 && abiPickups > 0 ? " " : ""}
+                        {abiPickups > 0 ? `↑${abiPickups}` : ""}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 justify-end">
+                      {isRec && <span className="text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">REC</span>}
+                      {hasOverride && <span className="text-[8px] bg-violet-500 text-white px-1 py-0.5 rounded font-bold">custom</span>}
+                    </div>
+                  </div>
+
+                  {isActive && (
+                    <button
+                      type="button"
+                      title="Set custom hours for this day"
+                      onClick={e => { e.stopPropagation(); isEditing ? setEditingDay(null) : openEdit(day); }}
+                      className={`ml-1 mt-0.5 shrink-0 p-1 rounded transition-colors ${
+                        isEditing || hasOverride
+                          ? "text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/40"
+                          : "text-muted-foreground/50 hover:text-foreground hover:bg-muted/60"
+                      }`}
+                    >
+                      <Clock className="w-3.5 h-3.5" />
+                    </button>
                   )}
-                  {isRec && <span className="inline-block text-[8px] bg-emerald-500 text-white px-1 py-0.5 rounded font-bold">✓ REC</span>}
-                  {isActive && !isRec && <span className="inline-block text-[8px] bg-muted text-muted-foreground px-1 py-0.5 rounded">active</span>}
-                </div>
+                </button>
+
+                {isEditing && (
+                  <div className="border-t border-border/60 px-3 py-3 bg-background/60 rounded-b-lg space-y-3">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Override hours for {day}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-muted-foreground">Open</label>
+                        <Input type="time" value={editOpen} onChange={e => setEditOpen(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] text-muted-foreground">Close</label>
+                        <Input type="time" value={editClose} onChange={e => setEditClose(e.target.value)} className="h-8 text-xs" />
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="h-7 text-xs flex-1" onClick={() => saveEdit(day)}>
+                        <Check className="w-3 h-3 mr-1" /> Save
+                      </Button>
+                      {hasOverride && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => clearOverride(day)}>
+                          Reset
+                        </Button>
+                      )}
+                      <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingDay(null)}>
+                        <X className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    {hasOverride && (
+                      <p className="text-[9px] text-muted-foreground">
+                        Current override: {dayTimeOverrides[day].open}–{dayTimeOverrides[day].close} · Reset to use global hours
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1104,7 +1208,7 @@ function SmartScheduleAdvisor({
             <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">09:30–18:30</span>
           </div>
           <p className="text-[10px] text-emerald-600 dark:text-emerald-500 mt-1.5">
-            Highest foot-fall days + your available windows. Click <strong>Auto-schedule</strong> above to apply.
+            Highest foot-fall days + your available windows. Click <strong>Auto-schedule</strong> to apply, or toggle days above.
           </p>
         </div>
       </CardContent>
@@ -2030,7 +2134,15 @@ export default function LifestylePage() {
               <SmartScheduleAdvisor
                 familySchedule={familySchedule}
                 currentDays={plan.clinicDays}
+                currentOpenTime={plan.clinicOpenTime}
+                currentCloseTime={plan.clinicCloseTime}
+                dayTimeOverrides={extras.dayTimeOverrides}
                 onApply={(days, open, close) => update({ clinicDays: days, clinicOpenTime: open, clinicCloseTime: close })}
+                onDayOverride={(day, override) => {
+                  const next = { ...extras.dayTimeOverrides };
+                  if (override === null) delete next[day]; else next[day] = override;
+                  updateExtras({ dayTimeOverrides: next });
+                }}
               />
 
               <Card className="shadow-sm">
