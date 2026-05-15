@@ -564,13 +564,36 @@ function JourneyChip({ type, leaveHome, leaveSchool, arriveClinic, lateMins, mus
   );
 }
 
-function DayLocationStrip({ clinicDays, daySchedules, onChange }: {
+function DayLocationStrip({ clinicDays, daySchedules, onChange, fortnightEnabled, weekBDaySchedules, onWeekBChange }: {
   clinicDays: string[];
   daySchedules: DaySchedules;
   onChange: (day: string, loc: ClinicLocation) => void;
+  fortnightEnabled?: boolean;
+  weekBDaySchedules?: DaySchedules;
+  onWeekBChange?: (day: string, loc: ClinicLocation) => void;
 }) {
   const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
   if (clinicDayList.length === 0) return null;
+
+  function LocationToggle({ loc, onSet }: { loc: ClinicLocation; onSet: (l: ClinicLocation) => void }) {
+    return (
+      <div className="flex rounded-lg border border-border overflow-hidden text-[11px] font-semibold">
+        <button
+          onClick={() => onSet("winchester")}
+          className={`px-3 py-1.5 transition-colors ${loc === "winchester" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          Winch
+        </button>
+        <button
+          onClick={() => onSet("bedhampton")}
+          className={`px-3 py-1.5 transition-colors border-l border-border ${loc === "bedhampton" ? "bg-teal-600 text-white" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          Bedh
+        </button>
+      </div>
+    );
+  }
+
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-3">
@@ -581,40 +604,42 @@ function DayLocationStrip({ clinicDays, daySchedules, onChange }: {
           Set each day independently — Bedhampton is local so journey times are much shorter, which changes the conflict calculations.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-3">
-          {clinicDayList.map(day => {
-            const loc = daySchedules[day]?.clinicLocation ?? "winchester";
-            return (
+      <CardContent className="space-y-4">
+        {/* Week A (or only week if not fortnight) */}
+        <div>
+          {fortnightEnabled && <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Week A</p>}
+          <div className="flex flex-wrap gap-3">
+            {clinicDayList.map(day => (
               <div key={day} className="space-y-1.5">
                 <p className="text-[11px] font-semibold text-foreground text-center">{day}</p>
-                <div className="flex rounded-lg border border-border overflow-hidden text-[11px] font-semibold">
-                  <button
-                    onClick={() => onChange(day, "winchester")}
-                    className={`px-3 py-1.5 transition-colors ${
-                      loc === "winchester"
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Winchester
-                  </button>
-                  <button
-                    onClick={() => onChange(day, "bedhampton")}
-                    className={`px-3 py-1.5 transition-colors border-l border-border ${
-                      loc === "bedhampton"
-                        ? "bg-teal-600 text-white"
-                        : "text-muted-foreground hover:bg-muted"
-                    }`}
-                  >
-                    Bedhampton
-                  </button>
-                </div>
+                <LocationToggle
+                  loc={daySchedules[day]?.clinicLocation ?? "winchester"}
+                  onSet={loc => onChange(day, loc)}
+                />
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-3">
+
+        {/* Week B — only shown when fortnight mode is on */}
+        {fortnightEnabled && weekBDaySchedules && onWeekBChange && (
+          <div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Week B</p>
+            <div className="flex flex-wrap gap-3">
+              {clinicDayList.map(day => (
+                <div key={day} className="space-y-1.5">
+                  <p className="text-[11px] font-semibold text-foreground text-center">{day}</p>
+                  <LocationToggle
+                    loc={weekBDaySchedules[day]?.clinicLocation ?? "winchester"}
+                    onSet={loc => onWeekBChange(day, loc)}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <p className="text-[10px] text-muted-foreground">
           Winchester = 9A Jewry St, SO23 · Bedhampton = local (PO9 area)
         </p>
       </CardContent>
@@ -3026,6 +3051,13 @@ export default function LifestylePage() {
               const next = { ...familySchedule.daySchedules };
               next[day] = { ...next[day], clinicLocation: loc };
               updateFS({ daySchedules: next });
+            }}
+            fortnightEnabled={familySchedule.fortnightEnabled}
+            weekBDaySchedules={familySchedule.weekBDaySchedules}
+            onWeekBChange={(day, loc) => {
+              const next = { ...familySchedule.weekBDaySchedules };
+              next[day] = { ...next[day], clinicLocation: loc };
+              updateFS({ weekBDaySchedules: next });
             }}
           />
 
