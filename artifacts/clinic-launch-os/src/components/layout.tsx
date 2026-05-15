@@ -25,6 +25,7 @@ import {
   TrendingUp,
   Leaf,
   Gauge,
+  Megaphone,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { formatGBP, formatPercent } from "@/lib/format";
@@ -161,6 +162,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
+    { href: "/marketing", label: "Marketing", icon: Megaphone },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
     { href: "/franchise", label: "Franchise Model", icon: Network },
   ];

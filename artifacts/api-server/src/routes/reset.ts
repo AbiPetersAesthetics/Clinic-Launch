@@ -8,6 +8,8 @@ import {
   fixedCostItemsTable,
   propertiesTable,
   decisionsTable,
+  marketingItemsTable,
+  projectsTable,
 } from "@workspace/db";
 import { eq } from "drizzle-orm";
 
@@ -115,14 +117,26 @@ router.post("/projects/:id/reset/:section", async (req, res) => {
           .where(eq(decisionsTable.projectId, projectId));
         break;
 
+      case "marketing":
+        await db.update(marketingItemsTable)
+          .set({ status: "not_started", notes: "", updatedAt: new Date() })
+          .where(eq(marketingItemsTable.projectId, projectId));
+        await db.update(projectsTable)
+          .set({ updatedAt: new Date() } as any)
+          .where(eq(projectsTable.id, projectId));
+        await db.execute(
+          `UPDATE projects SET waitlist_count = 0 WHERE id = ${projectId}`
+        );
+        break;
+
       default:
         return res.status(400).json({ error: `Unknown section: ${section}` });
     }
 
-    res.json({ ok: true, section, projectId });
+    return res.json({ ok: true, section, projectId });
   } catch (err) {
     console.error("Reset error:", err);
-    res.status(500).json({ error: "Reset failed" });
+    return res.status(500).json({ error: "Reset failed" });
   }
 });
 

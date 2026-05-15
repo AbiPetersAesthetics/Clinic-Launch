@@ -13,6 +13,7 @@ export const projectsTable = pgTable("projects", {
   status: text("status").notNull().default("planning"),
   launchReadinessPercent: integer("launch_readiness_percent").notNull().default(0),
   scoringWeights: jsonb("scoring_weights").$type<ScoringWeights>(),
+  waitlistCount: integer("waitlist_count").default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

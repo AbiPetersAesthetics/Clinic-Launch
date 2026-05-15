@@ -16,6 +16,7 @@ import OptimisationPage from "@/pages/optimisation";
 import CompliancePage from "@/pages/compliance";
 import FranchisePage from "@/pages/franchise";
 import LifestylePage from "@/pages/lifestyle";
+import MarketingPage from "@/pages/marketing";
 import OperationalModelPage from "@/pages/operational-model";
 
 const queryClient = new QueryClient();
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/compliance" component={CompliancePage} />
         <Route path="/franchise" component={FranchisePage} />
         <Route path="/lifestyle" component={LifestylePage} />
+        <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route component={NotFound} />
       </Switch>
