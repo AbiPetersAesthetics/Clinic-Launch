@@ -18,6 +18,7 @@ import FranchisePage from "@/pages/franchise";
 import LifestylePage from "@/pages/lifestyle";
 import MarketingPage from "@/pages/marketing";
 import OperationalModelPage from "@/pages/operational-model";
+import CompetitionPage from "@/pages/competition";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,7 @@ function Router() {
         <Route path="/lifestyle" component={LifestylePage} />
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
+        <Route path="/competition" component={CompetitionPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

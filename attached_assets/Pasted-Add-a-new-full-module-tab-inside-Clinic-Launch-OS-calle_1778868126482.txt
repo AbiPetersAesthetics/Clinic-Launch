@@ -1,0 +1,786 @@
+Add a new full module/tab inside Clinic Launch OS called “Competition Intelligence”.
+
+This tab should help assess whether there is enough market space for Abi Peters Aesthetics to open at a selected clinic property, starting with 9A Jewry Street, Winchester.
+
+This should NOT be a basic competitor list.
+
+It should feel like a full commercial market intelligence dashboard for a medical aesthetics clinic launch.
+
+CORE PURPOSE:
+Answer the question:
+
+“Is there genuinely room for Abi Peters Aesthetics in this location, and who are the biggest threats?”
+
+The system must compare every competitor against Abi Peters Aesthetics, not just list them.
+
+Abi Peters Aesthetics positioning baseline:
+- nurse-led medical aesthetics clinic
+- Advanced Nurse Practitioner / Independent Prescriber-led
+- natural results
+- medical professionalism
+- premium but approachable
+- strong trust/social proof
+- established clinic moving from Bedhampton into Winchester
+- likely positioning: premium medical aesthetics, not beauty salon
+- core treatments: anti-wrinkle, dermal filler, skin boosters, polynucleotides, microneedling, premium skincare, future advanced skin/laser
+- strong marketing/automation capability
+- target client: safety-conscious, natural-results-focused, professional female demographic
+
+====================================================
+1. COMPETITOR DISCOVERY ENGINE
+====================================================
+
+Allow the user to search competitors around the selected property.
+
+Inputs:
+- active property address
+- radius: 1 mile / 3 miles / 5 miles / 10 miles / custom
+- town/city
+- postcode
+- treatment category
+- competitor type
+
+Search categories:
+- aesthetics clinics
+- medical aesthetics clinics
+- nurse injectors
+- Botox clinics
+- dermal filler clinics
+- skin clinics
+- laser clinics
+- beauty salons offering injectables
+- doctor-led clinics
+- dental clinics offering aesthetics
+- home-based injectors
+- room-rental injectors
+- chain clinics
+- medispas
+- skincare clinics
+
+Sources to support:
+- Google Places
+- Google Maps
+- business websites
+- Fresha
+- Treatwell
+- Pabau/online booking links
+- Instagram
+- Facebook
+- Save Face
+- JCCP
+- NMC/GMC/GDC register where relevant
+- Companies House
+- review platforms
+- manual entry if automated search fails
+
+For MVP, allow manual competitor creation as well as AI/web-assisted discovery.
+
+====================================================
+2. COMPETITOR PROFILE CARD
+====================================================
+
+Each competitor should have a detailed profile.
+
+Fields:
+- clinic name
+- address
+- distance from selected property
+- website
+- booking link
+- phone
+- Instagram
+- Facebook
+- Google rating
+- Google review count
+- other reviews if available
+- opening hours
+- premises type
+- clinic type
+- practitioner type
+- credentials
+- pricing
+- treatment menu
+- hero treatments
+- visual positioning
+- target audience
+- strengths
+- weaknesses
+- likely client perception
+- threat score
+- opportunity score
+
+Premises type options:
+- high street shopfront
+- medical clinic
+- rented room
+- beauty salon room
+- home clinic
+- residential/home-based
+- dental clinic
+- chain clinic
+- destination clinic
+- unknown
+
+Clinic type options:
+- nurse-led
+- doctor-led
+- dentist-led
+- beautician-led
+- mixed practitioner
+- laser/skin specialist
+- injectables-only
+- salon-led aesthetics
+- chain/brand clinic
+- unknown
+
+====================================================
+3. CREDENTIALS & TRUST ANALYSIS
+====================================================
+
+For each competitor, assess credentials and clinical authority.
+
+Capture:
+- nurse / doctor / dentist / prescriber status
+- independent prescriber status
+- Save Face registration
+- JCCP registration
+- NMC/GMC/GDC registration if stated
+- years of experience
+- NHS/private medical background
+- training level
+- complication management claims
+- insurance claims if stated
+- product brands used
+- medical governance signals
+
+Score:
+- Clinical Authority Score /100
+- Trust Score /100
+- Regulation Visibility Score /100
+
+Compare against Abi Peters Aesthetics.
+
+Flag:
+- strong medical competitor
+- weak/unclear credentials
+- beauty-led competitor
+- possible trust gap
+- possible differentiation opportunity
+
+Important:
+Do not make defamatory statements.
+If credentials are unclear, label them as “not clearly evidenced online” rather than “not qualified”.
+
+====================================================
+4. REVIEW & REPUTATION INTELLIGENCE
+====================================================
+
+Analyse reviews deeply.
+
+For each competitor capture:
+- Google rating
+- Google review count
+- review velocity if available
+- Fresha/Treatwell rating
+- total review footprint
+- review sentiment
+- common praise themes
+- common complaint themes
+- recency of reviews
+- response rate to reviews
+- whether owner replies are professional
+- review strength relative to Abi Peters Aesthetics
+
+Create:
+- Review Strength Score
+- Reputation Risk Score
+- Social Proof Score
+
+Compare:
+- competitor reviews vs Abi Peters Aesthetics reviews
+- rating difference
+- volume difference
+- trust gap
+- whether APA can credibly outperform them
+
+Add AI summary:
+“What clients appear to value about this competitor.”
+
+====================================================
+5. TREATMENT MENU & PRICING ANALYSIS
+====================================================
+
+This is critical.
+
+For each competitor, collect pricing where available for:
+- anti-wrinkle / Botox
+- dermal filler
+- lip filler
+- cheek filler
+- jaw/chin filler
+- tear trough
+- skin boosters
+- Profhilo
+- polynucleotides
+- microneedling
+- chemical peels
+- laser treatments
+- skincare consultations
+- packages
+- memberships
+- consultations
+- deposits
+
+Show:
+- price table
+- lowest / mid / premium competitor pricing
+- APA current pricing
+- APA potential Winchester pricing
+- price gap
+- premium opportunity
+- underpricing risk
+- discounting intensity
+
+Analyse:
+- are competitors cheaper?
+- are they premium?
+- are prices hidden?
+- are they discount-heavy?
+- do they sell treatment plans?
+- do they use membership models?
+- are they medically positioned or beauty-price-led?
+
+Add:
+- Pricing Threat Score
+- Premium Pricing Opportunity Score
+- Discount Pressure Score
+
+====================================================
+6. POSITIONING ANALYSIS
+====================================================
+
+For each competitor, classify their market position.
+
+Positioning categories:
+- luxury medical clinic
+- natural-results nurse-led clinic
+- doctor-led premium clinic
+- beauty salon aesthetics
+- budget injector
+- skin/laser specialist
+- holistic wellness clinic
+- chain clinic
+- home-based trusted local
+- social-media-led injector
+
+Assess:
+- brand quality
+- website quality
+- photography quality
+- before/after quality
+- tone of voice
+- professionalism
+- medical credibility
+- luxury feel
+- accessibility
+- client type they appear to attract
+- how strongly they own a niche
+
+Compare against APA:
+- where APA is stronger
+- where APA is weaker
+- where APA can differentiate
+- what APA must avoid copying
+
+Create:
+- Brand Strength Score
+- Premium Positioning Score
+- Differentiation Score
+- Client Overlap Score
+
+====================================================
+7. LOCATION & PREMISES ANALYSIS
+====================================================
+
+For each competitor assess:
+- distance from selected property
+- visibility
+- parking convenience
+- high street presence
+- shopfront quality
+- clinic environment
+- whether they look established
+- whether premises feel premium
+- whether location supports higher pricing
+
+Classify:
+- direct local threat
+- nearby but different market
+- destination competitor
+- low local threat
+- online/social threat only
+
+Compare:
+- home clinic vs high street
+- room rental vs full clinic
+- shopfront vs hidden premises
+- Winchester central vs surrounding villages/towns
+
+Create:
+- Premises Strength Score
+- Location Threat Score
+- Visibility Score
+
+====================================================
+8. THREAT RANKING ENGINE
+====================================================
+
+Rank competitors by biggest threat to Abi Peters Aesthetics.
+
+Overall Threat Score should combine:
+- proximity
+- credential strength
+- review strength
+- pricing competitiveness
+- treatment overlap
+- brand quality
+- premium positioning
+- social media strength
+- Google ranking strength
+- premises quality
+- client overlap
+- market authority
+- likely conversion strength
+
+Ranking categories:
+- Biggest Direct Threat
+- Biggest Premium Threat
+- Biggest Price Threat
+- Biggest Skin/Laser Threat
+- Biggest Injectables Threat
+- Biggest Google/Search Threat
+- Biggest Social Media Threat
+- Biggest Trust/Credentials Threat
+
+Each competitor card should show:
+- Overall Threat Rank
+- Threat Score
+- Why ranked here
+- Main strengths
+- Main weaknesses
+- How APA can beat them
+
+Use RAG colour coding:
+- Red = serious threat
+- Amber = moderate threat
+- Green = low threat
+
+====================================================
+9. MARKET GAP ANALYSIS
+====================================================
+
+The tab must answer:
+“Is there space for us?”
+
+Analyse market gaps:
+- natural-results nurse-led positioning
+- ANP/IP-led medical authority
+- premium but approachable clinic
+- advanced skin + injectables combination
+- transparent pricing
+- stronger follow-up/nurture
+- better Google review strategy
+- better website conversion
+- better patient education
+- stronger content marketing
+- better consultation journey
+- better memberships/packages
+- male aesthetics
+- peri-menopause/skin ageing
+- under-eye/skin quality
+- premium skincare/Obagi-style plans
+- local trust-based brand
+
+Show:
+- crowded categories
+- underserved categories
+- pricing gaps
+- trust gaps
+- content gaps
+- review gaps
+- treatment gaps
+- service-experience gaps
+
+Create:
+- Market Space Score /100
+- Differentiation Opportunity Score /100
+- Saturation Risk Score /100
+- Recommended Positioning
+
+====================================================
+10. APA VS COMPETITOR COMPARISON
+====================================================
+
+Add side-by-side comparison between Abi Peters Aesthetics and any selected competitor.
+
+Compare:
+- credentials
+- reviews
+- pricing
+- treatments
+- premises
+- website
+- social media
+- Google visibility
+- brand positioning
+- client trust
+- booking journey
+- consultation quality signals
+- before/after content
+- offers
+- memberships
+- follow-up systems
+
+Output:
+- APA advantages
+- APA disadvantages
+- competitor advantages
+- likely client decision factors
+- how APA should respond
+
+====================================================
+11. MAP VIEW
+====================================================
+
+Add a competitor map around the selected clinic property.
+
+Show:
+- active property
+- competitor pins
+- threat colour coding
+- distance rings
+- car parks
+- affluent catchments
+- high street area
+- competitor clusters
+- underserved zones
+
+Map filters:
+- injectables
+- skin clinics
+- laser
+- nurse-led
+- doctor-led
+- high threat
+- premium competitors
+- price-led competitors
+
+====================================================
+12. GOOGLE & SEO COMPETITION ANALYSIS
+====================================================
+
+Analyse search visibility.
+
+For key searches:
+- Botox Winchester
+- anti-wrinkle injections Winchester
+- lip filler Winchester
+- dermal filler Winchester
+- Profhilo Winchester
+- polynucleotides Winchester
+- microneedling Winchester
+- skin clinic Winchester
+- aesthetics clinic Winchester
+- nurse injector Winchester
+
+Capture:
+- who appears in Google Maps
+- who appears organically
+- who has strong landing pages
+- who is running ads if detectable
+- who has weak SEO
+- which treatment pages are missing locally
+
+Create:
+- SEO Threat Score
+- Google Maps Threat Score
+- Search Opportunity Score
+
+Show:
+- keywords APA should target
+- pages APA should build
+- competitor content gaps
+
+====================================================
+13. SOCIAL MEDIA COMPETITION ANALYSIS
+====================================================
+
+For each competitor:
+- Instagram followers
+- posting frequency
+- content quality
+- before/after use
+- talking head content
+- educational content
+- offer-heavy content
+- engagement signals
+- brand consistency
+- practitioner visibility
+- trust-building content
+
+Compare against APA:
+- where APA is stronger
+- where APA must improve
+- content opportunities
+
+Create:
+- Social Threat Score
+- Content Quality Score
+- Trust Content Score
+
+====================================================
+14. TREATMENT CATEGORY BATTLECARDS
+====================================================
+
+Build battlecards for major treatment categories.
+
+For each category:
+- anti-wrinkle
+- lip filler
+- skin boosters
+- polynucleotides
+- microneedling
+- laser
+- skincare
+
+Show:
+- competitors offering it
+- price ranges
+- strongest competitor
+- weakest competitor
+- APA recommended positioning
+- APA pricing recommendation
+- content angle
+- offer strategy
+- trust-building angle
+
+Example:
+“Polynucleotides appear under-marketed locally. APA can own this category with education-led content and medically framed under-eye treatment plans.”
+
+====================================================
+15. COMPETITOR WATCHLIST
+====================================================
+
+Allow competitors to be added to a watchlist.
+
+Track:
+- price changes
+- new treatments
+- new locations
+- review growth
+- website changes
+- social media changes
+- offers/promotions
+- hiring/new practitioners
+- new laser/device launches
+
+Show:
+- last checked date
+- change history
+- notes
+- action required
+
+====================================================
+16. MANUAL DATA VERIFICATION
+====================================================
+
+AI/web data can be wrong.
+
+Every competitor profile should include:
+- source links
+- last checked date
+- confidence score
+- manually verified toggle
+- notes field
+- update/re-run button
+
+Never present uncertain findings as fact.
+
+Use labels:
+- Verified
+- Likely
+- Unclear
+- Not found
+
+====================================================
+17. AI COMPETITOR SUMMARY
+====================================================
+
+Add an AI-generated report.
+
+Sections:
+- Overall market summary
+- Top 5 threats
+- Top 5 opportunities
+- Market saturation assessment
+- Pricing position recommendation
+- APA differentiation strategy
+- Treatments APA should prioritise
+- Treatments APA should avoid leading with
+- SEO/content strategy
+- launch messaging strategy
+- competitor weaknesses APA can exploit
+- risks APA must respect
+
+Tone:
+commercial strategist, not generic marketing fluff.
+
+====================================================
+18. OUTPUT REPORT / EXPORT
+====================================================
+
+Allow export as:
+- PDF
+- strategy report
+- investor/partner summary
+- task attachment
+- decision log entry
+
+Report should include:
+- competitor ranking
+- map
+- pricing comparison
+- review comparison
+- market gap analysis
+- APA positioning recommendation
+- go/no-go market assessment
+
+====================================================
+19. DECISION LOG INTEGRATION
+====================================================
+
+If competitor analysis is completed for a property, allow user to save conclusion to Decision Log.
+
+Example:
+“Competition review completed for 9A Jewry Street. Market appears competitive but not saturated. APA has clear differentiation through nurse-led medical positioning, natural results focus and strong review/social proof base.”
+
+====================================================
+20. DASHBOARD INTEGRATION
+====================================================
+
+Dashboard should show:
+- Competition Risk
+- Market Space Score
+- Top Threat
+- Top Opportunity
+- Competitor Saturation
+- Pricing Pressure
+- Recommended Positioning
+
+These should update when the active property changes.
+
+====================================================
+21. SCORING LOGIC
+====================================================
+
+Build scoring transparently.
+
+Do not use black-box scores without explanation.
+
+For every score show:
+- inputs used
+- weighting
+- confidence level
+- why score was assigned
+
+Default weighting:
+- proximity: 15%
+- credentials: 15%
+- reviews: 15%
+- treatment overlap: 15%
+- brand positioning: 15%
+- pricing threat: 10%
+- premises strength: 10%
+- social/SEO visibility: 5%
+
+Allow user to adjust weighting.
+
+====================================================
+22. FIRST VERSION MVP
+====================================================
+
+For MVP, prioritise:
+1. Manual competitor entry
+2. Google/website data fields
+3. review/pricing/treatment comparison
+4. threat ranking
+5. APA comparison
+6. market gap summary
+7. exportable report
+
+Do not overbuild automation before the core intelligence works.
+
+====================================================
+23. DESIGN REQUIREMENTS
+====================================================
+
+The tab should feel:
+- premium
+- strategic
+- serious
+- commercial
+- clean
+- data-rich but not cluttered
+
+Use:
+- ranked competitor cards
+- side-by-side comparison
+- score bars
+- RAG tags
+- map view
+- pricing tables
+- review charts
+- threat matrix
+- market gap cards
+
+Avoid:
+- generic CRM feel
+- basic spreadsheet look
+- vague AI summaries
+
+The tab should feel like:
+“private equity-style market intelligence for a medical aesthetics clinic launch.”
+
+====================================================
+24. IMPORTANT SAFETY / LEGAL REQUIREMENTS
+====================================================
+
+Do not make defamatory or unsupported claims about competitors.
+
+Where information is not verified, label it clearly:
+- “Not clearly evidenced online”
+- “Unclear”
+- “Not found”
+- “Requires manual verification”
+
+Do not claim someone is unqualified unless verified by official sources.
+
+Avoid inflammatory language.
+
+The goal is strategic analysis, not criticism.
+
+====================================================
+END GOAL
+====================================================
+
+The Competition Intelligence tab should help determine whether Abi Peters Aesthetics has enough market space to open successfully at a selected property.
+
+It should identify:
+- who the biggest threats are
+- where APA can win
+- whether pricing is realistic
+- whether the area is saturated
+- whether the selected property has enough commercial opportunity
+- what positioning strategy APA should use to enter the market
+
+This tab should become a core go/no-go decision tool for choosing clinic premises.

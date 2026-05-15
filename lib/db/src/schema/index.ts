@@ -14,3 +14,4 @@ export * from "./fixed_cost_items";
 export * from "./property_task_overrides";
 export * from "./lifestyle";
 export * from "./marketing";
+export * from "./competition";

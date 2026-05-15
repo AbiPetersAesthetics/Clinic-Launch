@@ -18,6 +18,7 @@ import fixedCostItemsRouter from "./fixed_cost_items";
 import bedhamptonRouter from "./bedhampton";
 import lifestyleRouter from "./lifestyle";
 import marketingRouter from "./marketing";
+import competitionRouter from "./competition";
 import resetRouter from "./reset";
 
 const router: IRouter = Router();
@@ -41,6 +42,7 @@ router.use(fixedCostItemsRouter);
 router.use(bedhamptonRouter);
 router.use(lifestyleRouter);
 router.use(marketingRouter);
+router.use(competitionRouter);
 router.use(resetRouter);
 
 export default router;

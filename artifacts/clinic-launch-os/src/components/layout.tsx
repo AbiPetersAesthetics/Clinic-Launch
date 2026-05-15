@@ -26,6 +26,7 @@ import {
   Leaf,
   Gauge,
   Megaphone,
+  Target,
 } from "lucide-react";
 import { useAuth } from "@/contexts/auth";
 import { formatGBP, formatPercent } from "@/lib/format";
@@ -159,6 +160,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/financials", label: "Financials", icon: Calculator },
     { href: "/properties", label: "Properties", icon: Building2 },
+    { href: "/competition", label: "Competition Intel", icon: Target },
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
