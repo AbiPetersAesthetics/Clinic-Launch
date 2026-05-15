@@ -94,6 +94,154 @@ router.delete("/projects/:id/competitors/:cid", async (req, res) => {
   return res.json({ ok: true });
 });
 
+// ── POST URL / Instagram lookup ──────────────────────────────────────────────
+router.post("/projects/:id/competitors/lookup", async (req, res) => {
+  let { url } = req.body as { url: string };
+  if (!url?.trim()) return res.status(400).json({ error: "URL required" });
+
+  // Normalise Instagram handles: @handle, handle, instagram.com/handle
+  let isInstagram = false;
+  const igHandleOnly = url.match(/^@?([\w.]+)$/);
+  if (igHandleOnly && !url.includes(".")) {
+    url = `https://www.instagram.com/${igHandleOnly[1]}/`;
+    isInstagram = true;
+  } else if (url.includes("instagram.com")) {
+    const igMatch = url.match(/instagram\.com\/([^/?&#\s]+)/);
+    if (igMatch) {
+      url = `https://www.instagram.com/${igMatch[1]}/`;
+      isInstagram = true;
+    }
+  } else if (!url.startsWith("http")) {
+    url = `https://${url}`;
+  }
+
+  // Fetch the page
+  let pageText = "";
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.9",
+        "Cache-Control": "no-cache",
+      },
+    });
+    clearTimeout(timeout);
+    const html = await resp.text();
+
+    // JSON-LD structured data (businesses often have LocalBusiness schema)
+    const jsonLdRaw = (html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi) || [])
+      .map(m => m.replace(/<[^>]+>/g, "")).join("\n").slice(0, 3000);
+
+    // Meta tags: description, og:*, twitter:*
+    const metaText = (html.match(/<meta[^>]+>/gi) || [])
+      .filter(m => /name="(description|keywords|title)"|property="og:|twitter:/i.test(m))
+      .map(m => {
+        const content = m.match(/content="([^"]+)"/)?.[1] || m.match(/content='([^']+)'/)?.[1] || "";
+        const name = m.match(/(?:name|property)="([^"]+)"/)?.[1] || "";
+        return `${name}: ${content}`;
+      }).join("\n").slice(0, 1500);
+
+    // Title tag
+    const title = (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || "").trim();
+
+    // Strip all HTML tags for body text
+    const bodyText = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 5000);
+
+    pageText = `URL: ${url}\nTITLE: ${title}\n\nMETA TAGS:\n${metaText}\n\nSTRUCTURED DATA:\n${jsonLdRaw}\n\nPAGE BODY TEXT:\n${bodyText}`;
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("abort") || msg.includes("AbortError")) {
+      return res.status(408).json({ error: "Page took too long to respond. Try pasting the website URL directly." });
+    }
+    return res.status(502).json({ error: `Could not reach that page: ${msg.slice(0, 120)}` });
+  }
+
+  // GPT extraction — comprehensive, covering all competitor schema fields
+  const completion = await openai.chat.completions.create({
+    model: "gpt-5.4",
+    messages: [
+      {
+        role: "system",
+        content: `You are a specialist medical aesthetics market intelligence analyst. Your job is to extract structured competitor data from web page content about an aesthetics clinic, nurse injector, skin clinic, or similar business. Extract only what is actually present in the content — do not fabricate or guess values. If a field is genuinely absent, use null, empty string, 0, or false as appropriate.`,
+      },
+      {
+        role: "user",
+        content: `Extract all available competitor intelligence from this page and return a single JSON object.
+
+PAGE CONTENT:
+${pageText}
+
+Return ONLY valid JSON with these exact fields:
+{
+  "name": "clinic or practitioner name",
+  "address": "full address if present, else ''",
+  "phone": "phone number if present, else ''",
+  "website": "main website URL, else ''",
+  "instagram": "instagram handle WITHOUT @ if found, else ''",
+  "facebook": "facebook page URL or name if found, else ''",
+  "bookingLink": "online booking URL if different from website, else ''",
+  "googleRating": "google rating as string e.g. '4.8' if mentioned, else ''",
+  "googleReviewCount": 0,
+  "instagramFollowers": 0,
+  "clinicType": "nurse-led | doctor-led | dentist-led | beautician-led | mixed practitioner | laser/skin specialist | injectables-only | salon-led aesthetics | chain/brand clinic | unknown",
+  "premisesType": "high street shopfront | medical clinic | rented room | beauty salon room | home clinic | dental clinic | chain clinic | destination clinic | unknown",
+  "positioningCategory": "luxury medical clinic | natural-results nurse-led clinic | doctor-led premium clinic | beauty salon aesthetics | budget injector | skin/laser specialist | holistic wellness clinic | chain clinic | home-based trusted local | social-media-led injector",
+  "targetAudience": "",
+  "practitionerType": "e.g. Aesthetic Nurse, GP, Dentist, Beauty Therapist — or '' if unclear",
+  "yearsExperience": 0,
+  "saveFace": false,
+  "jccp": false,
+  "independentPrescriber": false,
+  "nhsBackground": false,
+  "credentialsNotes": "any qualifications, accreditations, training mentioned",
+  "heroTreatments": "main featured treatments comma-separated",
+  "treatmentsJson": ["only keys from this exact list: antiWrinkle1,antiWrinkle2,antiWrinkle3,fillerLips,fillerCheeks,fillerJaw,fillerNose,fillerHands,skinBooster,prp,mesotherapy,microneedling,chemicalPeel,hydrafacial,ipl,laserHairRemoval,cryolipolysis,hifu,dermaplaning,vitaminDrip,profhilo,polynucleotides,blepharoplasty,threadLift,fatDissolver,skinTag,mole,botulinum"],
+  "pricingJson": {},
+  "postingFrequency": "daily | few-per-week | weekly | few-per-month | monthly | rarely | unknown",
+  "contentQualityScore": 3,
+  "reviewSentimentSummary": "",
+  "commonPraiseJson": [],
+  "commonComplaintsJson": [],
+  "strengthsJson": [],
+  "weaknessesJson": [],
+  "notes": "any other useful intelligence not captured above",
+  "sourceLinks": "${url}",
+  "confidenceLevel": "Verified"
+}`,
+      },
+    ],
+    response_format: { type: "json_object" },
+    temperature: 0.1,
+  });
+
+  const raw = completion.choices[0].message.content || "{}";
+  let data: Record<string, unknown> = {};
+  try { data = JSON.parse(raw); } catch { data = {}; }
+
+  // Serialise array/object fields to JSON strings (DB stores them as text)
+  for (const f of ["treatmentsJson", "strengthsJson", "weaknessesJson", "commonPraiseJson", "commonComplaintsJson"]) {
+    if (Array.isArray(data[f])) data[f] = JSON.stringify(data[f]);
+    else if (typeof data[f] !== "string") data[f] = "[]";
+  }
+  if (data.pricingJson && typeof data.pricingJson === "object" && !Array.isArray(data.pricingJson)) {
+    data.pricingJson = JSON.stringify(data.pricingJson);
+  } else if (typeof data.pricingJson !== "string") {
+    data.pricingJson = "{}";
+  }
+
+  return res.json({ data, url, isInstagram });
+});
+
 // ── POST AI competitor search ────────────────────────────────────────────────
 router.post("/projects/:id/competitors/ai-search", async (req, res) => {
   const { location = "9A Jewry Street, Winchester, Hampshire, UK", radiusMiles = 5 } = req.body;

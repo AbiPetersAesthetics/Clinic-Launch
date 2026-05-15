@@ -226,6 +226,37 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
   );
   const [tab, setTab] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [lookupUrl, setLookupUrl] = useState("");
+  const [looking, setLooking] = useState(false);
+  const [lookupMsg, setLookupMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
+  const handleLookup = async () => {
+    const val = lookupUrl.trim();
+    if (!val) return;
+    setLooking(true);
+    setLookupMsg(null);
+    try {
+      const resp = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: val }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        setLookupMsg({ type: "err", text: json.error || "Lookup failed" });
+        return;
+      }
+      const d = json.data as Partial<FormData>;
+      const filled = Object.fromEntries(Object.entries(d).filter(([, v]) => v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}"));
+      setForm(f => ({ ...f, ...filled }));
+      const count = Object.keys(filled).length;
+      setLookupMsg({ type: "ok", text: `${count} fields auto-filled — review and adjust as needed, then save.` });
+    } catch (e) {
+      setLookupMsg({ type: "err", text: "Network error — could not reach lookup service." });
+    } finally {
+      setLooking(false);
+    }
+  };
 
   const set = (k: keyof FormData, v: unknown) => setForm(f => ({ ...f, [k]: v }));
   const pricing: Record<string,number> = parseJson(form.pricingJson as string, {});
@@ -263,6 +294,33 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
             <p className="text-xs text-muted-foreground mt-0.5">All information is for internal strategic use only</p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
+        </div>
+
+        {/* ── URL / Instagram auto-fill strip ── */}
+        <div className="px-6 py-3 bg-muted/40 border-b border-border">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Auto-fill from website or Instagram</p>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 text-sm bg-background border border-border rounded-md px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/60"
+              placeholder="Paste website URL or Instagram handle (e.g. @winchester_aesthetics)"
+              value={lookupUrl}
+              onChange={e => { setLookupUrl(e.target.value); setLookupMsg(null); }}
+              onKeyDown={e => e.key === "Enter" && handleLookup()}
+              disabled={looking}
+            />
+            <button
+              onClick={handleLookup}
+              disabled={looking || !lookupUrl.trim()}
+              className="flex items-center gap-1.5 px-4 py-1.5 rounded-md text-sm font-medium bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              {looking ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Looking up…</> : <><Sparkles className="w-3.5 h-3.5" />Auto-fill</>}
+            </button>
+          </div>
+          {lookupMsg && (
+            <p className={`mt-2 text-xs ${lookupMsg.type === "ok" ? "text-teal-600" : "text-red-500"}`}>
+              {lookupMsg.type === "ok" ? "✓ " : "✗ "}{lookupMsg.text}
+            </p>
+          )}
         </div>
 
         <div className="flex border-b border-border overflow-x-auto">
