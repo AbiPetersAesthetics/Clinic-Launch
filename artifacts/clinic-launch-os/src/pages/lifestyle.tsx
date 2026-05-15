@@ -53,6 +53,9 @@ interface FamilySchedule {
   davidAvailabilityDays: number;
   davidRoleNotes: string;
   backupCarerName: string;
+  fortnightEnabled: boolean;
+  fortnightAnchorDate: string;
+  weekBDaySchedules: DaySchedules;
   daySchedules: DaySchedules;
 }
 
@@ -89,6 +92,9 @@ const DEFAULT_FAMILY_SCHEDULE: FamilySchedule = {
   davidAvailabilityDays: 5,
   davidRoleNotes: "",
   backupCarerName: "",
+  fortnightEnabled: false,
+  fortnightAnchorDate: "2026-05-22",
+  weekBDaySchedules: Object.fromEntries(DAYS.map(d => [d, { ...DEFAULT_DAY_ENTRY }])),
   daySchedules: Object.fromEntries(DAYS.map(d => [d, { ...DEFAULT_DAY_ENTRY }])),
 };
 
@@ -482,7 +488,9 @@ function TravelBadge({ mins }: { mins: number }) {
   );
 }
 
-function PersonSelect({ value, onChange, backupName }: { value: string; onChange: (v: string) => void; backupName?: string }) {
+function PersonSelect({ value, onChange, backupName, showDad }: {
+  value: string; onChange: (v: string) => void; backupName?: string; showDad?: boolean;
+}) {
   const backupLabel = backupName?.trim() || "Other / backup";
   const backupValue = backupName?.trim() || "Other / backup";
   return (
@@ -494,12 +502,15 @@ function PersonSelect({ value, onChange, backupName }: { value: string; onChange
           ? "border-destructive/50 text-muted-foreground"
           : value === "Abi"
           ? "border-primary/50 text-primary font-semibold"
+          : value === "Dad"
+          ? "border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300 font-semibold"
           : "border-border text-foreground"
       }`}
     >
       <option value="">— assign —</option>
       <option value="Abi">Abi</option>
       <option value="David">David</option>
+      {showDad && <option value="Dad">Dad</option>}
       <option value={backupValue}>{backupLabel}</option>
     </select>
   );
@@ -612,6 +623,7 @@ function ChildScheduleCard({
   travelSchoolToWinchesterMins, travelWinchesterToSchoolMins,
   travelSchoolToBedhamptonMins, travelBedhamptonToSchoolMins,
   clinicDays, clinicOpenTime, daySchedules, onDayChange, childKey, accentColor, backupCarerName,
+  fortnightEnabled, weekBDaySchedules, onWeekBDayChange,
 }: {
   childName: string; school: string;
   schoolStart: string; schoolFinish: string;
@@ -624,13 +636,25 @@ function ChildScheduleCard({
   childKey: "elsy" | "eli";
   accentColor: "amber" | "violet";
   backupCarerName?: string;
+  fortnightEnabled?: boolean;
+  weekBDaySchedules?: DaySchedules;
+  onWeekBDayChange?: (day: string, role: keyof ChildSchedule, value: string) => void;
 }) {
+  const [activeWeek, setActiveWeek] = useState<"A" | "B">("A");
   const isAmber = accentColor === "amber";
   const accent = isAmber
     ? { bg: "bg-amber-50 dark:bg-amber-950/20", border: "border-amber-200 dark:border-amber-800", text: "text-amber-700 dark:text-amber-400", dot: "bg-amber-400" }
     : { bg: "bg-violet-50 dark:bg-violet-950/20", border: "border-violet-200 dark:border-violet-800", text: "text-violet-700 dark:text-violet-400", dot: "bg-violet-400" };
 
   const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
+  const viewSchedules = (fortnightEnabled && activeWeek === "B" && weekBDaySchedules) ? weekBDaySchedules : daySchedules;
+  const handleChange = (day: string, role: keyof ChildSchedule, value: string) => {
+    if (fortnightEnabled && activeWeek === "B" && onWeekBDayChange) {
+      onWeekBDayChange(day, role, value);
+    } else {
+      onDayChange(day, role, value);
+    }
+  };
 
   return (
     <Card className="shadow-sm">
@@ -640,6 +664,16 @@ function ChildScheduleCard({
             <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${accent.dot}`} />
             <CardTitle className="text-sm">{childName}</CardTitle>
           </div>
+          {fortnightEnabled && (
+            <div className="flex gap-0.5 shrink-0">
+              {(["A", "B"] as const).map(w => (
+                <button key={w} onClick={() => setActiveWeek(w)}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${activeWeek === w ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                  Wk {w}
+                </button>
+              ))}
+            </div>
+          )}
           <span className={`text-[9px] px-2 py-0.5 rounded-full border ${accent.bg} ${accent.border} ${accent.text} font-semibold shrink-0`}>
             {school}
           </span>
@@ -655,9 +689,9 @@ function ChildScheduleCard({
           </p>
         )}
         {clinicDayList.map(day => {
-          const schedule = daySchedules[day]?.[childKey] ?? { dropBy: "", pickupBy: "" };
+          const schedule = viewSchedules[day]?.[childKey] ?? { dropBy: "", pickupBy: "" };
           const noCover = !schedule.dropBy || !schedule.pickupBy;
-          const loc = daySchedules[day]?.clinicLocation ?? "winchester";
+          const loc = viewSchedules[day]?.clinicLocation ?? "winchester";
           const travelToClinic = loc === "winchester" ? travelSchoolToWinchesterMins : travelSchoolToBedhamptonMins;
           const travelFromClinic = loc === "winchester" ? travelWinchesterToSchoolMins : travelBedhamptonToSchoolMins;
           const clinicName = loc === "winchester" ? "Winchester" : "Bedhampton";
@@ -699,14 +733,14 @@ function ChildScheduleCard({
                     <input
                       type="time"
                       value={effectiveDropTime}
-                      onChange={e => onDayChange(day, "dropTime", e.target.value)}
+                      onChange={e => handleChange(day, "dropTime", e.target.value)}
                       className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
                     />
                     {hasClubDrop && (
                       <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
                     )}
                   </div>
-                  <PersonSelect value={schedule.dropBy} onChange={who => onDayChange(day, "dropBy", who)} backupName={backupCarerName} />
+                  <PersonSelect value={schedule.dropBy} onChange={who => handleChange(day, "dropBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
                   {dropJourney && (
                     <JourneyChip
                       type="drop"
@@ -725,14 +759,14 @@ function ChildScheduleCard({
                     <input
                       type="time"
                       value={effectivePickupTime}
-                      onChange={e => onDayChange(day, "pickupTime", e.target.value)}
+                      onChange={e => handleChange(day, "pickupTime", e.target.value)}
                       className="text-[10px] font-mono text-foreground/70 bg-transparent border-b border-dashed border-muted-foreground/40 focus:outline-none focus:border-primary w-[52px]"
                     />
                     {hasClubPickup && (
                       <span className="text-[8px] bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 px-1 rounded font-bold">CLUB</span>
                     )}
                   </div>
-                  <PersonSelect value={schedule.pickupBy} onChange={who => onDayChange(day, "pickupBy", who)} backupName={backupCarerName} />
+                  <PersonSelect value={schedule.pickupBy} onChange={who => handleChange(day, "pickupBy", who)} backupName={backupCarerName} showDad={fortnightEnabled} />
                   {pickupJourney && (
                     <JourneyChip
                       type="pickup"
@@ -788,11 +822,13 @@ function AbiWeek({
   clinicCloseTime: string;
   familySchedule: FamilySchedule;
 }) {
+  const [activeWeek, setActiveWeek] = useState<"A" | "B">("A");
   const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
   if (clinicDayList.length === 0) return null;
+  const viewSchedules = (familySchedule.fortnightEnabled && activeWeek === "B") ? familySchedule.weekBDaySchedules : familySchedule.daySchedules;
 
   const dayTimelines = clinicDayList.map(day => {
-    const ds = familySchedule.daySchedules[day];
+    const ds = viewSchedules[day];
     const loc = ds?.clinicLocation ?? "winchester";
     const clinicName = loc === "winchester" ? "Winchester" : "Bedhampton";
     const pw = familySchedule.parkAndWalkMins;
@@ -869,6 +905,16 @@ function AbiWeek({
               Auto-calculated from school run assignments, travel times and park &amp; walk
             </CardDescription>
           </div>
+          {familySchedule.fortnightEnabled && (
+            <div className="flex gap-0.5 shrink-0">
+              {(["A", "B"] as const).map(w => (
+                <button key={w} onClick={() => setActiveWeek(w)}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${activeWeek === w ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                  Wk {w}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="flex items-center gap-4 shrink-0 text-right">
             <div className="space-y-0.5">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Days/month</p>
@@ -1551,9 +1597,11 @@ function ClosurePlanner({ closureDates, onChange }: {
 }
 
 // ─── Coverage Matrix ──────────────────────────────────────────────────────────
-function CoverageMatrix({ clinicDays, daySchedules }: {
+function CoverageMatrix({ clinicDays, daySchedules, weekBDaySchedules, fortnightEnabled }: {
   clinicDays: string[]; daySchedules: DaySchedules;
+  weekBDaySchedules?: DaySchedules; fortnightEnabled?: boolean;
 }) {
+  const [activeWeek, setActiveWeek] = useState<"A" | "B">("A");
   const clinicDayList = DAYS.filter(d => clinicDays.includes(d));
   if (clinicDayList.length === 0) return null;
   const cols = [
@@ -1562,9 +1610,20 @@ function CoverageMatrix({ clinicDays, daySchedules }: {
     { key: "ld", label: "Eli ↓",  get: (ds: DaySchedules[string]) => ds?.eli?.dropBy },
     { key: "lp", label: "Eli ↑",  get: (ds: DaySchedules[string]) => ds?.eli?.pickupBy },
   ];
+  const viewSchedules = (fortnightEnabled && activeWeek === "B" && weekBDaySchedules) ? weekBDaySchedules : daySchedules;
   const totalCells = clinicDayList.length * cols.length;
-  const coveredCells = clinicDayList.reduce((s, day) => s + cols.filter(c => !!c.get(daySchedules[day])).length, 0);
-  const pct = Math.round((coveredCells / totalCells) * 100);
+  const coveredA = clinicDayList.reduce((s, day) => s + cols.filter(c => !!c.get(daySchedules[day])).length, 0);
+  const coveredB = weekBDaySchedules ? clinicDayList.reduce((s, day) => s + cols.filter(c => !!c.get(weekBDaySchedules[day])).length, 0) : coveredA;
+  const covered = fortnightEnabled && activeWeek === "B" ? coveredB : coveredA;
+  const pct = Math.round((covered / totalCells) * 100);
+  const personChip = (who: string) => (
+    <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+      who === "Abi" ? "bg-primary/10 text-primary"
+      : who === "David" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+      : who === "Dad" ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+      : "bg-muted text-muted-foreground"
+    }`}>{who}</span>
+  );
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-3">
@@ -1575,9 +1634,21 @@ function CoverageMatrix({ clinicDays, daySchedules }: {
             </CardTitle>
             <CardDescription className="text-xs mt-0.5">Every clinic day needs all four cells filled — at a glance</CardDescription>
           </div>
-          <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-            pct === 100 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-          }`}>{pct}% covered</span>
+          <div className="flex items-center gap-2 shrink-0">
+            {fortnightEnabled && (
+              <div className="flex gap-0.5">
+                {(["A", "B"] as const).map(w => (
+                  <button key={w} onClick={() => setActiveWeek(w)}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${activeWeek === w ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>
+                    Wk {w}
+                  </button>
+                ))}
+              </div>
+            )}
+            <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+              pct === 100 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
+            }`}>{pct}%</span>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -1591,7 +1662,7 @@ function CoverageMatrix({ clinicDays, daySchedules }: {
             </thead>
             <tbody className="divide-y divide-border/30">
               {clinicDayList.map(day => {
-                const ds = daySchedules[day];
+                const ds = viewSchedules[day];
                 const loc = ds?.clinicLocation ?? "winchester";
                 return (
                   <tr key={day}>
@@ -1599,19 +1670,16 @@ function CoverageMatrix({ clinicDays, daySchedules }: {
                       <div className="flex items-center gap-1.5">
                         <span className="font-bold text-foreground">{day}</span>
                         <span className={`text-[8px] px-1 py-0.5 rounded font-medium ${loc === "winchester" ? "bg-primary/10 text-primary/70" : "bg-teal-500/10 text-teal-700 dark:text-teal-400"}`}>{loc === "winchester" ? "Win" : "Bed"}</span>
+                        {fortnightEnabled && day === "Friday" && (
+                          <span className="text-[8px] px-1 py-0.5 rounded font-bold bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">Wk {activeWeek}</span>
+                        )}
                       </div>
                     </td>
                     {cols.map(col => {
                       const who = col.get(ds);
                       return (
                         <td key={col.key} className="py-2 text-center">
-                          {who ? (
-                            <span className={`inline-block px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
-                              who === "Abi" ? "bg-primary/10 text-primary"
-                              : who === "David" ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                              : "bg-muted text-muted-foreground"
-                            }`}>{who}</span>
-                          ) : (
+                          {who ? personChip(who) : (
                             <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-destructive/10 text-destructive text-[10px] font-bold">!</span>
                           )}
                         </td>
@@ -2083,21 +2151,26 @@ export default function LifestylePage() {
     return ds?.elsy?.dropBy && ds?.elsy?.pickupBy && ds?.eli?.dropBy && ds?.eli?.pickupBy;
   });
 
-  const familyConflicts = useMemo(() => plan.clinicDays.flatMap(day => {
-    const ds = familySchedule.daySchedules[day];
-    if (!ds) return [`${day}: no schedule configured`];
-    const issues: string[] = [];
-    if (!ds.elsy?.dropBy) issues.push(`${day}: Elsy's drop-off not assigned`);
-    if (!ds.elsy?.pickupBy) issues.push(`${day}: Elsy's pick-up not assigned`);
-    if (!ds.eli?.dropBy) issues.push(`${day}: Eli's drop-off not assigned`);
-    if (!ds.eli?.pickupBy) issues.push(`${day}: Eli's pick-up not assigned`);
-    return issues;
-  }), [plan.clinicDays, familySchedule.daySchedules]);
+  const familyConflicts = useMemo(() => {
+    const checkWeek = (sched: DaySchedules, label: string) => plan.clinicDays.flatMap(day => {
+      const ds = sched[day];
+      if (!ds) return [`${label}${day}: no schedule configured`];
+      const issues: string[] = [];
+      if (!ds.elsy?.dropBy) issues.push(`${label}${day}: Elsy's drop-off not assigned`);
+      if (!ds.elsy?.pickupBy) issues.push(`${label}${day}: Elsy's pick-up not assigned`);
+      if (!ds.eli?.dropBy) issues.push(`${label}${day}: Eli's drop-off not assigned`);
+      if (!ds.eli?.pickupBy) issues.push(`${label}${day}: Eli's pick-up not assigned`);
+      return issues;
+    });
+    const wkA = checkWeek(familySchedule.daySchedules, familySchedule.fortnightEnabled ? "Wk A — " : "");
+    const wkB = familySchedule.fortnightEnabled ? checkWeek(familySchedule.weekBDaySchedules, "Wk B — ") : [];
+    return [...wkA, ...wkB];
+  }, [plan.clinicDays, familySchedule]);
 
   // ── Chain pickup detection ─────────────────────────────────────────────────
   const chainPickupWarnings = useMemo(() => {
-    return plan.clinicDays.flatMap(day => {
-      const ds = familySchedule.daySchedules[day];
+    const checkChain = (sched: DaySchedules, weekLabel: string) => plan.clinicDays.flatMap(day => {
+      const ds = sched[day];
       if (!ds) return [];
       const elsyPickup = ds.elsy?.pickupBy === "Abi";
       const eliPickup  = ds.eli?.pickupBy  === "Abi";
@@ -2120,13 +2193,16 @@ export default function LifestylePage() {
       const feasible = arriveAtSecond <= secondFinish;
 
       return [{
-        day, firstChild, secondChild,
+        day, weekLabel, firstChild, secondChild,
         firstFinish: m2t(firstFinish), secondFinish: m2t(secondFinish),
         driveToSecond, arriveAtSecond: m2t(arriveAtSecond),
         bufferMins: Math.round(bufferMins), feasible,
         gap,
       }];
     });
+    const wkA = checkChain(familySchedule.daySchedules, familySchedule.fortnightEnabled ? "Wk A — " : "");
+    const wkB = familySchedule.fortnightEnabled ? checkChain(familySchedule.weekBDaySchedules, "Wk B — ") : [];
+    return [...wkA, ...wkB];
   }, [plan.clinicDays, familySchedule]);
 
   const nursingStatusLabel: Record<string, { label: string; color: string }> = {
@@ -2420,7 +2496,12 @@ export default function LifestylePage() {
       {tab === "family" && (
         <div className="space-y-6">
 
-          <CoverageMatrix clinicDays={plan.clinicDays} daySchedules={familySchedule.daySchedules} />
+          <CoverageMatrix
+            clinicDays={plan.clinicDays}
+            daySchedules={familySchedule.daySchedules}
+            weekBDaySchedules={familySchedule.weekBDaySchedules}
+            fortnightEnabled={familySchedule.fortnightEnabled}
+          />
 
           {/* ── Location triangle ── */}
           <Card className="shadow-sm border-border/60">
@@ -2504,6 +2585,76 @@ export default function LifestylePage() {
             </CardContent>
           </Card>
 
+          {/* ── Fortnightly schedule settings ── */}
+          {(() => {
+            const anchor = new Date(familySchedule.fortnightAnchorDate + "T12:00:00");
+            const upcomingDadFridays: string[] = [];
+            if (familySchedule.fortnightEnabled) {
+              const today = new Date(); today.setHours(12, 0, 0, 0);
+              for (let i = 0; i < 26; i++) {
+                const d = new Date(anchor.getTime() + i * 14 * 24 * 60 * 60 * 1000);
+                if (d >= today) upcomingDadFridays.push(d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }));
+                if (upcomingDadFridays.length >= 6) break;
+              }
+            }
+            return (
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-blue-600 dark:text-blue-400" /> Fortnightly Schedule
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-0.5">
+                        Enable when the schedule differs every other week — e.g. kids' dad collects on alternating Fridays
+                      </CardDescription>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (!familySchedule.fortnightEnabled) {
+                          const wkB: DaySchedules = JSON.parse(JSON.stringify(familySchedule.daySchedules));
+                          if (wkB["Friday"]) {
+                            wkB["Friday"] = { ...wkB["Friday"], elsy: { ...(wkB["Friday"].elsy ?? { dropBy: "", pickupBy: "" }), pickupBy: "Dad" }, eli: { ...(wkB["Friday"].eli ?? { dropBy: "", pickupBy: "" }), pickupBy: "Dad" } };
+                          }
+                          updateFS({ fortnightEnabled: true, weekBDaySchedules: wkB });
+                        } else {
+                          updateFS({ fortnightEnabled: false });
+                        }
+                      }}
+                      className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${familySchedule.fortnightEnabled ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"}`}
+                    >
+                      {familySchedule.fortnightEnabled ? "On" : "Off"}
+                    </button>
+                  </div>
+                </CardHeader>
+                {familySchedule.fortnightEnabled && (
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Label className="text-xs text-muted-foreground shrink-0 w-36">First Week B date</Label>
+                      <input
+                        type="date"
+                        value={familySchedule.fortnightAnchorDate}
+                        onChange={e => updateFS({ fortnightAnchorDate: e.target.value })}
+                        className="h-8 text-sm rounded-lg border border-border px-3 bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <p className="text-[10px] text-muted-foreground">Week B = the "different" week (e.g. Dad's Friday)</p>
+                    </div>
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20 p-3 space-y-2">
+                      <p className="text-[10px] font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wide">Upcoming Week B Fridays (Dad collects)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {upcomingDadFridays.map(d => (
+                          <span key={d} className="text-[10px] font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700 px-2 py-0.5 rounded-full">{d}</span>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-muted-foreground">Based on anchor date · fortnightly from {new Date(familySchedule.fortnightAnchorDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Week A and Week B tabs appear in each child's schedule card and in Abi's Working Week view. Set them independently.</p>
+                  </CardContent>
+                )}
+              </Card>
+            );
+          })()}
+
           {/* ── Conflict banner ── */}
           {familyConflicts.length > 0 && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-1.5">
@@ -2532,7 +2683,7 @@ export default function LifestylePage() {
                     <AlertCircle className={`w-4 h-4 shrink-0 mt-0.5 ${w.feasible ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-semibold ${w.feasible ? "text-amber-700 dark:text-amber-300" : "text-destructive"}`}>
-                        {w.day}: Chain pickup — {w.firstChild} then {w.secondChild}
+                        {w.weekLabel}{w.day}: Chain pickup — {w.firstChild} then {w.secondChild}
                       </p>
                       <p className={`text-xs mt-0.5 ${w.feasible ? "text-amber-600/80 dark:text-amber-400/80" : "text-destructive/80"}`}>
                         Both children assigned to Abi, finishing {w.gap} min apart — driving {w.firstChild}→{w.secondChild} ({w.driveToSecond} min)
@@ -2612,6 +2763,13 @@ export default function LifestylePage() {
               childKey="elsy"
               accentColor="amber"
               backupCarerName={familySchedule.backupCarerName}
+              fortnightEnabled={familySchedule.fortnightEnabled}
+              weekBDaySchedules={familySchedule.weekBDaySchedules}
+              onWeekBDayChange={(day, role, who) => {
+                const next = { ...familySchedule.weekBDaySchedules };
+                next[day] = { ...next[day], elsy: { ...(next[day]?.elsy ?? { dropBy: "", pickupBy: "" }), [role]: who } };
+                updateFS({ weekBDaySchedules: next });
+              }}
             />
             <ChildScheduleCard
               childName="Eli"
@@ -2634,6 +2792,13 @@ export default function LifestylePage() {
               childKey="eli"
               accentColor="violet"
               backupCarerName={familySchedule.backupCarerName}
+              fortnightEnabled={familySchedule.fortnightEnabled}
+              weekBDaySchedules={familySchedule.weekBDaySchedules}
+              onWeekBDayChange={(day, role, who) => {
+                const next = { ...familySchedule.weekBDaySchedules };
+                next[day] = { ...next[day], eli: { ...(next[day]?.eli ?? { dropBy: "", pickupBy: "" }), [role]: who } };
+                updateFS({ weekBDaySchedules: next });
+              }}
             />
           </div>
 
