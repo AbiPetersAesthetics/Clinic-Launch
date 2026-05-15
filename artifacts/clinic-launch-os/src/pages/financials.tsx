@@ -166,6 +166,8 @@ export default function FinancialsPage() {
     clinicDays: string | string[];
     clinicOpenTime: string;
     clinicCloseTime: string;
+    familyScheduleJson?: string;
+    extrasJson?: string;
   } | null>(null);
 
   useEffect(() => {
@@ -182,14 +184,69 @@ export default function FinancialsPage() {
       if (Array.isArray(v)) return v;
       try { return JSON.parse(v ?? "[]"); } catch { return []; }
     })();
-    const open  = lifestylePlan.clinicOpenTime  ?? "09:00";
-    const close = lifestylePlan.clinicCloseTime ?? "18:00";
-    const [oh, om] = open.split(":").map(Number);
-    const [ch, cm] = close.split(":").map(Number);
-    const windowMins = Math.max(0, (ch * 60 + cm) - (oh * 60 + om));
+    const globalOpen  = lifestylePlan.clinicOpenTime  ?? "09:00";
+    const globalClose = lifestylePlan.clinicCloseTime ?? "18:00";
+
+    // Parse family schedule + per-day overrides so we can compute real hours
+    const fs: Record<string, any> = (() => {
+      try { return lifestylePlan.familyScheduleJson ? JSON.parse(lifestylePlan.familyScheduleJson) : {}; } catch { return {}; }
+    })();
+    const overrides: Record<string, { open: string; close: string }> = (() => {
+      try {
+        const ex = lifestylePlan.extrasJson ? JSON.parse(lifestylePlan.extrasJson) : {};
+        return ex.dayTimeOverrides ?? {};
+      } catch { return {}; }
+    })();
+
+    const t2m = (t: string) => { const [h, m] = (t ?? "00:00").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+    const pw = fs.parkAndWalkMins ?? 5;
+
+    // For each clinic day compute real available window after school-run constraints
+    const dayHours = clinicDays.map(day => {
+      const dayOpen  = overrides[day]?.open  ?? globalOpen;
+      const dayClose = overrides[day]?.close ?? globalClose;
+      let latestArr   = t2m(dayOpen);
+      let earliestDep = t2m(dayClose);
+
+      const isSat = day === "Sat";
+      const ds: Record<string, any> = fs.daySchedules?.[day] ?? {};
+      const loc = ds.clinicLocation ?? "winchester";
+      const isBedh = loc === "bedhampton";
+
+      if (!isSat) {
+        // Drop constraints — Abi drops → arrives clinic after school drop + travel
+        if (ds.elsy?.dropBy === "Abi") {
+          const st = t2m(ds.elsy?.dropTime ?? fs.elsySchoolStart ?? "09:00");
+          const tc = isBedh ? (fs.travelElsyToBedhamptonMins ?? 15) : (fs.travelElsyToClinicMins ?? 30);
+          latestArr = Math.max(latestArr, st + tc + pw);
+        }
+        if (ds.eli?.dropBy === "Abi") {
+          const st = t2m(ds.eli?.dropTime ?? fs.eliSchoolStart ?? "09:00");
+          const tc = isBedh ? (fs.travelEliToBedhamptonMins ?? 15) : (fs.travelEliToClinicMins ?? 40);
+          latestArr = Math.max(latestArr, st + tc + pw);
+        }
+        // Pickup constraints — Abi picks up → must leave clinic before school finish + travel
+        if (ds.elsy?.pickupBy === "Abi") {
+          const pt = t2m(ds.elsy?.pickupTime ?? fs.elsySchoolFinish ?? "15:30");
+          const fc = isBedh ? (fs.travelBedhamptonToElsyMins ?? 10) : (fs.travelClinicToElsyMins ?? 35);
+          earliestDep = Math.min(earliestDep, pt - fc - pw);
+        }
+        if (ds.eli?.pickupBy === "Abi") {
+          const pt = t2m(ds.eli?.pickupTime ?? fs.eliSchoolFinish ?? "15:30");
+          const fc = isBedh ? (fs.travelBedhamptonToEliMins ?? 10) : (fs.travelClinicToEliMins ?? 40);
+          earliestDep = Math.min(earliestDep, pt - fc - pw);
+        }
+      }
+      return Math.max(0, (earliestDep - latestArr) / 60);
+    });
+
+    const avgHoursPerDay = dayHours.length > 0
+      ? Math.round((dayHours.reduce((s, h) => s + h, 0) / dayHours.length) * 4) / 4
+      : 0;
+
     return {
-      daysPerMonth:  Math.round(clinicDays.length * (365 / 12 / 7) * 2) / 2,
-      hoursPerDay:   Math.round(windowMins / 60 * 2) / 2,
+      daysPerMonth:    Math.round(clinicDays.length * (365 / 12 / 7) * 2) / 2,
+      hoursPerDay:     avgHoursPerDay,
       clinicDaysCount: clinicDays.length,
     };
   }, [lifestylePlan]);
