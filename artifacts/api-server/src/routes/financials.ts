@@ -55,6 +55,38 @@ const SCENARIO_PROFILES: Record<string, {
   },
 };
 
+// ─── Ramp Growth Tiers ────────────────────────────────────────────────────────
+// Applied on top of scenario profiles to model different growth trajectories.
+// "slow"    = word-of-mouth only, no waiting list — realistic for a brand-new location
+// "average" = typical UK aesthetics clinic launch with light pre-opening marketing
+// "fast"    = above average: strong social presence, existing waiting list, prior brand
+//
+// Modifiers scale the scenario's startOcc and rampMonths independently.
+// startOcc is clamped to a minimum of 3% (you can't open with zero bookings)
+// and rampMonths is clamped to a minimum of 2.
+
+const RAMP_TIER_MODIFIERS: Record<string, { startOccMult: number; rampMonthsMult: number; label: string }> = {
+  slow:    { startOccMult: 0.30, rampMonthsMult: 2.0,  label: "Below Average" },
+  average: { startOccMult: 1.0,  rampMonthsMult: 1.0,  label: "Average"       },
+  fast:    { startOccMult: 1.45, rampMonthsMult: 0.65, label: "Above Average" },
+};
+
+function applyRampTier(
+  profile: typeof SCENARIO_PROFILES[string],
+  tier: string,
+): typeof SCENARIO_PROFILES[string] {
+  const mod = RAMP_TIER_MODIFIERS[tier] ?? RAMP_TIER_MODIFIERS.average;
+  const newStartOcc    = Math.max(Math.round(profile.startOcc    * mod.startOccMult),    3);
+  const newRampMonths  = Math.max(Math.round(profile.rampMonths  * mod.rampMonthsMult),  2);
+  const tierLabel      = tier !== "average" ? ` · ${mod.label} growth` : "";
+  return {
+    ...profile,
+    startOcc:   newStartOcc,
+    rampMonths: newRampMonths,
+    note: `${profile.note}${tierLabel} (opens at ${newStartOcc}% occ, ${newRampMonths}-mo ramp)`,
+  };
+}
+
 // ─── Property rent/rates fallback ─────────────────────────────────────────────
 
 async function applyPropertyFallback(model: any, projectId: number) {
@@ -147,7 +179,8 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : undefined; // undefined = fall back to legacy hardcoded fields
 
-  const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
+  const rampTier = (req.body.rampTier as string) ?? "average";
+  const profile = applyRampTier(SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic, rampTier);
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
   const nursingIncome = 0;
@@ -214,6 +247,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
 router.get("/projects/:projectId/cashflow", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const scenario = (req.query.scenario as string) ?? "realistic";
+  const rampTier = (req.query.rampTier as string) ?? "average";
 
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
@@ -235,7 +269,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
 
-  const profile = SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic;
+  const profile = applyRampTier(SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic, rampTier);
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
   const { startOcc, rampMonths } = profile;
@@ -288,7 +322,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const calendarStart = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
 
   // Opening month index (0-based offset from calendarStart)
-  const TOTAL_MONTHS = 18;
+  const TOTAL_MONTHS = 12;
   let openingMonthIndex = TOTAL_MONTHS;
   if (project?.targetOpeningDate) {
     const openDate = new Date(project.targetOpeningDate);

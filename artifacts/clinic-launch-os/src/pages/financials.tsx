@@ -47,6 +47,12 @@ const VAT_THRESHOLD = 90000;
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "stress_test";
+type RampTier = "slow" | "average" | "fast";
+const RAMP_TIER_OPTIONS: { key: RampTier; label: string; desc: string }[] = [
+  { key: "slow",    label: "Below Average", desc: "Word-of-mouth only, no waiting list — very gradual fill" },
+  { key: "average", label: "Average",        desc: "Typical UK aesthetics launch with pre-opening marketing" },
+  { key: "fast",    label: "Above Average",  desc: "Strong social presence, existing clients, waiting list" },
+];
 type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom";
 
 type WincMetrics = {
@@ -153,6 +159,7 @@ export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+  const [rampTier, setRampTier] = useState<RampTier>("average");
 
   const saveScenario = (key: ScenarioKey) => {
     setScenario(key);
@@ -397,8 +404,8 @@ export default function FinancialsPage() {
     },
   });
 
-  const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
-    query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }), enabled: true },
+  const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier } as any, {
+    query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario, rampTier } as any), enabled: true },
   });
   const cashflow = rawCashflow as unknown as CashflowMonth[] | undefined;
 
@@ -407,7 +414,7 @@ export default function FinancialsPage() {
 
   const runCalculation = () => {
     calculateFinancials.mutate(
-      { projectId: PROJECT_ID, data: { scenario } },
+      { projectId: PROJECT_ID, data: { scenario, rampTier } as any },
       { onSuccess: (data) => setCalcResults(data as unknown as ExtendedCalcResult) }
     );
   };
@@ -540,6 +547,7 @@ export default function FinancialsPage() {
   }, [model]);
 
   useEffect(() => { if (model) runCalculation(); }, [scenario]);
+  useEffect(() => { if (model) runCalculation(); }, [rampTier]);
 
   // ── Sync derived schedule values into form whenever lifestyle plan updates ─
   useEffect(() => {
@@ -770,6 +778,41 @@ export default function FinancialsPage() {
               <span className="ml-1.5 opacity-60 hidden sm:inline">{getScenarioDesc(key)}</span>
             </button>
           ))}
+        </div>
+
+        {/* ── Ramp Growth Tier ─────────────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center gap-3 pt-0.5">
+          <div className="flex items-center gap-1.5">
+            <TrendingUp className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground font-medium">Growth rate:</span>
+          </div>
+          <div className="flex gap-1.5">
+            {RAMP_TIER_OPTIONS.map(({ key, label, desc }) => (
+              <button
+                key={key}
+                onClick={() => setRampTier(key)}
+                title={desc}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap ${
+                  rampTier === key
+                    ? key === "slow"
+                      ? "bg-amber-50 text-amber-700 border-amber-400 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700"
+                      : key === "fast"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-400 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700"
+                      : "bg-primary/10 text-primary border-primary/40"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {rampTier !== "average" && (
+            <span className="text-[10px] text-muted-foreground italic">
+              {rampTier === "slow"
+                ? "Opening occupancy ~30% of baseline — realistic for a brand-new location with no waiting list"
+                : "Opening occupancy ~45% higher than baseline — assumes strong pre-launch demand"}
+            </span>
+          )}
         </div>
       </div>
 
@@ -1099,10 +1142,10 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
-          {/* 18-Month Cash Position Chart */}
+          {/* 12-Month Cash Position Chart */}
           <Card className="shadow-sm">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">18-Month Cash Position</CardTitle>
+              <CardTitle className="text-base">12-Month Cash Position</CardTitle>
               <CardDescription className="text-sm">
                 Business capital burns through project setup costs, partially offset by Bedhampton net income. {clinicLabel} opens Nov '26 and starts recovering the position.
                 {selfFundingPoint && (
@@ -1305,7 +1348,7 @@ export default function FinancialsPage() {
                       <div className={`text-sm font-bold ${minBalance < 0 ? "text-destructive" : "text-amber-600"}`}>{formatGBP(minBalance)}</div>
                     </div>
                     <div className="text-center">
-                      <div className="text-xs text-muted-foreground">Cash at month 18</div>
+                      <div className="text-xs text-muted-foreground">Cash at month 12</div>
                       <div className={`text-sm font-bold ${endBalance >= startBalance ? "text-emerald-600" : "text-amber-600"}`}>{formatGBP(endBalance)}</div>
                     </div>
                   </div>
@@ -1333,13 +1376,20 @@ export default function FinancialsPage() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b bg-muted/40">
-                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-muted/40 min-w-[72px]">Month</th>
+                        <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-muted/40 min-w-[80px]">Month</th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Winc Rev</th>
-                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Bedh Rev</th>
-                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Variable</th>
-                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Fixed</th>
-                        <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">VAT</th>
-                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Total Costs</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <span title="Stock %, commissions, marketing, staffing, consumables">Variable</span>
+                        </th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <span title="All fixed cost items from Assumptions (rent, rates, insurance, dual costs — counted once)">Fixed (Winc)</span>
+                        </th>
+                        <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[80px]">
+                          <span title="Bedhampton net profit after stock, running costs and VAT">Bedh Net</span>
+                        </th>
+                        <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
+                          <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT</span>
+                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
@@ -1348,10 +1398,6 @@ export default function FinancialsPage() {
                       {cashflow.map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
-                        const totalRev = m.wincRevenue + m.bedhRevenue;
-                        const totalVarCosts = m.wincVariableCosts;
-                        const totalFixCosts = m.wincFixedCosts + m.bedhCosts;
-                        const totalCostRow = m.wincCosts + m.bedhCosts;
                         const netProfitRow = m.wincNet + m.bedhNet;
                         const rowBg = isClose
                           ? "bg-emerald-50 dark:bg-emerald-950/30"
@@ -1371,25 +1417,44 @@ export default function FinancialsPage() {
                               </div>
                               {m.isPreOpening && <div className="text-[9px] text-muted-foreground">pre-open</div>}
                             </td>
-                            <td className="text-right px-2 py-1.5 tabular-nums">{m.wincRevenue > 0 ? formatGBP(m.wincRevenue) : <span className="text-muted-foreground/40">—</span>}</td>
-                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.bedhClosed ? "text-muted-foreground/40 line-through" : ""}`}>
-                              {m.bedhRevenue > 0 ? formatGBP(m.bedhRevenue) : <span className="text-muted-foreground/40">—</span>}
+
+                            {/* Winchester Revenue */}
+                            <td className="text-right px-2 py-1.5 tabular-nums">
+                              {m.wincRevenue > 0 ? formatGBP(m.wincRevenue) : <span className="text-muted-foreground/40">—</span>}
                             </td>
+
+                            {/* Winchester Variable (stock + commissions + mktg + staffing + consumables) */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
-                              {totalVarCosts > 0 ? <span className="text-red-500/70">({formatGBP(totalVarCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                              {m.wincVariableCosts > 0
+                                ? <span className="text-red-500/70">({formatGBP(m.wincVariableCosts)})</span>
+                                : <span className="text-muted-foreground/30">—</span>}
                             </td>
+
+                            {/* Winchester Fixed — all items from fixed cost list, including dual costs (counted once) */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
-                              {totalFixCosts > 0 ? <span className="text-red-500/70">({formatGBP(totalFixCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                              {m.wincFixedCosts > 0
+                                ? <span className="text-red-500/70">({formatGBP(m.wincFixedCosts)})</span>
+                                : <span className="text-muted-foreground/30">—</span>}
                             </td>
-                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.vatLiability > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
-                              {m.vatLiability > 0 ? <span>({formatGBP(m.vatLiability)})</span> : "—"}
+
+                            {/* Bedhampton Net — already net of stock, running costs, and Bedhampton VAT */}
+                            <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30 line-through" : m.bedhNet > 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>
+                              {m.bedhClosed
+                                ? "closed"
+                                : m.bedhNet !== 0 ? formatGBP(m.bedhNet) : <span className="text-muted-foreground/30">—</span>}
                             </td>
-                            <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
-                              {totalCostRow > 0 ? <span className="text-red-500/70">({formatGBP(totalCostRow)})</span> : <span className="text-muted-foreground/30">—</span>}
+
+                            {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
+                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.wincVat > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
+                              {m.wincVat > 0 ? <span>({formatGBP(m.wincVat)})</span> : "—"}
                             </td>
+
+                            {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
                             </td>
+
+                            {/* Running cash balance */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-medium ${m.cashBalance >= 0 ? "" : "text-destructive"}`}>
                               {formatGBP(m.cashBalance)}
                             </td>
@@ -1399,8 +1464,9 @@ export default function FinancialsPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground">
-                  Variable costs shown net of VAT. Fixed costs include {clinicLabel} running costs. Bedhampton costs shown in Fixed column until closure. Net Profit = combined {clinicLabel} + Bedhampton.
+                <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground space-y-0.5">
+                  <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
+                  <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, and Bedhampton's share of VAT. <strong>Winc VAT</strong> = Winchester VAT only. Net Profit = Winc Rev − Variable − Fixed − Winc VAT + Bedh Net.</p>
                 </div>
               </CardContent>
             </Card>
