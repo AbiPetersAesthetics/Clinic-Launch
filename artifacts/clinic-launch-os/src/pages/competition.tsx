@@ -230,6 +230,8 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
   const [lookupUrl, setLookupUrl] = useState("");
   const [looking, setLooking] = useState(false);
   const [lookupMsg, setLookupMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [tabLooking, setTabLooking] = useState(false);
+  const [tabMsg, setTabMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
   const handleLookup = async () => {
     const val = lookupUrl.trim();
@@ -259,6 +261,60 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
       setLookupMsg({ type: "err", text: "Network error — could not reach lookup service." });
     } finally {
       setLooking(false);
+    }
+  };
+
+  // Fields belonging to each tab — used by per-tab search
+  const TAB_FIELDS: Record<number, (keyof FormData)[]> = {
+    0: ["name","address","distanceMiles","website","bookingLink","phone","instagram","facebook","googleRating","googleReviewCount","instagramFollowers","lat","lng"],
+    1: ["premisesType","clinicType","practitionerType","positioningCategory","targetAudience","yearsExperience","saveFace","jccp","independentPrescriber","nhsBackground","credentialsNotes","heroTreatments"],
+    2: ["googleReviewCount","postingFrequency","contentQualityScore","beforeAfterUse","reviewSentimentSummary","commonPraiseJson","commonComplaintsJson"],
+    3: ["pricingJson","treatmentsJson","heroTreatments"],
+    4: ["clinicalAuthorityScore","trustScore","brandStrengthScore","premisesStrengthScore","strengthsJson","weaknessesJson"],
+    5: ["confidenceLevel","sourceLinks","notes"],
+  };
+
+  const handleTabSearch = async (tabIdx: number) => {
+    const url = (form.website || "").trim()
+      || (form.instagram ? `https://www.instagram.com/${form.instagram.replace("@","")}/` : "")
+      || lookupUrl.trim();
+    if (!url) {
+      setTabMsg({ type: "err", text: "Add a website or Instagram URL on the Identity tab first, then come back here." });
+      return;
+    }
+    setTabLooking(true);
+    setTabMsg(null);
+    try {
+      const resp = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const json = await resp.json();
+      if (!resp.ok) {
+        setTabMsg({ type: "err", text: json.error || "Search failed" });
+        return;
+      }
+      const allowed = new Set(TAB_FIELDS[tabIdx] || []);
+      const d = json.data as Partial<FormData>;
+      const filled = Object.fromEntries(
+        Object.entries(d).filter(([k, v]) =>
+          allowed.has(k as keyof FormData) &&
+          v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}" && v !== "unknown" && v !== "Unclear"
+        )
+      );
+      setForm(f => ({ ...f, ...filled }));
+      const count = Object.keys(filled).length;
+      setTabMsg({
+        type: "ok",
+        text: count > 0
+          ? `${count} field${count !== 1 ? "s" : ""} updated from ${json.sourceCount ?? 1} page${(json.sourceCount ?? 1) !== 1 ? "s" : ""}`
+          : "Search complete — no new data found for this section",
+      });
+    } catch {
+      setTabMsg({ type: "err", text: "Network error — could not reach search service." });
+    } finally {
+      setTabLooking(false);
     }
   };
 
@@ -332,6 +388,33 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
             <button key={t} onClick={() => setTab(i)} className={`px-4 py-2.5 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${tab===i ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</button>
           ))}
         </div>
+
+        {/* ── Per-tab search strip ── */}
+        <div className="px-6 py-2.5 bg-muted/30 border-b border-border flex items-center justify-between gap-3">
+          <p className="text-[11px] text-muted-foreground truncate">
+            {form.website
+              ? <><span className="font-medium text-foreground/70">Source:</span> {form.website}</>
+              : form.instagram
+              ? <><span className="font-medium text-foreground/70">Source:</span> @{form.instagram.replace("@","")}</>
+              : <span className="italic">No URL set — enter website below or use Auto-fill above</span>
+            }
+          </p>
+          <button
+            onClick={() => { setTabMsg(null); handleTabSearch(tab); }}
+            disabled={tabLooking || looking || (!form.website && !form.instagram && !lookupUrl.trim())}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-teal-600/10 text-teal-600 border border-teal-600/30 hover:bg-teal-600/20 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap shrink-0 transition-colors"
+          >
+            {tabLooking
+              ? <><Loader2 className="w-3 h-3 animate-spin" />Searching…</>
+              : <><Sparkles className="w-3 h-3" />Search this section</>
+            }
+          </button>
+        </div>
+        {tabMsg && (
+          <div className={`px-6 py-2 text-xs border-b border-border ${tabMsg.type === "ok" ? "text-teal-600 bg-teal-600/5" : "text-red-500 bg-red-500/5"}`}>
+            {tabMsg.type === "ok" ? "✓ " : "✗ "}{tabMsg.text}
+          </div>
+        )}
 
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {tab === 0 && (
