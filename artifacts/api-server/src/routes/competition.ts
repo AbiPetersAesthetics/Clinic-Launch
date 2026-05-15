@@ -72,8 +72,29 @@ function serialiseFields(data: Record<string, unknown>): Record<string, unknown>
   return data;
 }
 
+// Haversine distance in miles between two lat/lng points
+function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3958.8;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// APA Winchester reference point
+const APA_LAT = 51.0619;
+const APA_LNG = -1.3104;
+
+function parseFollowers(raw: string): number {
+  const s = raw.replace(/,/g, "").trim();
+  if (/[mM]$/.test(s)) return Math.round(parseFloat(s) * 1_000_000);
+  if (/[kK]$/.test(s)) return Math.round(parseFloat(s) * 1000);
+  return parseInt(s) || 0;
+}
+
 // Core lookup logic — used by both /lookup and /enrich
-async function runLookup(url: string): Promise<{ data: Record<string, unknown>; sources: string[]; igFollowers: number; googleRating: string; googleReviewCount: number }> {
+async function runLookup(url: string): Promise<{ data: Record<string, unknown>; sources: string[]; igFollowers: number; googleRating: string; googleReviewCount: number; lat: string; lng: string; distanceMiles: string }> {
   const sources: string[] = [];
 
   // Detect Instagram
@@ -94,6 +115,9 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
   const mainHtml = mainResult.html;
   sources.push(url);
 
+  const mainJsonLd = extractJsonLd(mainHtml);
+  const mainBody = extractText(mainHtml, 4000);
+
   // ── Phase 2: Discover sub-pages & Instagram in parallel ──────────────────
   let subPageHrefs: string[] = [];
   let baseUrl = "";
@@ -111,7 +135,7 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
   // Find Instagram handle in main page HTML (if not already Instagram)
   if (!isInstagram) {
     const igPageMatch = mainHtml.match(/instagram\.com\/([^/?&#"'\s\\]+)/i);
-    if (igPageMatch && !["p", "explore", "reel", "stories"].includes(igPageMatch[1])) {
+    if (igPageMatch && !["p", "explore", "reel", "stories", "tv"].includes(igPageMatch[1])) {
       igHandle = igPageMatch[1];
     }
   }
@@ -125,71 +149,131 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     igFetch,
   ]);
 
-  // ── Phase 3: Extract Instagram followers from og:description ─────────────
-  let igFollowers = 0;
-  const igHtml = isInstagram ? mainHtml : (igPageResult.ok ? igPageResult.html : "");
-  if (igHtml) {
-    // Instagram og:description: "1,234 Followers, 567 Following, 89 Posts..."
-    const igDesc = igHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)?.[1]
-      || igHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i)?.[1]
-      || "";
-    const followMatch = igDesc.match(/([\d,.]+[kKmM]?)\s*Followers/i);
-    if (followMatch) {
-      const raw = followMatch[1].replace(/,/g, "");
-      if (raw.match(/[kK]$/)) igFollowers = Math.round(parseFloat(raw) * 1000);
-      else if (raw.match(/[mM]$/)) igFollowers = Math.round(parseFloat(raw) * 1_000_000);
-      else igFollowers = parseInt(raw) || 0;
-    }
-    // Also try from JSON embedded in page
-    if (!igFollowers) {
-      const edgeMatch = igHtml.match(/"edge_followed_by"\s*:\s*\{"count"\s*:\s*(\d+)\}/);
-      if (edgeMatch) igFollowers = parseInt(edgeMatch[1]);
-    }
-    if (igHandle && igPageResult.ok) sources.push(`https://www.instagram.com/${igHandle}/`);
-  }
-
-  // ── Phase 4: Try Google search for reviews ───────────────────────────────
+  // ── Phase 3a: Google Rating — from website's own JSON-LD (most reliable) ─
   let googleRating = "";
   let googleReviewCount = 0;
-  try {
-    // Extract business name from JSON-LD or title
-    const ldNameMatch = extractJsonLd(mainHtml).match(/"name"\s*:\s*"([^"]+)"/);
-    const candidateName = ldNameMatch?.[1] || getTitle(mainHtml).split(/[-|·]/)[0].trim();
 
-    if (candidateName) {
-      const q = encodeURIComponent(`${candidateName} aesthetics Winchester reviews`);
-      const googleResult = await fetchPage(`https://www.google.com/search?q=${q}&hl=en-GB`, 7000);
-      if (googleResult.ok) {
-        const gh = googleResult.html;
+  // Check JSON-LD aggregateRating on the main page
+  const ldRating = mainJsonLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+  const ldCount = mainJsonLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
+  if (ldRating) googleRating = ldRating[1];
+  if (ldCount) googleReviewCount = parseInt(ldCount[1]);
 
-        // JSON-LD aggregateRating
-        const ratingMatch = gh.match(/"ratingValue"\s*:\s*"?(\d+\.?\d*)"?/)
-          || gh.match(/(\d\.\d)\s*(?:out of 5|stars?|★)/i);
-        const countMatch = gh.match(/"reviewCount"\s*:\s*"?(\d[\d,]*)"?/)
-          || gh.match(/"ratingCount"\s*:\s*"?(\d[\d,]*)"?/)
-          || gh.match(/([\d,]+)\s+Google\s+reviews?/i)
-          || gh.match(/([\d,]+)\s+reviews?/i);
-
-        if (ratingMatch) googleRating = ratingMatch[1];
-        if (countMatch) googleReviewCount = parseInt(countMatch[1].replace(/,/g, ""));
-
-        // Also try extracting from data-attrid="kc:/collection/knowledge_panels/has_feature_interest:rating"
-        const structuredRating = gh.match(/aria-label="Rated (\d\.?\d?) out of 5[^"]*,\s*([\d,]+) reviews?"/i);
-        if (structuredRating) {
-          googleRating = structuredRating[1];
-          googleReviewCount = parseInt(structuredRating[2].replace(/,/g, ""));
-        }
+  // Check sub-pages' JSON-LD too
+  if (!googleRating) {
+    for (const r of subResults) {
+      if (r.status === "fulfilled" && r.value.ok) {
+        const subLd = extractJsonLd(r.value.html);
+        const sr = subLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+        const sc = subLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
+        if (sr) { googleRating = sr[1]; if (sc) googleReviewCount = parseInt(sc[1]); break; }
       }
     }
-  } catch { /* Google search is non-fatal */ }
+  }
 
-  // ── Phase 5: Assemble combined page text ─────────────────────────────────
+  // Body text fallback: "4.9 out of 5", "rated 4.8", "4.9 ★", "4.9/5"
+  if (!googleRating) {
+    const bodyRating = mainBody.match(/\b([45]\.\d)\s*(?:out of 5|\/5|stars?|★|⭐)/i)
+      || mainBody.match(/(?:rated?|rating)\s*[:\s]*([45]\.\d)/i)
+      || mainBody.match(/Google.*?([45]\.\d)/i);
+    if (bodyRating) googleRating = bodyRating[1];
+    const bodyCount = mainBody.match(/(\d[\d,]+)\s*(?:Google\s+)?reviews?/i);
+    if (bodyCount && !googleReviewCount) googleReviewCount = parseInt(bodyCount[1].replace(/,/g, ""));
+  }
+
+  // ── Phase 3b: Google search fallback (only if still no rating) ────────────
+  if (!googleRating) {
+    try {
+      const ldNameMatch = mainJsonLd.match(/"name"\s*:\s*"([^"]+)"/);
+      const candidateName = ldNameMatch?.[1] || getTitle(mainHtml).split(/[-|·]/)[0].trim();
+      if (candidateName) {
+        const q = encodeURIComponent(`${candidateName} aesthetics Winchester reviews`);
+        const googleResult = await fetchPage(`https://www.google.com/search?q=${q}&hl=en-GB`, 6000);
+        if (googleResult.ok) {
+          const gh = googleResult.html;
+          const sr = gh.match(/aria-label="Rated ([\d.]+) out of 5[^"]*,?\s*([\d,]+)\s*reviews?"/i)
+            || gh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+          const sc = gh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
+            || gh.match(/([\d,]+)\s+Google\s+reviews?/i);
+          if (sr) googleRating = sr[1];
+          if (sc && !googleReviewCount) googleReviewCount = parseInt(sc[1].replace(/,/g, ""));
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  // ── Phase 4: Instagram followers ─────────────────────────────────────────
+  let igFollowers = 0;
+
+  // A) Check website body text — many clinics show follower count as social proof
+  const bodyIgMatch = mainBody.match(/([\d,.]+[kKmM]?)\s*(?:Instagram\s+)?[Ff]ollowers/)
+    || mainBody.match(/[Ff]ollowers[:\s]+([\d,.]+[kKmM]?)/);
+  if (bodyIgMatch) igFollowers = parseFollowers(bodyIgMatch[1]);
+
+  // B) From Instagram page og:description (if we fetched it)
+  if (!igFollowers) {
+    const igHtml = isInstagram ? mainHtml : (igPageResult.ok ? igPageResult.html : "");
+    if (igHtml) {
+      const igDesc = igHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)?.[1]
+        || igHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i)?.[1]
+        || "";
+      const followMatch = igDesc.match(/([\d,.]+[kKmM]?)\s*Followers/i);
+      if (followMatch) igFollowers = parseFollowers(followMatch[1]);
+      if (!igFollowers) {
+        const edgeMatch = igHtml.match(/"edge_followed_by"\s*:\s*\{"count"\s*:\s*(\d+)\}/);
+        if (edgeMatch) igFollowers = parseInt(edgeMatch[1]);
+      }
+      if (igHandle && igPageResult.ok) sources.push(`https://www.instagram.com/${igHandle}/`);
+    }
+  }
+
+  // ── Phase 5: Coordinates & distance ──────────────────────────────────────
+  let lat = "";
+  let lng = "";
+  let distanceMiles = "";
+
+  // A) JSON-LD geo on main page
+  const ldLat = mainJsonLd.match(/"latitude"\s*:\s*"?([-\d.]+)"?/);
+  const ldLng = mainJsonLd.match(/"longitude"\s*:\s*"?([-\d.]+)"?/);
+  if (ldLat && ldLng) { lat = ldLat[1]; lng = ldLng[1]; }
+
+  // B) Google Maps embed URL in page: @lat,lng,zoom or ?ll=lat,lng or ?q=lat,lng
+  if (!lat) {
+    const mapsEmbed = mainHtml.match(/maps(?:\/embed)?[^"']*@([-\d.]+),([-\d.]+)/i)
+      || mainHtml.match(/maps[^"']*[?&](?:ll|q|center)=([-\d.]+),([-\d.]+)/i)
+      || mainHtml.match(/maps[^"']*[?&](?:pb=[^!]*!3d([-\d.]+)[^!]*!4d([-\d.]+))/i);
+    if (mapsEmbed) { lat = mapsEmbed[1]; lng = mapsEmbed[2]; }
+  }
+
+  // C) Nominatim geocode from extracted address if still no coords
+  if (!lat) {
+    try {
+      const addrMatch = mainJsonLd.match(/"streetAddress"\s*:\s*"([^"]+)"/)
+        || mainJsonLd.match(/"address"\s*:\s*"([^"]+)"/);
+      if (addrMatch) {
+        const nominatim = await fetchPage(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(addrMatch[1] + ", UK")}&format=json&limit=1`,
+          5000
+        );
+        if (nominatim.ok) {
+          const parsed = JSON.parse(nominatim.html.trim())[0];
+          if (parsed?.lat) { lat = parsed.lat; lng = parsed.lon; }
+        }
+      }
+    } catch { /* non-fatal */ }
+  }
+
+  // D) Calculate distance
+  if (lat && lng) {
+    const dist = haversineDistance(parseFloat(lat), parseFloat(lng), APA_LAT, APA_LNG);
+    distanceMiles = dist.toFixed(1);
+  }
+
+  // ── Phase 6: Assemble combined page text ─────────────────────────────────
   const allTexts: string[] = [];
 
   const mainTitle = getTitle(mainHtml);
   const mainMeta = extractMeta(mainHtml);
-  const mainJsonLd = extractJsonLd(mainHtml);
-  const mainBody = extractText(mainHtml, 3000);
   allTexts.push(`=== MAIN PAGE: ${url} ===\nTITLE: ${mainTitle}\nMETA:\n${mainMeta}\nSTRUCTURED DATA:\n${mainJsonLd}\nBODY:\n${mainBody}`);
 
   subResults.forEach((result, i) => {
@@ -221,10 +305,11 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
         role: "user",
         content: `Extract all competitor intelligence from this multi-source content and return a single JSON object.
 
-${googleRating ? `IMPORTANT — Google rating confirmed from search: ${googleRating} — use this exact value for googleRating field.` : ""}
-${googleReviewCount ? `IMPORTANT — Google review count confirmed from search: ${googleReviewCount} — use this exact value for googleReviewCount field.` : ""}
-${igFollowers > 0 ? `IMPORTANT — Instagram followers confirmed: ${igFollowers} — use this for instagramFollowers field.` : ""}
-${igHandle ? `IMPORTANT — Instagram handle confirmed: @${igHandle} — use this (without @) for instagram field.` : ""}
+${googleRating ? `CONFIRMED — googleRating: ${googleRating} — use exactly this value.` : ""}
+${googleReviewCount ? `CONFIRMED — googleReviewCount: ${googleReviewCount} — use exactly this value.` : ""}
+${igFollowers > 0 ? `CONFIRMED — instagramFollowers: ${igFollowers} — use exactly this value.` : ""}
+${igHandle ? `CONFIRMED — instagram handle: @${igHandle} — use without @ symbol.` : ""}
+${lat && lng ? `CONFIRMED — lat: ${lat}, lng: ${lng}, distanceMiles: ${distanceMiles} — use exactly these values.` : ""}
 
 MULTI-SOURCE CONTENT:
 ${combinedText}
@@ -281,10 +366,13 @@ Return ONLY valid JSON with these fields (use defaults if absent):
   if (googleReviewCount) data.googleReviewCount = googleReviewCount;
   if (igFollowers > 0) data.instagramFollowers = igFollowers;
   if (igHandle) data.instagram = igHandle;
+  if (lat) data.lat = lat;
+  if (lng) data.lng = lng;
+  if (distanceMiles) data.distanceMiles = distanceMiles;
 
   serialiseFields(data);
 
-  return { data, sources, igFollowers, googleRating, googleReviewCount };
+  return { data, sources, igFollowers, googleRating, googleReviewCount, lat, lng, distanceMiles };
 }
 
 // ── Property filter helper ─────────────────────────────────────────────────
@@ -401,6 +489,9 @@ router.post("/projects/:id/competitors/lookup", async (req, res) => {
       googleRating: result.googleRating,
       googleReviewCount: result.googleReviewCount,
       igFollowers: result.igFollowers,
+      lat: result.lat,
+      lng: result.lng,
+      distanceMiles: result.distanceMiles,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
