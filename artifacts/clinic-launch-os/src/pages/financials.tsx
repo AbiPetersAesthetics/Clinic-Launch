@@ -113,7 +113,7 @@ const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color
   realistic: { label: "Realistic", description: "65% occ, 6-mo ramp", color: "text-primary", badgeClass: "bg-primary/10 text-primary" },
   aggressive: { label: "Strong Launch", description: "85% occ, 4-mo ramp", color: "text-emerald-600", badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
   delayed_ramp: { label: "Delayed Ramp", description: "65% occ, 12-mo ramp", color: "text-amber-600", badgeClass: "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-  economic_downturn: { label: "Downturn", description: "−20% occ, −15% spend", color: "text-orange-600", badgeClass: "bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
+  economic_downturn: { label: "Economic Downturn", description: "−20% occ, −15% spend", color: "text-orange-600", badgeClass: "bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
   stress_test: { label: "Stress Test", description: "5% start, worst-case ramp", color: "text-destructive", badgeClass: "bg-destructive/10 text-destructive" },
 };
 
@@ -2396,7 +2396,7 @@ export default function FinancialsPage() {
                     {[
                       ["stress_test", "Stress Test — worst-case ramp, is Phase 1 still survivable?"],
                       ["delayed_ramp", "Delayed Ramp — how long is the dual-clinic burden?"],
-                      ["economic_downturn", "Downturn — reduced spend, lower occupancy"],
+                      ["economic_downturn", "Economic Downturn — reduced spend, lower occupancy"],
                     ].map(([key, desc]) => (
                       <Button key={key} variant="outline" size="sm" className="w-full justify-between text-xs h-auto py-2" onClick={() => { saveScenario(key as ScenarioKey); setTab("owner"); }}>
                         <span className={SCENARIOS[key as ScenarioKey].color}>{SCENARIOS[key as ScenarioKey].label}</span>
