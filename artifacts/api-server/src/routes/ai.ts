@@ -5,9 +5,9 @@ import {
   fixedCostItemsTable, propertiesTable, financialsTable,
   phasesTable, tasksTable, decisionsTable,
   complianceItemsTable, cqcMilestonesTable,
-  lifestylePlanTable,
+  lifestylePlanTable, competitorsTable,
 } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
 
 const router = Router();
@@ -205,6 +205,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     fixedCostsRaw,
     bedhamptonRaw,
     lifestyleRaw,
+    competitorsRaw,
   ] = await Promise.all([
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
@@ -212,6 +213,8 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     fetchBedhamptonLive().catch(() => null),
     db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
+    db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId))
+      .orderBy(desc(competitorsTable.estimatedThreatScore)),
   ]);
 
   const financial = financialRaw[0] ?? null;
@@ -342,6 +345,34 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
   const propertyContext = allPropertiesRaw.length > 0
     ? `${allPropertiesRaw.length} properties in pipeline:\n${allPropertyLines}\n\nActive property notes: ${activeProperty?.notes || "none"}`
     : "No properties added yet.";
+
+  // ── Competition context ───────────────────────────────────────────────────
+  let competitionContext = "No competitors have been researched yet — market risk assessment based on general Winchester market knowledge only.";
+  if (competitorsRaw.length > 0) {
+    const top = competitorsRaw.slice(0, 15); // cap at 15 to stay within token budget
+    const highThreat = top.filter(c => (c.estimatedThreatScore ?? 0) >= 70);
+    const medThreat  = top.filter(c => (c.estimatedThreatScore ?? 0) >= 40 && (c.estimatedThreatScore ?? 0) < 70);
+    const avgRating  = top.filter(c => c.googleRating && parseFloat(c.googleRating) > 0)
+                          .map(c => parseFloat(c.googleRating!));
+    const avgGoogleRating = avgRating.length > 0
+      ? (avgRating.reduce((s, r) => s + r, 0) / avgRating.length).toFixed(1)
+      : null;
+
+    const lines = top.map(c =>
+      `  • ${c.name ?? "Unknown"} (${c.clinicType ?? "unknown type"}) — threat: ${c.estimatedThreatScore ?? "?"}/100` +
+      (c.distanceMiles ? `, ${c.distanceMiles} miles` : "") +
+      (c.googleRating ? `, Google ${c.googleRating}★` + (c.googleReviewCount ? ` (${c.googleReviewCount} reviews)` : "") : "") +
+      (c.premisesType ? `, ${c.premisesType}` : "") +
+      (c.positioningCategory ? `, positioned as: ${c.positioningCategory}` : "") +
+      (c.threatReason ? `\n    Threat: ${c.threatReason}` : "")
+    ).join("\n");
+
+    competitionContext = `${competitorsRaw.length} competitors researched (showing top ${top.length} by threat score):
+${lines}
+
+Summary: ${highThreat.length} high-threat competitors (score ≥70), ${medThreat.length} medium-threat (40–69).${avgGoogleRating ? ` Average Google rating across researched competitors: ${avgGoogleRating}★.` : ""}
+Market note: This data was researched by Abi directly — treat as more reliable than AI-generated estimates.`;
+  }
 
   // ── Decisions context ─────────────────────────────────────────────────────
   const decisionsContext = decisionsRaw.length > 0
@@ -475,6 +506,9 @@ ${propertyContext}
 
 === LIVE BEDHAMPTON CLINIC PERFORMANCE (her existing business — the financial safety net) ===
 ${bedhContext}
+
+=== COMPETITIVE LANDSCAPE (researched by Abi — real data, not AI estimates) ===
+${competitionContext}
 
 === STRATEGIC DECISIONS ALREADY MADE ===
 ${decisionsContext}
