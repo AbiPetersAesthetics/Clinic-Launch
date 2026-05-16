@@ -8,7 +8,7 @@ import {
   CheckCircle2, Circle, Clock, Sun, Heart, Users,
   Stethoscope, Leaf, AlertCircle, Star, ChevronRight,
   CalendarDays, ArrowRight, Shield, Sparkles, MapPin, Wand2, TrendingUp,
-  Plus, Trash2, X, ChevronDown, ChevronUp, Target, Copy, Check,
+  Plus, Trash2, X, ChevronDown, ChevronUp, Copy, Check,
   Rocket, BriefcaseMedical, GraduationCap, Flame, Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -137,7 +137,6 @@ interface PlanExtras {
   thePitch: string;
   successVision12m: string;
   fearInventory: FearItem[];
-  nursingMonthlyIncomeGbp: number;
   energyGivers: string;
   energyDrainers: string;
   dayTimeOverrides: Record<string, DayTimeOverride>;
@@ -145,7 +144,7 @@ interface PlanExtras {
 }
 const DEFAULT_EXTRAS: PlanExtras = {
   closureDates: [], nonNegotiablesList: [], thePitch: "", successVision12m: "",
-  fearInventory: [], nursingMonthlyIncomeGbp: 0, energyGivers: "", energyDrainers: "",
+  fearInventory: [], energyGivers: "", energyDrainers: "",
   dayTimeOverrides: {}, targetHoursPerFortnight: 0,
 };
 function parseExtras(s: string): PlanExtras {
@@ -994,10 +993,6 @@ function AbiWeek({
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-2.5 py-1.5 mt-2">
-          <ArrowRight className="w-3 h-3 shrink-0" />
-          These figures feed directly into Financial Modelling — Days/Month and Hours/Day are drawn from this schedule.
-        </div>
 
         {/* Legend */}
         <div className="flex items-center gap-2 mt-3 flex-wrap">
@@ -1752,7 +1747,6 @@ function ScheduleAnalytics({
               { label: `Appts / week`, value: Math.floor((totalRealWeek * 60) / slot) },
               { label: `Appts / month`, value: apptPerMonth },
               { label: `Appts / year`, value: apptPerYear.toLocaleString() },
-              { label: `Yr revenue @ £150 ATV`, value: `£${(apptPerYear * 150).toLocaleString()}` },
             ].map(({ label, value }) => (
               <div key={label} className="rounded-lg bg-muted/30 border border-border/40 px-3 py-2 flex items-center justify-between gap-2">
                 <span className="text-[10px] text-muted-foreground">{label}</span>
@@ -2030,131 +2024,6 @@ function CoverageMatrix({ clinicDays, daySchedules, weekBDaySchedules, fortnight
   );
 }
 
-// ─── Income Bridge ────────────────────────────────────────────────────────────
-function TransitionPlanner({ nursingMonthlyIncome, clinicDays, onChange }: {
-  nursingMonthlyIncome: number; clinicDays: string[];
-  onChange: (v: number) => void;
-}) {
-  const [personalCosts, setPersonalCosts] = useState(3500);
-  const [runwaySavings, setRunwaySavings] = useState(35000);
-  const [avgTV, setAvgTV] = useState(155);
-  const [slotsPerDay, setSlotsPerDay] = useState(5);
-  const [varPct, setVarPct] = useState(30);
-
-  // Realistic occupancy ramp for a new aesthetics clinic — months 1-12
-  const RAMP = [18, 28, 40, 50, 58, 64, 70, 74, 78, 83, 88, 93];
-  const daysPerMonth = clinicDays.length * 4.33;
-  const maxRevPerMonth = daysPerMonth * slotsPerDay * avgTV;
-  const fmt = (n: number) => `£${Math.round(Math.max(0, n)).toLocaleString()}`;
-
-  const months = RAMP.map((pct, i) => {
-    const gross = Math.round(maxRevPerMonth * pct / 100);
-    const netClinic = Math.round(gross * (1 - varPct / 100));
-    return { month: i + 1, pct, gross, netClinic };
-  });
-
-  let savingsBalance = runwaySavings;
-  const rows = months.map(m => {
-    const gap = Math.max(0, personalCosts - m.netClinic);
-    savingsBalance = savingsBalance - gap;
-    return { ...m, gap, savingsBalance, covers: m.netClinic >= personalCosts, solvent: savingsBalance >= 0 };
-  });
-
-  const breakEvenMonth = rows.find(r => r.covers)?.month ?? null;
-  const savingsGoneMonth = rows.find(r => !r.solvent)?.month ?? null;
-  const isSafe = savingsGoneMonth === null || (breakEvenMonth !== null && breakEvenMonth < savingsGoneMonth);
-
-  return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <TrendingUp className="w-4 h-4 text-emerald-500" /> Income Transition Planner
-        </CardTitle>
-        <CardDescription className="text-xs">Month-by-month post-exit: does clinic income replace nursing income before your savings run out?</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { label: "Nursing net/month", val: nursingMonthlyIncome, set: (v: number) => onChange(v), placeholder: "e.g. 2800" },
-            { label: "Personal costs/month", val: personalCosts, set: setPersonalCosts, placeholder: "e.g. 3500" },
-            { label: "Runway savings", val: runwaySavings, set: setRunwaySavings, placeholder: "e.g. 35000" },
-            { label: "Avg treatment value", val: avgTV, set: setAvgTV, placeholder: "e.g. 155" },
-          ].map(({ label, val, set, placeholder }) => (
-            <div key={label} className="space-y-1">
-              <Label className="text-[10px] text-muted-foreground">{label}</Label>
-              <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">£</span>
-                <Input type="number" min={0} step={100} value={val || ""} onChange={e => set(parseFloat(e.target.value) || 0)} className="h-8 text-xs pl-5" placeholder={placeholder} />
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-4 pt-1">
-          <div className="flex items-center gap-2 flex-1">
-            <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Slots/day</Label>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setSlotsPerDay(Math.max(1, slotsPerDay - 1))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">−</button>
-              <span className="w-5 text-center text-xs font-bold">{slotsPerDay}</span>
-              <button onClick={() => setSlotsPerDay(Math.min(12, slotsPerDay + 1))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">+</button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-1">
-            <Label className="text-[10px] text-muted-foreground whitespace-nowrap">Variable costs</Label>
-            <div className="flex items-center gap-1">
-              <button onClick={() => setVarPct(Math.max(5, varPct - 5))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">−</button>
-              <span className="w-7 text-center text-xs font-bold">{varPct}%</span>
-              <button onClick={() => setVarPct(Math.min(60, varPct + 5))} className="w-6 h-7 rounded border text-sm hover:bg-muted shrink-0">+</button>
-            </div>
-          </div>
-        </div>
-
-        {personalCosts > 0 && (
-          <div className={`rounded-xl p-3 ${isSafe ? "bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800" : "bg-destructive/5 border border-destructive/20"}`}>
-            {breakEvenMonth ? (
-              <>
-                <p className={`text-xs font-semibold ${isSafe ? "text-emerald-700 dark:text-emerald-300" : "text-destructive"}`}>
-                  Clinic covers personal costs from <strong>Month {breakEvenMonth}</strong>
-                  {isSafe ? " — savings hold until then ✓" : ` — but savings run dry at Month ${savingsGoneMonth}`}
-                </p>
-                <p className="text-[10px] text-muted-foreground mt-0.5">
-                  {fmt(maxRevPerMonth)} max/month · {clinicDays.length} days · {slotsPerDay} slots · {varPct}% variable costs
-                </p>
-              </>
-            ) : (
-              <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
-                Clinic doesn't cover personal costs within 12 months — adjust days, slots, or treatment value
-              </p>
-            )}
-          </div>
-        )}
-
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-[9px] text-transparent w-8 shrink-0">—</span>
-            <div className="flex-1" />
-            <span className="text-[9px] uppercase tracking-wide text-muted-foreground w-16 text-right shrink-0">Net income</span>
-            <span className="text-[9px] uppercase tracking-wide text-muted-foreground w-16 text-right shrink-0">Savings left</span>
-          </div>
-          {rows.map(r => {
-            const barPct = personalCosts > 0 ? Math.min(100, Math.round(r.netClinic / personalCosts * 100)) : r.pct;
-            const barColor = r.covers ? "bg-emerald-500" : r.netClinic >= personalCosts * 0.65 ? "bg-primary" : "bg-amber-400";
-            return (
-              <div key={r.month} className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground w-8 shrink-0 font-medium">Mo {r.month}</span>
-                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${barPct}%` }} />
-                </div>
-                <span className={`text-[10px] font-semibold w-16 text-right shrink-0 ${r.covers ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>{fmt(r.netClinic)}</span>
-                <span className={`text-[10px] w-16 text-right shrink-0 ${!r.solvent ? "text-destructive font-bold" : r.savingsBalance < runwaySavings * 0.3 ? "text-amber-500 font-medium" : "text-muted-foreground"}`}>{fmt(r.savingsBalance)}</span>
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ─── Notice Scripts ───────────────────────────────────────────────────────────
 const NOTICE_SCRIPTS_DATA = [
@@ -2277,73 +2146,6 @@ function NonNegotiablesList({ items, onChange }: {
   );
 }
 
-// ─── Capacity Calculator ──────────────────────────────────────────────────────
-function CapacityCalculator({ clinicDays, clinicOpenTime, clinicCloseTime, familySchedule }: {
-  clinicDays: string[]; clinicOpenTime: string; clinicCloseTime: string; familySchedule: FamilySchedule;
-}) {
-  const [treatmentMins, setTreatmentMins] = useState(45);
-  const [targetATV, setTargetATV] = useState(150);
-  const windowData = DAYS.filter(d => clinicDays.includes(d)).map(day => ({ day, hours: computeDayWindow(day, familySchedule, clinicOpenTime, clinicCloseTime).hours }));
-  const totalWeeklyHours = windowData.reduce((s, d) => s + d.hours, 0);
-  const hoursPerDay = clinicDays.length > 0 ? totalWeeklyHours / clinicDays.length : 0;
-  const daysPerMonth = +(clinicDays.length * 4.333).toFixed(1);
-  const maxClientsPerMonth = Math.floor((daysPerMonth * hoursPerDay * 60) / treatmentMins);
-  const occupancies = [0.5, 0.65, 0.75, 0.85, 1.0];
-  return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center gap-2">
-          <Target className="w-4 h-4 text-primary" /> Capacity & Revenue Potential
-        </CardTitle>
-        <CardDescription className="text-xs">Based on your actual clinic window after school runs — your real ceiling</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Treatment slot (mins)</Label>
-            <div className="flex gap-1">
-              {[30, 45, 60, 90].map(m => (
-                <button key={m} onClick={() => setTreatmentMins(m)} className={`flex-1 py-1.5 rounded-lg text-xs font-semibold border transition-all ${treatmentMins === m ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/30"}`}>{m}</button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">Average treatment value</Label>
-            <div className="relative"><span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span><Input type="number" min={50} step={10} value={targetATV} onChange={e => setTargetATV(parseInt(e.target.value)||150)} className="h-8 text-sm pl-6" /></div>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { val: +(totalWeeklyHours).toFixed(1), label: "hrs/week" },
-            { val: Math.floor((totalWeeklyHours * 60) / treatmentMins), label: "max clients/wk" },
-            { val: maxClientsPerMonth, label: "max clients/mo" },
-          ].map(({ val, label }) => (
-            <div key={label} className="rounded-xl bg-muted/30 border border-border/40 p-3">
-              <p className="text-xl font-black text-primary leading-none">{val}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-            </div>
-          ))}
-        </div>
-        <div className="space-y-1.5">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Monthly revenue at occupancy</p>
-          {occupancies.map(occ => {
-            const rev = Math.round(maxClientsPerMonth * occ * targetATV);
-            return (
-              <div key={occ} className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground w-10 shrink-0">{Math.round(occ * 100)}%</span>
-                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full rounded-full ${occ >= 0.75 ? "bg-emerald-500" : "bg-primary/60"}`} style={{ width: `${occ * 100}%` }} />
-                </div>
-                <span className="text-[10px] font-semibold text-foreground w-16 text-right shrink-0">£{rev.toLocaleString()}/mo</span>
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-[10px] text-muted-foreground">These are ceiling figures — no lunch or admin time included. Year-one occupancy is typically 40–60%. The value is understanding your ceiling, not assuming you'll hit it.</p>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ─── The Pitch ────────────────────────────────────────────────────────────────
 function ThePitch({ value, onChange }: { value: string; onChange: (v: string) => void }) {
@@ -2560,7 +2362,6 @@ export default function LifestylePage() {
       !!plan.targetExitDate,
       plan.nursingNoticeWeeks > 0 && plan.nursingNoticeWeeks !== 12,
       plan.nursingExitNotes.trim().length > 20,
-      extras.nursingMonthlyIncomeGbp > 0,
       // Manual checklist ticks
       ...NURSING_CHECKS.map(c => plan.nursingChecks.includes(c.key)),
     ];
@@ -2676,11 +2477,6 @@ export default function LifestylePage() {
       }
     } else {
       nursing += " No exit date set yet.";
-    }
-    if (extras.nursingMonthlyIncomeGbp > 0) {
-      nursing += ` Nursing net income to replace: £${extras.nursingMonthlyIncomeGbp.toLocaleString()}/month.`;
-    } else {
-      nursing += " Enter your nursing net income to model the income transition.";
     }
     nursing += ` ${plan.nursingChecks.length}/${NURSING_CHECKS.length} exit checklist items confirmed.`;
 
@@ -3749,14 +3545,7 @@ export default function LifestylePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <TransitionPlanner
-              nursingMonthlyIncome={extras.nursingMonthlyIncomeGbp}
-              clinicDays={plan.clinicDays}
-              onChange={v => updateExtras({ nursingMonthlyIncomeGbp: v })}
-            />
-            <NoticeScripts />
-          </div>
+          <NoticeScripts />
         </div>
       )}
 
@@ -3849,12 +3638,6 @@ export default function LifestylePage() {
                 <p className="text-sm text-foreground/80 leading-relaxed mt-2 font-medium">The fix is simple but hard: protect the non-clinic days before you need to, not after.</p>
               </div>
 
-              <CapacityCalculator
-                clinicDays={plan.clinicDays}
-                clinicOpenTime={plan.clinicOpenTime}
-                clinicCloseTime={plan.clinicCloseTime}
-                familySchedule={familySchedule}
-              />
             </div>
           </div>
 
