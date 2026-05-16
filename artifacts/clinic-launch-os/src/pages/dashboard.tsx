@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
+import { Tooltip as Tip, TooltipTrigger as TipTrigger, TooltipContent as TipContent } from "@/components/ui/tooltip";
 import {
   AreaChart,
   Area,
@@ -462,40 +463,90 @@ export default function DashboardPage() {
                   {/* ── Confidence + Computed Metrics row ─────────────────── */}
                   {c && (
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
-                        <div className="text-2xl font-bold text-foreground">{goNoGo.confidenceScore}%</div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Launch Confidence</div>
-                        <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
-                          <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goNoGo.confidenceScore}%` }} />
-                        </div>
-                      </div>
-                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
-                        <div className="text-xl font-bold text-foreground">
-                          {c.breakEvenRevenue > 0 ? `£${Math.round(c.breakEvenRevenue / 1000)}k` : "—"}
-                        </div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Break-even / mo</div>
-                        {c.rentToRevenuePct > 0 && (
-                          <div className={`text-[10px] mt-0.5 ${c.rentToRevenuePct > 20 ? "text-red-500" : c.rentToRevenuePct > 15 ? "text-amber-500" : "text-emerald-600"}`}>
-                            Rent = {c.rentToRevenuePct}% of revenue
+                      {/* Launch Confidence */}
+                      <Tip>
+                        <TipTrigger asChild>
+                          <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center cursor-help">
+                            <div className="text-2xl font-bold text-foreground">{goNoGo.confidenceScore}%</div>
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Launch Confidence</div>
+                            <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${goNoGo.confidenceScore}%` }} />
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center">
-                        <div className={`text-xl font-bold ${c.cashRunwayMonths >= 99 ? "text-emerald-600" : c.cashRunwayMonths >= 6 ? "text-amber-600" : "text-red-600"}`}>
-                          {c.cashRunwayMonths >= 99 ? "Secure" : `${c.cashRunwayMonths}mo`}
-                        </div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Cash Runway</div>
-                        {c.bedhCoverageMonths > 0 && (
-                          <div className="text-[10px] text-muted-foreground mt-0.5">Bedh = {c.bedhCoverageMonths}× monthly fixed</div>
-                        )}
-                      </div>
-                      <div className={`rounded-lg border p-3 text-center ${c.vatRisk ? "border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20" : "border-border/60 bg-background/60"}`}>
-                        <div className={`text-xl font-bold ${c.vatRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                          {c.vatRisk ? "At risk" : "Clear"}
-                        </div>
-                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">VAT Threshold</div>
-                        <div className="text-[10px] text-muted-foreground mt-0.5">{c.vatRisk ? "May breach £90k" : "Below £90k limit"}</div>
-                      </div>
+                        </TipTrigger>
+                        <TipContent side="bottom" className="max-w-[240px] text-xs leading-relaxed">
+                          <p className="font-semibold mb-1">Launch Confidence Score</p>
+                          <p>AI's overall confidence (0–100%) that this clinic will be financially viable if Abi signs heads of terms at this property and rent.</p>
+                          <p className="mt-1 text-muted-foreground">Factors in: financial model, property terms, competitor landscape, Winchester demographics, and personal runway.</p>
+                        </TipContent>
+                      </Tip>
+
+                      {/* Break-even */}
+                      <Tip>
+                        <TipTrigger asChild>
+                          <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center cursor-help">
+                            <div className="text-xl font-bold text-foreground">
+                              {c.breakEvenRevenue > 0 ? `£${Math.round(c.breakEvenRevenue / 1000)}k` : "—"}
+                            </div>
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Break-even / mo</div>
+                            {c.rentToRevenuePct > 0 && (
+                              <div className={`text-[10px] mt-0.5 ${c.rentToRevenuePct > 20 ? "text-red-500" : c.rentToRevenuePct > 15 ? "text-amber-500" : "text-emerald-600"}`}>
+                                Rent = {c.rentToRevenuePct}% of revenue
+                              </div>
+                            )}
+                          </div>
+                        </TipTrigger>
+                        <TipContent side="bottom" className="max-w-[240px] text-xs leading-relaxed">
+                          <p className="font-semibold mb-1">Monthly Break-even Revenue</p>
+                          <p>The Winchester revenue Abi needs each month to cover all fixed costs and variable expenses. Below this figure the clinic is running at a loss.</p>
+                          {c.rentToRevenuePct > 0 && (
+                            <p className="mt-1">
+                              <span className="font-medium">Rent ratio {c.rentToRevenuePct}%</span> — industry benchmark: under 15% healthy, 15–20% caution, over 20% high risk.
+                            </p>
+                          )}
+                        </TipContent>
+                      </Tip>
+
+                      {/* Cash Runway */}
+                      <Tip>
+                        <TipTrigger asChild>
+                          <div className="rounded-lg border border-border/60 bg-background/60 p-3 text-center cursor-help">
+                            <div className={`text-xl font-bold ${c.cashRunwayMonths >= 99 ? "text-emerald-600" : c.cashRunwayMonths >= 6 ? "text-amber-600" : "text-red-600"}`}>
+                              {c.cashRunwayMonths >= 99 ? "Secure" : `${c.cashRunwayMonths}mo`}
+                            </div>
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">Cash Runway</div>
+                            {c.bedhCoverageMonths > 0 && (
+                              <div className="text-[10px] text-muted-foreground mt-0.5">Bedh = {c.bedhCoverageMonths}× monthly fixed</div>
+                            )}
+                          </div>
+                        </TipTrigger>
+                        <TipContent side="bottom" className="max-w-[240px] text-xs leading-relaxed">
+                          <p className="font-semibold mb-1">Cash Runway</p>
+                          <p>Estimated months Abi can sustain Winchester fixed costs from savings and Bedhampton income, before Winchester needs to be self-funding.</p>
+                          {c.bedhCoverageMonths > 0 && (
+                            <p className="mt-1">Bedhampton's monthly net profit alone covers <span className="font-medium">{c.bedhCoverageMonths} months</span> of Winchester fixed costs — this is the safety buffer.</p>
+                          )}
+                        </TipContent>
+                      </Tip>
+
+                      {/* VAT */}
+                      <Tip>
+                        <TipTrigger asChild>
+                          <div className={`rounded-lg border p-3 text-center cursor-help ${c.vatRisk ? "border-red-200 dark:border-red-800 bg-red-50/60 dark:bg-red-950/20" : "border-border/60 bg-background/60"}`}>
+                            <div className={`text-xl font-bold ${c.vatRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                              {c.vatRisk ? "At risk" : "Clear"}
+                            </div>
+                            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">VAT Threshold</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{c.vatRisk ? "May breach £90k" : "Below £90k limit"}</div>
+                          </div>
+                        </TipTrigger>
+                        <TipContent side="bottom" className="max-w-[240px] text-xs leading-relaxed">
+                          <p className="font-semibold mb-1">VAT Registration Threshold</p>
+                          <p>Once combined Winchester + Bedhampton annual turnover exceeds £90k, VAT registration becomes mandatory.</p>
+                          <p className="mt-1">This means charging 20% VAT on all services — which either squeezes margin or makes prices less competitive vs non-VAT-registered competitors.</p>
+                          {c.vatRiskDetail && <p className="mt-1 font-medium">{c.vatRiskDetail}</p>}
+                        </TipContent>
+                      </Tip>
                     </div>
                   )}
 
@@ -505,23 +556,33 @@ export default function DashboardPage() {
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Risk Assessment — Property Decision</div>
                       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                         {([
-                          { dim: "financial" as const, label: "Financial" },
-                          { dim: "property" as const, label: "Property" },
-                          { dim: "market" as const, label: "Market" },
-                          { dim: "strategic" as const, label: "Strategic" },
-                          { dim: "lifeDesign" as const, label: "Life Design" },
-                        ]).map(({ dim, label }) => {
+                          { dim: "financial" as const, label: "Financial", desc: "Financial model viability — break-even occupancy, cash runway, fixed cost burden, and scenario range." },
+                          { dim: "property" as const, label: "Property", desc: "Property terms risk — rent level, lease length, repairing obligations, and how the heads of terms hold up commercially." },
+                          { dim: "market" as const, label: "Market", desc: "Winchester market risk — demand for premium aesthetics, competitor density, footfall at this location, and client acquisition difficulty." },
+                          { dim: "strategic" as const, label: "Strategic", desc: "Strategic risk — whether this move makes sense for the business at this stage, and how Bedhampton's trajectory affects it." },
+                          { dim: "lifeDesign" as const, label: "Life Design", desc: "Personal risk — impact on Abi's working hours, income security, stress, and life design goals during the ramp-up period." },
+                        ]).map(({ dim, label, desc }) => {
                           const score = goNoGo.riskScores[dim] ?? 5;
                           const rationale = goNoGo.riskRationale?.[dim];
                           return (
-                            <div key={dim} className={`rounded-lg border p-3 ${riskColor(score)}`}>
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="text-[10px] font-semibold uppercase tracking-wider">{label}</div>
-                                <div className="text-base font-bold">{score}/10</div>
-                              </div>
-                              <div className="text-[10px] font-semibold">{riskLabel(score)} risk</div>
-                              {rationale && <div className="text-[10px] opacity-80 mt-1 leading-tight">{rationale}</div>}
-                            </div>
+                            <Tip key={dim}>
+                              <TipTrigger asChild>
+                                <div className={`rounded-lg border p-3 cursor-help ${riskColor(score)}`}>
+                                  <div className="flex items-center justify-between mb-1">
+                                    <div className="text-[10px] font-semibold uppercase tracking-wider">{label}</div>
+                                    <div className="text-base font-bold">{score}/10</div>
+                                  </div>
+                                  <div className="text-[10px] font-semibold">{riskLabel(score)} risk</div>
+                                  {rationale && <div className="text-[10px] opacity-80 mt-1 leading-tight">{rationale}</div>}
+                                </div>
+                              </TipTrigger>
+                              <TipContent side="bottom" className="max-w-[220px] text-xs leading-relaxed">
+                                <p className="font-semibold mb-1">{label} Risk — {score}/10</p>
+                                <p>{desc}</p>
+                                <p className="mt-1 text-muted-foreground">1–3 = Low · 4–6 = Moderate · 7–10 = High</p>
+                                {rationale && <p className="mt-1 font-medium border-t pt-1">{rationale}</p>}
+                              </TipContent>
+                            </Tip>
                           );
                         })}
                       </div>
