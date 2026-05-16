@@ -1018,16 +1018,41 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
         )}
       </div>
 
-      {/* ── View toggle + category filter ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex gap-1.5">
-          <button onClick={() => setPricingView("launch")} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${pricingView === "launch" ? "bg-primary/20 border-primary/50 text-primary" : "bg-muted border-border text-muted-foreground hover:border-primary/30"}`}>
-            Launch pricing
-          </button>
-          <button onClick={() => setPricingView("mature")} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${pricingView === "mature" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-400" : "bg-muted border-border text-muted-foreground hover:border-emerald-500/30"}`}>
-            12m+ pricing
-          </button>
+      {/* ── Rank summary card ── */}
+      {rankSummary && (
+        <div className="grid grid-cols-2 gap-3">
+          {/* Launch rank card */}
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <p className="text-[11px] uppercase tracking-wider text-primary font-medium mb-1">Now — Launch pricing</p>
+            <p className="text-2xl font-bold text-foreground">
+              {ordinal(Math.round(rankSummary.launchAvgRank))}
+              <span className="text-sm font-normal text-muted-foreground ml-1">of {rankSummary.avgTotal}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">most expensive on average across {rankSummary.count} treatments</p>
+            <div className="flex gap-3 mt-3 text-[11px]">
+              {rankSummary.launchTop > 0 && <span className="text-teal-600 font-medium">Most expensive: {rankSummary.launchTop} treatment{rankSummary.launchTop > 1 ? "s" : ""}</span>}
+              {rankSummary.launchBottom > 0 && <span className="text-amber-600 font-medium">Cheapest: {rankSummary.launchBottom} treatment{rankSummary.launchBottom > 1 ? "s" : ""}</span>}
+            </div>
+          </div>
+          {/* Mature rank card */}
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <p className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-medium mb-1">High Street — Maturity pricing</p>
+            <p className="text-2xl font-bold text-foreground">
+              {ordinal(Math.round(rankSummary.matureAvgRank))}
+              <span className="text-sm font-normal text-muted-foreground ml-1">of {rankSummary.avgTotal}</span>
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">most expensive on average across {rankSummary.count} treatments</p>
+            <div className="flex gap-3 mt-3 text-[11px]">
+              {rankSummary.matureTop > 0 && <span className="text-teal-600 font-medium">Most expensive: {rankSummary.matureTop} treatment{rankSummary.matureTop > 1 ? "s" : ""}</span>}
+              {rankSummary.matureBottom > 0 && <span className="text-amber-600 font-medium">Cheapest: {rankSummary.matureBottom} treatment{rankSummary.matureBottom > 1 ? "s" : ""}</span>}
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* ── Category filter ── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <p className="text-xs text-muted-foreground">Rank 1st = most expensive in market. Badge colour: <span className="text-teal-600 font-medium">teal = premium</span> · <span className="text-amber-600 font-medium">amber = cheapest</span></p>
         <div className="flex gap-1.5">
           {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${catFilter===c?"bg-muted border-border text-foreground font-medium":"bg-transparent border-border text-muted-foreground hover:text-foreground"}`}>{c}</button>)}
         </div>
@@ -1042,23 +1067,23 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
             <thead>
               <tr className="border-b border-border">
                 <th className="text-left py-3 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wider w-44">Treatment</th>
-                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-                  <span className={pricingView === "launch" ? "text-primary" : "text-emerald-600 dark:text-emerald-400"}>
-                    APA {pricingView === "launch" ? "(launch)" : "(12m+)"}
-                  </span>
-                </th>
-                <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Market median</th>
+                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-primary">APA Launch</th>
+                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-emerald-600 dark:text-emerald-400">APA 12m+</th>
+                <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Median</th>
                 {competitors.map(c=><th key={c.id} title={c.name} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-[7rem] overflow-hidden text-ellipsis">{shortClinicName(c.name)}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {treatments.map(t=>{
-                const apaRecommended = activePricing?.[t.key] ?? null;
-                const displayApaPrice = apaRecommended ?? t.apaPrice;
-                const isAiPrice = apaRecommended !== null;
-                const compPrices = competitors.map(c=>({ id:c.id, name:c.name, price: parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0 }));
-                const validPrices = compPrices.filter(p=>p.price>0).map(p=>p.price);
-                const medianPrice = validPrices.length ? (validPrices.sort((a,b)=>a-b)[Math.floor(validPrices.length/2)]) : null;
+                const launchPrice  = strategy?.launchPricing?.[t.key] ?? t.apaPrice;
+                const maturePrice  = strategy?.maturePricing?.[t.key] ?? t.apaPrice;
+                const launchIsAi   = !!strategy?.launchPricing?.[t.key];
+                const matureIsAi   = !!strategy?.maturePricing?.[t.key];
+                const compPrices   = competitors.map(c=>({ id:c.id, name:c.name, price: parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0 }));
+                const validPrices  = compPrices.filter(p=>p.price>0).map(p=>p.price);
+                const medianPrice  = validPrices.length ? ([...validPrices].sort((a,b)=>a-b)[Math.floor(validPrices.length/2)]) : null;
+                const launchRank   = priceRank(launchPrice, validPrices);
+                const matureRank   = priceRank(maturePrice, validPrices);
                 return (
                   <tr key={t.key} className="hover:bg-muted/30 transition-colors">
                     <td className="py-3 pr-4">
@@ -1069,11 +1094,23 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                         </p>
                       )}
                     </td>
+                    {/* APA Launch */}
                     <td className="text-right py-3 px-3">
-                      <span className={`font-bold ${isAiPrice ? (pricingView === "launch" ? "text-primary" : "text-emerald-600 dark:text-emerald-400") : "text-muted-foreground"}`}>
-                        £{displayApaPrice}
-                      </span>
-                      {isAiPrice && <span className="ml-1 text-[9px] text-muted-foreground/60 align-super">AI</span>}
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={`font-bold ${launchIsAi ? "text-primary" : "text-muted-foreground"}`}>
+                          £{launchPrice}{launchIsAi && <sup className="ml-0.5 text-[8px] text-muted-foreground/60">AI</sup>}
+                        </span>
+                        {launchRank && <RankBadge rank={launchRank.rank} total={launchRank.total} color="teal" />}
+                      </div>
+                    </td>
+                    {/* APA Mature */}
+                    <td className="text-right py-3 px-3">
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span className={`font-bold ${matureIsAi ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                          £{maturePrice}{matureIsAi && <sup className="ml-0.5 text-[8px] text-muted-foreground/60">AI</sup>}
+                        </span>
+                        {matureRank && <RankBadge rank={matureRank.rank} total={matureRank.total} color="emerald" />}
+                      </div>
                     </td>
                     <td className="text-right py-3 px-3 text-muted-foreground text-sm">
                       {medianPrice ? `£${medianPrice}` : <span className="text-muted-foreground/40">—</span>}
@@ -1081,7 +1118,7 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                     {competitors.map(c=>{ const p = parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0; const offered = parseJson<string[]>(c.treatmentsJson,[]).includes(t.key); return (
                       <td key={c.id} className="text-right py-3 px-3">
                         {p > 0 ? (
-                          <span className={`font-medium ${p < displayApaPrice*0.85 ? "text-red-500" : p > displayApaPrice*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
+                          <span className={`font-medium ${p < launchPrice*0.85 ? "text-red-500" : p > launchPrice*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
                         ) : offered ? <span className="text-xs text-muted-foreground">Offered</span> : <span className="text-xs text-muted-foreground/40">—</span>}
                       </td>
                     );})}
@@ -1093,9 +1130,9 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
         </div>
       )}
       <div className="flex items-center gap-6 text-xs text-muted-foreground pt-2 border-t border-border">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Competitors significantly cheaper than APA</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />Competitors more expensive than APA</div>
-        {strategy && <div className="flex items-center gap-1.5"><span className="text-[10px] text-muted-foreground/60 font-medium">AI</span> = AI-recommended price</div>}
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Competitors cheaper than APA launch price</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />Competitors more expensive than APA launch price</div>
+        {strategy && <div className="flex items-center gap-1.5"><sup className="text-[9px] text-muted-foreground/60 font-medium">AI</sup> = AI-recommended price</div>}
       </div>
     </div>
   );
