@@ -1408,14 +1408,14 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="All fixed cost items from Assumptions (rent, rates, insurance, dual costs — counted once)">Fixed (Winc)</span>
                         </th>
-                        <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[80px]">
-                          <span title="Bedhampton net profit after stock, running costs and VAT">Bedh Net</span>
-                        </th>
                         <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
                           <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT</span>
                         </th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="Winchester only: Revenue − Variable − Fixed − VAT. Positive = Winchester covers its own costs without Bedhampton.">Winc ±</span>
+                        </th>
+                        <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[80px]">
+                          <span title="Bedhampton net profit after stock, running costs and VAT">Bedh Net</span>
                         </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
@@ -1495,79 +1495,6 @@ export default function FinancialsPage() {
                                 )
                               ) : (
                                 <span className="text-muted-foreground/30">—</span>
-                              )}
-                            </td>
-
-                            {/* Bedhampton Net — rich hover breakdown */}
-                            <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30 line-through" : m.bedhNet > 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>
-                              {m.bedhClosed ? (
-                                "closed"
-                              ) : m.bedhRevenue === 0 ? (
-                                <span className="text-muted-foreground/30">—</span>
-                              ) : (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="cursor-help underline decoration-dotted decoration-blue-400/60 underline-offset-2">
-                                      {formatGBP(m.bedhNet)}
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
-                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
-                                      <p className="text-[11px] font-bold text-gray-900">Bedhampton breakdown</p>
-                                      <p className="text-[10px] text-gray-500">{m.calendarLabel}</p>
-                                    </div>
-                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600">Gross revenue</span>
-                                        <span className="tabular-nums font-semibold text-gray-900">{formatGBP(m.bedhRevenue)}</span>
-                                      </div>
-                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Costs</div>
-                                      {_bedhStock > 0 && (
-                                        <div className="flex justify-between items-center pl-1">
-                                          <span className="text-gray-500">Stock / products ({_bedhStockPct}%)</span>
-                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhStock)})</span>
-                                        </div>
-                                      )}
-                                      {_bedhRent > 0 && (
-                                        <div className="flex justify-between items-center pl-1">
-                                          <span className="text-gray-500">Rent / premises</span>
-                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhRent)})</span>
-                                        </div>
-                                      )}
-                                      {_bedhMarketing > 0 && (
-                                        <div className="flex justify-between items-center pl-1">
-                                          <span className="text-gray-500">Marketing</span>
-                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhMarketing)})</span>
-                                        </div>
-                                      )}
-                                      {_bedhOther > 0 && (
-                                        <div className="flex justify-between items-center pl-1">
-                                          <span className="text-gray-500">Other running</span>
-                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhOther)})</span>
-                                        </div>
-                                      )}
-                                      {(m.bedhDualCosts ?? 0) > 0 && (
-                                        <div className="flex justify-between items-center pl-1">
-                                          <span className="text-gray-500">Shared (dual) costs</span>
-                                          <span className="tabular-nums text-red-600">({formatGBP(m.bedhDualCosts)})</span>
-                                        </div>
-                                      )}
-                                      {_bedhVat > 0 && (
-                                        <>
-                                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
-                                          <div className="flex justify-between items-center pl-1">
-                                            <span className="text-gray-500">VAT liability (20%)</span>
-                                            <span className="tabular-nums text-amber-600">({formatGBP(_bedhVat)})</span>
-                                          </div>
-                                        </>
-                                      )}
-                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
-                                        <span className="font-bold text-gray-900">Net</span>
-                                        <span className={`tabular-nums font-bold ${m.bedhNet >= 0 ? "text-blue-600" : "text-red-600"}`}>{formatGBP(m.bedhNet)}</span>
-                                      </div>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
                               )}
                             </td>
 
@@ -1653,6 +1580,79 @@ export default function FinancialsPage() {
                                       <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
                                         <span className="font-bold text-gray-900">Winchester net</span>
                                         <span className={`tabular-nums font-bold ${m.wincNet >= 0 ? "text-emerald-600" : "text-red-600"}`}>{m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </td>
+
+                            {/* Bedhampton Net — rich hover breakdown */}
+                            <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30 line-through" : m.bedhNet > 0 ? "text-blue-600 dark:text-blue-400" : "text-destructive"}`}>
+                              {m.bedhClosed ? (
+                                "closed"
+                              ) : m.bedhRevenue === 0 ? (
+                                <span className="text-muted-foreground/30">—</span>
+                              ) : (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted decoration-blue-400/60 underline-offset-2">
+                                      {formatGBP(m.bedhNet)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Bedhampton breakdown</p>
+                                      <p className="text-[10px] text-gray-500">{m.calendarLabel}</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Gross revenue</span>
+                                        <span className="tabular-nums font-semibold text-gray-900">{formatGBP(m.bedhRevenue)}</span>
+                                      </div>
+                                      <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Costs</div>
+                                      {_bedhStock > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Stock / products ({_bedhStockPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhStock)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhRent > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Rent / premises</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhRent)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhMarketing > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Marketing</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhMarketing)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhOther > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Other running</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_bedhOther)})</span>
+                                        </div>
+                                      )}
+                                      {(m.bedhDualCosts ?? 0) > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Shared (dual) costs</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(m.bedhDualCosts)})</span>
+                                        </div>
+                                      )}
+                                      {_bedhVat > 0 && (
+                                        <>
+                                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
+                                          <div className="flex justify-between items-center pl-1">
+                                            <span className="text-gray-500">VAT liability (20%)</span>
+                                            <span className="tabular-nums text-amber-600">({formatGBP(_bedhVat)})</span>
+                                          </div>
+                                        </>
+                                      )}
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
+                                        <span className="font-bold text-gray-900">Net</span>
+                                        <span className={`tabular-nums font-bold ${m.bedhNet >= 0 ? "text-blue-600" : "text-red-600"}`}>{formatGBP(m.bedhNet)}</span>
                                       </div>
                                     </div>
                                   </TooltipContent>
