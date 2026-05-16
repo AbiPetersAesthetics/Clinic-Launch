@@ -670,7 +670,7 @@ Variable cost breakdown (drives every month's net P&L — gaps will overstate pr
   Total fixed variable items (marketing+staffing+consumables): £${fixedMonthlyCosts2.toLocaleString()}/mo
 Total monthly cost base (fixed + fixed-variable items): £${totalMonthlyCost.toLocaleString()}
 Variable cost rate applied to revenue (stock + commissions): ${Math.round(varRate * 100)}% of revenue
-Winchester ACV: £${wincAcv}${financial.wincAcvGbp === 0 ? ` ⚠ FALLBACK — wincAcvGbp not set; using Bedhampton ACV £${financial.averageClientValueGbp}. Verify this is correct for a premium Winchester clinic.` : " (Winchester-specific)"}`
+Winchester ACV: £${wincAcv}${financial.wincAcvGbp === 0 ? ` ⚠ FALLBACK — wincAcvGbp not set; using Bedhampton ACV £${financial.averageClientValueGbp}. Verify this is correct for a premium Winchester clinic.` : " (Winchester-specific)"}
 Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} clinic days)
 Revenue ceiling at 100% occupancy: £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
 
