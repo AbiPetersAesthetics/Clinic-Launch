@@ -839,6 +839,7 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
   const [catFilter, setCatFilter] = useState("all");
   const [applying, setApplying] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
 
   const cats = ["all","Injectables","Skin","Laser"];
   const treatments = catFilter === "all" ? TREATMENT_KEYS.filter(t=>t.apaPrice>0) : TREATMENT_KEYS.filter(t=>t.cat===catFilter&&t.apaPrice>0);

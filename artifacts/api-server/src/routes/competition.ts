@@ -767,7 +767,7 @@ Return ONLY valid JSON:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4.1",
       messages: [
         { role: "system", content: "You are a specialist pricing strategist for UK private aesthetics clinics. Return only valid JSON. Be precise and ground recommendations in the provided competitor data." },
         { role: "user", content: prompt },
@@ -1002,7 +1002,7 @@ ${tabConfig.schema}`;
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-4.1",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
