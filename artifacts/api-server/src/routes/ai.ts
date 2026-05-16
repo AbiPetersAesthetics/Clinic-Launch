@@ -592,13 +592,15 @@ FORMULA for each month's net P&L:
   i.e. = projectedRevenue × (1 - ${Math.round(varRate * 100) / 100}) - £${totalMonthlyCost.toLocaleString()}
 
 RAMP-UP ASSUMPTIONS — apply ALL of the following:
-1. Launch: Nov 2026. Month 1 occupancy: 20–28% (cold start, BUT Abi has 127 Bedhampton reviews and a warm audience to transfer — above average cold-start)
-2. Months 2–4: grow 4–7% occupancy per month as Winchester word-of-mouth builds
-3. Months 5–8: grow 3–5% per month — approaching realistic steady state
-4. Months 9–12: growth slows to 1–3% per month — plateau near realistic occupancy ceiling
-5. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
-6. Factor that Abi's Bedhampton practice is already established — expect 20–30% of her first-month bookings to be existing clients following her to Winchester
-7. Do NOT exceed ${Math.round(financial.realisticOccupancyPercent * 1.15)}% occupancy in any month (cap at 115% of the realistic scenario)`;
+CRITICAL: Bedhampton is ~40 minutes from Winchester. These are two entirely separate client bases. There are ZERO client transfers from Bedhampton to Winchester. Winchester starts from a completely cold base — no existing clients will follow her there. Do NOT factor any Bedhampton client transfer into any month's projection.
+1. Launch: Nov 2026. Month 1 occupancy: 15–22% (genuine cold start — brand new Winchester audience, zero carry-over bookings from Bedhampton)
+2. Ramp is marketing-led not referral-led: Abi has strong social media presence, META ads planned, Hampshire press/Muddy Stilettos coverage, and a soft launch event targeting local Winchester contacts. This accelerates new client acquisition above a typical cold-start curve, but does NOT substitute for the absence of a pre-built local client base.
+3. Months 2–4: grow 5–8% occupancy per month as marketing spend converts and early Google reviews accumulate
+4. Months 5–8: grow 3–5% per month — word-of-mouth building, repeat bookings starting from month 3–4 clients
+5. Months 9–12: growth slows to 1–3% per month — plateau approaching realistic occupancy ceiling
+6. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
+7. Do NOT exceed ${Math.round(financial.realisticOccupancyPercent * 1.15)}% occupancy in any month (cap at 115% of the realistic scenario)
+8. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
 })() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
 
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
@@ -681,7 +683,7 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
       "netProfitLoss": <integer — use the formula above: revenue × (1-varRate) - totalMonthlyCost>,
       "cumulativePL": <integer — running total from month 1>,
       "confidencePct": <integer 40-90 — how confident are you in THIS month's projection; month 1 highest certainty, later months lower>,
-      "driverNote": "<1 sentence: what drives this month — e.g. 'Pre-Christmas demand + 25 Bedhampton client transfers'>",
+      "driverNote": "<1 sentence: what drives this month — e.g. 'Pre-Christmas demand spike + META ads converting early Winchester enquiries'>",
       "isBreakEven": <true if projectedRevenue >= breakEvenRevenue, else false>
     },
     { "month": "Dec 2026", "monthIndex": 2 },
