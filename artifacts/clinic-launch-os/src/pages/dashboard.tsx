@@ -212,8 +212,10 @@ export default function DashboardPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
 
   // ── Go/No-Go recommendation ───────────────────────────────────────────────
-  const CACHE_KEY = "goNoGoResult_v1";
-  const CACHE_AT_KEY = "goNoGoResultAt_v1";
+  const CACHE_KEY = "goNoGoResult_v2";
+  const CACHE_AT_KEY = "goNoGoResultAt_v2";
+  const LEASE_CACHE_KEY = "leaseStrategyResult_v1";
+  const LEASE_CACHE_AT_KEY = "leaseStrategyResultAt_v1";
   const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
   const [goNoGo, setGoNoGo] = useState<GoNoGoResult | null>(null);
@@ -221,6 +223,11 @@ export default function DashboardPage() {
   const [goNoGoError, setGoNoGoError] = useState<string | null>(null);
   const [goNoGoStale, setGoNoGoStale] = useState(false);
   const [goNoGoCachedAt, setGoNoGoCachedAt] = useState<string | null>(null);
+
+  type LeaseStrategyResult = { offerStrategy?: OfferStrategy; leaseNegotiationStrategy?: LeaseNegotiationStrategy; headsOfTermsChecklist?: HoTClause[]; generatedAt: string };
+  const [leaseStrategy, setLeaseStrategy] = useState<LeaseStrategyResult | null>(null);
+  const [leaseLoading, setLeaseLoading] = useState(false);
+  const [leaseError, setLeaseError] = useState<string | null>(null);
 
   function formatCachedAge(isoString: string | null): string {
     if (!isoString) return "";
@@ -233,10 +240,11 @@ export default function DashboardPage() {
   }
 
   const runGoNoGo = useCallback(() => {
+    // ── Main analysis ────────────────────────────────────────────────────────
     setGoNoGoLoading(true);
     setGoNoGoError(null);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 170_000);
+    const timer = setTimeout(() => ctrl.abort(), 115_000);
     fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
       .then((d: GoNoGoResult) => {
@@ -246,44 +254,69 @@ export default function DashboardPage() {
         setGoNoGoStale(false);
         const now = new Date().toISOString();
         setGoNoGoCachedAt(now);
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify(d));
-          localStorage.setItem(CACHE_AT_KEY, now);
-        } catch {}
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); localStorage.setItem(CACHE_AT_KEY, now); } catch {}
       })
       .catch((e: unknown) => {
         clearTimeout(timer);
         const msg = e instanceof Error && e.name === "AbortError"
-          ? "Analysis timed out — the AI is taking longer than usual. Try again."
+          ? "Analysis timed out — please try again."
           : typeof e === "string" ? e : "Analysis failed — please try again.";
         setGoNoGoError(msg);
         setGoNoGoLoading(false);
+      });
+
+    // ── Lease strategy (separate, faster call) ───────────────────────────────
+    setLeaseLoading(true);
+    setLeaseError(null);
+    const leaseCtrl = new AbortController();
+    const leaseTimer = setTimeout(() => leaseCtrl.abort(), 90_000);
+    fetch("/api/projects/1/go-no-go/lease-strategy", { method: "POST", headers: { "Content-Type": "application/json" }, signal: leaseCtrl.signal })
+      .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Lease strategy failed")))
+      .then((d: LeaseStrategyResult) => {
+        clearTimeout(leaseTimer);
+        setLeaseStrategy(d);
+        setLeaseLoading(false);
+        try { localStorage.setItem(LEASE_CACHE_KEY, JSON.stringify(d)); localStorage.setItem(LEASE_CACHE_AT_KEY, new Date().toISOString()); } catch {}
+      })
+      .catch((e: unknown) => {
+        clearTimeout(leaseTimer);
+        const msg = e instanceof Error && e.name === "AbortError"
+          ? "Lease strategy timed out — try again."
+          : typeof e === "string" ? e : "Lease strategy failed — please try again.";
+        setLeaseError(msg);
+        setLeaseLoading(false);
       });
   }, []);
 
   function clearDashboardCache() {
     try { localStorage.removeItem(CACHE_KEY); } catch {}
     try { localStorage.removeItem(CACHE_AT_KEY); } catch {}
+    try { localStorage.removeItem(LEASE_CACHE_KEY); } catch {}
+    try { localStorage.removeItem(LEASE_CACHE_AT_KEY); } catch {}
     setGoNoGo(null);
+    setLeaseStrategy(null);
     setGoNoGoCachedAt(null);
     setGoNoGoStale(false);
   }
 
   // On mount: restore from cache if available; only auto-run if no cache exists
   useEffect(() => {
+    let hasCachedMain = false;
     try {
       const cached = localStorage.getItem(CACHE_KEY);
       const cachedAt = localStorage.getItem(CACHE_AT_KEY);
       if (cached && cachedAt) {
-        const parsed = JSON.parse(cached) as GoNoGoResult;
-        setGoNoGo(parsed);
+        setGoNoGo(JSON.parse(cached) as GoNoGoResult);
         setGoNoGoCachedAt(cachedAt);
         setGoNoGoStale(Date.now() - new Date(cachedAt).getTime() > STALE_MS);
-        return; // Don't auto-run — user can hit Refresh
+        hasCachedMain = true;
       }
     } catch {}
-    // No cache — fetch fresh
-    runGoNoGo();
+    try {
+      const lsCached = localStorage.getItem(LEASE_CACHE_KEY);
+      if (lsCached) setLeaseStrategy(JSON.parse(lsCached) as LeaseStrategyResult);
+    } catch {}
+    if (!hasCachedMain) runGoNoGo();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -753,46 +786,67 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* ── Offer Strategy ────────────────────────────────────── */}
-                  {goNoGo.offerStrategy && (
-                    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4 space-y-3">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Offer Strategy</div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { label: "Opening Offer", value: goNoGo.offerStrategy.openingOfferRent, note: "Open here" },
-                          { label: "Target Settlement", value: goNoGo.offerStrategy.targetRent, note: "Aim for this" },
-                          { label: "Walk-Away Rent", value: goNoGo.offerStrategy.walkAwayRent, note: "Do not exceed" },
-                        ].map(({ label, value, note }) => (
-                          <div key={label} className="rounded-lg border border-blue-200/60 dark:border-blue-700/40 bg-white/60 dark:bg-blue-950/30 p-2.5 text-center">
-                            <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
-                            <div className="text-sm font-bold text-foreground">{value ? `£${Number(value).toLocaleString()}/mo` : "—"}</div>
-                            <div className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">{note}</div>
-                          </div>
-                        ))}
+                  {/* ── Lease Strategy Card (separate async load) ─────────── */}
+                  {(leaseLoading || leaseError || leaseStrategy) && (
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-800 overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50/80 dark:bg-blue-950/30 border-b border-blue-200/60 dark:border-blue-800/60">
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Lease &amp; Offer Strategy</div>
+                        {leaseLoading && <span className="text-[10px] text-blue-500 dark:text-blue-400 animate-pulse">Analysing lease terms…</span>}
+                        {leaseError && !leaseLoading && <span className="text-[10px] text-red-500">{leaseError}</span>}
                       </div>
-                      {goNoGo.offerStrategy.keyAsk && (
-                        <div className="rounded-lg border border-blue-300/50 bg-blue-100/40 dark:bg-blue-900/20 p-2.5">
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 mb-1">Priority Concession to Win</div>
-                          <p className="text-xs text-foreground/85 leading-relaxed">{goNoGo.offerStrategy.keyAsk}</p>
+
+                      {leaseLoading && (
+                        <div className="p-4 space-y-2">
+                          {[...Array(4)].map((_, i) => <div key={i} className={`h-3 bg-muted/50 rounded animate-pulse ${i === 3 ? "w-2/3" : "w-full"}`} />)}
                         </div>
                       )}
-                      {[
-                        { label: "Tenant Positioning", value: goNoGo.offerStrategy.tenantPositioning },
-                        { label: "Negotiation Sequencing", value: goNoGo.offerStrategy.sequencing },
-                        { label: "Agent Dynamics", value: goNoGo.offerStrategy.agentDynamics },
-                        { label: "If They Counter…", value: goNoGo.offerStrategy.counterOfferGuidance },
-                      ].filter(x => x.value).map(({ label, value }) => (
-                        <div key={label}>
-                          <div className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">{label}</div>
-                          <p className="text-xs text-foreground/80 leading-relaxed">{value}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
 
-                  {/* ── Lease Negotiation Strategy ────────────────────────── */}
-                  {goNoGo.leaseNegotiationStrategy && (() => {
-                    const lns = goNoGo.leaseNegotiationStrategy!;
+                      {!leaseLoading && leaseStrategy && (
+                        <div className="p-4 space-y-4">
+
+                          {/* Offer Strategy */}
+                          {leaseStrategy.offerStrategy && (() => {
+                            const os = leaseStrategy.offerStrategy!;
+                            return (
+                              <div className="space-y-3">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Offer Strategy</div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  {[
+                                    { label: "Opening Offer", value: os.openingOfferRent, note: "Open here" },
+                                    { label: "Target Settlement", value: os.targetRent, note: "Aim for this" },
+                                    { label: "Walk-Away Rent", value: os.walkAwayRent, note: "Do not exceed" },
+                                  ].map(({ label, value, note }) => (
+                                    <div key={label} className="rounded-lg border border-blue-200/60 dark:border-blue-700/40 bg-white/60 dark:bg-blue-950/30 p-2.5 text-center">
+                                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
+                                      <div className="text-sm font-bold text-foreground">{value ? `£${Number(value).toLocaleString()}/mo` : "—"}</div>
+                                      <div className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">{note}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                                {os.keyAsk && (
+                                  <div className="rounded-lg border border-blue-300/50 bg-blue-100/40 dark:bg-blue-900/20 p-2.5">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 mb-1">Priority Concession to Win</div>
+                                    <p className="text-xs text-foreground/85 leading-relaxed">{os.keyAsk}</p>
+                                  </div>
+                                )}
+                                {[
+                                  { label: "Tenant Positioning", value: os.tenantPositioning },
+                                  { label: "Negotiation Sequencing", value: os.sequencing },
+                                  { label: "Agent Dynamics", value: os.agentDynamics },
+                                  { label: "If They Counter…", value: os.counterOfferGuidance },
+                                ].filter(x => x.value).map(({ label, value }) => (
+                                  <div key={label}>
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">{label}</div>
+                                    <p className="text-xs text-foreground/80 leading-relaxed">{value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+
+                          {/* Lease Negotiation Strategy */}
+                          {leaseStrategy.leaseNegotiationStrategy && (() => {
+                            const lns = leaseStrategy.leaseNegotiationStrategy!;
                     return (
                       <div className="space-y-2">
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clause-by-Clause Negotiation Strategy</div>
@@ -866,48 +920,52 @@ export default function DashboardPage() {
                     );
                   })()}
 
-                  {/* ── HoT Checklist ──────────────────────────────────────── */}
-                  {goNoGo.headsOfTermsChecklist && goNoGo.headsOfTermsChecklist.length > 0 && (
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Heads of Terms Checklist</div>
-                      <div className="rounded-lg border border-border/50 overflow-hidden">
-                        <table className="w-full text-[10px]">
-                          <thead className="bg-muted/40 border-b border-border/50">
-                            <tr>
-                              {["Clause", "Status", "Your Position", "Typical Landlord Position", "Priority"].map(h => (
-                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {goNoGo.headsOfTermsChecklist.map((item, i) => {
-                              const statusCfg: Record<HoTClauseStatus, { label: string; cls: string }> = {
-                                "confirmed":    { label: "Confirmed",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-                                "negotiate":    { label: "Negotiate",    cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
-                                "red-flag":     { label: "Red Flag",     cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
-                                "must-confirm": { label: "Must Confirm", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
-                              };
-                              const impCfg: Record<HoTImportance, string> = {
-                                critical: "text-red-600 dark:text-red-400 font-bold",
-                                high: "text-amber-600 dark:text-amber-400 font-semibold",
-                                medium: "text-muted-foreground",
-                              };
-                              const sc = statusCfg[item.status] ?? statusCfg["negotiate"];
-                              return (
-                                <tr key={i} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
-                                  <td className="px-3 py-2 font-medium text-foreground/90 whitespace-nowrap">{item.clause}</td>
-                                  <td className="px-3 py-2 whitespace-nowrap">
-                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide ${sc.cls}`}>{sc.label}</span>
-                                  </td>
-                                  <td className="px-3 py-2 text-foreground/80 max-w-[180px]">{item.yourPosition}</td>
-                                  <td className="px-3 py-2 text-muted-foreground max-w-[180px]">{item.landlordPosition}</td>
-                                  <td className={`px-3 py-2 whitespace-nowrap capitalize ${impCfg[item.importance] ?? ""}`}>{item.importance}</td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
+                          {/* HoT Checklist — inside lease card */}
+                          {leaseStrategy.headsOfTermsChecklist && leaseStrategy.headsOfTermsChecklist.length > 0 && (
+                            <div>
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Heads of Terms Checklist</div>
+                              <div className="rounded-lg border border-border/50 overflow-x-auto">
+                                <table className="w-full text-[10px]">
+                                  <thead className="bg-muted/40 border-b border-border/50">
+                                    <tr>
+                                      {["Clause", "Status", "Your Position", "Typical Landlord Position", "Priority"].map(h => (
+                                        <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {leaseStrategy.headsOfTermsChecklist.map((item, i) => {
+                                      const statusCfg: Record<HoTClauseStatus, { label: string; cls: string }> = {
+                                        "confirmed":    { label: "Confirmed",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+                                        "negotiate":    { label: "Negotiate",    cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+                                        "red-flag":     { label: "Red Flag",     cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+                                        "must-confirm": { label: "Must Confirm", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+                                      };
+                                      const impCfg: Record<HoTImportance, string> = {
+                                        critical: "text-red-600 dark:text-red-400 font-bold",
+                                        high: "text-amber-600 dark:text-amber-400 font-semibold",
+                                        medium: "text-muted-foreground",
+                                      };
+                                      const sc = statusCfg[item.status] ?? statusCfg["negotiate"];
+                                      return (
+                                        <tr key={i} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
+                                          <td className="px-3 py-2 font-medium text-foreground/90 whitespace-nowrap">{item.clause}</td>
+                                          <td className="px-3 py-2 whitespace-nowrap">
+                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide ${sc.cls}`}>{sc.label}</span>
+                                          </td>
+                                          <td className="px-3 py-2 text-foreground/80 max-w-[160px]">{item.yourPosition}</td>
+                                          <td className="px-3 py-2 text-muted-foreground max-w-[160px]">{item.landlordPosition}</td>
+                                          <td className={`px-3 py-2 whitespace-nowrap capitalize ${impCfg[item.importance] ?? ""}`}>{item.importance}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 

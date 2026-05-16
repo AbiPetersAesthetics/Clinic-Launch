@@ -787,73 +787,10 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     { "week": "Week 4", "focus": "<theme>", "actions": ["<action>", "<action>", "<action>"] }
   ],
   "negotiationPoints": [
-    "<TL;DR negotiation point 1 — most critical clause to push on>",
-    "<TL;DR point 2>",
-    "<TL;DR point 3>",
-    "<TL;DR point 4>"
-  ],
-  "offerStrategy": {
-    "tenantPositioning": "<2-3 sentences: how Abi should present APA to the landlord/agent. What makes her an attractive, lower-risk tenant — IP status, nurse prescriber credentials, track record at Bedhampton, plans for premium fit-out. How to use this positioning as leverage to justify concessions.>",
-    "openingOfferRent": <integer — specific £/mo to open with. Must be below asking rent. Base on market comparable and what the financials support. Be concrete.>,
-    "targetRent": <integer — realistic £/mo settlement rent to aim for after negotiation>,
-    "walkAwayRent": <integer — the maximum monthly rent above which the deal fails commercially — derived from break-even analysis. State this clearly.>,
-    "keyAsk": "<the single most important concession to win — e.g. '3 months rent-free' — and why this one is more valuable than a rent reduction in the context of the opening cash position>",
-    "sequencing": "<tactical order: what to nail down first (rent quantum), what to trade against what (e.g. accept longer lease in exchange for break clause + rent-free), and when to bring up secondary terms like deposit and service charge cap>",
-    "agentDynamics": "<how to read the landlord's agent: signals of flexibility vs firm mandate, whether the space has been vacant long, how to use that — and how to avoid appearing desperate. One concrete tactic.>",
-    "counterOfferGuidance": "<what to accept vs push back on if landlord counters: e.g. if they hold rent but offer more rent-free, that may be acceptable — cite the £ equivalence>"
-  },
-  "leaseNegotiationStrategy": {
-    "rentFreePeriod": {
-      "targetMonths": <int — how many rent-free months to push for>,
-      "minimumAcceptable": <int — minimum she should accept>,
-      "rationale": "<why this number: clinical fit-out in E-class units typically requires X months. Link to the opening cash position and the time needed before revenue starts.>",
-      "howToFrame": "<1 sentence: how to phrase the ask to the landlord/agent so it lands positively>"
-    },
-    "breakClause": {
-      "atYear": <int — which year to push for the break, e.g. 3>,
-      "noticeMonths": <int — notice period, e.g. 6>,
-      "penalty": "<e.g. 'None — insist on clean break' or 'Up to 3 months rent is acceptable'>",
-      "importance": "critical" | "high" | "medium",
-      "rationale": "<why a break clause specifically matters at this rent commitment and business stage — what is the downside without one>"
-    },
-    "rentReview": {
-      "mechanism": "<preferred mechanism, e.g. 'Fixed 2.5% every 3 years' or 'CPI-linked capped at 4%' — and why this is preferable to OMV review for a new clinic>",
-      "frequency": "<e.g. 'Every 3 years'>",
-      "cap": "<recommended cap — e.g. '4% max uplift per review'>"
-    },
-    "fitOutContribution": {
-      "askGbp": <int — £ landlord contribution to push for>,
-      "likelihood": "likely" | "possible" | "unlikely",
-      "rationale": "<how to frame the ask: link to the cost of bringing the space to clinical standard, and position it as in the landlord's interest to attract a quality long-term tenant>",
-      "alternativeAsk": "<if cash contribution is refused, what other form to accept — e.g. additional rent-free months, reduced deposit>"
-    },
-    "serviceChargeCap": "<specific cap to push for — e.g. '£X/yr cap with annual CPI uplift max 3%' — and the standard Winchester commercial market position on this>",
-    "repairingObligations": "<push for internal repairing + insuring only (not full FRI). Insist on a Schedule of Condition at lease commencement to limit dilapidations exposure at end of term. Note anything specific about the condition of this unit.>",
-    "useClass": "<confirm E class permits aesthetics/beauty/medical use. Note any landlord consent required for clinical use or fit-out works. Check whether planning conditions restrict the permitted use.>",
-    "depositNegotiation": "<rent deposit strategy: target amount (e.g. '3 months rent'), whether to offer a personal guarantee instead, and whether the landlord might accept a bank guarantee. Note that as a first-time commercial tenant, some deposit is expected.>",
-    "alienation": "<subletting and assignment rights to push for — and why having these matters even if Abi doesn't plan to use them>",
-    "redLines": [
-      "<non-negotiable clause 1 that would kill the deal — be specific>",
-      "<red line 2>",
-      "<red line 3>"
-    ]
-  },
-  "headsOfTermsChecklist": [
-    { "clause": "Agreed rent (£/mo)", "status": "must-confirm" | "confirmed" | "negotiate" | "red-flag", "yourPosition": "<what Abi is pushing for>", "landlordPosition": "<what they typically open with>", "importance": "critical" | "high" | "medium" },
-    { "clause": "Rent-free period", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Lease length", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Break clause (year & notice)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Rent review mechanism", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Service charge (cap)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Repairing obligations", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Schedule of condition", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Use class (E — clinical/aesthetics)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Fit-out / landlord contribution", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Subletting / assignment", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Rent deposit (amount & form)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Insurance obligations", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Signage / fascia rights", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
-    { "clause": "Planning consent for clinical use", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." }
+    "<key lease negotiation point 1 — e.g. rent-free period: push for X months>",
+    "<key point 2 — e.g. break clause: year 3, 6 months notice>",
+    "<key point 3 — e.g. repairing obligations: internal only + schedule of condition>",
+    "<key point 4 — e.g. fit-out contribution: ask £X or equivalent rent-free>"
   ],
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
   "nextReviewDate": "<ISO 8601 date>",
@@ -898,9 +835,9 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 180_000);
+    const timeout = setTimeout(() => abort.abort(), 120_000);
     const completion = await openai.chat.completions.create(
-      { model: "gpt-5.4", max_completion_tokens: 16000, messages: [{ role: "user", content: masterPrompt }] },
+      { model: "gpt-5.4", max_completion_tokens: 9000, messages: [{ role: "user", content: masterPrompt }] },
       { signal: abort.signal },
     );
     clearTimeout(timeout);
@@ -955,6 +892,179 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
       },
       generatedAt: new Date().toISOString(),
     });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "AI request failed";
+    return res.status(500).json({ error: msg });
+  }
+});
+
+// ─── POST /api/projects/:projectId/go-no-go/lease-strategy ───────────────────
+// Focused endpoint: returns only the lease negotiation, offer strategy, and
+// heads-of-terms checklist. Runs on a faster model with a smaller output target
+// so it completes well within timeout even on a large property schema.
+
+router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => {
+  const projectId = parseInt(req.params.projectId as string);
+  if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
+
+  const [financialRaw, allPropertiesRaw] = await Promise.all([
+    db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
+    db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
+  ]);
+
+  const financial = financialRaw[0] ?? null;
+  const property = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
+
+  const monthlyRent = property?.monthlyRentGbp ?? 0;
+  const sqft = property?.sqFootage ?? 0;
+  const leaseLength = property?.leaseLength ?? "unknown";
+  const serviceCharge = property?.serviceChargeGbp ?? 0;
+  const vatOnRent = property?.vatOnRent ?? false;
+  const useClass = property?.useClass ?? "unknown";
+  const address = [property?.address, property?.postcode].filter(Boolean).join(", ") || "selected property";
+
+  // Compute break-even for walk-away anchor
+  let breakEvenRev = 0;
+  if (financial) {
+    const totalFixedItems = await db.select().from(fixedCostItemsTable)
+      .where(eq(fixedCostItemsTable.projectId, projectId))
+      .then(r => r.reduce((s, c) => s + (c.amountGbp ?? 0), 0));
+    const fixedCosts = totalFixedItems > 0
+      ? totalFixedItems
+      : Math.round(financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp +
+          financial.internetGbp + financial.insuranceGbp + financial.accountantGbp +
+          financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp +
+          financial.subscriptionsGbp + financial.financeRepaymentsGbp);
+    const varRate = (financial.stockPercent + financial.commissionsPercent) / 100;
+    const vatCurrentTurnover = (financial as any).vatCurrentTurnoverGbp ?? 0;
+    const bedhAnnual = (financial.existingClinicRevenueGbp || 0) * 12;
+    const vatApplies = vatCurrentTurnover >= 90000 || (vatCurrentTurnover + bedhAnnual >= 90000);
+    const vatRate = vatApplies ? 0.20 : 0;
+    const denom = 1 - varRate - vatRate;
+    breakEvenRev = denom > 0 ? Math.round(fixedCosts / denom) : 0;
+  }
+
+  const propertyCtx = property ? `
+Property: ${address}
+Size: ${sqft > 0 ? `${sqft} sq ft` : "unknown"}
+Asking rent: £${monthlyRent}/mo (£${monthlyRent * 12}/yr)
+Annual service charge: ${serviceCharge > 0 ? `£${serviceCharge}` : "unknown"}
+VAT on rent: ${vatOnRent ? "YES — landlord has opted to tax" : "No"}
+Use class: ${useClass}
+Lease length offered: ${leaseLength}
+Break-even revenue needed: £${breakEvenRev}/mo` : "No property data available.";
+
+  const financialCtx = financial ? `
+Monthly revenue target to break even: £${breakEvenRev}
+Opening month occupancy (planned): ${(financial as any).selectedScenario === "conservative" ? "15%" : "25%"}
+Bedhampton existing turnover: ~£${((financial.existingClinicRevenueGbp || 0) * 12).toLocaleString()}/yr
+Abi's status: first-time commercial tenant, nurse prescriber (IP), established track record at Bedhampton
+Planned premium aesthetic clinic — clinical-grade fit-out required` : "No financial model entered.";
+
+  const prompt = `You are a specialist UK commercial property negotiation advisor for aesthetics clinics.
+
+${propertyCtx}
+${financialCtx}
+
+Abi Peters is a nurse prescriber (independent prescriber status) opening her second aesthetics clinic. She has a successful existing clinic (Bedhampton) with strong Google reviews. She is a first-time commercial tenant negotiating this new lease. Her goal is to commit to this property but protect her financial position during the ramp-up phase.
+
+Winchester commercial market context (E-class units, 2024-2026):
+- Rent-free for fit-out: typically 3–6 months; clinical-grade fit-out takes longer than retail
+- Break clause: often at year 3 or 5 on a 5–10 year lease; landlords resist but will concede for quality tenants
+- Rent review: OMV every 5 years is landlord default; push for fixed uplift or CPI-capped review
+- Repairing: landlords push FRI; negotiate internal repairing only + schedule of condition
+- Fit-out contribution: not standard but negotiable for clinical tenants requiring significant works
+- Service charge: often uncapped; push for cap + transparency on expenditure
+- Rent deposit: typically 3–6 months; can reduce to 3 months or personal guarantee for strong tenants
+
+Return ONLY valid JSON (no markdown). Schema:
+{
+  "offerStrategy": {
+    "tenantPositioning": "<2-3 sentences: how Abi should present APA to the landlord — IP status, nurse credentials, Bedhampton track record, premium fit-out plans. How this makes her a better tenant than a retail operator and justifies concessions>",
+    "openingOfferRent": <integer — specific £/mo to open with, below asking rent, anchored to market and break-even>,
+    "targetRent": <integer — realistic settlement rent after negotiation>,
+    "walkAwayRent": <integer — maximum monthly rent above which deal fails commercially, tied to break-even £${breakEvenRev}>,
+    "keyAsk": "<the single most valuable concession to win — and why it matters more than a rent reduction at this stage of the business>",
+    "sequencing": "<tactical order: what to lock in first, what to trade against what, when to raise secondary terms>",
+    "agentDynamics": "<how to read and handle the landlord's agent — one concrete tactic>",
+    "counterOfferGuidance": "<what to accept vs push back on if they counter>"
+  },
+  "leaseNegotiationStrategy": {
+    "rentFreePeriod": {
+      "targetMonths": <int>,
+      "minimumAcceptable": <int>,
+      "rationale": "<why this many months: clinical fit-out timeline + opening cash position>",
+      "howToFrame": "<one sentence: how to phrase the ask positively>"
+    },
+    "breakClause": {
+      "atYear": <int>,
+      "noticeMonths": <int>,
+      "penalty": "<e.g. 'Clean break — no penalty' or 'Up to 3 months rent acceptable'>",
+      "importance": "critical" | "high" | "medium",
+      "rationale": "<why this matters specifically given the rent commitment and business stage>"
+    },
+    "rentReview": {
+      "mechanism": "<preferred mechanism and why — avoid OMV for a new clinic>",
+      "frequency": "<e.g. 'Every 3 years'>",
+      "cap": "<e.g. '4% max uplift'>"
+    },
+    "fitOutContribution": {
+      "askGbp": <int>,
+      "likelihood": "likely" | "possible" | "unlikely",
+      "rationale": "<how to frame the ask to the landlord>",
+      "alternativeAsk": "<if cash refused, what else to accept>"
+    },
+    "serviceChargeCap": "<specific cap and how to negotiate it>",
+    "repairingObligations": "<push for internal repairing only + schedule of condition — specific advice>",
+    "useClass": "<E class confirmation — note any landlord consent or planning conditions to check for clinical use>",
+    "depositNegotiation": "<target deposit amount and tactics for a first-time commercial tenant>",
+    "alienation": "<subletting/assignment rights to push for>",
+    "redLines": ["<deal-breaker 1 — be specific>", "<deal-breaker 2>", "<deal-breaker 3>"]
+  },
+  "headsOfTermsChecklist": [
+    { "clause": "Agreed rent (£/mo)", "status": "must-confirm", "yourPosition": "<what Abi wants>", "landlordPosition": "<what they typically open with>", "importance": "critical" },
+    { "clause": "Rent-free period", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "critical" },
+    { "clause": "Lease length", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "critical" },
+    { "clause": "Break clause (year & notice)", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "critical" },
+    { "clause": "Rent review mechanism", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Service charge (cap)", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Repairing obligations", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Schedule of condition", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Use class (E — clinical/aesthetics)", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "critical" },
+    { "clause": "Fit-out / landlord contribution", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Subletting / assignment", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "medium" },
+    { "clause": "Rent deposit (amount & form)", "status": "negotiate", "yourPosition": "...", "landlordPosition": "...", "importance": "high" },
+    { "clause": "Insurance obligations", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "medium" },
+    { "clause": "Signage / fascia rights", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "medium" },
+    { "clause": "Planning consent for clinical use", "status": "must-confirm", "yourPosition": "...", "landlordPosition": "...", "importance": "critical" }
+  ]
+}`;
+
+  try {
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 90_000);
+    const completion = await openai.chat.completions.create(
+      { model: "gpt-5.1", max_completion_tokens: 6000, messages: [{ role: "user", content: prompt }] },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
+
+    const raw = completion.choices[0]?.message?.content ?? "{}";
+    let clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const firstBrace = clean.indexOf("{");
+    const lastBrace = clean.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      clean = clean.slice(firstBrace, lastBrace + 1);
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(clean);
+    } catch {
+      return res.status(500).json({ error: "AI response could not be parsed. Please try again." });
+    }
+
+    return res.json({ ...parsed, generatedAt: new Date().toISOString() });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "AI request failed";
     return res.status(500).json({ error: msg });
