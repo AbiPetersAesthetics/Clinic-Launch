@@ -12,6 +12,21 @@ import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
 
 const router = Router();
 
+// ─── Scenario profiles (mirrors financials.ts — single source in financialEngine ideally) ──
+const AI_SCENARIO_PROFILES: Record<string, {
+  getTargetOcc: (m: any) => number;
+  startOcc: number;
+  rampMonths: number;
+  note: string;
+}> = {
+  conservative:      { getTargetOcc: (m) => m.conservativeOccupancyPercent,                               startOcc: 20, rampMonths: 8,  note: "Conservative occupancy target, steady 8-month ramp" },
+  realistic:         { getTargetOcc: (m) => m.realisticOccupancyPercent,                                  startOcc: 25, rampMonths: 6,  note: "Realistic occupancy target, standard 6-month ramp" },
+  aggressive:        { getTargetOcc: (m) => m.aggressiveOccupancyPercent,                                 startOcc: 35, rampMonths: 4,  note: "High occupancy target, fast 4-month ramp — strong marketing required" },
+  delayed_ramp:      { getTargetOcc: (m) => m.realisticOccupancyPercent,                                  startOcc: 15, rampMonths: 12, note: "Realistic occupancy target but cautious 12-month ramp — cold-start, no waiting list" },
+  economic_downturn: { getTargetOcc: (m) => Math.round(m.conservativeOccupancyPercent * 0.8),             startOcc: 15, rampMonths: 9,  note: "Economic pressure: reduced consumer demand, −15% average spend" },
+  stress_test:       { getTargetOcc: (m) => Math.max(Math.round(m.conservativeOccupancyPercent * 0.65), 12), startOcc: 5, rampMonths: 10, note: "Worst case: cold start at 5% occupancy, very slow ramp, lower spend" },
+};
+
 const SYSTEM_PROMPT = `You are a specialist senior consultant helping Abi Peters set up a private aesthetics clinic at 9A Jewry Street, Winchester, Hampshire, UK. Target opening: 1 November 2026.
 
 Context:
@@ -252,11 +267,24 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   let vatRisk = false;
   let vatRiskDetail = "";
   let bedhCoverageMonths = 0;
+  // Active scenario — set inside if (financial) block, used in masterPrompt IIFE below
+  let activeScenarioKey = "realistic";
+  let activeStartOcc = 25;
+  let activeRampMonths = 6;
+  let activeTargetOcc = 60;
+  let activeScenarioNote = "Realistic occupancy, standard 6-month ramp";
 
   if (financial) {
-    // All three scenarios now use wincAcvGbp (Winchester-specific ACV, e.g. £155)
-    // rather than the legacy averageClientValueGbp (originally set from Bedhampton, e.g. £120).
-    // Conservative/Realistic previously used the wrong ACV, understating Winchester revenue.
+    // Resolve the active scenario from the model's selectedScenario field
+    activeScenarioKey = (financial as any).selectedScenario || "realistic";
+    const activeProf = AI_SCENARIO_PROFILES[activeScenarioKey] || AI_SCENARIO_PROFILES.realistic;
+    activeStartOcc = activeProf.startOcc;
+    activeRampMonths = activeProf.rampMonths;
+    activeTargetOcc = Math.round(activeProf.getTargetOcc(financial));
+    activeScenarioNote = activeProf.note;
+
+    // All three scenarios now use wincAcvGbp (Winchester-specific ACV, e.g. £230)
+    // rather than the legacy averageClientValueGbp (originally set from Bedhampton).
     const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
     const conservative = calcScenario(financial.conservativeOccupancyPercent, wincAcv, financial);
     const realistic = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial);
@@ -313,13 +341,19 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
 
     const netAfterFixed = (occ: typeof realistic) => occ.revenue - actualMonthlyFixed - occ.variable;
 
-    financialContext = `=== THREE-SCENARIO FINANCIAL MODEL (for ${propertyLabel}) ===
+    financialContext = `=== ACTIVE PLANNING SCENARIO: ${activeScenarioKey.toUpperCase().replace(/_/g, " ")} ===
+This is the scenario Abi has selected as her planning baseline. The three reference scenarios below provide context — the active scenario's ramp parameters drive the monthly forecast.
+Active scenario: ${activeScenarioNote}
+Active target occupancy: ${activeTargetOcc}% | Opening occupancy: ${activeStartOcc}% | Ramp to target: ${activeRampMonths} months | ACV: £${wincAcv}
+Active scenario steady-state net (at ${activeTargetOcc}% occ): £${Math.round(calcScenario(activeTargetOcc, wincAcv, financial).revenue - actualMonthlyFixed - calcScenario(activeTargetOcc, wincAcv, financial).variable).toLocaleString()}/mo
+
+=== THREE-SCENARIO REFERENCE FINANCIALS (for ${propertyLabel}) ===
 IMPORTANT: Use £${actualMonthlyFixed.toLocaleString()}/mo as the definitive monthly fixed cost figure (from itemised cost list). The scenario 'Fixed:' lines below show legacy category totals which may be incomplete.
 
-Conservative (${financial.conservativeOccupancyPercent}% occupancy, £${wincAcv} ACV):
+Conservative (${financial.conservativeOccupancyPercent}% occ, £${wincAcv} ACV)${activeScenarioKey === "conservative" ? " ← ACTIVE SCENARIO" : ""}:
   Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${netAfterFixed(conservative).toLocaleString()}/mo
 
-Realistic (${financial.realisticOccupancyPercent}% occupancy, £${wincAcv} ACV):
+Realistic (${financial.realisticOccupancyPercent}% occ, £${wincAcv} ACV)${activeScenarioKey === "realistic" ? " ← ACTIVE SCENARIO" : ""}${activeScenarioKey === "delayed_ramp" ? " ← ACTIVE TARGET (delayed_ramp reaches this occupancy over 12 months)" : ""}:
   Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${netAfterFixed(realistic).toLocaleString()}/mo
 
 Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${wincAcv} ACV):
@@ -621,14 +655,20 @@ FORMULA for each month's net P&L:
 
 RAMP-UP ASSUMPTIONS — apply ALL of the following:
 CRITICAL: Bedhampton is ~40 minutes from Winchester. These are two entirely separate client bases. There are ZERO client transfers from Bedhampton to Winchester. Winchester starts from a completely cold base — no existing clients will follow her there. Do NOT factor any Bedhampton client transfer into any month's projection.
-1. Launch: Nov 2026. Month 1 occupancy: 15–22% (genuine cold start — brand new Winchester audience, zero carry-over bookings from Bedhampton)
+
+ACTIVE SCENARIO RAMP PARAMETERS (use these exact values — they come from the model Abi is planning from):
+  Scenario: ${activeScenarioKey.replace(/_/g, " ")} — ${activeScenarioNote}
+  Month 1 opening occupancy: ${activeStartOcc}%
+  Months to reach target occupancy: ${activeRampMonths} months
+  Target (plateau) occupancy: ${activeTargetOcc}%
+  Linear ramp formula: each month adds approximately ${activeRampMonths > 0 ? Math.round((activeTargetOcc - activeStartOcc) / activeRampMonths) : 0}% occupancy until the ${activeTargetOcc}% ceiling is reached
+
+1. Launch: Nov 2026. Month 1 occupancy: ${activeStartOcc}% (this is the model's actual starting occupancy — do NOT use a different figure)
 2. Ramp is marketing-led not referral-led: Abi has strong social media presence, META ads planned, Hampshire press/Muddy Stilettos coverage, and a soft launch event targeting local Winchester contacts. This accelerates new client acquisition above a typical cold-start curve, but does NOT substitute for the absence of a pre-built local client base.
-3. Months 2–4: grow 5–8% occupancy per month as marketing spend converts and early Google reviews accumulate
-4. Months 5–8: grow 3–5% per month — word-of-mouth building, repeat bookings starting from month 3–4 clients
-5. Months 9–12: growth slows to 1–3% per month — plateau approaching realistic occupancy ceiling
-6. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
-7. Do NOT exceed ${Math.round(financial.realisticOccupancyPercent * 1.15)}% occupancy in any month (cap at 115% of the realistic scenario)
-8. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
+3. Apply the linear ramp above, reaching ${activeTargetOcc}% by Month ${activeRampMonths}, then plateau
+4. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
+5. Do NOT exceed ${Math.round(activeTargetOcc * 1.15)}% occupancy in any month (cap at 115% of the active scenario's target occupancy of ${activeTargetOcc}%)
+6. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
 })() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
 
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
