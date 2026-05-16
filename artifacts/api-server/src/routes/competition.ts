@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, competitorsTable } from "@workspace/db";
+import { db, competitorsTable, financialsTable } from "@workspace/db";
 import { eq, and, isNull, or } from "drizzle-orm";
 import { openai } from "@workspace/integrations-openai-ai-server";
 
@@ -577,7 +577,12 @@ router.get("/projects/:id/competitors/pricing-strategy", async (req, res) => {
   const projectId = parseInt(req.params.id);
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
 
-  const allCompetitors = await db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId));
+  const [allCompetitors, financialRows] = await Promise.all([
+    db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId)),
+    db.select({ wincAcvGbp: financialsTable.wincAcvGbp }).from(financialsTable).where(eq(financialsTable.projectId, projectId)).limit(1),
+  ]);
+  const currentAcv = financialRows[0]?.wincAcvGbp ?? 215;
+
   if (allCompetitors.length === 0) return res.json({ competitorCount: 0, competitorsWithPricing: 0, launchPricing: {}, maturePricing: {}, launchAcv: null, matureAcv: null, strategy: null });
 
   // Treatment keys APA uses — GPT must return prices using these exact keys
@@ -694,7 +699,13 @@ router.get("/projects/:id/competitors/pricing-strategy", async (req, res) => {
 
   const prompt = `You are a pricing strategist for UK private aesthetics clinics. Your client is Abi Peters Aesthetics (APA) — a premium nurse-led (ANP) clinic opening in Winchester city centre in November 2026. Winchester is an affluent market (ABC1 demographic, strong professional female spending power).
 
-APA positioning: natural-results nurse-led clinic, Save Face accredited, independent prescriber, 12+ years NHS and aesthetics experience, high street shopfront in Winchester city centre.
+APA positioning: natural-results nurse-led clinic, Save Face accredited, independent prescriber, 12+ years NHS and aesthetics experience, high street shopfront in Winchester city centre. APA already sits in the TOP 3 on price among the mapped competitor set — this is intentional and must be maintained.
+
+═══════════════════════════════════════════════
+APA CURRENT FINANCIAL BASELINE
+═══════════════════════════════════════════════
+Current planned average client value (ACV): £${Math.round(currentAcv)}
+This is APA's modelled revenue per visit. Your recommended launchAcv MUST be ≥ £${Math.round(currentAcv)}. Do NOT recommend a launch ACV below this figure — APA is not cutting prices, it is opening at a premium level it intends to hold.
 
 ═══════════════════════════════════════════════
 COMPETITOR LANDSCAPE — FULL PROFILES (${allCompetitors.length} competitors mapped)
@@ -710,14 +721,15 @@ CRITICAL PRICING RULES:
 - Competitors marked ⚠️ NOT A DIRECT COMPARABLE are beauty/non-medical practitioners. Their prices are irrelevant for anchoring APA's pricing — APA's target clients are choosing between nurse-led and doctor-led medical clinics, not beauty salons. Do not let their low prices pull APA recommendations down.
 - Competitors marked ⭐ DIRECT COMPARABLE are the true anchors for APA's pricing — these are the clinics APA's clients will cross-shop with.
 - If the only pricing data available is from non-comparable competitors, rely on your knowledge of Winchester/Hampshire nurse-led/doctor-led clinic market rates and state this in the strategy.
-- APA is nurse-led premium, not budget. It should never price below mid-market for a medical aesthetics clinic.
-- Winchester has high disposable income — premium pricing is achievable once established.
+- APA is already a top-3 pricer in this market. Recommend pricing that holds or improves that position — do not recommend pulling back toward mid-market.
+- Winchester has high disposable income and strong ABC1 demographics. Premium pricing is not just achievable — it is expected by the target client.
+- launchAcv must be ≥ £${Math.round(currentAcv)}. This is a hard floor, not a suggestion.
 
 Your task: recommend APA's pricing strategy in TWO phases:
 
-1. LAUNCH PRICING (November 2026): Realistic opening prices that are competitive relative to DIRECT COMPARABLE medical clinics only. Can be 5-10% below mature prices to acknowledge APA has no reviews yet, but must not undercut to the point of devaluing the brand.
+1. LAUNCH PRICING (November 2026): Opening prices that reflect APA's premium top-3 positioning from day one. APA is not discounting to launch — it may hold prices at the same level as mature, or apply a very minor 0-5% softening on one or two high-ticket treatments only if the competitive data explicitly justifies it. The overall launchAcv must not fall below £${Math.round(currentAcv)}.
 
-2. MATURE PRICING (12+ months post-launch): Prices APA should target once established with reviews and a client base. Should fully reflect APA's premium nurse-led positioning against the direct comparable medical clinic market.
+2. MATURE PRICING (12+ months post-launch): Prices APA should target once established with reviews and a loyal client base. Should push toward top-1 or top-2 in the local medical aesthetics market where the competitor data supports it.
 
 Return ONLY valid JSON:
 {
@@ -758,9 +770,9 @@ Return ONLY valid JSON:
     "lipFiller1": integer_or_null,
     "profhilo": integer_or_null
   },
-  "strategy": "3-4 sentences: overall pricing strategy rationale — reference actual competitor prices, explain the launch vs mature split, and what pricing signals APA's premium positioning without pricing itself out.",
-  "launchRationale": "2 sentences: why these specific launch prices — what competitive logic drives them.",
-  "matureRationale": "2 sentences: why the 12m+ prices move up and what has to happen for APA to justify that increase.",
+  "strategy": "3-4 sentences: overall pricing strategy rationale — reference actual competitor prices, explain APA's top-3 premium position, and what the launch vs mature distinction achieves.",
+  "launchRationale": "2 sentences: why these specific launch prices maintain APA's premium top-3 position from day one.",
+  "matureRationale": "2 sentences: why the 12m+ prices move up and what has to happen for APA to push toward top-1/top-2.",
   "pricingTier": "one of: budget | mid-market | premium | ultra-premium",
   "keyRisk": "1 sentence: biggest pricing risk APA faces in this market."
 }`;
