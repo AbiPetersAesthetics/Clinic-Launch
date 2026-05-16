@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Megaphone, Palette, Globe, CalendarDays, Rocket, ChevronDown, ChevronUp, Users, Plus, Minus } from "lucide-react";
+import { Megaphone, Palette, Globe, CalendarDays, Rocket, ChevronDown, ChevronUp, Plus, Minus, Sparkles, CheckCheck } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { ResetPageButton } from "@/components/reset-page-button";
 
@@ -180,6 +180,8 @@ export default function MarketingPage() {
   const [tab, setTab] = useState<Category>("brand");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [openingDate, setOpeningDate] = useState<string | null>(null);
+  const [aiCompleting, setAiCompleting] = useState<Category | null>(null);
+  const [aiJustDone, setAiJustDone] = useState<Category | null>(null);
   const itemTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   useEffect(() => {
@@ -253,6 +255,48 @@ export default function MarketingPage() {
     setItems(prev => prev.map(i => ({ ...i, status: "not_started" as Status, notes: "" })));
     setWaitlist(0);
     setSaveStatus("idle");
+  };
+
+  const runAiComplete = async (category: Category) => {
+    setAiCompleting(category);
+    setAiJustDone(null);
+    try {
+      const res = await fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing/ai-complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category }),
+      });
+      if (!res.ok) throw new Error("AI complete failed");
+      const data = await res.json() as {
+        updates: Array<{ id: number; notes: string; status?: string }>;
+      };
+      setItems(prev =>
+        prev.map(item => {
+          const upd = data.updates.find(u => u.id === item.id);
+          if (!upd) return item;
+          return {
+            ...item,
+            notes: upd.notes ?? item.notes,
+            status: (upd.status === "in_progress" && item.status === "not_started"
+              ? "in_progress"
+              : item.status) as Status,
+          };
+        })
+      );
+      // Expand all filled items so Abi can see the notes
+      setExpanded(prev => {
+        const next = new Set(prev);
+        data.updates.forEach(u => next.add(u.id));
+        return next;
+      });
+      setAiJustDone(category);
+      setSaveStatus("saved");
+      setTimeout(() => setAiJustDone(null), 4000);
+    } catch {
+      // silently reset — button returns to normal
+    } finally {
+      setAiCompleting(null);
+    }
   };
 
   const toggleExpand = (id: number) => {
@@ -484,19 +528,72 @@ export default function MarketingPage() {
       {/* ── Tab content ─────────────────────────────────────────────────────── */}
       <div className="space-y-3">
 
-        {/* Summary */}
+        {/* Summary + AI Fill */}
         <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
-          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-            {React.createElement(tabs.find(t => t.key === tab)!.icon, { className: "w-3 h-3" })}
-            {tabs.find(t => t.key === tab)!.label} — overview
-          </p>
-          <p className="text-sm text-foreground/80 leading-relaxed">
-            {getSummary(tab, byCategory, readiness, openingDate, waitlist, activePlatforms)}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                {React.createElement(tabs.find(t => t.key === tab)!.icon, { className: "w-3 h-3" })}
+                {tabs.find(t => t.key === tab)!.label} — overview
+              </p>
+              <p className="text-sm text-foreground/80 leading-relaxed">
+                {getSummary(tab, byCategory, readiness, openingDate, waitlist, activePlatforms)}
+              </p>
+            </div>
+            <button
+              onClick={() => runAiComplete(tab)}
+              disabled={aiCompleting !== null}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+                aiJustDone === tab
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700"
+                  : aiCompleting === tab
+                  ? "bg-primary/10 text-primary border-primary/30 cursor-wait"
+                  : aiCompleting !== null
+                  ? "opacity-40 cursor-not-allowed border-border text-muted-foreground"
+                  : "bg-primary/8 text-primary border-primary/25 hover:bg-primary/15 hover:border-primary/40 active:scale-95"
+              }`}
+              title="AI fills in specific, actionable notes for every item in this tab based on your clinic context"
+            >
+              {aiCompleting === tab ? (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                  <span>AI filling…</span>
+                </>
+              ) : aiJustDone === tab ? (
+                <>
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  <span>Notes filled</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>AI Fill</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
+        {/* AI loading skeleton */}
+        {aiCompleting === tab && (
+          <div className="space-y-2">
+            {[...Array(Math.min(tabItems.filter(i => !i.title.startsWith("⚠")).length, 5))].map((_, i) => (
+              <div key={i} className="rounded-xl border border-border/40 bg-card p-3 animate-pulse">
+                <div className="flex items-center gap-3">
+                  <div className="h-6 w-20 rounded-full bg-muted" />
+                  <div className="flex-1 h-4 rounded bg-muted" />
+                </div>
+                <div className="mt-2 ml-24 h-3 rounded bg-muted/60 w-3/4" />
+              </div>
+            ))}
+            <p className="text-center text-xs text-muted-foreground pt-1 animate-pulse">
+              Generating APA-specific notes for every item…
+            </p>
+          </div>
+        )}
+
         {/* Progress line */}
-        {tabApplicable > 0 && (
+        {tabApplicable > 0 && aiCompleting !== tab && (
           <div className="flex items-center gap-3 px-1">
             <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -513,7 +610,7 @@ export default function MarketingPage() {
         )}
 
         {/* Items */}
-        {tabItems.map(item => (
+        {aiCompleting !== tab && tabItems.map(item => (
           <ItemRow
             key={item.id}
             item={item}

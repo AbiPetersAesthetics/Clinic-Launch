@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { marketingItemsTable, projectsTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -104,6 +105,121 @@ router.put("/marketing/:id", async (req, res) => {
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json(row);
+});
+
+// POST AI complete — generates tailored notes (and optional status nudge) for every item in a tab
+router.post("/projects/:projectId/marketing/ai-complete", async (req, res) => {
+  const projectId = parseInt(req.params["projectId"] as string);
+  const { category } = req.body as { category: string };
+
+  if (!["brand", "platform", "content", "launch"].includes(category)) {
+    return res.status(400).json({ error: "Invalid category" });
+  }
+
+  const items = await db
+    .select()
+    .from(marketingItemsTable)
+    .where(and(eq(marketingItemsTable.projectId, projectId), eq(marketingItemsTable.category, category)))
+    .orderBy(asc(marketingItemsTable.sortOrder));
+
+  const applicable = items.filter(i => !i.title.startsWith("⚠"));
+
+  const categoryContext: Record<string, string> = {
+    brand: `Brand Setup tab — these are the identity and asset tasks Abi needs to complete before any platforms or marketing go live.
+Help Abi by writing specific, actionable notes for each task based on her context:
+- Clinic name is "Abi Peters Aesthetics" (APA)
+- Premium, nurse-led aesthetics — clinical yet warm and approachable
+- Located at 9A Jewry Street, Winchester, Hampshire SO23 8RZ
+- Target clients: affluent Winchester women aged 30–55, ABC1 demographic
+- Treatments: injectables (Botox, fillers), advanced skin treatments, medical skincare retail
+- Brand tone should feel: premium, trustworthy, clinical-chic — think Trinny London or Medik8 meets local warmth
+- Domain options to consider: abiapetersaesthetics.co.uk, apaesthetics.co.uk, abiaestetica.co.uk
+For photography: Winchester city centre backdrops, clean clinical setting at 9A Jewry Street, natural light.
+For price list: Winchester market rates — competitor analysis suggests Botox £180–£220/area, fillers £280–£380/ml.`,
+
+    platform: `Platform Setup tab — these are the digital channels Abi needs to configure before launch.
+Help Abi by writing specific, setup-ready notes for each platform task:
+- Business address: 9A Jewry Street, Winchester, Hampshire SO23 8RZ
+- Business name: Abi Peters Aesthetics
+- Category: Medical aesthetics / Skin clinic
+- Instagram handle to use: @abiapetersaesthetics (check availability first; fallback: @abi.peters.aesthetics)
+- For Google Business Profile: category = "Medical Spa" or "Skin Care Clinic"; phone, opening hours (Tue–Sat 9–5 suggested), booking link
+- Fresha listing: add all treatments with prices, enable instant booking, link to Instagram
+- Website domain: abiapetersaesthetics.co.uk — hosted on Squarespace, Wix or WordPress; booking via Fresha embed
+- SEO keywords: "aesthetics clinic Winchester", "botox Winchester", "lip filler Winchester Hampshire", "medical aesthetics SO23"
+- Mailchimp welcome sequence: Email 1 = welcome + meet Abi; Email 2 = what to expect at your first appointment; Email 3 = opening offer reveal
+- Meta Ads: target Winchester + 15-mile radius, women 28–55, interests: beauty, skincare, wellness`,
+
+    content: `Content Calendar tab — these are the 12-week pre-launch content phases leading up to the November 2026 opening.
+Help Abi by writing specific, ready-to-brief notes for each content phase:
+- Opening date: 1 November 2026
+- Platform: primarily Instagram + Facebook Reels; cross-post to Google Business Profile
+- Voice: expert but approachable, warm, educational — "your knowledgeable friend who happens to be a nurse"
+- Winchester audience: local pride matters — reference Winchester Cathedral, the high street, Hampshire countryside
+- Compliance: no before/after photos without separate written consent; no "guaranteed results" language (ASA/CAP guidelines)
+Include suggested post ideas, caption hooks, hashtags, and content types (Reel / static / carousel) for each phase.
+Key hashtags: #WinchesterAesthetics #AbiPetersAesthetics #HampshireAesthetics #WinchesterBeauty #MedicalAesthetics`,
+
+    launch: `Launch Week tab — these are the final logistics to confirm for the opening of the clinic.
+Help Abi by writing specific, contact-ready notes for each launch task:
+- Soft launch: suggest 25–29 October 2026, invite-only for friends, family, Bedhampton regulars, and local contacts
+- Grand opening: 1 November 2026
+- Hampshire press contacts: Hampshire Chronicle, Winchester BID, So Hampshire Magazine, About My Area Winchester
+- Local micro-influencers: search Instagram for #WinchesterBeauty, #HampshireLifestyle — look for 2–10k follower accounts with high engagement
+- Gifted treatment: offer a complimentary treatment in exchange for an honest Instagram post/Reel (no endorsement required — just an experience share); get this agreed in writing
+- Opening offer: suggested "Introductory Offer — £150 off your first treatment package (min £350 spend), first 30 clients only — closes 30 November 2026"
+- Photographer: search Hampshire Wedding & Portrait Photographers Association; day rate £400–£600; brief them on: clean clinical shots, hero treatment shots, practitioner headshots
+- Waitlist email: subject line ideas, content structure, booking link CTA`,
+  };
+
+  const itemList = applicable.map(i => `ID:${i.id} | "${i.title}"`).join("\n");
+
+  const prompt = `You are a marketing specialist helping set up Abi Peters Aesthetics, a premium nurse-led aesthetics clinic opening at 9A Jewry Street, Winchester, Hampshire on 1 November 2026.
+
+${categoryContext[category]}
+
+Here are the ${category} checklist items that need notes. For each item, write practical, specific, APA-tailored notes (2–6 sentences each) that give Abi a concrete head start — specific supplier names, wording suggestions, contact types, or next actions where relevant. 
+
+Also suggest a status: use "in_progress" only if it would make sense for Abi to start this immediately; otherwise use "not_started". Never use "done".
+
+Items:
+${itemList}
+
+Respond with a JSON object in this exact shape:
+{
+  "updates": [
+    { "id": <number>, "notes": "<string>", "status": "not_started" | "in_progress" }
+  ]
+}`;
+
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    response_format: { type: "json_object" },
+    messages: [{ role: "user", content: prompt }],
+    max_completion_tokens: 4000,
+  });
+
+  const raw = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as {
+    updates?: Array<{ id: number; notes: string; status?: string }>;
+  };
+
+  const updates = (raw.updates ?? []).filter(u => applicable.some(i => i.id === u.id));
+
+  // Persist all updates
+  await Promise.all(
+    updates.map(u =>
+      db
+        .update(marketingItemsTable)
+        .set({
+          notes: u.notes ?? "",
+          status: (u.status === "in_progress" ? "in_progress" : undefined) as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(marketingItemsTable.id, u.id))
+    )
+  );
+
+  return res.json({ updates });
 });
 
 // PATCH waitlist count
