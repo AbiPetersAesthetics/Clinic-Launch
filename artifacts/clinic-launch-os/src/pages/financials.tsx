@@ -1417,6 +1417,9 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[80px]">
                           <span title="Bedhampton net profit after stock, running costs and VAT">Bedh Net</span>
                         </th>
+                        <th className="text-right px-2 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
+                          <span title="Project plan task costs charged this month (from Project Plan cost tiers). Undated tasks are spread across pre-opening months, weighted toward opening.">Proj costs</span>
+                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
@@ -1660,6 +1663,35 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
+                            {/* Project task cost burn this month */}
+                            <td className="text-right px-2 py-1.5 tabular-nums">
+                              {(m.projectCostBurn ?? 0) > 0 ? (
+                                m.taskLabels && m.taskLabels.length > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-orange-600 dark:text-orange-400 cursor-help underline decoration-dotted decoration-orange-400/60 underline-offset-2">
+                                        ({formatGBP(m.projectCostBurn)})
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs max-w-[240px] p-0" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                                      <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-lg">
+                                        <p className="font-semibold text-[11px]">Project plan tasks this month</p>
+                                      </div>
+                                      <ul className="px-3 py-2 space-y-0.5 text-[11px]">
+                                        {m.taskLabels.map((label, i) => (
+                                          <li key={i} className="text-gray-700 truncate max-w-[210px]">• {label}</li>
+                                        ))}
+                                      </ul>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <span className="text-orange-600 dark:text-orange-400">({formatGBP(m.projectCostBurn)})</span>
+                                )
+                              ) : (
+                                <span className="text-muted-foreground/30">—</span>
+                              )}
+                            </td>
+
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
@@ -1678,6 +1710,7 @@ export default function FinancialsPage() {
                 <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground space-y-0.5">
                   <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
                   <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, and Bedhampton's share of VAT. <strong>Winc VAT</strong> = Winchester VAT only. Net Profit = Winc Rev − Variable − Fixed − Winc VAT + Bedh Net.</p>
+                  <p><strong>Proj costs</strong> = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £{Math.round((pnlData ?? cashflow ?? []).reduce((s, m) => s + (m.projectCostBurn ?? 0), 0)).toLocaleString()}.</p>
                 </div>
               </CardContent>
             </Card>
