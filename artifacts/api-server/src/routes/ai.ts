@@ -242,14 +242,19 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const propertyTown = activeProperty?.postcode?.split(" ")[0] || activeProperty?.address?.split(",").at(-2)?.trim() || "the selected location";
 
   // ── Financial calculations for all 3 scenarios ───────────────────────────
-  function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>) {
+  // fixedCostsOverride: pass the actual fixed cost total from the items table so that
+  // .net is always correct — legacy individual fields (rentGbp etc.) are 0 when the
+  // user has switched to the dynamic fixed cost items list.
+  function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>, fixedCostsOverride?: number) {
     const slotsPerMonth = f.treatmentRoomsCount * f.practitionerHoursPerDay * f.workingDaysPerMonth;
     const revenue = Math.round((slotsPerMonth * (occupancyPct / 100)) * acv + f.membershipRevenueGbp);
-    const fixed = Math.round(
+    // Use the items-table total when available; fall back to legacy individual fields
+    const legacyFixed = Math.round(
       f.rentGbp + f.ratesGbp + f.utilitiesGbp + f.internetGbp +
       f.insuranceGbp + f.accountantGbp + f.softwareGbp +
       f.wasteContractGbp + f.cleanerGbp + f.subscriptionsGbp + f.financeRepaymentsGbp
     );
+    const fixed = fixedCostsOverride ?? legacyFixed;
     const variableRate = (f.stockPercent + f.commissionsPercent) / 100;
     const variable = Math.round(revenue * variableRate + f.marketingGbp + f.staffingGbp + f.consumablesGbp);
     const net = revenue - fixed - variable;
@@ -286,14 +291,31 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     // All three scenarios now use wincAcvGbp (Winchester-specific ACV, e.g. £230)
     // rather than the legacy averageClientValueGbp (originally set from Bedhampton).
     const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
-    const conservative = calcScenario(financial.conservativeOccupancyPercent, wincAcv, financial);
-    const realistic = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial);
-    const aggressive = calcScenario(financial.aggressiveOccupancyPercent, wincAcv, financial);
 
-    // Use itemised fixed cost total when available — the scenario's `fixed` field only
-    // sums legacy individual columns which may be incomplete if the user switched to
-    // the dynamic fixed cost items list.
-    const actualMonthlyFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : realistic.fixed;
+    // Use itemised fixed cost total when available — legacy individual fields (rentGbp etc.)
+    // are 0 when the user has switched to the dynamic fixed cost items list.
+    const actualMonthlyFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : Math.round(
+      financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp +
+      financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp +
+      financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp
+    );
+
+    // Guard against 0% occupancy inputs — if conservative/aggressive haven't been set,
+    // use sensible fallbacks so the AI isn't given £0 revenue scenarios.
+    const conservativeOcc = financial.conservativeOccupancyPercent > 0
+      ? financial.conservativeOccupancyPercent
+      : Math.round(financial.realisticOccupancyPercent * 0.5) || 30;
+    const aggressiveOcc = financial.aggressiveOccupancyPercent > 0
+      ? financial.aggressiveOccupancyPercent
+      : Math.min(Math.round(financial.realisticOccupancyPercent * 1.35), 95) || 80;
+    const conservativeOccNote = financial.conservativeOccupancyPercent === 0
+      ? ` (⚠ not set — using ${conservativeOcc}% fallback)` : "";
+    const aggressiveOccNote = financial.aggressiveOccupancyPercent === 0
+      ? ` (⚠ not set — using ${aggressiveOcc}% fallback)` : "";
+
+    const conservative = calcScenario(conservativeOcc, wincAcv, financial, actualMonthlyFixed);
+    const realistic    = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial, actualMonthlyFixed);
+    const aggressive   = calcScenario(aggressiveOcc, wincAcv, financial, actualMonthlyFixed);
 
     // Break-even: (fixedCosts + fixedVarItems) / (1 - variableRatio)
     // fixedVarItems = marketing + staffing + consumables (fixed monthly amounts, not %-of-revenue).
@@ -339,32 +361,42 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
       ? parseFloat((financial.existingClinicRevenueGbp / actualMonthlyFixed).toFixed(1))
       : 0;
 
-    const netAfterFixed = (occ: typeof realistic) => occ.revenue - actualMonthlyFixed - occ.variable;
+    const activeScenarioCalc = calcScenario(activeTargetOcc, wincAcv, financial, actualMonthlyFixed);
 
     financialContext = `=== ACTIVE PLANNING SCENARIO: ${activeScenarioKey.toUpperCase().replace(/_/g, " ")} ===
 This is the scenario Abi has selected as her planning baseline. The three reference scenarios below provide context — the active scenario's ramp parameters drive the monthly forecast.
 Active scenario: ${activeScenarioNote}
 Active target occupancy: ${activeTargetOcc}% | Opening occupancy: ${activeStartOcc}% | Ramp to target: ${activeRampMonths} months | ACV: £${wincAcv}
-Active scenario steady-state net (at ${activeTargetOcc}% occ): £${Math.round(calcScenario(activeTargetOcc, wincAcv, financial).revenue - actualMonthlyFixed - calcScenario(activeTargetOcc, wincAcv, financial).variable).toLocaleString()}/mo
+Active scenario steady-state net (at ${activeTargetOcc}% occ): £${activeScenarioCalc.net.toLocaleString()}/mo
+  (Revenue: £${activeScenarioCalc.revenue.toLocaleString()} − Fixed: £${activeScenarioCalc.fixed.toLocaleString()} − Variable: £${activeScenarioCalc.variable.toLocaleString()})
 
 === THREE-SCENARIO REFERENCE FINANCIALS (for ${propertyLabel}) ===
-IMPORTANT: Use £${actualMonthlyFixed.toLocaleString()}/mo as the definitive monthly fixed cost figure (from itemised cost list). The scenario 'Fixed:' lines below show legacy category totals which may be incomplete.
+Fixed costs source: itemised cost list (${totalFixedItemsCost > 0 ? `${fixedCostsRaw.length} items, total £${actualMonthlyFixed.toLocaleString()}/mo` : "no items — using legacy fields"})
 
-Conservative (${financial.conservativeOccupancyPercent}% occ, £${wincAcv} ACV)${activeScenarioKey === "conservative" ? " ← ACTIVE SCENARIO" : ""}:
-  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${netAfterFixed(conservative).toLocaleString()}/mo
+Conservative (${conservativeOcc}% occ${conservativeOccNote}, £${wincAcv} ACV)${activeScenarioKey === "conservative" ? " ← ACTIVE SCENARIO" : ""}:
+  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${conservative.net.toLocaleString()}/mo
 
 Realistic (${financial.realisticOccupancyPercent}% occ, £${wincAcv} ACV)${activeScenarioKey === "realistic" ? " ← ACTIVE SCENARIO" : ""}${activeScenarioKey === "delayed_ramp" ? " ← ACTIVE TARGET (delayed_ramp reaches this occupancy over 12 months)" : ""}:
-  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${netAfterFixed(realistic).toLocaleString()}/mo
+  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed: £${realistic.fixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${realistic.net.toLocaleString()}/mo
 
-Aggressive (${financial.aggressiveOccupancyPercent}% occupancy, £${wincAcv} ACV):
-  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed (actual): £${actualMonthlyFixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${netAfterFixed(aggressive).toLocaleString()}/mo
+Aggressive (${aggressiveOcc}% occ${aggressiveOccNote}, £${wincAcv} ACV):
+  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed: £${aggressive.fixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${aggressive.net.toLocaleString()}/mo
+
+Variable cost assumptions (these drive profitability — flag any zero values as data gaps):
+  Stock/COGS: ${financial.stockPercent}% of revenue${financial.stockPercent === 0 ? " ⚠ DATA GAP — 0% stock is not realistic for an aesthetics clinic. Botulinum toxin, filler, skinboosters = real product costs. Industry benchmark: 12–20% for premium injectables. Profits WILL be overstated until this is filled in." : ""}
+  Commissions: ${financial.commissionsPercent}% of revenue
+  Marketing (fixed monthly): £${financial.marketingGbp}
+  Staffing (fixed monthly): £${financial.staffingGbp}
+  Consumables (fixed monthly): £${financial.consumablesGbp}${financial.consumablesGbp === 0 ? " ⚠ DATA GAP — clinical consumables (cannulas, gloves, swabs, syringes) typically £80–£150/mo. Currently zero." : ""}
+  Total variable % of revenue: ${Math.round(variableRatio * 100)}% | Total fixed variable items: £${fixedVarItems.toLocaleString()}/mo
+
+Winchester ACV:${financial.wincAcvGbp ? ` £${financial.wincAcvGbp} (Winchester-specific)` : ` £${financial.averageClientValueGbp} (⚠ FALLBACK — Winchester ACV not entered; using Bedhampton's £${financial.averageClientValueGbp}. Winchester is a premium clinic; its ACV may differ significantly.)`}
 
 Key ratios (Realistic scenario, using actual fixed costs):
   Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo
   Rent as % of revenue: ${rentToRevenuePct}% (industry guideline: aim for <15%)
   Bedhampton income vs new clinic fixed costs: ${bedhCoverageMonths}× (Bedh earns ${bedhCoverageMonths}× the new clinic's monthly fixed costs — NOT 4 years' worth)
-  Treatment rooms: ${financial.treatmentRoomsCount} | Avg client value: £${financial.averageClientValueGbp} | Target ACV (new clinic): £${financial.wincAcvGbp || "not set"}
-  Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
+  Treatment rooms: ${financial.treatmentRoomsCount} | Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
 
 Personal finance & domestic commitments:
   Salary target (drawings): £${financial.targetDrawingsGbp || financial.ownerDrawingsGbp}/mo
@@ -629,10 +661,16 @@ ${financial ? (() => {
   const beOcc = maxMonthlySlots > 0 && wincAcv > 0 ? Math.round((breakEvenRevenue / (maxMonthlySlots * wincAcv)) * 100) : 0;
   return `=== 12-MONTH REVENUE FORECAST — MODEL INPUTS (use these exact numbers — do NOT change fixed costs) ===
 Monthly fixed costs (definitive): £${actualMonthlyFixed2.toLocaleString()}
-Fixed monthly variable items (marketing + staffing + consumables): £${fixedMonthlyCosts2.toLocaleString()}
-Total monthly cost base (fixed + fixed-variable): £${totalMonthlyCost.toLocaleString()}
-Variable cost rate (stock + commissions): ${Math.round(varRate * 100)}% of revenue
-Winchester ACV target: £${wincAcv}
+Variable cost breakdown (drives every month's net P&L — gaps will overstate profit):
+  Stock/COGS: ${financial.stockPercent}% of revenue${financial.stockPercent === 0 ? " ⚠ DATA GAP: 0% stock. Aesthetics = real product costs (toxin, filler, skinboosters). Benchmark: 12–20%. Profits overstated until corrected." : ""}
+  Commissions: ${financial.commissionsPercent}% of revenue
+  Marketing (fixed/mo): £${financial.marketingGbp}
+  Staffing (fixed/mo): £${financial.staffingGbp}
+  Consumables (fixed/mo): £${financial.consumablesGbp}${financial.consumablesGbp === 0 ? " ⚠ DATA GAP: cannulas, gloves, swabs typically £80–150/mo." : ""}
+  Total fixed variable items (marketing+staffing+consumables): £${fixedMonthlyCosts2.toLocaleString()}/mo
+Total monthly cost base (fixed + fixed-variable items): £${totalMonthlyCost.toLocaleString()}
+Variable cost rate applied to revenue (stock + commissions): ${Math.round(varRate * 100)}% of revenue
+Winchester ACV: £${wincAcv}${financial.wincAcvGbp === 0 ? ` ⚠ FALLBACK — wincAcvGbp not set; using Bedhampton ACV £${financial.averageClientValueGbp}. Verify this is correct for a premium Winchester clinic.` : " (Winchester-specific)"}`
 Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} clinic days)
 Revenue ceiling at 100% occupancy: £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
 
