@@ -204,6 +204,21 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   // as all other Winchester calculations — not the legacy hardcoded field sum.
   const owner = calcOwner(winc, bedh, model as any, nursingIncome, dynamicFixedCosts);
 
+  // ── Free-rent period metrics ──────────────────────────────────────────────
+  // Identify the rent line item from dynamic items (name contains "rent" or "lease")
+  // or fall back to model.rentGbp from the active property.
+  const rentLineAmount = fixedCostItems.length > 0
+    ? fixedCostItems.filter(item => /rent|lease/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+    : (model.rentGbp || 0);
+  const freeRentMonthsVal = (model as any).freeRentMonths ?? 0;
+  // During free-rent months only rates (not rent) apply to Winchester fixed costs
+  const freeRentFixedCostsVal = dynamicFixedCosts !== undefined
+    ? Math.max(0, dynamicFixedCosts - rentLineAmount)
+    : Math.max(0, (model.rentGbp || 0) + (model.ratesGbp || 0) - rentLineAmount);
+  const wincFreeRent = freeRentMonthsVal > 0
+    ? calcWinchester(model, targetOcc, acvMultiplier, vatRateForCalc, freeRentFixedCostsVal)
+    : null;
+
   // Legacy: months until Winchester itself breaks even (with VAT applied)
   let monthsUntilProfitable: number | null = null;
   if (winc.netProfit < 0) {
@@ -223,6 +238,9 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     bedh,
     combined,
     owner,
+    freeRentMonths: freeRentMonthsVal,
+    rentLineAmount: Math.round(rentLineAmount),
+    wincFreeRent,
     // Legacy backward-compat fields (dashboard uses these)
     monthlyRevenue: winc.grossRevenue,
     annualRevenue: combined.annualRevenue,
@@ -288,6 +306,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
       (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
       (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
+
+  // Free-rent period: identify rent component and compute reduced fixed costs
+  const cfRentAmount = fixedCostItems.length > 0
+    ? fixedCostItems.filter(item => /rent|lease/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+    : (model.rentGbp || 0);
+  const cfFreeRentMonths = (model as any).freeRentMonths ?? 0;
+  const wincFixedCostsNoRent = Math.max(0, wincFixedCosts - cfRentAmount);
 
   // Dual cost items — shared across both clinics, already counted ONCE in Winchester's fixed costs.
   // During pre-opening months Bedhampton bears them (Winchester is not yet open / paying).
@@ -399,12 +424,16 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let occupancyPercent = 0;
 
     if (!isPreOpening) {
-      const wincMonth = i - openingMonthIndex;
+      const wincMonth = i - openingMonthIndex; // 0-based months since opening
       occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
       const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
-      wincCosts = wincFixedCosts + variableCosts;
+      // During rent-free months only rates (not rent) count towards Winchester fixed costs
+      const effectiveFixed = cfFreeRentMonths > 0 && wincMonth < cfFreeRentMonths
+        ? wincFixedCostsNoRent
+        : wincFixedCosts;
+      wincCosts = effectiveFixed + variableCosts;
     }
 
     // ── Bedhampton: closed flag, capacity cap, dual costs ─────────────────────

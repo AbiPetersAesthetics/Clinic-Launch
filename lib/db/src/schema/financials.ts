@@ -68,6 +68,8 @@ export const financialsTable = pgTable("financial_models", {
   vatOnRent: boolean("vat_on_rent").notNull().default(false),
   // Pre-opening property costs: months before opening where rent + rates apply (lease signed early)
   preOpeningPropertyMonths: integer("pre_opening_property_months").notNull().default(2),
+  // Rent-free months: landlord-agreed free rent from lease start (only rates apply during this period)
+  freeRentMonths: integer("free_rent_months").notNull().default(0),
   // Bedhampton capacity ceiling: joint revenue (Bedh + Winc) at which Bedhampton slots are exhausted
   bedhCapacityCeilGbp: real("bedh_capacity_ceil_gbp").notNull().default(16000),
   // Scenario selection — persisted so the banner always reflects the user's chosen model

@@ -453,6 +453,7 @@ export default function FinancialsPage() {
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
       ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0,
       preOpeningPropertyMonths: 2,
+      freeRentMonths: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
       schoolFeesGbp: 0, travelGbp: 0, otherHouseholdGbp: 0,
     }
@@ -555,6 +556,7 @@ export default function FinancialsPage() {
         vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
         preOpeningPropertyMonths: m.preOpeningPropertyMonths ?? 2,
+        freeRentMonths: m.freeRentMonths ?? 0,
         nursingIncomeGbp: m.nursingIncomeGbp ?? 4500,
         targetDrawingsGbp: m.targetDrawingsGbp ?? 4000,
         schoolFeesGbp: (m as any).schoolFeesGbp ?? 0,
@@ -1010,6 +1012,33 @@ export default function FinancialsPage() {
             <div className="col-span-full flex items-start gap-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 px-3 py-2.5 text-xs text-orange-800 dark:text-orange-300">
               <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-orange-600 dark:text-orange-400" />
               <span><strong>Warning —</strong> Winchester has not yet proven it can sustain fixed costs independently. Closing Bedhampton at Month {cr.combined.selfFundingMonth} removes the financial bridge before Winchester is established. Review the self-funding buffer % in Assumptions.</span>
+            </div>
+          )}
+
+          {/* Rent-free period banner — only shown when freeRentMonths > 0 */}
+          {(cr as any)?.freeRentMonths > 0 && (cr as any)?.wincFreeRent && (
+            <div className="col-span-full rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20 px-4 py-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Rent-Free Period Active</span>
+                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">Months 1–{(cr as any).freeRentMonths}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 text-xs">
+                <div>
+                  <div className="text-muted-foreground">Fixed costs (rent-free)</div>
+                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{formatGBP((cr as any).wincFreeRent.fixedCosts)}/mo</div>
+                  <div className="text-[10px] text-muted-foreground">vs {formatGBP(cr.winc.fixedCosts)}/mo after</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Break-even (rent-free)</div>
+                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{(cr as any).wincFreeRent.breakEvenOccupancy.toFixed(0)}% occ</div>
+                  <div className="text-[10px] text-muted-foreground">vs {cr.winc.breakEvenOccupancy.toFixed(0)}% after rent starts</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">Monthly saving</div>
+                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{formatGBP((cr as any).rentLineAmount)}/mo</div>
+                  <div className="text-[10px] text-muted-foreground">rent waived × {(cr as any).freeRentMonths} months = {formatGBP((cr as any).rentLineAmount * (cr as any).freeRentMonths)} total</div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2504,13 +2533,14 @@ export default function FinancialsPage() {
                         ["runwaySavingsGbp","Business Capital (£)"],
                         ["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
                         ["preOpeningPropertyMonths","Lease signed (months before opening)"],
+                        ["freeRentMonths","Rent-free months (agreed with landlord)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">Lease signed months before opening: rent + rates are charged against business capital from that point, even before Winchester opens.</p>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">Lease signed months before opening: rent + rates are charged against business capital from that point, even before Winchester opens. Rent-free months: only business rates apply during this period — rent is £0.</p>
                   </CardContent>
                 </Card>
 
