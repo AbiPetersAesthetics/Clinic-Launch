@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable, financialsTable, decisionsTable, projectsTable, fixedCostItemsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ScoringWeights } from "@workspace/db";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
@@ -474,6 +475,111 @@ router.get("/projects/:projectId/properties/ranking", async (req, res) => {
   }));
 
   return res.json({ mode, rankings });
+});
+
+// ─── Property Location Search ──────────────────────────────────────────────────
+router.post("/projects/:projectId/properties/search", async (req, res) => {
+  const { location, radiusKm = 5, minSqft, maxSqft, minRentGbp, maxRentGbp, useClass, parkingRequired, highStreetOnly } = req.body;
+
+  if (!location || typeof location !== "string" || location.trim().length < 2) {
+    return res.status(400).json({ error: "location is required" });
+  }
+
+  const criteria = {
+    location: location.trim(),
+    radiusKm,
+    ...(minSqft != null && { minSqft }),
+    ...(maxSqft != null && { maxSqft }),
+    ...(minRentGbp != null && { minRentGbp }),
+    ...(maxRentGbp != null && { maxRentGbp }),
+    ...(useClass && { useClass }),
+    ...(parkingRequired != null && { parkingRequired }),
+    ...(highStreetOnly != null && { highStreetOnly }),
+  };
+
+  const sizeRange = minSqft || maxSqft
+    ? `${minSqft ?? 0}–${maxSqft ?? "unlimited"} sq ft`
+    : "any size";
+  const rentRange = minRentGbp || maxRentGbp
+    ? `£${minRentGbp ?? 0}–£${maxRentGbp ?? "unlimited"}/month`
+    : "any rent";
+
+  const prompt = `You are a commercial property specialist advising an aesthetics clinic operator in the UK.
+
+The client is looking for clinic premises near: ${location.trim()}
+Search radius: ${radiusKm}km
+Size requirement: ${sizeRange}
+Rent budget: ${rentRange}
+${useClass ? `Use class preference: ${useClass}` : ""}
+${parkingRequired ? "Parking: required" : ""}
+${highStreetOnly ? "Location: high street / primary retail only" : ""}
+
+Generate exactly 6 plausible UK commercial property locations within the specified area that would suit a premium aesthetics clinic. These should be real streets or commercial areas, not fictional addresses.
+
+For each location return a JSON object with these exact fields:
+- address: full street address (e.g. "14 High Street, Guildford")
+- postcode: realistic UK postcode for this area
+- lat: latitude (decimal, accurate to ~3 decimal places)
+- lng: longitude (decimal, accurate to ~3 decimal places)
+- estimatedMonthlyRentGbp: realistic monthly rent for a ~500-800 sq ft retail/clinic unit in this micro-location (integer)
+- estimatedSqft: realistic size estimate for a clinic unit here (integer, 400-900 range)
+- suitabilityScore: 0-100 integer — how suitable is this location for a premium aesthetics clinic (consider footfall, demographics, parking, competition saturation, unit type, discretion)
+- rationale: 1-2 sentences explaining the score and suitability
+- listingUrl: null (we cannot generate real listing URLs)
+- useClass: most likely use class (e.g. "E(e)" or "E")
+- strengths: array of 2-3 short strings (key positives)
+- concerns: array of 1-2 short strings (key risks or drawbacks)
+
+Return ONLY a JSON array of exactly 6 objects. No markdown, no explanation, just the raw JSON array.`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4.1",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.4,
+      max_tokens: 3000,
+    });
+
+    const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+    let results: unknown[];
+
+    // Strip markdown fences if present
+    const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
+
+    try {
+      results = JSON.parse(cleaned);
+      if (!Array.isArray(results)) throw new Error("not an array");
+    } catch {
+      return res.status(500).json({ error: "AI returned malformed data — please try again" });
+    }
+
+    // Normalise and validate each result
+    const normalised = results.map((r: unknown) => {
+      const item = r as Record<string, unknown>;
+      return {
+        address: String(item["address"] ?? ""),
+        postcode: String(item["postcode"] ?? ""),
+        lat: Number(item["lat"] ?? 0),
+        lng: Number(item["lng"] ?? 0),
+        estimatedMonthlyRentGbp: item["estimatedMonthlyRentGbp"] != null ? Number(item["estimatedMonthlyRentGbp"]) : null,
+        estimatedSqft: item["estimatedSqft"] != null ? Number(item["estimatedSqft"]) : null,
+        suitabilityScore: Math.min(100, Math.max(0, Math.round(Number(item["suitabilityScore"] ?? 50)))),
+        rationale: String(item["rationale"] ?? ""),
+        listingUrl: null,
+        useClass: item["useClass"] != null ? String(item["useClass"]) : null,
+        strengths: Array.isArray(item["strengths"]) ? item["strengths"].map(String) : [],
+        concerns: Array.isArray(item["concerns"]) ? item["concerns"].map(String) : [],
+      };
+    });
+
+    return res.json({ results: normalised, location: location.trim(), criteria });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "Unknown error";
+    if (msg.includes("API key") || msg.includes("auth") || msg.includes("401")) {
+      return res.status(503).json({ error: "AI service not configured" });
+    }
+    return res.status(500).json({ error: msg });
+  }
 });
 
 export default router;
