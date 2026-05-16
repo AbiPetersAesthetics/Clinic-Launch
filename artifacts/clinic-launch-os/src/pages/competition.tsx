@@ -104,6 +104,22 @@ const APA_PROFILE = {
   yearsExperience: 12,
 };
 
+type PricingStrategy = {
+  competitorCount: number;
+  competitorsWithPricing: number;
+  launchPricing: Record<string, number>;
+  maturePricing: Record<string, number>;
+  launchAcv: number | null;
+  matureAcv: number | null;
+  marketData: Record<string, { min: number; max: number; median: number; count: number }>;
+  strategy: string | null;
+  launchRationale: string | null;
+  matureRationale: string | null;
+  pricingTier: string | null;
+  keyRisk: string | null;
+  generatedAt: string;
+};
+
 const PREMISES_TYPES = [
   "high street shopfront","medical clinic","rented room","beauty salon room",
   "home clinic","dental clinic","chain clinic","destination clinic","unknown",
@@ -773,16 +789,181 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
 }
 
 // ── Pricing Tab ───────────────────────────────────────────────────────────────
-function PricingTab({ competitors }: { competitors: Competitor[] }) {
+function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel }: {
+  competitors: Competitor[];
+  pricingStrategy: PricingStrategy | null;
+  strategyLoading: boolean;
+  onRefresh: () => void;
+  onApplyToModel: (acv: number, label: string) => Promise<void>;
+}) {
   const [catFilter, setCatFilter] = useState("all");
+  const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
+  const [applying, setApplying] = useState<string | null>(null);
+  const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+
   const cats = ["all","Injectables","Skin","Laser"];
   const treatments = catFilter === "all" ? TREATMENT_KEYS.filter(t=>t.apaPrice>0) : TREATMENT_KEYS.filter(t=>t.cat===catFilter&&t.apaPrice>0);
 
+  const strategy = pricingStrategy;
+  const activePricing = pricingView === "launch" ? strategy?.launchPricing : strategy?.maturePricing;
+
+  const handleApply = async (acv: number, label: string) => {
+    setApplying(label);
+    setApplyMsg(null);
+    try {
+      await onApplyToModel(acv, label);
+      setApplyMsg({ type: "ok", text: `ACV updated to £${acv} in the Financial Model.` });
+    } catch {
+      setApplyMsg({ type: "err", text: "Failed to update. Try again." });
+    } finally {
+      setApplying(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex gap-2">
-        {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${catFilter===c?"bg-primary/20 border-primary/50 text-primary":"bg-muted border-border text-muted-foreground hover:border-primary/30"}`}>{c}</button>)}
+
+      {/* ── AI Pricing Strategy Panel ── */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/20">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <h3 className="font-semibold text-sm">APA Pricing Strategy</h3>
+            {strategy && (
+              <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {strategy.pricingTier ?? "—"}
+              </span>
+            )}
+          </div>
+          <button
+            onClick={onRefresh}
+            disabled={strategyLoading}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-muted border border-border hover:bg-muted/70 text-muted-foreground transition-colors disabled:opacity-50"
+          >
+            {strategyLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+            {strategyLoading ? "Generating…" : "Refresh"}
+          </button>
+        </div>
+
+        {strategyLoading && !strategy && (
+          <div className="flex items-center gap-3 px-5 py-8 text-muted-foreground text-sm">
+            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+            Analysing competitor pricing and generating APA strategy…
+          </div>
+        )}
+
+        {!strategyLoading && !strategy && (
+          <div className="px-5 py-6 text-center text-muted-foreground text-sm">
+            <p className="mb-3">Click Refresh to generate AI pricing recommendations based on your competitor data.</p>
+            <button onClick={onRefresh} className="text-xs px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
+              Generate Strategy
+            </button>
+          </div>
+        )}
+
+        {strategy && (
+          <div className="p-5 space-y-5">
+            {/* ACV summary cards */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className={`rounded-xl border p-4 transition-all ${pricingView === "launch" ? "border-primary/40 bg-primary/5" : "border-border bg-muted/30 cursor-pointer hover:border-primary/20"}`}
+                onClick={() => setPricingView("launch")}>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Launch ACV · Nov 2026</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {strategy.launchAcv ? `£${strategy.launchAcv}` : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Recommended average client value at launch</p>
+                {pricingView === "launch" && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (strategy.launchAcv) handleApply(strategy.launchAcv, "launch"); }}
+                      disabled={!strategy.launchAcv || applying === "launch"}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                      {applying === "launch" ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                      Apply to Financial Model
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className={`rounded-xl border p-4 transition-all ${pricingView === "mature" ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-muted/30 cursor-pointer hover:border-emerald-500/20"}`}
+                onClick={() => setPricingView("mature")}>
+                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Mature ACV · 12m+</p>
+                <p className="text-2xl font-bold text-foreground">
+                  {strategy.matureAcv ? `£${strategy.matureAcv}` : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Target once established with reviews &amp; retention</p>
+                {pricingView === "mature" && (
+                  <div className="mt-3 flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); if (strategy.matureAcv) handleApply(strategy.matureAcv, "mature"); }}
+                      disabled={!strategy.matureAcv || applying === "mature"}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
+                    >
+                      {applying === "mature" ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+                      Apply to Financial Model
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {applyMsg && (
+              <div className={`text-xs px-3 py-2 rounded-lg border ${applyMsg.type === "ok" ? "text-teal-700 bg-teal-600/5 border-teal-500/20" : "text-red-500 bg-red-500/5 border-red-500/20"}`}>
+                {applyMsg.type === "ok" ? "✓" : "✗"} {applyMsg.text}
+              </div>
+            )}
+
+            {/* Strategy rationale */}
+            {strategy.strategy && (
+              <div className="space-y-2">
+                <p className="text-xs text-foreground leading-relaxed">{strategy.strategy}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                  {strategy.launchRationale && (
+                    <div className="bg-muted/40 rounded-lg p-3 border border-border">
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-medium mb-1">Launch rationale</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{strategy.launchRationale}</p>
+                    </div>
+                  )}
+                  {strategy.matureRationale && (
+                    <div className="bg-muted/40 rounded-lg p-3 border border-border">
+                      <p className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-medium mb-1">12m+ rationale</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{strategy.matureRationale}</p>
+                    </div>
+                  )}
+                </div>
+                {strategy.keyRisk && (
+                  <div className="flex items-start gap-2 mt-2 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2.5">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400"><span className="font-medium">Key risk: </span>{strategy.keyRisk}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Data footnote */}
+            <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
+              Based on {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors with pricing data · Generated {new Date(strategy.generatedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+            </p>
+          </div>
+        )}
       </div>
+
+      {/* ── View toggle + category filter ── */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex gap-1.5">
+          <button onClick={() => setPricingView("launch")} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${pricingView === "launch" ? "bg-primary/20 border-primary/50 text-primary" : "bg-muted border-border text-muted-foreground hover:border-primary/30"}`}>
+            Launch pricing
+          </button>
+          <button onClick={() => setPricingView("mature")} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${pricingView === "mature" ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-600 dark:text-emerald-400" : "bg-muted border-border text-muted-foreground hover:border-emerald-500/30"}`}>
+            12m+ pricing
+          </button>
+        </div>
+        <div className="flex gap-1.5">
+          {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${catFilter===c?"bg-muted border-border text-foreground font-medium":"bg-transparent border-border text-muted-foreground hover:text-foreground"}`}>{c}</button>)}
+        </div>
+      </div>
+
+      {/* ── Comparison table ── */}
       {competitors.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to see pricing comparison.</div>
       ) : (
@@ -790,28 +971,47 @@ function PricingTab({ competitors }: { competitors: Competitor[] }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border">
-                <th className="text-left py-3 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wider w-40">Treatment</th>
-                <th className="text-right py-3 px-3 text-xs font-bold text-primary uppercase tracking-wider whitespace-nowrap">APA (target)</th>
+                <th className="text-left py-3 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wider w-44">Treatment</th>
+                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap">
+                  <span className={pricingView === "launch" ? "text-primary" : "text-emerald-600 dark:text-emerald-400"}>
+                    APA {pricingView === "launch" ? "(launch)" : "(12m+)"}
+                  </span>
+                </th>
+                <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Market median</th>
                 {competitors.map(c=><th key={c.id} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-24">{c.name.split(" ")[0]}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {treatments.map(t=>{
+                const apaRecommended = activePricing?.[t.key] ?? null;
+                const displayApaPrice = apaRecommended ?? t.apaPrice;
+                const isAiPrice = apaRecommended !== null;
                 const compPrices = competitors.map(c=>({ id:c.id, name:c.name, price: parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0 }));
                 const validPrices = compPrices.filter(p=>p.price>0).map(p=>p.price);
-                const minPrice = validPrices.length ? Math.min(...validPrices) : 0;
-                const maxPrice = validPrices.length ? Math.max(...validPrices) : 0;
+                const medianPrice = validPrices.length ? (validPrices.sort((a,b)=>a-b)[Math.floor(validPrices.length/2)]) : null;
                 return (
                   <tr key={t.key} className="hover:bg-muted/30 transition-colors">
                     <td className="py-3 pr-4">
                       <p className="font-medium text-sm">{t.label}</p>
-                      {validPrices.length > 0 && <p className="text-[10px] text-muted-foreground">Market: £{minPrice}–£{maxPrice}</p>}
+                      {validPrices.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          Market: £{Math.min(...validPrices)}–£{Math.max(...validPrices)}
+                        </p>
+                      )}
                     </td>
-                    <td className="text-right py-3 px-3 font-bold text-primary">£{t.apaPrice}</td>
+                    <td className="text-right py-3 px-3">
+                      <span className={`font-bold ${isAiPrice ? (pricingView === "launch" ? "text-primary" : "text-emerald-600 dark:text-emerald-400") : "text-muted-foreground"}`}>
+                        £{displayApaPrice}
+                      </span>
+                      {isAiPrice && <span className="ml-1 text-[9px] text-muted-foreground/60 align-super">AI</span>}
+                    </td>
+                    <td className="text-right py-3 px-3 text-muted-foreground text-sm">
+                      {medianPrice ? `£${medianPrice}` : <span className="text-muted-foreground/40">—</span>}
+                    </td>
                     {competitors.map(c=>{ const p = parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0; const offered = parseJson<string[]>(c.treatmentsJson,[]).includes(t.key); return (
                       <td key={c.id} className="text-right py-3 px-3">
                         {p > 0 ? (
-                          <span className={`font-medium ${p < t.apaPrice*0.85 ? "text-red-500" : p > t.apaPrice*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
+                          <span className={`font-medium ${p < displayApaPrice*0.85 ? "text-red-500" : p > displayApaPrice*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
                         ) : offered ? <span className="text-xs text-muted-foreground">Offered</span> : <span className="text-xs text-muted-foreground/40">—</span>}
                       </td>
                     );})}
@@ -823,8 +1023,9 @@ function PricingTab({ competitors }: { competitors: Competitor[] }) {
         </div>
       )}
       <div className="flex items-center gap-6 text-xs text-muted-foreground pt-2 border-t border-border">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Red = significantly cheaper than APA target</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />Green = more expensive than APA</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Competitors significantly cheaper than APA</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />Competitors more expensive than APA</div>
+        {strategy && <div className="flex items-center gap-1.5"><span className="text-[10px] text-muted-foreground/60 font-medium">AI</span> = AI-recommended price</div>}
       </div>
     </div>
   );
@@ -1282,6 +1483,9 @@ export default function CompetitionPage() {
   const [prefillData, setPrefillData] = useState<Partial<FormData> | null>(null);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [enrichingId, setEnrichingId] = useState<number | null>(null);
+  const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy | null>(null);
+  const [strategyLoading, setStrategyLoading] = useState(false);
+  const [strategyFetched, setStrategyFetched] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
@@ -1365,6 +1569,35 @@ export default function CompetitionPage() {
     setCompetitors(cs=>cs.map(x=>x.id===c.id ? {...x, onWatchlist:!c.onWatchlist} : x));
   };
 
+  const fetchPricingStrategy = async () => {
+    setStrategyLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/pricing-strategy`);
+      if (r.ok) {
+        const data = await r.json();
+        setPricingStrategy(data);
+        setStrategyFetched(true);
+      }
+    } catch { /* non-fatal */ }
+    finally { setStrategyLoading(false); }
+  };
+
+  const handleApplyToModel = async (acv: number) => {
+    const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ wincAcvGbp: acv }),
+    });
+    if (!r.ok) throw new Error("Update failed");
+  };
+
+  // Auto-fetch pricing strategy when user navigates to Pricing tab
+  useEffect(() => {
+    if (tab === 2 && !strategyFetched && !strategyLoading) {
+      fetchPricingStrategy();
+    }
+  }, [tab]);
+
   const TABS = ["Overview","Competitors","Pricing","Comparison","Market Gap","Map","Watchlist"];
 
   // Build default location for AI search from selected property
@@ -1440,7 +1673,7 @@ export default function CompetitionPage() {
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
             {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} onEnrich={handleEnrich} enrichingId={enrichingId} />}
-            {tab === 2 && <PricingTab competitors={competitors} />}
+            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} />}
             {tab === 3 && <ComparisonTab competitors={competitors} />}
             {tab === 4 && <MarketGapTab competitors={competitors} />}
             {tab === 5 && <MapTab competitors={competitors} />}

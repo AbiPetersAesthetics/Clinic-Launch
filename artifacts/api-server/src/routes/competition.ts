@@ -611,6 +611,175 @@ router.post("/projects/:id/competitors/lookup", async (req, res) => {
   }
 });
 
+// ── GET competitor-driven APA pricing strategy ────────────────────────────
+router.get("/projects/:id/competitors/pricing-strategy", async (req, res) => {
+  const projectId = parseInt(req.params.id);
+  if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
+
+  const allCompetitors = await db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId));
+  if (allCompetitors.length === 0) return res.json({ competitorCount: 0, competitorsWithPricing: 0, launchPricing: {}, maturePricing: {}, launchAcv: null, matureAcv: null, strategy: null });
+
+  // Treatment keys APA uses — GPT must return prices using these exact keys
+  const TREATMENT_KEY_MAP: Record<string, string[]> = {
+    antiWrinkle1: ["Anti-wrinkle 1 area","Anti-wrinkle (1 area)","1 area","botox 1 area","antiwrinkle 1"],
+    antiWrinkle2: ["Anti-wrinkle 2 areas","Anti-wrinkle (2 areas)","2 areas","botox 2 areas"],
+    antiWrinkle3: ["Anti-wrinkle 3 areas","Anti-wrinkle (3 areas)","3 areas","botox 3 areas"],
+    lipFiller05:  ["Lip filler 0.5ml","lip filler 0.5","0.5ml lip","half ml lip"],
+    lipFiller1:   ["Lip filler 1ml","lip filler 1","1ml lip","full lip"],
+    cheekFiller:  ["Cheek filler 1ml","cheek filler","cheek augmentation","cheeks 1ml"],
+    jawChin:      ["Jaw/chin filler","jaw filler","chin filler","jaw and chin"],
+    tearTrough:   ["Tear trough","tear trough filler","under eye filler"],
+    skinBooster:  ["Skin booster","skin boosters","juvederm volite","teosyal redensity"],
+    profhilo:     ["Profhilo (course of 2)","Profhilo","profhilo 2 sessions","profhilo course"],
+    polynucleotides: ["Polynucleotides","PDRN","PDRN treatment","PN treatment"],
+    microneedling: ["Microneedling","dermapen","skin needling"],
+    chemicalPeel: ["Chemical peel","peel","skin peel"],
+  };
+
+  // Aggregate competitor pricing: normalise keys → TREATMENT_KEY_MAP, collect all prices
+  const aggregated: Record<string, { prices: number[]; clinics: string[] }> = {};
+  let competitorsWithPricing = 0;
+
+  for (const comp of allCompetitors) {
+    if (!comp.pricingJson || comp.pricingJson === "{}") continue;
+    let pricing: Record<string, number> = {};
+    try { pricing = JSON.parse(comp.pricingJson); } catch { continue; }
+    if (Object.keys(pricing).length === 0) continue;
+    competitorsWithPricing++;
+
+    for (const [rawKey, price] of Object.entries(pricing)) {
+      if (!price || price <= 0) continue;
+      // Find which canonical key this raw key maps to
+      const canonical = Object.entries(TREATMENT_KEY_MAP).find(([, aliases]) =>
+        aliases.some(a => rawKey.toLowerCase().includes(a.toLowerCase()) || a.toLowerCase().includes(rawKey.toLowerCase()))
+      )?.[0] ?? rawKey.toLowerCase().replace(/\s+/g, "_");
+
+      if (!aggregated[canonical]) aggregated[canonical] = { prices: [], clinics: [] };
+      aggregated[canonical].prices.push(price);
+      aggregated[canonical].clinics.push(comp.name ?? "Unknown");
+    }
+  }
+
+  const median = (arr: number[]) => {
+    const s = [...arr].sort((a, b) => a - b);
+    const m = Math.floor(s.length / 2);
+    return s.length % 2 !== 0 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+  };
+
+  const pricingSummaryLines = Object.entries(aggregated)
+    .map(([key, { prices, clinics }]) => {
+      const sorted = [...prices].sort((a, b) => a - b);
+      return `  ${key}: £${sorted[0]}–£${sorted[sorted.length - 1]} (median £${median(prices)}, ${prices.length} clinics: ${clinics.join(", ")})`;
+    })
+    .join("\n");
+
+  const competitorProfiles = allCompetitors.slice(0, 12).map(c =>
+    `  • ${c.name} — ${c.positioningCategory ?? "unknown positioning"}, threat ${c.estimatedThreatScore ?? "?"}/100` +
+    (c.pricingJson && c.pricingJson !== "{}" ? ` [has pricing data]` : " [no pricing data]")
+  ).join("\n");
+
+  const prompt = `You are a pricing strategist for UK private aesthetics clinics. Your client is Abi Peters Aesthetics (APA) — a premium nurse-led (ANP) clinic opening in Winchester city centre in November 2026. Winchester is an affluent market (ABC1 demographic, strong professional female spending power).
+
+APA positioning: natural-results nurse-led clinic, Save Face accredited, independent prescriber, 12+ years NHS and aesthetics experience, high street shopfront in Winchester city centre.
+
+COMPETITOR LANDSCAPE (${allCompetitors.length} competitors mapped):
+${competitorProfiles}
+
+COMPETITOR PRICING DATA (market prices per treatment, by canonical treatment key):
+${pricingSummaryLines || "No pricing data entered yet — use your knowledge of Winchester and Hampshire market rates."}
+
+Your task: recommend APA's pricing strategy in TWO phases:
+
+1. LAUNCH PRICING (November 2026): Realistic opening prices that are competitive enough to win first clients but position APA firmly as a premium clinic. Should not undercut the market to the point of devaluing the brand. Consider that APA has no Google reviews yet and needs to build trust.
+
+2. MATURE PRICING (12+ months post-launch): Prices APA should target once established with reviews and a client base. Should reflect APA's full premium positioning.
+
+Rules:
+- Base prices on the actual competitor data above — if competitors charge £150-£180 for anti-wrinkle 1 area, your recommendations must reflect that market reality
+- APA is nurse-led premium, not budget — do not price below mid-market
+- Winchester has high disposable income — premium pricing is achievable once established
+- Launch prices should be 5-15% below mature prices to acknowledge the trust-building phase
+- Only recommend prices for treatments where you have competitor data or strong market knowledge
+- The ACV (average client value) must be a realistic blended average across all treatment types
+
+Return ONLY valid JSON:
+{
+  "launchPricing": {
+    "antiWrinkle1": integer_or_null,
+    "antiWrinkle2": integer_or_null,
+    "antiWrinkle3": integer_or_null,
+    "lipFiller05": integer_or_null,
+    "lipFiller1": integer_or_null,
+    "cheekFiller": integer_or_null,
+    "jawChin": integer_or_null,
+    "tearTrough": integer_or_null,
+    "skinBooster": integer_or_null,
+    "profhilo": integer_or_null,
+    "polynucleotides": integer_or_null,
+    "microneedling": integer_or_null,
+    "chemicalPeel": integer_or_null
+  },
+  "maturePricing": {
+    "antiWrinkle1": integer_or_null,
+    "antiWrinkle2": integer_or_null,
+    "antiWrinkle3": integer_or_null,
+    "lipFiller05": integer_or_null,
+    "lipFiller1": integer_or_null,
+    "cheekFiller": integer_or_null,
+    "jawChin": integer_or_null,
+    "tearTrough": integer_or_null,
+    "skinBooster": integer_or_null,
+    "profhilo": integer_or_null,
+    "polynucleotides": integer_or_null,
+    "microneedling": integer_or_null,
+    "chemicalPeel": integer_or_null
+  },
+  "launchAcv": integer,
+  "matureAcv": integer,
+  "marketMedians": {
+    "antiWrinkle1": integer_or_null,
+    "lipFiller1": integer_or_null,
+    "profhilo": integer_or_null
+  },
+  "strategy": "3-4 sentences: overall pricing strategy rationale — reference actual competitor prices, explain the launch vs mature split, and what pricing signals APA's premium positioning without pricing itself out.",
+  "launchRationale": "2 sentences: why these specific launch prices — what competitive logic drives them.",
+  "matureRationale": "2 sentences: why the 12m+ prices move up and what has to happen for APA to justify that increase.",
+  "pricingTier": "one of: budget | mid-market | premium | ultra-premium",
+  "keyRisk": "1 sentence: biggest pricing risk APA faces in this market."
+}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      messages: [
+        { role: "system", content: "You are a specialist pricing strategist for UK private aesthetics clinics. Return only valid JSON. Be precise and ground recommendations in the provided competitor data." },
+        { role: "user", content: prompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.1,
+    });
+
+    const raw = completion.choices[0].message.content || "{}";
+    let result: Record<string, unknown> = {};
+    try { result = JSON.parse(raw); } catch { /* fall through */ }
+
+    return res.json({
+      ...result,
+      competitorCount: allCompetitors.length,
+      competitorsWithPricing,
+      marketData: Object.fromEntries(
+        Object.entries(aggregated).map(([k, { prices }]) => [k, {
+          min: Math.min(...prices), max: Math.max(...prices), median: median(prices), count: prices.length,
+        }])
+      ),
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(502).json({ error: msg.slice(0, 300) });
+  }
+});
+
 // ── POST tab-specific AI research for competitor modal ────────────────────
 router.post("/projects/:id/competitors/tab-research", async (req, res) => {
   const {
