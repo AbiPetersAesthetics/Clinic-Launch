@@ -269,6 +269,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
 
+  // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
+  const reqMonths = parseInt((req.query.months as string) || "12");
+  const TOTAL_MONTHS_CF = Math.min(Math.max(reqMonths, 12), 36);
+
   const profile = applyRampTier(SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic, rampTier);
   const targetOcc = profile.getTargetOcc(model);
   const acvMultiplier = profile.acvMultiplier;
@@ -285,23 +289,34 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
       (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
 
-  // Dual cost items are shared — they already count in Winchester's fixed costs above.
-  // Bedhampton only carries location-specific costs (rent, marketing, other catch-all).
-  // This eliminates the double-counting bug where software/insurance appeared in both clinics.
+  // Dual cost items — shared across both clinics, already counted ONCE in Winchester's fixed costs.
+  // During pre-opening months Bedhampton bears them (Winchester is not yet open / paying).
+  const dualFixedCosts = fixedCostItems
+    .filter(item => item.costType === "dual")
+    .reduce((sum, item) => sum + (item.amountGbp || 0), 0);
+
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
   const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
   const bedhProductCosts = bedhMonthlyRevenue * bedhStockPct;
-  // Bedhampton running costs: location-specific only.
-  // Shared costs (software, insurance, staffing) are now entered as "dual" fixed cost items
-  // on Winchester and count once — they do NOT appear here to avoid double-counting.
+  // Bedhampton running costs: location-specific only (rent, marketing, other catch-all).
+  // Dual shared costs are handled separately — deducted from Bedh during pre-opening only.
   const bedhRunningCosts =
     ((model as any).bedhRentGbp || 0) +
     ((model as any).bedhMarketingGbp || 0) +
     ((model as any).bedhamptonCostsGbp || 0);
-  const bedhMonthlyCosts = bedhProductCosts + bedhRunningCosts;
+  const bedhBaseCosts = bedhProductCosts + bedhRunningCosts;
+
+  // Bedhampton capacity ceiling: as Winchester fills slots, Bedhampton revenue tapers
+  const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp ?? 16000;
+
+  // Pre-opening property costs: rent + rates apply from lease signing, before Winchester opens
+  const preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
+  const monthlyRent = (model as any).rentGbp ?? 0;
+  const monthlyRates = (model as any).ratesGbp ?? 0;
+
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
   const targetDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
@@ -322,21 +337,17 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const calendarStart = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
 
   // Opening month index (0-based offset from calendarStart)
-  const TOTAL_MONTHS = 12;
-  let openingMonthIndex = TOTAL_MONTHS;
+  let openingMonthIndex = TOTAL_MONTHS_CF;
   if (project?.targetOpeningDate) {
     const openDate = new Date(project.targetOpeningDate);
     const diff = (openDate.getFullYear() - calendarStart.getFullYear()) * 12
       + (openDate.getMonth() - calendarStart.getMonth());
-    openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS));
+    openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS_CF));
   }
 
   // ── Build month-by-month project cost map from task due dates ──────────────
-  // Tasks WITH a dueDate → cost lands in that calendar month.
-  // Tasks WITHOUT a dueDate → spread across pre-opening months with a ramp
-  // (undated tasks weighted toward the later months, where fit-out spend is heaviest).
-  const monthCostMap: number[] = Array(TOTAL_MONTHS).fill(0);
-  const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS }, () => []);
+  const monthCostMap: number[] = Array(TOTAL_MONTHS_CF).fill(0);
+  const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS_CF }, () => []);
   let undatedTaskCost = 0;
 
   for (const task of allTasks) {
@@ -347,8 +358,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       const due = new Date(task.dueDate);
       const idx = (due.getFullYear() - calendarStart.getFullYear()) * 12
         + (due.getMonth() - calendarStart.getMonth());
-      // Clamp past tasks to month 0, future-beyond-window tasks to last pre-opening month
-      const clampedIdx = idx < 0 ? 0 : idx >= TOTAL_MONTHS ? Math.max(0, openingMonthIndex - 1) : idx;
+      const clampedIdx = idx < 0 ? 0 : idx >= TOTAL_MONTHS_CF ? Math.max(0, openingMonthIndex - 1) : idx;
       monthCostMap[clampedIdx] += cost;
       monthTaskLabels[clampedIdx].push(task.title);
     } else {
@@ -363,12 +373,15 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     rawW.forEach((w, i) => { monthCostMap[i] += (w / wSum) * undatedTaskCost; });
   }
 
+  // Lease signing index: rent + rates apply this many months before opening
+  const propStartIndex = Math.max(0, openingMonthIndex - preOpenPropMonths);
+
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let cashBalance = startingCash;
   let selfFundingMonthIndex: number | null = null;
 
-  const cashflow = Array.from({ length: TOTAL_MONTHS }, (_, i) => {
+  const cashflow = Array.from({ length: TOTAL_MONTHS_CF }, (_, i) => {
     const monthDate = new Date(calendarStart.getFullYear(), calendarStart.getMonth() + i, 1);
     const calendarLabel = `${MONTH_NAMES[monthDate.getMonth()]} '${String(monthDate.getFullYear()).slice(2)}`;
 
@@ -379,12 +392,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const projectCostBurn = monthCostMap[i] ?? 0;
     const taskLabelsThisMonth = monthTaskLabels[i] ?? [];
 
-    // Bedhampton closes when Winchester becomes self-funding
-    const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
-    const bedhRevenueGross = bedhClosed ? 0 : bedhMonthlyRevenue;
-    const bedhCosts = bedhClosed ? 0 : bedhMonthlyCosts;
-
-    // Winchester: zero before opening, ramps from opening month
+    // ── Winchester first (Bedhampton capacity is capped against Winchester revenue) ──
     let wincRevenue = 0;
     let wincCosts = 0;
     let wincNet = 0;
@@ -399,22 +407,34 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincCosts = wincFixedCosts + variableCosts;
     }
 
+    // ── Bedhampton: closed flag, capacity cap, dual costs ─────────────────────
+    const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
+
+    // Capacity ceiling: as Winchester fills Abi's slots, Bedhampton revenue tapers
+    const bedhRevenueUncapped = bedhClosed ? 0 : bedhMonthlyRevenue;
+    const bedhRevenue = bedhClosed ? 0
+      : Math.max(0, Math.min(bedhRevenueUncapped, Math.max(0, bedhCapacityCeil - wincRevenue)));
+
+    // Dual costs: borne by Bedhampton during pre-opening (Winchester not yet paying them).
+    // After opening, dual costs are already in wincFixedCosts — don't double-count.
+    const bedhDualCosts = isPreOpening ? dualFixedCosts : 0;
+    const bedhCosts = bedhClosed ? 0 : bedhBaseCosts + bedhDualCosts;
+
+    // Pre-opening property costs: rent + rates from lease signing date
+    const isInLeasePeriod = isPreOpening && i >= propStartIndex;
+    const preOpenPropertyCost = isInLeasePeriod ? (monthlyRent + monthlyRates) : 0;
+
     // VAT — tracked across the whole business (Bedhampton + Winchester combined)
-    // Cumulative turnover rolls forward each month; once it hits £90k the business must register.
-    // VAT liability applies to ALL revenue from registration month onwards.
-    const monthTotalRevenue = bedhRevenueGross + wincRevenue;
+    const monthTotalRevenue = bedhRevenue + wincRevenue;
     if (!vatRegistered) {
       vatCumulativeTurnover += monthTotalRevenue;
       if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
     }
     const isVatRegistered = vatRegistered;
-    // VAT is a liability on ALL turnover once registered — treated as a cost (conservative: prices not raised)
     const vatLiability = isVatRegistered ? monthTotalRevenue * VAT_RATE : 0;
-    // Apply VAT proportionally across Bedhampton and Winchester costs
-    const bedhVat = (bedhRevenueGross > 0 && isVatRegistered) ? bedhRevenueGross * VAT_RATE : 0;
+    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_RATE : 0;
     const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
 
-    const bedhRevenue = bedhRevenueGross;
     const bedhNet = bedhRevenue - bedhCosts - bedhVat;
 
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
@@ -435,7 +455,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     // - After self-funding: Abi takes up to her desired income from the available surplus
     // - Any surplus above drawings accrues as business capital
     const drawingsActive = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
-    const grossSurplus = wincNet + bedhNet - projectCostBurn;
+    // Pre-opening property cost (rent + rates from lease signing) included in gross surplus drain
+    const grossSurplus = wincNet + bedhNet - projectCostBurn - preOpenPropertyCost;
     const actualDrawings = drawingsActive ? Math.min(Math.max(0, grossSurplus), targetDrawings) : 0;
     const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
 
@@ -450,6 +471,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       isOpeningMonth,
       isBedhamptonCloseMonth,
       projectCostBurn: Math.round(projectCostBurn),
+      preOpenPropertyCost: Math.round(preOpenPropertyCost),
       taskLabels: taskLabelsThisMonth,
       vatLiability: Math.round(vatLiability),
       isVatRegistered,
@@ -464,6 +486,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
       bedhRevenue: Math.round(bedhRevenue),
+      bedhDualCosts: Math.round(bedhDualCosts),
       bedhCosts: Math.round(bedhCosts),
       bedhNet: Math.round(bedhNet),
       monthlyCashflow: Math.round(monthlyCashflow),

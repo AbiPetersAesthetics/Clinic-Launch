@@ -102,8 +102,8 @@ type CashflowMonth = {
   isPreOpening: boolean; isOpeningMonth: boolean; isBedhamptonCloseMonth: boolean;
   wincRevenue: number; wincVariableCosts: number; wincFixedCosts: number; wincVat: number;
   wincCosts: number; wincNet: number;
-  bedhRevenue: number; bedhCosts: number; bedhNet: number;
-  projectCostBurn: number; taskLabels: string[];
+  bedhRevenue: number; bedhCosts: number; bedhNet: number; bedhDualCosts: number;
+  projectCostBurn: number; preOpenPropertyCost: number; taskLabels: string[];
   vatLiability: number; isVatRegistered: boolean;
   actualDrawings: number; targetDrawings: number; drawingsShortfall: number; drawingsActive: boolean;
   monthlyCashflow: number; cashBalance: number;
@@ -409,6 +409,13 @@ export default function FinancialsPage() {
   });
   const cashflow = rawCashflow as unknown as CashflowMonth[] | undefined;
 
+  const [pnlMonths, setPnlMonths] = useState<12 | 36>(12);
+  const { data: rawCashflow36 } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, months: 36 } as any, {
+    query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario, rampTier, months: 36 } as any), enabled: true },
+  });
+  const cashflow36 = rawCashflow36 as unknown as CashflowMonth[] | undefined;
+  const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
+
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
 
@@ -430,9 +437,10 @@ export default function FinancialsPage() {
       treatmentRoomsCount: 1, practitionerHoursPerDay: 7,
       workingDaysPerMonth: 22, conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0,
       aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
-      existingClinicRevenueGbp: 0, bedhStockPercent: 35,
+      existingClinicRevenueGbp: 0, bedhStockPercent: 35, bedhCapacityCeilGbp: 16000,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
       ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0,
+      preOpeningPropertyMonths: 2,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
       schoolFeesGbp: 0, travelGbp: 0, otherHouseholdGbp: 0,
     }
@@ -466,6 +474,8 @@ export default function FinancialsPage() {
         // The form values already ARE the saved state; no refetch needed.
         queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
         queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
+        // Invalidate cashflow so chart + P&L table reflect new capital/assumptions immediately
+        queryClient.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes("cashflow") });
         runCalculation();
         setSaveStatus("saved");
         pendingValuesRef.current = null;
@@ -525,12 +535,14 @@ export default function FinancialsPage() {
         repeatBookingRatePercent: m.repeatBookingRatePercent ?? 60,
         membershipRevenueGbp: m.membershipRevenueGbp ?? 0,
         existingClinicRevenueGbp: m.existingClinicRevenueGbp ?? 0, bedhStockPercent: m.bedhStockPercent ?? 35,
+        bedhCapacityCeilGbp: m.bedhCapacityCeilGbp ?? 16000,
         bedhRentGbp: m.bedhRentGbp ?? 0, bedhSoftwareGbp: m.bedhSoftwareGbp ?? 0,
         bedhStaffingGbp: m.bedhStaffingGbp ?? 0, bedhInsuranceGbp: m.bedhInsuranceGbp ?? 0,
         bedhMarketingGbp: m.bedhMarketingGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 0,
         ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0,
         vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
+        preOpeningPropertyMonths: m.preOpeningPropertyMonths ?? 2,
         nursingIncomeGbp: m.nursingIncomeGbp ?? 4500,
         targetDrawingsGbp: m.targetDrawingsGbp ?? 4000,
         schoolFeesGbp: (m as any).schoolFeesGbp ?? 0,
@@ -1361,7 +1373,19 @@ export default function FinancialsPage() {
           {cashflow && cashflow.length > 0 && (
             <Card className="shadow-sm">
               <CardHeader className="pb-2">
-                <CardTitle className="text-base">Monthly P&L Breakdown</CardTitle>
+                <div className="flex items-center justify-between gap-2">
+                  <CardTitle className="text-base">Monthly P&L Breakdown</CardTitle>
+                  <div className="flex items-center border rounded-md overflow-hidden text-xs shrink-0">
+                    <button
+                      onClick={() => setPnlMonths(12)}
+                      className={`px-3 py-1 transition-colors ${pnlMonths === 12 ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                    >12 mo</button>
+                    <button
+                      onClick={() => setPnlMonths(36)}
+                      className={`px-3 py-1 transition-colors ${pnlMonths === 36 ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+                    >36 mo</button>
+                  </div>
+                </div>
                 <CardDescription className="text-sm">
                   Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
                   <span className="ml-2 inline-flex items-center gap-1 text-[10px]">
@@ -1398,7 +1422,7 @@ export default function FinancialsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {cashflow.map((m) => {
+                      {(pnlData ?? cashflow).map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet;
@@ -1450,11 +1474,28 @@ export default function FinancialsPage() {
                                 : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
-                            {/* Winchester Fixed — all items from fixed cost list, including dual costs (counted once) */}
+                            {/* Winchester Fixed — all items from fixed cost list, including dual costs (counted once).
+                                During pre-opening, preOpenPropertyCost (rent+rates committed via signed lease) is shown here. */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
-                              {m.wincFixedCosts > 0
-                                ? <span className="text-red-500/70">({formatGBP(m.wincFixedCosts)})</span>
-                                : <span className="text-muted-foreground/30">—</span>}
+                              {(m.wincFixedCosts > 0 || (m.preOpenPropertyCost ?? 0) > 0) ? (
+                                m.isPreOpening && (m.preOpenPropertyCost ?? 0) > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-red-500/70 cursor-help underline decoration-dotted underline-offset-2">
+                                        ({formatGBP((m.preOpenPropertyCost ?? 0) + m.wincFixedCosts)})
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs max-w-[200px]" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                                      <p className="font-semibold mb-1">Pre-opening property</p>
+                                      <p className="text-gray-600">Rent &amp; rates committed from lease signing: {formatGBP(m.preOpenPropertyCost ?? 0)}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <span className="text-red-500/70">({formatGBP(m.wincFixedCosts + (m.preOpenPropertyCost ?? 0))})</span>
+                                )
+                              ) : (
+                                <span className="text-muted-foreground/30">—</span>
+                              )}
                             </td>
 
                             {/* Bedhampton Net — rich hover breakdown */}
@@ -1503,6 +1544,12 @@ export default function FinancialsPage() {
                                         <div className="flex justify-between items-center pl-1">
                                           <span className="text-gray-500">Other running</span>
                                           <span className="tabular-nums text-red-600">({formatGBP(_bedhOther)})</span>
+                                        </div>
+                                      )}
+                                      {(m.bedhDualCosts ?? 0) > 0 && (
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Shared (dual) costs</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(m.bedhDualCosts)})</span>
                                         </div>
                                       )}
                                       {_bedhVat > 0 && (
@@ -2306,12 +2353,14 @@ export default function FinancialsPage() {
                       {[
                         ["existingClinicRevenueGbp","Gross Monthly Revenue (£)"],
                         ["bedhStockPercent","Product / Stock Cost (%)"],
+                        ["bedhCapacityCeilGbp","Joint capacity ceiling (£/mo)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
                     </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">Joint capacity ceiling: total revenue (Bedhampton + Winchester) Abi can generate. As Winchester grows, Bedhampton slots reduce proportionally.</p>
                   </CardContent>
                 </Card>
 
@@ -2371,13 +2420,16 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["targetDrawingsGbp","Desired Income (£/mo)"],
-                        ["runwaySavingsGbp","Business Capital (£)"],["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
+                        ["runwaySavingsGbp","Business Capital (£)"],
+                        ["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
+                        ["preOpeningPropertyMonths","Lease signed (months before opening)"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
                           <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
                         )} />
                       ))}
                     </div>
+                    <p className="text-[10px] text-muted-foreground mt-1.5">Lease signed months before opening: rent + rates are charged against business capital from that point, even before Winchester opens.</p>
                   </CardContent>
                 </Card>
 
