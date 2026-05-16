@@ -1543,7 +1543,8 @@ export default function FinancialsPage() {
                             </td>
 
                             {/* Winchester Fixed — all items from fixed cost list, including dual costs (counted once).
-                                During pre-opening, preOpenPropertyCost (rent+rates committed via signed lease) is shown here. */}
+                                During pre-opening, preOpenPropertyCost (rent+rates committed via signed lease) is shown here.
+                                During free-rent months, wincFixedCosts = effectiveFixed (no rent) so the cell is correct. */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
                               {(m.wincFixedCosts > 0 || (m.preOpenPropertyCost ?? 0) > 0) ? (
                                 m.isPreOpening && (m.preOpenPropertyCost ?? 0) > 0 ? (
@@ -1556,6 +1557,18 @@ export default function FinancialsPage() {
                                     <TooltipContent side="left" className="text-xs max-w-[200px]" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
                                       <p className="font-semibold mb-1">Pre-opening property</p>
                                       <p className="text-gray-600">Rent &amp; rates committed from lease signing: {formatGBP(m.preOpenPropertyCost ?? 0)}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (m as any).wincRentWaived > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-red-500/70 cursor-help underline decoration-dotted underline-offset-2">
+                                        ({formatGBP(m.wincFixedCosts)})<span className="ml-1 text-[9px] text-emerald-600 font-bold">FREE RENT</span>
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs max-w-[220px]" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+                                      <p className="font-semibold mb-1">Free-rent month</p>
+                                      <p className="text-gray-600">Rent waived ({formatGBP((m as any).wincRentWaived)}). Only rates &amp; other fixed costs apply this month.</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 ) : (
@@ -1636,6 +1649,12 @@ export default function FinancialsPage() {
                                             </div>
                                           )
                                       }
+                                      {(m as any).wincRentWaived > 0 && (
+                                        <div className="flex justify-between items-center pl-1 mt-0.5 border-t border-emerald-100 pt-0.5">
+                                          <span className="text-emerald-700 font-medium">Rent waived (free-rent)</span>
+                                          <span className="tabular-nums text-emerald-600 font-medium">+{formatGBP((m as any).wincRentWaived)}</span>
+                                        </div>
+                                      )}
                                       {m.wincVat > 0 && (
                                         <>
                                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>

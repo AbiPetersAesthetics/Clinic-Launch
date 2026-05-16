@@ -422,6 +422,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let wincCosts = 0;
     let wincNet = 0;
     let occupancyPercent = 0;
+    let effectiveFixed = 0; // hoisted so display uses same value as net calculation
+    let wincRentWaived = 0; // rent amount waived during free-rent period
 
     if (!isPreOpening) {
       const wincMonth = i - openingMonthIndex; // 0-based months since opening
@@ -430,9 +432,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
       // During rent-free months only rates (not rent) count towards Winchester fixed costs
-      const effectiveFixed = cfFreeRentMonths > 0 && wincMonth < cfFreeRentMonths
-        ? wincFixedCostsNoRent
-        : wincFixedCosts;
+      const isFreeRentMonth = cfFreeRentMonths > 0 && wincMonth < cfFreeRentMonths;
+      effectiveFixed = isFreeRentMonth ? wincFixedCostsNoRent : wincFixedCosts;
+      if (isFreeRentMonth) wincRentWaived = cfRentAmount;
       wincCosts = effectiveFixed + variableCosts;
     }
 
@@ -467,7 +469,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const bedhNet = bedhRevenue - bedhCosts - bedhVat;
 
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
-    const wincFixedCostsMonth = !isPreOpening ? wincFixedCosts : 0;
+    // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
+    const wincFixedCostsMonth = !isPreOpening ? effectiveFixed : 0;
     wincCosts += wincVat;
     wincNet = wincRevenue - wincCosts;
 
@@ -511,6 +514,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincRevenue: Math.round(wincRevenue),
       wincVariableCosts: Math.round(wincVariableCosts),
       wincFixedCosts: Math.round(wincFixedCostsMonth),
+      wincRentWaived: Math.round(wincRentWaived),
       wincVat: Math.round(wincVat),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
