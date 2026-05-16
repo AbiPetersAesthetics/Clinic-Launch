@@ -787,10 +787,73 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     { "week": "Week 4", "focus": "<theme>", "actions": ["<action>", "<action>", "<action>"] }
   ],
   "negotiationPoints": [
-    "<key point to negotiate in heads of terms 1 — e.g. rent-free period, break clause, fit-out contribution>",
-    "<point 2>",
-    "<point 3>",
-    "<point 4 if warranted>"
+    "<TL;DR negotiation point 1 — most critical clause to push on>",
+    "<TL;DR point 2>",
+    "<TL;DR point 3>",
+    "<TL;DR point 4>"
+  ],
+  "offerStrategy": {
+    "tenantPositioning": "<2-3 sentences: how Abi should present APA to the landlord/agent. What makes her an attractive, lower-risk tenant — IP status, nurse prescriber credentials, track record at Bedhampton, plans for premium fit-out. How to use this positioning as leverage to justify concessions.>",
+    "openingOfferRent": <integer — specific £/mo to open with. Must be below asking rent. Base on market comparable and what the financials support. Be concrete.>,
+    "targetRent": <integer — realistic £/mo settlement rent to aim for after negotiation>,
+    "walkAwayRent": <integer — the maximum monthly rent above which the deal fails commercially — derived from break-even analysis. State this clearly.>,
+    "keyAsk": "<the single most important concession to win — e.g. '3 months rent-free' — and why this one is more valuable than a rent reduction in the context of the opening cash position>",
+    "sequencing": "<tactical order: what to nail down first (rent quantum), what to trade against what (e.g. accept longer lease in exchange for break clause + rent-free), and when to bring up secondary terms like deposit and service charge cap>",
+    "agentDynamics": "<how to read the landlord's agent: signals of flexibility vs firm mandate, whether the space has been vacant long, how to use that — and how to avoid appearing desperate. One concrete tactic.>",
+    "counterOfferGuidance": "<what to accept vs push back on if landlord counters: e.g. if they hold rent but offer more rent-free, that may be acceptable — cite the £ equivalence>"
+  },
+  "leaseNegotiationStrategy": {
+    "rentFreePeriod": {
+      "targetMonths": <int — how many rent-free months to push for>,
+      "minimumAcceptable": <int — minimum she should accept>,
+      "rationale": "<why this number: clinical fit-out in E-class units typically requires X months. Link to the opening cash position and the time needed before revenue starts.>",
+      "howToFrame": "<1 sentence: how to phrase the ask to the landlord/agent so it lands positively>"
+    },
+    "breakClause": {
+      "atYear": <int — which year to push for the break, e.g. 3>,
+      "noticeMonths": <int — notice period, e.g. 6>,
+      "penalty": "<e.g. 'None — insist on clean break' or 'Up to 3 months rent is acceptable'>",
+      "importance": "critical" | "high" | "medium",
+      "rationale": "<why a break clause specifically matters at this rent commitment and business stage — what is the downside without one>"
+    },
+    "rentReview": {
+      "mechanism": "<preferred mechanism, e.g. 'Fixed 2.5% every 3 years' or 'CPI-linked capped at 4%' — and why this is preferable to OMV review for a new clinic>",
+      "frequency": "<e.g. 'Every 3 years'>",
+      "cap": "<recommended cap — e.g. '4% max uplift per review'>"
+    },
+    "fitOutContribution": {
+      "askGbp": <int — £ landlord contribution to push for>,
+      "likelihood": "likely" | "possible" | "unlikely",
+      "rationale": "<how to frame the ask: link to the cost of bringing the space to clinical standard, and position it as in the landlord's interest to attract a quality long-term tenant>",
+      "alternativeAsk": "<if cash contribution is refused, what other form to accept — e.g. additional rent-free months, reduced deposit>"
+    },
+    "serviceChargeCap": "<specific cap to push for — e.g. '£X/yr cap with annual CPI uplift max 3%' — and the standard Winchester commercial market position on this>",
+    "repairingObligations": "<push for internal repairing + insuring only (not full FRI). Insist on a Schedule of Condition at lease commencement to limit dilapidations exposure at end of term. Note anything specific about the condition of this unit.>",
+    "useClass": "<confirm E class permits aesthetics/beauty/medical use. Note any landlord consent required for clinical use or fit-out works. Check whether planning conditions restrict the permitted use.>",
+    "depositNegotiation": "<rent deposit strategy: target amount (e.g. '3 months rent'), whether to offer a personal guarantee instead, and whether the landlord might accept a bank guarantee. Note that as a first-time commercial tenant, some deposit is expected.>",
+    "alienation": "<subletting and assignment rights to push for — and why having these matters even if Abi doesn't plan to use them>",
+    "redLines": [
+      "<non-negotiable clause 1 that would kill the deal — be specific>",
+      "<red line 2>",
+      "<red line 3>"
+    ]
+  },
+  "headsOfTermsChecklist": [
+    { "clause": "Agreed rent (£/mo)", "status": "must-confirm" | "confirmed" | "negotiate" | "red-flag", "yourPosition": "<what Abi is pushing for>", "landlordPosition": "<what they typically open with>", "importance": "critical" | "high" | "medium" },
+    { "clause": "Rent-free period", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Lease length", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Break clause (year & notice)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Rent review mechanism", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Service charge (cap)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Repairing obligations", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Schedule of condition", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Use class (E — clinical/aesthetics)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Fit-out / landlord contribution", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Subletting / assignment", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Rent deposit (amount & form)", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Insurance obligations", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Signage / fascia rights", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." },
+    { "clause": "Planning consent for clinical use", "status": "...", "yourPosition": "...", "landlordPosition": "...", "importance": "..." }
   ],
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
   "nextReviewDate": "<ISO 8601 date>",

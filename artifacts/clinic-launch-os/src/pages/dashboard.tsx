@@ -119,6 +119,31 @@ type RevenueForecast = {
   revenueViabilityVerdict: "strong" | "viable" | "marginal" | "unlikely";
   keyRampRisks: string[]; keyRampCatalysts: string[];
 };
+type HoTClauseStatus = "confirmed" | "negotiate" | "red-flag" | "must-confirm";
+type HoTImportance = "critical" | "high" | "medium";
+type HoTClause = { clause: string; status: HoTClauseStatus; yourPosition: string; landlordPosition: string; importance: HoTImportance };
+type OfferStrategy = {
+  tenantPositioning: string;
+  openingOfferRent: number;
+  targetRent: number;
+  walkAwayRent: number;
+  keyAsk: string;
+  sequencing: string;
+  agentDynamics: string;
+  counterOfferGuidance: string;
+};
+type LeaseNegotiationStrategy = {
+  rentFreePeriod?: { targetMonths: number; minimumAcceptable: number; rationale: string; howToFrame: string };
+  breakClause?: { atYear: number; noticeMonths: number; penalty: string; importance: HoTImportance; rationale: string };
+  rentReview?: { mechanism: string; frequency: string; cap: string };
+  fitOutContribution?: { askGbp: number; likelihood: "likely" | "possible" | "unlikely"; rationale: string; alternativeAsk: string };
+  serviceChargeCap?: string;
+  repairingObligations?: string;
+  useClass?: string;
+  depositNegotiation?: string;
+  alienation?: string;
+  redLines?: string[];
+};
 type GoNoGoResult = {
   verdict: GoNoGoVerdict;
   verdictLabel: string;
@@ -133,6 +158,9 @@ type GoNoGoResult = {
   immediateActions: GoNoGoAction[];
   thirtyDayPlan: GoNoGoWeek[];
   negotiationPoints: string[];
+  offerStrategy?: OfferStrategy;
+  leaseNegotiationStrategy?: LeaseNegotiationStrategy;
+  headsOfTermsChecklist?: HoTClause[];
   monthlyRevenueForecast?: MonthlyForecastRow[];
   revenueForecast?: RevenueForecast;
   reviewTrigger: string;
@@ -715,10 +743,168 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  {/* ── Negotiation Points ────────────────────────────────── */}
+                  {/* ── Offer Strategy ────────────────────────────────────── */}
+                  {goNoGo.offerStrategy && (
+                    <div className="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-950/20 p-4 space-y-3">
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">Offer Strategy</div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: "Opening Offer", value: goNoGo.offerStrategy.openingOfferRent, note: "Open here" },
+                          { label: "Target Settlement", value: goNoGo.offerStrategy.targetRent, note: "Aim for this" },
+                          { label: "Walk-Away Rent", value: goNoGo.offerStrategy.walkAwayRent, note: "Do not exceed" },
+                        ].map(({ label, value, note }) => (
+                          <div key={label} className="rounded-lg border border-blue-200/60 dark:border-blue-700/40 bg-white/60 dark:bg-blue-950/30 p-2.5 text-center">
+                            <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
+                            <div className="text-sm font-bold text-foreground">{value ? `£${Number(value).toLocaleString()}/mo` : "—"}</div>
+                            <div className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">{note}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {goNoGo.offerStrategy.keyAsk && (
+                        <div className="rounded-lg border border-blue-300/50 bg-blue-100/40 dark:bg-blue-900/20 p-2.5">
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300 mb-1">Priority Concession to Win</div>
+                          <p className="text-xs text-foreground/85 leading-relaxed">{goNoGo.offerStrategy.keyAsk}</p>
+                        </div>
+                      )}
+                      {[
+                        { label: "Tenant Positioning", value: goNoGo.offerStrategy.tenantPositioning },
+                        { label: "Negotiation Sequencing", value: goNoGo.offerStrategy.sequencing },
+                        { label: "Agent Dynamics", value: goNoGo.offerStrategy.agentDynamics },
+                        { label: "If They Counter…", value: goNoGo.offerStrategy.counterOfferGuidance },
+                      ].filter(x => x.value).map(({ label, value }) => (
+                        <div key={label}>
+                          <div className="text-[9px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-0.5">{label}</div>
+                          <p className="text-xs text-foreground/80 leading-relaxed">{value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Lease Negotiation Strategy ────────────────────────── */}
+                  {goNoGo.leaseNegotiationStrategy && (() => {
+                    const lns = goNoGo.leaseNegotiationStrategy!;
+                    return (
+                      <div className="space-y-2">
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Clause-by-Clause Negotiation Strategy</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {lns.rentFreePeriod && (
+                            <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-3">
+                              <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 mb-1.5">Rent-Free Period</div>
+                              <div className="flex gap-3 mb-1.5">
+                                <div className="text-center"><div className="text-base font-bold text-emerald-700 dark:text-emerald-300">{lns.rentFreePeriod.targetMonths}mo</div><div className="text-[9px] text-muted-foreground">Target</div></div>
+                                <div className="text-center"><div className="text-base font-bold text-foreground">{lns.rentFreePeriod.minimumAcceptable}mo</div><div className="text-[9px] text-muted-foreground">Minimum</div></div>
+                              </div>
+                              <p className="text-[10px] text-foreground/75 leading-snug mb-1">{lns.rentFreePeriod.rationale}</p>
+                              {lns.rentFreePeriod.howToFrame && <p className="text-[10px] italic text-emerald-700 dark:text-emerald-400 leading-snug">"{lns.rentFreePeriod.howToFrame}"</p>}
+                            </div>
+                          )}
+                          {lns.breakClause && (
+                            <div className={`rounded-lg border p-3 ${lns.breakClause.importance === "critical" ? "border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
+                              <div className={`text-[9px] font-bold uppercase tracking-wider mb-1.5 ${lns.breakClause.importance === "critical" ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400"}`}>Break Clause</div>
+                              <div className="flex gap-3 mb-1.5">
+                                <div className="text-center"><div className="text-base font-bold text-foreground">Yr {lns.breakClause.atYear}</div><div className="text-[9px] text-muted-foreground">Break at</div></div>
+                                <div className="text-center"><div className="text-base font-bold text-foreground">{lns.breakClause.noticeMonths}mo</div><div className="text-[9px] text-muted-foreground">Notice</div></div>
+                              </div>
+                              <p className="text-[10px] text-foreground/75 leading-snug mb-1">{lns.breakClause.penalty}</p>
+                              <p className="text-[10px] text-foreground/70 leading-snug">{lns.breakClause.rationale}</p>
+                            </div>
+                          )}
+                          {lns.rentReview && (
+                            <div className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Rent Review</div>
+                              <div className="text-xs font-semibold text-foreground mb-0.5">{lns.rentReview.mechanism}</div>
+                              <div className="text-[10px] text-muted-foreground">{lns.rentReview.frequency} · Cap: {lns.rentReview.cap}</div>
+                            </div>
+                          )}
+                        </div>
+                        {lns.fitOutContribution && (
+                          <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Fit-Out Contribution</div>
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase ${lns.fitOutContribution.likelihood === "likely" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" : lns.fitOutContribution.likelihood === "possible" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"}`}>{lns.fitOutContribution.likelihood}</span>
+                              {lns.fitOutContribution.askGbp > 0 && <span className="text-sm font-bold text-foreground">£{lns.fitOutContribution.askGbp.toLocaleString()}</span>}
+                            </div>
+                            <p className="text-[10px] text-foreground/75 leading-snug">{lns.fitOutContribution.rationale}</p>
+                            {lns.fitOutContribution.alternativeAsk && <p className="text-[10px] text-muted-foreground mt-0.5">If refused: {lns.fitOutContribution.alternativeAsk}</p>}
+                          </div>
+                        )}
+                        {[
+                          { label: "Service Charge Cap", value: lns.serviceChargeCap },
+                          { label: "Repairing Obligations", value: lns.repairingObligations },
+                          { label: "Use Class (E)", value: lns.useClass },
+                          { label: "Rent Deposit", value: lns.depositNegotiation },
+                          { label: "Alienation Rights", value: lns.alienation },
+                        ].filter(x => x.value).map(({ label, value }) => (
+                          <div key={label} className="rounded-lg border border-border/40 bg-background/40 px-3 py-2 flex gap-3 items-start">
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 w-28 mt-px">{label}</div>
+                            <p className="text-[11px] text-foreground/80 leading-snug flex-1">{value}</p>
+                          </div>
+                        ))}
+                        {lns.redLines && lns.redLines.length > 0 && (
+                          <div className="rounded-lg border border-red-300 dark:border-red-700 bg-red-50/70 dark:bg-red-950/30 p-3">
+                            <div className="text-[9px] font-bold uppercase tracking-wider text-red-700 dark:text-red-400 mb-1.5">Deal-Breakers — Walk Away If…</div>
+                            <ul className="space-y-1">
+                              {lns.redLines.map((r, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-[11px] text-red-900 dark:text-red-200">
+                                  <span className="text-red-500 shrink-0 font-bold mt-px">✕</span>{r}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* ── HoT Checklist ──────────────────────────────────────── */}
+                  {goNoGo.headsOfTermsChecklist && goNoGo.headsOfTermsChecklist.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Heads of Terms Checklist</div>
+                      <div className="rounded-lg border border-border/50 overflow-hidden">
+                        <table className="w-full text-[10px]">
+                          <thead className="bg-muted/40 border-b border-border/50">
+                            <tr>
+                              {["Clause", "Status", "Your Position", "Typical Landlord Position", "Priority"].map(h => (
+                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {goNoGo.headsOfTermsChecklist.map((item, i) => {
+                              const statusCfg: Record<HoTClauseStatus, { label: string; cls: string }> = {
+                                "confirmed":    { label: "Confirmed",    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+                                "negotiate":    { label: "Negotiate",    cls: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+                                "red-flag":     { label: "Red Flag",     cls: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" },
+                                "must-confirm": { label: "Must Confirm", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+                              };
+                              const impCfg: Record<HoTImportance, string> = {
+                                critical: "text-red-600 dark:text-red-400 font-bold",
+                                high: "text-amber-600 dark:text-amber-400 font-semibold",
+                                medium: "text-muted-foreground",
+                              };
+                              const sc = statusCfg[item.status] ?? statusCfg["negotiate"];
+                              return (
+                                <tr key={i} className="border-b border-border/20 last:border-0 hover:bg-muted/20">
+                                  <td className="px-3 py-2 font-medium text-foreground/90 whitespace-nowrap">{item.clause}</td>
+                                  <td className="px-3 py-2 whitespace-nowrap">
+                                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wide ${sc.cls}`}>{sc.label}</span>
+                                  </td>
+                                  <td className="px-3 py-2 text-foreground/80 max-w-[180px]">{item.yourPosition}</td>
+                                  <td className="px-3 py-2 text-muted-foreground max-w-[180px]">{item.landlordPosition}</td>
+                                  <td className={`px-3 py-2 whitespace-nowrap capitalize ${impCfg[item.importance] ?? ""}`}>{item.importance}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Negotiation Points (TL;DR) ────────────────────────── */}
                   {goNoGo.negotiationPoints?.length > 0 && (
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                      <div className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">Heads of Terms — Points to Negotiate</div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">Key Negotiation Points — Summary</div>
                       <ul className="space-y-1.5">
                         {goNoGo.negotiationPoints.map((pt, i) => (
                           <li key={i} className="flex items-start gap-2 text-xs text-foreground/85">
