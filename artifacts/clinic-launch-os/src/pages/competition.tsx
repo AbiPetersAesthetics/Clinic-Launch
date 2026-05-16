@@ -805,6 +805,30 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
 }
 
 // ── Pricing Tab ───────────────────────────────────────────────────────────────
+// ── Rank helpers ──────────────────────────────────────────────────────────────
+function ordinal(n: number): string {
+  const s = ["th","st","nd","rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function priceRank(apaPrice: number, compPrices: number[]): { rank: number; total: number } | null {
+  if (!apaPrice || compPrices.length === 0) return null;
+  const all = [...compPrices, apaPrice].sort((a, b) => b - a);
+  return { rank: all.findIndex(p => p === apaPrice) + 1, total: all.length };
+}
+function RankBadge({ rank, total, color }: { rank: number; total: number; color: "teal"|"emerald"|"muted" }) {
+  const pct = rank / total;
+  const cls = pct <= 0.25 ? "text-teal-600 bg-teal-600/10 border-teal-500/30"
+             : pct <= 0.6  ? "text-foreground/70 bg-muted/60 border-border"
+             :                "text-amber-600 bg-amber-500/10 border-amber-500/30";
+  const _ = color; // suppress unused
+  return (
+    <span className={`inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ml-1.5 ${cls}`}>
+      {ordinal(rank)} of {total}
+    </span>
+  );
+}
+
 function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel }: {
   competitors: Competitor[];
   pricingStrategy: PricingStrategy | null;
@@ -813,7 +837,6 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
   onApplyToModel: (acv: number, label: string) => Promise<void>;
 }) {
   const [catFilter, setCatFilter] = useState("all");
-  const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
   const [applying, setApplying] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
 
@@ -821,7 +844,6 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
   const treatments = catFilter === "all" ? TREATMENT_KEYS.filter(t=>t.apaPrice>0) : TREATMENT_KEYS.filter(t=>t.cat===catFilter&&t.apaPrice>0);
 
   const strategy = pricingStrategy;
-  const activePricing = pricingView === "launch" ? strategy?.launchPricing : strategy?.maturePricing;
 
   const handleApply = async (acv: number, label: string) => {
     setApplying(label);
@@ -835,6 +857,38 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
       setApplying(null);
     }
   };
+
+  // ── Rank summary (computed across all treatments with competitor data) ──────
+  const rankSummary = (() => {
+    const rows = TREATMENT_KEYS.filter(t => t.apaPrice > 0).map(t => {
+      const compPrices = competitors
+        .map(c => parseJson<Record<string,number>>(c.pricingJson, {})[t.key] || 0)
+        .filter(p => p > 0);
+      const launchPrice = strategy?.launchPricing?.[t.key] ?? t.apaPrice;
+      const maturePrice = strategy?.maturePricing?.[t.key] ?? t.apaPrice;
+      return {
+        launch: priceRank(launchPrice, compPrices),
+        mature: priceRank(maturePrice, compPrices),
+      };
+    }).filter(r => r.launch !== null && r.mature !== null) as { launch: {rank:number;total:number}; mature: {rank:number;total:number} }[];
+
+    if (!rows.length) return null;
+    const avg = (arr: number[]) => arr.reduce((s,v) => s + v, 0) / arr.length;
+    const launchRanks = rows.map(r => r.launch.rank);
+    const matureRanks = rows.map(r => r.mature.rank);
+    const totals = rows.map(r => r.launch.total);
+    const avgTotal = Math.round(avg(totals));
+    return {
+      launchAvgRank: Math.round(avg(launchRanks) * 10) / 10,
+      matureAvgRank: Math.round(avg(matureRanks) * 10) / 10,
+      avgTotal,
+      launchTop: launchRanks.filter(r => r === 1).length,
+      matureTop: matureRanks.filter(r => r === 1).length,
+      launchBottom: launchRanks.filter((r, i) => r === rows[i].launch.total).length,
+      matureBottom: matureRanks.filter((r, i) => r === rows[i].mature.total).length,
+      count: rows.length,
+    };
+  })();
 
   return (
     <div className="space-y-6">
