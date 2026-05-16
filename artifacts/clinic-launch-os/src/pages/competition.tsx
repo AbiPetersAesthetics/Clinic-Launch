@@ -143,6 +143,17 @@ const GOOGLE_KEYWORDS = [
   "nurse injector Winchester",
 ];
 
+// ── Name helpers ─────────────────────────────────────────────────────────────
+// Returns a short display name for use in tight spaces (table headers, chips, etc.)
+// Skips leading articles/honorifics so "The Aesthetics Bae" → "Aesthetics Bae"
+const SKIP_WORDS = new Set(["the","dr","dr.","mr","mrs","ms","miss","a"]);
+function shortClinicName(name: string, maxLen = 16): string {
+  const words = name.trim().split(/\s+/);
+  const meaningful = words.filter((w, i) => i > 0 || !SKIP_WORDS.has(w.toLowerCase()));
+  const joined = (meaningful.length ? meaningful : words).join(" ");
+  return joined.length > maxLen ? joined.slice(0, maxLen - 1) + "…" : joined;
+}
+
 // ── Score utilities ──────────────────────────────────────────────────────────
 function parseJson<T>(s: string | null | undefined, fallback: T): T {
   try { return JSON.parse(s || "") ?? fallback; } catch { return fallback; }
@@ -607,7 +618,7 @@ function OverviewTab({ competitors, onEdit, onAdd }: { competitors: Competitor[]
           { label:"Competitors Mapped", value:competitors.length, sub:"manual entries" },
           { label:"Market Space Score", value:competitors.length ? `${marketSpaceScore}/100` : "—", sub:"higher = more opportunity" },
           { label:"Avg Competitor Rating", value:avgGoogle, sub:"Google stars" },
-          { label:"Top Threat", value:topThreat ? (topThreat.name.split(" ")[0]) : "None yet", sub:topThreat ? `${topThreat.score}/100` : "add competitors" },
+          { label:"Top Threat", value:topThreat ? shortClinicName(topThreat.name, 14) : "None yet", sub:topThreat ? `${topThreat.score}/100` : "add competitors" },
         ].map(stat=>(
           <div key={stat.label} className="bg-card border border-border rounded-xl p-4">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">{stat.label}</p>
@@ -979,7 +990,7 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                   </span>
                 </th>
                 <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Market median</th>
-                {competitors.map(c=><th key={c.id} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-24">{c.name.split(" ")[0]}</th>)}
+                {competitors.map(c=><th key={c.id} title={c.name} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-[7rem] overflow-hidden text-ellipsis">{shortClinicName(c.name)}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
@@ -1167,7 +1178,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
                 padding:"10px 14px",
               }}
               formatter={(value:number, name:string)=>{
-                const label = name === "APA" ? "APA" : (competitors.find(c=>`__${c.id}`===name)?.name.split(" ")[0] ?? name);
+                const label = name === "APA" ? "APA" : shortClinicName(competitors.find(c=>`__${c.id}`===name)?.name ?? name);
                 return [value, label];
               }}
               labelStyle={{ fontWeight:600, marginBottom:4, color:"hsl(var(--foreground))" }}

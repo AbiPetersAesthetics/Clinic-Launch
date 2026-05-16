@@ -666,41 +666,97 @@ router.get("/projects/:id/competitors/pricing-strategy", async (req, res) => {
     return s.length % 2 !== 0 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
   };
 
-  const pricingSummaryLines = Object.entries(aggregated)
-    .map(([key, { prices, clinics }]) => {
-      const sorted = [...prices].sort((a, b) => a - b);
-      return `  ${key}: £${sorted[0]}–£${sorted[sorted.length - 1]} (median £${median(prices)}, ${prices.length} clinics: ${clinics.join(", ")})`;
-    })
-    .join("\n");
+  // Build rich per-competitor profile blocks with pricing alongside positioning
+  const COMPARABLE_CLINIC_TYPES = new Set(["nurse-led","doctor-led","dentist-led","mixed practitioner","injectables-only"]);
+  const COMPARABLE_PREMISES = new Set(["high street shopfront","medical clinic","dental clinic","destination clinic"]);
 
-  const competitorProfiles = allCompetitors.slice(0, 12).map(c =>
-    `  • ${c.name} — ${c.positioningCategory ?? "unknown positioning"}, threat ${c.estimatedThreatScore ?? "?"}/100` +
-    (c.pricingJson && c.pricingJson !== "{}" ? ` [has pricing data]` : " [no pricing data]")
-  ).join("\n");
+  const competitorBlocks = allCompetitors.slice(0, 16).map(c => {
+    const isComparableClinician = COMPARABLE_CLINIC_TYPES.has(c.clinicType ?? "");
+    const isComparablePremises  = COMPARABLE_PREMISES.has(c.premisesType ?? "");
+    const isDirectComp = isComparableClinician && isComparablePremises;
+    const isMedical    = isComparableClinician;
+
+    const qualBadges: string[] = [];
+    if (c.saveFace)               qualBadges.push("Save Face accredited");
+    if (c.independentPrescriber)  qualBadges.push("independent prescriber");
+    if (c.jccp)                   qualBadges.push("JCCP registered");
+    if (c.nhsBackground)          qualBadges.push("NHS background");
+
+    const pricingData: Record<string, number> = {};
+    try { Object.assign(pricingData, JSON.parse(c.pricingJson || "{}")); } catch { /* skip */ }
+    const hasPricing = Object.keys(pricingData).length > 0;
+
+    const pricingLines = hasPricing
+      ? Object.entries(pricingData)
+          .filter(([,v]) => v > 0)
+          .map(([k, v]) => `    ${k}: £${v}`)
+          .join("\n")
+      : "    (no pricing data entered)";
+
+    const comparabilityNote = isDirectComp
+      ? "⭐ DIRECT COMPARABLE — same clinical tier and premises type as APA. Use this pricing to anchor APA's positioning."
+      : !isMedical
+        ? "⚠️ NOT A DIRECT COMPARABLE — non-medical/beauty practitioner. Their lower prices reflect a fundamentally different (and lower-credibility) market segment. Do NOT use their prices to drag APA's recommendations down."
+        : "~ PARTIAL COMPARABLE — medical clinician but different premises type. Factor in but weight less than high-street medical comparables.";
+
+    return [
+      `• ${c.name}`,
+      `  Clinic type: ${c.clinicType ?? "unknown"} | Premises: ${c.premisesType ?? "unknown"} | Distance: ${c.distanceMiles ? c.distanceMiles + " miles" : "unknown"}`,
+      `  Positioning: ${c.positioningCategory ?? "unknown"} | Threat score: ${c.estimatedThreatScore ?? "??"}/100`,
+      qualBadges.length ? `  Qualifications/accreditations: ${qualBadges.join(", ")}` : `  Qualifications: none recorded`,
+      `  ${comparabilityNote}`,
+      `  Pricing:`,
+      pricingLines,
+    ].join("\n");
+  }).join("\n\n");
+
+  // Separate summary of comparable-only prices for anchor reference
+  const comparablePrices: Record<string, number[]> = {};
+  for (const comp of allCompetitors) {
+    const isComp = COMPARABLE_CLINIC_TYPES.has(comp.clinicType ?? "") && COMPARABLE_PREMISES.has(comp.premisesType ?? "");
+    if (!isComp || !comp.pricingJson || comp.pricingJson === "{}") continue;
+    let p: Record<string, number> = {};
+    try { p = JSON.parse(comp.pricingJson); } catch { continue; }
+    for (const [k, v] of Object.entries(p)) {
+      if (v > 0) {
+        if (!comparablePrices[k]) comparablePrices[k] = [];
+        comparablePrices[k].push(v);
+      }
+    }
+  }
+  const comparableSummary = Object.entries(comparablePrices).length > 0
+    ? Object.entries(comparablePrices).map(([k, prices]) => {
+        const s = [...prices].sort((a,b) => a-b);
+        return `  ${k}: £${s[0]}–£${s[s.length-1]} (median £${median(s)}, ${prices.length} direct comparable${prices.length!==1?"s":""})`;
+      }).join("\n")
+    : "  No direct comparable clinics have pricing data yet — use wider market knowledge for Winchester.";
 
   const prompt = `You are a pricing strategist for UK private aesthetics clinics. Your client is Abi Peters Aesthetics (APA) — a premium nurse-led (ANP) clinic opening in Winchester city centre in November 2026. Winchester is an affluent market (ABC1 demographic, strong professional female spending power).
 
 APA positioning: natural-results nurse-led clinic, Save Face accredited, independent prescriber, 12+ years NHS and aesthetics experience, high street shopfront in Winchester city centre.
 
-COMPETITOR LANDSCAPE (${allCompetitors.length} competitors mapped):
-${competitorProfiles}
+═══════════════════════════════════════════════
+COMPETITOR LANDSCAPE — FULL PROFILES (${allCompetitors.length} competitors mapped)
+═══════════════════════════════════════════════
+${competitorBlocks || "No competitors mapped yet."}
 
-COMPETITOR PRICING DATA (market prices per treatment, by canonical treatment key):
-${pricingSummaryLines || "No pricing data entered yet — use your knowledge of Winchester and Hampshire market rates."}
+═══════════════════════════════════════════════
+DIRECT-COMPARABLE PRICE ANCHORS (medical clinicians in comparable premises only)
+═══════════════════════════════════════════════
+${comparableSummary}
+
+CRITICAL PRICING RULES:
+- Competitors marked ⚠️ NOT A DIRECT COMPARABLE are beauty/non-medical practitioners. Their prices are irrelevant for anchoring APA's pricing — APA's target clients are choosing between nurse-led and doctor-led medical clinics, not beauty salons. Do not let their low prices pull APA recommendations down.
+- Competitors marked ⭐ DIRECT COMPARABLE are the true anchors for APA's pricing — these are the clinics APA's clients will cross-shop with.
+- If the only pricing data available is from non-comparable competitors, rely on your knowledge of Winchester/Hampshire nurse-led/doctor-led clinic market rates and state this in the strategy.
+- APA is nurse-led premium, not budget. It should never price below mid-market for a medical aesthetics clinic.
+- Winchester has high disposable income — premium pricing is achievable once established.
 
 Your task: recommend APA's pricing strategy in TWO phases:
 
-1. LAUNCH PRICING (November 2026): Realistic opening prices that are competitive enough to win first clients but position APA firmly as a premium clinic. Should not undercut the market to the point of devaluing the brand. Consider that APA has no Google reviews yet and needs to build trust.
+1. LAUNCH PRICING (November 2026): Realistic opening prices that are competitive relative to DIRECT COMPARABLE medical clinics only. Can be 5-10% below mature prices to acknowledge APA has no reviews yet, but must not undercut to the point of devaluing the brand.
 
-2. MATURE PRICING (12+ months post-launch): Prices APA should target once established with reviews and a client base. Should reflect APA's full premium positioning.
-
-Rules:
-- Base prices on the actual competitor data above — if competitors charge £150-£180 for anti-wrinkle 1 area, your recommendations must reflect that market reality
-- APA is nurse-led premium, not budget — do not price below mid-market
-- Winchester has high disposable income — premium pricing is achievable once established
-- Launch prices should be 5-15% below mature prices to acknowledge the trust-building phase
-- Only recommend prices for treatments where you have competitor data or strong market knowledge
-- The ACV (average client value) must be a realistic blended average across all treatment types
+2. MATURE PRICING (12+ months post-launch): Prices APA should target once established with reviews and a client base. Should fully reflect APA's premium nurse-led positioning against the direct comparable medical clinic market.
 
 Return ONLY valid JSON:
 {
