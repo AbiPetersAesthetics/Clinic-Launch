@@ -214,7 +214,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     fetchBedhamptonLive().catch(() => null),
     db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId))
-      .orderBy(desc(competitorsTable.estimatedThreatScore)),
+      .orderBy(desc(competitorsTable.trustScore)),
   ]);
 
   const financial = financialRaw[0] ?? null;
