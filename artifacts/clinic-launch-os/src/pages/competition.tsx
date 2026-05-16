@@ -6,6 +6,7 @@ import {
   Eye, Search, Info, Users, Bot, Loader2, Building2, Sparkles, RefreshCw,
   SlidersHorizontal, ArrowUpDown,
 } from "lucide-react";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Tooltip, ResponsiveContainer } from "recharts";
 import { MapContainer, TileLayer, Marker, Circle, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -1032,67 +1033,201 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
 }
 
 // ── Comparison Tab ────────────────────────────────────────────────────────────
+const COMP_COLORS = ["#f59e0b","#6366f1","#ef4444","#a78bfa","#06b6d4","#ec4899","#84cc16","#f97316"];
+const APA_COLOR   = "#2dd4bf";
+
+const RADAR_DIMS = [
+  { key:"clinAuth",  label:"Clinical Auth",   apa: APA_PROFILE.clinicalAuthorityScore,             get:(c:Competitor)=>c.clinicalAuthorityScore },
+  { key:"trust",     label:"Trust",           apa: APA_PROFILE.trustScore,                         get:(c:Competitor)=>c.trustScore },
+  { key:"brand",     label:"Brand",           apa: APA_PROFILE.brandStrengthScore,                 get:(c:Competitor)=>c.brandStrengthScore },
+  { key:"premises",  label:"Premises",        apa: APA_PROFILE.premisesStrengthScore,              get:(c:Competitor)=>c.premisesStrengthScore },
+  { key:"rating",    label:"Rating",          apa: Math.round(APA_PROFILE.googleRating*20),        get:(c:Competitor)=>Math.round((parseFloat(c.googleRating)||0)*20) },
+  { key:"reviews",   label:"Reviews",         apa: Math.min(Math.round(APA_PROFILE.googleReviewCount/3),100), get:(c:Competitor)=>Math.min(Math.round((c.googleReviewCount||0)/3),100) },
+  { key:"social",    label:"Social",          apa: Math.min(Math.round(APA_PROFILE.instagramFollowers/50),100), get:(c:Competitor)=>Math.min(Math.round((c.instagramFollowers||0)/50),100) },
+];
+
 function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
-  const [selectedId, setSelectedId] = useState<number|null>(null);
-  const selected = competitors.find(c=>c.id===selectedId) ?? (competitors[0] || null);
+  const sorted = useMemo(()=>[...competitors].sort((a,b)=>computeThreatScore(b)-computeThreatScore(a)),[competitors]);
 
-  if (!selected) return <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to compare against APA.</div>;
+  const [selectedIds, setSelectedIds] = useState<number[]>(()=>
+    sorted.slice(0, Math.min(3, sorted.length)).map(c=>c.id)
+  );
 
-  const dims = [
-    { label:"Clinical Authority", apa:APA_PROFILE.clinicalAuthorityScore, comp:selected.clinicalAuthorityScore },
-    { label:"Trust Score", apa:APA_PROFILE.trustScore, comp:selected.trustScore },
-    { label:"Brand Strength", apa:APA_PROFILE.brandStrengthScore, comp:selected.brandStrengthScore },
-    { label:"Premises Strength", apa:APA_PROFILE.premisesStrengthScore, comp:selected.premisesStrengthScore },
-    { label:"Google Rating", apa:Math.round(APA_PROFILE.googleRating*20), comp:parseFloat(selected.googleRating)*20||0 },
-    { label:"Review Volume", apa:Math.min(APA_PROFILE.googleReviewCount/3,100), comp:Math.min(selected.googleReviewCount/3,100) },
-    { label:"Social Reach", apa:Math.min(APA_PROFILE.instagramFollowers/50,100), comp:Math.min((selected.instagramFollowers||0)/50,100) },
-  ];
-  const apaWins = dims.filter(d=>d.apa>=d.comp).length;
-  const strengths = parseJson<string[]>(selected.strengthsJson,[]);
-  const weaknesses = parseJson<string[]>(selected.weaknessesJson,[]);
+  // keep selection valid if competitors list changes
+  useEffect(()=>{
+    setSelectedIds(prev=>{
+      const valid = prev.filter(id=>competitors.some(c=>c.id===id));
+      if(valid.length===0 && sorted.length>0) return sorted.slice(0,Math.min(3,sorted.length)).map(c=>c.id);
+      return valid;
+    });
+  },[competitors]);
+
+  const toggle = (id:number)=>setSelectedIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+  const selectAll = ()=>setSelectedIds(competitors.map(c=>c.id));
+  const clearAll  = ()=>setSelectedIds([]);
+
+  const selected = competitors.filter(c=>selectedIds.includes(c.id));
+
+  // colour index stable by sorted position
+  const colorOf = (c:Competitor)=>COMP_COLORS[sorted.findIndex(x=>x.id===c.id)%COMP_COLORS.length];
+
+  const radarData = RADAR_DIMS.map(d=>{
+    const pt: Record<string,number|string> = { dim: d.label, APA: Math.round(d.apa) };
+    selected.forEach(c=>{ pt[`__${c.id}`]=d.get(c); });
+    return pt;
+  });
+
+  if(competitors.length===0) return <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to compare against APA.</div>;
 
   return (
     <div className="space-y-6">
+
+      {/* ── Competitor chip selector ── */}
       <div>
-        <label className="block text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-2">Compare Against</label>
-        <select className="text-sm bg-muted border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" value={selected.id} onChange={e=>setSelectedId(parseInt(e.target.value))}>
-          {competitors.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-      </div>
-      <div className="grid grid-cols-3 gap-4 text-center mb-2">
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4"><p className="text-xs text-muted-foreground mb-1">Abi Peters Aesthetics</p><p className="font-bold text-primary text-lg">APA</p></div>
-        <div className="flex items-center justify-center"><p className="text-sm font-bold text-muted-foreground bg-card border border-border rounded-full w-12 h-12 flex items-center justify-center">{apaWins}/{dims.length}</p></div>
-        <div className="bg-card border border-border rounded-xl p-4"><p className="text-xs text-muted-foreground mb-1 truncate">{selected.name}</p><p className="font-bold text-foreground text-lg">{computeThreatScore(selected)}</p></div>
-      </div>
-      <div className="space-y-3">
-        {dims.map(d=>{ const apaWins = d.apa >= d.comp; return (
-          <div key={d.label} className="flex items-center gap-3">
-            <div className="w-36 text-right"><span className={`text-sm font-medium ${apaWins ? "text-primary":"text-muted-foreground"}`}>{Math.round(d.apa)}</span></div>
-            <div className="flex-1">
-              <p className="text-xs text-center text-muted-foreground mb-1">{d.label}</p>
-              <div className="flex h-2 rounded-full overflow-hidden gap-0.5">
-                <div className="flex-1 flex justify-end"><div className="h-full bg-primary rounded-l-full" style={{ width:`${Math.min(d.apa,100)}%` }} /></div>
-                <div className="flex-1"><div className="h-full bg-border rounded-r-full" style={{ width:`${Math.min(d.comp,100)}%` }} /></div>
-              </div>
-            </div>
-            <div className="w-36"><span className={`text-sm font-medium ${!apaWins ? "text-amber-500":"text-muted-foreground"}`}>{Math.round(d.comp)}</span></div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">Overlay competitors on the chart</p>
+          <div className="flex gap-2">
+            <button onClick={selectAll} className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">All</button>
+            <button onClick={clearAll}  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2">None</button>
           </div>
-        );})}
-      </div>
-      <div className="grid grid-cols-2 gap-4 pt-2">
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Their Strengths</p>
-          {strengths.length ? strengths.map((s,i)=><p key={i} className="text-sm text-amber-600 dark:text-amber-400 mb-1.5">⚠ {s}</p>) : <p className="text-sm text-muted-foreground italic">None recorded</p>}
         </div>
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Their Weaknesses</p>
-          {weaknesses.length ? weaknesses.map((w,i)=><p key={i} className="text-sm text-emerald-600 dark:text-emerald-400 mb-1.5">✓ {w}</p>) : <p className="text-sm text-muted-foreground italic">None recorded</p>}
+        <div className="flex flex-wrap gap-2">
+          {sorted.map(c=>{
+            const on = selectedIds.includes(c.id);
+            const color = colorOf(c);
+            const score = computeThreatScore(c);
+            return (
+              <button key={c.id} onClick={()=>toggle(c.id)}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${on?"bg-card border-border shadow-sm":"bg-transparent border-border/40 text-muted-foreground opacity-50 hover:opacity-70"}`}>
+                <span className="w-2.5 h-2.5 rounded-full shrink-0 transition-colors" style={{ background: on ? color : "#6b7280" }} />
+                <span className={on?"text-foreground":""}>{c.name}</span>
+                <span className={`text-[10px] font-normal ${on?"text-muted-foreground":"text-muted-foreground/60"}`}>{score}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
-      {selected.reviewSentimentSummary && (
-        <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">What Their Clients Value</p>
-          <p className="text-sm italic text-muted-foreground">"{selected.reviewSentimentSummary}"</p>
+
+      {/* ── Radar chart ── */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        {/* Legend row */}
+        <div className="flex flex-wrap items-center gap-4 mb-4 text-xs">
+          <span className="flex items-center gap-1.5 font-semibold">
+            <span className="w-3 h-3 rounded-full shrink-0" style={{ background: APA_COLOR }} />
+            Abi Peters Aesthetics
+          </span>
+          {selected.map(c=>(
+            <span key={c.id} className="flex items-center gap-1.5 text-muted-foreground">
+              <span className="w-3 h-3 rounded-full shrink-0" style={{ background: colorOf(c) }} />
+              {c.name.length > 22 ? c.name.slice(0,20)+"…" : c.name}
+            </span>
+          ))}
+        </div>
+
+        <ResponsiveContainer width="100%" height={400}>
+          <RadarChart data={radarData} margin={{ top:16, right:40, bottom:16, left:40 }}>
+            <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.6} />
+            <PolarAngleAxis
+              dataKey="dim"
+              tick={{ fontSize:11, fill:"hsl(var(--muted-foreground))", fontWeight:500 }}
+            />
+            <PolarRadiusAxis
+              angle={90} domain={[0,100]} tickCount={6}
+              tick={{ fontSize:9, fill:"hsl(var(--muted-foreground))" }}
+              stroke="hsl(var(--border))" strokeOpacity={0.3}
+            />
+            {/* APA — always shown, on top */}
+            <Radar
+              name="APA"
+              dataKey="APA"
+              stroke={APA_COLOR}
+              fill={APA_COLOR}
+              fillOpacity={selected.length===0 ? 0.25 : 0.12}
+              strokeWidth={2.5}
+              dot={{ r:3.5, fill:APA_COLOR, strokeWidth:0 }}
+            />
+            {selected.map(c=>(
+              <Radar
+                key={c.id}
+                name={c.name}
+                dataKey={`__${c.id}`}
+                stroke={colorOf(c)}
+                fill={colorOf(c)}
+                fillOpacity={0.07}
+                strokeWidth={1.8}
+                dot={{ r:2.5, fill:colorOf(c), strokeWidth:0 }}
+              />
+            ))}
+            <Tooltip
+              contentStyle={{
+                background:"hsl(var(--card))",
+                border:"1px solid hsl(var(--border))",
+                borderRadius:"10px",
+                fontSize:"12px",
+                padding:"10px 14px",
+              }}
+              formatter={(value:number, name:string)=>{
+                const label = name === "APA" ? "APA" : (competitors.find(c=>`__${c.id}`===name)?.name.split(" ")[0] ?? name);
+                return [value, label];
+              }}
+              labelStyle={{ fontWeight:600, marginBottom:4, color:"hsl(var(--foreground))" }}
+            />
+          </RadarChart>
+        </ResponsiveContainer>
+
+        {selected.length===0 && (
+          <p className="text-center text-muted-foreground text-xs -mt-2 pb-2">Select competitors above to overlay on the chart</p>
+        )}
+      </div>
+
+      {/* ── Per-competitor detail cards ── */}
+      {selected.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {selected.map(c=>{
+            const color  = colorOf(c);
+            const stren  = parseJson<string[]>(c.strengthsJson,[]);
+            const weak   = parseJson<string[]>(c.weaknessesJson,[]);
+            const wins   = RADAR_DIMS.filter(d=>d.apa>=d.get(c)).length;
+            const score  = computeThreatScore(c);
+            const rag    = getRAG(score);
+            return (
+              <div key={c.id} className="bg-card border border-border rounded-xl overflow-hidden">
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-border" style={{ borderLeftWidth:3, borderLeftColor:color }}>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{c.name}</p>
+                    <p className="text-xs text-muted-foreground">{c.clinicType} · {c.distanceMiles ? `${c.distanceMiles}mi` : "dist. unknown"}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${rag.bg} ${rag.border} ${rag.text}`}>Threat {score}</span>
+                    <span className="text-[10px] text-primary font-medium">APA leads {wins}/{RADAR_DIMS.length} axes</span>
+                  </div>
+                </div>
+                <div className="p-4 space-y-3">
+                  {stren.length>0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Their Strengths</p>
+                      {stren.map((s,i)=><p key={i} className="text-xs text-amber-600 dark:text-amber-400 mb-1 leading-snug">⚠ {s}</p>)}
+                    </div>
+                  )}
+                  {weak.length>0 && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">Their Weaknesses</p>
+                      {weak.map((w,i)=><p key={i} className="text-xs text-emerald-600 dark:text-emerald-400 mb-1 leading-snug">✓ {w}</p>)}
+                    </div>
+                  )}
+                  {c.reviewSentimentSummary && (
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium mb-1.5">What Their Clients Value</p>
+                      <p className="text-xs italic text-muted-foreground leading-relaxed">"{c.reviewSentimentSummary}"</p>
+                    </div>
+                  )}
+                  {!stren.length && !weak.length && !c.reviewSentimentSummary && (
+                    <p className="text-xs text-muted-foreground italic">No profile detail yet — use the tab research tool on this competitor.</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
