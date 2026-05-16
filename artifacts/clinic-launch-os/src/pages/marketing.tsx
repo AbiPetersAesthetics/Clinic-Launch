@@ -49,14 +49,14 @@ function ItemRow({
   item,
   expanded,
   onToggleExpand,
-  onCycleStatus,
+  onStatusChange,
   onNotesChange,
   weekLabel,
 }: {
   item: MarketingItem;
   expanded: boolean;
   onToggleExpand: () => void;
-  onCycleStatus: () => void;
+  onStatusChange: (s: Status) => void;
   onNotesChange: (n: string) => void;
   weekLabel: string | null;
 }) {
@@ -74,13 +74,18 @@ function ItemRow({
     }`}>
       <div className="flex items-center gap-3 px-3.5 py-3">
         {!isCompliance && (
-          <button
-            onClick={onCycleStatus}
-            title="Click to cycle status"
-            className={`text-[9px] font-bold px-2.5 py-1.5 rounded-full border whitespace-nowrap shrink-0 transition-all hover:scale-105 ${sm.color}`}
-          >
-            {sm.label}
-          </button>
+          <div className="relative shrink-0">
+            <select
+              value={item.status}
+              onChange={e => onStatusChange(e.target.value as Status)}
+              className={`appearance-none text-[9px] font-bold pl-2.5 pr-6 py-1.5 rounded-full border cursor-pointer transition-colors ${sm.color}`}
+            >
+              {(Object.keys(STATUS_META) as Status[]).map(s => (
+                <option key={s} value={s}>{STATUS_META[s].label}</option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 pointer-events-none opacity-60" />
+          </div>
         )}
         <div className="flex-1 min-w-0">
           {weekLabel && (
@@ -218,11 +223,9 @@ export default function MarketingPage() {
     itemTimers.current.set(item.id, setTimeout(() => persistItem(item), delay));
   };
 
-  const cycleStatus = (id: number) => {
+  const setItemStatus = (id: number, status: Status) => {
     setItems(prev => {
-      const next = prev.map(i =>
-        i.id === id ? { ...i, status: STATUS_META[i.status].next } : i
-      );
+      const next = prev.map(i => i.id === id ? { ...i, status } : i);
       const changed = next.find(i => i.id === id)!;
       scheduleItemSave(changed, 400);
       setSaveStatus("unsaved");
@@ -616,7 +619,7 @@ export default function MarketingPage() {
             item={item}
             expanded={expanded.has(item.id)}
             onToggleExpand={() => toggleExpand(item.id)}
-            onCycleStatus={() => cycleStatus(item.id)}
+            onStatusChange={s => setItemStatus(item.id, s)}
             onNotesChange={n => updateNotes(item.id, n)}
             weekLabel={
               item.category === "content" && item.dueWeeksBeforeOpen !== null

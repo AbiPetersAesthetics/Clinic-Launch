@@ -124,6 +124,28 @@ router.post("/projects/:projectId/marketing/ai-complete", async (req, res) => {
 
   const applicable = items.filter(i => !i.title.startsWith("⚠"));
 
+  // Fetch opening date from project
+  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
+  const openingDateStr: string = (project as any)?.targetOpeningDate ?? "2026-11-01";
+  const openDate = new Date(openingDateStr + "T12:00:00");
+  const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const wBefore = (n: number) => fmt(new Date(openDate.getTime() - n * 7 * 86400000));
+
+  const dateTimeline = `PLANNED OPENING DATE: ${fmt(openDate)}
+Pre-launch calendar (calculated from opening date):
+  • 16 weeks before opening: ${wBefore(16)} — brand brief / logo commission
+  • 14 weeks before opening: ${wBefore(14)} — brand colours & fonts locked
+  • 12 weeks before opening: ${wBefore(12)} — ALL brand assets approved; photography complete; content calendar starts
+  • 10 weeks before opening: ${wBefore(10)} — Google Business Profile created & submitted for verification; Instagram live
+  • 8 weeks before opening:  ${wBefore(8)}  — website live; Fresha fully bookable; GBP verified
+  • 6 weeks before opening:  ${wBefore(6)}  — email list & welcome sequence live; social proof content published
+  • 4 weeks before opening:  ${wBefore(4)}  — waitlist CTA live; opening announcement; Google Ads drafted
+  • 2 weeks before opening:  ${wBefore(2)}  — all logistics confirmed; countdown content scheduled
+  • 1 week before opening:   ${wBefore(1)}  — soft launch (friends, family, Bedhampton regulars — invite only)
+  • Opening day:             ${fmt(openDate)}
+
+For EVERY item's notes, include the specific recommended completion date from the above timeline.`;
+
   const categoryContext: Record<string, string> = {
     brand: `Brand Setup tab — these are the identity and asset tasks Abi needs to complete before any platforms or marketing go live.
 Help Abi by writing specific, actionable notes for each task based on her context:
@@ -176,11 +198,15 @@ Help Abi by writing specific, contact-ready notes for each launch task:
 
   const prompt = `You are a marketing specialist helping set up Abi Peters Aesthetics, a premium nurse-led aesthetics clinic opening at 9A Jewry Street, Winchester, Hampshire on 1 November 2026.
 
+${dateTimeline}
+
 ${categoryContext[category]}
 
-Here are the ${category} checklist items that need notes. For each item, write practical, specific, APA-tailored notes (2–6 sentences each) that give Abi a concrete head start — specific supplier names, wording suggestions, contact types, or next actions where relevant. 
+Here are the ${category} checklist items that need notes. For each item, write practical, specific, APA-tailored notes (2–6 sentences each) that give Abi a concrete head start — specific supplier names, wording suggestions, contact types, or next actions where relevant.
 
-Also suggest a status: use "in_progress" only if it would make sense for Abi to start this immediately; otherwise use "not_started". Never use "done".
+Start every note with "📅 Target: [specific date from the timeline above]" so Abi knows exactly when each task needs to be done.
+
+Also suggest a status: use "in_progress" only if it would make sense for Abi to start this immediately (i.e. the deadline is within the next 4 weeks); otherwise use "not_started". Never use "done".
 
 Items:
 ${itemList}
