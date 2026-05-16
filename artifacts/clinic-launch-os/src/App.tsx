@@ -4,8 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { AppLayout } from "@/components/layout";
-import { AuthProvider, useAuth } from "@/contexts/auth";
-import LoginScreen from "@/components/login-screen";
 
 import DashboardPage from "@/pages/dashboard";
 import ProjectPage from "@/pages/project";
@@ -47,22 +45,14 @@ function Router() {
   );
 }
 
-function AuthGate() {
-  const { isAuthenticated } = useAuth();
-  if (!isAuthenticated) return <LoginScreen />;
-  return <Router />;
-}
-
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthGate />
-          </WouterRouter>
-          <Toaster />
-        </AuthProvider>
+        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <Router />
+        </WouterRouter>
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   );
