@@ -245,7 +245,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   // fixedCostsOverride: pass the actual fixed cost total from the items table so that
   // .net is always correct — legacy individual fields (rentGbp etc.) are 0 when the
   // user has switched to the dynamic fixed cost items list.
-  function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>, fixedCostsOverride?: number) {
+  function calcScenario(occupancyPct: number, acv: number, f: NonNullable<typeof financial>, fixedCostsOverride?: number, vatRate = 0) {
     const slotsPerMonth = f.treatmentRoomsCount * f.practitionerHoursPerDay * f.workingDaysPerMonth;
     const revenue = Math.round((slotsPerMonth * (occupancyPct / 100)) * acv + f.membershipRevenueGbp);
     // Use the items-table total when available; fall back to legacy individual fields
@@ -257,8 +257,9 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     const fixed = fixedCostsOverride ?? legacyFixed;
     const variableRate = (f.stockPercent + f.commissionsPercent) / 100;
     const variable = Math.round(revenue * variableRate + f.marketingGbp + f.staffingGbp + f.consumablesGbp);
-    const net = revenue - fixed - variable;
-    return { revenue, fixed, variable, net, occupancyPct, acv };
+    const vatLiability = Math.round(revenue * vatRate);
+    const net = revenue - fixed - variable - vatLiability;
+    return { revenue, fixed, variable, vatLiability, net, occupancyPct, acv };
   }
 
   // ── Fixed cost itemisation (computed first — used in financial calcs below) ──
@@ -269,6 +270,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   let modelIncomplete = false;
   let rentToRevenuePct = 0;
   let breakEvenRevenue = 0;
+  let vatRateForCalc = 0;
   let vatRisk = false;
   let vatRiskDetail = "";
   let bedhCoverageMonths = 0;
@@ -292,6 +294,16 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     // rather than the legacy averageClientValueGbp (originally set from Bedhampton).
     const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
 
+    // VAT rate determination — mirrors /financial/calculate endpoint logic exactly.
+    // VAT is a business-wide obligation (rolling £90k threshold across all clinics).
+    // If Bedhampton alone (£75k) already pushes combined turnover past £90k when
+    // Winchester opens, VAT applies from Month 1 and must be deducted from net profit.
+    const vatCurrentTurnoverAi = (financial as any).vatCurrentTurnoverGbp ?? 0;
+    const bedhAnnualRevAi = (financial.existingClinicRevenueGbp || 0) * 12;
+    const vatWillApplyAtOpening = vatCurrentTurnoverAi >= 90000 ||
+      (vatCurrentTurnoverAi + bedhAnnualRevAi >= 90000);
+    vatRateForCalc = vatWillApplyAtOpening ? 0.20 : 0;
+
     // Use itemised fixed cost total when available — legacy individual fields (rentGbp etc.)
     // are 0 when the user has switched to the dynamic fixed cost items list.
     const actualMonthlyFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : Math.round(
@@ -313,16 +325,17 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     const aggressiveOccNote = financial.aggressiveOccupancyPercent === 0
       ? ` (⚠ not set — using ${aggressiveOcc}% fallback)` : "";
 
-    const conservative = calcScenario(conservativeOcc, wincAcv, financial, actualMonthlyFixed);
-    const realistic    = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial, actualMonthlyFixed);
-    const aggressive   = calcScenario(aggressiveOcc, wincAcv, financial, actualMonthlyFixed);
+    const conservative = calcScenario(conservativeOcc, wincAcv, financial, actualMonthlyFixed, vatRateForCalc);
+    const realistic    = calcScenario(financial.realisticOccupancyPercent, wincAcv, financial, actualMonthlyFixed, vatRateForCalc);
+    const aggressive   = calcScenario(aggressiveOcc, wincAcv, financial, actualMonthlyFixed, vatRateForCalc);
 
-    // Break-even: (fixedCosts + fixedVarItems) / (1 - variableRatio)
-    // fixedVarItems = marketing + staffing + consumables (fixed monthly amounts, not %-of-revenue).
-    // Previously omitted fixedVarItems, understating break-even by those amounts.
+    // Break-even: (fixedCosts + fixedVarItems) / (1 - variableRatio - vatRate)
+    // VAT is a cost like any other on the P&L — once registered, every £1 of gross revenue
+    // costs 20p in VAT liability, so the margin available to cover fixed costs is reduced.
+    // Formula matches financialEngine.ts calcWinchester() exactly.
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
     const fixedVarItems = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
-    breakEvenRevenue = Math.round((actualMonthlyFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
+    breakEvenRevenue = Math.round((actualMonthlyFixed + fixedVarItems) / Math.max(1 - variableRatio - vatRateForCalc, 0.01));
 
     // Cash runway pre-opening — uses net Bedhampton contribution (after stock/running costs),
     // plus a project cost burn allocation spread across the pre-opening window.
@@ -361,26 +374,27 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
       ? parseFloat((financial.existingClinicRevenueGbp / actualMonthlyFixed).toFixed(1))
       : 0;
 
-    const activeScenarioCalc = calcScenario(activeTargetOcc, wincAcv, financial, actualMonthlyFixed);
+    const activeScenarioCalc = calcScenario(activeTargetOcc, wincAcv, financial, actualMonthlyFixed, vatRateForCalc);
 
     financialContext = `=== ACTIVE PLANNING SCENARIO: ${activeScenarioKey.toUpperCase().replace(/_/g, " ")} ===
 This is the scenario Abi has selected as her planning baseline. The three reference scenarios below provide context — the active scenario's ramp parameters drive the monthly forecast.
 Active scenario: ${activeScenarioNote}
 Active target occupancy: ${activeTargetOcc}% | Opening occupancy: ${activeStartOcc}% | Ramp to target: ${activeRampMonths} months | ACV: £${wincAcv}
+VAT: ${vatRateForCalc > 0 ? `20% APPLIED — combined business turnover (Bedhampton £${Math.round((financial as any).vatCurrentTurnoverGbp ?? 0).toLocaleString()}/yr + Winchester) exceeds £90k VAT threshold from Month 1. All net figures below are after VAT liability.` : "0% — below VAT registration threshold"}
 Active scenario steady-state net (at ${activeTargetOcc}% occ): £${activeScenarioCalc.net.toLocaleString()}/mo
-  (Revenue: £${activeScenarioCalc.revenue.toLocaleString()} − Fixed: £${activeScenarioCalc.fixed.toLocaleString()} − Variable: £${activeScenarioCalc.variable.toLocaleString()})
+  (Revenue: £${activeScenarioCalc.revenue.toLocaleString()} − Fixed: £${activeScenarioCalc.fixed.toLocaleString()} − Variable: £${activeScenarioCalc.variable.toLocaleString()}${vatRateForCalc > 0 ? ` − VAT: £${activeScenarioCalc.vatLiability.toLocaleString()}` : ""})
 
 === THREE-SCENARIO REFERENCE FINANCIALS (for ${propertyLabel}) ===
 Fixed costs source: itemised cost list (${totalFixedItemsCost > 0 ? `${fixedCostsRaw.length} items, total £${actualMonthlyFixed.toLocaleString()}/mo` : "no items — using legacy fields"})
 
 Conservative (${conservativeOcc}% occ${conservativeOccNote}, £${wincAcv} ACV)${activeScenarioKey === "conservative" ? " ← ACTIVE SCENARIO" : ""}:
-  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo | Net: £${conservative.net.toLocaleString()}/mo
+  Revenue: £${conservative.revenue.toLocaleString()}/mo | Fixed: £${conservative.fixed.toLocaleString()}/mo | Variable: £${conservative.variable.toLocaleString()}/mo${vatRateForCalc > 0 ? ` | VAT: £${conservative.vatLiability.toLocaleString()}/mo` : ""} | Net: £${conservative.net.toLocaleString()}/mo
 
 Realistic (${financial.realisticOccupancyPercent}% occ, £${wincAcv} ACV)${activeScenarioKey === "realistic" ? " ← ACTIVE SCENARIO" : ""}${activeScenarioKey === "delayed_ramp" ? " ← ACTIVE TARGET (delayed_ramp reaches this occupancy over 12 months)" : ""}:
-  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed: £${realistic.fixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo | Net: £${realistic.net.toLocaleString()}/mo
+  Revenue: £${realistic.revenue.toLocaleString()}/mo | Fixed: £${realistic.fixed.toLocaleString()}/mo | Variable: £${realistic.variable.toLocaleString()}/mo${vatRateForCalc > 0 ? ` | VAT: £${realistic.vatLiability.toLocaleString()}/mo` : ""} | Net: £${realistic.net.toLocaleString()}/mo
 
 Aggressive (${aggressiveOcc}% occ${aggressiveOccNote}, £${wincAcv} ACV):
-  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed: £${aggressive.fixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo | Net: £${aggressive.net.toLocaleString()}/mo
+  Revenue: £${aggressive.revenue.toLocaleString()}/mo | Fixed: £${aggressive.fixed.toLocaleString()}/mo | Variable: £${aggressive.variable.toLocaleString()}/mo${vatRateForCalc > 0 ? ` | VAT: £${aggressive.vatLiability.toLocaleString()}/mo` : ""} | Net: £${aggressive.net.toLocaleString()}/mo
 
 Variable cost assumptions (these drive profitability — flag any zero values as data gaps):
   Stock/COGS: ${financial.stockPercent}% of revenue${financial.stockPercent === 0 ? " ⚠ DATA GAP — 0% stock is not realistic for an aesthetics clinic. Botulinum toxin, filler, skinboosters = real product costs. Industry benchmark: 12–20% for premium injectables. Profits WILL be overstated until this is filled in." : ""}
@@ -392,8 +406,8 @@ Variable cost assumptions (these drive profitability — flag any zero values as
 
 Winchester ACV:${financial.wincAcvGbp ? ` £${financial.wincAcvGbp} (Winchester-specific)` : ` £${financial.averageClientValueGbp} (⚠ FALLBACK — Winchester ACV not entered; using Bedhampton's £${financial.averageClientValueGbp}. Winchester is a premium clinic; its ACV may differ significantly.)`}
 
-Key ratios (Realistic scenario, using actual fixed costs):
-  Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo
+Key ratios (Realistic scenario, using actual fixed costs${vatRateForCalc > 0 ? ", VAT-adjusted" : ""}):
+  Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo${vatRateForCalc > 0 ? ` (incl. 20% VAT liability — formula: (fixed+fixedVar) ÷ (1 − varRate − 0.20))` : ""}
   Rent as % of revenue: ${rentToRevenuePct}% (industry guideline: aim for <15%)
   Bedhampton income vs new clinic fixed costs: ${bedhCoverageMonths}× (Bedh earns ${bedhCoverageMonths}× the new clinic's monthly fixed costs — NOT 4 years' worth)
   Treatment rooms: ${financial.treatmentRoomsCount} | Practitioner hours/day: ${financial.practitionerHoursPerDay} | Working days/mo: ${financial.workingDaysPerMonth}
@@ -687,9 +701,10 @@ Break-even occupancy needed (17-day model): ~${beOcc}% of capacity
 
 MANDATORY: The executiveSummary must state the revenue ceiling under 17 days (£${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/mo at 100% occ), the break-even occupancy now required (${beOcc}%), and compare to the old 22-day ceiling (£${Math.round(financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv).toLocaleString()}/mo). This context is material to the go/no-go decision.
 
-FORMULA for each month's net P&L:
-  netProfitLoss = projectedRevenue - totalMonthlyCost - (projectedRevenue × variableCostRate)
-  i.e. = projectedRevenue × (1 - ${Math.round(varRate * 100) / 100}) - £${totalMonthlyCost.toLocaleString()}
+FORMULA for each month's net P&L (VAT-adjusted):
+  netProfitLoss = projectedRevenue - totalMonthlyCost - (projectedRevenue × variableCostRate) - (projectedRevenue × vatRate)
+  i.e. = projectedRevenue × (1 - ${Math.round(varRate * 100) / 100} - ${vatRateForCalc}) - £${totalMonthlyCost.toLocaleString()}
+  VAT rate: ${vatRateForCalc > 0 ? `${Math.round(vatRateForCalc * 100)}% — combined business turnover exceeds £90k threshold from Month 1; VAT liability deducted from every month's revenue` : "0% — below VAT threshold"}
 
 RAMP-UP ASSUMPTIONS — apply ALL of the following:
 CRITICAL: Bedhampton is ~40 minutes from Winchester. These are two entirely separate client bases. There are ZERO client transfers from Bedhampton to Winchester. Winchester starts from a completely cold base — no existing clients will follow her there. Do NOT factor any Bedhampton client transfer into any month's projection.
