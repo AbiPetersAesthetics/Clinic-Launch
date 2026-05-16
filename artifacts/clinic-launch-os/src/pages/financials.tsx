@@ -114,11 +114,23 @@ type CashflowMonth = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color: string; badgeClass: string }> = {
-  conservative: { label: "Conservative", description: "40% occ, 8-mo ramp", color: "text-blue-600", badgeClass: "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300" },
+const SCENARIOS: Record<ScenarioKey, { label: string; description: string; color: string; badgeClass: string; planningNote?: string; planningNoteColor?: string }> = {
+  conservative: {
+    label: "Conservative", description: "40% occ, 8-mo ramp", color: "text-blue-600", badgeClass: "bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    planningNote: "Use for monthly cash monitoring only — not for lease or planning decisions.",
+    planningNoteColor: "border-blue-200 bg-blue-50/70 text-blue-800 dark:border-blue-800 dark:bg-blue-950/20 dark:text-blue-300",
+  },
   realistic: { label: "Realistic", description: "65% occ, 6-mo ramp", color: "text-primary", badgeClass: "bg-primary/10 text-primary" },
-  aggressive: { label: "Strong Launch", description: "85% occ, 4-mo ramp", color: "text-emerald-600", badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
-  delayed_ramp: { label: "Delayed Ramp", description: "65% occ, 12-mo ramp", color: "text-amber-600", badgeClass: "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" },
+  aggressive: {
+    label: "Strong Launch", description: "85% occ, 4-mo ramp", color: "text-emerald-600", badgeClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+    planningNote: "Ceiling scenario — do not use for planning. This represents the best case, not a base case.",
+    planningNoteColor: "border-orange-200 bg-orange-50/70 text-orange-800 dark:border-orange-800 dark:bg-orange-950/20 dark:text-orange-300",
+  },
+  delayed_ramp: {
+    label: "Delayed Ramp", description: "65% occ, 12-mo ramp", color: "text-amber-600", badgeClass: "bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+    planningNote: "Recommended base case for lease and financial planning decisions.",
+    planningNoteColor: "border-emerald-200 bg-emerald-50/70 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300",
+  },
   economic_downturn: { label: "Economic Downturn", description: "−20% occ, −15% spend", color: "text-orange-600", badgeClass: "bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300" },
   stress_test: { label: "Stress Test", description: "5% start, worst-case ramp", color: "text-destructive", badgeClass: "bg-destructive/10 text-destructive" },
 };
@@ -787,10 +799,17 @@ export default function FinancialsPage() {
                 scenario === key ? `${s.badgeClass} border-current` : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
               }`}>
               {s.label}
+              {key === "delayed_ramp" && <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide opacity-80">★ Base</span>}
               <span className="ml-1.5 opacity-60 hidden sm:inline">{getScenarioDesc(key)}</span>
             </button>
           ))}
         </div>
+        {sc.planningNote && (
+          <div className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${sc.planningNoteColor}`}>
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span><strong>Planning note:</strong> {sc.planningNote}</span>
+          </div>
+        )}
 
         {/* ── Ramp Growth Tier ─────────────────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-3 pt-0.5">
@@ -985,6 +1004,14 @@ export default function FinancialsPage() {
               </TooltipContent>
             )}
           </Tooltip>
+
+          {/* Bedhampton dependency warning — shown when Bedhampton closes before Month 4 */}
+          {cr?.combined.selfFundingMonth !== null && (cr?.combined.selfFundingMonth ?? 99) < 4 && (
+            <div className="col-span-full flex items-start gap-2 rounded-lg border border-orange-300 dark:border-orange-700 bg-orange-50 dark:bg-orange-950/30 px-3 py-2.5 text-xs text-orange-800 dark:text-orange-300">
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0 text-orange-600 dark:text-orange-400" />
+              <span><strong>Warning —</strong> Winchester has not yet proven it can sustain fixed costs independently. Closing Bedhampton at Month {cr.combined.selfFundingMonth} removes the financial bridge before Winchester is established. Review the self-funding buffer % in Assumptions.</span>
+            </div>
+          )}
 
           {/* Card 4: Cash Runway */}
           <Tooltip>
@@ -1461,8 +1488,12 @@ export default function FinancialsPage() {
                                 {isOpen && <span className="text-[9px] bg-primary/20 text-primary px-1 rounded font-bold">OPEN</span>}
                                 {isClose && <span className="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 px-1 rounded font-bold">BEDH CLOSES</span>}
                                 {m.isVatRegistered && !isClose && !isOpen && <span className="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-1 rounded">VAT</span>}
+                                {m.calendarLabel === "Oct '26" && <span className="text-[9px] bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1 rounded font-bold">HIGH RISK</span>}
                               </div>
                               {m.isPreOpening && <div className="text-[9px] text-muted-foreground">pre-open</div>}
+                              {m.calendarLabel === "Oct '26" && (
+                                <div className="text-[9px] text-red-600 dark:text-red-400 font-medium leading-tight mt-0.5">Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.</div>
+                              )}
                             </td>
 
                             {/* Winchester Revenue */}
@@ -1866,6 +1897,18 @@ export default function FinancialsPage() {
                 ) : <div className="py-6 text-center text-muted-foreground text-sm">—</div>}
               </CardContent>
             </Card>
+
+            {/* VAT urgent alert — always shown; timing is critical relative to lease signing */}
+            <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4">
+              <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">VAT registration required within 1–2 months of Winchester opening</p>
+                <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1 leading-relaxed">
+                  Based on current rolling Bedhampton turnover, adding Winchester revenue will cross the £90k VAT threshold very quickly after opening. Accountant consultation is required <strong>before lease signing</strong> — not after. Confirm VAT strategy (standard, cash accounting, or flat rate) before committing to lease terms.
+                </p>
+                <a href="/financials#assumptions" className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline">Review VAT assumptions →</a>
+              </div>
+            </div>
 
             <Card className="shadow-sm">
               <CardHeader className="pb-2"><CardTitle className="text-sm">Clinic Health Score</CardTitle></CardHeader>
@@ -2485,6 +2528,17 @@ export default function FinancialsPage() {
                     )} />
                   </CardContent>
                 </Card>
+
+                {/* VAT warning — shown in Assumptions tab so it's seen before lease decisions */}
+                <div className="flex items-start gap-3 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">VAT registration required within 1–2 months of Winchester opening</p>
+                    <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-1 leading-relaxed">
+                      Based on current rolling Bedhampton turnover, Winchester revenue will push the business above the £90k VAT threshold very quickly after opening. Accountant consultation is required <strong>before lease signing</strong> — not after. Confirm VAT strategy (standard, cash accounting, or flat rate) before committing to lease terms.
+                    </p>
+                  </div>
+                </div>
               </form>
             </Form>
           </div>

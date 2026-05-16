@@ -13,6 +13,8 @@ import {
   getGetPhasesWithTasksQueryKey,
   useGetComplianceSummary,
   getGetComplianceSummaryQueryKey,
+  useGetFinancialModel,
+  getGetFinancialModelQueryKey,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -275,6 +277,10 @@ export default function DashboardPage() {
     query: { enabled: true, queryKey: getGetComplianceSummaryQueryKey(PROJECT_ID) },
   });
 
+  const { data: financialModel } = useGetFinancialModel(PROJECT_ID, {
+    query: { enabled: true, queryKey: getGetFinancialModelQueryKey(PROJECT_ID) },
+  });
+
   const activeProperty = properties?.find((p) => p.isActiveForProject);
 
   const allTasks = useMemo(() => {
@@ -317,6 +323,24 @@ export default function DashboardPage() {
     if (gap > 0) return { status: "amber" as RAGStatus, message: `Slightly behind ideal trajectory by ${Math.round(gap)} tasks.` };
     return { status: "green" as RAGStatus, message: "On or ahead of schedule." };
   }, [burndown]);
+
+  const breakEvenTreatmentsPerWeek = useMemo(() => {
+    const breakEvenRevenue = goNoGo?._computed?.breakEvenRevenue ?? 0;
+    const avgClientValue = (financialModel as any)?.averageClientValueGbp ?? 120;
+    if (!breakEvenRevenue || !avgClientValue) return null;
+    return breakEvenRevenue / avgClientValue / 4.33;
+  }, [goNoGo, financialModel]);
+
+  const bedhamptonTreatmentsPerWeek = useMemo(() => {
+    const existingRevenue = (financialModel as any)?.existingClinicRevenueGbp ?? 0;
+    const avgClientValue = (financialModel as any)?.averageClientValueGbp ?? 120;
+    if (!existingRevenue || !avgClientValue) return null;
+    return existingRevenue / avgClientValue / 4.33;
+  }, [financialModel]);
+
+  const breakEvenRAG: RAGStatus =
+    scenario === "aggressive" ? "green" :
+    scenario === "stress_test" ? "red" : "amber";
 
   const unrealisticRunway = (dashboard?.cashRunwayMonths ?? 0) >= 48;
 
@@ -970,7 +994,58 @@ export default function DashboardPage() {
         })()}
       </div>
 
-      {/* 2. CQC Risk Banner — shown when registration not started and opening date within 20 weeks */}
+      {/* 2a. VAT Registration Warning — always visible; timing is critical relative to lease signing */}
+      <div className="rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/30 p-4 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 mt-0.5">
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-amber-700 dark:text-amber-400 text-sm">VAT registration required within 1–2 months of Winchester opening</p>
+          <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5 leading-relaxed">
+            Based on current rolling Bedhampton turnover, Winchester revenue will push the business above the £90k VAT threshold very quickly after opening. Accountant consultation is required <strong>before lease signing</strong> — not after.
+          </p>
+          <a href="/financials" className="mt-2 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1">
+            Review VAT assumptions <ArrowRight className="w-3 h-3" />
+          </a>
+        </div>
+      </div>
+
+      {/* 2b. Break-even treatments counter */}
+      {breakEvenTreatmentsPerWeek !== null && (() => {
+        const r = ragColors(breakEvenRAG);
+        return (
+          <div className={`rounded-xl border p-4 ${r.bg} ${r.border}`}>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Break-even Treatment Rate</span>
+                <p className="text-xs text-muted-foreground mt-0.5">Treatments per week required to cover all Winchester fixed costs</p>
+              </div>
+              <span className={`w-2.5 h-2.5 rounded-full ${r.dot} shrink-0`} />
+            </div>
+            <div className="flex flex-wrap gap-6 items-end">
+              <div>
+                <div className={`text-3xl font-bold ${r.text}`}>{breakEvenTreatmentsPerWeek.toFixed(1)}<span className="text-sm font-normal text-muted-foreground ml-1">appts/wk</span></div>
+                <div className="text-xs text-muted-foreground mt-0.5">to break even at Winchester</div>
+              </div>
+              {bedhamptonTreatmentsPerWeek !== null && (
+                <div>
+                  <div className="text-xl font-semibold text-foreground">{bedhamptonTreatmentsPerWeek.toFixed(1)}<span className="text-sm font-normal text-muted-foreground ml-1">appts/wk</span></div>
+                  <div className="text-xs text-muted-foreground mt-0.5">current Bedhampton rate (reference)</div>
+                </div>
+              )}
+              <div className={`ml-auto text-xs font-medium px-2.5 py-1 rounded-full border ${r.border} ${r.text} ${r.bg}`}>
+                {breakEvenRAG === "green" ? "Exceeds break-even" : breakEvenRAG === "amber" ? "Break-even achievable" : "Break-even at risk"}
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-3 leading-relaxed">
+              Status reflects <strong>{scenario === "aggressive" ? "Strong Launch" : scenario === "stress_test" ? "Stress Test" : scenario === "conservative" ? "Conservative" : scenario === "delayed_ramp" ? "Delayed Ramp" : "Realistic"}</strong> scenario.
+              Switch scenario on the Financials page to update this indicator.
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* 2c. CQC Risk Banner — shown when registration not started and opening date within 20 weeks */}
       {(() => {
         if (!dashboard.cqcNotStarted) return null;
         const openingDate = dashboard.targetOpeningDate;
