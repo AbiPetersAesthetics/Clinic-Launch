@@ -53,6 +53,10 @@ import {
   LineChart,
   Line,
   Legend,
+  BarChart,
+  Bar,
+  ReferenceLine,
+  Cell,
 } from "recharts";
 
 const PROJECT_ID = 1;
@@ -99,6 +103,19 @@ function ragColors(status: RAGStatus) {
 type GoNoGoVerdict = "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED";
 type GoNoGoAction = { action: string; priority: "critical" | "high" | "medium"; deadline: string; rationale: string };
 type GoNoGoWeek = { week: string; focus: string; actions: string[] };
+type MonthlyForecastRow = {
+  month: string; monthIndex: number; projectedRevenue: number; occupancyPct: number;
+  newClientsProjected: number; netProfitLoss: number; cumulativePL: number;
+  confidencePct: number; driverNote: string; isBreakEven: boolean;
+};
+type RevenueForecast = {
+  breakEvenMonth: number | null; firstProfitableMonth: string;
+  totalYear1Revenue: number; totalYear1NetPL: number;
+  peakMonth: string; peakMonthRevenue: number;
+  year1Narrative: string;
+  revenueViabilityVerdict: "strong" | "viable" | "marginal" | "unlikely";
+  keyRampRisks: string[]; keyRampCatalysts: string[];
+};
 type GoNoGoResult = {
   verdict: GoNoGoVerdict;
   verdictLabel: string;
@@ -113,6 +130,8 @@ type GoNoGoResult = {
   immediateActions: GoNoGoAction[];
   thirtyDayPlan: GoNoGoWeek[];
   negotiationPoints: string[];
+  monthlyRevenueForecast?: MonthlyForecastRow[];
+  revenueForecast?: RevenueForecast;
   reviewTrigger: string;
   nextReviewDate: string;
   _computed: {
@@ -648,6 +667,140 @@ export default function DashboardPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* ── 12-Month Revenue Forecast ─────────────────────────── */}
+                  {goNoGo.monthlyRevenueForecast && goNoGo.monthlyRevenueForecast.length > 0 && goNoGo.revenueForecast && (() => {
+                    const fc = goNoGo.revenueForecast!;
+                    const rows = goNoGo.monthlyRevenueForecast!;
+                    const beMonthIndex = fc.breakEvenMonth;
+                    const breakEvenRevenue = goNoGo._computed?.breakEvenRevenue ?? 0;
+                    const verdictColor: Record<string, string> = {
+                      strong: "text-emerald-600 dark:text-emerald-400",
+                      viable: "text-blue-600 dark:text-blue-400",
+                      marginal: "text-amber-600 dark:text-amber-400",
+                      unlikely: "text-red-600 dark:text-red-400",
+                    };
+                    const chartData = rows.map(r => ({
+                      month: r.month.replace(" 20", " '"),
+                      revenue: r.projectedRevenue,
+                      netPL: r.netProfitLoss,
+                      cumPL: r.cumulativePL,
+                      occ: r.occupancyPct,
+                      breakEven: breakEvenRevenue,
+                      isBreakEven: r.isBreakEven,
+                    }));
+                    return (
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">12-Month Revenue Forecast</div>
+
+                        {/* Summary strip */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                          {[
+                            { label: "Year 1 Revenue", value: `£${(fc.totalYear1Revenue / 1000).toFixed(0)}k` },
+                            { label: "Year 1 Net P&L", value: `${fc.totalYear1NetPL >= 0 ? "+" : ""}£${(fc.totalYear1NetPL / 1000).toFixed(0)}k`, red: fc.totalYear1NetPL < 0 },
+                            { label: "Break-even", value: beMonthIndex ? fc.firstProfitableMonth : "Not in Yr 1" },
+                            { label: "Peak Month", value: fc.peakMonth },
+                          ].map(({ label, value, red }) => (
+                            <div key={label} className="rounded-lg border border-border/50 bg-muted/30 p-2.5 text-center">
+                              <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
+                              <div className={`text-sm font-bold ${red ? "text-red-500 dark:text-red-400" : "text-foreground"}`}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Viability verdict */}
+                        <div className={`text-[11px] font-semibold mb-3 ${verdictColor[fc.revenueViabilityVerdict] ?? "text-foreground"}`}>
+                          Revenue viability: <span className="capitalize">{fc.revenueViabilityVerdict}</span>
+                          {fc.year1Narrative && <span className="font-normal text-muted-foreground ml-2">{fc.year1Narrative}</span>}
+                        </div>
+
+                        {/* Bar chart */}
+                        <div className="h-44 w-full mb-3">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={chartData} barCategoryGap="20%">
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                              <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                              <YAxis tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={40} />
+                              <Tooltip
+                                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                                formatter={(val: number, name: string) => {
+                                  if (name === "revenue") return [`£${val.toLocaleString()}`, "Revenue"];
+                                  if (name === "netPL") return [`${val >= 0 ? "+" : ""}£${val.toLocaleString()}`, "Net P&L"];
+                                  return [val, name];
+                                }}
+                              />
+                              <ReferenceLine y={breakEvenRevenue} stroke="hsl(var(--destructive))" strokeDasharray="4 2" label={{ value: "Break-even", position: "insideTopRight", fontSize: 9, fill: "hsl(var(--destructive))" }} />
+                              <Bar dataKey="revenue" radius={[3, 3, 0, 0]}>
+                                {chartData.map((entry, index) => (
+                                  <Cell key={index} fill={entry.isBreakEven ? "hsl(var(--chart-2))" : "hsl(var(--chart-1))"} opacity={0.85} />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        {/* Monthly detail table */}
+                        <div className="overflow-x-auto mb-3">
+                          <table className="w-full text-[10px]">
+                            <thead>
+                              <tr className="border-b border-border/40">
+                                {["Month", "Revenue", "Occ %", "Net P&L", "Cum. P&L", "Conf.", "Driver"].map(h => (
+                                  <th key={h} className="text-left py-1 pr-3 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {rows.map((r, i) => (
+                                <tr key={i} className={`border-b border-border/20 ${r.isBreakEven ? "bg-emerald-50/40 dark:bg-emerald-950/20" : ""}`}>
+                                  <td className="py-1 pr-3 font-medium whitespace-nowrap">{r.month}{r.isBreakEven && <span className="ml-1 text-[9px] text-emerald-600 dark:text-emerald-400 font-bold">★</span>}</td>
+                                  <td className="py-1 pr-3 whitespace-nowrap">£{r.projectedRevenue.toLocaleString()}</td>
+                                  <td className="py-1 pr-3 whitespace-nowrap">{r.occupancyPct}%</td>
+                                  <td className={`py-1 pr-3 whitespace-nowrap font-medium ${r.netProfitLoss >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                                    {r.netProfitLoss >= 0 ? "+" : ""}£{r.netProfitLoss.toLocaleString()}
+                                  </td>
+                                  <td className={`py-1 pr-3 whitespace-nowrap ${r.cumulativePL >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500 dark:text-red-400"}`}>
+                                    {r.cumulativePL >= 0 ? "+" : ""}£{r.cumulativePL.toLocaleString()}
+                                  </td>
+                                  <td className="py-1 pr-3 whitespace-nowrap text-muted-foreground">{r.confidencePct}%</td>
+                                  <td className="py-1 text-muted-foreground">{r.driverNote}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+
+                        {/* Risks & Catalysts */}
+                        {(fc.keyRampRisks?.length > 0 || fc.keyRampCatalysts?.length > 0) && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {fc.keyRampRisks?.length > 0 && (
+                              <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 p-2.5">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mb-1.5">Ramp Risks</div>
+                                <ul className="space-y-1">
+                                  {fc.keyRampRisks.map((r, i) => (
+                                    <li key={i} className="flex items-start gap-1 text-[10px] text-foreground/80">
+                                      <span className="text-red-400 shrink-0 mt-px">▾</span>{r}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {fc.keyRampCatalysts?.length > 0 && (
+                              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 p-2.5">
+                                <div className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-1.5">Ramp Catalysts</div>
+                                <ul className="space-y-1">
+                                  {fc.keyRampCatalysts.map((c, i) => (
+                                    <li key={i} className="flex items-start gap-1 text-[10px] text-foreground/80">
+                                      <span className="text-emerald-500 shrink-0 mt-px">▴</span>{c}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* ── Footer ────────────────────────────────────────────── */}
                   <div className="flex flex-col sm:flex-row sm:justify-between gap-1 text-[10px] text-muted-foreground border-t border-border/40 pt-3">

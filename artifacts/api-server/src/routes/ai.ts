@@ -569,6 +569,38 @@ ${lifestyleContext}
 • Bedhampton income covers ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of new clinic fixed costs per year` : "unknown — set Bedhampton revenue in financial model"}
 • Days until target opening: ${daysToOpening}
 
+${financial ? (() => {
+  const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
+  const maxMonthlySlots = financial.treatmentRoomsCount * financial.practitionerHoursPerDay * financial.workingDaysPerMonth;
+  const actualMonthlyFixed2 = totalFixedItemsCost > 0 ? totalFixedItemsCost : (financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp);
+  const varRate = (financial.stockPercent + financial.commissionsPercent) / 100;
+  const fixedMonthlyCosts2 = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
+  const totalMonthlyCost = actualMonthlyFixed2 + fixedMonthlyCosts2;
+  const beOcc = maxMonthlySlots > 0 && wincAcv > 0 ? Math.round((breakEvenRevenue / (maxMonthlySlots * wincAcv)) * 100) : 0;
+  return `=== 12-MONTH REVENUE FORECAST — MODEL INPUTS (use these exact numbers — do NOT change fixed costs) ===
+Monthly fixed costs (definitive): £${actualMonthlyFixed2.toLocaleString()}
+Fixed monthly variable items (marketing + staffing + consumables): £${fixedMonthlyCosts2.toLocaleString()}
+Total monthly cost base (fixed + fixed-variable): £${totalMonthlyCost.toLocaleString()}
+Variable cost rate (stock + commissions): ${Math.round(varRate * 100)}% of revenue
+Winchester ACV target: £${wincAcv}
+Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} days)
+Break-even monthly revenue: £${breakEvenRevenue.toLocaleString()}
+Break-even occupancy needed: ~${beOcc}% of capacity
+
+FORMULA for each month's net P&L:
+  netProfitLoss = projectedRevenue - totalMonthlyCost - (projectedRevenue × variableCostRate)
+  i.e. = projectedRevenue × (1 - ${Math.round(varRate * 100) / 100}) - £${totalMonthlyCost.toLocaleString()}
+
+RAMP-UP ASSUMPTIONS — apply ALL of the following:
+1. Launch: Nov 2026. Month 1 occupancy: 20–28% (cold start, BUT Abi has 127 Bedhampton reviews and a warm audience to transfer — above average cold-start)
+2. Months 2–4: grow 4–7% occupancy per month as Winchester word-of-mouth builds
+3. Months 5–8: grow 3–5% per month — approaching realistic steady state
+4. Months 9–12: growth slows to 1–3% per month — plateau near realistic occupancy ceiling
+5. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
+6. Factor that Abi's Bedhampton practice is already established — expect 20–30% of her first-month bookings to be existing clients following her to Winchester
+7. Do NOT exceed ${Math.round(financial.realisticOccupancyPercent * 1.15)}% occupancy in any month (cap at 115% of the realistic scenario)`;
+})() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
+
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
   "verdict": "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED",
@@ -638,14 +670,51 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "<point 4 if warranted>"
   ],
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
-  "nextReviewDate": "<ISO 8601 date>"
+  "nextReviewDate": "<ISO 8601 date>",
+  "monthlyRevenueForecast": [
+    {
+      "month": "Nov 2026",
+      "monthIndex": 1,
+      "projectedRevenue": <integer — use the formula: slots × occupancyPct/100 × ACV, rounded to nearest £50>,
+      "occupancyPct": <integer — apply ramp-up + seasonal multiplier>,
+      "newClientsProjected": <integer — estimated new Winchester clients booked that month>,
+      "netProfitLoss": <integer — use the formula above: revenue × (1-varRate) - totalMonthlyCost>,
+      "cumulativePL": <integer — running total from month 1>,
+      "confidencePct": <integer 40-90 — how confident are you in THIS month's projection; month 1 highest certainty, later months lower>,
+      "driverNote": "<1 sentence: what drives this month — e.g. 'Pre-Christmas demand + 25 Bedhampton client transfers'>",
+      "isBreakEven": <true if projectedRevenue >= breakEvenRevenue, else false>
+    },
+    { "month": "Dec 2026", "monthIndex": 2 },
+    { "month": "Jan 2027", "monthIndex": 3 },
+    { "month": "Feb 2027", "monthIndex": 4 },
+    { "month": "Mar 2027", "monthIndex": 5 },
+    { "month": "Apr 2027", "monthIndex": 6 },
+    { "month": "May 2027", "monthIndex": 7 },
+    { "month": "Jun 2027", "monthIndex": 8 },
+    { "month": "Jul 2027", "monthIndex": 9 },
+    { "month": "Aug 2027", "monthIndex": 10 },
+    { "month": "Sep 2027", "monthIndex": 11 },
+    { "month": "Oct 2027", "monthIndex": 12 }
+  ],
+  "revenueForecast": {
+    "breakEvenMonth": <integer 1-12, or null if break-even not reached within 12 months>,
+    "firstProfitableMonth": "<e.g. 'Mar 2027' or 'Not within Year 1'>",
+    "totalYear1Revenue": <integer — sum of all 12 months' projectedRevenue>,
+    "totalYear1NetPL": <integer — sum of all 12 months' netProfitLoss>,
+    "peakMonth": "<e.g. 'Oct 2027' — highest revenue month>",
+    "peakMonthRevenue": <integer>,
+    "year1Narrative": "<2-3 sentences: overall arc of Year 1 — when does she break even, what does the cumulative deficit look like, can Bedhampton absorb it, is this a viable business in Year 1? Use actual £ numbers.>",
+    "revenueViabilityVerdict": "strong" | "viable" | "marginal" | "unlikely",
+    "keyRampRisks": ["<specific risk 1 — e.g. 'December quiet period creates £X cash gap'>", "<risk 2>", "<risk 3>"],
+    "keyRampCatalysts": ["<what would accelerate ramp-up 1>", "<catalyst 2>", "<catalyst 3>"]
+  }
 }`;
 
   try {
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 120_000);
     const completion = await openai.chat.completions.create(
-      { model: "gpt-5.4", max_completion_tokens: 6500, messages: [{ role: "user", content: masterPrompt }] },
+      { model: "gpt-5.4", max_completion_tokens: 9000, messages: [{ role: "user", content: masterPrompt }] },
       { signal: abort.signal },
     );
     clearTimeout(timeout);
