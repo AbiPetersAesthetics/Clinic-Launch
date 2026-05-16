@@ -26,6 +26,7 @@ import {
   Gauge,
   Megaphone,
   Target,
+  FileDown,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
@@ -194,8 +195,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           onNavigate={() => setMobileMenuOpen(false)}
         />
 
-        {/* Bottom: location */}
-        <div className="p-4 border-t border-sidebar-border">
+        {/* Bottom: export + location */}
+        <div className="p-4 border-t border-sidebar-border space-y-3">
+          <Link
+            href="/export"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-xs font-semibold transition-colors border ${
+              location === "/export"
+                ? "bg-sidebar-primary/20 text-sidebar-primary border-sidebar-primary/30"
+                : "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground border-sidebar-border/60"
+            }`}
+          >
+            <FileDown className="w-3.5 h-3.5 shrink-0" />
+            Export Full Report PDF
+          </Link>
           <p className="text-sidebar-foreground/30 text-[10px] tracking-[0.15em] uppercase">
             Winchester · 9A Jewry Street
           </p>
