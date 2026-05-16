@@ -104,7 +104,7 @@ type GoNoGoResult = {
   verdictLabel: string;
   confidenceScore: number;
   executiveSummary: string;
-  detailedAssessment: { financial?: string; property?: string; market?: string; strategic?: string; personal?: string; lifeDesign?: string };
+  detailedAssessment: { financial?: string; property?: string; market?: string; competitorAnalysis?: string; demographics?: string; strategic?: string; personal?: string; lifeDesign?: string };
   riskScores: { financial: number; property: number; market: number; strategic: number; lifeDesign?: number; overall: number };
   riskRationale: { financial?: string; property?: string; market?: string; strategic?: string; lifeDesign?: string };
   strengths: string[];
@@ -367,6 +367,8 @@ export default function DashboardPage() {
           { key: "financial" as const, label: "Financial" },
           { key: "property" as const, label: "Property" },
           { key: "market" as const, label: "Market" },
+          { key: "competitorAnalysis" as const, label: "Competitor Analysis" },
+          { key: "demographics" as const, label: "Demographics & Catchment" },
           { key: "strategic" as const, label: "Strategic" },
           { key: "personal" as const, label: "Personal Finance" },
           { key: "lifeDesign" as const, label: "Life Design" },

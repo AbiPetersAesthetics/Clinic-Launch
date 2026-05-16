@@ -349,14 +349,41 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
   // ── Competition context ───────────────────────────────────────────────────
   let competitionContext = "No competitors have been researched yet — market risk assessment based on general Winchester market knowledge only.";
   if (competitorsRaw.length > 0) {
-    const top = competitorsRaw.slice(0, 15); // cap at 15 to stay within token budget
+    const top = competitorsRaw.slice(0, 15);
     const highThreat = top.filter(c => (c.estimatedThreatScore ?? 0) >= 70);
     const medThreat  = top.filter(c => (c.estimatedThreatScore ?? 0) >= 40 && (c.estimatedThreatScore ?? 0) < 70);
-    const avgRating  = top.filter(c => c.googleRating && parseFloat(c.googleRating) > 0)
+    const avgRatingArr = top.filter(c => c.googleRating && parseFloat(c.googleRating) > 0)
                           .map(c => parseFloat(c.googleRating!));
-    const avgGoogleRating = avgRating.length > 0
-      ? (avgRating.reduce((s, r) => s + r, 0) / avgRating.length).toFixed(1)
+    const avgGoogleRating = avgRatingArr.length > 0
+      ? (avgRatingArr.reduce((s, r) => s + r, 0) / avgRatingArr.length).toFixed(1)
       : null;
+
+    // Pricing summary
+    const TREATMENT_LABELS: Record<string, string> = {
+      antiWrinkle1: "Anti-wrinkle 1 area", antiWrinkle2: "Anti-wrinkle 2 areas", antiWrinkle3: "Anti-wrinkle 3 areas",
+      lipFiller05: "Lip filler 0.5ml", lipFiller1: "Lip filler 1ml", cheekFiller: "Cheek filler",
+      jawChin: "Jaw/chin filler", tearTrough: "Tear trough", skinBooster: "Skin booster",
+      profhilo: "Profhilo", polynucleotides: "Polynucleotides", microneedling: "Microneedling", chemicalPeel: "Chemical peel",
+    };
+    const APA_TARGET_PRICES: Record<string, number> = {
+      antiWrinkle1: 200, antiWrinkle2: 280, antiWrinkle3: 350,
+      lipFiller05: 280, lipFiller1: 350, cheekFiller: 350, jawChin: 380, tearTrough: 400,
+      skinBooster: 300, profhilo: 650, polynucleotides: 350, microneedling: 200, chemicalPeel: 150,
+    };
+    const pricingRows: string[] = [];
+    for (const [key, label] of Object.entries(TREATMENT_LABELS)) {
+      const compPrices = top
+        .map(c => { try { return (JSON.parse(c.pricingJson ?? "{}") as Record<string,number>)[key] || 0; } catch { return 0; } })
+        .filter(p => p > 0);
+      if (compPrices.length === 0) continue;
+      const sorted = [...compPrices].sort((a, b) => a - b);
+      const min = sorted[0], max = sorted[sorted.length - 1];
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const apaTarget = APA_TARGET_PRICES[key] ?? 0;
+      const allWithApa = [...compPrices, apaTarget].sort((a, b) => b - a);
+      const apaRank = allWithApa.indexOf(apaTarget) + 1;
+      pricingRows.push(`  ${label}: market £${min}–£${max} (median £${median}, ${compPrices.length} competitors) | APA target £${apaTarget} → ranks ${apaRank}${["st","nd","rd"][apaRank-1]||"th"} most expensive of ${allWithApa.length}`);
+    }
 
     const lines = top.map(c =>
       `  • ${c.name ?? "Unknown"} (${c.clinicType ?? "unknown type"}) — threat: ${c.estimatedThreatScore ?? "?"}/100` +
@@ -364,15 +391,32 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
       (c.googleRating ? `, Google ${c.googleRating}★` + (c.googleReviewCount ? ` (${c.googleReviewCount} reviews)` : "") : "") +
       (c.premisesType ? `, ${c.premisesType}` : "") +
       (c.positioningCategory ? `, positioned as: ${c.positioningCategory}` : "") +
+      (c.independentPrescriber ? ", IP" : "") +
+      (c.saveFace ? ", Save Face accredited" : "") +
       (c.threatReason ? `\n    Threat: ${c.threatReason}` : "")
     ).join("\n");
 
     competitionContext = `${competitorsRaw.length} competitors researched (showing top ${top.length} by threat score):
 ${lines}
 
+PRICING ANALYSIS — APA target vs market (where competitor pricing is entered):
+${pricingRows.length > 0 ? pricingRows.join("\n") : "  No competitor pricing data entered yet."}
+
 Summary: ${highThreat.length} high-threat competitors (score ≥70), ${medThreat.length} medium-threat (40–69).${avgGoogleRating ? ` Average Google rating across researched competitors: ${avgGoogleRating}★.` : ""}
-Market note: This data was researched by Abi directly — treat as more reliable than AI-generated estimates.`;
+Note: This data was researched by Abi directly — treat as more reliable than AI-generated estimates.`;
   }
+
+  // ── Winchester demographics context ────────────────────────────────────────
+  const demographicsContext = `=== WINCHESTER CATCHMENT DEMOGRAPHICS (for market analysis) ===
+Population: ~47,000 city, ~125,000 Winchester district.
+Affluence: Consistently ranked top 5 most affluent cities outside London. Average household income ~£52,000 (vs UK average ~£35,000). High homeownership (>65%). Very low unemployment.
+Demographics profile: Predominantly ABC1 professional/managerial. Strong 35–60 female demographic — the core aesthetics consumer. High concentration of teachers, NHS professionals, solicitors, accountants, business owners.
+Education: University of Winchester (~8,000 students) + several outstanding schools attracting relocating professional families.
+Tourism & footfall: 1.5M+ visitors/year. City centre footfall is stable year-round (cathedral, high street, market). King's Walk / Jewry Street area: secondary high street — lower rent than primary pitch, good passing trade from independent retail and dining.
+Spend patterns: Winchester consumers are price-aware but quality-driven. Premium positioning is viable if justified — clients here will pay more for a qualified medical practitioner over a beauty therapist. They research practitioners carefully; Save Face, reviews, and credentials matter.
+Key competitor dynamic: Several established nurse-led and doctor-led clinics already exist, suggesting proven demand for medical aesthetics. Market is not saturated. No dominant single-operator with 100+ reviews and full treatment menu.
+Seasonal patterns: Strong Jan (new year resolutions), pre-summer (May–June), and pre-Christmas (Oct–Nov) peaks. Summer quieter for anti-wrinkle as patients plan treatments around holidays.
+Client acquisition: Winchester is an Instagram-active, referral-driven market. Local Facebook community groups (Hampshire Aesthetics etc.) are influential. Word-of-mouth from a high-quality result spreads fast in a community this size (~50,000 active local social media users).`;
 
   // ── Decisions context ─────────────────────────────────────────────────────
   const decisionsContext = decisionsRaw.length > 0
@@ -510,6 +554,8 @@ ${bedhContext}
 === COMPETITIVE LANDSCAPE (researched by Abi — real data, not AI estimates) ===
 ${competitionContext}
 
+${demographicsContext}
+
 === STRATEGIC DECISIONS ALREADY MADE ===
 ${decisionsContext}
 
@@ -533,6 +579,8 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "financial": "<2-3 sentences on the three scenarios: which is realistic given Bedhampton's current trajectory, what the break-even occupancy looks like, and whether the numbers justify the rent commitment — cite figures>",
     "property": "<2-3 sentences on the property terms: is the rent commercially reasonable for this location? What terms matter most in heads of terms negotiations? What should she push back on or clarify before signing?>",
     "market": "<2-3 sentences on the local market opportunity at ${propertyTown}: is there demand for premium aesthetics here? How does the location work for footfall and client acquisition? What is the competitive risk?>",
+    "competitorAnalysis": "<3-4 sentences of detailed competitor analysis: who are the highest-threat operators and WHY? Reference specific names, their positioning, pricing, Google reviews, and distance. Where does APA have a clear edge (IP status, nurse credentials, Bedhampton reviews)? Where is she vulnerable? Use the pricing rank data to assess whether her target prices are commercially defensible — cite actual treatment prices and ranks.>",
+    "demographics": "<3-4 sentences on the Winchester catchment demographics as they relate to this business: what is the realistic addressable market size, who is the core client, what spending power exists, what does the seasonal and footfall pattern mean for her revenue model, and how does the Jewry Street location specifically sit within the city's consumer geography? Be specific and commercial — not generic>",
     "strategic": "<2 sentences on strategic fit: does this move make sense for Abi's business at this stage? How does Bedhampton's current performance de-risk or complicate the move?>",
     "personal": "<2 sentences on her personal financial position: does her runway, nursing income, and Bedhampton income give her enough buffer to safely commit to this lease?>",
     "lifeDesign": "<2-3 sentences on personal readiness: does the nursing exit timeline align with the opening date? Is the clinic schedule model consistent with her personal maximum? Are there unresolved family logistics (school run, David's role) that represent operational risk? Flag any revenue ceiling conflicts between the financial model and her personal day-limit.>"
@@ -597,7 +645,7 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     const abort = new AbortController();
     const timeout = setTimeout(() => abort.abort(), 120_000);
     const completion = await openai.chat.completions.create(
-      { model: "gpt-5.1", max_completion_tokens: 5000, messages: [{ role: "user", content: masterPrompt }] },
+      { model: "gpt-5.4", max_completion_tokens: 6500, messages: [{ role: "user", content: masterPrompt }] },
       { signal: abort.signal },
     );
     clearTimeout(timeout);
