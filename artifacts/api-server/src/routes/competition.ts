@@ -611,6 +611,256 @@ router.post("/projects/:id/competitors/lookup", async (req, res) => {
   }
 });
 
+// ── POST tab-specific AI research for competitor modal ────────────────────
+router.post("/projects/:id/competitors/tab-research", async (req, res) => {
+  const {
+    name,
+    website,
+    address,
+    instagram,
+    tab,
+    existingData = {},
+  } = req.body as {
+    name?: string;
+    website?: string;
+    address?: string;
+    instagram?: string;
+    tab: number;
+    existingData?: Record<string, unknown>;
+  };
+
+  if (!name?.trim() && !website?.trim()) {
+    return res.status(400).json({ error: "Provide at least a competitor name or website." });
+  }
+
+  // Fetch website HTML for context — best-effort, non-blocking
+  let htmlContext = "";
+  if (website) {
+    const pageResult = await fetchPage(website, 8000);
+    if (pageResult.ok && pageResult.html.length > 500) {
+      const stripped = pageResult.html
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s{3,}/g, " ")
+        .slice(0, 8000);
+      htmlContext = `\n\nWebsite content (extracted):\n${stripped}`;
+    }
+  }
+
+  const competitorContext = [
+    name    && `Clinic name: ${name}`,
+    website && `Website: ${website}`,
+    address && `Address: ${address}`,
+    instagram && `Instagram: @${instagram.replace("@", "")}`,
+  ].filter(Boolean).join("\n");
+
+  const existingContext = Object.keys(existingData).length > 0
+    ? `\nAlready known:\n${Object.entries(existingData)
+        .filter(([, v]) => v !== null && v !== "" && v !== 0 && v !== false && v !== "unknown" && v !== "Unclear")
+        .map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`)
+        .join("\n")}`
+    : "";
+
+  const positioningHint = (existingData.positioningCategory as string) || "unknown — infer from clinic type and location";
+
+  const TAB_CONFIGS: Record<number, { title: string; instructions: string; schema: string }> = {
+    0: {
+      title: "Identity & Contact Details",
+      instructions: `Research this aesthetics clinic's identity and contact details. Use your training knowledge of UK aesthetics clinics, Google Business profiles, and social media.
+
+Find or confirm: official clinic/practitioner name, full postal address, UK phone number, Instagram handle, Google rating (as a string like "4.8"), total Google review count, Instagram follower count, distance in miles from Winchester city centre (9A Jewry Street, SO23 8RY), and any booking platform URL (Fresha, Timely, Ovatu, etc).
+
+Be specific — give actual numbers where you know them. If estimating, note it in the summary.`,
+      schema: `{
+  "name": "string or null",
+  "address": "full UK postal address or null",
+  "phone": "UK phone number or null",
+  "instagram": "instagram handle WITHOUT @ symbol, or null",
+  "website": "full URL or null",
+  "bookingLink": "booking platform URL if known, or null",
+  "googleRating": "e.g. '4.8' as string, or null",
+  "googleReviewCount": integer_or_null,
+  "instagramFollowers": integer_or_null,
+  "distanceMiles": "miles from Winchester as string e.g. '1.2', or null",
+  "summary": "2-3 sentences: what you found, confidence level, and any important caveats."
+}`,
+    },
+    1: {
+      title: "Clinic Profile & Credentials",
+      instructions: `Research this aesthetics clinic's professional credentials, clinic type, and market positioning. Be objective — this is competitor intelligence, not a marketing summary.
+
+Determine: type of practitioner (nurse, doctor, dentist, beautician, unknown), NHS/medical background, any explicit accreditations (Save Face = savefaceaccredited.co.uk, JCCP = jccp.org.uk), whether they are an independent prescriber, premises type, how they position themselves, hero treatments, and who their target client is.
+
+Critical rule: only mark saveFace=true or jccp=true if explicitly stated on their website or official directories — never assume.`,
+      schema: `{
+  "clinicType": "nurse-led | doctor-led | dentist-led | beautician-led | mixed practitioner | laser/skin specialist | injectables-only | salon-led aesthetics | chain/brand clinic | unknown",
+  "premisesType": "high street shopfront | medical clinic | rented room | beauty salon room | home clinic | dental clinic | chain clinic | destination clinic | unknown",
+  "positioningCategory": "luxury medical clinic | natural-results nurse-led clinic | doctor-led premium clinic | beauty salon aesthetics | budget injector | skin/laser specialist | holistic wellness clinic | chain clinic | home-based trusted local | social-media-led injector",
+  "practitionerType": "e.g. 'RGN, 6 years aesthetics experience' or null",
+  "targetAudience": "e.g. '30s-50s professional females in Hampshire' or null",
+  "yearsExperience": integer_or_null,
+  "saveFace": boolean,
+  "jccp": boolean,
+  "independentPrescriber": boolean,
+  "nhsBackground": boolean,
+  "heroTreatments": "comma-separated top 3-5 signature treatments",
+  "credentialsNotes": "honest 2-3 sentence assessment of their clinical credentials and authority",
+  "summary": "3-4 sentences: professional profile, positioning, what makes them credible or not as a competitor to a new premium Winchester nurse-led clinic."
+}`,
+    },
+    2: {
+      title: "Reviews & Social Media Presence",
+      instructions: `Research this aesthetics clinic's online reputation and social media activity. You are a neutral analyst — do not soften negative findings.
+
+Investigate: Google review sentiment (what do reviewers praise, what do they complain about?), Instagram posting frequency (daily / several per week / weekly / fortnightly / monthly / rarely), content quality (1=very poor to 5=professional and consistent), use of before/after imagery, and overall trust reputation.
+
+If you have specific knowledge of this clinic from your training, use it. If not, make evidence-based inferences from their positioning and type — but flag clearly that you are estimating. Give real, actionable insight — not generic statements.`,
+      schema: `{
+  "googleReviewCount": integer_or_null,
+  "reviewSentimentSummary": "honest 2-3 sentence summary of what their Google reviews say — common praise, complaints, overall tone. Be specific.",
+  "commonPraiseJson": ["most common praise theme", "second most common", "third"],
+  "commonComplaintsJson": ["most common complaint", "second if applicable"],
+  "postingFrequency": "daily | several per week | weekly | fortnightly | monthly | rarely | unknown",
+  "contentQualityScore": integer_1_to_5,
+  "beforeAfterUse": boolean,
+  "summary": "3-4 sentences covering: overall reputation strength, what reviewers say, social media presence quality, and how their online authority compares to what a new clinic needs to compete with them."
+}`,
+    },
+    3: {
+      title: "Pricing & Treatment Menu",
+      instructions: `Research this clinic's treatment pricing and menu. Use any prices visible in the website content. If prices are not visible, estimate based on their positioning, clinic type, and local market context — but label estimates clearly.
+
+UK market context for anti-wrinkle (per area): budget = £100-150, mid-market = £150-200, premium = £200-300+. Their positioning: ${positioningHint}.
+
+Cover at minimum: anti-wrinkle 1/2/3 areas, lip filler 0.5ml and 1ml, cheek filler 1ml, Profhilo (course of 2), tear trough. Add any other treatments they clearly promote.`,
+      schema: `{
+  "pricingJson": {
+    "Anti-wrinkle 1 area": integer_or_null,
+    "Anti-wrinkle 2 areas": integer_or_null,
+    "Anti-wrinkle 3 areas": integer_or_null,
+    "Lip filler 0.5ml": integer_or_null,
+    "Lip filler 1ml": integer_or_null,
+    "Cheek filler 1ml": integer_or_null,
+    "Profhilo (course of 2)": integer_or_null,
+    "Tear trough": integer_or_null
+  },
+  "treatmentsJson": ["full list of treatments they offer"],
+  "heroTreatments": "comma-separated top 3-5 most promoted treatments",
+  "summary": "3-4 sentences: pricing strategy (premium/mid/budget), specific price comparisons vs Winchester market rates, whether they compete on price or value, and what this means for a new premium clinic competing against them."
+}`,
+    },
+    4: {
+      title: "Competitive Threat Analysis",
+      instructions: `Conduct a rigorous, honest competitive analysis of this aesthetics clinic from the perspective of a new premium nurse-led clinic (Abi Peters Aesthetics) opening in Winchester city centre in November 2026. Do NOT be generous — give Abi an accurate threat assessment.
+
+Score 0-100 where 100 = strongest possible competitor:
+- Clinical Authority Score: clinical credibility, qualifications, medical depth
+- Trust Score: online reputation, review volume, accreditations, longevity  
+- Brand Strength Score: visual brand quality, consistency, marketing professionalism
+- Premises Strength Score: physical space quality, location prominence, clinic environment
+
+Estimated Threat Score (0-100): holistic competitive threat. 80+ = serious threat requiring direct differentiation strategy. 50-79 = moderate, manageable with positioning. Below 50 = limited threat.
+
+Identify specific strengths and genuine weaknesses — vague answers are useless.`,
+      schema: `{
+  "estimatedThreatScore": integer_0_to_100,
+  "threatReason": "honest, specific 2-sentence assessment of the competitive threat — do not soften. What specifically makes them dangerous or manageable as competition?",
+  "clinicalAuthorityScore": integer_0_to_100,
+  "trustScore": integer_0_to_100,
+  "brandStrengthScore": integer_0_to_100,
+  "premisesStrengthScore": integer_0_to_100,
+  "strengthsJson": ["specific strength with supporting evidence", "second strength", "third strength"],
+  "weaknessesJson": ["specific exploitable weakness", "second weakness", "third weakness"],
+  "summary": "4-5 sentences: overall competitive assessment, their biggest advantages over a new entrant, their most exploitable vulnerabilities, and the single most important strategic response the new clinic must make to compete effectively."
+}`,
+    },
+    5: {
+      title: "Data Quality & Confidence Assessment",
+      instructions: `Assess the quality and reliability of the competitor intelligence available for this clinic. Be honest about what is confirmed vs. estimated vs. genuinely unknown.
+
+Consider: how findable is this clinic online? Website quality? Consistency across Google/Instagram/directories? How current is the data? What are the critical gaps Abi must fill herself through manual research?`,
+      schema: `{
+  "confidenceLevel": "Confirmed | Likely | Unclear | Not found",
+  "sourceLinks": "comma-separated specific URLs where data exists (website, Google Maps URL, Instagram, etc.)",
+  "notes": "honest 3-4 sentence assessment: what is well-confirmed, what is estimated, what are the critical intelligence gaps, and what Abi should verify manually before relying on this data.",
+  "summary": "2-3 sentences on overall data reliability and what is most important to verify independently."
+}`,
+    },
+  };
+
+  const tabConfig = TAB_CONFIGS[tab];
+  if (!tabConfig) return res.status(400).json({ error: `Unknown tab: ${tab}` });
+
+  const systemPrompt = `You are a specialist competitive intelligence analyst for UK aesthetics and medical aesthetics clinics. You have deep knowledge of the UK aesthetics market: clinic business models, typical pricing by positioning tier, standard professional credentials (Save Face, JCCP, RGN, ANP, independent prescribing), online marketing patterns, and local competitive dynamics in Hampshire and the South East.
+
+Your client is Abi Peters, an Advanced Nurse Practitioner launching a premium aesthetics clinic in Winchester city centre (November 2026). You are researching her competitors. Your job is to give Abi honest, specific, actionable intelligence — not reassuring generalities. Do not soften competitive threats. Do not be vague.
+
+Rules:
+- If you know something with confidence from your training data, state it directly
+- If you are estimating, say "estimated" or "likely" in the summary
+- If you genuinely don't know, return null for that field — never fabricate specific facts
+- Always populate the "summary" field with a substantive, specific paragraph that would actually be useful to someone making a business decision
+- Return ONLY valid JSON. No markdown, no text outside the JSON object.`;
+
+  const userMessage = `Research task: ${tabConfig.title}
+
+Competitor:
+${competitorContext}${existingContext}${htmlContext}
+
+Instructions:
+${tabConfig.instructions}
+
+Return this JSON schema exactly (null for genuinely unknown fields):
+${tabConfig.schema}`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-5.4",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessage },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.15,
+    });
+
+    const raw = completion.choices[0].message.content || "{}";
+    let parsed: Record<string, unknown> = {};
+    try { parsed = JSON.parse(raw); } catch { /* fall through */ }
+
+    const summary = (parsed.summary as string) || null;
+    delete parsed.summary;
+
+    // Normalise values: arrays → JSON strings, null strings → skip, pricing objects → JSON strings
+    const clean: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      if (v === null || v === undefined) continue;
+      if (typeof v === "string" && (v === "null" || v.trim() === "" || v === "unknown" || v === "Unclear")) continue;
+      if (Array.isArray(v)) {
+        const arr = (v as unknown[]).filter(Boolean);
+        if (arr.length > 0) clean[k] = JSON.stringify(arr);
+        continue;
+      }
+      if (k === "pricingJson" && typeof v === "object" && !Array.isArray(v)) {
+        const pricing: Record<string, number> = {};
+        for (const [t, p] of Object.entries(v as Record<string, unknown>)) {
+          const num = typeof p === "number" ? p : parseInt(String(p));
+          if (!isNaN(num) && num > 0) pricing[t] = num;
+        }
+        if (Object.keys(pricing).length > 0) clean[k] = JSON.stringify(pricing);
+        continue;
+      }
+      clean[k] = v;
+    }
+
+    return res.json({ data: clean, summary, fieldsFound: Object.keys(clean).length });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(502).json({ error: msg.slice(0, 300) });
+  }
+});
+
 // ── POST enrich existing competitor ───────────────────────────────────────
 router.post("/projects/:id/competitors/:cid/enrich", async (req, res) => {
   const projectId = parseInt(req.params.id);

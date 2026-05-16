@@ -275,26 +275,39 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
   };
 
   const handleTabSearch = async (tabIdx: number) => {
-    const url = (form.website || "").trim()
-      || (form.instagram ? `https://www.instagram.com/${form.instagram.replace("@","")}/` : "")
-      || lookupUrl.trim();
-    if (!url) {
-      setTabMsg({ type: "err", text: "Add a website or Instagram URL on the Identity tab first, then come back here." });
+    if (!form.name?.trim() && !form.website?.trim() && !lookupUrl.trim()) {
+      setTabMsg({ type: "err", text: "Add a clinic name or website on the Identity tab first." });
       return;
     }
     setTabLooking(true);
     setTabMsg(null);
     try {
-      const resp = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/lookup`, {
+      // Build existingData from current form — pass everything non-empty so GPT has full context
+      const existingData: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(form)) {
+        if (v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}" && v !== "unknown" && v !== "Unclear") {
+          existingData[k] = v;
+        }
+      }
+
+      const resp = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/tab-research`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({
+          name: form.name || "",
+          website: form.website || lookupUrl.trim() || "",
+          address: form.address || "",
+          instagram: form.instagram || "",
+          tab: tabIdx,
+          existingData,
+        }),
       });
       const json = await resp.json();
       if (!resp.ok) {
-        setTabMsg({ type: "err", text: json.error || "Search failed" });
+        setTabMsg({ type: "err", text: json.error || "Research failed" });
         return;
       }
+
       const allowed = new Set(TAB_FIELDS[tabIdx] || []);
       const d = json.data as Partial<FormData>;
       const filled = Object.fromEntries(
@@ -304,15 +317,15 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
         )
       );
       setForm(f => ({ ...f, ...filled }));
+
       const count = Object.keys(filled).length;
+      const summary = json.summary as string | null;
       setTabMsg({
         type: "ok",
-        text: count > 0
-          ? `${count} field${count !== 1 ? "s" : ""} updated from ${json.sourceCount ?? 1} page${(json.sourceCount ?? 1) !== 1 ? "s" : ""}`
-          : "Search complete — no new data found for this section",
+        text: summary || (count > 0 ? `${count} field${count !== 1 ? "s" : ""} updated` : "Research complete — no new data found for this section"),
       });
     } catch {
-      setTabMsg({ type: "err", text: "Network error — could not reach search service." });
+      setTabMsg({ type: "err", text: "Network error — could not reach research service." });
     } finally {
       setTabLooking(false);
     }
@@ -411,8 +424,8 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
           </button>
         </div>
         {tabMsg && (
-          <div className={`px-6 py-2 text-xs border-b border-border ${tabMsg.type === "ok" ? "text-teal-600 bg-teal-600/5" : "text-red-500 bg-red-500/5"}`}>
-            {tabMsg.type === "ok" ? "✓ " : "✗ "}{tabMsg.text}
+          <div className={`px-6 py-3 text-xs border-b border-border leading-relaxed ${tabMsg.type === "ok" ? "text-teal-700 dark:text-teal-400 bg-teal-600/5" : "text-red-500 bg-red-500/5"}`}>
+            <span className="font-semibold mr-1">{tabMsg.type === "ok" ? "✓" : "✗"}</span>{tabMsg.text}
           </div>
         )}
 
