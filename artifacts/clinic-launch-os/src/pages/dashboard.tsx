@@ -783,7 +783,7 @@ export default function DashboardPage() {
                               <XAxis dataKey="month" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
                               <YAxis tickFormatter={v => `£${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={40} />
                               <Tooltip
-                                contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 11 }}
+                                contentStyle={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 11, color: "#1a1a1a" }}
                                 formatter={(val: number, name: string) => {
                                   if (name === "revenue") return [`£${val.toLocaleString()}`, "Revenue"];
                                   if (name === "netPL") return [`${val >= 0 ? "+" : ""}£${val.toLocaleString()}`, "Net P&L"];
@@ -1381,7 +1381,7 @@ export default function DashboardPage() {
                   <Tooltip
                     formatter={(value: number) => [formatGBP(value), "Net Cashflow"]}
                     labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", boxShadow: "0 1px 6px 0 rgb(0 0 0 / 0.1)" }}
+                    contentStyle={{ background: "#fff", color: "#1a1a1a", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 6px 0 rgb(0 0 0 / 0.1)" }}
                   />
                   <Area
                     type="monotone"
@@ -1432,7 +1432,7 @@ export default function DashboardPage() {
                   <Tooltip
                     formatter={(value: number, name: string) => [value, name === "idealRemaining" ? "Ideal" : "Actual"]}
                     labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600, marginBottom: 4 }}
-                    contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))" }}
+                    contentStyle={{ background: "#fff", color: "#1a1a1a", borderRadius: 8, border: "1px solid #e2e8f0" }}
                   />
                   <Legend formatter={(v) => v === "idealRemaining" ? "Ideal" : "Actual"} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
                   <Line type="monotone" dataKey="idealRemaining" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />

@@ -1117,7 +1117,7 @@ export default function FinancialsPage() {
                               </linearGradient>
                             </defs>
                             <XAxis dataKey="month" tick={{ fontSize: 9, fill: "currentColor" }} tickFormatter={(v: string) => { const [y, m] = v.split("-"); return new Date(Number(y), Number(m) - 1).toLocaleDateString("en-GB", { month: "short" }); }} axisLine={false} tickLine={false} />
-                            <RechartTooltip formatter={(v: number) => [formatGBP(v), "Revenue"]} contentStyle={{ fontSize: 11 }} />
+                            <RechartTooltip formatter={(v: number) => [formatGBP(v), "Revenue"]} contentStyle={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8, fontSize: 11 }} />
                             <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} fill="url(#bedLiveGrad)" dot={false} />
                           </AreaChart>
                         </ResponsiveContainer>
@@ -1251,8 +1251,8 @@ export default function FinancialsPage() {
                             const d = payload[0]?.payload as CashflowMonth;
                             if (!d) return null;
                             return (
-                              <div className="rounded-lg border bg-background shadow-md p-3 text-xs max-w-[280px]">
-                                <p className="font-semibold text-sm mb-2">{label}</p>
+                              <div className="rounded-lg border shadow-md p-3 text-xs max-w-[280px]" style={{ background: "#fff", color: "#1a1a1a", borderColor: "#e2e8f0" }}>
+                                <p className="font-semibold text-sm mb-2" style={{ color: "#1a1a1a" }}>{label}</p>
                                 <div className="space-y-1">
                                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business capital</span><span className="font-bold">{formatGBP(d.cashBalance)}</span></div>
                                   {d.bedhNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Bedhampton net</span><span className={d.bedhNet >= 0 ? "text-blue-600" : "text-destructive"}>{formatGBP(d.bedhNet)}</span></div>}
