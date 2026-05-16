@@ -423,7 +423,6 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let wincNet = 0;
     let occupancyPercent = 0;
     let effectiveFixed = 0; // hoisted so display uses same value as net calculation
-    let wincRentWaived = 0; // rent amount waived during free-rent period
 
     if (!isPreOpening) {
       const wincMonth = i - openingMonthIndex; // 0-based months since opening
@@ -431,10 +430,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
-      // During rent-free months only rates (not rent) count towards Winchester fixed costs
-      const isFreeRentMonth = cfFreeRentMonths > 0 && wincMonth < cfFreeRentMonths;
-      effectiveFixed = isFreeRentMonth ? wincFixedCostsNoRent : wincFixedCosts;
-      if (isFreeRentMonth) wincRentWaived = cfRentAmount;
+      // Free rent is a pre-opening (lease period) benefit — post-opening always pays full fixed costs
+      effectiveFixed = wincFixedCosts;
       wincCosts = effectiveFixed + variableCosts;
     }
 
@@ -451,9 +448,16 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const bedhDualCosts = isPreOpening ? dualFixedCosts : 0;
     const bedhCosts = bedhClosed ? 0 : bedhBaseCosts + bedhDualCosts;
 
-    // Pre-opening property costs: rent + rates from lease signing date
+    // Pre-opening property costs: rent + rates from lease signing date.
+    // Free rent runs from day 1 of the lease (pre-opening), NOT from opening day.
+    // e.g. freeRentMonths=2 → Sep & Oct pay rates only; Nov (opening) pays full rent.
     const isInLeasePeriod = isPreOpening && i >= propStartIndex;
-    const preOpenPropertyCost = isInLeasePeriod ? (monthlyRent + monthlyRates) : 0;
+    const leaseMonthIndex = i - propStartIndex; // 0 = first month of lease
+    const preOpenIsFreeRent = isInLeasePeriod && cfFreeRentMonths > 0 && leaseMonthIndex < cfFreeRentMonths;
+    const preOpenPropertyCost = isInLeasePeriod
+      ? (preOpenIsFreeRent ? monthlyRates : monthlyRent + monthlyRates)
+      : 0;
+    const preOpenRentWaived = preOpenIsFreeRent ? monthlyRent : 0;
 
     // VAT — tracked across the whole business (Bedhampton + Winchester combined)
     const monthTotalRevenue = bedhRevenue + wincRevenue;
@@ -504,6 +508,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       isBedhamptonCloseMonth,
       projectCostBurn: Math.round(projectCostBurn),
       preOpenPropertyCost: Math.round(preOpenPropertyCost),
+      preOpenRentWaived: Math.round(preOpenRentWaived),
       taskLabels: taskLabelsThisMonth,
       vatLiability: Math.round(vatLiability),
       isVatRegistered,
@@ -514,7 +519,6 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincRevenue: Math.round(wincRevenue),
       wincVariableCosts: Math.round(wincVariableCosts),
       wincFixedCosts: Math.round(wincFixedCostsMonth),
-      wincRentWaived: Math.round(wincRentWaived),
       wincVat: Math.round(wincVat),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),

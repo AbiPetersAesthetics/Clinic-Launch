@@ -1020,23 +1020,23 @@ export default function FinancialsPage() {
             <div className="col-span-full rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20 px-4 py-3">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Rent-Free Period Active</span>
-                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">Months 1–{(cr as any).freeRentMonths}</span>
+                <span className="text-[10px] bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full font-medium">Pre-opening · {(cr as any).freeRentMonths} month{(cr as any).freeRentMonths > 1 ? "s" : ""}</span>
               </div>
               <div className="grid grid-cols-3 gap-4 text-xs">
                 <div>
-                  <div className="text-muted-foreground">Fixed costs (rent-free)</div>
+                  <div className="text-muted-foreground">Pre-opening lease cost</div>
                   <div className="font-semibold text-emerald-700 dark:text-emerald-400">{formatGBP((cr as any).wincFreeRent.fixedCosts)}/mo</div>
-                  <div className="text-[10px] text-muted-foreground">vs {formatGBP(cr.winc.fixedCosts)}/mo after</div>
+                  <div className="text-[10px] text-muted-foreground">rates only — rent waived</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Break-even (rent-free)</div>
+                  <div className="text-muted-foreground">Winchester break-even</div>
                   <div className="font-semibold text-emerald-700 dark:text-emerald-400">{(cr as any).wincFreeRent.breakEvenOccupancy.toFixed(0)}% occ</div>
-                  <div className="text-[10px] text-muted-foreground">vs {cr.winc.breakEvenOccupancy.toFixed(0)}% after rent starts</div>
+                  <div className="text-[10px] text-muted-foreground">once rent starts: {cr.winc.breakEvenOccupancy.toFixed(0)}% occ</div>
                 </div>
                 <div>
-                  <div className="text-muted-foreground">Monthly saving</div>
-                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{formatGBP((cr as any).rentLineAmount)}/mo</div>
-                  <div className="text-[10px] text-muted-foreground">rent waived × {(cr as any).freeRentMonths} months = {formatGBP((cr as any).rentLineAmount * (cr as any).freeRentMonths)} total</div>
+                  <div className="text-muted-foreground">Total rent saved</div>
+                  <div className="font-semibold text-emerald-700 dark:text-emerald-400">{formatGBP((cr as any).rentLineAmount * (cr as any).freeRentMonths)}</div>
+                  <div className="text-[10px] text-muted-foreground">{formatGBP((cr as any).rentLineAmount)}/mo × {(cr as any).freeRentMonths} month{(cr as any).freeRentMonths > 1 ? "s" : ""} pre-opening</div>
                 </div>
               </div>
             </div>
@@ -1542,9 +1542,8 @@ export default function FinancialsPage() {
                                 : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
-                            {/* Winchester Fixed — all items from fixed cost list, including dual costs (counted once).
-                                During pre-opening, preOpenPropertyCost (rent+rates committed via signed lease) is shown here.
-                                During free-rent months, wincFixedCosts = effectiveFixed (no rent) so the cell is correct. */}
+                            {/* Winchester Fixed — pre-opening shows lease property cost (rent+rates or rates-only if free-rent).
+                                Post-opening always shows full fixed costs — free rent is a pre-opening benefit only. */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
                               {(m.wincFixedCosts > 0 || (m.preOpenPropertyCost ?? 0) > 0) ? (
                                 m.isPreOpening && (m.preOpenPropertyCost ?? 0) > 0 ? (
@@ -1552,23 +1551,20 @@ export default function FinancialsPage() {
                                     <TooltipTrigger asChild>
                                       <span className="text-red-500/70 cursor-help underline decoration-dotted underline-offset-2">
                                         ({formatGBP((m.preOpenPropertyCost ?? 0) + m.wincFixedCosts)})
-                                      </span>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="left" className="text-xs max-w-[200px]" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-                                      <p className="font-semibold mb-1">Pre-opening property</p>
-                                      <p className="text-gray-600">Rent &amp; rates committed from lease signing: {formatGBP(m.preOpenPropertyCost ?? 0)}</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ) : (m as any).wincRentWaived > 0 ? (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <span className="text-red-500/70 cursor-help underline decoration-dotted underline-offset-2">
-                                        ({formatGBP(m.wincFixedCosts)})<span className="ml-1 text-[9px] text-emerald-600 font-bold">FREE RENT</span>
+                                        {(m as any).preOpenRentWaived > 0 && <span className="ml-1 text-[9px] text-emerald-600 font-bold">FREE RENT</span>}
                                       </span>
                                     </TooltipTrigger>
                                     <TooltipContent side="left" className="text-xs max-w-[220px]" style={{ background: "#fff", color: "#1a1a1a", border: "1px solid #e2e8f0", borderRadius: 8 }}>
-                                      <p className="font-semibold mb-1">Free-rent month</p>
-                                      <p className="text-gray-600">Rent waived ({formatGBP((m as any).wincRentWaived)}). Only rates &amp; other fixed costs apply this month.</p>
+                                      <p className="font-semibold mb-1">Pre-opening property</p>
+                                      {(m as any).preOpenRentWaived > 0 ? (
+                                        <>
+                                          <p className="text-emerald-700 font-medium mb-0.5">Rent-free month — rates only</p>
+                                          <p className="text-gray-600">Rates: {formatGBP(m.preOpenPropertyCost ?? 0)}</p>
+                                          <p className="text-emerald-600">Rent waived: {formatGBP((m as any).preOpenRentWaived)}</p>
+                                        </>
+                                      ) : (
+                                        <p className="text-gray-600">Rent + rates from lease signing: {formatGBP(m.preOpenPropertyCost ?? 0)}</p>
+                                      )}
                                     </TooltipContent>
                                   </Tooltip>
                                 ) : (
@@ -1649,12 +1645,6 @@ export default function FinancialsPage() {
                                             </div>
                                           )
                                       }
-                                      {(m as any).wincRentWaived > 0 && (
-                                        <div className="flex justify-between items-center pl-1 mt-0.5 border-t border-emerald-100 pt-0.5">
-                                          <span className="text-emerald-700 font-medium">Rent waived (free-rent)</span>
-                                          <span className="tabular-nums text-emerald-600 font-medium">+{formatGBP((m as any).wincRentWaived)}</span>
-                                        </div>
-                                      )}
                                       {m.wincVat > 0 && (
                                         <>
                                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
