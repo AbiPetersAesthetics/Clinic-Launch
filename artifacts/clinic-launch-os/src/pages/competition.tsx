@@ -284,9 +284,13 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
       const srcCount = json.sourceCount ?? 1;
       const gRating = json.googleRating ? ` · Google ${json.googleRating}★` : "";
       const igF = json.igFollowers > 0 ? ` · ${json.igFollowers.toLocaleString()} IG followers` : "";
-      setLookupMsg({ type: "ok", text: `${count} fields filled from ${srcCount} page${srcCount !== 1 ? "s" : ""}${gRating}${igF} — review and save.` });
+      const aiOnly = json.pageScrapable === false;
+      const modeNote = aiOnly
+        ? `AI knowledge used (website blocked) — ${count} fields filled. Verify details independently.`
+        : `${count} fields filled from ${srcCount} page${srcCount !== 1 ? "s" : ""}${gRating}${igF} — review and save.`;
+      setLookupMsg({ type: aiOnly ? "ok" : "ok", text: modeNote });
     } catch (e) {
-      setLookupMsg({ type: "err", text: "Network error — could not reach lookup service." });
+      setLookupMsg({ type: "err", text: "Could not reach the lookup service — check the API server is running." });
     } finally {
       setLooking(false);
     }

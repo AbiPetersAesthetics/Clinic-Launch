@@ -134,7 +134,7 @@ function parseFollowers(raw: string): number {
 }
 
 // Core lookup logic — used by both /lookup and /enrich
-async function runLookup(url: string): Promise<{ data: Record<string, unknown>; sources: string[]; igFollowers: number; googleRating: string; googleReviewCount: number; lat: string; lng: string; distanceMiles: string }> {
+async function runLookup(url: string): Promise<{ data: Record<string, unknown>; sources: string[]; igFollowers: number; googleRating: string; googleReviewCount: number; lat: string; lng: string; distanceMiles: string; pageScrapable: boolean }> {
   const sources: string[] = [];
 
   // Detect Instagram
@@ -147,248 +147,209 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     url = `https://www.instagram.com/${igHandle}/`;
   }
 
-  // ── Phase 1: Fetch main page ─────────────────────────────────────────────
-  const mainResult = await fetchPage(url, 12000);
-  if (!mainResult.ok || !mainResult.html) {
-    throw new Error("Could not reach that page. Check the URL and try again.");
-  }
-  const mainHtml = mainResult.html;
-  sources.push(url);
+  // ── Phase 1: Fetch main page (best-effort — fall back to AI-only if blocked) ──
+  const mainResult = await fetchPage(url, 8000);
+  const pageScrapable = mainResult.ok && mainResult.html.length > 100;
+  const mainHtml = pageScrapable ? mainResult.html : "";
+  if (pageScrapable) sources.push(url);
 
   const mainJsonLd = extractJsonLd(mainHtml);
   const mainBody = extractText(mainHtml, 4000);
 
-  // ── Phase 2: Discover sub-pages & Instagram in parallel ──────────────────
+  // ── Phase 2: Sub-pages & Instagram — only if main page was scraped ──────────
   let subPageHrefs: string[] = [];
   let baseUrl = "";
+  let subResults: PromiseSettledResult<{ html: string; ok: boolean }>[] = [];
+  let igPageResult: { html: string; ok: boolean } = { html: "", ok: false };
+  let allSubHtml = "";
 
-  try {
-    baseUrl = new URL(url).origin;
-    const subPagePattern = /\/(about|treatments?|services?|pric(e|ing|elist)|menu|treatment-menu|what-we-do|our-treatments|injectables|fillers?|book|contact|clinic)/i;
-    const seen = new Set<string>();
-    subPageHrefs = [...mainHtml.matchAll(/href="([^"#?]+)"/g)]
-      .map(m => m[1])
-      .filter(h => h.startsWith("/") && subPagePattern.test(h) && !seen.has(h) && seen.add(h) !== undefined)
-      .slice(0, 4);
-  } catch { /* ignore URL parse errors */ }
+  if (pageScrapable) {
+    try {
+      baseUrl = new URL(url).origin;
+      const subPagePattern = /\/(about|treatments?|services?|pric(e|ing|elist)|menu|treatment-menu|what-we-do|our-treatments|injectables|fillers?|book|contact|clinic)/i;
+      const seen = new Set<string>();
+      subPageHrefs = [...mainHtml.matchAll(/href="([^"#?]+)"/g)]
+        .map(m => m[1])
+        .filter(h => h.startsWith("/") && subPagePattern.test(h) && !seen.has(h) && seen.add(h) !== undefined)
+        .slice(0, 4);
+    } catch { /* ignore URL parse errors */ }
 
-  // Find Instagram handle in main page HTML (if not already Instagram)
-  if (!isInstagram) {
-    const igPageMatch = mainHtml.match(/instagram\.com\/([^/?&#"'\s\\]+)/i);
-    if (igPageMatch && !["p", "explore", "reel", "stories", "tv"].includes(igPageMatch[1])) {
-      igHandle = igPageMatch[1];
+    if (!isInstagram) {
+      const igPageMatch = mainHtml.match(/instagram\.com\/([^/?&#"'\s\\]+)/i);
+      if (igPageMatch && !["p", "explore", "reel", "stories", "tv"].includes(igPageMatch[1])) {
+        igHandle = igPageMatch[1];
+      }
     }
+
+    const subFetches = subPageHrefs.slice(0, 3).map(h => fetchPage(`${baseUrl}${h}`, 5000));
+    const igFetch = igHandle ? fetchPage(`https://www.instagram.com/${igHandle}/`, 5000) : Promise.resolve({ html: "", ok: false });
+    [subResults, igPageResult] = await Promise.all([Promise.allSettled(subFetches), igFetch]);
+    allSubHtml = subResults.map(r => r.status === "fulfilled" ? (r.value.html || "") : "").join("");
   }
 
-  // Fetch sub-pages and Instagram page in parallel
-  const subFetches = subPageHrefs.slice(0, 3).map(h => fetchPage(`${baseUrl}${h}`, 7000));
-  const igFetch = igHandle ? fetchPage(`https://www.instagram.com/${igHandle}/`, 8000) : Promise.resolve({ html: "", ok: false });
-
-  const [subResults, igPageResult] = await Promise.all([
-    Promise.allSettled(subFetches),
-    igFetch,
-  ]);
-
-  // Collect all sub-page HTML for use throughout
-  const allSubHtml = subResults.map(r => r.status === "fulfilled" ? (r.value.html || "") : "").join("");
-
-  // ── Phase 3a: Google Rating — multiple extraction strategies ──────────────
+  // ── Phase 3: Google Rating extraction (HTML-based, skipped if not scrapable) ──
   let googleRating = "";
   let googleReviewCount = 0;
 
-  // 1) JSON-LD aggregateRating on main page + sub-pages
-  const ldRating = mainJsonLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
-  const ldCount = mainJsonLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
-  if (ldRating) googleRating = ldRating[1];
-  if (ldCount) googleReviewCount = parseInt(ldCount[1]);
+  if (pageScrapable) {
+    const ldRating = mainJsonLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+    const ldCount = mainJsonLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
+    if (ldRating) googleRating = ldRating[1];
+    if (ldCount) googleReviewCount = parseInt(ldCount[1]);
 
-  if (!googleRating) {
-    for (const r of subResults) {
-      if (r.status === "fulfilled" && r.value.ok) {
-        const subLd = extractJsonLd(r.value.html);
-        const sr = subLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
-        const sc = subLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
-        if (sr) { googleRating = sr[1]; if (sc) googleReviewCount = parseInt(sc[1]); break; }
-      }
-    }
-  }
-
-  // 2) HTML microdata (itemprop="ratingValue") on all pages
-  if (!googleRating) {
-    const allHtmlForRating = mainHtml + allSubHtml;
-    const mdr = extractMicrodataRating(allHtmlForRating);
-    if (mdr) {
-      googleRating = mdr;
-      const mdc = allHtmlForRating.match(/itemprop="reviewCount"[^>]*content="(\d+)"/i)
-        || allHtmlForRating.match(/itemprop="reviewCount"[^>]*>(\d+)</i);
-      if (mdc) googleReviewCount = parseInt(mdc[1]);
-    }
-  }
-
-  // 3) Body text patterns: "4.9 out of 5", "rated 4.8", "4.9/5", "★ 4.9"
-  if (!googleRating) {
-    const allBodyText = mainBody;
-    const bodyRating = allBodyText.match(/\b([45]\.\d)\s*(?:out of 5|\/5|stars?|★|⭐)/i)
-      || allBodyText.match(/(?:rated?|rating)\s*[:\s]*([45]\.\d)/i)
-      || allBodyText.match(/Google\s+(?:rating|reviews?)[:\s]+([45]\.\d)/i);
-    if (bodyRating) googleRating = bodyRating[1];
-    const bodyCount = allBodyText.match(/(\d[\d,]+)\s*(?:Google\s+)?reviews?/i);
-    if (bodyCount && !googleReviewCount) googleReviewCount = parseInt(bodyCount[1].replace(/,/g, ""));
-  }
-
-  // 4) Bing search by business name (works even for JS-rendered sites, less bot-blocked than Google)
-  if (!googleRating) {
-    try {
-      const ldNameMatch = mainJsonLd.match(/"name"\s*:\s*"([^"]+)"/);
-      const candidateName = ldNameMatch?.[1] || getTitle(mainHtml).split(/[-|·]/)[0].trim();
-      if (candidateName) {
-        // Bing returns structured knowledge panels with ratings in HTML
-        const bq = encodeURIComponent(`"${candidateName}" aesthetics reviews`);
-        const bingResult = await fetchPage(`https://www.bing.com/search?q=${bq}&mkt=en-GB`, 7000);
-        if (bingResult.ok) {
-          const bh = bingResult.html;
-          // Bing knowledge panel rating: data-val="4.9" near "reviews" or aria-label="4.9 out of 5"
-          const br = bh.match(/(\d\.\d)\s*(?:out of 5|\/5|stars?)/i)
-            || bh.match(/data-[a-z]*rating[^=]*="([\d.]+)"/i)
-            || bh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/)
-            || bh.match(/aria-label="([\d.]+) out of 5/i);
-          const bc = bh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
-            || bh.match(/([\d,]+)\s+(?:Google\s+)?reviews?/i);
-          if (br) googleRating = br[1];
-          if (bc && !googleReviewCount) googleReviewCount = parseInt(bc[1].replace(/,/g, ""));
-        }
-
-        // Fallback to Google search if Bing didn't find it
-        if (!googleRating) {
-          const gq = encodeURIComponent(`${candidateName} aesthetics Google reviews`);
-          const googleResult = await fetchPage(`https://www.google.com/search?q=${gq}&hl=en-GB`, 6000);
-          if (googleResult.ok) {
-            const gh = googleResult.html;
-            const sr = gh.match(/aria-label="Rated ([\d.]+) out of 5[^"]*,?\s*([\d,]+)\s*reviews?"/i)
-              || gh.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
-            const sc = gh.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d[\d,]*)"?/)
-              || gh.match(/([\d,]+)\s+Google\s+reviews?/i);
-            if (sr) googleRating = sr[1];
-            if (sc && !googleReviewCount) googleReviewCount = parseInt(sc[1].replace(/,/g, ""));
-          }
+    if (!googleRating) {
+      for (const r of subResults) {
+        if (r.status === "fulfilled" && r.value.ok) {
+          const subLd = extractJsonLd(r.value.html);
+          const sr = subLd.match(/"ratingValue"\s*:\s*"?([\d.]+)"?/);
+          const sc = subLd.match(/"(?:reviewCount|ratingCount)"\s*:\s*"?(\d+)"?/);
+          if (sr) { googleRating = sr[1]; if (sc) googleReviewCount = parseInt(sc[1]); break; }
         }
       }
-    } catch { /* non-fatal */ }
+    }
+
+    if (!googleRating) {
+      const allHtmlForRating = mainHtml + allSubHtml;
+      const mdr = extractMicrodataRating(allHtmlForRating);
+      if (mdr) {
+        googleRating = mdr;
+        const mdc = allHtmlForRating.match(/itemprop="reviewCount"[^>]*content="(\d+)"/i)
+          || allHtmlForRating.match(/itemprop="reviewCount"[^>]*>(\d+)</i);
+        if (mdc) googleReviewCount = parseInt(mdc[1]);
+      }
+    }
+
+    if (!googleRating) {
+      const bodyRating = mainBody.match(/\b([45]\.\d)\s*(?:out of 5|\/5|stars?|★|⭐)/i)
+        || mainBody.match(/(?:rated?|rating)\s*[:\s]*([45]\.\d)/i)
+        || mainBody.match(/Google\s+(?:rating|reviews?)[:\s]+([45]\.\d)/i);
+      if (bodyRating) googleRating = bodyRating[1];
+      const bodyCount = mainBody.match(/(\d[\d,]+)\s*(?:Google\s+)?reviews?/i);
+      if (bodyCount && !googleReviewCount) googleReviewCount = parseInt(bodyCount[1].replace(/,/g, ""));
+    }
   }
 
   // ── Phase 4: Instagram followers ─────────────────────────────────────────
   let igFollowers = 0;
 
-  // A) Website body text — many clinics show "X followers" as social proof
-  const footerText = extractFooterAndContact(mainHtml);
-  const bodyIgMatch = (mainBody + " " + footerText).match(/([\d,.]+[kKmM]?)\s*(?:Instagram\s+)?[Ff]ollowers/)
-    || (mainBody + " " + footerText).match(/[Ff]ollowers[:\s]+([\d,.]+[kKmM]?)/);
-  if (bodyIgMatch) igFollowers = parseFollowers(bodyIgMatch[1]);
+  if (pageScrapable) {
+    const footerText = extractFooterAndContact(mainHtml);
+    const bodyIgMatch = (mainBody + " " + footerText).match(/([\d,.]+[kKmM]?)\s*(?:Instagram\s+)?[Ff]ollowers/)
+      || (mainBody + " " + footerText).match(/[Ff]ollowers[:\s]+([\d,.]+[kKmM]?)/);
+    if (bodyIgMatch) igFollowers = parseFollowers(bodyIgMatch[1]);
 
-  // B) Instagram page og:description
-  if (!igFollowers) {
-    const igHtml = isInstagram ? mainHtml : (igPageResult.ok ? igPageResult.html : "");
-    if (igHtml) {
-      const igDesc = igHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)?.[1]
-        || igHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i)?.[1]
-        || "";
-      const followMatch = igDesc.match(/([\d,.]+[kKmM]?)\s*Followers/i);
-      if (followMatch) igFollowers = parseFollowers(followMatch[1]);
-      if (!igFollowers) {
-        const edgeMatch = igHtml.match(/"edge_followed_by"\s*:\s*\{"count"\s*:\s*(\d+)\}/);
-        if (edgeMatch) igFollowers = parseInt(edgeMatch[1]);
+    if (!igFollowers) {
+      const igHtml = isInstagram ? mainHtml : (igPageResult.ok ? igPageResult.html : "");
+      if (igHtml) {
+        const igDesc = igHtml.match(/<meta[^>]*property="og:description"[^>]*content="([^"]+)"/i)?.[1]
+          || igHtml.match(/<meta[^>]*content="([^"]+)"[^>]*property="og:description"/i)?.[1]
+          || "";
+        const followMatch = igDesc.match(/([\d,.]+[kKmM]?)\s*Followers/i);
+        if (followMatch) igFollowers = parseFollowers(followMatch[1]);
+        if (!igFollowers) {
+          const edgeMatch = igHtml.match(/"edge_followed_by"\s*:\s*\{"count"\s*:\s*(\d+)\}/);
+          if (edgeMatch) igFollowers = parseInt(edgeMatch[1]);
+        }
+        if (igHandle && igPageResult.ok) sources.push(`https://www.instagram.com/${igHandle}/`);
       }
-      if (igHandle && igPageResult.ok) sources.push(`https://www.instagram.com/${igHandle}/`);
     }
   }
 
-  // ── Phase 5: Pre-extract coordinates from structured data ────────────────
-  // Nominatim geocoding runs AFTER GPT so GPT-extracted address is also available
+  // ── Phase 5: Coordinates (HTML-based, skipped if not scrapable) ──────────
   let lat = "";
   let lng = "";
   let distanceMiles = "";
 
-  // A) JSON-LD geo on main page
-  const ldLat = mainJsonLd.match(/"latitude"\s*:\s*"?([-\d.]+)"?/);
-  const ldLng = mainJsonLd.match(/"longitude"\s*:\s*"?([-\d.]+)"?/);
-  if (ldLat && ldLng) { lat = ldLat[1]; lng = ldLng[1]; }
+  if (pageScrapable) {
+    const ldLat = mainJsonLd.match(/"latitude"\s*:\s*"?([-\d.]+)"?/);
+    const ldLng = mainJsonLd.match(/"longitude"\s*:\s*"?([-\d.]+)"?/);
+    if (ldLat && ldLng) { lat = ldLat[1]; lng = ldLng[1]; }
 
-  // B) Google Maps iframe src on any page (most reliable coord source after JSON-LD)
-  if (!lat) {
-    const allHtmlForMaps = mainHtml + allSubHtml;
-    const mapSrcs = extractIframeSrcs(allHtmlForMaps);
-    for (const src of mapSrcs) {
-      // pb= format: !3d<lat>!4d<lng>
-      const pb = src.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
-      // @lat,lng,zoom format
-      const at = src.match(/@([-\d.]{4,12}),([-\d.]{4,12})/i);
-      // ?ll=lat,lng or ?q=lat,lng
-      const ll = src.match(/[?&](?:ll|q|center)=([-\d.]{4,12}),([-\d.]{4,12})/i);
-      const match = pb || at || ll;
-      if (match) { lat = match[1]; lng = match[2]; break; }
+    if (!lat) {
+      const allHtmlForMaps = mainHtml + allSubHtml;
+      const mapSrcs = extractIframeSrcs(allHtmlForMaps);
+      for (const src of mapSrcs) {
+        const pb = src.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
+        const at = src.match(/@([-\d.]{4,12}),([-\d.]{4,12})/i);
+        const ll = src.match(/[?&](?:ll|q|center)=([-\d.]{4,12}),([-\d.]{4,12})/i);
+        const match = pb || at || ll;
+        if (match) { lat = match[1]; lng = match[2]; break; }
+      }
+    }
+
+    if (!lat) {
+      const allHtmlForMaps = mainHtml + allSubHtml;
+      const pb = allHtmlForMaps.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
+      if (pb) { lat = pb[1]; lng = pb[2]; }
     }
   }
 
-  // C) Also scan raw HTML for maps embed patterns not in iframe src (e.g. data-src, JS vars)
-  if (!lat) {
-    const allHtmlForMaps = mainHtml + allSubHtml;
-    const pb = allHtmlForMaps.match(/!3d([-\d.]{4,12})!4d([-\d.]{4,12})/i);
-    if (pb) { lat = pb[1]; lng = pb[2]; }
-  }
-
-  // ── Phase 6: Assemble combined page text for GPT ─────────────────────────
+  // ── Phase 6: Assemble context for GPT ────────────────────────────────────
   const allTexts: string[] = [];
 
-  const mainTitle = getTitle(mainHtml);
-  const mainMeta = extractMeta(mainHtml);
-  const mainHead = extractHead(mainHtml);
-  const mainFooter = extractFooterAndContact(mainHtml);
-  const mapIframeSrcs = extractIframeSrcs(mainHtml + allSubHtml);
+  if (pageScrapable) {
+    const mainTitle = getTitle(mainHtml);
+    const mainHead = extractHead(mainHtml);
+    const mainFooter = extractFooterAndContact(mainHtml);
+    const mapIframeSrcs = extractIframeSrcs(mainHtml + allSubHtml);
 
-  allTexts.push(
-    `=== MAIN PAGE: ${url} ===` +
-    `\nTITLE: ${mainTitle}` +
-    `\nHEAD (meta/JSON-LD):\n${mainHead}` +
-    `\nBODY TEXT:\n${mainBody}` +
-    `\nFOOTER/CONTACT AREA:\n${mainFooter}` +
-    (mapIframeSrcs.length ? `\nGOOGLE MAPS EMBED URLS:\n${mapIframeSrcs.join("\n")}` : "")
-  );
+    allTexts.push(
+      `=== MAIN PAGE: ${url} ===` +
+      `\nTITLE: ${mainTitle}` +
+      `\nHEAD (meta/JSON-LD):\n${mainHead}` +
+      `\nBODY TEXT:\n${mainBody}` +
+      `\nFOOTER/CONTACT AREA:\n${mainFooter}` +
+      (mapIframeSrcs.length ? `\nGOOGLE MAPS EMBED URLS:\n${mapIframeSrcs.join("\n")}` : "")
+    );
 
-  subResults.forEach((result, i) => {
-    if (result.status === "fulfilled" && result.value.ok && result.value.html) {
-      const href = subPageHrefs[i];
-      const t = getTitle(result.value.html);
-      const body = extractText(result.value.html, 2000);
-      const footer = extractFooterAndContact(result.value.html);
-      const jsonLd = extractJsonLd(result.value.html).slice(0, 600);
-      allTexts.push(
-        `=== SUB-PAGE: ${baseUrl}${href} ===` +
-        `\nTITLE: ${t}` +
-        `\nSTRUCTURED DATA:\n${jsonLd}` +
-        `\nBODY:\n${body}` +
-        (footer ? `\nFOOTER/CONTACT:\n${footer}` : "")
-      );
-      sources.push(`${baseUrl}${href}`);
+    subResults.forEach((result, i) => {
+      if (result.status === "fulfilled" && result.value.ok && result.value.html) {
+        const href = subPageHrefs[i];
+        const t = getTitle(result.value.html);
+        const body = extractText(result.value.html, 2000);
+        const footer = extractFooterAndContact(result.value.html);
+        const jsonLd = extractJsonLd(result.value.html).slice(0, 600);
+        allTexts.push(
+          `=== SUB-PAGE: ${baseUrl}${href} ===` +
+          `\nTITLE: ${t}` +
+          `\nSTRUCTURED DATA:\n${jsonLd}` +
+          `\nBODY:\n${body}` +
+          (footer ? `\nFOOTER/CONTACT:\n${footer}` : "")
+        );
+        sources.push(`${baseUrl}${href}`);
+      }
+    });
+
+    if (igFollowers > 0 || igHandle) {
+      allTexts.push(`=== INSTAGRAM DATA ===\nHandle: @${igHandle}\nFollowers extracted: ${igFollowers}`);
     }
-  });
-
-  if (igFollowers > 0 || igHandle) {
-    allTexts.push(`=== INSTAGRAM DATA ===\nHandle: @${igHandle}\nFollowers extracted: ${igFollowers}`);
+  } else {
+    // AI-only mode: website was unreachable — use URL/domain as context
+    allTexts.push(
+      `=== AI-ONLY MODE (website could not be fetched) ===` +
+      `\nURL provided: ${url}` +
+      (igHandle ? `\nInstagram handle detected: @${igHandle}` : "") +
+      `\n\nINSTRUCTION: The website could not be scraped. Use your training knowledge of UK aesthetics clinics to fill in as many fields as possible based on the URL/domain and any known information about this business. If the domain clearly identifies a business (e.g. winchester-aesthetics.co.uk), infer the name and use your knowledge to populate the profile. Clearly note in the "notes" field that this was filled from AI training data only.`
+    );
   }
 
   const combinedText = allTexts.join("\n\n").slice(0, 18000);
 
-  // ── Phase 6: GPT extraction ───────────────────────────────────────────────
+  // ── Phase 7: GPT extraction ───────────────────────────────────────────────
+  const systemPrompt = pageScrapable
+    ? `You are a specialist medical aesthetics market intelligence analyst. Extract structured competitor data from multi-source web content. Prioritise JSON-LD structured data, explicit price mentions, and clear factual statements. Do not fabricate. If a field is absent, use the default (empty string, 0, false, or "unknown").`
+    : `You are a specialist medical aesthetics market intelligence analyst. The competitor website could not be scraped. Use your training knowledge of UK aesthetics clinics to populate as many fields as possible from the URL/domain provided. Be honest about what you know vs. what you're inferring. Never fabricate specific prices unless you have strong grounds to believe them. Set confidenceLevel to "Unclear" for AI-inferred data.`;
+
   const completion = await openai.chat.completions.create({
     model: "gpt-5.4",
     messages: [
       {
         role: "system",
-        content: `You are a specialist medical aesthetics market intelligence analyst. Extract structured competitor data from multi-source web content. Prioritise JSON-LD structured data, explicit price mentions, and clear factual statements. Do not fabricate. If a field is absent, use the default (empty string, 0, false, or "unknown").`,
+        content: systemPrompt,
       },
       {
         role: "user",
-        content: `Extract all competitor intelligence from this multi-source content and return a single JSON object.
+        content: `${pageScrapable ? "Extract all competitor intelligence from this multi-source content" : "Use your training knowledge to populate competitor intelligence for the URL/domain provided"} and return a single JSON object.
 
 ${googleRating ? `CONFIRMED — googleRating: ${googleRating} — use exactly this value.` : ""}
 ${googleReviewCount ? `CONFIRMED — googleReviewCount: ${googleReviewCount} — use exactly this value.` : ""}
@@ -396,19 +357,18 @@ ${igFollowers > 0 ? `CONFIRMED — instagramFollowers: ${igFollowers} — use ex
 ${igHandle ? `CONFIRMED — instagram handle: @${igHandle} — use without @ symbol.` : ""}
 ${lat && lng ? `CONFIRMED — lat: ${lat}, lng: ${lng}, distanceMiles: ${distanceMiles} — use exactly these values.` : ""}
 
-MULTI-SOURCE CONTENT:
 ${combinedText}
 
 Return ONLY valid JSON with these fields (use defaults if absent):
 {
   "name": "",
-  "address": "FULL street address including postcode — look in footer, contact page, Google Maps iframe title, JSON-LD, or anywhere in body text",
+  "address": "FULL street address including postcode if known, else ''",
   "phone": "",
   "website": "${isInstagram ? "" : url}",
   "instagram": "${igHandle}",
   "facebook": "",
-  "bookingLink": "online booking URL if different from main website, else ''",
-  "googleRating": "${googleRating || "look hard — check for star ratings, Google review widgets, Trustpilot score, or any rating mentioned as X/5 or X out of 5 in the body text; use the numeric value only e.g. 4.9"}",
+  "bookingLink": "",
+  "googleRating": "",
   "googleReviewCount": ${googleReviewCount || 0},
   "instagramFollowers": ${igFollowers},
   "clinicType": "nurse-led | doctor-led | dentist-led | beautician-led | mixed practitioner | laser/skin specialist | injectables-only | salon-led aesthetics | chain/brand clinic | unknown",
@@ -421,20 +381,20 @@ Return ONLY valid JSON with these fields (use defaults if absent):
   "jccp": false,
   "independentPrescriber": false,
   "nhsBackground": false,
-  "credentialsNotes": "list all qualifications, accreditations, training courses, professional memberships mentioned",
-  "heroTreatments": "main featured treatments comma-separated",
-  "treatmentsJson": ["use ONLY these keys: antiWrinkle1,antiWrinkle2,antiWrinkle3,fillerLips,fillerCheeks,fillerJaw,fillerNose,fillerHands,skinBooster,prp,mesotherapy,microneedling,chemicalPeel,hydrafacial,ipl,laserHairRemoval,cryolipolysis,hifu,dermaplaning,vitaminDrip,profhilo,polynucleotides,blepharoplasty,threadLift,fatDissolver,skinTag,mole,botulinum"],
-  "pricingJson": {"treatmentKey": priceAsInteger — only for explicitly stated prices},
-  "postingFrequency": "daily | few-per-week | weekly | few-per-month | monthly | rarely | unknown",
+  "credentialsNotes": "",
+  "heroTreatments": "",
+  "treatmentsJson": [],
+  "pricingJson": {},
+  "postingFrequency": "unknown",
   "contentQualityScore": 3,
-  "reviewSentimentSummary": "1-2 sentences summarising review themes if reviews are mentioned",
-  "commonPraiseJson": ["themes mentioned as positives in reviews or testimonials"],
-  "commonComplaintsJson": ["themes mentioned as negatives or complaints"],
-  "strengthsJson": ["visible competitive strengths — be specific"],
-  "weaknessesJson": ["apparent weaknesses or gaps — be specific"],
-  "notes": "any other useful intelligence",
-  "sourceLinks": "${sources.join(", ")}",
-  "confidenceLevel": "Verified"
+  "reviewSentimentSummary": "",
+  "commonPraiseJson": [],
+  "commonComplaintsJson": [],
+  "strengthsJson": [],
+  "weaknessesJson": [],
+  "notes": "${pageScrapable ? "" : "Populated from AI training data only — website could not be scraped. Verify all details independently."}",
+  "sourceLinks": "${sources.join(", ") || url}",
+  "confidenceLevel": "${pageScrapable ? "Verified" : "Unclear"}"
 }`,
       },
     ],
@@ -484,7 +444,7 @@ Return ONLY valid JSON with these fields (use defaults if absent):
 
   serialiseFields(data);
 
-  return { data, sources, igFollowers, googleRating: finalRating, googleReviewCount, lat, lng, distanceMiles };
+  return { data, sources, igFollowers, googleRating: finalRating, googleReviewCount, lat, lng, distanceMiles, pageScrapable };
 }
 
 // ── Property filter helper ─────────────────────────────────────────────────
@@ -604,6 +564,7 @@ router.post("/projects/:id/competitors/lookup", async (req, res) => {
       lat: result.lat,
       lng: result.lng,
       distanceMiles: result.distanceMiles,
+      pageScrapable: result.pageScrapable,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1140,6 +1101,7 @@ router.post("/projects/:id/competitors/:cid/enrich", async (req, res) => {
 router.post("/projects/:id/competitors/ai-search", async (req, res) => {
   const { location = "9A Jewry Street, Winchester, Hampshire, UK", radiusMiles = 5 } = req.body;
 
+  try {
   const completion = await openai.chat.completions.create({
     model: "gpt-5.4",
     messages: [
@@ -1202,6 +1164,10 @@ Rank by estimatedThreatScore highest first. Include ALL types of competition —
     location,
     radiusMiles,
   });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return res.status(502).json({ error: msg.slice(0, 300) });
+  }
 });
 
 export default router;
