@@ -898,9 +898,9 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 120_000);
+    const timeout = setTimeout(() => abort.abort(), 180_000);
     const completion = await openai.chat.completions.create(
-      { model: "gpt-5.4", max_completion_tokens: 9000, messages: [{ role: "user", content: masterPrompt }] },
+      { model: "gpt-5.4", max_completion_tokens: 16000, messages: [{ role: "user", content: masterPrompt }] },
       { signal: abort.signal },
     );
     clearTimeout(timeout);

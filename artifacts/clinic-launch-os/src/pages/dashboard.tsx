@@ -235,9 +235,12 @@ export default function DashboardPage() {
   const runGoNoGo = useCallback(() => {
     setGoNoGoLoading(true);
     setGoNoGoError(null);
-    fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" } })
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 170_000);
+    fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
       .then((d: GoNoGoResult) => {
+        clearTimeout(timer);
         setGoNoGo(d);
         setGoNoGoLoading(false);
         setGoNoGoStale(false);
@@ -248,7 +251,14 @@ export default function DashboardPage() {
           localStorage.setItem(CACHE_AT_KEY, now);
         } catch {}
       })
-      .catch((e: string) => { setGoNoGoError(typeof e === "string" ? e : "Analysis failed"); setGoNoGoLoading(false); });
+      .catch((e: unknown) => {
+        clearTimeout(timer);
+        const msg = e instanceof Error && e.name === "AbortError"
+          ? "Analysis timed out — the AI is taking longer than usual. Try again."
+          : typeof e === "string" ? e : "Analysis failed — please try again.";
+        setGoNoGoError(msg);
+        setGoNoGoLoading(false);
+      });
   }, []);
 
   function clearDashboardCache() {
