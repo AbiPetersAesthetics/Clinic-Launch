@@ -28,7 +28,7 @@ export const financialsTable = pgTable("financial_models", {
   wincAcvGbp: real("winc_acv_gbp").notNull().default(155),
   treatmentRoomsCount: integer("treatment_rooms_count").notNull().default(2),
   practitionerHoursPerDay: real("practitioner_hours_per_day").notNull().default(7),
-  workingDaysPerMonth: integer("working_days_per_month").notNull().default(22),
+  workingDaysPerMonth: integer("working_days_per_month").notNull().default(17),
   conservativeOccupancyPercent: real("conservative_occupancy_percent").notNull().default(40),
   realisticOccupancyPercent: real("realistic_occupancy_percent").notNull().default(65),
   aggressiveOccupancyPercent: real("aggressive_occupancy_percent").notNull().default(85),

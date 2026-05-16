@@ -246,6 +246,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
 
   let financialContext = "No financial model entered yet.";
   let cashRunwayMonths = 0;
+  let modelIncomplete = false;
   let rentToRevenuePct = 0;
   let breakEvenRevenue = 0;
   let vatRisk = false;
@@ -273,10 +274,25 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     const fixedVarItems = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
     breakEvenRevenue = Math.round((actualMonthlyFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
 
-    // Cash runway pre-opening
-    const monthlyCashDrain = (financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp)
-      - (financial.existingClinicRevenueGbp + financial.nursingIncomeGbp);
-    cashRunwayMonths = monthlyCashDrain > 0 ? Math.round(financial.runwaySavingsGbp / monthlyCashDrain) : 99;
+    // Cash runway pre-opening — uses net Bedhampton contribution (after stock/running costs),
+    // plus a project cost burn allocation spread across the pre-opening window.
+    // This matches the dashboard formula and avoids the sentinel-99 bug when personal fields are zero.
+    const bedhStockPct = ((financial as any).bedhStockPercent ?? 35) / 100;
+    const bedhNetMonthly = Math.max(0,
+      financial.existingClinicRevenueGbp * (1 - bedhStockPct)
+      - ((financial as any).bedhRentGbp ?? 0)
+      - ((financial as any).bedhMarketingGbp ?? 0)
+      - ((financial as any).bedhamptonCostsGbp ?? 0)
+    );
+    const nursingNet = financial.nursingIncomeGbp ?? 0;
+    // This route intentionally excludes task data (property-decision focused).
+    // Runway here uses personal monthly costs vs net Bedhampton contribution only.
+    const personalMonthly = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp;
+    const monthlyCashDrain = personalMonthly - bedhNetMonthly - nursingNet;
+    const modelIncomplete = personalMonthly === 0 && financial.existingClinicRevenueGbp === 0 && nursingNet === 0;
+    cashRunwayMonths = monthlyCashDrain > 0
+      ? Math.round(financial.runwaySavingsGbp / monthlyCashDrain)
+      : 99;
 
     // Rent as % of realistic revenue
     rentToRevenuePct = realistic.revenue > 0 ? Math.round((financial.rentGbp / realistic.revenue) * 100) : 0;
@@ -324,7 +340,7 @@ Personal finance & domestic commitments:
   Total monthly household need: £${((financial.targetDrawingsGbp || financial.ownerDrawingsGbp || 0) + ((financial as any).schoolFeesGbp || 0) + ((financial as any).travelGbp || 0) + ((financial as any).otherHouseholdGbp || 0)).toLocaleString()}/mo
   Personal salary needs (min): £${financial.personalSalaryNeedsGbp}/mo
   Nursing income: £${financial.nursingIncomeGbp}/mo | Cash runway savings: £${financial.runwaySavingsGbp.toLocaleString()}
-  Pre-opening cash runway: ${cashRunwayMonths >= 99 ? "Secure (income exceeds burn)" : `${cashRunwayMonths} months`}
+  Pre-opening cash runway: ${modelIncomplete ? "⚠ Model incomplete — enter personal salary needs + Bedhampton income to calculate" : cashRunwayMonths >= 99 ? "Secure — income exceeds personal burn" : `${cashRunwayMonths} months`}
   Bedhampton income in model: £${financial.existingClinicRevenueGbp}/mo
   Self-funding buffer target: ${financial.selfFundingBufferPercent}% net margin
 
@@ -564,7 +580,7 @@ ${lifestyleContext}
 === KEY COMPUTED RATIOS ===
 • Break-even monthly revenue (${propertyLabel}): £${breakEvenRevenue.toLocaleString() || "not calculated"}
 • Rent as % of realistic monthly revenue: ${rentToRevenuePct}% (healthy = <15%, stretched = >20%)
-• Personal cash runway (savings covering living costs pre-opening): ${cashRunwayMonths >= 99 ? "secure — income exceeds outgoings" : `${cashRunwayMonths} months`}
+• Personal cash runway (savings covering living costs pre-opening): ${modelIncomplete ? "⚠ model incomplete — personal salary and Bedhampton income not yet entered; do NOT state runway as secure" : cashRunwayMonths >= 99 ? "secure — income exceeds outgoings" : `${cashRunwayMonths} months`}
 • VAT threshold risk: ${vatRisk ? "HIGH" : "LOW"} — ${vatRiskDetail}
 • Bedhampton income covers ${bedhCoverageMonths > 0 ? `${bedhCoverageMonths} months of new clinic fixed costs per year` : "unknown — set Bedhampton revenue in financial model"}
 • Days until target opening: ${daysToOpening}
@@ -583,9 +599,21 @@ Fixed monthly variable items (marketing + staffing + consumables): £${fixedMont
 Total monthly cost base (fixed + fixed-variable): £${totalMonthlyCost.toLocaleString()}
 Variable cost rate (stock + commissions): ${Math.round(varRate * 100)}% of revenue
 Winchester ACV target: £${wincAcv}
-Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} days)
+Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} clinic days)
+Revenue ceiling at 100% occupancy: £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
+
+⚠ CAPACITY MODEL CORRECTION (17 clinic days, not 22):
+The model now uses 17 realistic clinic days/month (accounts for weekends, admin, training, holidays).
+The previous 22-day assumption overstated capacity by 29%.
+  Old revenue ceiling (22 days): £${Math.round(financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv).toLocaleString()}/month
+  New revenue ceiling (17 days): £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
+  Reduction: £${Math.round((financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 - maxMonthlySlots) * wincAcv).toLocaleString()}/month less ceiling revenue
+
 Break-even monthly revenue: £${breakEvenRevenue.toLocaleString()}
-Break-even occupancy needed: ~${beOcc}% of capacity
+Break-even occupancy needed (17-day model): ~${beOcc}% of capacity
+  (Old 22-day break-even occupancy was ~${financial.treatmentRoomsCount > 0 && wincAcv > 0 ? Math.round((breakEvenRevenue / (financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv)) * 100) : 0}% — now ${beOcc}% under corrected model)
+
+MANDATORY: The executiveSummary must state the revenue ceiling under 17 days (£${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/mo at 100% occ), the break-even occupancy now required (${beOcc}%), and compare to the old 22-day ceiling (£${Math.round(financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv).toLocaleString()}/mo). This context is material to the go/no-go decision.
 
 FORMULA for each month's net P&L:
   netProfitLoss = projectedRevenue - totalMonthlyCost - (projectedRevenue × variableCostRate)

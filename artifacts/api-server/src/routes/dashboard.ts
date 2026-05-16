@@ -62,6 +62,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   let projectedFirstYearProfit: number | null = null;
   let monthlyBurnRate: number | null = null;
   let cashRunwayMonths: number | null = null;
+  let cashRunwayNote: string | null = null;
   let breakEvenRevenue: number | null = null;
   let realisticRevenue: number | null = null;
   let realisticNetProfit: number | null = null;
@@ -118,8 +119,26 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     // Break-even: revenue at which net = 0 (covers fixed + variable overheads)
     breakEvenRevenue = Math.round((actualFixed + fixedVarItems) / Math.max(1 - variableRatio, 0.01));
 
-    const monthlyCashDrain = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp - financial.existingClinicRevenueGbp;
-    cashRunwayMonths = monthlyCashDrain > 0 ? financial.runwaySavingsGbp / monthlyCashDrain : 99;
+    // Improved runway: accounts for Bedhampton net contribution (after stock/running costs)
+    // and monthly project cost burn spread across months until opening.
+    // This gives a genuine capital runway rather than the previous formula which returned 99
+    // whenever personal salary fields were zero.
+    const bedhStockPct = ((financial as any).bedhStockPercent ?? 35) / 100;
+    const bedhNetMonthly = Math.max(0,
+      financial.existingClinicRevenueGbp * (1 - bedhStockPct)
+      - ((financial as any).bedhRentGbp ?? 0)
+      - ((financial as any).bedhMarketingGbp ?? 0)
+      - ((financial as any).bedhamptonCostsGbp ?? 0)
+    );
+    // Spread total project cost across months from now until opening
+    const preOpenMonths = daysToOpening !== null ? Math.max(1, Math.ceil(daysToOpening / 30)) : 6;
+    const projectCostBurnPerMonth = currentSelectedCost / preOpenMonths;
+    const personalMonthly = financial.personalSalaryNeedsGbp + financial.ownerDrawingsGbp;
+    const monthlyCashDrain = personalMonthly + projectCostBurnPerMonth - bedhNetMonthly;
+    cashRunwayMonths = monthlyCashDrain > 0
+      ? Math.round(financial.runwaySavingsGbp / monthlyCashDrain)
+      : 99; // income genuinely exceeds burn
+    cashRunwayNote = `£${Math.round(financial.runwaySavingsGbp / 1000)}k capital ÷ £${Math.round(Math.max(monthlyCashDrain, 0)).toLocaleString()}/mo net drain | project costs £${Math.round(projectCostBurnPerMonth).toLocaleString()}/mo over ${preOpenMonths}mo · personal £${Math.round(personalMonthly).toLocaleString()}/mo · Bedh net £${Math.round(bedhNetMonthly).toLocaleString()}/mo`;
 
     // VAT awareness: forecast months until threshold from current turnover + projected Winc revenue
     const projectedAnnualWinc = realistic.rev * 12;
@@ -232,6 +251,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     projectedFirstYearProfit,
     monthlyBurnRate,
     cashRunwayMonths,
+    cashRunwayNote,
     projectConfidenceScore,
     phaseProgress,
     complianceReadinessPercent,

@@ -342,7 +342,7 @@ export default function DashboardPage() {
     scenario === "aggressive" ? "green" :
     scenario === "stress_test" ? "red" : "amber";
 
-  const unrealisticRunway = (dashboard?.cashRunwayMonths ?? 0) >= 48;
+  const unrealisticRunway = (dashboard?.cashRunwayMonths ?? 0) >= 99;
 
   const readinessStatus: RAGStatus =
     (dashboard?.launchReadinessPercent ?? 0) >= 30 ? "green" :
@@ -936,14 +936,19 @@ export default function DashboardPage() {
                 <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
               </div>
               <div className={`text-2xl font-bold mb-1 ${r.text}`}>
-                {unrealisticRunway ? "99+ mo" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
+                {unrealisticRunway ? "Secure" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
               </div>
               <p className="text-xs text-muted-foreground leading-snug">
                 {unrealisticRunway
-                  ? "Review financial assumptions — runway may be overstated."
-                  : "Cash runway with Bedhampton income offset."}
+                  ? "Income exceeds burn — Bedhampton covers costs."
+                  : "Pre-opening capital runway (project costs + personal − Bedh net)."}
               </p>
-              <a href="/financials" className={`mt-3 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
+              {(dashboard as any).cashRunwayNote && (
+                <p className="mt-1.5 text-[10px] text-muted-foreground/70 leading-snug font-mono">
+                  {(dashboard as any).cashRunwayNote}
+                </p>
+              )}
+              <a href="/financials" className={`mt-2 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
                 Review <ArrowRight className="w-3 h-3" />
               </a>
             </div>
@@ -1265,8 +1270,8 @@ export default function DashboardPage() {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Cash Runway</span>
-                <span className="text-xl font-bold">
-                  {unrealisticRunway ? "99+ mo" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
+                <span className={`text-xl font-bold ${unrealisticRunway ? "text-emerald-600" : (dashboard.cashRunwayMonths ?? 0) >= 6 ? "" : "text-destructive"}`}>
+                  {unrealisticRunway ? "Secure" : `${dashboard.cashRunwayMonths ?? "—"} mo`}
                 </span>
               </div>
               <div className="flex justify-between items-center">

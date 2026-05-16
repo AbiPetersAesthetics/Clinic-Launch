@@ -447,7 +447,7 @@ export default function FinancialsPage() {
       stockPercent: 0, marketingGbp: 0, staffingGbp: 0, commissionsPercent: 0, consumablesGbp: 0,
       wincAcvGbp: 0, selfFundingBufferPercent: 20,
       treatmentRoomsCount: 1, practitionerHoursPerDay: 7,
-      workingDaysPerMonth: 22, conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0,
+      workingDaysPerMonth: 17, conservativeOccupancyPercent: 0, realisticOccupancyPercent: 0,
       aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35, bedhCapacityCeilGbp: 16000,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
@@ -471,7 +471,7 @@ export default function FinancialsPage() {
       ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
       vatOnRent: Boolean(vatOnRentVal),
       // These map to integer DB columns — must be whole numbers
-      workingDaysPerMonth: Math.round(Number(values.workingDaysPerMonth) || 22),
+      workingDaysPerMonth: Math.round(Number(values.workingDaysPerMonth) || 17),
       practitionerHoursPerDay: Math.round(Number(values.practitionerHoursPerDay) || 7),
     };
   };
@@ -540,7 +540,7 @@ export default function FinancialsPage() {
         wincAcvGbp: m.wincAcvGbp ?? 0, selfFundingBufferPercent: m.selfFundingBufferPercent ?? 20,
         treatmentRoomsCount: m.treatmentRoomsCount ?? 1,
         practitionerHoursPerDay: derivedSchedule?.hoursPerDay ?? m.practitionerHoursPerDay ?? 7,
-        workingDaysPerMonth: derivedSchedule?.daysPerMonth ?? m.workingDaysPerMonth ?? 22,
+        workingDaysPerMonth: derivedSchedule?.daysPerMonth ?? m.workingDaysPerMonth ?? 17,
         conservativeOccupancyPercent: m.conservativeOccupancyPercent ?? 0,
         realisticOccupancyPercent: m.realisticOccupancyPercent ?? 0,
         aggressiveOccupancyPercent: m.aggressiveOccupancyPercent ?? 0,
@@ -697,7 +697,7 @@ export default function FinancialsPage() {
   const cp_acv    = Number(watchAll.wincAcvGbp) || 0;
   const cp_rooms  = Number(watchAll.treatmentRoomsCount) || 1;
   const cp_hpd    = Number(watchAll.practitionerHoursPerDay) || 7;
-  const cp_dpm    = Number(watchAll.workingDaysPerMonth) || 22;
+  const cp_dpm    = Number(watchAll.workingDaysPerMonth) || 17;
   const cp_stock  = Number(watchAll.stockPercent) || 0;
   const cp_comm   = Number(watchAll.commissionsPercent) || 0;
   const cp_mkt    = Number(watchAll.marketingGbp) || 0;
@@ -1013,39 +1013,44 @@ export default function FinancialsPage() {
             </div>
           )}
 
-          {/* Card 4: Cash Runway */}
+          {/* Card 4: Post-Opening Safety (not pre-opening capital runway) */}
           <Tooltip>
             <TooltipTrigger asChild>
               <div className={`rounded-xl border p-4 cursor-default ${(cr?.owner.cashRunwayMonths ?? 0) >= 12 ? "border-border/60 bg-card" : "border-amber-200 bg-amber-50 dark:bg-amber-950/20"}`}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cash Runway</span>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Post-Opening Safety</span>
                   <Shield className="w-4 h-4 text-primary/50" />
                 </div>
                 <div className="text-xl font-bold">{cr ? (cr.owner.cashRunwayMonths >= 99 ? "Secure" : `${cr.owner.cashRunwayMonths} months`) : "—"}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{cr ? `${formatGBP(cr.owner.runwaySavings)} savings buffer` : ""}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{cr ? `Winchester net vs £${(cr.owner.salaryTarget ?? 4000).toLocaleString()}/mo target` : ""}</div>
               </div>
             </TooltipTrigger>
             {cr && (
-              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-56 font-normal">
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-64 font-normal">
                 <div className="px-3 pt-3 pb-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Cash position</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">Post-opening operational safety</p>
+                  <p className="text-[10px] text-muted-foreground mb-2.5">Does Winchester's net profit cover personal salary needs? This is NOT the pre-opening capital runway — see dashboard for that figure (currently 3 months).</p>
                   <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Salary target (assumed)</span>
+                      <span className="font-medium">{formatGBP(cr.owner.salaryTarget ?? 4000)}/mo</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Winchester net (at target occ)</span>
+                      <span className="font-medium">{formatGBP(cr.winc?.netProfit ?? 0)}/mo</span>
+                    </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Savings buffer</span>
                       <span className="font-medium">{formatGBP(cr.owner.runwaySavings)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Min. cash needed</span>
+                      <span className="text-muted-foreground">Min. operating cash</span>
                       <span className="font-medium">{formatGBP(cr.owner.minimumCashRequired)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Recommended buffer</span>
-                      <span className="font-medium">{formatGBP(cr.owner.recommendedCash)}</span>
-                    </div>
                     <div className="border-t border-border pt-1.5 flex justify-between font-semibold">
-                      <span>Runway</span>
+                      <span>Status</span>
                       <span className={(cr.owner.cashRunwayMonths >= 12) ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}>
-                        {cr.owner.cashRunwayMonths >= 99 ? "Secure" : `${cr.owner.cashRunwayMonths} months`}
+                        {cr.owner.cashRunwayMonths >= 99 ? "Secure — income exceeds target" : `${cr.owner.cashRunwayMonths} months`}
                       </span>
                     </div>
                   </div>
