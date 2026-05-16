@@ -1186,8 +1186,228 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
 
   if(competitors.length===0) return <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to compare against APA.</div>;
 
+  // ── Scorecard calculations ──
+  const APA_AW1 = 200;
+  // Composite score for APA (same weights as computeThreatScore but as competitor-equivalent)
+  const apaComposite = Math.round(
+    APA_PROFILE.clinicalAuthorityScore * 0.20 +
+    Math.round(APA_PROFILE.googleRating * 20) * 0.15 +
+    Math.min(Math.round(APA_PROFILE.googleReviewCount / 3), 100) * 0.15 +
+    APA_PROFILE.brandStrengthScore * 0.20 +
+    APA_PROFILE.trustScore * 0.15 +
+    APA_PROFILE.premisesStrengthScore * 0.10 +
+    Math.min(Math.round(APA_PROFILE.instagramFollowers / 50), 100) * 0.05
+  );
+  const compScores = sorted.map(c => computeThreatScore(c));
+  const apaRankPos = compScores.filter(s => s >= apaComposite).length + 1;
+  const totalField = competitors.length + 1;
+
+  // How many RADAR_DIMS does APA win vs median competitor
+  const medianDimValues = RADAR_DIMS.map(d => {
+    const vals = competitors.map(c => d.get(c)).sort((a,b)=>a-b);
+    return vals[Math.floor(vals.length/2)] ?? 0;
+  });
+  const dimWins  = RADAR_DIMS.filter((d,i) => d.apa > medianDimValues[i]).length;
+  const dimDraws = RADAR_DIMS.filter((d,i) => d.apa === medianDimValues[i]).length;
+
+  // Credentials unique to APA
+  const sfCount   = competitors.filter(c => c.saveFace).length;
+  const ipCount   = competitors.filter(c => c.independentPrescriber).length;
+  const jccpCount = competitors.filter(c => c.jccp).length;
+  const nhsCount  = competitors.filter(c => c.nhsBackground).length;
+  const uniqueCreds = [
+    sfCount === 0 && "Save Face",
+    ipCount === 0 && "Ind. Prescriber",
+    jccpCount === 0 && "JCCP",
+    nhsCount === 0 && "NHS background",
+  ].filter(Boolean) as string[];
+
+  // Pricing rank (anti-wrinkle 1 area, higher = more premium)
+  const pricedComps = competitors.filter(c => {
+    const p = parseJson<Record<string,number>>(c.pricingJson, {});
+    return (p.antiWrinkle1 ?? 0) > 0;
+  });
+  const pricedAll = [...pricedComps].sort((a,b)=>{
+    const pa = parseJson<Record<string,number>>(a.pricingJson,{}).antiWrinkle1 ?? 0;
+    const pb = parseJson<Record<string,number>>(b.pricingJson,{}).antiWrinkle1 ?? 0;
+    return pb - pa;
+  });
+  const apaPriceRank = pricedAll.filter(c => (parseJson<Record<string,number>>(c.pricingJson,{}).antiWrinkle1 ?? 0) > APA_AW1).length + 1;
+
+  // Build league rows: insert APA at its rank
+  type LeagueRow = { isApa: true } | { isApa: false; comp: Competitor };
+  const leagueRows: LeagueRow[] = [];
+  let apaInserted = false;
+  for (let i = 0; i < sorted.length; i++) {
+    if (!apaInserted && compScores[i] < apaComposite) {
+      leagueRows.push({ isApa: true });
+      apaInserted = true;
+    }
+    leagueRows.push({ isApa: false, comp: sorted[i] });
+  }
+  if (!apaInserted) leagueRows.push({ isApa: true });
+
+  // Cell color helpers — green = APA better, red = competitor better
+  const cellBg = (apaVal: number, compVal: number, higherIsBetter = true) => {
+    const diff = higherIsBetter ? apaVal - compVal : compVal - apaVal;
+    if (diff > 5)  return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
+    if (diff < -5) return "bg-red-500/10 text-red-600 dark:text-red-400";
+    return "text-muted-foreground";
+  };
+
   return (
     <div className="space-y-6">
+
+      {/* ── APA vs Field Scorecard ── */}
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <p className="font-semibold text-sm">APA vs the Field</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Where you stand across every tracked dimension</p>
+          </div>
+          <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+            {dimWins}/{RADAR_DIMS.length} dimension wins vs median
+          </span>
+        </div>
+
+        {/* Summary stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border border-b border-border">
+          <div className="px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-primary">{apaRankPos}<span className="text-sm font-normal text-muted-foreground">/{totalField}</span></p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Field Rank</p>
+            <p className="text-[10px] text-muted-foreground">by composite score</p>
+          </div>
+          <div className="px-4 py-3 text-center">
+            <p className="text-2xl font-bold text-emerald-500">{dimWins}<span className="text-sm font-normal text-muted-foreground">+{dimDraws}</span></p>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Wins + Draws</p>
+            <p className="text-[10px] text-muted-foreground">vs median competitor</p>
+          </div>
+          <div className="px-4 py-3 text-center">
+            {pricedComps.length > 0 ? (
+              <>
+                <p className="text-2xl font-bold text-primary">{apaPriceRank}<span className="text-sm font-normal text-muted-foreground">/{pricedComps.length + 1}</span></p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Pricing Rank</p>
+                <p className="text-[10px] text-muted-foreground">anti-wrinkle 1 area (£{APA_AW1})</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-muted-foreground">—</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Pricing Rank</p>
+                <p className="text-[10px] text-muted-foreground">add competitor pricing</p>
+              </>
+            )}
+          </div>
+          <div className="px-4 py-3 text-center">
+            {uniqueCreds.length > 0 ? (
+              <>
+                <p className="text-2xl font-bold text-emerald-500">{uniqueCreds.length}</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Unique Credentials</p>
+                <p className="text-[10px] text-muted-foreground truncate">{uniqueCreds.join(", ")}</p>
+              </>
+            ) : (
+              <>
+                <p className="text-2xl font-bold text-amber-500">0</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Unique Credentials</p>
+                <p className="text-[10px] text-muted-foreground">shared with competitors</p>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* League table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-border bg-muted/30">
+                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground w-6">#</th>
+                <th className="text-left px-3 py-2.5 font-medium text-muted-foreground min-w-[140px]">Clinic</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Threat</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Rating</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Reviews</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Clin. Auth</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Brand</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Save Face</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">Ind. Rx</th>
+                <th className="px-3 py-2.5 font-medium text-muted-foreground text-center whitespace-nowrap">AW1 £</th>
+              </tr>
+            </thead>
+            <tbody>
+              {leagueRows.map((row, idx) => {
+                const rank = idx + 1;
+                if (row.isApa) {
+                  return (
+                    <tr key="apa" className="border-b border-primary/20 bg-primary/5">
+                      <td className="px-4 py-2.5 font-bold text-primary text-center">{rank}</td>
+                      <td className="px-3 py-2.5">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                          <span className="font-semibold text-primary">Abi Peters Aesthetics</span>
+                          <span className="text-[9px] font-semibold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">YOU</span>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2.5 text-center text-muted-foreground">—</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.googleRating}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.googleReviewCount}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.clinicalAuthorityScore}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.brandStrengthScore}</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-emerald-500">✓</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-emerald-500">✓</td>
+                      <td className="px-3 py-2.5 text-center font-bold text-primary">£{APA_AW1}</td>
+                    </tr>
+                  );
+                }
+                const c = row.comp;
+                const threat = computeThreatScore(c);
+                const rag = getRAG(threat);
+                const rating = parseFloat(c.googleRating) || 0;
+                const aw1 = parseJson<Record<string,number>>(c.pricingJson, {}).antiWrinkle1 ?? 0;
+                return (
+                  <tr key={c.id} className="border-b border-border hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-2.5 text-center text-muted-foreground">{rank}</td>
+                    <td className="px-3 py-2.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: colorOf(c) }} />
+                        <span className="font-medium text-foreground truncate max-w-[130px]" title={c.name}>{c.name}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pl-4 mt-0.5">{c.clinicType} · {c.distanceMiles ? `${c.distanceMiles}mi` : "dist. ?"}</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border ${rag.bg} ${rag.border} ${rag.text}`}>{threat}</span>
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-medium ${cellBg(APA_PROFILE.googleRating * 20, rating * 20)}`}>
+                      {rating > 0 ? rating.toFixed(1) : "—"}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-medium ${cellBg(APA_PROFILE.googleReviewCount, c.googleReviewCount ?? 0)}`}>
+                      {c.googleReviewCount ?? "—"}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-medium ${cellBg(APA_PROFILE.clinicalAuthorityScore, c.clinicalAuthorityScore)}`}>
+                      {c.clinicalAuthorityScore}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-medium ${cellBg(APA_PROFILE.brandStrengthScore, c.brandStrengthScore)}`}>
+                      {c.brandStrengthScore}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-bold ${c.saveFace ? "text-muted-foreground" : "text-emerald-500"}`}>
+                      {c.saveFace ? "✓" : "✗"}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-bold ${c.independentPrescriber ? "text-muted-foreground" : "text-emerald-500"}`}>
+                      {c.independentPrescriber ? "✓" : "✗"}
+                    </td>
+                    <td className={`px-3 py-2.5 text-center font-medium ${aw1 > 0 ? cellBg(APA_AW1, aw1) : "text-muted-foreground"}`}>
+                      {aw1 > 0 ? `£${aw1}` : "—"}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground px-5 py-3 border-t border-border">
+          Green cells = APA leads · Red cells = competitor leads · Threat score excludes APA (proximity-weighted).
+        </p>
+      </div>
 
       {/* ── Competitor chip selector ── */}
       <div>
