@@ -829,40 +829,51 @@ function RankBadge({ rank, total, color }: { rank: number; total: number; color:
   );
 }
 
-function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel, currentWincAcv }: {
+function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel, initialPlannedPricing }: {
   competitors: Competitor[];
   pricingStrategy: PricingStrategy | null;
   strategyLoading: boolean;
   onRefresh: () => void;
   onApplyToModel: (acv: number, label: string) => Promise<void>;
-  currentWincAcv: number | null;
+  initialPlannedPricing: Record<string, number>;
 }) {
   const [catFilter, setCatFilter] = useState("all");
   const [applying, setApplying] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
-  const [avcInput, setAvcInput] = useState<string>("");
-  const [avcSaving, setAvcSaving] = useState(false);
-  const [avcStatus, setAvcStatus] = useState<"idle" | "saved" | "err">("idle");
+  const [plannedPrices, setPlannedPrices] = useState<Record<string, number>>(initialPlannedPricing);
+  const [planStatus, setPlanStatus] = useState<"idle" | "saved" | "err">("idle");
 
   useEffect(() => {
-    if (currentWincAcv != null) setAvcInput(String(currentWincAcv));
-  }, [currentWincAcv]);
+    setPlannedPrices(initialPlannedPricing);
+  }, [initialPlannedPricing]);
 
-  const saveAvc = async () => {
-    const val = parseFloat(avcInput);
-    if (!val || val <= 0) return;
-    if (val === currentWincAcv) return;
-    setAvcSaving(true);
-    setAvcStatus("idle");
+  const derivedAvc = useMemo(() => {
+    const vals = TREATMENT_KEYS.filter(t => t.apaPrice > 0)
+      .map(t => plannedPrices[t.key] || 0).filter(v => v > 0);
+    if (!vals.length) return null;
+    return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+  }, [plannedPrices]);
+
+  const savePlannedPrice = async (key: string, raw: string) => {
+    const val = parseFloat(raw) || 0;
+    const updated = { ...plannedPrices };
+    if (val > 0) updated[key] = val; else delete updated[key];
+    setPlannedPrices(updated);
+    const vals = Object.values(updated).filter(v => v > 0);
+    const avc = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0;
+    setPlanStatus("idle");
     try {
-      await onApplyToModel(val, "manual");
-      setAvcStatus("saved");
-      setTimeout(() => setAvcStatus("idle"), 2500);
+      await fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plannedPricingJson: JSON.stringify(updated), ...(avc > 0 ? { wincAcvGbp: avc } : {}) }),
+      });
+      if (avc > 0) onApplyToModel(avc, "planned").catch(() => {});
+      setPlanStatus("saved");
+      setTimeout(() => setPlanStatus("idle"), 2000);
     } catch {
-      setAvcStatus("err");
-    } finally {
-      setAvcSaving(false);
+      setPlanStatus("err");
     }
   };
 
@@ -1076,46 +1087,6 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
         </div>
       )}
 
-      {/* ── Planned AVC ── */}
-      <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-sm font-semibold text-primary">APA Planned AVC (Winchester)</p>
-            </div>
-            <p className="text-xs text-muted-foreground">Your target average client value — used directly in the financial model cashflow.</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">£</span>
-              <input
-                type="number"
-                min={1}
-                step={5}
-                value={avcInput}
-                onChange={e => { setAvcInput(e.target.value); setAvcStatus("idle"); }}
-                onBlur={saveAvc}
-                onKeyDown={e => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
-                disabled={avcSaving}
-                className="w-28 pl-7 pr-3 py-2 text-sm font-bold bg-background border-2 border-primary/40 rounded-lg focus:outline-none focus:border-primary text-foreground disabled:opacity-50"
-                placeholder="155"
-              />
-            </div>
-            <button
-              onClick={saveAvc}
-              disabled={avcSaving || !avcInput || parseFloat(avcInput) === currentWincAcv}
-              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
-            >
-              {avcSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
-              Save
-            </button>
-            {avcStatus === "saved" && <span className="text-xs text-teal-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Saved to model</span>}
-            {avcStatus === "err" && <span className="text-xs text-red-500">Failed — try again</span>}
-          </div>
-        </div>
-      </div>
-
       {/* ── Category filter ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-xs text-muted-foreground">Rank 1st = most expensive in market. Badge colour: <span className="text-teal-600 font-medium">teal = premium</span> · <span className="text-amber-600 font-medium">amber = cheapest</span></p>
@@ -1131,10 +1102,19 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border">
+              <tr className="border-b-2 border-primary/30">
                 <th className="text-left py-3 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wider w-44">Treatment</th>
-                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-primary">APA Launch</th>
-                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-emerald-600 dark:text-emerald-400">APA 12m+</th>
+                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-primary bg-primary/5 border-x border-primary/20 w-32">
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span>Our Price</span>
+                    {derivedAvc != null
+                      ? <span className="text-[10px] font-normal text-primary/70 normal-case tracking-normal">AVC = £{derivedAvc}</span>
+                      : <span className="text-[10px] font-normal text-muted-foreground/60 normal-case tracking-normal">enter to set AVC</span>
+                    }
+                  </div>
+                </th>
+                <th className="text-right py-3 px-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap text-muted-foreground">AI Launch</th>
+                <th className="text-right py-3 px-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap text-muted-foreground">AI 12m+</th>
                 <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Median</th>
                 {competitors.map(c=><th key={c.id} title={c.name} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-[7rem] overflow-hidden text-ellipsis">{shortClinicName(c.name)}</th>)}
               </tr>
@@ -1150,9 +1130,10 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                 const medianPrice  = validPrices.length ? ([...validPrices].sort((a,b)=>a-b)[Math.floor(validPrices.length/2)]) : null;
                 const launchRank   = priceRank(launchPrice, validPrices);
                 const matureRank   = priceRank(maturePrice, validPrices);
+                const ourPrice     = plannedPrices[t.key] || 0;
                 return (
                   <tr key={t.key} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-3 pr-4">
+                    <td className="py-2 pr-4">
                       <p className="font-medium text-sm">{t.label}</p>
                       {validPrices.length > 0 && (
                         <p className="text-[10px] text-muted-foreground">
@@ -1160,44 +1141,77 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                         </p>
                       )}
                     </td>
-                    {/* APA Launch */}
-                    <td className="text-right py-3 px-3">
+                    {/* Our Planned Price — editable */}
+                    <td className="py-2 px-3 bg-primary/5 border-x border-primary/20">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={5}
+                          defaultValue={ourPrice || ""}
+                          key={`${t.key}-${ourPrice}`}
+                          onBlur={e => savePlannedPrice(t.key, e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                          placeholder={String(t.apaPrice || "—")}
+                          className="w-full pl-5 pr-1 py-1 text-sm font-semibold text-right bg-background border border-primary/30 rounded focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/40"
+                        />
+                      </div>
+                    </td>
+                    {/* AI Launch */}
+                    <td className="text-right py-2 px-3">
                       <div className="flex flex-col items-end gap-0.5">
-                        <span className={`font-bold ${launchIsAi ? "text-primary" : "text-muted-foreground"}`}>
-                          £{launchPrice}{launchIsAi && <sup className="ml-0.5 text-[8px] text-muted-foreground/60">AI</sup>}
+                        <span className={`text-sm ${launchIsAi ? "text-muted-foreground font-medium" : "text-muted-foreground/50"}`}>
+                          £{launchPrice}{launchIsAi && <sup className="ml-0.5 text-[8px] opacity-60">AI</sup>}
                         </span>
                         {launchRank && <RankBadge rank={launchRank.rank} total={launchRank.total} color="teal" />}
                       </div>
                     </td>
-                    {/* APA Mature */}
-                    <td className="text-right py-3 px-3">
+                    {/* AI Mature */}
+                    <td className="text-right py-2 px-3">
                       <div className="flex flex-col items-end gap-0.5">
-                        <span className={`font-bold ${matureIsAi ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                          £{maturePrice}{matureIsAi && <sup className="ml-0.5 text-[8px] text-muted-foreground/60">AI</sup>}
+                        <span className={`text-sm ${matureIsAi ? "text-muted-foreground font-medium" : "text-muted-foreground/50"}`}>
+                          £{maturePrice}{matureIsAi && <sup className="ml-0.5 text-[8px] opacity-60">AI</sup>}
                         </span>
                         {matureRank && <RankBadge rank={matureRank.rank} total={matureRank.total} color="emerald" />}
                       </div>
                     </td>
-                    <td className="text-right py-3 px-3 text-muted-foreground text-sm">
+                    <td className="text-right py-2 px-3 text-muted-foreground text-sm">
                       {medianPrice ? `£${medianPrice}` : <span className="text-muted-foreground/40">—</span>}
                     </td>
-                    {competitors.map(c=>{ const p = parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0; const offered = parseJson<string[]>(c.treatmentsJson,[]).includes(t.key); return (
-                      <td key={c.id} className="text-right py-3 px-3">
+                    {competitors.map(c=>{ const p = parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0; const offered = parseJson<string[]>(c.treatmentsJson,[]).includes(t.key); const ref = ourPrice || launchPrice; return (
+                      <td key={c.id} className="text-right py-2 px-3">
                         {p > 0 ? (
-                          <span className={`font-medium ${p < launchPrice*0.85 ? "text-red-500" : p > launchPrice*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
+                          <span className={`font-medium text-sm ${p < ref*0.85 ? "text-red-500" : p > ref*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
                         ) : offered ? <span className="text-xs text-muted-foreground">Offered</span> : <span className="text-xs text-muted-foreground/40">—</span>}
                       </td>
                     );})}
                   </tr>
                 );
               })}
+              {/* AVC summary footer row */}
+              <tr className="border-t-2 border-primary/30 bg-primary/5">
+                <td className="py-2 pr-4 text-xs font-semibold text-primary uppercase tracking-wider">Planned AVC</td>
+                <td className="py-2 px-3 text-right border-x border-primary/20">
+                  {derivedAvc != null
+                    ? <span className="text-sm font-bold text-primary">£{derivedAvc}</span>
+                    : <span className="text-xs text-muted-foreground/50 italic">enter prices above</span>
+                  }
+                </td>
+                <td colSpan={3 + competitors.length} className="py-2 px-3 text-xs text-muted-foreground">
+                  {derivedAvc != null
+                    ? <>Average of {Object.values(plannedPrices).filter(v=>v>0).length} treatment price{Object.values(plannedPrices).filter(v=>v>0).length !== 1 ? "s" : ""} · {planStatus === "saved" ? <span className="text-teal-600 font-medium">✓ Saved to financial model</span> : planStatus === "err" ? <span className="text-red-500">Save failed — try again</span> : "auto-saves to financial model on each entry"}</>
+                    : "Fill in your planned prices above — the average will feed into your financial model as the Winchester ACV"
+                  }
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
       )}
       <div className="flex items-center gap-6 text-xs text-muted-foreground pt-2 border-t border-border">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Competitors cheaper than APA launch price</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />Competitors more expensive than APA launch price</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Cheaper than your planned price</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />More expensive than your planned price</div>
         {strategy && <div className="flex items-center gap-1.5"><sup className="text-[9px] text-muted-foreground/60 font-medium">AI</sup> = AI-recommended price</div>}
       </div>
     </div>
@@ -2014,11 +2028,16 @@ export default function CompetitionPage() {
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyFetched, setStrategyFetched] = useState(false);
   const [wincAcv, setWincAcv] = useState<number | null>(null);
+  const [plannedPricing, setPlannedPricing] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.wincAcvGbp != null) setWincAcv(d.wincAcvGbp); })
+      .then(d => {
+        if (!d) return;
+        if (d.wincAcvGbp != null) setWincAcv(d.wincAcvGbp);
+        try { setPlannedPricing(JSON.parse(d.plannedPricingJson || "{}")); } catch { /* ignore */ }
+      })
       .catch(() => {});
   }, []);
 
@@ -2209,7 +2228,7 @@ export default function CompetitionPage() {
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
             {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} onEnrich={handleEnrich} enrichingId={enrichingId} />}
-            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} currentWincAcv={wincAcv} />}
+            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} initialPlannedPricing={plannedPricing} />}
             {tab === 3 && <ComparisonTab competitors={competitors} />}
             {tab === 4 && <MarketGapTab competitors={competitors} />}
             {tab === 5 && <MapTab competitors={competitors} />}

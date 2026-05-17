@@ -72,6 +72,9 @@ export const financialsTable = pgTable("financial_models", {
   freeRentMonths: integer("free_rent_months").notNull().default(0),
   // Bedhampton capacity ceiling: joint revenue (Bedh + Winc) at which Bedhampton slots are exhausted
   bedhCapacityCeilGbp: real("bedh_capacity_ceil_gbp").notNull().default(16000),
+  // Planned per-treatment pricing (JSON map of treatment key → planned price £)
+  // Used to derive wincAcvGbp from the Competition → Pricing tab
+  plannedPricingJson: text("planned_pricing_json").notNull().default("{}"),
   // Scenario selection — persisted so the banner always reflects the user's chosen model
   selectedScenario: text("selected_scenario").notNull().default("realistic"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
