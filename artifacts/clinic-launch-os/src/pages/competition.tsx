@@ -829,17 +829,42 @@ function RankBadge({ rank, total, color }: { rank: number; total: number; color:
   );
 }
 
-function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel }: {
+function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel, currentWincAcv }: {
   competitors: Competitor[];
   pricingStrategy: PricingStrategy | null;
   strategyLoading: boolean;
   onRefresh: () => void;
   onApplyToModel: (acv: number, label: string) => Promise<void>;
+  currentWincAcv: number | null;
 }) {
   const [catFilter, setCatFilter] = useState("all");
   const [applying, setApplying] = useState<string | null>(null);
   const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
   const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
+  const [avcInput, setAvcInput] = useState<string>("");
+  const [avcSaving, setAvcSaving] = useState(false);
+  const [avcStatus, setAvcStatus] = useState<"idle" | "saved" | "err">("idle");
+
+  useEffect(() => {
+    if (currentWincAcv != null) setAvcInput(String(currentWincAcv));
+  }, [currentWincAcv]);
+
+  const saveAvc = async () => {
+    const val = parseFloat(avcInput);
+    if (!val || val <= 0) return;
+    if (val === currentWincAcv) return;
+    setAvcSaving(true);
+    setAvcStatus("idle");
+    try {
+      await onApplyToModel(val, "manual");
+      setAvcStatus("saved");
+      setTimeout(() => setAvcStatus("idle"), 2500);
+    } catch {
+      setAvcStatus("err");
+    } finally {
+      setAvcSaving(false);
+    }
+  };
 
   const cats = ["all","Injectables","Skin","Laser"];
   const treatments = catFilter === "all" ? TREATMENT_KEYS.filter(t=>t.apaPrice>0) : TREATMENT_KEYS.filter(t=>t.cat===catFilter&&t.apaPrice>0);
@@ -1050,6 +1075,46 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
           </div>
         </div>
       )}
+
+      {/* ── Planned AVC ── */}
+      <div className="rounded-xl border-2 border-primary/40 bg-primary/5 p-4">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-sm font-semibold text-primary">APA Planned AVC (Winchester)</p>
+            </div>
+            <p className="text-xs text-muted-foreground">Your target average client value — used directly in the financial model cashflow.</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">£</span>
+              <input
+                type="number"
+                min={1}
+                step={5}
+                value={avcInput}
+                onChange={e => { setAvcInput(e.target.value); setAvcStatus("idle"); }}
+                onBlur={saveAvc}
+                onKeyDown={e => { if (e.key === "Enter") { e.currentTarget.blur(); } }}
+                disabled={avcSaving}
+                className="w-28 pl-7 pr-3 py-2 text-sm font-bold bg-background border-2 border-primary/40 rounded-lg focus:outline-none focus:border-primary text-foreground disabled:opacity-50"
+                placeholder="155"
+              />
+            </div>
+            <button
+              onClick={saveAvc}
+              disabled={avcSaving || !avcInput || parseFloat(avcInput) === currentWincAcv}
+              className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-40 transition-colors font-medium"
+            >
+              {avcSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
+              Save
+            </button>
+            {avcStatus === "saved" && <span className="text-xs text-teal-600 font-medium flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" />Saved to model</span>}
+            {avcStatus === "err" && <span className="text-xs text-red-500">Failed — try again</span>}
+          </div>
+        </div>
+      </div>
 
       {/* ── Category filter ── */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -1948,6 +2013,14 @@ export default function CompetitionPage() {
   const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy | null>(null);
   const [strategyLoading, setStrategyLoading] = useState(false);
   const [strategyFetched, setStrategyFetched] = useState(false);
+  const [wincAcv, setWincAcv] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d?.wincAcvGbp != null) setWincAcv(d.wincAcvGbp); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
@@ -2051,6 +2124,7 @@ export default function CompetitionPage() {
       body: JSON.stringify({ wincAcvGbp: acv }),
     });
     if (!r.ok) throw new Error("Update failed");
+    setWincAcv(acv);
   };
 
   // Auto-fetch pricing strategy when user navigates to Pricing tab
@@ -2135,7 +2209,7 @@ export default function CompetitionPage() {
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
             {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} onEnrich={handleEnrich} enrichingId={enrichingId} />}
-            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} />}
+            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} currentWincAcv={wincAcv} />}
             {tab === 3 && <ComparisonTab competitors={competitors} />}
             {tab === 4 && <MarketGapTab competitors={competitors} />}
             {tab === 5 && <MapTab competitors={competitors} />}
