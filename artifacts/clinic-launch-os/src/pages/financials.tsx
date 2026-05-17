@@ -53,6 +53,14 @@ const RAMP_TIER_OPTIONS: { key: RampTier; label: string; desc: string }[] = [
   { key: "average", label: "Average",        desc: "Typical UK aesthetics launch with pre-opening marketing" },
   { key: "fast",    label: "Above Average",  desc: "Strong social presence, existing clients, waiting list" },
 ];
+type VatPresetKey = "none" | "minimal" | "partial" | "significant" | "maximum";
+const VAT_PRESETS: { key: VatPresetKey; label: string; rate: number; pct: string; note: string; starred?: boolean; worst?: boolean }[] = [
+  { key: "none",        label: "No Offset",   rate: 0.20,  pct: "20.0%", note: "Current assumption — worst case", worst: true },
+  { key: "minimal",     label: "Minimal",     rate: 0.175, pct: "17.5%", note: "Basic input tax recovery on stock and consumables only. Achievable without specialist advice." },
+  { key: "partial",     label: "Partial",     rate: 0.15,  pct: "15.0%", note: "★ Typical for ANP-led clinics — most likely outcome with specialist advice.", starred: true },
+  { key: "significant", label: "Significant", rate: 0.12,  pct: "12.0%", note: "Majority of arguable treatments claimed as exempt, full input recovery on remainder. Requires robust documentation." },
+  { key: "maximum",     label: "Maximum",     rate: 0.09,  pct: "9.0%",  note: "Specialist adviser engaged, maximum legitimate recovery applied. Upper end — achievable where high proportion of treatments have clear medical indication." },
+];
 type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom";
 
 type WincMetrics = {
@@ -172,6 +180,8 @@ export default function FinancialsPage() {
   const { toast } = useToast();
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
   const [rampTier, setRampTier] = useState<RampTier>("average");
+  const [vatPreset, setVatPreset] = useState<VatPresetKey>("none");
+  const activeVat = VAT_PRESETS.find(p => p.key === vatPreset) ?? VAT_PRESETS[0];
 
   const saveScenario = (key: ScenarioKey) => {
     setScenario(key);
@@ -436,13 +446,13 @@ export default function FinancialsPage() {
     },
   });
 
-  const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier } as any, {
-    query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario, rampTier } as any), enabled: true },
+  const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, vatRate: activeVat.rate } as any, {
+    query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario, rampTier, vatRate: activeVat.rate } as any), enabled: true },
   });
   const cashflow = rawCashflow as unknown as CashflowMonth[] | undefined;
 
   const [pnlMonths, setPnlMonths] = useState<12 | 36>(12);
-  const { data: rawCashflow36 } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, months: 36 } as any, {
+  const { data: rawCashflow36 } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, months: 36, vatRate: activeVat.rate } as any, {
     query: { queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario, rampTier, months: 36 } as any), enabled: true },
   });
   const cashflow36 = rawCashflow36 as unknown as CashflowMonth[] | undefined;
@@ -453,7 +463,7 @@ export default function FinancialsPage() {
 
   const runCalculation = () => {
     calculateFinancials.mutate(
-      { projectId: PROJECT_ID, data: { scenario, rampTier } as any },
+      { projectId: PROJECT_ID, data: { scenario, rampTier, vatRate: activeVat.rate } as any },
       { onSuccess: (data) => setCalcResults(data as unknown as ExtendedCalcResult) }
     );
   };
@@ -594,6 +604,7 @@ export default function FinancialsPage() {
 
   useEffect(() => { if (model) runCalculation(); }, [scenario]);
   useEffect(() => { if (model) runCalculation(); }, [rampTier]);
+  useEffect(() => { if (model) runCalculation(); }, [vatPreset]);
 
   // ── Sync derived schedule values into form whenever lifestyle plan updates ─
   useEffect(() => {
@@ -866,6 +877,56 @@ export default function FinancialsPage() {
                 : "Opening occupancy ~45% higher than baseline — assumes strong pre-launch demand"}
             </span>
           )}
+        </div>
+      </div>
+
+      {/* ── VAT Offset Selector ──────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground font-medium">VAT offset:</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {VAT_PRESETS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setVatPreset(p.key)}
+                title={p.note}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-all whitespace-nowrap ${
+                  vatPreset === p.key
+                    ? p.worst
+                      ? "bg-red-50 text-red-700 border-red-400 dark:bg-red-900/40 dark:text-red-300 dark:border-red-700"
+                      : p.starred
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-400 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700"
+                      : "bg-primary/10 text-primary border-primary/40"
+                    : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                }`}
+              >
+                {p.label} — {p.pct}
+                {p.worst && vatPreset === p.key && <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide opacity-80">current</span>}
+                {p.starred && vatPreset === p.key && <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide opacity-80">★ Typical</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="space-y-1 text-xs text-muted-foreground">
+          {activeVat.starred && (
+            <p className="text-emerald-700 dark:text-emerald-400 font-medium">{activeVat.note}</p>
+          )}
+          {activeVat.worst && (
+            <p className="text-red-600 dark:text-red-400 font-medium">{activeVat.note}</p>
+          )}
+          {!activeVat.starred && !activeVat.worst && (
+            <p>{activeVat.note}</p>
+          )}
+          {cr && (() => {
+            const monthlySaving = Math.round(cr.winc.grossRevenue * (0.20 - activeVat.rate));
+            const pctLabel = activeVat.key !== "none" ? `from No Offset to ${activeVat.label}` : "";
+            return monthlySaving > 0 ? (
+              <p>Moving {pctLabel} is worth approximately <strong className="text-foreground">£{monthlySaving.toLocaleString()}/month</strong> at your current revenue level.</p>
+            ) : null;
+          })()}
+          <p className="text-muted-foreground/70 italic">UK aesthetics VAT is complex — HMRC distinguishes between medical treatments (potentially exempt) and cosmetic treatments (standard-rated). Confirm your actual position with a healthcare VAT specialist before selecting below Partial.</p>
         </div>
       </div>
 
@@ -1490,7 +1551,7 @@ export default function FinancialsPage() {
                           <span title="All fixed cost items from Assumptions (rent, rates, insurance, dual costs — counted once)">Fixed (Winc)</span>
                         </th>
                         <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
-                          <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT</span>
+                          <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT ({activeVat.pct})</span>
                         </th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="Winchester only: Revenue − Variable − Fixed − VAT. Positive = Winchester covers its own costs without Bedhampton.">Winc ±</span>

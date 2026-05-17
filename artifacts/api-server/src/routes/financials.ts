@@ -186,6 +186,7 @@ router.patch("/projects/:projectId/financial/scenario", async (req, res) => {
 router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const { scenario = "realistic" } = req.body;
+  const reqVatRate = typeof req.body.vatRate === "number" ? req.body.vatRate : 0.20;
 
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
@@ -226,7 +227,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   // Project 12 months of Bedhampton forward — will they cross the threshold?
   const vatWillApplyAtOpening = vatCurrentTurnover >= 90000 ||
     (vatCurrentTurnover + bedhMonthlyRev * 12 >= 90000);
-  const vatRateForCalc = vatWillApplyAtOpening ? 0.20 : 0;
+  const vatRateForCalc = vatWillApplyAtOpening ? reqVatRate : 0;
 
   const winc = calcWinchester(model, targetOcc, acvMultiplier, vatRateForCalc, dynamicFixedCosts);
   const bedh = calcBedhampton(model);
@@ -298,6 +299,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const scenario = (req.query.scenario as string) ?? "realistic";
   const rampTier = (req.query.rampTier as string) ?? "average";
+  const vatRateParam = parseFloat((req.query.vatRate as string) ?? "0.20");
+  const VAT_RATE_EFFECTIVE = isNaN(vatRateParam) ? 0.20 : Math.min(Math.max(vatRateParam, 0.05), 0.20);
 
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
@@ -388,7 +391,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // VAT — UK statutory threshold £90,000/year across the whole business (all clinics)
   // Start tracking from the user's current rolling 12-month turnover position
   const VAT_THRESHOLD = 90000;
-  const VAT_RATE = 0.20;
+  const VAT_RATE = VAT_RATE_EFFECTIVE;
   // How much of the £90k has already been used up by prior revenue
   const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
   let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue

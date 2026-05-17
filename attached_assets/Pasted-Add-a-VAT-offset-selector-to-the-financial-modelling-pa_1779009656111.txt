@@ -1,0 +1,28 @@
+Add a VAT offset selector to the financial modelling page, styled and positioned identically to the existing Growth Rate selector (Below Average / Average / Above Average buttons). Place it immediately below or adjacent to the Growth Rate selector so both controls sit together as modelling inputs.
+The VAT selector should have five options displayed as selectable pill buttons:
+
+No Offset — 20.0% — Full VAT, no recovery. Worst case. Current model assumption.
+Minimal — 17.5% — Basic input tax recovery on stock and consumables only. Achievable without specialist advice.
+Partial — 15.0% — Partial exemption applied, some treatments exempt, input VAT recovered on stock. Most common outcome for nurse-led medical aesthetics clinics with an ANP prescriber. Requires specialist advice.
+Significant — 12.0% — Majority of arguable treatments claimed as exempt, full input recovery on remainder. Achievable with robust medical purpose documentation and specialist adviser.
+Maximum — 9.0% — Specialist adviser engaged, maximum legitimate recovery applied. Upper end — typically only achieved where a high proportion of treatments have a clear medical indication.
+
+Mark the Partial (15.0%) option with a label: "★ Typical for ANP-led clinics — most likely outcome with specialist advice"
+Mark the No Offset (20.0%) option with a label: "Current assumption — worst case"
+Below the selector show two lines in muted text:
+First line: "Most nurse-led aesthetics clinics with an ANP prescriber land between Minimal and Partial once a healthcare VAT specialist reviews their treatment mix. Moving from No Offset to Partial is worth approximately £X/month at your current revenue level." (calculate X dynamically from the model at current occupancy)
+Second line: "UK aesthetics VAT is complex — HMRC distinguishes between medical treatments (potentially exempt) and cosmetic treatments (standard-rated). Confirm your actual position with a healthcare VAT specialist before selecting below Partial."
+When the user changes the VAT selector, immediately recalculate and update every figure in the model that VAT affects:
+
+Monthly VAT liability line in the P&L tables (all scenarios)
+Winchester net profit per month
+Break-even revenue and occupancy percentage
+Month 12 cash position
+Bedhampton closure month (if it changes)
+All dashboard header figures (break-even, net delayed ramp, etc.)
+The AI Launch Recommendation (re-run with updated figures)
+
+The selected VAT offset should persist when switching between Conservative, Realistic, Strong Launch, Delayed Ramp, Economic Downturn and Stress Test scenarios — it is a global modelling input not a per-scenario setting.
+In the P&L table, rename the VAT column header to show the currently active rate in brackets — e.g. "Winchester VAT (15.0%)" — so it is always clear which assumption is live.
+On the dashboard header bar, add a small VAT badge next to the break-even figure showing the active offset and a plain English label — e.g. "VAT: Partial 15% — typical ANP clinic" — so the assumption is always visible without going into the modelling tab.
+No other changes to the model structure or layout. Keep it simple.
