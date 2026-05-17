@@ -168,7 +168,7 @@ export default function ExportPage() {
     try {
       const gng = localStorage.getItem("goNoGoResult_v2");
       if (gng) setGoNoGo(JSON.parse(gng));
-      const ls = localStorage.getItem("leaseStrategyResult_v1");
+      const ls = localStorage.getItem("leaseStrategyV2_v1");
       if (ls) setLeaseStrategy(JSON.parse(ls));
     } catch {}
   }, []);
@@ -470,9 +470,10 @@ export default function ExportPage() {
                 <>
                   <SubTitle label="Key Negotiation Points" />
                   <ul className="space-y-1">
-                    {goNoGo.negotiationPoints.map((pt: string, i: number) => (
+                    {goNoGo.negotiationPoints.map((pt: any, i: number) => (
                       <li key={i} className="text-sm flex gap-2">
-                        <span className="text-[#2d5016] shrink-0">→</span>{pt}
+                        <span className="text-[#2d5016] shrink-0">→</span>
+                        {typeof pt === "string" ? pt : pt.text ?? pt.point ?? pt.action ?? JSON.stringify(pt)}
                       </li>
                     ))}
                   </ul>
@@ -483,97 +484,122 @@ export default function ExportPage() {
         </div>
 
         {/* ════════════════════════════════════════════════════════════════════
-            1b. LEASE & OFFER STRATEGY
+            1b. LEASE & OFFER STRATEGY (V2)
         ════════════════════════════════════════════════════════════════════ */}
         {leaseStrategy && (
           <div className="print-avoid-break">
-            <SectionTitle label="1b. Lease & Offer Strategy" sub="AI-generated — run separately" />
+            <SectionTitle label="1b. Lease & Offer Strategy" sub="AI-generated — run separately from Lease Strategy page" />
             <div className="space-y-4">
 
-              {leaseStrategy.offerStrategy && (
-                <>
-                  <SubTitle label="Offer Strategy" />
-                  <div className="grid grid-cols-3 gap-3 mb-3">
-                    {[
-                      { label: "Opening Offer", value: fmt(leaseStrategy.offerStrategy.openingOfferRent) + "/mo", note: "Start here" },
-                      { label: "Target Settlement", value: fmt(leaseStrategy.offerStrategy.targetRent) + "/mo", note: "Aim for this" },
-                      { label: "Walk-Away Rent", value: fmt(leaseStrategy.offerStrategy.walkAwayRent) + "/mo", note: "Do not exceed" },
-                    ].map(({ label, value, note }) => (
-                      <div key={label} className="rounded border border-gray-200 p-3 text-center bg-gray-50">
-                        <div className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
-                        <div className="text-sm font-bold">{value}</div>
-                        <div className="text-[9px] text-blue-600 mt-0.5">{note}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {[
-                    { label: "Key Ask", value: leaseStrategy.offerStrategy.keyAsk },
-                    { label: "Positioning", value: leaseStrategy.offerStrategy.tenantPositioning },
-                    { label: "Sequencing", value: leaseStrategy.offerStrategy.sequencing },
-                    { label: "Agent Dynamics", value: leaseStrategy.offerStrategy.agentDynamics },
-                    { label: "If They Counter…", value: leaseStrategy.offerStrategy.counterOfferGuidance },
-                  ].filter(x => x.value).map(({ label, value }) => (
-                    <Assumption key={label} label={label} value={value} />
-                  ))}
-                </>
-              )}
-
-              {leaseStrategy.leaseNegotiationStrategy && (() => {
-                const lns = leaseStrategy.leaseNegotiationStrategy;
+              {/* Opening Position */}
+              {leaseStrategy.openingPosition && (() => {
+                const op = leaseStrategy.openingPosition;
                 return (
                   <>
-                    <SubTitle label="Lease Negotiation Strategy" />
-                    {lns.rentFreePeriod && (
-                      <div className="flex gap-4 mb-2 text-sm">
-                        <span className="text-gray-500">Rent-Free Period:</span>
-                        <span className="font-semibold">Target {lns.rentFreePeriod.targetMonths}mo, minimum {lns.rentFreePeriod.minimumAcceptable}mo</span>
-                        <span className="text-gray-500 text-xs">{lns.rentFreePeriod.rationale}</span>
+                    <SubTitle label="Opening Position" />
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      {[
+                        { label: "Opening Offer", value: fmt(op.openingOfferRent) + "/mo", note: "Lead with this", cls: "border-blue-200 bg-blue-50" },
+                        { label: "Target Settlement", value: fmt(op.targetSettlement) + "/mo", note: "Aim to land here", cls: "border-gray-200 bg-gray-50" },
+                      ].map(({ label, value, note, cls }) => (
+                        <div key={label} className={`rounded border p-3 text-center ${cls}`}>
+                          <div className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
+                          <div className="text-base font-bold">{value}</div>
+                          <div className="text-[9px] text-blue-600 mt-0.5">{note}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      {[
+                        { label: "Walk-Away Max (all concessions)", value: fmt(op.walkAwayRentMax ?? op.walkAwayRent) + "/mo", note: "= asking rent", cls: "border-red-200 bg-red-50" },
+                        { label: "Walk-Away Min (no concessions)", value: fmt(op.walkAwayRentMin ?? op.openingOfferRent) + "/mo", note: "= opening offer", cls: "border-red-300 bg-red-100/60" },
+                      ].map(({ label, value, note, cls }) => (
+                        <div key={label} className={`rounded border p-3 text-center ${cls}`}>
+                          <div className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">{label}</div>
+                          <div className="text-base font-bold text-red-800">{value}</div>
+                          <div className="text-[9px] text-gray-500 mt-0.5">{note}</div>
+                        </div>
+                      ))}
+                    </div>
+                    {op.walkAwayExplanation && (
+                      <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-900 italic mb-1">{op.walkAwayExplanation}</div>
+                    )}
+                    {op.discountJustification?.length > 0 && (
+                      <div className="grid grid-cols-2 gap-1.5 mb-1">
+                        {op.discountJustification.map((j: string, i: number) => (
+                          <div key={i} className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">→ {j}</div>
+                        ))}
                       </div>
                     )}
-                    {lns.breakClause && (
-                      <div className="flex gap-4 mb-2 text-sm">
-                        <span className="text-gray-500">Break Clause:</span>
-                        <span className="font-semibold">Year {lns.breakClause.atYear}, {lns.breakClause.noticeMonths}mo notice</span>
-                        <span className="text-gray-500 text-xs">{lns.breakClause.rationale}</span>
-                      </div>
-                    )}
-                    {[
-                      { label: "Service Charge Cap", value: lns.serviceChargeCap },
-                      { label: "Repairing Obligations", value: lns.repairingObligations },
-                      { label: "Use Class", value: lns.useClass },
-                      { label: "Rent Deposit", value: lns.depositNegotiation },
-                      { label: "Alienation Rights", value: lns.alienation },
-                    ].filter(x => x.value).map(({ label, value }) => (
-                      <Assumption key={label} label={label} value={value} />
-                    ))}
-                    {lns.redLines && lns.redLines.length > 0 && (
-                      <div className="mt-2 rounded border border-red-200 bg-red-50 p-3">
-                        <div className="text-[9px] font-bold uppercase tracking-wider text-red-700 mb-1">Deal-Breakers — Walk Away If…</div>
-                        <ul className="space-y-0.5">
-                          {lns.redLines.map((r: string, i: number) => (
-                            <li key={i} className="text-xs text-red-900 flex gap-1.5"><span className="font-bold shrink-0">✕</span>{r}</li>
-                          ))}
-                        </ul>
-                      </div>
+                    {op.negotiationApproach && (
+                      <Assumption label="Negotiation Approach" value={op.negotiationApproach} />
                     )}
                   </>
                 );
               })()}
 
-              {leaseStrategy.headsOfTermsChecklist && leaseStrategy.headsOfTermsChecklist.length > 0 && (
+              {/* Concessions ranked */}
+              {leaseStrategy.concessions && leaseStrategy.concessions.length > 0 && (
                 <>
-                  <SubTitle label="Heads of Terms Checklist" />
+                  <SubTitle label="Concession Priority Order" />
                   <div className="rounded border border-gray-200 overflow-x-auto text-xs">
                     <table className="w-full">
                       <thead className="bg-gray-50 border-b">
                         <tr>
-                          {["Clause", "Status", "Your Position", "Landlord Typical", "Priority"].map(h => (
+                          {["#", "Concession", "Ask", "Minimum", "Financial Value", "Priority"].map(h => (
+                            <th key={h} className="text-left px-2.5 py-1.5 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leaseStrategy.concessions.map((c: any, i: number) => (
+                          <tr key={i} className="border-b border-gray-100 last:border-0">
+                            <td className="px-2.5 py-1.5 text-gray-400 font-bold">{c.rank ?? i + 1}</td>
+                            <td className="px-2.5 py-1.5 font-medium max-w-[120px]">{c.name}</td>
+                            <td className="px-2.5 py-1.5 max-w-[120px]">{c.ask}</td>
+                            <td className="px-2.5 py-1.5 text-gray-500 max-w-[100px]">{c.minimum}</td>
+                            <td className="px-2.5 py-1.5 font-semibold text-emerald-700">{c.financialImpactGbp > 0 ? fmt(c.financialImpactGbp) : "—"}</td>
+                            <td className="px-2.5 py-1.5">
+                              <TagBadge label={c.priority} color={c.priority === "critical" ? "red" : c.priority === "high" ? "amber" : "gray"} />
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* Deal-breakers */}
+              {leaseStrategy.dealBreakers && leaseStrategy.dealBreakers.length > 0 && (
+                <>
+                  <SubTitle label="Deal-Breakers — Walk Away If…" />
+                  <div className="rounded border border-red-200 bg-red-50 p-3 space-y-1.5">
+                    {leaseStrategy.dealBreakers.map((db: any, i: number) => (
+                      <div key={i} className="text-xs text-red-900 flex gap-2">
+                        <span className="font-bold shrink-0 text-red-600">✕</span>
+                        <span><strong>{db.condition}</strong>{db.threshold ? ` — ${db.threshold}` : ""}{db.exposureGbp > 0 ? ` (exposure: ${fmt(db.exposureGbp)})` : ""}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Heads of Terms */}
+              {leaseStrategy.headsOfTerms && leaseStrategy.headsOfTerms.length > 0 && (
+                <>
+                  <SubTitle label="Heads of Terms Status" />
+                  <div className="rounded border border-gray-200 overflow-x-auto text-xs">
+                    <table className="w-full">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          {["Clause", "Status", "Your Position", "Financial Impact", "Importance"].map(h => (
                             <th key={h} className="text-left px-2.5 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {leaseStrategy.headsOfTermsChecklist.map((item: any, i: number) => (
+                        {leaseStrategy.headsOfTerms.map((item: any, i: number) => (
                           <tr key={i} className="border-b border-gray-100 last:border-0">
                             <td className="px-2.5 py-1.5 font-medium whitespace-nowrap">{item.clause}</td>
                             <td className="px-2.5 py-1.5 whitespace-nowrap">
@@ -583,7 +609,7 @@ export default function ExportPage() {
                               />
                             </td>
                             <td className="px-2.5 py-1.5 max-w-[160px]">{item.yourPosition}</td>
-                            <td className="px-2.5 py-1.5 text-gray-500 max-w-[160px]">{item.landlordPosition}</td>
+                            <td className="px-2.5 py-1.5 text-gray-500 max-w-[140px]">{item.financialImpact}</td>
                             <td className={`px-2.5 py-1.5 capitalize font-semibold ${item.importance === "critical" ? "text-red-700" : item.importance === "high" ? "text-amber-700" : "text-gray-500"}`}>{item.importance}</td>
                           </tr>
                         ))}
