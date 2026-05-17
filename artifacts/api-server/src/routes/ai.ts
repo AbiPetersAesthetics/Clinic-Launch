@@ -984,8 +984,8 @@ Return ONLY valid JSON (no markdown). Schema:
 {
   "offerStrategy": {
     "tenantPositioning": "<2-3 sentences: how Abi should present APA to beat other applicants — emphasise IP status, clinical credentials, Bedhampton's Google reviews and revenue track record, premium fit-out plans, long-term tenancy commitment. Frame her as a more reliable and prestigious tenant than a generic retail operator or beauty salon>",
-    "openingOfferRent": <integer — in a competitive situation this should be AT asking rent or within 2–3% of it; do NOT anchor low or APA risks losing to another bidder>,
-    "targetRent": <integer — realistic settled rent; in a competitive market this may simply be asking rent; any reduction should come from the landlord offering concessions elsewhere>,
+    "openingOfferRent": <integer — MUST be at or below asking rent (£${monthlyRent}/mo); never exceed the asking rent; in a competitive situation open at asking rent or no more than 3–5% below it — do NOT anchor aggressively low or APA risks losing to another bidder>,
+    "targetRent": <integer — realistic settled rent; must be ≤ asking rent (£${monthlyRent}/mo); in a competitive market this will often simply be the asking rent; any reduction should come via concessions offered elsewhere not a rent cut>,
     "walkAwayRent": <integer — maximum monthly rent above which the deal fails commercially, tied to break-even £${breakEvenRev}>,
     "keyAsk": "<the single most valuable non-rent concession to win alongside a near-asking-rent offer — e.g. rent-free period, fit-out contribution, or break clause. This is where the negotiation energy should go>",
     "sequencing": "<tactical order: lead with a strong near-asking offer to be shortlisted, then layer in the concession asks once in preferred-bidder position — never negotiate rent down before being selected>",
