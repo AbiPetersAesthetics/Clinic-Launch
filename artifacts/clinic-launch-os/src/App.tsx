@@ -18,6 +18,7 @@ import LifestylePage from "@/pages/lifestyle";
 import MarketingPage from "@/pages/marketing";
 import OperationalModelPage from "@/pages/operational-model";
 import CompetitionPage from "@/pages/competition";
+import LeaseStrategyPage from "@/pages/lease-strategy";
 import ExportPage from "@/pages/export";
 import RiskRegisterPage from "@/pages/risk-register";
 
@@ -78,6 +79,7 @@ function Router() {
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/competition" component={CompetitionPage} />
+        <Route path="/lease-strategy" component={LeaseStrategyPage} />
         <Route path="/export" component={ExportPage} />
         <Route path="/risk-register" component={RiskRegisterPage} />
         <Route component={NotFound} />

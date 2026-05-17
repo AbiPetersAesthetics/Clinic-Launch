@@ -27,6 +27,7 @@ import {
   Megaphone,
   Target,
   FileDown,
+  Scale,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
@@ -147,6 +148,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/financials", label: "Financials", icon: Calculator },
     { href: "/properties", label: "Properties", icon: Building2 },
+    { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
     { href: "/competition", label: "Competition Intel", icon: Target },
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
