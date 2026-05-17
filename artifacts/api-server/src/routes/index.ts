@@ -20,6 +20,7 @@ import lifestyleRouter from "./lifestyle";
 import marketingRouter from "./marketing";
 import competitionRouter from "./competition";
 import resetRouter from "./reset";
+import risksRouter from "./risks";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(lifestyleRouter);
 router.use(marketingRouter);
 router.use(competitionRouter);
 router.use(resetRouter);
+router.use(risksRouter);
 
 export default router;

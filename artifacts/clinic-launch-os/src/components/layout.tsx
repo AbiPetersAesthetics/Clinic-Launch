@@ -154,6 +154,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/marketing", label: "Marketing", icon: Megaphone },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
     { href: "/franchise", label: "Franchise Model", icon: Network },
+    { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
   ];
 
   return (

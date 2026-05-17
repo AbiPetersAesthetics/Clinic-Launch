@@ -18,6 +18,7 @@ import MarketingPage from "@/pages/marketing";
 import OperationalModelPage from "@/pages/operational-model";
 import CompetitionPage from "@/pages/competition";
 import ExportPage from "@/pages/export";
+import RiskRegisterPage from "@/pages/risk-register";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +42,7 @@ function Router() {
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/competition" component={CompetitionPage} />
         <Route path="/export" component={ExportPage} />
+        <Route path="/risk-register" component={RiskRegisterPage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
