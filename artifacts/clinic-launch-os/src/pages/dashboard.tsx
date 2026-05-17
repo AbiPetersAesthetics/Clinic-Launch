@@ -442,11 +442,11 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
       <PageHeader
-        title="Command Centre"
+        title="Dashboard"
         subtitle="Real-time health, priorities, and decisions for your new clinic launch."
         action={
           <ResetPageButton
-            pageLabel="Command Centre"
+            pageLabel="Dashboard"
             description="This clears the cached AI Launch Recommendation only. Your project plan, properties, financial model, and all other data are completely untouched. You can regenerate the recommendation at any time by clicking Refresh."
             onReset={async () => clearDashboardCache()}
           />

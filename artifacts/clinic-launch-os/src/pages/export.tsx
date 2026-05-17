@@ -120,6 +120,7 @@ export default function ExportPage() {
   const [rawFetchDone, setRawFetchDone] = useState(false);
   const [goNoGo, setGoNoGo] = useState<any>(null);
   const [leaseStrategy, setLeaseStrategy] = useState<any>(null);
+  const [bLiveData, setBLiveData] = useState<any>(null);
 
   // ── API hooks ────────────────────────────────────────────────────────────────
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID);
@@ -137,10 +138,11 @@ export default function ExportPage() {
   // ── Raw fetches ───────────────────────────────────────────────────────────────
   const fetchRaw = useCallback(async () => {
     try {
-      const [mktRes, compRes, lifeRes] = await Promise.all([
+      const [mktRes, compRes, lifeRes, bLiveRes] = await Promise.all([
         fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing`),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`),
+        fetch(`${API_BASE}/bedhampton/summary`),
       ]);
       if (mktRes.ok) {
         const mktData = await mktRes.json();
@@ -151,6 +153,7 @@ export default function ExportPage() {
         setCompetitors(Array.isArray(compData) ? compData : (compData?.competitors ?? compData?.items ?? []));
       }
       if (lifeRes.ok) setLifestyle(await lifeRes.json());
+      if (bLiveRes.ok) setBLiveData(await bLiveRes.json());
     } catch (e) {
       setFetchError("Some data could not be loaded.");
     } finally {
@@ -177,6 +180,31 @@ export default function ExportPage() {
   const totalFixedCosts = (fixedCosts ?? []).reduce((s, i) => s + i.amountGbp, 0);
   const activeProperty = (properties ?? []).find(p => p.isActiveForProject) ?? null;
   const otherProperties = (properties ?? []).filter(p => !p.isActiveForProject);
+
+  // Lifestyle extras (JSON fields)
+  const lifestyleExtras = (() => { try { return JSON.parse(lifestyle?.extrasJson ?? "{}"); } catch { return {}; } })();
+  const lifestyleNonNegotiables: string[] = Array.isArray(lifestyleExtras.nonNegotiablesList) ? lifestyleExtras.nonNegotiablesList : [];
+  const lifestyleSuccessVision = lifestyleExtras.successVision12m ?? lifestyle?.successVision ?? "";
+  const lifestyleFamilySchedule = (() => { try { return JSON.parse(lifestyle?.familyScheduleJson ?? "{}"); } catch { return {}; } })();
+
+  // Data completeness
+  const completeness = [
+    { label: "AI Recommendation", full: !!goNoGo },
+    { label: "Financial Model", full: !!financialModel },
+    { label: "Fixed Costs", full: !!(fixedCosts && fixedCosts.length > 0) },
+    { label: "Cashflow", full: !!(cashflow && (cashflow as any[]).length > 0) },
+    { label: "Project Plan", full: !!(phasesWithTasks && phasesWithTasks.length > 0) },
+    { label: "Optimisation", full: !!optimisation },
+    { label: "Properties", full: !!(properties && properties.length > 0) },
+    { label: "Competitors", full: competitors.length > 0 },
+    { label: "Compliance", full: !!(complianceItems && complianceItems.length > 0) },
+    { label: "Decisions", full: !!(decisions && decisions.length > 0) },
+    { label: "Marketing", full: marketing.length > 0 },
+    { label: "Life Design", full: !!lifestyle },
+    { label: "Bedhampton Live", full: !!bLiveData },
+  ];
+  const fullCount = completeness.filter(c => c.full).length;
+  const emptyCount = completeness.filter(c => !c.full).length;
 
   const complianceBySection: Record<string, any[]> = {};
   (complianceItems ?? []).forEach(item => {
@@ -238,6 +266,27 @@ export default function ExportPage() {
             <Printer className="w-4 h-4" />
             {isLoading ? "Loading…" : "Print / Save as PDF"}
           </button>
+        </div>
+      </div>
+
+      {/* ── Data completeness bar (screen only) ────────────────────────────── */}
+      <div className="no-print max-w-4xl mx-auto px-4 py-4 border-b border-gray-100">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="text-xs font-semibold text-gray-600">Export Completeness</div>
+          <div className="flex-1 h-2 rounded-full bg-gray-100 overflow-hidden">
+            <div className="h-full rounded-full bg-[#2d5016] transition-all" style={{ width: `${Math.round((fullCount / completeness.length) * 100)}%` }} />
+          </div>
+          <div className="text-xs text-gray-500 whitespace-nowrap">
+            {fullCount}/{completeness.length} sections populated
+            {emptyCount > 0 && <span className="text-amber-600 ml-1">· {emptyCount} empty</span>}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {completeness.map(c => (
+            <span key={c.label} className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide border ${c.full ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"}`}>
+              {c.label}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -316,7 +365,7 @@ export default function ExportPage() {
             1. AI LAUNCH RECOMMENDATION
         ════════════════════════════════════════════════════════════════════ */}
         <div className="print-break print-avoid-break">
-          <SectionTitle label="1. AI Launch Recommendation" sub="Dashboard → Command Centre" />
+          <SectionTitle label="1. AI Launch Recommendation" sub="Dashboard" />
 
           {!goNoGo ? (
             <div className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 italic">
@@ -581,31 +630,44 @@ export default function ExportPage() {
                 </div>
               </div>
 
-              <SubTitle label="Fixed Costs — Model Assumptions" />
-              <div className="text-xs text-gray-500 mb-2 italic">Note: "Fixed Costs" tab may override some of these fields. Check that page for the authoritative list.</div>
-              <div className="grid grid-cols-2 gap-x-8">
-                <div>
-                  {[
-                    { label: "Rent (model)", value: fmt(financialModel.rentGbp) + "/mo" },
-                    { label: "Business Rates", value: fmt(financialModel.ratesGbp) + "/mo" },
-                    { label: "Utilities", value: fmt(financialModel.utilitiesGbp) + "/mo" },
-                    { label: "Internet / Phone", value: fmt(financialModel.internetGbp) + "/mo" },
-                    { label: "Insurance", value: fmt(financialModel.insuranceGbp) + "/mo" },
-                    { label: "Accountant", value: fmt(financialModel.accountantGbp) + "/mo" },
-                    { label: "Software (booking etc.)", value: fmt(financialModel.softwareGbp) + "/mo" },
-                  ].map(a => <Assumption key={a.label} {...a} />)}
-                </div>
-                <div>
-                  {[
-                    { label: "Clinical Waste Contract", value: fmt(financialModel.wasteContractGbp) + "/mo" },
-                    { label: "Cleaner", value: fmt(financialModel.cleanerGbp) + "/mo" },
-                    { label: "Subscriptions", value: fmt(financialModel.subscriptionsGbp) + "/mo" },
-                    { label: "Marketing Budget", value: fmt(financialModel.marketingGbp) + "/mo" },
-                    { label: "Staffing", value: fmt(financialModel.staffingGbp) + "/mo" },
-                    { label: "Finance Repayments", value: fmt(financialModel.financeRepaymentsGbp) + "/mo" },
-                  ].map(a => <Assumption key={a.label} {...a} />)}
-                </div>
-              </div>
+              <SubTitle label="Fixed Costs Register — Authoritative Cost List" />
+              <div className="text-xs text-gray-500 mb-2 italic">Source: Fixed Costs tab. These are the itemised costs used in all break-even and cashflow calculations.</div>
+              {fixedCosts && fixedCosts.length > 0 ? (
+                <>
+                  <div className="rounded border border-gray-200 overflow-hidden mb-2">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          <th className="text-left px-3 py-1.5 font-semibold text-gray-500">Cost Item</th>
+                          <th className="text-left px-3 py-1.5 font-semibold text-gray-500">Monthly</th>
+                          <th className="text-left px-3 py-1.5 font-semibold text-gray-500">Annual</th>
+                          <th className="text-left px-3 py-1.5 font-semibold text-gray-500">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {fixedCosts.map((item, i) => (
+                          <tr key={i} className="border-b border-gray-100 last:border-0">
+                            <td className="px-3 py-1 font-medium">{item.name}</td>
+                            <td className="px-3 py-1">{fmt(item.amountGbp)}</td>
+                            <td className="px-3 py-1 text-gray-500">{fmt(item.amountGbp * 12)}</td>
+                            <td className="px-3 py-1"><TagBadge label={item.costType === "dual" ? "Dual-site" : "Winchester"} color={item.costType === "dual" ? "blue" : "gray"} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                        <tr>
+                          <td className="px-3 py-1.5 font-bold">Total</td>
+                          <td className="px-3 py-1.5 font-bold">{fmt(totalFixedCosts)}/mo</td>
+                          <td className="px-3 py-1.5 font-bold text-gray-600">{fmt(totalFixedCosts * 12)}/yr</td>
+                          <td />
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-gray-400 italic mb-2">No fixed costs entered. Add items in the Fixed Costs tab.</p>
+              )}
 
               <SubTitle label="Variable Cost Assumptions" />
               <div className="grid grid-cols-2 gap-x-8">
@@ -644,6 +706,75 @@ export default function ExportPage() {
                 </div>
               </div>
             </>
+          )}
+        </div>
+
+        {/* ════════════════════════════════════════════════════════════════════
+            2b. LIVE BEDHAMPTON CLINIC PERFORMANCE
+        ════════════════════════════════════════════════════════════════════ */}
+        <div className="print-avoid-break">
+          <SectionTitle label="2b. Live Clinic Performance — Bedhampton" sub="Live data at time of export" />
+
+          {!bLiveData ? (
+            <div className="rounded border border-gray-200 bg-gray-50 p-4 text-sm text-gray-500 italic">
+              Live Bedhampton data could not be loaded at export time. Try refreshing the page or check connectivity to the clinic data source.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <KpiGrid items={[
+                { label: "Last Month Revenue", value: fmt(bLiveData.summary?.lastMonthRevenue), sub: "most recent completed month" },
+                { label: "Projected This Month", value: fmt(bLiveData.summary?.projectedMonthRevenue), sub: "current month estimate" },
+                { label: "3-Month Average", value: (() => {
+                  const last3 = (bLiveData.recentMonths ?? []).slice(-3);
+                  return last3.length > 0 ? fmt(Math.round(last3.reduce((s: number, m: any) => s + m.revenue, 0) / last3.length)) : "—";
+                })(), sub: "rolling 3-month average" },
+                { label: "Avg Gross Margin", value: pct(bLiveData.summary?.avgGrossMarginPct, 1), sub: "revenue minus stock/products" },
+                { label: "Avg Client Value", value: fmt(bLiveData.summary?.avgClientValueGbp), sub: "ACV across all visits" },
+                { label: "Repeat Rate", value: pct(bLiveData.summary?.repeatRatePercent, 1), sub: "returning clients" },
+              ]} />
+
+              {bLiveData.recentMonths && bLiveData.recentMonths.length > 0 && (
+                <>
+                  <SubTitle label="Monthly Revenue History" />
+                  <div className="rounded border border-gray-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-gray-50 border-b">
+                        <tr>
+                          {["Month", "Revenue", "Gross Margin %", "Visits", "Avg Booking Value", "New vs Returning"].map(h => (
+                            <th key={h} className="text-left px-2.5 py-1.5 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bLiveData.recentMonths.map((m: any, i: number) => (
+                          <tr key={i} className="border-b border-gray-100 last:border-0">
+                            <td className="px-2.5 py-1.5 font-medium">{m.monthLabel ?? m.month}</td>
+                            <td className="px-2.5 py-1.5 font-semibold">{fmt(m.revenue)}</td>
+                            <td className="px-2.5 py-1.5">{m.grossMarginPct != null ? pct(m.grossMarginPct, 1) : "—"}</td>
+                            <td className="px-2.5 py-1.5">{m.visitCount ?? "—"}</td>
+                            <td className="px-2.5 py-1.5">{m.avgBookingValue != null ? fmt(m.avgBookingValue) : "—"}</td>
+                            <td className="px-2.5 py-1.5 text-gray-500">
+                              {m.newClients != null && m.returningClients != null ? `${m.newClients} new / ${m.returningClients} ret.` : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {bLiveData.summary?.atRiskClients != null && (
+                <div className={`rounded border p-3 text-xs ${bLiveData.summary.atRiskClients > 5 ? "border-amber-200 bg-amber-50 text-amber-800" : "border-gray-200 bg-gray-50 text-gray-600"}`}>
+                  <span className="font-bold">At-Risk Clients:</span> {bLiveData.summary.atRiskClients} clients not booked in 90+ days.
+                  {bLiveData.summary.atRiskClients > 5 && " Consider a re-engagement campaign before Winchester opening to protect Bedhampton revenue during the transition."}
+                </div>
+              )}
+
+              <div className="text-[9px] text-gray-400 italic">
+                Data fetched from Bedhampton clinic system at time of export: {bLiveData.fetchedAt ? new Date(bLiveData.fetchedAt).toLocaleString("en-GB") : "unknown"}
+              </div>
+            </div>
           )}
         </div>
 
@@ -711,26 +842,37 @@ export default function ExportPage() {
               <table className="w-full text-xs">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    {["Month", "Revenue", "Fixed Costs", "Variable Costs", "Net Cashflow", "Cumulative", ""].map(h => (
+                    {["Month", "Winc Rev", "Bedh Support", "Fixed Costs", "Variable", "Occ %", "Net CF", "Balance", ""].map(h => (
                       <th key={h} className="text-left px-2.5 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {(cashflow as any[]).map((row: any, i: number) => (
-                    <tr key={i} className={`border-b border-gray-100 last:border-0 ${row.isBreakevenMonth ? "bg-emerald-50" : ""}`}>
-                      <td className="px-2.5 py-1.5 font-medium whitespace-nowrap">{row.monthLabel ?? `Mo ${row.month}`}</td>
-                      <td className="px-2.5 py-1.5">{fmt(row.revenue)}</td>
-                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.fixedCosts)}</td>
-                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.variableCosts)}</td>
-                      <td className={`px-2.5 py-1.5 font-semibold ${(row.netCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                        {row.netCashflow != null ? ((row.netCashflow >= 0 ? "+" : "") + fmt(row.netCashflow)) : "—"}
+                    <tr key={i} className={`border-b border-gray-100 last:border-0 ${row.isSelfFundingMonth ? "bg-emerald-50" : row.isPreOpening ? "bg-gray-50/60" : ""}`}>
+                      <td className="px-2.5 py-1.5 font-medium whitespace-nowrap">
+                        {row.calendarLabel ?? row.monthLabel ?? `Mo ${row.month}`}
+                        {row.isPreOpening && <span className="ml-1 text-[9px] text-gray-400">(pre)</span>}
                       </td>
-                      <td className={`px-2.5 py-1.5 font-semibold ${(row.cumulativeCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                        {row.cumulativeCashflow != null ? ((row.cumulativeCashflow >= 0 ? "+" : "") + fmt(row.cumulativeCashflow)) : "—"}
+                      <td className="px-2.5 py-1.5">{row.isPreOpening ? "—" : fmt(row.wincRevenue)}</td>
+                      <td className="px-2.5 py-1.5 text-blue-700">{(row.bedhRevenue ?? 0) > 0 ? fmt(row.bedhRevenue) : "—"}</td>
+                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.wincFixedCosts ?? row.fixedCosts)}</td>
+                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.wincVariableCosts ?? row.variableCosts)}</td>
+                      <td className="px-2.5 py-1.5 text-gray-500">{row.occupancyPercent != null ? `${row.occupancyPercent}%` : "—"}</td>
+                      <td className={`px-2.5 py-1.5 font-semibold ${(row.monthlyCashflow ?? row.netCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                        {(row.monthlyCashflow ?? row.netCashflow) != null
+                          ? ((row.monthlyCashflow ?? row.netCashflow) >= 0 ? "+" : "") + fmt(row.monthlyCashflow ?? row.netCashflow)
+                          : "—"}
+                      </td>
+                      <td className={`px-2.5 py-1.5 font-semibold ${(row.cashBalance ?? row.cumulativeCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                        {(row.cashBalance ?? row.cumulativeCashflow) != null
+                          ? ((row.cashBalance ?? row.cumulativeCashflow) >= 0 ? "+" : "") + fmt(row.cashBalance ?? row.cumulativeCashflow)
+                          : "—"}
                       </td>
                       <td className="px-2.5 py-1.5">
-                        {row.isBreakevenMonth && <TagBadge label="Break-even" color="green" />}
+                        {row.isSelfFundingMonth && <TagBadge label="Self-funding" color="green" />}
+                        {row.isBedhamptonCloseMonth && <TagBadge label="Bedh closes" color="blue" />}
+                        {row.isOpeningMonth && <TagBadge label="Opens" color="purple" />}
                       </td>
                     </tr>
                   ))}
@@ -1123,8 +1265,12 @@ export default function ExportPage() {
         <div className="print-break print-avoid-break">
           <SectionTitle label="10. Decision Log" sub="Decisions page" />
 
+          <div className="rounded border border-blue-100 bg-blue-50 p-3 mb-4 text-xs text-blue-800 print-avoid-break">
+            <span className="font-bold">Tip:</span> Log every significant decision in the Decisions tab — property choices, financial commitments, clinical scope changes, supplier selections. A complete log is essential for investor conversations, CQC inspections, and retrospective analysis. The decision below was pre-populated from your AI Launch Recommendation.
+          </div>
+
           {(!decisions || decisions.length === 0) ? (
-            <p className="text-sm text-gray-400 italic">No decisions logged yet.</p>
+            <p className="text-sm text-gray-400 italic">No decisions logged yet. Visit the Decisions tab to record key project decisions.</p>
           ) : (
             <>
               <KpiGrid items={[
@@ -1245,25 +1391,28 @@ export default function ExportPage() {
               )}
 
               {/* Nursing Transition */}
-              {(lifestyle.nursingStatus || lifestyle.nursingNoticePeriod) && (
+              {(lifestyle.nursingStatus || lifestyle.nursingNoticeWeeks || lifestyle.targetExitDate) && (
                 <>
                   <SubTitle label="Nursing Transition" />
                   <div className="grid grid-cols-2 gap-x-8">
                     {[
-                      { label: "Current Status", value: lifestyle.nursingStatus ?? "—" },
-                      { label: "Notice Period", value: lifestyle.nursingNoticePeriod ? `${lifestyle.nursingNoticePeriod} months` : "—" },
-                      { label: "Target Exit Date", value: lifestyle.nursingExitDate ? new Date(lifestyle.nursingExitDate).toLocaleDateString("en-GB") : "—" },
+                      { label: "Current Status", value: lifestyle.nursingStatus
+                          ? lifestyle.nursingStatus.charAt(0).toUpperCase() + lifestyle.nursingStatus.slice(1)
+                          : "—" },
+                      { label: "Notice Period", value: lifestyle.nursingNoticeWeeks ? `${lifestyle.nursingNoticeWeeks} weeks` : "—" },
+                      { label: "Target Exit Date", value: lifestyle.targetExitDate ?? "—" },
+                      { label: "Exit Notes", value: lifestyle.nursingExitNotes || "—" },
                     ].map(a => <Assumption key={a.label} {...a} />)}
                   </div>
                 </>
               )}
 
               {/* Non-negotiables */}
-              {lifestyle.nonNegotiables && lifestyle.nonNegotiables.length > 0 && (
+              {lifestyleNonNegotiables.length > 0 && (
                 <>
                   <SubTitle label="Non-Negotiables" />
                   <ul className="space-y-1">
-                    {lifestyle.nonNegotiables.map((n: string, i: number) => (
+                    {lifestyleNonNegotiables.map((n: string, i: number) => (
                       <li key={i} className="text-sm flex gap-2"><span className="text-[#2d5016] font-bold shrink-0">✓</span>{n}</li>
                     ))}
                   </ul>
@@ -1271,31 +1420,31 @@ export default function ExportPage() {
               )}
 
               {/* Success vision */}
-              {lifestyle.successVision && (
+              {lifestyleSuccessVision && (
                 <>
-                  <SubTitle label="Success Vision" />
-                  <p className="text-sm text-gray-700 leading-relaxed italic border-l-2 border-[#2d5016]/30 pl-3">{lifestyle.successVision}</p>
+                  <SubTitle label="Success Vision (12 Months)" />
+                  <p className="text-sm text-gray-700 leading-relaxed italic border-l-2 border-[#2d5016]/30 pl-3">{lifestyleSuccessVision}</p>
                 </>
               )}
 
               {/* Family schedule summary */}
-              {lifestyle.familySchedule && (
+              {lifestyle.davidAvailabilityDays != null && (
                 <>
-                  <SubTitle label="Family & Travel Overview" />
+                  <SubTitle label="Family & Logistics Overview" />
                   <div className="grid grid-cols-2 gap-x-8">
                     {[
-                      { label: "Home → Elsy School", value: lifestyle.familySchedule.travelHomeToElsyMins != null ? `${lifestyle.familySchedule.travelHomeToElsyMins} min` : "—" },
-                      { label: "Elsy School → Clinic", value: lifestyle.familySchedule.travelElsyToClinicMins != null ? `${lifestyle.familySchedule.travelElsyToClinicMins} min` : "—" },
-                      { label: "Home → Eli School", value: lifestyle.familySchedule.travelHomeToEliMins != null ? `${lifestyle.familySchedule.travelHomeToEliMins} min` : "—" },
-                      { label: "Eli School → Clinic", value: lifestyle.familySchedule.travelEliToClinicMins != null ? `${lifestyle.familySchedule.travelEliToClinicMins} min` : "—" },
-                      { label: "David Availability", value: lifestyle.familySchedule.davidAvailabilityDays != null ? `${lifestyle.familySchedule.davidAvailabilityDays} days/week` : "—" },
-                      { label: "Backup Carer", value: lifestyle.familySchedule.backupCarerName ?? "—" },
+                      { label: "David Availability", value: lifestyle.davidAvailabilityDays != null ? `${lifestyle.davidAvailabilityDays} days/week` : "—" },
+                      { label: "David Role Notes", value: lifestyle.davidRoleNotes || "—" },
+                      { label: "Drop-Off Covered By", value: lifestyle.dropCoveredBy || "—" },
+                      { label: "Pick-Up Covered By", value: lifestyle.pickupCoveredBy || "—" },
+                      { label: "Sick Cover Plan", value: lifestyle.sickCoverPlan || "—" },
+                      { label: "Holiday Plan", value: lifestyle.holidayPlan || "—" },
                     ].map(a => <Assumption key={a.label} {...a} />)}
                   </div>
-                  {lifestyle.familySchedule.contingencyPlan && (
+                  {lifestyle.schoolContingencyPlan && (
                     <div className="mt-2">
                       <div className="text-[9px] uppercase tracking-wider text-gray-400 mb-0.5">Contingency Plan</div>
-                      <p className="text-xs text-gray-700">{lifestyle.familySchedule.contingencyPlan}</p>
+                      <p className="text-xs text-gray-700">{lifestyle.schoolContingencyPlan}</p>
                     </div>
                   )}
                 </>
