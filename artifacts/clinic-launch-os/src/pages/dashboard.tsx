@@ -195,7 +195,7 @@ export default function DashboardPage() {
   const [goNoGoStale, setGoNoGoStale] = useState(false);
   const [goNoGoCachedAt, setGoNoGoCachedAt] = useState<string | null>(null);
 
-  const [leaseSummary, setLeaseSummary] = useState<{ openingOfferRent: number; targetSettlement: number; walkAwayRent: number } | null>(null);
+  const [leaseSummary, setLeaseSummary] = useState<{ openingOfferRent: number; targetSettlement: number; walkAwayRent?: number; walkAwayRentMax?: number; walkAwayRentMin?: number } | null>(null);
 
   function formatCachedAge(isoString: string | null): string {
     if (!isoString) return "";
@@ -744,20 +744,31 @@ export default function DashboardPage() {
                       <div className="p-4 space-y-3">
                         {leaseSummary ? (
                           <>
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="grid grid-cols-2 gap-2">
                               {[
-                                { label: "Opening Offer", value: leaseSummary.openingOfferRent, note: "Lead with this" },
-                                { label: "Target", value: leaseSummary.targetSettlement, note: "Aim to land here" },
-                                { label: "Walk-Away", value: leaseSummary.walkAwayRent, note: "Do not exceed" },
-                              ].map(({ label, value, note }) => (
-                                <div key={label} className="rounded border border-blue-200/60 dark:border-blue-700/40 bg-white/60 dark:bg-blue-950/30 p-2 text-center">
+                                { label: "Opening Offer", value: leaseSummary.openingOfferRent, note: "Lead with this", cls: "border-blue-200/60 dark:border-blue-700/40" },
+                                { label: "Target Settlement", value: leaseSummary.targetSettlement, note: "Aim to land here", cls: "border-blue-200/60 dark:border-blue-700/40" },
+                              ].map(({ label, value, note, cls }) => (
+                                <div key={label} className={`rounded border ${cls} bg-white/60 dark:bg-blue-950/30 p-2 text-center`}>
                                   <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">{label}</div>
                                   <div className="text-sm font-bold text-foreground">£{Number(value).toLocaleString()}<span className="text-[9px] font-normal">/mo</span></div>
                                   <div className="text-[9px] text-blue-600 dark:text-blue-400 mt-0.5">{note}</div>
                                 </div>
                               ))}
                             </div>
-                            <p className="text-[10px] text-muted-foreground">Opening offer is 12% below asking. Walk-away is model-derived from conservative scenario.</p>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <div className="rounded border border-red-200/60 dark:border-red-700/40 bg-red-50/40 dark:bg-red-950/20 p-1.5 text-center">
+                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Walk-Away Max</div>
+                                <div className="text-sm font-bold text-red-700 dark:text-red-300">£{Number(leaseSummary.walkAwayRentMax ?? leaseSummary.walkAwayRent ?? 0).toLocaleString()}<span className="text-[9px] font-normal">/mo</span></div>
+                                <div className="text-[9px] text-muted-foreground/60 mt-0.5">If concessions secured</div>
+                              </div>
+                              <div className="rounded border border-red-300/60 dark:border-red-700/40 bg-red-100/40 dark:bg-red-950/30 p-1.5 text-center">
+                                <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Walk-Away Min</div>
+                                <div className="text-sm font-bold text-red-900 dark:text-red-200">£{Number(leaseSummary.walkAwayRentMin ?? leaseSummary.openingOfferRent).toLocaleString()}<span className="text-[9px] font-normal">/mo</span></div>
+                                <div className="text-[9px] text-muted-foreground/60 mt-0.5">No concessions</div>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Walk-away ceiling = asking rent only if break clause + rent-free + service charge cap are all secured.</p>
                           </>
                         ) : (
                           <p className="text-xs text-muted-foreground">Opening position, concession priority order, sequencing, counter-offer framework, and deal-breakers — all derived from your financial model.</p>

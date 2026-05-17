@@ -959,16 +959,16 @@ router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => 
   const realisticRev = financial ? scenarioRev(financial.realisticOccupancyPercent) : 0;
   const aggressiveRev = financial ? scenarioRev(financial.aggressiveOccupancyPercent) : 0;
 
-  // Walk-away: highest rent where conservative net contribution ≥ non-rent fixed costs
-  const nonRentFixed = Math.max(0, totalFixed - (financial?.rentGbp ?? 0));
-  const conservNetContrib = Math.round(conservRev * (1 - varRate));
-  const rawWalkAway = conservNetContrib - nonRentFixed;
-  const walkAwayRent = monthlyRent > 0
-    ? Math.min(
-        Math.round(monthlyRent * 1.08),
-        Math.max(Math.round(monthlyRent * 0.95), rawWalkAway > 0 ? rawWalkAway : Math.round(monthlyRent * 1.02))
-      )
-    : 0;
+  // Walk-away is a RANGE — ceiling = asking rent; floor = opening offer
+  // Hard rule: never pay more than asking rent
+  // Each missing critical concession reduces the acceptable ceiling toward the opening offer
+  // Break clause (yr 3) = 40% of gap, rent-free ≥3mo = 35%, service charge cap = 25%
+  const concessionGap = monthlyRent - openingOfferRent; // = 12% of asking
+  const walkAwayMax = monthlyRent;       // absolute ceiling — only if ALL 3 critical concessions secured
+  const walkAwayMin = openingOfferRent;  // floor — if NO concessions secured, walk at opening offer
+  const breakClauseValue = Math.round(concessionGap * 0.40);
+  const rentFreeValue    = Math.round(concessionGap * 0.35);
+  const svcCapValue      = Math.round(concessionGap * 0.25);
 
   // Break-even monthly revenue (for context)
   const breakEvenRev = varRate < 1 ? Math.round(totalFixed / (1 - varRate)) : 0;
@@ -1013,10 +1013,15 @@ Rent-free months already modelled: ${freeRentInModel}` : "No financial model ava
   const calcCtx = `
 SERVER-CALCULATED NUMBERS — use these EXACT figures in openingPosition:
   Opening offer rent: £${openingOfferRent}/mo (12.0% below asking; saving £${discountGbp}/mo vs asking)
-  Walk-away rent: £${walkAwayRent}/mo (model-derived: conservative net contribution = £${conservNetContrib}/mo; non-rent fixed = £${nonRentFixed}/mo)
-  Value of 1 month rent-free: £${monthlyRent}/mo (= asking rent)
-  Value of 6 months rent-free: £${monthlyRent * 6}.toLocaleString()
-  Break clause exposure on 5yr lease without break at yr 3: £${monthlyRent * 24}/mo × remaining 24 months = £${(monthlyRent * 24).toLocaleString()} total exposure`;
+  Walk-away — RANGE (asking rent is the absolute hard ceiling; never exceed it):
+    walkAwayRentMax: £${walkAwayMax}/mo — ONLY if ALL THREE critical concessions secured (break clause + ≥3mo rent-free + service charge cap)
+    walkAwayRentMin: £${walkAwayMin}/mo — if NONE of the three secured (= opening offer; walk away entirely)
+    Break clause at yr 3 unlocks: £${breakClauseValue}/mo headroom (40% of the 12% gap)
+    Rent-free ≥3mo unlocks:      £${rentFreeValue}/mo headroom (35% of the 12% gap)
+    Service charge cap unlocks:  £${svcCapValue}/mo headroom (25% of the 12% gap)
+  Value of 1 month rent-free: £${monthlyRent.toLocaleString()} (= asking rent)
+  Value of 6 months rent-free: £${(monthlyRent * 6).toLocaleString()}
+  Break clause exposure — 5yr lease, no break at yr 3: £${(monthlyRent * 24).toLocaleString()} total (24 months × asking rent)`;
 
   const prompt = `You are a specialist UK commercial property negotiation advisor for aesthetics clinics.
 
@@ -1046,7 +1051,9 @@ Return ONLY valid JSON (no markdown fences). Schema:
   "openingPosition": {
     "openingOfferRent": ${openingOfferRent},
     "targetSettlement": <int ≤ £${monthlyRent} — realistic final agreed figure; in competitive market near asking is normal>,
-    "walkAwayRent": ${walkAwayRent},
+    "walkAwayRentMax": ${walkAwayMax},
+    "walkAwayRentMin": ${walkAwayMin},
+    "walkAwayExplanation": "We will pay up to £${walkAwayMax}/mo only if [name the 3 specific concessions using the actual numbers — e.g. 'a break clause at year 3', '≥3 months rent-free', 'a capped service charge schedule'] are all secured. Without all three protections, we walk at £${walkAwayMin}/mo.",
     "discountJustification": [
       "<reason 1: secondary pitch characteristic — specific to this location>",
       "<reason 2: cold-start risk of new location without existing Winchester patient base>",

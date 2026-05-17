@@ -11,7 +11,10 @@ const STALE_MS = 24 * 60 * 60 * 1000;
 type OpeningPosition = {
   openingOfferRent: number;
   targetSettlement: number;
-  walkAwayRent: number;
+  walkAwayRent?: number;         // legacy — single value
+  walkAwayRentMax?: number;      // max acceptable rent (all 3 critical concessions secured = asking rent)
+  walkAwayRentMin?: number;      // min acceptable rent (no concessions = opening offer)
+  walkAwayExplanation?: string;  // plain-English conditional explanation
   discountJustification: string[];
   walkAwayJustification: string;
   negotiationApproach: string;
@@ -215,12 +218,11 @@ export default function LeaseStrategyPage() {
                 <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700 dark:text-blue-400">Opening Position</span>
               </div>
               <div className="p-4 space-y-4">
-                {/* Rent figures */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Opening + Target grid */}
+                <div className="grid grid-cols-2 gap-3">
                   {[
                     { label: "Opening Offer", value: op.openingOfferRent, note: "Lead with this", cls: "border-blue-300 dark:border-blue-700 bg-blue-100/40 dark:bg-blue-900/20" },
                     { label: "Target Settlement", value: op.targetSettlement, note: "Aim to land here", cls: "border-border/50 bg-card" },
-                    { label: "Walk-Away Rent", value: op.walkAwayRent, note: "Do not exceed", cls: "border-red-200 dark:border-red-800 bg-red-50/40 dark:bg-red-950/20" },
                   ].map(({ label, value, note, cls }) => (
                     <div key={label} className={`rounded-lg border p-3 text-center ${cls}`}>
                       <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
@@ -230,13 +232,37 @@ export default function LeaseStrategyPage() {
                   ))}
                 </div>
 
+                {/* Walk-Away Range — conditional ceiling */}
+                <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-950/15 p-3 space-y-2.5">
+                  <div className="text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400">Walk-Away Rent — Conditional Range</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded border border-red-200/70 dark:border-red-700/50 bg-white/70 dark:bg-red-950/30 p-2.5 text-center">
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Maximum — all concessions secured</div>
+                      <div className="text-xl font-bold text-red-700 dark:text-red-300">{fmt(op.walkAwayRentMax ?? op.walkAwayRent ?? 0)}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                      <div className="text-[9px] text-muted-foreground/60 mt-0.5">= asking rent — hard ceiling</div>
+                    </div>
+                    <div className="rounded border border-red-300/70 dark:border-red-700/50 bg-red-100/40 dark:bg-red-950/40 p-2.5 text-center">
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground mb-0.5">Minimum — no concessions</div>
+                      <div className="text-xl font-bold text-red-900 dark:text-red-200">{fmt(op.walkAwayRentMin ?? op.openingOfferRent)}<span className="text-xs font-normal text-muted-foreground">/mo</span></div>
+                      <div className="text-[9px] text-muted-foreground/60 mt-0.5">= opening offer — walk away</div>
+                    </div>
+                  </div>
+                  {op.walkAwayExplanation ? (
+                    <p className="text-[11px] text-foreground/85 leading-relaxed italic border-l-2 border-red-300 dark:border-red-700 pl-2.5">{op.walkAwayExplanation}</p>
+                  ) : op.walkAwayJustification ? (
+                    <div className="text-[11px] text-foreground/80 leading-relaxed border-l-2 border-red-300 dark:border-red-700 pl-2.5">
+                      <span className="font-semibold text-red-600 dark:text-red-400">Walk-away basis: </span>{op.walkAwayJustification}
+                    </div>
+                  ) : null}
+                </div>
+
                 {/* Transparent discount maths */}
                 {op.openingOfferRent > 0 && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/30 rounded-md px-3 py-2">
                     <span className="font-medium text-foreground">Maths:</span>
                     <span>Asking rent</span>
                     <span className="text-muted-foreground/50">→</span>
-                    <span className="text-red-600 dark:text-red-400 font-medium">−12% (−{fmt(op.targetSettlement - op.openingOfferRent > 0 ? op.targetSettlement - op.openingOfferRent : 0)})</span>
+                    <span className="text-red-600 dark:text-red-400 font-medium">−12% (−{fmt(op.walkAwayRentMax ? op.walkAwayRentMax - op.openingOfferRent : 0)})</span>
                     <span className="text-muted-foreground/50">=</span>
                     <span className="font-semibold text-blue-700 dark:text-blue-300">{fmt(op.openingOfferRent)}/mo opening offer</span>
                   </div>
@@ -253,14 +279,6 @@ export default function LeaseStrategyPage() {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Walk-away basis */}
-                {op.walkAwayJustification && (
-                  <div className="rounded-md border border-red-200/60 dark:border-red-800/60 bg-red-50/40 dark:bg-red-950/20 px-3 py-2">
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-red-600 dark:text-red-400 mr-1.5">Walk-away basis:</span>
-                    <span className="text-xs text-foreground/80">{op.walkAwayJustification}</span>
                   </div>
                 )}
 
