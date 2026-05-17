@@ -7,7 +7,7 @@ import {
   complianceItemsTable, cqcMilestonesTable,
   lifestylePlanTable, competitorsTable,
 } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
 
 const router = Router();
@@ -908,12 +908,17 @@ router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => 
   const projectId = parseInt(req.params.projectId as string);
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
 
-  const [financialRaw, allPropertiesRaw, allTasks, fixedItems] = await Promise.all([
+  const [financialRaw, allPropertiesRaw, projectPhases, fixedItems] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
-    db.select().from(tasksTable).where(eq(tasksTable.projectId, projectId)),
+    db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
   ]);
+
+  const phaseIds = projectPhases.map(p => p.id);
+  const allTasks = phaseIds.length > 0
+    ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
+    : [];
 
   const financial = financialRaw[0] ?? null;
   const property = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
