@@ -392,6 +392,8 @@ export default function FinancialsPage() {
   const [bLive, setBLive] = useState<BLiveData | null>(null);
   const [bLiveLoading, setBLiveLoading] = useState(true);
   const [bLiveError, setBLiveError] = useState(false);
+  const [bLiveSyncing, setBLiveSyncing] = useState(false);
+  const [bLiveSyncResult, setBLiveSyncResult] = useState<{ avg3m: number; rollingTotal: number; impliedVariablePct: number } | null>(null);
 
   const loadBedhamptonLive = () => {
     setBLiveLoading(true);
@@ -400,6 +402,24 @@ export default function FinancialsPage() {
       .then((r) => r.ok ? r.json() : Promise.reject(r.status))
       .then((d: BLiveData) => { setBLive(d); setBLiveLoading(false); })
       .catch(() => { setBLiveError(true); setBLiveLoading(false); });
+  };
+
+  const syncBedhamptonFromLive = async () => {
+    setBLiveSyncing(true);
+    try {
+      const res = await fetch(`/api/projects/${PROJECT_ID}/financial/sync-bedhampton`, { method: "POST" });
+      if (!res.ok) throw new Error("Sync failed");
+      const data = await res.json();
+      setBLiveSyncResult({ avg3m: data.avg3m, rollingTotal: data.rollingTotal, impliedVariablePct: data.impliedVariablePct });
+      // Reload the financial model to reflect updated values
+      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+      queryClient.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes("cashflow") });
+      toast({ title: "Bedhampton data synced", description: `Revenue set to £${data.avg3m.toLocaleString()}/mo (3-month average from live data)` });
+    } catch {
+      toast({ title: "Sync failed", description: "Could not reach Bedhampton data — try again.", variant: "destructive" });
+    } finally {
+      setBLiveSyncing(false);
+    }
   };
 
   useEffect(() => { loadBedhamptonLive(); }, []);
@@ -2462,12 +2482,48 @@ export default function FinancialsPage() {
 
                 <Card className="shadow-sm border-blue-200 dark:border-blue-900">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Bedhampton — Revenue</CardTitle>
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span>Bedhampton — Revenue</span>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1.5"
+                        disabled={bLiveSyncing}
+                        onClick={syncBedhamptonFromLive}
+                      >
+                        {bLiveSyncing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                        Sync from live data
+                      </Button>
+                    </CardTitle>
                     <CardDescription className="text-xs">
                       Separate patient base. Supports the business during the {clinicLabel} ramp. Closes when {clinicLabel} hits the self-funding target.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
+                    {/* Warning when Bedhampton revenue is not set */}
+                    {(Number(form.watch("existingClinicRevenueGbp")) || 0) === 0 && bLive && (
+                      <div className="flex items-start gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>
+                          Bedhampton monthly revenue is not set — all Bedhampton figures will show £0.
+                          Live data shows <strong>£{Math.round(bLive.recentMonths.slice(-3).reduce((s, m) => s + m.revenue, 0) / Math.max(bLive.recentMonths.slice(-3).length, 1)).toLocaleString()}/mo</strong> (3-month average).
+                          Click <em>Sync from live data</em> to auto-fill.
+                        </span>
+                      </div>
+                    )}
+                    {/* Live data reference */}
+                    {bLive && (Number(form.watch("existingClinicRevenueGbp")) || 0) > 0 && (
+                      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground bg-muted/40 rounded p-2">
+                        <span>Live — Last month: <strong>£{Math.round(bLive.summary.lastMonthRevenue).toLocaleString()}</strong></span>
+                        <span>·</span>
+                        <span>Projected this month: <strong>£{Math.round(bLive.summary.projectedMonthRevenue).toLocaleString()}</strong></span>
+                        <span>·</span>
+                        <span>3-mo avg: <strong>£{Math.round(bLive.recentMonths.slice(-3).reduce((s, m) => s + m.revenue, 0) / Math.max(bLive.recentMonths.slice(-3).length, 1)).toLocaleString()}</strong></span>
+                        <span>·</span>
+                        <span>Gross margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong></span>
+                      </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["existingClinicRevenueGbp","Gross Monthly Revenue (£)"],
@@ -2479,7 +2535,7 @@ export default function FinancialsPage() {
                         )} />
                       ))}
                     </div>
-                    <p className="text-[10px] text-muted-foreground mt-1">Joint capacity ceiling: total revenue (Bedhampton + Winchester) Abi can generate. As Winchester grows, Bedhampton slots reduce proportionally.</p>
+                    <p className="text-[10px] text-muted-foreground">Joint capacity ceiling: total revenue (Bedhampton + Winchester) Abi can generate. As Winchester grows, Bedhampton slots reduce proportionally.</p>
                   </CardContent>
                 </Card>
 

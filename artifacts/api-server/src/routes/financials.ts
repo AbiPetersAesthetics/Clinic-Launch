@@ -10,6 +10,7 @@ import {
   calcCombined,
   calcOwner,
 } from "../lib/financialEngine";
+import { fetchBedhamptonLive } from "./bedhampton";
 
 const router = Router();
 
@@ -85,6 +86,30 @@ function applyRampTier(
     rampMonths: newRampMonths,
     note: `${profile.note}${tierLabel} (opens at ${newStartOcc}% occ, ${newRampMonths}-mo ramp)`,
   };
+}
+
+// ─── Bedhampton live-data fallback ────────────────────────────────────────────
+// When existingClinicRevenueGbp = 0 (not entered / accidentally cleared), use
+// the live 3-month Bedhampton average so calculations are never silently zeroed.
+// Returns an object with the resolved revenue + a flag indicating whether live
+// data was used so callers can include a warning in the response.
+
+async function resolveBedhamptonRevenue(
+  model: any,
+): Promise<{ revenue: number; fromLive: boolean; avg3m: number }> {
+  const stored = model.existingClinicRevenueGbp || 0;
+  if (stored > 0) return { revenue: stored, fromLive: false, avg3m: 0 };
+
+  try {
+    const { recentMonths } = await fetchBedhamptonLive();
+    const last3 = recentMonths.slice(-3);
+    const avg3m = last3.length > 0
+      ? Math.round(last3.reduce((s, m) => s + m.revenue, 0) / last3.length)
+      : 0;
+    return { revenue: avg3m, fromLive: true, avg3m };
+  } catch {
+    return { revenue: 0, fromLive: false, avg3m: 0 };
+  }
 }
 
 // ─── Property rent/rates fallback ─────────────────────────────────────────────
@@ -537,6 +562,56 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   });
 
   return res.json(cashflow);
+});
+
+// ─── POST /projects/:id/financial/sync-bedhampton ───────────────────────────
+// Fetches live Bedhampton data and writes the 3-month average revenue,
+// rolling 8-month VAT turnover, and live gross margin into the model.
+// Safe to call at any time — only updates the three Bedhampton-derived fields.
+
+router.post("/projects/:projectId/financial/sync-bedhampton", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  try {
+    const { summary, recentMonths } = await fetchBedhamptonLive();
+
+    // 3-month average revenue (last 3 completed months)
+    const last3 = recentMonths.slice(-3);
+    const avg3m = last3.length > 0
+      ? Math.round(last3.reduce((s, m) => s + m.revenue, 0) / last3.length)
+      : 0;
+
+    // Rolling total revenue from all available completed months (conservative VAT position)
+    const rollingTotal = recentMonths.reduce((s, m) => s + m.revenue, 0);
+
+    // Live gross margin → derive variable cost % (stock + consumables)
+    const impliedVariablePct = Math.round((100 - summary.avgGrossMarginPct) * 10) / 10;
+
+    const [existing] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+    if (!existing) return res.status(404).json({ error: "No financial model found" });
+
+    const [updated] = await db.update(financialsTable)
+      .set({
+        existingClinicRevenueGbp: avg3m,
+        vatCurrentTurnoverGbp: Math.round(rollingTotal),
+        bedhStockPercent: Math.round(impliedVariablePct),
+        updatedAt: new Date(),
+      } as any)
+      .where(eq(financialsTable.projectId, projectId))
+      .returning();
+
+    return res.json({
+      ok: true,
+      avg3m,
+      rollingTotal: Math.round(rollingTotal),
+      impliedVariablePct,
+      avgGrossMarginPct: summary.avgGrossMarginPct,
+      recentMonths: recentMonths.length,
+      model: updated,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Sync failed";
+    return res.status(502).json({ error: msg });
+  }
 });
 
 // ─── DELETE /projects/:id/financial ──────────────────────────────────────────

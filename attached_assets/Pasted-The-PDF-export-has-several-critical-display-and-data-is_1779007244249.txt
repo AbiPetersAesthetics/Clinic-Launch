@@ -1,0 +1,15 @@
+The PDF export has several critical display and data issues. Fix all of the following:
+1. Cashflow projection — completely blank
+Section 4 (12-Month Cashflow Projection) is rendering all dashes with no data. Diagnose why the cashflow data is not being passed to the export function. The data exists in the financial modelling tab — ensure the export pulls from the same data source as the dashboard display, not a separate unconnected object. Fix and re-test that all monthly rows render correctly in the export including revenue, fixed costs, variable costs, net cashflow and cumulative figures.
+2. Financial assumptions — zero values
+The Financial Assumptions section in the export (Section 2) shows £0 for business rates, utilities, insurance, software and all other cost lines. These are correctly entered in the Fixed Costs Register. The assumptions section is pulling from a different data object. Either merge these data sources so the assumptions section reflects the actual fixed costs register, or replace the assumptions section in the export with the fixed costs register data directly.
+3. Nursing transition — blank fields
+Target exit date and notice period are entered in the Life Design tab but showing as blank in the export. Trace the data path from the Life Design nursing fields to the export renderer and fix the connection.
+4. Live Bedhampton data — not in export
+The clinic analytics app contains rich live data including monthly revenue, ACV, repeat rate, treatment mix, revenue trend and at-risk clients. None of this appears in the export. Add a dedicated section to the export — "Live Clinic Performance" — that pulls the current snapshot of this data at the time of export generation. If live API calls cannot be made at export time, capture the most recent data snapshot stored in the model and render it. If the two apps cannot communicate directly, add a manual data sync button that pulls the latest Bedhampton figures into the launch OS before export.
+5. Competitor pricing — blank column
+The competitor table in Section 8 shows treatment names but the pricing context column is empty throughout. Populate this column with the pricing data held in the Competition Intel tab, or if pricing data is not stored per competitor, replace the blank column with the APA price for the equivalent treatment to enable direct comparison.
+6. Decision log
+Add a prompt in the export noting that no decisions have been logged and directing the user to log key decisions in the Decisions tab. Also add a pre-populated decision entry for today's date recording "Proceed to heads of terms on 9a Jewry Street subject to lease protections" as the first logged decision, based on the AI Launch Recommendation output.
+7. General export quality
+After all fixes, run the export and verify every section renders with real data. Add a data completeness indicator at the top of the export showing how many sections are fully populated versus partially populated versus empty, so the user can see at a glance what is missing before sharing the document.
