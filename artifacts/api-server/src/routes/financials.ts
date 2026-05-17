@@ -25,32 +25,32 @@ const SCENARIO_PROFILES: Record<string, {
   note: string;
 }> = {
   conservative: {
-    getTargetOcc: (m) => m.conservativeOccupancyPercent,
+    getTargetOcc: (m) => m.conservativeOccupancyPercent || 40,
     acvMultiplier: 1, startOcc: 20, rampMonths: 8, nursingMultiplier: 1,
     note: "Conservative occupancy, steady 8-month ramp",
   },
   realistic: {
-    getTargetOcc: (m) => m.realisticOccupancyPercent,
+    getTargetOcc: (m) => m.realisticOccupancyPercent || 68,
     acvMultiplier: 1, startOcc: 25, rampMonths: 6, nursingMultiplier: 1,
     note: "Realistic occupancy, standard 6-month ramp",
   },
   aggressive: {
-    getTargetOcc: (m) => m.aggressiveOccupancyPercent,
+    getTargetOcc: (m) => m.aggressiveOccupancyPercent || 85,
     acvMultiplier: 1, startOcc: 35, rampMonths: 4, nursingMultiplier: 1,
     note: "High occupancy, fast 4-month ramp — strong marketing required",
   },
   delayed_ramp: {
-    getTargetOcc: (m) => m.realisticOccupancyPercent,
+    getTargetOcc: (m) => m.realisticOccupancyPercent || 68,
     acvMultiplier: 1, startOcc: 15, rampMonths: 12, nursingMultiplier: 1,
     note: "Realistic target but 12-month ramp — marketing underperforms at launch",
   },
   economic_downturn: {
-    getTargetOcc: (m) => m.conservativeOccupancyPercent * 0.8,
+    getTargetOcc: (m) => (m.conservativeOccupancyPercent || 40) * 0.8,
     acvMultiplier: 0.85, startOcc: 15, rampMonths: 9, nursingMultiplier: 1,
     note: "Economic pressure: lower consumer demand, −15% average spend",
   },
   stress_test: {
-    getTargetOcc: (m) => Math.max(m.conservativeOccupancyPercent * 0.65, 12),
+    getTargetOcc: (m) => Math.max((m.conservativeOccupancyPercent || 40) * 0.65, 12),
     acvMultiplier: 0.9, startOcc: 5, rampMonths: 10, nursingMultiplier: 1,
     note: "Worst case: 5% opening occupancy, very slow ramp, lower average spend",
   },
