@@ -867,9 +867,8 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
       await fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plannedPricingJson: JSON.stringify(updated), ...(avc > 0 ? { wincAcvGbp: avc } : {}) }),
+        body: JSON.stringify({ plannedPricingJson: JSON.stringify(updated), wincAcvGbp: avc > 0 ? avc : undefined }),
       });
-      if (avc > 0) onApplyToModel(avc, "planned").catch(() => {});
       setPlanStatus("saved");
       setTimeout(() => setPlanStatus("idle"), 2000);
     } catch {
@@ -1105,8 +1104,8 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                   <div className="flex flex-col items-end gap-0.5">
                     <span>Our Price</span>
                     {derivedAvc != null
-                      ? <span className="text-[10px] font-normal text-primary/70 normal-case tracking-normal">AVC = £{derivedAvc}</span>
-                      : <span className="text-[10px] font-normal text-muted-foreground/60 normal-case tracking-normal">enter to set AVC</span>
+                      ? <span className="text-[10px] font-semibold text-primary normal-case tracking-normal">Winchester AVC = £{derivedAvc}</span>
+                      : <span className="text-[10px] font-normal text-muted-foreground/60 normal-case tracking-normal">sets Winchester AVC</span>
                     }
                   </div>
                 </th>
@@ -1188,7 +1187,7 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
               })}
               {/* AVC summary footer row */}
               <tr className="border-t-2 border-primary/30 bg-primary/5">
-                <td className="py-2 pr-4 text-xs font-semibold text-primary uppercase tracking-wider">Planned AVC</td>
+                <td className="py-2 pr-4 text-xs font-semibold text-primary uppercase tracking-wider">Winchester AVC</td>
                 <td className="py-2 px-3 text-right border-x border-primary/20">
                   {derivedAvc != null
                     ? <span className="text-sm font-bold text-primary">£{derivedAvc}</span>
@@ -1197,8 +1196,8 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                 </td>
                 <td colSpan={3 + competitors.length} className="py-2 px-3 text-xs text-muted-foreground">
                   {derivedAvc != null
-                    ? <>Average of {Object.values(plannedPrices).filter(v=>v>0).length} treatment price{Object.values(plannedPrices).filter(v=>v>0).length !== 1 ? "s" : ""} · {planStatus === "saved" ? <span className="text-teal-600 font-medium">✓ Saved to financial model</span> : planStatus === "err" ? <span className="text-red-500">Save failed — try again</span> : "auto-saves to financial model on each entry"}</>
-                    : "Fill in your planned prices above — the average will feed into your financial model as the Winchester ACV"
+                    ? <>Mean of {Object.values(plannedPrices).filter(v=>v>0).length} treatment price{Object.values(plannedPrices).filter(v=>v>0).length !== 1 ? "s" : ""} → used as Winchester ACV in your financial model · {planStatus === "saved" ? <span className="text-teal-600 font-medium">✓ Saved</span> : planStatus === "err" ? <span className="text-red-500">Save failed — try again</span> : "saves automatically on each entry"}</>
+                    : "Enter your planned prices above — the mean becomes your Winchester AVC and updates the financial model automatically"
                   }
                 </td>
               </tr>
