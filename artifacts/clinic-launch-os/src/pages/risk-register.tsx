@@ -495,17 +495,17 @@ function RiskRow({ risk, rank, allRisks, onPatch, onReview, onToggleWatch }: {
         </div>
 
         {/* Owner */}
-        <div className="shrink-0 hidden lg:block" onClick={e => e.stopPropagation()}>
+        <div className="shrink-0 hidden md:block" onClick={e => e.stopPropagation()}>
           <EditableSelect value={risk.owner} options={OWNERS} onChange={v => onPatch(risk.riskId, { owner: v })} />
         </div>
 
         {/* Due date */}
-        <div className="shrink-0 hidden lg:block">
+        <div className="shrink-0 hidden md:block w-24">
           {risk.dueDate ? (
             <span className={`text-xs ${isOverdue ? "text-red-600 font-semibold" : isDueSoon ? "text-amber-600 font-medium" : "text-muted-foreground"}`}>
               {fmt(risk.dueDate)}{isOverdue ? " ⚠" : ""}
             </span>
-          ) : <span className="text-xs text-muted-foreground/50">—</span>}
+          ) : <span className="text-xs text-muted-foreground/50">No date</span>}
         </div>
 
         {/* Status */}
@@ -658,8 +658,31 @@ export default function RiskRegisterPage() {
   }).length;
 
   // Tab categories
+  const actionTasks = risks.filter(r => r.treatmentAction && r.treatmentAction.trim().length > 0 && !["Mitigated", "Closed"].includes(r.status));
+  const actionTasksSorted = [...actionTasks].sort((a, b) => {
+    if (!a.dueDate && !b.dueDate) return 0;
+    if (!a.dueDate) return 1;
+    if (!b.dueDate) return -1;
+    return a.dueDate.localeCompare(b.dueDate);
+  });
+  const actionByOwner: Record<string, Risk[]> = {};
+  for (const r of actionTasksSorted) {
+    const key = r.owner || "Unassigned";
+    if (!actionByOwner[key]) actionByOwner[key] = [];
+    actionByOwner[key].push(r);
+  }
+  const actionOwnerGroups = Object.entries(actionByOwner).sort(([a], [b]) => {
+    if (a === "Unassigned") return 1;
+    if (b === "Unassigned") return -1;
+    return a.localeCompare(b);
+  });
+  const actionOverdue = actionTasks.filter(r => { const d = daysUntil(r.dueDate); return d !== null && d < 0; });
+  const actionDueSoon = actionTasks.filter(r => { const d = daysUntil(r.dueDate); return d !== null && d >= 0 && d <= 7; });
+  const actionNoDate = actionTasks.filter(r => !r.dueDate);
+
   const tabDefs = [
     { key: "all", label: "All Risks" },
+    { key: "actions", label: `✓ Action Tasks (${actionTasks.length})` },
     { key: "financial", label: "Financial" },
     { key: "legal", label: "Legal & Lease" },
     { key: "clinical", label: "Clinical & Compliance" },
@@ -852,8 +875,64 @@ export default function RiskRegisterPage() {
         </Tabs>
       </div>
 
+      {/* ── Action Tasks view ────────────────────────────────────────────────── */}
+      {activeTab === "actions" && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">{actionTasks.length} open actions</span>
+            {actionOverdue.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-red-100 text-red-700 px-3 py-1 text-xs font-medium">⚠ {actionOverdue.length} overdue</span>}
+            {actionDueSoon.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-100 text-amber-700 px-3 py-1 text-xs font-medium">⏰ {actionDueSoon.length} due this week</span>}
+            {actionNoDate.length > 0 && <span className="inline-flex items-center gap-1.5 rounded-full bg-muted text-muted-foreground px-3 py-1 text-xs font-medium">{actionNoDate.length} no date set</span>}
+          </div>
+          {actionTasks.length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="p-8 text-center text-muted-foreground text-sm">
+                No open treatment actions yet. Expand any risk and fill in the Treatment Action field to add tasks here.
+              </CardContent>
+            </Card>
+          ) : actionOwnerGroups.map(([owner, ownerRisks]) => (
+            <Card key={owner} className="border-0 shadow-sm overflow-hidden">
+              <div className="border-b border-border bg-muted/30 px-4 py-2 flex items-center gap-2">
+                <User className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-sm font-semibold">{owner}</span>
+                <span className="text-xs text-muted-foreground ml-1">({ownerRisks.length} action{ownerRisks.length !== 1 ? "s" : ""})</span>
+              </div>
+              <div className="divide-y divide-border">
+                {ownerRisks.map(r => {
+                  const d = daysUntil(r.dueDate);
+                  const isOv = d !== null && d < 0;
+                  const isSoon = d !== null && d >= 0 && d <= 7;
+                  return (
+                    <div key={r.riskId} className={`px-4 py-3 flex items-start gap-3 ${isOv ? "bg-red-50" : isSoon ? "bg-amber-50/50" : ""}`}>
+                      <div className="mt-0.5 shrink-0"><ScoreBadge l={r.likelihood} i={r.impact} /></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-muted-foreground">{r.riskId}</span>
+                          <span className="text-sm font-medium">{r.title}</span>
+                          {r.treatment && <span className="text-xs bg-muted px-1.5 py-0.5 rounded border border-border">{r.treatment}</span>}
+                          {r.status && <span className={`text-xs px-1.5 py-0.5 rounded border ${r.status === "Mitigated" ? "bg-emerald-50 border-emerald-200 text-emerald-700" : r.status === "Open" ? "bg-blue-50 border-blue-200 text-blue-700" : "border-border text-muted-foreground"}`}>{r.status}</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{r.treatmentAction}</p>
+                      </div>
+                      <div className="shrink-0 text-right min-w-[80px]">
+                        {r.dueDate ? (
+                          <span className={`text-xs font-medium ${isOv ? "text-red-600" : isSoon ? "text-amber-600" : "text-muted-foreground"}`}>
+                            {isOv ? "Overdue" : isSoon ? "Due soon" : fmt(r.dueDate)}
+                            {(isOv || isSoon) && <><br /><span className="font-normal">{fmt(r.dueDate)}</span></>}
+                          </span>
+                        ) : <span className="text-xs text-muted-foreground/50">No date</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* ── Filters ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2 items-center">
+      {activeTab !== "actions" && <div className="flex flex-wrap gap-2 items-center">
         <Input
           placeholder="Search risks…"
           value={search}
@@ -889,10 +968,10 @@ export default function RiskRegisterPage() {
           </button>
         )}
         <span className="text-xs text-muted-foreground ml-auto">{filtered.length} risks</span>
-      </div>
+      </div>}
 
       {/* ── Table header ─────────────────────────────────────────────────────── */}
-      <Card className="border-0 shadow-sm overflow-hidden">
+      {activeTab !== "actions" && <Card className="border-0 shadow-sm overflow-hidden">
         <div className="border-b border-border bg-muted/30 flex items-center gap-2 px-3 py-2">
           <span className="text-xs font-medium text-muted-foreground w-6 text-center">#</span>
           <span className="text-xs font-medium text-muted-foreground w-10">ID</span>
@@ -902,8 +981,8 @@ export default function RiskRegisterPage() {
           <span className="text-xs font-medium text-muted-foreground hidden md:block w-12 text-center">Resid.</span>
           <span className="text-xs font-medium text-muted-foreground hidden md:block w-5">↕</span>
           <span className="text-xs font-medium text-muted-foreground hidden md:block w-24">Treatment</span>
-          <span className="text-xs font-medium text-muted-foreground hidden lg:block w-24">Owner</span>
-          <span className="text-xs font-medium text-muted-foreground hidden lg:block w-24">Due</span>
+          <span className="text-xs font-medium text-muted-foreground hidden md:block w-24">Owner</span>
+          <span className="text-xs font-medium text-muted-foreground hidden md:block w-24">Due</span>
           <span className="text-xs font-medium text-muted-foreground hidden lg:block w-28">Status</span>
           <span className="text-xs font-medium text-muted-foreground w-6 text-center">★</span>
           <span className="w-4" />
@@ -928,7 +1007,7 @@ export default function RiskRegisterPage() {
             ))}
           </div>
         )}
-      </Card>
+      </Card>}
 
       {/* ── Pipeline view ────────────────────────────────────────────────────── */}
       <Card className="border-0 bg-muted/20">
