@@ -664,10 +664,10 @@ export default function DashboardPage() {
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 mb-2">Strengths</div>
                         <ul className="space-y-2">
-                          {goNoGo.strengths.map((s, i) => (
+                          {goNoGo.strengths.map((s: any, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                              {s}
+                              {typeof s === "string" ? s : s.text ?? s.label ?? JSON.stringify(s)}
                             </li>
                           ))}
                         </ul>
@@ -677,10 +677,10 @@ export default function DashboardPage() {
                       <div>
                         <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Concerns</div>
                         <ul className="space-y-2">
-                          {goNoGo.concerns.map((c, i) => (
+                          {goNoGo.concerns.map((c: any, i) => (
                             <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
                               <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                              {c}
+                              {typeof c === "string" ? c : c.text ?? c.label ?? JSON.stringify(c)}
                             </li>
                           ))}
                         </ul>
@@ -693,9 +693,10 @@ export default function DashboardPage() {
                     <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-4">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-2">Non-negotiable conditions</div>
                       <ul className="space-y-1.5">
-                        {goNoGo.conditions.map((cond, i) => (
+                        {goNoGo.conditions.map((cond: any, i) => (
                           <li key={i} className="flex items-start gap-1.5 text-xs text-amber-900 dark:text-amber-200">
-                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5" />{cond}
+                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5" />
+                            {typeof cond === "string" ? cond : cond.text ?? cond.label ?? JSON.stringify(cond)}
                           </li>
                         ))}
                       </ul>
@@ -785,9 +786,10 @@ export default function DashboardPage() {
                     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <div className="text-[10px] font-semibold uppercase tracking-wider text-primary mb-2">Key Negotiation Points — Summary</div>
                       <ul className="space-y-1.5">
-                        {goNoGo.negotiationPoints.map((pt, i) => (
+                        {goNoGo.negotiationPoints.map((pt: any, i) => (
                           <li key={i} className="flex items-start gap-2 text-xs text-foreground/85">
-                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5 text-primary/60" />{pt}
+                            <ArrowRight className="w-3 h-3 shrink-0 mt-0.5 text-primary/60" />
+                            {typeof pt === "string" ? pt : pt.text ?? pt.point ?? pt.action ?? JSON.stringify(pt)}
                           </li>
                         ))}
                       </ul>
@@ -806,9 +808,10 @@ export default function DashboardPage() {
                               {week.focus && <span className="text-[10px] text-muted-foreground">— {week.focus}</span>}
                             </div>
                             <ul className="space-y-1">
-                              {week.actions.map((act, j) => (
+                              {week.actions.map((act: any, j) => (
                                 <li key={j} className="flex items-start gap-1 text-[11px] text-foreground/80">
-                                  <span className="text-muted-foreground shrink-0 mt-px">·</span>{act}
+                                  <span className="text-muted-foreground shrink-0 mt-px">·</span>
+                                  {typeof act === "string" ? act : act.text ?? act.task ?? act.action ?? JSON.stringify(act)}
                                 </li>
                               ))}
                             </ul>
