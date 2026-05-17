@@ -1096,10 +1096,7 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
       </div>
 
       {/* ── Comparison table ── */}
-      {competitors.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to see pricing comparison.</div>
-      ) : (
-        <div className="overflow-x-auto">
+      <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-primary/30">
@@ -1208,7 +1205,6 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
             </tbody>
           </table>
         </div>
-      )}
       <div className="flex items-center gap-6 text-xs text-muted-foreground pt-2 border-t border-border">
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Cheaper than your planned price</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />More expensive than your planned price</div>
