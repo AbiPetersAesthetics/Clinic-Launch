@@ -377,7 +377,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bedhBaseCosts = bedhProductCosts + bedhRunningCosts;
 
   // Bedhampton capacity ceiling: as Winchester fills slots, Bedhampton revenue tapers
-  const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp ?? 16000;
+  // Use || not ?? — the DB may store 0 as "not configured" and 0 would cap revenue at £0
+  const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp || 16000;
 
   // Pre-opening property costs: rent + rates apply from lease signing, before Winchester opens
   // IMPORTANT: use cfRentAmount (from fixedCostItems) not model.rentGbp — the active property
