@@ -909,23 +909,29 @@ export default function FinancialsPage() {
             ))}
           </div>
         </div>
-        <div className="space-y-1 text-xs text-muted-foreground">
-          {activeVat.starred && (
-            <p className="text-emerald-700 dark:text-emerald-400 font-medium">{activeVat.note}</p>
-          )}
-          {activeVat.worst && (
-            <p className="text-red-600 dark:text-red-400 font-medium">{activeVat.note}</p>
-          )}
-          {!activeVat.starred && !activeVat.worst && (
-            <p>{activeVat.note}</p>
-          )}
+        <div className="space-y-1.5 text-xs text-muted-foreground">
+          {/* Preset description */}
+          <p className={activeVat.starred ? "text-emerald-700 dark:text-emerald-400 font-medium" : activeVat.worst ? "text-red-600 dark:text-red-400 font-medium" : ""}>{activeVat.note}</p>
+
+          {/* Monthly saving / opportunity line */}
           {cr && (() => {
-            const monthlySaving = Math.round(cr.winc.grossRevenue * (0.20 - activeVat.rate));
-            const pctLabel = activeVat.key !== "none" ? `from No Offset to ${activeVat.label}` : "";
-            return monthlySaving > 0 ? (
-              <p>Moving {pctLabel} is worth approximately <strong className="text-foreground">£{monthlySaving.toLocaleString()}/month</strong> at your current revenue level.</p>
-            ) : null;
+            const rev = cr.winc.grossRevenue;
+            if (activeVat.key === "none") {
+              // Show what Partial (★ typical) and Maximum could save
+              const partialSaving = Math.round(rev * (0.20 - 0.15));
+              const maxSaving = Math.round(rev * (0.20 - 0.09));
+              return (
+                <p>At your current revenue, switching to <strong className="text-foreground">Partial (★ typical)</strong> could save approximately <strong className="text-foreground">£{partialSaving.toLocaleString()}/month</strong>; Maximum could save <strong className="text-foreground">£{maxSaving.toLocaleString()}/month</strong>. These savings flow directly to net profit.</p>
+              );
+            } else {
+              const saving = Math.round(rev * (0.20 - activeVat.rate));
+              return (
+                <p>Moving from No Offset to <strong className="text-foreground">{activeVat.label}</strong> is worth approximately <strong className="text-foreground">£{saving.toLocaleString()}/month</strong> at your current revenue level — this flows directly to net profit with no change to clinical operations.</p>
+              );
+            }
           })()}
+
+          {/* Specialist disclaimer — always visible */}
           <p className="text-muted-foreground/70 italic">UK aesthetics VAT is complex — HMRC distinguishes between medical treatments (potentially exempt) and cosmetic treatments (standard-rated). Confirm your actual position with a healthcare VAT specialist before selecting below Partial.</p>
         </div>
       </div>
