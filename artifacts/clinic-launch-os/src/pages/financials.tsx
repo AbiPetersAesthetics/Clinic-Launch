@@ -450,6 +450,7 @@ export default function FinancialsPage() {
       fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}`)
         .then((r) => r.json()),
     staleTime: 0,
+    placeholderData: (prev) => prev,
   });
 
   const [pnlMonths, setPnlMonths] = useState<12 | 36>(12);
@@ -459,6 +460,7 @@ export default function FinancialsPage() {
       fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&months=36&vatRate=${activeVat.rate}`)
         .then((r) => r.json()),
     staleTime: 0,
+    placeholderData: (prev) => prev,
   });
   const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
 
@@ -917,20 +919,22 @@ export default function FinancialsPage() {
           {/* Preset description */}
           <p className={activeVat.starred ? "text-emerald-700 dark:text-emerald-400 font-medium" : activeVat.worst ? "text-red-600 dark:text-red-400 font-medium" : ""}>{activeVat.note}</p>
 
-          {/* Monthly saving / opportunity line */}
-          {cr && (() => {
-            const rev = cr.winc.grossRevenue;
+          {/* Monthly saving / opportunity line — derived from live cashflow, not the async calc mutation */}
+          {(() => {
+            // Average VAT-registered month revenue (Winchester + Bedhampton combined) from cashflow
+            const vatMonths = (cashflow ?? []).filter(m => m.isVatRegistered);
+            if (vatMonths.length === 0) return null;
+            const avgRev = vatMonths.reduce((s, m) => s + m.wincRevenue + m.bedhRevenue, 0) / vatMonths.length;
             if (activeVat.key === "none") {
-              // Show what Partial (★ typical) and Maximum could save
-              const partialSaving = Math.round(rev * (0.20 - 0.15));
-              const maxSaving = Math.round(rev * (0.20 - 0.09));
+              const partialSaving = Math.round(avgRev * (0.20 - 0.15));
+              const maxSaving = Math.round(avgRev * (0.20 - 0.09));
               return (
-                <p>At your current revenue, switching to <strong className="text-foreground">Partial (★ typical)</strong> could save approximately <strong className="text-foreground">£{partialSaving.toLocaleString()}/month</strong>; Maximum could save <strong className="text-foreground">£{maxSaving.toLocaleString()}/month</strong>. These savings flow directly to net profit.</p>
+                <p>At this scenario's revenue, switching to <strong className="text-foreground">Partial (★ typical)</strong> could save approximately <strong className="text-foreground">£{partialSaving.toLocaleString()}/month</strong>; Maximum could save <strong className="text-foreground">£{maxSaving.toLocaleString()}/month</strong>. These savings flow directly to net profit.</p>
               );
             } else {
-              const saving = Math.round(rev * (0.20 - activeVat.rate));
+              const saving = Math.round(avgRev * (0.20 - activeVat.rate));
               return (
-                <p>Moving from No Offset to <strong className="text-foreground">{activeVat.label}</strong> is worth approximately <strong className="text-foreground">£{saving.toLocaleString()}/month</strong> at your current revenue level — this flows directly to net profit with no change to clinical operations.</p>
+                <p>Moving from No Offset to <strong className="text-foreground">{activeVat.label}</strong> is worth approximately <strong className="text-foreground">£{saving.toLocaleString()}/month</strong> at this scenario's revenue level — flowing directly to net profit with no change to clinical operations.</p>
               );
             }
           })()}
@@ -1577,7 +1581,7 @@ export default function FinancialsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(pnlData ?? cashflow).map((m) => {
+                      {(pnlData ?? cashflow ?? []).map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet;
