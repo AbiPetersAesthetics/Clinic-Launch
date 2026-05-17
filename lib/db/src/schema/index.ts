@@ -15,3 +15,4 @@ export * from "./property_task_overrides";
 export * from "./lifestyle";
 export * from "./marketing";
 export * from "./competition";
+export * from "./risks";

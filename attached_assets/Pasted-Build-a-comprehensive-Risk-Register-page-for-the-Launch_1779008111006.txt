@@ -1,0 +1,203 @@
+Build a comprehensive Risk Register page for the Launch OS. This is a standalone page accessible from the main navigation, titled "Risk Register". Full specification below.
+DATA SOURCE — AUTO-POPULATION
+On page load, automatically extract and categorise all risks from the following existing data sources within the model:
+
+All tasks marked HIGH or CRITICAL risk in the Project Plan (all phases)
+All warning flags from the Financial Modelling tab (VAT threshold, Bedhampton mismatch, capacity overstatement, October cash low point)
+All amber and red items from the AI Launch Recommendation (financial, property, market, strategic, life design scores)
+All compliance items marked NOT STARTED in the CQC & Compliance tab
+All non-negotiable conditions from the lease negotiation strategy
+All ramp risks from the 12-month revenue forecast
+Life Design flags (school run conflicts, nursing exit timing, undocumented family logistics)
+Any items in the Optimisation tab flagged as CRITICAL on LOW cost tier
+
+Each auto-extracted risk should be tagged with its source so the user knows where it came from.
+RISK STRUCTURE
+Each risk entry must contain the following fields:
+
+Risk ID (auto-generated, e.g. R001, R002)
+Risk Title (short, plain English)
+Risk Description (2-3 sentences — what could go wrong, when, and what triggers it)
+Category (Financial / Legal & Lease / Clinical & Compliance / Operational / Life Design / Market & Competition / Strategic)
+Likelihood (1-5 scale: 1 = Rare, 2 = Unlikely, 3 = Possible, 4 = Likely, 5 = Almost Certain)
+Impact (1-5 scale: 1 = Negligible, 2 = Minor, 3 = Moderate, 4 = Major, 5 = Critical)
+Risk Score (Likelihood × Impact, auto-calculated, displayed as a number and colour: 1-4 green, 5-9 amber, 10-14 orange, 15-25 red)
+Residual Likelihood (1-5, user sets when treatment action is written)
+Residual Impact (1-5, user sets — impact rarely changes but sometimes does)
+Residual Score (auto-calculated, same colour banding)
+Risk Reduction (auto-calculated: "Score reduced from X to Y — Z% reduction")
+Treatment (four options: Treat / Tolerate / Transfer / Terminate — selectable pill buttons)
+Treatment Action (free text — what specifically, by whom, by when)
+Owner (dropdown: Abi / David / Solicitor / Accountant / Agent / Contractor / Insurer / External)
+Due Date (date picker)
+Status (Not Started / In Progress / Mitigated / Closed)
+Pipeline Stage (Pre-Lease / Lease Signing / Fit-Out / Pre-Opening / Month 1-3 / Month 4-6 / Month 7-12 / Ongoing)
+Linked Model Section (auto-tag showing source)
+Linked Risks (multi-select field — tag related Risk IDs. e.g. R001 → R004, R007. Display as clickable chips that jump to the linked risk entry)
+Watch List (star toggle ☆/★)
+Score History (auto-recorded each time likelihood or impact changes — stores previous score and date)
+Last Reviewed Date (updated on any edit or manual mark-as-reviewed)
+
+PAGE LAYOUT
+Section 1 — Risk Dashboard (top of page)
+Show summary tiles:
+
+Total risks (count)
+Critical risks scoring 15-25 (red, count)
+Risks with no owner assigned (amber)
+Risks due in next 30 days with no treatment action (red)
+Overdue treatment actions — risks past due date with status not Mitigated or Closed (red alert)
+Risks trending upward in last 7 days (amber — deteriorating risks)
+Total inherent risk score vs total residual risk score with overall reduction percentage
+Number of risks where residual score equals inherent score (no mitigation taken yet)
+
+Show a 5×5 risk matrix — likelihood on one axis, impact on the other. Each cell shows count of risks at that score. Clicking filters the register.
+Show risk appetite indicator — slider with three positions: Conservative (flag 6+) / Moderate (flag 9+) / Aggressive (flag 12+). Default: Conservative. Risks above threshold show "Above appetite" label. Risks within threshold show "Within appetite."
+Show Watch List widget — top 5 watch list risks with current score, residual score, and last reviewed date. Header turns red if any watch list risk not reviewed in 30 days. Show "Trending Up" sub-section — any watch list risks whose score increased in last 7 days.
+Show Mitigation Value panel:
+
+Total inherent score (sum across all risks)
+Total residual score (sum)
+Overall reduction percentage
+Count of risks with no mitigation taken
+
+RISK SEGREGATION — TAB BAR
+Add a top-level tab bar with the following distinct views:
+
+All Risks
+Project & Delivery
+Financial
+Legal & Lease
+Clinical & Compliance
+Market & Competition
+Life Design
+Strategic
+Watch List
+
+Each tab shows a mini summary bar: count, highest score, number unaddressed, RAG status for the category.
+PRIORITY ORDER
+Within every view, risks display in strict priority order:
+
+Primary: Risk Score descending
+Secondary: Pipeline Stage ascending (earlier stages first on equal scores)
+Tertiary: Impact descending
+
+Show visible priority rank number on each row (#1, #2, #3 etc.) across the whole register. Updates automatically when scores change.
+RISK REGISTER TABLE
+Full sortable filterable table. Default sort: Risk Score descending. Filterable by Category, Treatment, Owner, Status, Pipeline Stage, Risk Score band.
+Columns visible by default: Rank / Risk ID / Title / Category / Inherent Score / Residual Score / Trend / Treatment / Owner / Due Date / Status / Watch List star.
+Each row expandable — full detail including description, treatment action, linked risks, score history, residual scoring panel, and escalation flag.
+Inline editing for Treatment, Treatment Action, Owner, Due Date, Status, Likelihood, Impact, Residual Likelihood, Residual Impact — no separate edit screen.
+Show both inherent and residual score columns so mitigation progress is visible at a glance.
+TREATMENT LOGIC
+When treatment is selected, show contextual guidance:
+
+Treat: "Define specific actions to reduce likelihood or impact. Assign an owner and due date."
+Tolerate: "Accept this risk as within appetite. Document why and review at next milestone."
+Transfer: "Identify who takes this risk — insurer, solicitor, landlord, contractor. Document the mechanism."
+Terminate: "This activity or decision is abandoned to eliminate the risk entirely. Document the decision." Auto-set residual score to 0 and display "Risk eliminated."
+
+ESCALATION FLAG
+If residual score after mitigation remains at 12 or above, automatically flag the risk with a red "Escalate" badge and the message: "Residual risk remains high after treatment — re-treat or escalate to decision maker." This prevents risks appearing mitigated on paper when they have barely moved.
+RISK INTERDEPENDENCIES
+The Linked Risks field on each entry allows tagging of related Risk IDs. Display linked risks as clickable chips. When a risk is opened, show a "Cascade Warning" panel if any linked risks are currently scoring above appetite threshold: "If this risk materialises, the following linked risks may also be triggered: [list]." This allows Abi and David to see cascade effects before a risk event occurs.
+WATCH LIST
+Star icon on every row. Starred risks appear in Watch List tab. Watch List shows:
+
+All starred risks in priority order
+Last reviewed date per risk
+Review due indicator — amber if not reviewed in 14 days, red if not reviewed in 30 days
+One-click "Mark as reviewed" button
+Summary: "X risks on watch — Y need review"
+
+RISK TREND
+Every time likelihood or impact changes, record previous score and date. Show trend indicator on each row:
+
+↑ red — score increased since last edit
+↓ green — score decreased
+— grey — unchanged
+
+Dashboard shows "Trending Up" section — risks whose score increased in last 7 days — so deteriorating risks surface automatically.
+OWNER NOTIFICATIONS
+On the dashboard and within each category tab, surface an "Action Required" panel showing:
+
+All risks where an owner is assigned, a due date is set, and no treatment action has been written — flagged as "Treatment action missing"
+All risks where due date is within 7 days and status is not Mitigated or Closed — flagged as "Due soon"
+All risks where due date has passed and status is not Mitigated or Closed — flagged as "Overdue" in red
+
+These should be filterable by owner so David can view his actions and Abi can view hers separately.
+PIPELINE VIEW
+Dedicated sub-view titled "Pipeline View" — timeline of risks grouped by Pipeline Stage from today through month 12 post-opening. Each stage shows:
+
+Count of risks active in that stage
+Highest scoring risk
+Count with treatment action vs unaddressed
+RAG status for the stage
+
+Add "Horizon Scan" panel at the bottom showing the three highest-scoring unaddressed risks in each upcoming pipeline stage. Label: "Coming up the pipeline — act before these become active."
+ADD CUSTOM RISK
+Simple form to add risks not auto-generated. All fields as per risk structure above. On save, appears immediately in register tagged as "Manual."
+AUTO-REFRESH
+On navigation to the Risk Register, auto-check for new HIGH or CRITICAL items in Project Plan, Compliance tab or Financial Model since last load. Prompt: "X new risks detected from updated model data — add to register?" One-click confirm.
+RESIDUAL RISK PANEL
+On every risk entry, second scoring panel below inherent score titled "Residual Risk — after mitigation":
+
+Residual Likelihood (1-5)
+Residual Impact (1-5)
+Residual Score (auto-calculated, colour banded)
+Risk Reduction display: "Score reduced from X to Y — Z% reduction"
+
+When Tolerate or Transfer selected: "Set residual score to reflect what remains after tolerance/transfer."
+When Terminate selected: auto-set residual to 0, display "Risk eliminated — activity abandoned."
+When residual score remains 12+: show red Escalate badge.
+EXPORT
+Export button generates formatted PDF section styled with existing Launch OS export. Includes:
+
+Watch List as highlighted section at front
+Full risk register with inherent and residual scores
+Mitigation value summary
+Horizon scan for next two pipeline stages
+Risks trending upward in last 7 days flagged explicitly
+Cascade warnings for any linked risk clusters above appetite threshold
+
+Insertable as Section 9A in the main full Launch OS export.
+SEED DATA — PRE-POPULATED ON FIRST LOAD
+Pre-populate with the following risks. All seed risks: Status = Not Started, Treatment = blank, Owner = unassigned. Linked risks pre-wired where cascade relationships exist.
+Pre-Lease:
+
+R001: VAT threshold breach within 1-2 months of opening — Financial — L5, I4 — Linked: R008, R014
+R002: No break clause secured in lease — Legal & Lease — L3, I5 — Linked: R003
+R003: Service charge uncapped and undisclosed — Legal & Lease — L3, I3 — Linked: R002
+R004: Rateable value at £31,250 producing rates bill of £1,332/month vs £996 modelled — Financial — L4, I3 — Linked: R008
+R005: Listed building consent required for signage — Legal & Lease — L3, I4
+R006: Competing offers accepted before heads of terms agreed — Strategic — L3, I5
+
+Financial:
+
+R007: Bedhampton soft patch during Winchester ramp removes financial bridge — Financial — L3, I4 — Linked: R008, R009
+R008: Winchester cold start — zero client transfer from Bedhampton — Market — L5, I3 — Linked: R001, R007, R014
+R009: October 2026 cash low point — fit-out costs peak with zero Winchester revenue — Financial — L5, I3 — Linked: R007
+R010: VAT treatment of aesthetics treatments not confirmed by accountant — Financial — L3, I4 — Linked: R001
+R011: ACV of £255 not achieved at Winchester launch — Financial — L3, I3 — Linked: R008
+
+Operational:
+
+R012: Fit-out contractor (Abi's dad) unavailable or delayed — Operational — L2, I4 — Linked: R009
+R013: Adverse event at Winchester with no documented SOP — Clinical & Compliance — L2, I5
+R014: Abi unable to work — illness, injury, no locum plan — Operational — L2, I5 — Linked: R007, R008
+R015: School run coverage breakdown on clinic day — Life Design — L2, I3
+R016: Nursing exit delayed beyond October 2026 — Life Design — L2, I3 — Linked: R009
+
+Compliance:
+
+R017: CQC registration required sooner than anticipated — Clinical & Compliance — L3, I4
+R018: Indemnity insurance not updated to cover Winchester before opening — Clinical & Compliance — L2, I5
+R019: Prescription record keeping not configured before first client — Clinical & Compliance — L2, I5
+R020: JCCP not registered before opening — Clinical & Compliance — L2, I4
+
+Market:
+
+R021: Premium pricing above market median suppresses cold-start conversion — Market — L3, I3 — Linked: R008, R011
+R022: Competitor aggressive promotion targeting same demographic at launch — Market — L2, I3 — Linked: R008
+
+Pre-wire cascade relationships as specified in Linked Risks above so the interdependency map is functional from day one.
