@@ -191,6 +191,13 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
 
+  // If existingClinicRevenueGbp is 0 (not set / accidentally cleared),
+  // use the live 3-month Bedhampton average so calculations are never silently zeroed.
+  const bedhResolved = await resolveBedhamptonRevenue(model);
+  if (bedhResolved.fromLive && bedhResolved.revenue > 0) {
+    (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
+  }
+
   // Load dynamic fixed cost items — these replace the hardcoded fixed cost fields
   // if any exist. If none exist yet, fall back to legacy hardcoded fields.
   const fixedCostItems = await db
@@ -295,6 +302,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
+
+  // If existingClinicRevenueGbp is 0 (not set / accidentally cleared),
+  // use the live 3-month Bedhampton average so the cashflow is never silently zeroed.
+  const bedhResolved = await resolveBedhamptonRevenue(model);
+  if (bedhResolved.fromLive && bedhResolved.revenue > 0) {
+    (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
+  }
 
   // Fetch project for start + open dates
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
