@@ -498,14 +498,22 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
     // Pre-opening property costs: rent + rates from lease signing date.
     // Free rent runs from day 1 of the lease (pre-opening), NOT from opening day.
-    // e.g. freeRentMonths=2 → Sep & Oct pay rates only; Nov (opening) pays full rent.
+    // e.g. freeRentMonths=1 → Sep pays rates only (via Bedhampton); Oct pays full rent+rates.
+    //
+    // During free-rent months Winchester is not open yet — Bedhampton bears the rates.
+    // Those rates are deducted from bedhNet below, NOT from preOpenPropertyCost,
+    // so the P&L correctly shows Bedhampton absorbing the cost.
     const isInLeasePeriod = isPreOpening && i >= propStartIndex;
     const leaseMonthIndex = i - propStartIndex; // 0 = first month of lease
     const preOpenIsFreeRent = isInLeasePeriod && cfFreeRentMonths > 0 && leaseMonthIndex < cfFreeRentMonths;
+    // Free-rent months: rates borne by Bedhampton (see bedhNet below) — Winchester property cost = 0
+    // Paid-rent months: Winchester pays full rent + rates as a pre-opening property cost
     const preOpenPropertyCost = isInLeasePeriod
-      ? (preOpenIsFreeRent ? monthlyRates : monthlyRent + monthlyRates)
+      ? (preOpenIsFreeRent ? 0 : monthlyRent + monthlyRates)
       : 0;
     const preOpenRentWaived = preOpenIsFreeRent ? monthlyRent : 0;
+    // Rates Bedhampton absorbs during free-rent months (Winchester not yet open to pay them)
+    const bedhFreeRentRates = preOpenIsFreeRent ? monthlyRates : 0;
 
     // VAT — tracked across the whole business (Bedhampton + Winchester combined)
     const monthTotalRevenue = bedhRevenue + wincRevenue;
@@ -518,7 +526,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_RATE : 0;
     const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
 
-    const bedhNet = bedhRevenue - bedhCosts - bedhVat;
+    const bedhNet = bedhRevenue - bedhCosts - bedhVat - bedhFreeRentRates;
 
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
     // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
@@ -557,6 +565,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       projectCostBurn: Math.round(projectCostBurn),
       preOpenPropertyCost: Math.round(preOpenPropertyCost),
       preOpenRentWaived: Math.round(preOpenRentWaived),
+      bedhFreeRentRates: Math.round(bedhFreeRentRates),
       taskLabels: taskLabelsThisMonth,
       vatLiability: Math.round(vatLiability),
       isVatRegistered,
