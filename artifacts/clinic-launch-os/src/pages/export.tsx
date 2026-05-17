@@ -110,6 +110,42 @@ const COMPLIANCE_STATUS_COLOR: Record<string, string> = {
   not_applicable: "gray", needs_review: "amber",
 };
 
+// ── AI data normalisers — convert {id,text,category} objects → plain strings ──
+function _toStr(v: any): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  return v.text ?? v.label ?? v.action ?? v.task ?? v.point ?? v.reason ?? v.justification ?? JSON.stringify(v);
+}
+function _strArr(arr: any): string[] {
+  return Array.isArray(arr) ? arr.map(_toStr) : [];
+}
+function normaliseGoNoGo(d: any): any {
+  if (!d) return d;
+  return {
+    ...d,
+    strengths: _strArr(d.strengths),
+    concerns: _strArr(d.concerns),
+    conditions: _strArr(d.conditions),
+    negotiationPoints: _strArr(d.negotiationPoints),
+    thirtyDayPlan: (d.thirtyDayPlan ?? []).map((w: any) =>
+      typeof w === "string" ? w : { ...w, actions: _strArr(w.actions) }
+    ),
+    immediateActions: (d.immediateActions ?? []).map((a: any) =>
+      typeof a === "string" ? { action: a, priority: "high", deadline: "", rationale: "" } : a
+    ),
+  };
+}
+function normaliseLeaseStrategy(d: any): any {
+  if (!d) return d;
+  return {
+    ...d,
+    openingPosition: d.openingPosition
+      ? { ...d.openingPosition, discountJustification: _strArr(d.openingPosition.discountJustification) }
+      : d.openingPosition,
+    sequencing: (d.sequencing ?? []).map((s: any) => ({ ...s, actions: _strArr(s.actions) })),
+  };
+}
+
 // ── Main Export Page ──────────────────────────────────────────────────────────
 
 export default function ExportPage() {
@@ -167,9 +203,9 @@ export default function ExportPage() {
   useEffect(() => {
     try {
       const gng = localStorage.getItem("goNoGoResult_v2");
-      if (gng) setGoNoGo(JSON.parse(gng));
+      if (gng) setGoNoGo(normaliseGoNoGo(JSON.parse(gng)));
       const ls = localStorage.getItem("leaseStrategyV2_v1");
-      if (ls) setLeaseStrategy(JSON.parse(ls));
+      if (ls) setLeaseStrategy(normaliseLeaseStrategy(JSON.parse(ls)));
     } catch {}
   }, []);
 

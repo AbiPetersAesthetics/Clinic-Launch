@@ -146,6 +146,32 @@ type GoNoGoResult = {
   generatedAt: string;
 };
 
+// ── AI data normalisers — convert {id,text,category} objects → plain strings ──
+function _toStr(v: any): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  return v.text ?? v.label ?? v.action ?? v.task ?? v.point ?? v.reason ?? v.justification ?? JSON.stringify(v);
+}
+function _strArr(arr: any): string[] {
+  return Array.isArray(arr) ? arr.map(_toStr) : [];
+}
+function normaliseGoNoGo(d: any): any {
+  if (!d) return d;
+  return {
+    ...d,
+    strengths: _strArr(d.strengths),
+    concerns: _strArr(d.concerns),
+    conditions: _strArr(d.conditions),
+    negotiationPoints: _strArr(d.negotiationPoints),
+    thirtyDayPlan: (d.thirtyDayPlan ?? []).map((w: any) =>
+      typeof w === "string" ? w : { ...w, actions: _strArr(w.actions) }
+    ),
+    immediateActions: (d.immediateActions ?? []).map((a: any) =>
+      typeof a === "string" ? { action: a, priority: "high", deadline: "", rationale: "" } : a
+    ),
+  };
+}
+
 const VERDICT_CONFIG: Record<GoNoGoVerdict, { label: string; icon: React.ReactNode; bg: string; border: string; text: string; badge: string }> = {
   PROCEED: {
     label: "Proceed",
@@ -217,12 +243,13 @@ export default function DashboardPage() {
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
       .then((d: GoNoGoResult) => {
         clearTimeout(timer);
-        setGoNoGo(d);
+        const clean = normaliseGoNoGo(d) as GoNoGoResult;
+        setGoNoGo(clean);
         setGoNoGoLoading(false);
         setGoNoGoStale(false);
         const now = new Date().toISOString();
         setGoNoGoCachedAt(now);
-        try { localStorage.setItem(CACHE_KEY, JSON.stringify(d)); localStorage.setItem(CACHE_AT_KEY, now); } catch {}
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(clean)); localStorage.setItem(CACHE_AT_KEY, now); } catch {}
       })
       .catch((e: unknown) => {
         clearTimeout(timer);
@@ -250,7 +277,7 @@ export default function DashboardPage() {
       const cached = localStorage.getItem(CACHE_KEY);
       const cachedAt = localStorage.getItem(CACHE_AT_KEY);
       if (cached && cachedAt) {
-        setGoNoGo(JSON.parse(cached) as GoNoGoResult);
+        setGoNoGo(normaliseGoNoGo(JSON.parse(cached)) as GoNoGoResult);
         setGoNoGoCachedAt(cachedAt);
         setGoNoGoStale(Date.now() - new Date(cachedAt).getTime() > STALE_MS);
         hasCachedMain = true;
