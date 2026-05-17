@@ -273,9 +273,10 @@ export default function LeaseStrategyPage() {
                   <div>
                     <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Why 12% Is Justified</div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {op.discountJustification.map((j, i) => (
+                      {op.discountJustification.map((j: any, i) => (
                         <div key={i} className="flex items-start gap-1.5 text-[11px] text-foreground/75 bg-muted/30 rounded px-2 py-1.5">
-                          <ChevronRight className="w-3 h-3 shrink-0 mt-px text-blue-500" />{j}
+                          <ChevronRight className="w-3 h-3 shrink-0 mt-px text-blue-500" />
+                          {typeof j === "string" ? j : j.text ?? j.justification ?? j.reason ?? JSON.stringify(j)}
                         </div>
                       ))}
                     </div>
@@ -404,9 +405,10 @@ export default function LeaseStrategyPage() {
                           )}
                           {stage.actions?.length > 0 && (
                             <ul className="space-y-0.5">
-                              {stage.actions.map((a, j) => (
+                              {stage.actions.map((a: any, j) => (
                                 <li key={j} className="flex items-start gap-1.5 text-[11px] text-foreground/80">
-                                  <span className="text-amber-500 shrink-0 font-bold mt-px">→</span>{a}
+                                  <span className="text-amber-500 shrink-0 font-bold mt-px">→</span>
+                                  {typeof a === "string" ? a : a.text ?? a.action ?? a.task ?? JSON.stringify(a)}
                                 </li>
                               ))}
                             </ul>
