@@ -526,8 +526,8 @@ export default function ExportPage() {
                     )}
                     {op.discountJustification?.length > 0 && (
                       <div className="grid grid-cols-2 gap-1.5 mb-1">
-                        {op.discountJustification.map((j: string, i: number) => (
-                          <div key={i} className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">→ {j}</div>
+                        {op.discountJustification.map((j: any, i: number) => (
+                          <div key={i} className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded px-2 py-1.5">→ {typeof j === "string" ? j : j.text ?? j.justification ?? j.reason ?? JSON.stringify(j)}</div>
                         ))}
                       </div>
                     )}
