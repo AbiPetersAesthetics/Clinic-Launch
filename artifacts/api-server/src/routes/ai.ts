@@ -966,7 +966,10 @@ Planned premium aesthetic clinic — clinical-grade fit-out required` : "No fina
 ${propertyCtx}
 ${financialCtx}
 
-Abi Peters is a nurse prescriber (independent prescriber status) opening her second aesthetics clinic. She has a successful existing clinic (Bedhampton) with strong Google reviews. She is a first-time commercial tenant negotiating this new lease. Her goal is to commit to this property but protect her financial position during the ramp-up phase.
+Abi Peters is a nurse prescriber (independent prescriber status) opening her second aesthetics clinic. She has a successful existing clinic (Bedhampton) with strong Google reviews. She is a first-time commercial tenant negotiating this new lease.
+
+CRITICAL CONTEXT — COMPETITIVE LETTING SITUATION:
+Other potential tenants are very likely also making offers on this unit. The primary goal is to WIN this lease, not to negotiate the lowest possible rent. Undercutting on headline rent is a fast way to lose to another bidder. The strategy must be: (1) present APA as the most attractive, most reliable tenant the landlord could choose, (2) offer at or very close to asking rent to be taken seriously in a competitive field, (3) focus all negotiating energy on non-rent concessions — rent-free period, fit-out contribution, break clause, lease length — which protect the financial position without risking the deal. Rent is the last thing to negotiate, not the first.
 
 Winchester commercial market context (E-class units, 2024-2026):
 - Rent-free for fit-out: typically 3–6 months; clinical-grade fit-out takes longer than retail
@@ -980,14 +983,14 @@ Winchester commercial market context (E-class units, 2024-2026):
 Return ONLY valid JSON (no markdown). Schema:
 {
   "offerStrategy": {
-    "tenantPositioning": "<2-3 sentences: how Abi should present APA to the landlord — IP status, nurse credentials, Bedhampton track record, premium fit-out plans. How this makes her a better tenant than a retail operator and justifies concessions>",
-    "openingOfferRent": <integer — specific £/mo to open with, below asking rent, anchored to market and break-even>,
-    "targetRent": <integer — realistic settlement rent after negotiation>,
-    "walkAwayRent": <integer — maximum monthly rent above which deal fails commercially, tied to break-even £${breakEvenRev}>,
-    "keyAsk": "<the single most valuable concession to win — and why it matters more than a rent reduction at this stage of the business>",
-    "sequencing": "<tactical order: what to lock in first, what to trade against what, when to raise secondary terms>",
-    "agentDynamics": "<how to read and handle the landlord's agent — one concrete tactic>",
-    "counterOfferGuidance": "<what to accept vs push back on if they counter>"
+    "tenantPositioning": "<2-3 sentences: how Abi should present APA to beat other applicants — emphasise IP status, clinical credentials, Bedhampton's Google reviews and revenue track record, premium fit-out plans, long-term tenancy commitment. Frame her as a more reliable and prestigious tenant than a generic retail operator or beauty salon>",
+    "openingOfferRent": <integer — in a competitive situation this should be AT asking rent or within 2–3% of it; do NOT anchor low or APA risks losing to another bidder>,
+    "targetRent": <integer — realistic settled rent; in a competitive market this may simply be asking rent; any reduction should come from the landlord offering concessions elsewhere>,
+    "walkAwayRent": <integer — maximum monthly rent above which the deal fails commercially, tied to break-even £${breakEvenRev}>,
+    "keyAsk": "<the single most valuable non-rent concession to win alongside a near-asking-rent offer — e.g. rent-free period, fit-out contribution, or break clause. This is where the negotiation energy should go>",
+    "sequencing": "<tactical order: lead with a strong near-asking offer to be shortlisted, then layer in the concession asks once in preferred-bidder position — never negotiate rent down before being selected>",
+    "agentDynamics": "<how to read and handle the landlord's agent — one concrete tactic for standing out in a competitive field>",
+    "counterOfferGuidance": "<what to accept vs push back on if they counter — bearing in mind another bidder may be waiting>"
   },
   "leaseNegotiationStrategy": {
     "rentFreePeriod": {
