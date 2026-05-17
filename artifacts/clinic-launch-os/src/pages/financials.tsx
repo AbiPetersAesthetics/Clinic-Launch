@@ -1732,12 +1732,16 @@ export default function FinancialsPage() {
                                           <span className="tabular-nums text-red-600">({formatGBP(_bedhOther)})</span>
                                         </div>
                                       )}
-                                      {(m.bedhDualCosts ?? 0) > 0 && (
+                                      {(m.bedhDualCosts ?? 0) > 0 ? (
                                         <div className="flex justify-between items-center pl-1">
                                           <span className="text-gray-500">Shared (dual) costs</span>
                                           <span className="tabular-nums text-red-600">({formatGBP(m.bedhDualCosts)})</span>
                                         </div>
-                                      )}
+                                      ) : m.isPreOpening && fixedCostItems.every(i => i.costType !== "dual") ? (
+                                        <div className="pl-1 text-[10px] text-amber-700 bg-amber-50 rounded px-1.5 py-1 mt-0.5">
+                                          ⚠ No shared costs tagged — go to Assumptions → Fixed Monthly Costs and mark accountant, insurance etc. as Dual.
+                                        </div>
+                                      ) : null}
                                       {_bedhVat > 0 && (
                                         <>
                                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
@@ -2189,6 +2193,16 @@ export default function FinancialsPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Tag each cost as <strong>Unique</strong> ({clinicLabel} only) or <strong>Dual</strong> (shared across both clinics — counts once, never double-charged).
                     </p>
+                    {fixedCostItems.length > 0 && fixedCostItems.every(i => i.costType !== "dual") && (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 leading-relaxed">
+                        <strong>Bedhampton costs understated.</strong> No costs are marked as Dual. Costs like your accountant, indemnity insurance, and practice software are currently paid from Bedhampton — tag them as <strong>Dual</strong> below so they are deducted from Bedhampton's P&amp;L now and transfer to Winchester on opening day.
+                      </div>
+                    )}
+                    {fixedCostItems.some(i => i.costType === "dual") && (
+                      <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                        <strong>{fixedCostItems.filter(i => i.costType === "dual").length} dual cost{fixedCostItems.filter(i => i.costType === "dual").length !== 1 ? "s" : ""}</strong> (£{fixedCostItems.filter(i => i.costType === "dual").reduce((s, i) => s + (i.amountGbp || 0), 0).toLocaleString()}/mo) deducted from Bedhampton pre-opening, then transferred to Winchester on day one.
+                      </div>
+                    )}
                     {/* VAT on rent toggle — synced from property */}
                     <div className="flex items-center justify-between pt-2 border-t mt-2">
                       <div>
