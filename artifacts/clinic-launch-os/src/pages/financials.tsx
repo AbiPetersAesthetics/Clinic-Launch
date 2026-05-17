@@ -1,13 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
   useGetFinancialModel,
   getGetFinancialModelQueryKey,
   useUpsertFinancialModel,
   useCalculateFinancials,
-  useGetProjectCashflow,
-  getGetProjectCashflowQueryKey,
   getGetOptimisationAnalysisQueryKey,
   getGetProjectDashboardQueryKey,
   useListFixedCostItems,
@@ -446,16 +444,22 @@ export default function FinancialsPage() {
     },
   });
 
-  const { data: rawCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, vatRate: activeVat.rate } as any, {
-    query: { queryKey: ["cashflow", PROJECT_ID, scenario, rampTier, activeVat.rate], enabled: true },
+  const { data: cashflow } = useQuery<CashflowMonth[]>({
+    queryKey: ["cashflow", PROJECT_ID, scenario, rampTier, activeVat.rate],
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}`)
+        .then((r) => r.json()),
+    staleTime: 0,
   });
-  const cashflow = rawCashflow as unknown as CashflowMonth[] | undefined;
 
   const [pnlMonths, setPnlMonths] = useState<12 | 36>(12);
-  const { data: rawCashflow36 } = useGetProjectCashflow(PROJECT_ID, { scenario, rampTier, months: 36, vatRate: activeVat.rate } as any, {
-    query: { queryKey: ["cashflow36", PROJECT_ID, scenario, rampTier, activeVat.rate], enabled: true },
+  const { data: cashflow36 } = useQuery<CashflowMonth[]>({
+    queryKey: ["cashflow36", PROJECT_ID, scenario, rampTier, activeVat.rate],
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&months=36&vatRate=${activeVat.rate}`)
+        .then((r) => r.json()),
+    staleTime: 0,
   });
-  const cashflow36 = rawCashflow36 as unknown as CashflowMonth[] | undefined;
   const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
 
   const upsertModel = useUpsertFinancialModel();
