@@ -1,0 +1,94 @@
+CONTEXT
+You are modifying the existing Clinic Launch OS codebase. 
+Read the existing code before changing anything. 
+Do not invent fields — use the schema as defined.
+
+PROBLEM TO FIX — 3 ISSUES
+
+ISSUE 1: Lifestyle schedule is not connected to the financial engine.
+The lifestyle_plan table stores clinic_days (array), clinic_open_time, 
+clinic_close_time. The financial_models table stores working_days_per_month 
+and practitioner_hours_per_day as separate manual inputs that the user 
+must enter twice. These should be derived from lifestyle_plan.
+
+FIX: In the financials calculate endpoint, after fetching the financial 
+model, also fetch the lifestyle_plan for the same project_id. 
+Derive working_days_per_month from lifestyle_plan.clinic_days (array length 
+× 4.33 weeks/month, rounded to nearest integer). Derive 
+practitioner_hours_per_day from clinic_open_time and clinic_close_time 
+(difference in hours, subtract 0.5 for lunch break). Use these derived 
+values in calcWinchester() instead of the stored financial_models values. 
+Keep the financial_models fields as manual overrides — if lifestyle_plan 
+is not found, fall back to the stored values.
+
+ISSUE 2: Revenue engine uses occupancy × ACV but available_clinical_minutes 
+is never calculated, and the ACV does not account for treatment duration.
+Short high-value treatments (25-min tox at £215) generate more revenue 
+per hour than long lower-value ones (45-min cheek filler at £285). 
+The current model cannot distinguish between these — it treats all 
+appointments as equal regardless of mix.
+
+The schema already has planned_pricing_json (currently empty {}). 
+Use this to store treatment mix data.
+
+FIX:
+Step 1 — Add a treatment mix input to the financial model UI. 
+Each entry: { treatmentName, durationMins, revenueGbp, mixPercent }. 
+Persist to planned_pricing_json. Default to empty — do not hardcode 
+treatment data, the user will enter it.
+
+Step 2 — When planned_pricing_json contains valid treatment mix data, 
+calculate revenue_per_productive_minute as:
+  rpm = SUM(entry.revenueGbp / entry.durationMins × entry.mixPercent/100)
+
+Step 3 — Calculate available_productive_minutes:
+  raw = workingDaysPerMonth × practitionerHoursPerDay × 60 × treatmentRoomsCount
+  non_billable = workingDaysPerMonth × 45  [lunch 30min + buffer 15min]
+  avg_appointment_duration = SUM(entry.durationMins × entry.mixPercent/100)
+  appointments_per_day = (practitionerHoursPerDay × 60 - 45) / avg_appointment_duration
+  changeover_drag = appointments_per_day × 10  [10 min reset per appointment]
+  available_productive_minutes = raw - non_billable - (workingDaysPerMonth × changeover_drag)
+
+Step 4 — Revenue formula becomes:
+  monthly_revenue = available_productive_minutes × occupancyPercent/100 × rpm
+
+Step 5 — Expose in the calculate response:
+  revenuePerProductiveHour: rpm × 60
+  availableProductiveMinutes: calculated above
+  impliedAppointmentsPerMonth: available_productive_minutes / avg_appointment_duration × occupancyPercent/100
+  throughputCeiling: available_productive_minutes × rpm  [at 100% — theoretical max]
+
+Step 6 — If planned_pricing_json is empty {}, fall back to the existing 
+wincAcvGbp calculation. Do not break existing behaviour.
+
+ISSUE 3: The scenario engine applies occupancy bands but does not apply 
+a ramp curve to the cashflow table — months 1–12 all show the same 
+occupancy. The cashflow table in the export shows all dashes.
+
+FIX: Confirm the /financial/calculate endpoint populates the 12-month 
+cashflow rows in the database or response. If it calculates but does not 
+persist or return month-by-month rows, add a cashflowMonths array to 
+the response:
+  cashflowMonths: Array of 12 objects, each containing:
+    { month, occupancyPercent, revenue, fixedCosts, variableCosts, 
+      netCashflow, cumulative }
+  
+  Apply the ramp curve from SCENARIO_PROFILES (startOcc, rampMonths, 
+  targetOcc) to derive occupancy for each month:
+    if month <= rampMonths: 
+      occ = startOcc + (targetOcc - startOcc) × (month / rampMonths)
+    else: occ = targetOcc
+
+  Use month 1 = first full trading month (November 2026 per project data).
+
+CONSTRAINTS
+- Do not change any DB schema column names
+- Do not remove existing fields from the financial_models table  
+- Maintain backward compatibility with selectedScenario
+- The existing calcWinchester(), calcBedhampton(), calcCombined() 
+  functions should remain — extend them, do not replace them
+- All GBP values to 2 decimal places
+- Do not hardcode treatment prices, durations or mix percentages — 
+  these come from planned_pricing_json entered by the user
+- Do not hardcode working days or hours — derive from lifestyle_plan 
+  or fall back to financial_models fields

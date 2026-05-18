@@ -39,7 +39,10 @@ export function calcWincAtOccupancy(
 ) {
   // Always prefer wincAcvGbp (Winchester-specific ACV) over legacy averageClientValueGbp
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
-  const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
+  // _slotsPerMonthOverride: set by caller when treatment mix replaces the default capacity formula.
+  const slotsPerMonth = (model._slotsPerMonthOverride != null && model._slotsPerMonthOverride > 0)
+    ? model._slotsPerMonthOverride
+    : model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
   const bookedSlots = slotsPerMonth * (occupancy / 100);
   const grossRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
 

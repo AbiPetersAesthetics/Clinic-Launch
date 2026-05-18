@@ -46,6 +46,7 @@ const VAT_THRESHOLD = 90000;
 
 type ScenarioKey = "conservative" | "realistic" | "aggressive" | "delayed_ramp" | "economic_downturn" | "stress_test";
 type RampTier = "slow" | "average" | "fast";
+type TreatmentEntry = { treatmentName: string; durationMins: number; revenueGbp: number; mixPercent: number; };
 const RAMP_TIER_OPTIONS: { key: RampTier; label: string; desc: string }[] = [
   { key: "slow",    label: "Below Average", desc: "Word-of-mouth only, no waiting list — very gradual fill" },
   { key: "average", label: "Average",        desc: "Typical UK aesthetics launch with pre-opening marketing" },
@@ -193,6 +194,23 @@ export default function FinancialsPage() {
   };
   const [customOcc, setCustomOcc] = useState(65);
   const [aiQA, setAiQA] = useState({ q1: "", q2: "", q3: "", q4: "", q5: "" });
+
+  // ── Treatment mix ─────────────────────────────────────────────────────────
+  const [treatmentMix, setTreatmentMix] = useState<TreatmentEntry[]>([]);
+  const treatmentMixSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Debounced save of treatment mix to plannedPricingJson
+  useEffect(() => {
+    if (!model) return;
+    clearTimeout(treatmentMixSaveTimer.current);
+    treatmentMixSaveTimer.current = setTimeout(() => {
+      fetch(`/api/projects/${PROJECT_ID}/financial`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plannedPricingJson: JSON.stringify(treatmentMix) }),
+      }).then(() => runCalculation()).catch(() => {});
+    }, 800);
+  }, [treatmentMix]);
 
   async function resetFinancials() {
     await fetch(`/api/projects/1/reset/financials`, { method: "POST" });
@@ -601,6 +619,11 @@ export default function FinancialsPage() {
       });
       // Restore the previously selected scenario
       if (m.selectedScenario) setScenario(m.selectedScenario as ScenarioKey);
+      // Load treatment mix from plannedPricingJson
+      try {
+        const pj = m.plannedPricingJson;
+        if (pj) { const parsed = JSON.parse(pj); if (Array.isArray(parsed)) setTreatmentMix(parsed); }
+      } catch {}
       // Allow watch subscription to fire again after reset settles
       setTimeout(() => { isSilentReset.current = false; }, 50);
       setSaveStatus("saved");
@@ -2566,6 +2589,66 @@ export default function FinancialsPage() {
                     <p className="text-[10px] text-muted-foreground mt-2">
                       Bedhampton closes when {clinicLabel}'s net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
                     </p>
+                  </CardContent>
+                </Card>
+
+                {/* ── Treatment Mix Revenue Engine ──────────────────────── */}
+                <Card className="shadow-sm">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center justify-between">
+                      <span className="flex items-center gap-1.5">
+                        <Activity className="w-3.5 h-3.5" />
+                        Treatment Mix — Revenue Engine
+                      </span>
+                      <Button type="button" variant="outline" size="sm" className="h-7 text-xs gap-1"
+                        onClick={() => setTreatmentMix(prev => [...prev, { treatmentName: "", durationMins: 30, revenueGbp: 0, mixPercent: 0 }])}>
+                        <Plus className="w-3 h-3" /> Add Treatment
+                      </Button>
+                    </CardTitle>
+                    <CardDescription className="text-[10px]">
+                      Optional. Enter your treatment mix to calculate revenue per productive minute and throughput ceiling.
+                      Mix % should total 100. If left empty, the model uses the Avg Client Value above.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {treatmentMix.length === 0 ? (
+                      <p className="text-[10px] text-muted-foreground italic">No treatments added — using Avg Client Value fallback.</p>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-[1fr_60px_70px_60px_28px] gap-1.5 text-[10px] font-medium text-muted-foreground px-1">
+                          <span>Treatment</span><span className="text-center">Mins</span><span className="text-center">Price £</span><span className="text-center">Mix %</span><span />
+                        </div>
+                        {treatmentMix.map((entry, idx) => (
+                          <div key={idx} className="grid grid-cols-[1fr_60px_70px_60px_28px] gap-1.5 items-center">
+                            <Input value={entry.treatmentName} placeholder="e.g. Anti-wrinkle" className="h-7 text-xs" onChange={e => setTreatmentMix(prev => prev.map((r, i) => i === idx ? { ...r, treatmentName: e.target.value } : r))} />
+                            <Input type="number" value={entry.durationMins || ""} min={1} placeholder="30" className="h-7 text-xs text-center" onChange={e => setTreatmentMix(prev => prev.map((r, i) => i === idx ? { ...r, durationMins: Number(e.target.value) } : r))} />
+                            <Input type="number" value={entry.revenueGbp || ""} min={0} placeholder="0" className="h-7 text-xs text-center" onChange={e => setTreatmentMix(prev => prev.map((r, i) => i === idx ? { ...r, revenueGbp: Number(e.target.value) } : r))} />
+                            <Input type="number" value={entry.mixPercent || ""} min={0} max={100} placeholder="0" className="h-7 text-xs text-center" onChange={e => setTreatmentMix(prev => prev.map((r, i) => i === idx ? { ...r, mixPercent: Number(e.target.value) } : r))} />
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => setTreatmentMix(prev => prev.filter((_, i) => i !== idx))}><Trash2 className="w-3 h-3" /></Button>
+                          </div>
+                        ))}
+                        {(() => {
+                          const totalPct = treatmentMix.reduce((s, e) => s + (e.mixPercent || 0), 0);
+                          const isValid = Math.abs(totalPct - 100) < 0.5 && treatmentMix.every(e => e.durationMins > 0 && e.revenueGbp > 0);
+                          const rpm = isValid ? treatmentMix.reduce((s, e) => s + (e.revenueGbp / e.durationMins) * (e.mixPercent / 100), 0) : 0;
+                          return (
+                            <div className="mt-2 flex flex-wrap gap-3 text-[10px]">
+                              <span className={`font-medium ${Math.abs(totalPct - 100) < 0.5 ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+                                Mix total: {totalPct.toFixed(0)}% {Math.abs(totalPct - 100) < 0.5 ? "✓" : "(should be 100%)"}
+                              </span>
+                              {isValid && <span className="text-muted-foreground">Rev/min: <strong className="text-foreground">£{rpm.toFixed(2)}</strong></span>}
+                              {isValid && <span className="text-muted-foreground">Rev/hr: <strong className="text-foreground">£{(rpm * 60).toFixed(0)}</strong></span>}
+                              {isValid && calcResults?.treatmentMix && (
+                                <span className="text-muted-foreground">Throughput ceiling: <strong className="text-foreground">{formatGBP(calcResults.treatmentMix.throughputCeiling)}/mo</strong></span>
+                              )}
+                              {isValid && calcResults?.treatmentMix && (
+                                <span className="text-muted-foreground">Appts @ target occ: <strong className="text-foreground">{calcResults.treatmentMix.impliedAppointmentsPerMonth}</strong></span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </>
+                    )}
                   </CardContent>
                 </Card>
 

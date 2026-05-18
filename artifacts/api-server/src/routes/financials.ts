@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable } from "@workspace/db";
+import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import {
   calcWincAtOccupancy,
@@ -128,6 +128,87 @@ async function applyPropertyFallback(model: any, projectId: number) {
   return model;
 }
 
+// ─── Lifestyle schedule derivation ────────────────────────────────────────────
+// Derives working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
+// Returns null if no lifestyle plan exists or values cannot be computed.
+async function deriveLifestyleSchedule(projectId: number): Promise<{ workingDaysPerMonth: number; practitionerHoursPerDay: number } | null> {
+  try {
+    const [plan] = await db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId));
+    if (!plan) return null;
+    const clinicDays: string[] = (() => {
+      try {
+        const v = plan.clinicDays;
+        return typeof v === "string" ? JSON.parse(v) : (Array.isArray(v) ? v : []);
+      } catch { return []; }
+    })();
+    const openTime = plan.clinicOpenTime ?? "09:00";
+    const closeTime = plan.clinicCloseTime ?? "18:00";
+    const [oh, om] = openTime.split(":").map(Number);
+    const [ch, cm] = closeTime.split(":").map(Number);
+    const totalHours = (ch + cm / 60) - (oh + om / 60) - 0.5; // subtract 0.5hr lunch
+    if (clinicDays.length === 0 || totalHours <= 0) return null;
+    return {
+      workingDaysPerMonth: Math.round(clinicDays.length * 4.33),
+      practitionerHoursPerDay: Math.round(totalHours * 10) / 10,
+    };
+  } catch { return null; }
+}
+
+// ─── Treatment mix parser ─────────────────────────────────────────────────────
+// Parses plannedPricingJson as an array of treatment mix entries.
+// Returns null if empty or not a valid array — caller falls back to ACV model.
+interface TreatmentEntry { treatmentName: string; durationMins: number; revenueGbp: number; mixPercent: number; }
+
+function parseTreatmentMix(json: string): TreatmentEntry[] | null {
+  try {
+    const data = JSON.parse(json || "{}");
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const valid = data.filter((e: any) => e.durationMins > 0 && e.revenueGbp > 0 && e.mixPercent > 0);
+    return valid.length > 0 ? valid : null;
+  } catch { return null; }
+}
+
+// Applies treatment mix to the model object so calcWinchester uses the correct revenue formula.
+// Sets model.wincAcvGbp = effective ACV per appointment and model._slotsPerMonthOverride = effective slot count.
+// Returns the treatment mix metrics for inclusion in the response, or null if no valid mix.
+function applyTreatmentMix(model: any): {
+  rpm: number; avgDurationMins: number; availableProductiveMinutes: number;
+  revenuePerProductiveHour: number; throughputCeiling: number;
+} | null {
+  const mix = parseTreatmentMix(model.plannedPricingJson ?? "{}");
+  if (!mix) return null;
+
+  const rpm = mix.reduce((sum, e) => sum + (e.revenueGbp / e.durationMins) * (e.mixPercent / 100), 0);
+  const avgDurationMins = mix.reduce((sum, e) => sum + e.durationMins * (e.mixPercent / 100), 0);
+  if (rpm <= 0 || avgDurationMins <= 0) return null;
+
+  const workingDaysPerMonth: number = model.workingDaysPerMonth;
+  const practitionerHoursPerDay: number = model.practitionerHoursPerDay;
+  const treatmentRoomsCount: number = model.treatmentRoomsCount ?? 1;
+
+  const raw = workingDaysPerMonth * practitionerHoursPerDay * 60 * treatmentRoomsCount;
+  const nonBillable = workingDaysPerMonth * 45; // 30min lunch + 15min buffer per day
+  const appointmentsPerDay = (practitionerHoursPerDay * 60 - 45) / avgDurationMins;
+  const changeoverDrag = appointmentsPerDay * 10; // 10min reset per appointment
+  const availableProductiveMinutes = raw - nonBillable - (workingDaysPerMonth * changeoverDrag);
+
+  if (availableProductiveMinutes <= 0) return null;
+
+  // Override model so calcWincAtOccupancy/_calcWinchester produces correct revenue
+  // revenue = availableProductiveMinutes × occ% × rpm
+  //         = (apm / avgDuration) × occ% × (rpm × avgDuration)   ← equivalent
+  model.wincAcvGbp = rpm * avgDurationMins;            // effective revenue per appointment
+  model._slotsPerMonthOverride = availableProductiveMinutes / avgDurationMins; // effective slot count
+
+  return {
+    rpm: Math.round(rpm * 100) / 100,
+    avgDurationMins: Math.round(avgDurationMins * 10) / 10,
+    availableProductiveMinutes: Math.round(availableProductiveMinutes),
+    revenuePerProductiveHour: Math.round(rpm * 60 * 100) / 100,
+    throughputCeiling: Math.round(availableProductiveMinutes * rpm * 100) / 100,
+  };
+}
+
 // ─── GET /projects/:id/financial ─────────────────────────────────────────────
 
 router.get("/projects/:projectId/financial", async (req, res) => {
@@ -199,6 +280,14 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
   }
 
+  // Issue 1: Derive working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
+  // Falls back to stored financial_models values if no lifestyle plan exists.
+  const lifestyleSchedule = await deriveLifestyleSchedule(projectId);
+  if (lifestyleSchedule) {
+    (model as any).workingDaysPerMonth = lifestyleSchedule.workingDaysPerMonth;
+    (model as any).practitionerHoursPerDay = lifestyleSchedule.practitionerHoursPerDay;
+  }
+
   // Load dynamic fixed cost items — these replace the hardcoded fixed cost fields
   // if any exist. If none exist yet, fall back to legacy hardcoded fields.
   const fixedCostItems = await db
@@ -211,6 +300,11 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const dynamicFixedCosts = fixedCostItems.length > 0
     ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : undefined; // undefined = fall back to legacy hardcoded fields
+
+  // Issue 2: Apply treatment mix if plannedPricingJson contains valid entries.
+  // Overrides model.wincAcvGbp and model._slotsPerMonthOverride for the revenue formula.
+  // Falls back to existing ACV model if mix is empty or invalid.
+  const treatmentMixMetrics = applyTreatmentMix(model as any);
 
   const rampTier = (req.body.rampTier as string) ?? "average";
   const profile = applyRampTier(SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic, rampTier);
@@ -264,6 +358,39 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     monthsUntilProfitable = 0;
   }
 
+  // Issue 3: 12-month cashflow array with ramp curve applied.
+  // Month 1 = first full trading month (opening month).
+  // Ramp formula: occ = startOcc + (targetOcc - startOcc) × (month / rampMonths) if month ≤ rampMonths, else targetOcc
+  let cumulative = 0;
+  const cashflowMonths = Array.from({ length: 12 }, (_, i) => {
+    const month = i + 1;
+    const occ = month <= profile.rampMonths
+      ? profile.startOcc + (targetOcc - profile.startOcc) * (month / profile.rampMonths)
+      : targetOcc;
+    const occRounded = Math.round(occ * 10) / 10;
+    const sim = calcWincAtOccupancy(model, occRounded, acvMultiplier, vatRateForCalc, dynamicFixedCosts);
+    const revenue = Math.round(sim.grossRevenue);
+    const fixedCosts = Math.round(sim.fixedCosts);
+    const variableCosts = Math.round(sim.variableCosts + sim.vatLiability);
+    const netCashflow = Math.round(sim.netProfit);
+    cumulative += netCashflow;
+    // impliedAppointmentsPerMonth: only meaningful when treatment mix is active
+    const impliedAppointments = treatmentMixMetrics
+      ? Math.round((treatmentMixMetrics.availableProductiveMinutes / treatmentMixMetrics.avgDurationMins) * (occRounded / 100))
+      : null;
+    return { month, occupancyPercent: occRounded, revenue, fixedCosts, variableCosts, netCashflow, cumulative: Math.round(cumulative), impliedAppointmentsPerMonth: impliedAppointments };
+  });
+
+  // Issue 2: treatment mix response fields (null when falling back to ACV model)
+  const treatmentMixResponse = treatmentMixMetrics ? {
+    revenuePerProductiveHour: treatmentMixMetrics.revenuePerProductiveHour,
+    availableProductiveMinutes: treatmentMixMetrics.availableProductiveMinutes,
+    throughputCeiling: treatmentMixMetrics.throughputCeiling,
+    avgAppointmentDurationMins: treatmentMixMetrics.avgDurationMins,
+    revenuePerMinute: treatmentMixMetrics.rpm,
+    impliedAppointmentsPerMonth: Math.round((treatmentMixMetrics.availableProductiveMinutes / treatmentMixMetrics.avgDurationMins) * (targetOcc / 100)),
+  } : null;
+
   return res.json({
     scenario,
     scenarioNote: profile.note,
@@ -274,6 +401,9 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     freeRentMonths: freeRentMonthsVal,
     rentLineAmount: Math.round(rentLineAmount),
     wincFreeRent,
+    cashflowMonths,
+    treatmentMix: treatmentMixResponse,
+    lifestyleScheduleApplied: lifestyleSchedule !== null,
     // Legacy backward-compat fields (dashboard uses these)
     monthlyRevenue: winc.grossRevenue,
     annualRevenue: combined.annualRevenue,
@@ -313,6 +443,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
   }
 
+  // Issue 1: Derive working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
+  const lifestyleScheduleCf = await deriveLifestyleSchedule(projectId);
+  if (lifestyleScheduleCf) {
+    (model as any).workingDaysPerMonth = lifestyleScheduleCf.workingDaysPerMonth;
+    (model as any).practitionerHoursPerDay = lifestyleScheduleCf.practitionerHoursPerDay;
+  }
+
   // Fetch project for start + open dates
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
 
@@ -338,8 +475,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const acvMultiplier = profile.acvMultiplier;
   const { startOcc, rampMonths } = profile;
 
+  // Issue 2: Apply treatment mix to override acv and slotsPerMonth if valid mix exists.
+  applyTreatmentMix(model as any);
+  // Read after potential override: wincAcvGbp may have been updated by applyTreatmentMix
   const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
-  const slotsPerMonth = model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
+  const slotsPerMonth = ((model as any)._slotsPerMonthOverride != null && (model as any)._slotsPerMonthOverride > 0)
+    ? (model as any)._slotsPerMonthOverride
+    : model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
 
   // Use dynamic fixed cost items if any exist; fall back to legacy hardcoded fields
   const wincFixedCosts = fixedCostItems.length > 0
