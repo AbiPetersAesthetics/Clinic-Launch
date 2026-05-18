@@ -3,7 +3,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProjectDashboard,
   useGetFinancialModel,
-  useGetProjectCashflow,
   useListFixedCostItems,
   useGetPhasesWithTasks,
   useGetOptimisationAnalysis,
@@ -160,6 +159,7 @@ export default function ExportPage() {
   const [goNoGo, setGoNoGo] = useState<any>(null);
   const [leaseStrategy, setLeaseStrategy] = useState<any>(null);
   const [bLiveData, setBLiveData] = useState<any>(null);
+  const [cashflowData, setCashflowData] = useState<any[]>([]);
 
   const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -180,7 +180,6 @@ export default function ExportPage() {
   // ── API hooks ────────────────────────────────────────────────────────────────
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID);
   const { data: financialModel } = useGetFinancialModel(PROJECT_ID);
-  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario: "realistic" } as any);
   const { data: fixedCosts } = useListFixedCostItems(PROJECT_ID);
   const { data: phasesWithTasks } = useGetPhasesWithTasks(PROJECT_ID);
   const { data: optimisation } = useGetOptimisationAnalysis(PROJECT_ID);
@@ -191,13 +190,17 @@ export default function ExportPage() {
   const { data: properties } = useListProperties(PROJECT_ID);
 
   // ── Raw fetches ───────────────────────────────────────────────────────────────
+  // These use cache: 'no-store' to bypass browser HTTP 304 caching entirely —
+  // critical for financial data that must always reflect the current model.
   const fetchRaw = useCallback(async () => {
     try {
-      const [mktRes, compRes, lifeRes, bLiveRes] = await Promise.all([
-        fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing`),
-        fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`),
-        fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`),
-        fetch(`${API_BASE}/bedhampton/summary`),
+      const nc = { cache: "no-store" as RequestCache };
+      const [mktRes, compRes, lifeRes, bLiveRes, cfRes] = await Promise.all([
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`, nc),
+        fetch(`${API_BASE}/bedhampton/summary`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/cashflow?scenario=realistic`, nc),
       ]);
       if (mktRes.ok) {
         const mktData = await mktRes.json();
@@ -209,6 +212,10 @@ export default function ExportPage() {
       }
       if (lifeRes.ok) setLifestyle(await lifeRes.json());
       if (bLiveRes.ok) setBLiveData(await bLiveRes.json());
+      if (cfRes.ok) {
+        const cfData = await cfRes.json();
+        setCashflowData(Array.isArray(cfData) ? cfData : []);
+      }
     } catch (e) {
       setFetchError("Some data could not be loaded.");
     } finally {
@@ -221,12 +228,11 @@ export default function ExportPage() {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setRawFetchDone(false);
-    // invalidateQueries clears the TanStack cache AND bypasses HTTP 304 caching,
-    // guaranteeing fresh data is fetched from the server for all queries.
-    await Promise.all([
-      queryClient.invalidateQueries({ refetchType: "active" }),
-      fetchRaw(),
-    ]);
+    // removeQueries wipes cached ETags from TanStack so the next fetch sends
+    // no If-None-Match header and the server always returns a fresh 200.
+    // fetchRaw uses cache:'no-store' for financial data, bypassing browser HTTP cache.
+    queryClient.removeQueries();
+    await fetchRaw();
     setIsRefreshing(false);
   }, [queryClient, fetchRaw]);
 
@@ -263,7 +269,7 @@ export default function ExportPage() {
     { label: "AI Recommendation", full: !!goNoGo },
     { label: "Financial Model", full: !!financialModel },
     { label: "Fixed Costs", full: !!(fixedCosts && fixedCosts.length > 0) },
-    { label: "Cashflow", full: !!(cashflow && (cashflow as any[]).length > 0) },
+    { label: "Cashflow", full: cashflowData.length > 0 },
     { label: "Project Plan", full: !!(phasesWithTasks && phasesWithTasks.length > 0) },
     { label: "Optimisation", full: !!optimisation },
     { label: "Properties", full: !!(properties && properties.length > 0) },
@@ -955,7 +961,7 @@ export default function ExportPage() {
           <SectionTitle label="4. 12-Month Cashflow Projection" sub="Financials → Overview (Realistic scenario)" />
           <div className="text-xs text-gray-500 mb-3 italic">Realistic scenario projections. Includes ramp-up curve. Cumulative cashflow shows when the business crosses into positive territory.</div>
 
-          {(!cashflow || (cashflow as any[]).length === 0) ? (
+          {cashflowData.length === 0 ? (
             <p className="text-sm text-gray-400 italic">Cashflow data not available. Ensure financial model is saved.</p>
           ) : (
             <div className="rounded border border-gray-200 overflow-hidden">
@@ -968,7 +974,7 @@ export default function ExportPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(cashflow as any[]).map((row: any, i: number) => (
+                  {cashflowData.map((row: any, i: number) => (
                     <tr key={i} className={`border-b border-gray-100 last:border-0 ${row.isSelfFundingMonth ? "bg-emerald-50" : row.isPreOpening ? "bg-gray-50/60" : ""}`}>
                       <td className="px-2.5 py-1.5 font-medium whitespace-nowrap">
                         {row.calendarLabel ?? row.monthLabel ?? `Mo ${row.month}`}
