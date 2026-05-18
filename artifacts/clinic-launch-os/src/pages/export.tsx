@@ -221,7 +221,11 @@ export default function ExportPage() {
 
   // Lifestyle extras (JSON fields)
   const lifestyleExtras = (() => { try { return JSON.parse(lifestyle?.extrasJson ?? "{}"); } catch { return {}; } })();
-  const lifestyleNonNegotiables: string[] = Array.isArray(lifestyleExtras.nonNegotiablesList) ? lifestyleExtras.nonNegotiablesList : [];
+  const lifestyleNonNegotiables: string[] = Array.isArray(lifestyleExtras.nonNegotiablesList)
+    ? lifestyleExtras.nonNegotiablesList.map((n: unknown) =>
+        typeof n === "string" ? n : (n as { text?: string; id?: string; category?: string }).text ?? ""
+      )
+    : [];
   const lifestyleSuccessVision = lifestyleExtras.successVision12m ?? lifestyle?.successVision ?? "";
   const lifestyleFamilySchedule = (() => { try { return JSON.parse(lifestyle?.familyScheduleJson ?? "{}"); } catch { return {}; } })();
 
