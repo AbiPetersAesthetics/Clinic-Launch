@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
-  useGetPhasesWithTasks,
-  getGetPhasesWithTasksQueryKey,
   useUpdateTask,
   useCreateTask,
   useDeleteTask,
@@ -757,7 +755,7 @@ export default function ProjectPage() {
       { id: taskId },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID) });
+          queryClient.removeQueries({ queryKey: [phasesUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           setConfirmDeleteId(null);
@@ -772,8 +770,17 @@ export default function ProjectPage() {
   const activeProperty = properties?.find((p) => p.isActiveForProject) ?? null;
   const activePropertyId = !viewMasterPlan && activeProperty ? activeProperty.id : null;
 
-  const { data: phases, isLoading: isPhasesLoading } = useGetPhasesWithTasks(PROJECT_ID, activePropertyId, {
-    query: { queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId), enabled: true },
+  const phasesUrl = activePropertyId
+    ? `/api/projects/${PROJECT_ID}/phases-with-tasks?propertyId=${activePropertyId}`
+    : `/api/projects/${PROJECT_ID}/phases-with-tasks`;
+
+  const { data: phases, isLoading: isPhasesLoading } = useQuery<PhaseWithTasks[]>({
+    queryKey: [phasesUrl],
+    queryFn: async () => {
+      const res = await fetch(phasesUrl);
+      if (!res.ok) throw new Error(`phases-with-tasks fetch failed: ${res.status}`);
+      return res.json() as Promise<PhaseWithTasks[]>;
+    },
   });
 
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
@@ -800,8 +807,8 @@ export default function ProjectPage() {
   const updateTask = useUpdateTask();
 
   const invalidateAfterTaskChange = () => {
-    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId) });
-    queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, null) });
+    queryClient.removeQueries({ queryKey: [phasesUrl] });
+    queryClient.removeQueries({ queryKey: [`/api/projects/${PROJECT_ID}/phases-with-tasks`] });
     queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
   };
@@ -2049,8 +2056,9 @@ function TaskEditSheet({
       { id: task.id, data },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, activePropertyId) });
-          queryClient.invalidateQueries({ queryKey: getGetPhasesWithTasksQueryKey(PROJECT_ID, null) });
+          const baseUrl = `/api/projects/${PROJECT_ID}/phases-with-tasks`;
+          queryClient.removeQueries({ queryKey: [activePropertyId ? `${baseUrl}?propertyId=${activePropertyId}` : baseUrl] });
+          queryClient.removeQueries({ queryKey: [baseUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           onClose();

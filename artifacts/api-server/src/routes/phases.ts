@@ -112,6 +112,7 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
     };
   }));
 
+  res.setHeader("Cache-Control", "no-store");
   res.json(result);
 });
 
