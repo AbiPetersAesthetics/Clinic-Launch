@@ -1152,7 +1152,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             7. PROPERTIES
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break">
+        <div className="print-break" style={{ display: enabledSections.has("Properties") ? undefined : 'none' }}>
           <SectionTitle label="7. Property Pipeline" sub="Properties page" />
 
           {(!properties || properties.length === 0) ? (
@@ -1252,7 +1252,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             8. COMPETITOR INTELLIGENCE
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("Competitors") ? undefined : 'none' }}>
           <SectionTitle label="8. Competitor Intelligence" sub="Competition Intel page" />
 
           {competitors.length === 0 ? (
@@ -1300,7 +1300,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             9. COMPLIANCE
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break">
+        <div className="print-break" style={{ display: enabledSections.has("Compliance") ? undefined : 'none' }}>
           <SectionTitle label="9. CQC & Compliance" sub="Compliance page" />
 
           {complianceSummary && (
@@ -1382,7 +1382,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             10. DECISION LOG
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("Decisions") ? undefined : 'none' }}>
           <SectionTitle label="10. Decision Log" sub="Decisions page" />
 
           <div className="rounded border border-blue-100 bg-blue-50 p-3 mb-4 text-xs text-blue-800 print-avoid-break">
@@ -1436,7 +1436,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             11. MARKETING
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break">
+        <div className="print-break" style={{ display: enabledSections.has("Marketing") ? undefined : 'none' }}>
           <SectionTitle label="11. Marketing & Launch Plan" sub="Marketing page" />
 
           {marketing.length === 0 ? (
@@ -1484,7 +1484,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             12. LIFE DESIGN
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("Life Design") ? undefined : 'none' }}>
           <SectionTitle label="12. Life Design" sub="Life Design page" />
 
           {!lifestyle ? (
