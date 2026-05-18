@@ -150,8 +150,6 @@ export interface ClinicProperty {
   agentEmail?: string | null;
   status: ClinicPropertyStatus;
   pipelineStatus: ClinicPropertyPipelineStatus;
-  sourceUrl?: string | null;
-  photoUrl?: string | null;
   viewingNotes?: string | null;
   negotiationNotes?: string | null;
   landlordConcessions?: string | null;
@@ -388,20 +386,6 @@ export const LaunchTaskCostTier = {
   high: "high",
 } as const;
 
-export type TaskQuoteStatus = "pending" | "accepted" | "rejected";
-
-export interface TaskQuote {
-  id: string;
-  company: string;
-  contact?: string | null;
-  phone?: string | null;
-  email?: string | null;
-  amount?: number | null;
-  notes?: string | null;
-  date?: string | null;
-  status: TaskQuoteStatus;
-}
-
 export interface LaunchTask {
   id: number;
   phaseId: number;
@@ -423,7 +407,6 @@ export interface LaunchTask {
   notes?: string | null;
   /** JSON array of file references [{name, url, type}] */
   files?: string | null;
-  quotes?: TaskQuote[] | null;
   isNonNegotiable: boolean;
   isCriticalRisk: boolean;
   sortOrder: number;
@@ -530,12 +513,9 @@ export interface UpdateTaskBody {
   dependencies?: number[] | null;
   notes?: string | null;
   files?: string | null;
-  quotes?: TaskQuote[] | null;
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
-  /** When set, saves changes as a property-scoped override instead of updating the base task */
-  propertyId?: number | null;
 }
 
 export interface FinancialModel {
@@ -604,15 +584,6 @@ export interface UpsertFinancialModelBody {
   ownerDrawingsGbp?: number;
   runwaySavingsGbp?: number;
   personalSalaryNeedsGbp?: number;
-  vatOnRent?: boolean;
-  vatCurrentTurnoverGbp?: number;
-  wincAcvGbp?: number;
-  bedhRentGbp?: number;
-  bedhMarketingGbp?: number;
-  bedhamptonCostsGbp?: number;
-  schoolFeesGbp?: number;
-  travelGbp?: number;
-  otherHouseholdGbp?: number;
 }
 
 export type CalculateFinancialsBodyScenario =
@@ -622,9 +593,6 @@ export const CalculateFinancialsBodyScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
-  delayed_ramp: "delayed_ramp",
-  economic_downturn: "economic_downturn",
-  stress_test: "stress_test",
 } as const;
 
 export interface CalculateFinancialsBody {
@@ -638,9 +606,6 @@ export const FinancialCalculationScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
-  delayed_ramp: "delayed_ramp",
-  economic_downturn: "economic_downturn",
-  stress_test: "stress_test",
 } as const;
 
 export interface FinancialCalculation {
@@ -694,13 +659,6 @@ export interface DashboardSummary {
   phaseProgress: PhaseProgress[];
   complianceReadinessPercent?: number | null;
   cqcNotStarted?: boolean | null;
-  activePropertyAddress?: string | null;
-  activePropertyPostcode?: string | null;
-  activePropertyShortName?: string | null;
-  breakEvenRevenue?: number | null;
-  realisticRevenue?: number | null;
-  realisticNetProfit?: number | null;
-  vatRisk?: boolean | null;
 }
 
 export interface PhaseWithTasks {
@@ -1716,6 +1674,128 @@ export interface BrochureVisualAnalysis {
   visualSummary: string;
 }
 
+export type SupplierQuoteStatus =
+  (typeof SupplierQuoteStatus)[keyof typeof SupplierQuoteStatus];
+
+export const SupplierQuoteStatus = {
+  Requested: "Requested",
+  Received: "Received",
+  Shortlisted: "Shortlisted",
+  Accepted: "Accepted",
+  Rejected: "Rejected",
+} as const;
+
+export interface SupplierQuote {
+  id: number;
+  supplierId: number;
+  projectId: number;
+  description: string;
+  amountGbp?: string | null;
+  vatIncluded: boolean;
+  validUntil?: string | null;
+  status: SupplierQuoteStatus;
+  notes: string;
+  attachmentUrl: string;
+  receivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SupplierStatus =
+  (typeof SupplierStatus)[keyof typeof SupplierStatus];
+
+export const SupplierStatus = {
+  Researching: "Researching",
+  Contacted: "Contacted",
+  Quoted: "Quoted",
+  Contracted: "Contracted",
+  Rejected: "Rejected",
+} as const;
+
+export interface Supplier {
+  id: number;
+  projectId: number;
+  name: string;
+  category: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  website: string;
+  notes: string;
+  status: SupplierStatus;
+  isFavourited: boolean;
+  linkedTaskId?: number | null;
+  quotes: SupplierQuote[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSupplierBody {
+  name: string;
+  category?: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  notes?: string;
+  status?: string;
+  linkedTaskId?: number | null;
+}
+
+export interface UpdateSupplierBody {
+  name?: string;
+  category?: string;
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  notes?: string;
+  status?: string;
+  isFavourited?: boolean;
+  linkedTaskId?: number | null;
+}
+
+export interface CreateQuoteBody {
+  description: string;
+  amountGbp?: number | null;
+  vatIncluded?: boolean;
+  validUntil?: string | null;
+  status?: string;
+  notes?: string;
+  attachmentUrl?: string;
+  receivedAt?: string | null;
+}
+
+export interface UpdateQuoteBody {
+  description?: string;
+  amountGbp?: number | null;
+  vatIncluded?: boolean;
+  validUntil?: string | null;
+  status?: string;
+  notes?: string;
+  attachmentUrl?: string;
+  receivedAt?: string | null;
+}
+
+export type SuppliersSummaryByCategory = {
+  [key: string]: {
+    count: number;
+    quotedCount: number;
+    contractedCount: number;
+  };
+};
+
+export interface SuppliersSummary {
+  totalSuppliers: number;
+  contractedCount: number;
+  quotedCount: number;
+  totalQuotes: number;
+  acceptedQuotes: number;
+  totalCommittedGbp: number;
+  totalPipelineGbp: number;
+  byCategory: SuppliersSummaryByCategory;
+}
+
 export type UploadPropertyDocumentBody = {
   file?: Blob;
 };
@@ -1781,7 +1861,12 @@ export const GetProjectCashflowScenario = {
   conservative: "conservative",
   realistic: "realistic",
   aggressive: "aggressive",
-  delayed_ramp: "delayed_ramp",
-  economic_downturn: "economic_downturn",
-  stress_test: "stress_test",
 } as const;
+
+export type DeleteSupplier200 = {
+  success: boolean;
+};
+
+export type DeleteQuote200 = {
+  success: boolean;
+};

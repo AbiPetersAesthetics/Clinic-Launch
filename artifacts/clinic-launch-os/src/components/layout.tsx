@@ -28,6 +28,7 @@ import {
   Target,
   FileDown,
   Scale,
+  ShoppingBag,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
@@ -157,6 +158,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
     { href: "/franchise", label: "Franchise Model", icon: Network },
     { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
+    { href: "/suppliers", label: "Suppliers", icon: ShoppingBag },
   ];
 
   return (

@@ -34,6 +34,8 @@ tags:
     description: Cost variance optimisation analysis
   - name: compliance
     description: CQC registration and clinical compliance tracker
+  - name: suppliers
+    description: Supplier and procurement quote management
 
 paths:
   /healthz:
@@ -1409,6 +1411,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ClinicProperty"
 
+  /properties/{id}/unset-active:
+    put:
+      operationId: unsetPropertyActive
+      tags: [properties]
+      summary: Unset a property as the active project property
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated property
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClinicProperty"
+
   /properties/{id}/confirm-upload:
     post:
       operationId: confirmPropertyUpload
@@ -1680,6 +1701,204 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/CashflowMonth"
+
+  # Suppliers & Procurement
+  /projects/{projectId}/suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [suppliers]
+      summary: List all suppliers with their quotes
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of suppliers with nested quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Supplier"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create a supplier
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSupplierBody"
+      responses:
+        "201":
+          description: Created supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+
+  /projects/{projectId}/suppliers/summary:
+    get:
+      operationId: getSuppliersSummary
+      tags: [suppliers]
+      summary: Get procurement summary stats
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Procurement summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuppliersSummary"
+
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      summary: Get a supplier with quotes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier with quotes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    put:
+      operationId: updateSupplier
+      tags: [suppliers]
+      summary: Update a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSupplierBody"
+      responses:
+        "200":
+          description: Updated supplier
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      summary: Delete a supplier and its quotes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
+
+  /suppliers/{id}/quotes:
+    post:
+      operationId: createQuote
+      tags: [suppliers]
+      summary: Add a quote to a supplier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateQuoteBody"
+      responses:
+        "201":
+          description: Created quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierQuote"
+
+  /quotes/{id}:
+    put:
+      operationId: updateQuote
+      tags: [suppliers]
+      summary: Update a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateQuoteBody"
+      responses:
+        "200":
+          description: Updated quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierQuote"
+    delete:
+      operationId: deleteQuote
+      tags: [suppliers]
+      summary: Delete a quote
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                required: [success]
 
 components:
   schemas:
@@ -4351,3 +4570,206 @@ components:
         - fitOutEstimate
         - cqcObservations
         - visualSummary
+
+    # ── Supplier & Procurement ──────────────────────────────────────────────
+
+    SupplierQuote:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: integer
+        projectId:
+          type: integer
+        description:
+          type: string
+        amountGbp:
+          type: string
+          nullable: true
+        vatIncluded:
+          type: boolean
+        validUntil:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [Requested, Received, Shortlisted, Accepted, Rejected]
+        notes:
+          type: string
+        attachmentUrl:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, supplierId, projectId, description, vatIncluded, status, notes, attachmentUrl, createdAt, updatedAt]
+
+    Supplier:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [Researching, Contacted, Quoted, Contracted, Rejected]
+        isFavourited:
+          type: boolean
+        linkedTaskId:
+          type: integer
+          nullable: true
+        quotes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SupplierQuote"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, projectId, name, category, contactName, phone, email, website, notes, status, isFavourited, quotes, createdAt, updatedAt]
+
+    CreateSupplierBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        linkedTaskId:
+          type: integer
+          nullable: true
+      required: [name]
+
+    UpdateSupplierBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        contactName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        website:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+        isFavourited:
+          type: boolean
+        linkedTaskId:
+          type: integer
+          nullable: true
+
+    CreateQuoteBody:
+      type: object
+      properties:
+        description:
+          type: string
+        amountGbp:
+          type: number
+          nullable: true
+        vatIncluded:
+          type: boolean
+        validUntil:
+          type: string
+          nullable: true
+        status:
+          type: string
+        notes:
+          type: string
+        attachmentUrl:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+      required: [description]
+
+    UpdateQuoteBody:
+      type: object
+      properties:
+        description:
+          type: string
+        amountGbp:
+          type: number
+          nullable: true
+        vatIncluded:
+          type: boolean
+        validUntil:
+          type: string
+          nullable: true
+        status:
+          type: string
+        notes:
+          type: string
+        attachmentUrl:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+
+    SuppliersSummary:
+      type: object
+      properties:
+        totalSuppliers:
+          type: integer
+        contractedCount:
+          type: integer
+        quotedCount:
+          type: integer
+        totalQuotes:
+          type: integer
+        acceptedQuotes:
+          type: integer
+        totalCommittedGbp:
+          type: integer
+        totalPipelineGbp:
+          type: integer
+        byCategory:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              count:
+                type: integer
+              quotedCount:
+                type: integer
+              contractedCount:
+                type: integer
+            required: [count, quotedCount, contractedCount]
+      required: [totalSuppliers, contractedCount, quotedCount, totalQuotes, acceptedQuotes, totalCommittedGbp, totalPipelineGbp, byCategory]

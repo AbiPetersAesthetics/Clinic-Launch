@@ -1074,9 +1074,6 @@ export const UpsertFinancialModelBody = zod.object({
   ownerDrawingsGbp: zod.number().optional(),
   runwaySavingsGbp: zod.number().optional(),
   personalSalaryNeedsGbp: zod.number().optional(),
-  schoolFeesGbp: zod.number().optional(),
-  travelGbp: zod.number().optional(),
-  otherHouseholdGbp: zod.number().optional(),
 });
 
 export const UpsertFinancialModelResponse = zod.object({
@@ -2239,6 +2236,96 @@ export const SetPropertyActiveResponse = zod.object({
 });
 
 /**
+ * @summary Unset a property as the active project property
+ */
+export const UnsetPropertyActiveParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UnsetPropertyActiveResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  address: zod.string().nullish(),
+  postcode: zod.string().nullish(),
+  sqFootage: zod.number().nullish(),
+  annualRentGbp: zod.number().nullish(),
+  monthlyRentGbp: zod.number().nullish(),
+  vatOnRent: zod.boolean().nullish(),
+  businessRatesGbp: zod.number().nullish(),
+  serviceChargeGbp: zod.number().nullish(),
+  leaseLength: zod.string().nullish(),
+  useClass: zod.string().nullish(),
+  availabilityDate: zod.string().nullish(),
+  parkingSpaces: zod.number().nullish(),
+  frontageMeters: zod.number().nullish(),
+  agentName: zod.string().nullish(),
+  agentPhone: zod.string().nullish(),
+  agentEmail: zod.string().nullish(),
+  status: zod.enum([
+    "viewing",
+    "shortlisted",
+    "offer_made",
+    "under_offer",
+    "rejected",
+    "active",
+  ]),
+  pipelineStatus: zod.enum([
+    "found",
+    "interesting",
+    "brochure_requested",
+    "viewing_booked",
+    "viewed",
+    "under_review",
+    "due_diligence",
+    "heads_of_terms",
+    "negotiating",
+    "rejected",
+    "selected",
+  ]),
+  viewingNotes: zod.string().nullish(),
+  negotiationNotes: zod.string().nullish(),
+  landlordConcessions: zod.string().nullish(),
+  isActiveForProject: zod.boolean(),
+  isFavourited: zod.boolean(),
+  manualRankOverride: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  manualCompetitors: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        notes: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  mediaFiles: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        type: zod.enum(["pdf", "image", "document", "floorplan"]),
+        url: zod.string(),
+        uploadedAt: zod.string(),
+        sizeBytes: zod.number().nullish(),
+      }),
+    )
+    .nullish(),
+  viewingChecklistData: zod
+    .record(
+      zod.string(),
+      zod.object({
+        checked: zod.boolean().optional(),
+        note: zod.string().nullish(),
+      }),
+    )
+    .nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  latestAnalysisAt: zod.string().nullish(),
+  isAnalysisStale: zod.boolean().nullish(),
+});
+
+/**
  * @summary Save reviewed extracted property data and store document reference
  */
 export const ConfirmPropertyUploadParams = zod.object({
@@ -2816,3 +2903,300 @@ export const GetProjectCashflowResponseItem = zod.object({
 export const GetProjectCashflowResponse = zod.array(
   GetProjectCashflowResponseItem,
 );
+
+/**
+ * @summary List all suppliers with their quotes
+ */
+export const ListSuppliersParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const ListSuppliersResponseItem = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  contactName: zod.string(),
+  phone: zod.string(),
+  email: zod.string(),
+  website: zod.string(),
+  notes: zod.string(),
+  status: zod.enum([
+    "Researching",
+    "Contacted",
+    "Quoted",
+    "Contracted",
+    "Rejected",
+  ]),
+  isFavourited: zod.boolean(),
+  linkedTaskId: zod.number().nullish(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      supplierId: zod.number(),
+      projectId: zod.number(),
+      description: zod.string(),
+      amountGbp: zod.string().nullish(),
+      vatIncluded: zod.boolean(),
+      validUntil: zod.string().nullish(),
+      status: zod.enum([
+        "Requested",
+        "Received",
+        "Shortlisted",
+        "Accepted",
+        "Rejected",
+      ]),
+      notes: zod.string(),
+      attachmentUrl: zod.string(),
+      receivedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+export const ListSuppliersResponse = zod.array(ListSuppliersResponseItem);
+
+/**
+ * @summary Create a supplier
+ */
+export const CreateSupplierParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const CreateSupplierBody = zod.object({
+  name: zod.string(),
+  category: zod.string().optional(),
+  contactName: zod.string().optional(),
+  phone: zod.string().optional(),
+  email: zod.string().optional(),
+  website: zod.string().optional(),
+  notes: zod.string().optional(),
+  status: zod.string().optional(),
+  linkedTaskId: zod.number().nullish(),
+});
+
+/**
+ * @summary Get procurement summary stats
+ */
+export const GetSuppliersSummaryParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetSuppliersSummaryResponse = zod.object({
+  totalSuppliers: zod.number(),
+  contractedCount: zod.number(),
+  quotedCount: zod.number(),
+  totalQuotes: zod.number(),
+  acceptedQuotes: zod.number(),
+  totalCommittedGbp: zod.number(),
+  totalPipelineGbp: zod.number(),
+  byCategory: zod.record(
+    zod.string(),
+    zod.object({
+      count: zod.number(),
+      quotedCount: zod.number(),
+      contractedCount: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get a supplier with quotes
+ */
+export const GetSupplierParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetSupplierResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  contactName: zod.string(),
+  phone: zod.string(),
+  email: zod.string(),
+  website: zod.string(),
+  notes: zod.string(),
+  status: zod.enum([
+    "Researching",
+    "Contacted",
+    "Quoted",
+    "Contracted",
+    "Rejected",
+  ]),
+  isFavourited: zod.boolean(),
+  linkedTaskId: zod.number().nullish(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      supplierId: zod.number(),
+      projectId: zod.number(),
+      description: zod.string(),
+      amountGbp: zod.string().nullish(),
+      vatIncluded: zod.boolean(),
+      validUntil: zod.string().nullish(),
+      status: zod.enum([
+        "Requested",
+        "Received",
+        "Shortlisted",
+        "Accepted",
+        "Rejected",
+      ]),
+      notes: zod.string(),
+      attachmentUrl: zod.string(),
+      receivedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Update a supplier
+ */
+export const UpdateSupplierParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSupplierBody = zod.object({
+  name: zod.string().optional(),
+  category: zod.string().optional(),
+  contactName: zod.string().optional(),
+  phone: zod.string().optional(),
+  email: zod.string().optional(),
+  website: zod.string().optional(),
+  notes: zod.string().optional(),
+  status: zod.string().optional(),
+  isFavourited: zod.boolean().optional(),
+  linkedTaskId: zod.number().nullish(),
+});
+
+export const UpdateSupplierResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  name: zod.string(),
+  category: zod.string(),
+  contactName: zod.string(),
+  phone: zod.string(),
+  email: zod.string(),
+  website: zod.string(),
+  notes: zod.string(),
+  status: zod.enum([
+    "Researching",
+    "Contacted",
+    "Quoted",
+    "Contracted",
+    "Rejected",
+  ]),
+  isFavourited: zod.boolean(),
+  linkedTaskId: zod.number().nullish(),
+  quotes: zod.array(
+    zod.object({
+      id: zod.number(),
+      supplierId: zod.number(),
+      projectId: zod.number(),
+      description: zod.string(),
+      amountGbp: zod.string().nullish(),
+      vatIncluded: zod.boolean(),
+      validUntil: zod.string().nullish(),
+      status: zod.enum([
+        "Requested",
+        "Received",
+        "Shortlisted",
+        "Accepted",
+        "Rejected",
+      ]),
+      notes: zod.string(),
+      attachmentUrl: zod.string(),
+      receivedAt: zod.string().nullish(),
+      createdAt: zod.string(),
+      updatedAt: zod.string(),
+    }),
+  ),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a supplier and its quotes
+ */
+export const DeleteSupplierParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteSupplierResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Add a quote to a supplier
+ */
+export const CreateQuoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateQuoteBody = zod.object({
+  description: zod.string(),
+  amountGbp: zod.number().nullish(),
+  vatIncluded: zod.boolean().optional(),
+  validUntil: zod.string().nullish(),
+  status: zod.string().optional(),
+  notes: zod.string().optional(),
+  attachmentUrl: zod.string().optional(),
+  receivedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a quote
+ */
+export const UpdateQuoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateQuoteBody = zod.object({
+  description: zod.string().optional(),
+  amountGbp: zod.number().nullish(),
+  vatIncluded: zod.boolean().optional(),
+  validUntil: zod.string().nullish(),
+  status: zod.string().optional(),
+  notes: zod.string().optional(),
+  attachmentUrl: zod.string().optional(),
+  receivedAt: zod.string().nullish(),
+});
+
+export const UpdateQuoteResponse = zod.object({
+  id: zod.number(),
+  supplierId: zod.number(),
+  projectId: zod.number(),
+  description: zod.string(),
+  amountGbp: zod.string().nullish(),
+  vatIncluded: zod.boolean(),
+  validUntil: zod.string().nullish(),
+  status: zod.enum([
+    "Requested",
+    "Received",
+    "Shortlisted",
+    "Accepted",
+    "Rejected",
+  ]),
+  notes: zod.string(),
+  attachmentUrl: zod.string(),
+  receivedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+});
+
+/**
+ * @summary Delete a quote
+ */
+export const DeleteQuoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteQuoteResponse = zod.object({
+  success: zod.boolean(),
+});
