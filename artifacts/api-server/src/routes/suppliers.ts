@@ -67,6 +67,43 @@ router.post("/projects/:projectId/suppliers", async (req, res) => {
   return res.status(201).json({ ...supplier, quotes: [] });
 });
 
+// ─── GET /projects/:projectId/tasks/:taskId/supplier-quotes ──────────────────
+
+router.get("/projects/:projectId/tasks/:taskId/supplier-quotes", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const taskId = parseInt(req.params.taskId);
+  if (isNaN(projectId) || isNaN(taskId)) return res.status(400).json({ error: "Invalid params" });
+
+  const quotes = await db
+    .select({
+      id: supplierQuotesTable.id,
+      supplierId: supplierQuotesTable.supplierId,
+      projectId: supplierQuotesTable.projectId,
+      taskId: supplierQuotesTable.taskId,
+      description: supplierQuotesTable.description,
+      amountGbp: supplierQuotesTable.amountGbp,
+      vatIncluded: supplierQuotesTable.vatIncluded,
+      validUntil: supplierQuotesTable.validUntil,
+      status: supplierQuotesTable.status,
+      notes: supplierQuotesTable.notes,
+      attachmentUrl: supplierQuotesTable.attachmentUrl,
+      receivedAt: supplierQuotesTable.receivedAt,
+      createdAt: supplierQuotesTable.createdAt,
+      updatedAt: supplierQuotesTable.updatedAt,
+      supplierName: suppliersTable.name,
+      supplierCategory: suppliersTable.category,
+    })
+    .from(supplierQuotesTable)
+    .innerJoin(suppliersTable, eq(supplierQuotesTable.supplierId, suppliersTable.id))
+    .where(and(
+      eq(supplierQuotesTable.projectId, projectId),
+      eq(supplierQuotesTable.taskId, taskId),
+    ))
+    .orderBy(desc(supplierQuotesTable.createdAt));
+
+  return res.json(quotes);
+});
+
 // ─── GET /suppliers/:id ───────────────────────────────────────────────────────
 
 router.get("/suppliers/:id", async (req, res) => {
@@ -135,7 +172,7 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
   const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, supplierId));
   if (!supplier) return res.status(404).json({ error: "Supplier not found" });
 
-  const { description, amountGbp, vatIncluded, validUntil, status, notes, attachmentUrl, receivedAt } = req.body;
+  const { description, amountGbp, vatIncluded, validUntil, status, notes, attachmentUrl, receivedAt, taskId } = req.body;
 
   if (!description || typeof description !== "string") {
     return res.status(400).json({ error: "description is required" });
@@ -146,6 +183,7 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
     .values({
       supplierId,
       projectId: supplier.projectId,
+      taskId: taskId != null ? Number(taskId) : null,
       description: description.trim(),
       amountGbp: amountGbp != null ? String(amountGbp) : null,
       vatIncluded: vatIncluded ?? false,
@@ -174,11 +212,17 @@ router.put("/quotes/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
-  const allowed = ["description", "amountGbp", "vatIncluded", "validUntil", "status", "notes", "attachmentUrl", "receivedAt"];
+  const allowed = ["description", "amountGbp", "vatIncluded", "validUntil", "status", "notes", "attachmentUrl", "receivedAt", "taskId"];
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in req.body) {
-      patch[key] = key === "amountGbp" && req.body[key] != null ? String(req.body[key]) : req.body[key];
+      if (key === "amountGbp" && req.body[key] != null) {
+        patch[key] = String(req.body[key]);
+      } else if (key === "taskId") {
+        patch[key] = req.body[key] != null ? Number(req.body[key]) : null;
+      } else {
+        patch[key] = req.body[key];
+      }
     }
   }
 

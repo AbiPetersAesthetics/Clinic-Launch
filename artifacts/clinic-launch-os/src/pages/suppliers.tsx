@@ -10,8 +10,9 @@ import {
   useDeleteQuote,
   getListSuppliersQueryKey,
   getGetSuppliersSummaryQueryKey,
+  useGetPhasesWithTasks,
 } from "@workspace/api-client-react";
-import type { Supplier, SupplierQuote } from "@workspace/api-client-react";
+import type { Supplier, SupplierQuote, PhaseWithTasks } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -250,11 +251,12 @@ interface QuoteFormData {
   status: string;
   notes: string;
   receivedAt: string;
+  taskId: number | null;
 }
 
 const BLANK_QUOTE: QuoteFormData = {
   description: "", amountGbp: "", vatIncluded: false,
-  validUntil: "", status: "Received", notes: "", receivedAt: "",
+  validUntil: "", status: "Received", notes: "", receivedAt: "", taskId: null,
 };
 
 interface QuoteModalProps {
@@ -263,9 +265,10 @@ interface QuoteModalProps {
   supplierId: number;
   projectId: number;
   existing?: SupplierQuote;
+  allTasks?: { id: number; title: string; phaseName: string }[];
 }
 
-function QuoteModal({ open, onClose, supplierId, projectId, existing }: QuoteModalProps) {
+function QuoteModal({ open, onClose, supplierId, projectId, existing, allTasks = [] }: QuoteModalProps) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [form, setForm] = useState<QuoteFormData>(
@@ -278,6 +281,7 @@ function QuoteModal({ open, onClose, supplierId, projectId, existing }: QuoteMod
           status: existing.status,
           notes: existing.notes ?? "",
           receivedAt: existing.receivedAt ?? "",
+          taskId: (existing as SupplierQuote & { taskId?: number | null }).taskId ?? null,
         }
       : BLANK_QUOTE
   );
@@ -316,6 +320,7 @@ function QuoteModal({ open, onClose, supplierId, projectId, existing }: QuoteMod
       status: form.status,
       notes: form.notes,
       receivedAt: form.receivedAt || null,
+      taskId: form.taskId ?? null,
     };
     if (existing) {
       updateMut.mutate({ id: existing.id, data: payload });
@@ -371,6 +376,25 @@ function QuoteModal({ open, onClose, supplierId, projectId, existing }: QuoteMod
             />
             <Label htmlFor="vatIncluded" className="cursor-pointer">Amount includes VAT</Label>
           </div>
+          {allTasks.length > 0 && (
+            <div>
+              <Label>Link to Project Task (optional)</Label>
+              <Select
+                value={form.taskId?.toString() ?? "none"}
+                onValueChange={v => setForm(f => ({ ...f, taskId: v === "none" ? null : parseInt(v) }))}
+              >
+                <SelectTrigger><SelectValue placeholder="No task linked" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No task linked</SelectItem>
+                  {allTasks.map(t => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      <span className="text-xs text-muted-foreground mr-1">{t.phaseName} ·</span>{t.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div>
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Any notes about this quote..." rows={2} />
@@ -389,7 +413,7 @@ function QuoteModal({ open, onClose, supplierId, projectId, existing }: QuoteMod
 
 // ─── Quote Row ────────────────────────────────────────────────────────────────
 
-function QuoteRow({ quote, projectId, onEdit }: { quote: SupplierQuote; projectId: number; onEdit: (q: SupplierQuote) => void }) {
+function QuoteRow({ quote, projectId, onEdit, allTasks = [] }: { quote: SupplierQuote; projectId: number; onEdit: (q: SupplierQuote) => void; allTasks?: { id: number; title: string; phaseName: string }[] }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const delMut = useDeleteQuote({
@@ -427,6 +451,14 @@ function QuoteRow({ quote, projectId, onEdit }: { quote: SupplierQuote; projectI
             <span className="text-xs text-slate-400">Valid until {new Date(quote.validUntil).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}</span>
           )}
         </div>
+        {(quote as SupplierQuote & { taskId?: number | null }).taskId != null && (() => {
+          const linkedTask = allTasks.find(t => t.id === (quote as SupplierQuote & { taskId?: number | null }).taskId);
+          return linkedTask ? (
+            <p className="text-xs text-blue-600 mt-0.5 flex items-center gap-1">
+              <span className="text-slate-400">→</span> Project: {linkedTask.title}
+            </p>
+          ) : null;
+        })()}
         {quote.notes && <p className="text-xs text-slate-500 mt-0.5">{quote.notes}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -448,8 +480,8 @@ function QuoteRow({ quote, projectId, onEdit }: { quote: SupplierQuote; projectI
 // ─── Supplier Card ────────────────────────────────────────────────────────────
 
 function SupplierCard({
-  supplier, projectId, onEdit,
-}: { supplier: Supplier; projectId: number; onEdit: (s: Supplier) => void }) {
+  supplier, projectId, onEdit, allTasks = [],
+}: { supplier: Supplier; projectId: number; onEdit: (s: Supplier) => void; allTasks?: { id: number; title: string; phaseName: string }[] }) {
   const qc = useQueryClient();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
@@ -581,7 +613,7 @@ function SupplierCard({
       {expanded && quotes.length > 0 && (
         <div className="px-4 pb-3 space-y-1.5 border-t border-slate-100 pt-3">
           {quotes.map(q => (
-            <QuoteRow key={q.id} quote={q} projectId={projectId} onEdit={setEditingQuote} />
+            <QuoteRow key={q.id} quote={q} projectId={projectId} onEdit={setEditingQuote} allTasks={allTasks} />
           ))}
         </div>
       )}
@@ -593,6 +625,7 @@ function SupplierCard({
           onClose={() => setAddingQuote(false)}
           supplierId={supplier.id}
           projectId={projectId}
+          allTasks={allTasks}
         />
       )}
       {editingQuote && (
@@ -602,6 +635,7 @@ function SupplierCard({
           supplierId={supplier.id}
           projectId={projectId}
           existing={editingQuote}
+          allTasks={allTasks}
         />
       )}
     </div>
@@ -620,6 +654,13 @@ export default function SuppliersPage() {
 
   const { data: suppliers = [], isLoading } = useListSuppliers(PROJECT_ID);
   const { data: summary } = useGetSuppliersSummary(PROJECT_ID);
+  const { data: phases = [] } = useGetPhasesWithTasks(PROJECT_ID);
+  const allTasks = useMemo(() =>
+    (phases as PhaseWithTasks[]).flatMap(p =>
+      (p.tasks ?? []).map(t => ({ id: t.id, title: t.title, phaseName: p.name }))
+    ),
+    [phases],
+  );
 
   const categories = useMemo(() => {
     const cats = new Set(suppliers.map(s => s.category));
@@ -798,7 +839,7 @@ export default function SuppliersPage() {
               )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {grouped[cat].map(s => (
-                  <SupplierCard key={s.id} supplier={s} projectId={PROJECT_ID} onEdit={setEditingSupplier} />
+                  <SupplierCard key={s.id} supplier={s} projectId={PROJECT_ID} onEdit={setEditingSupplier} allTasks={allTasks} />
                 ))}
               </div>
             </div>

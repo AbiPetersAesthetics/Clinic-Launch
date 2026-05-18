@@ -1674,6 +1674,36 @@ export interface BrochureVisualAnalysis {
   visualSummary: string;
 }
 
+export type TaskSupplierQuoteStatus =
+  (typeof TaskSupplierQuoteStatus)[keyof typeof TaskSupplierQuoteStatus];
+
+export const TaskSupplierQuoteStatus = {
+  Requested: "Requested",
+  Received: "Received",
+  Shortlisted: "Shortlisted",
+  Accepted: "Accepted",
+  Rejected: "Rejected",
+} as const;
+
+export interface TaskSupplierQuote {
+  id: number;
+  supplierId: number;
+  projectId: number;
+  taskId?: number | null;
+  description: string;
+  amountGbp?: string | null;
+  vatIncluded: boolean;
+  validUntil?: string | null;
+  status: TaskSupplierQuoteStatus;
+  notes: string;
+  attachmentUrl: string;
+  receivedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  supplierName: string;
+  supplierCategory: string;
+}
+
 export type SupplierQuoteStatus =
   (typeof SupplierQuoteStatus)[keyof typeof SupplierQuoteStatus];
 
@@ -1689,6 +1719,7 @@ export interface SupplierQuote {
   id: number;
   supplierId: number;
   projectId: number;
+  taskId?: number | null;
   description: string;
   amountGbp?: string | null;
   vatIncluded: boolean;
@@ -1764,6 +1795,7 @@ export interface CreateQuoteBody {
   notes?: string;
   attachmentUrl?: string;
   receivedAt?: string | null;
+  taskId?: number | null;
 }
 
 export interface UpdateQuoteBody {
@@ -1775,6 +1807,7 @@ export interface UpdateQuoteBody {
   notes?: string;
   attachmentUrl?: string;
   receivedAt?: string | null;
+  taskId?: number | null;
 }
 
 export type SuppliersSummaryByCategory = {

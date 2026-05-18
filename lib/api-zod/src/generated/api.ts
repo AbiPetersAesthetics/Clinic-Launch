@@ -2905,6 +2905,42 @@ export const GetProjectCashflowResponse = zod.array(
 );
 
 /**
+ * @summary List supplier quotes linked to a specific task
+ */
+export const ListTaskSupplierQuotesParams = zod.object({
+  projectId: zod.coerce.number(),
+  taskId: zod.coerce.number(),
+});
+
+export const ListTaskSupplierQuotesResponseItem = zod.object({
+  id: zod.number(),
+  supplierId: zod.number(),
+  projectId: zod.number(),
+  taskId: zod.number().nullish(),
+  description: zod.string(),
+  amountGbp: zod.string().nullish(),
+  vatIncluded: zod.boolean(),
+  validUntil: zod.string().nullish(),
+  status: zod.enum([
+    "Requested",
+    "Received",
+    "Shortlisted",
+    "Accepted",
+    "Rejected",
+  ]),
+  notes: zod.string(),
+  attachmentUrl: zod.string(),
+  receivedAt: zod.string().nullish(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  supplierName: zod.string(),
+  supplierCategory: zod.string(),
+});
+export const ListTaskSupplierQuotesResponse = zod.array(
+  ListTaskSupplierQuotesResponseItem,
+);
+
+/**
  * @summary List all suppliers with their quotes
  */
 export const ListSuppliersParams = zod.object({
@@ -2935,6 +2971,7 @@ export const ListSuppliersResponseItem = zod.object({
       id: zod.number(),
       supplierId: zod.number(),
       projectId: zod.number(),
+      taskId: zod.number().nullish(),
       description: zod.string(),
       amountGbp: zod.string().nullish(),
       vatIncluded: zod.boolean(),
@@ -3033,6 +3070,7 @@ export const GetSupplierResponse = zod.object({
       id: zod.number(),
       supplierId: zod.number(),
       projectId: zod.number(),
+      taskId: zod.number().nullish(),
       description: zod.string(),
       amountGbp: zod.string().nullish(),
       vatIncluded: zod.boolean(),
@@ -3099,6 +3137,7 @@ export const UpdateSupplierResponse = zod.object({
       id: zod.number(),
       supplierId: zod.number(),
       projectId: zod.number(),
+      taskId: zod.number().nullish(),
       description: zod.string(),
       amountGbp: zod.string().nullish(),
       vatIncluded: zod.boolean(),
@@ -3148,6 +3187,7 @@ export const CreateQuoteBody = zod.object({
   notes: zod.string().optional(),
   attachmentUrl: zod.string().optional(),
   receivedAt: zod.string().nullish(),
+  taskId: zod.number().nullish(),
 });
 
 /**
@@ -3166,12 +3206,14 @@ export const UpdateQuoteBody = zod.object({
   notes: zod.string().optional(),
   attachmentUrl: zod.string().optional(),
   receivedAt: zod.string().nullish(),
+  taskId: zod.number().nullish(),
 });
 
 export const UpdateQuoteResponse = zod.object({
   id: zod.number(),
   supplierId: zod.number(),
   projectId: zod.number(),
+  taskId: zod.number().nullish(),
   description: zod.string(),
   amountGbp: zod.string().nullish(),
   vatIncluded: zod.boolean(),

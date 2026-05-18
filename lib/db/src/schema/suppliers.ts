@@ -46,6 +46,7 @@ export const supplierQuotesTable = pgTable("supplier_quotes", {
   id: serial("id").primaryKey(),
   supplierId: integer("supplier_id").notNull(),
   projectId: integer("project_id").notNull(),
+  taskId: integer("task_id"),
 
   description: text("description").notNull(),
   amountGbp: numeric("amount_gbp", { precision: 10, scale: 2 }),

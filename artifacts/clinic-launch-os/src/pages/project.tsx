@@ -15,6 +15,11 @@ import {
   getGetOptimisationAnalysisQueryKey,
   useListProperties,
   getListPropertiesQueryKey,
+  useListTaskSupplierQuotes,
+  getListTaskSupplierQuotesQueryKey,
+  useCreateQuote,
+  useListSuppliers,
+  getListSuppliersQueryKey,
 } from "@workspace/api-client-react";
 import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks, TaskQuote } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
@@ -51,7 +56,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1871,12 +1876,37 @@ function TaskEditSheet({
   const [quotes, setQuotes] = useState<TaskQuote[]>([]);
   const [addingQuote, setAddingQuote] = useState(false);
   const [newQuote, setNewQuote] = useState<Partial<TaskQuote>>({ status: "pending" });
+  const [addingSupplierQuote, setAddingSupplierQuote] = useState(false);
+  const [newSQ, setNewSQ] = useState<{
+    supplierId: number | null;
+    description: string;
+    amountGbp: string;
+    status: string;
+    notes: string;
+  }>({ supplierId: null, description: "", amountGbp: "", status: "Received", notes: "" });
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResult, setAiResult] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const aiResultRef = useRef<HTMLDivElement>(null);
+
+  const { data: allSuppliers = [] } = useListSuppliers(PROJECT_ID);
+  const { data: taskSupplierQuotes = [] } = useListTaskSupplierQuotes(
+    PROJECT_ID,
+    task?.id ?? 0,
+    { query: { enabled: !!task?.id } },
+  );
+  const createSQMut = useCreateQuote({
+    mutation: {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getListTaskSupplierQuotesQueryKey(PROJECT_ID, task?.id ?? 0) });
+        queryClient.invalidateQueries({ queryKey: getListSuppliersQueryKey(PROJECT_ID) });
+        setAddingSupplierQuote(false);
+        setNewSQ({ supplierId: null, description: "", amountGbp: "", status: "Received", notes: "" });
+      },
+    },
+  });
 
   const QUICK_PROMPTS = [
     "Find Winchester suppliers",
@@ -2265,16 +2295,149 @@ function TaskEditSheet({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-1.5"><Receipt className="w-3.5 h-3.5" />Quotes</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 text-xs gap-1"
-                    onClick={() => { setAddingQuote(true); setNewQuote({ status: "pending" }); }}
-                  >
-                    <Plus className="w-3 h-3" />Add Quote
-                  </Button>
+                  <div className="flex gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => { setAddingSupplierQuote(true); setNewSQ({ supplierId: null, description: "", amountGbp: "", status: "Received", notes: "" }); }}
+                    >
+                      <Tag className="w-3 h-3" />From Supplier
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => { setAddingQuote(true); setNewQuote({ status: "pending" }); }}
+                    >
+                      <Plus className="w-3 h-3" />Add Quote
+                    </Button>
+                  </div>
                 </div>
+
+                {/* Linked supplier quotes for this task */}
+                {taskSupplierQuotes.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <Building2 className="w-3 h-3" />From Suppliers
+                    </p>
+                    {taskSupplierQuotes.map(q => (
+                      <div key={q.id} className={`border rounded-lg p-2.5 text-sm ${q.status === "Accepted" ? "border-primary/30 bg-primary/5" : q.status === "Rejected" ? "opacity-60 bg-muted/30" : "bg-muted/20"}`}>
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold">
+                              <Building2 className="w-3 h-3 text-muted-foreground shrink-0" />
+                              <span className="truncate">{q.supplierName}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{q.description}</p>
+                          </div>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${q.status === "Accepted" ? "bg-primary/15 text-primary" : q.status === "Rejected" ? "bg-red-100 text-red-600" : q.status === "Shortlisted" ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-600"}`}>{q.status}</span>
+                        </div>
+                        {q.amountGbp != null && (
+                          <p className="text-primary font-semibold text-xs mt-1">{formatGBP(parseFloat(q.amountGbp))}</p>
+                        )}
+                        {q.notes && <p className="text-xs text-muted-foreground mt-0.5 italic">{q.notes}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* "From Supplier" add form */}
+                {addingSupplierQuote && (
+                  <div className="border rounded-lg p-3 space-y-2 bg-muted/30">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Link Supplier Quote</p>
+                    <div>
+                      <Label className="text-xs">Supplier *</Label>
+                      <Select
+                        value={newSQ.supplierId?.toString() ?? ""}
+                        onValueChange={v => setNewSQ(q => ({ ...q, supplierId: parseInt(v) }))}
+                      >
+                        <SelectTrigger className="mt-1 h-8 text-xs">
+                          <SelectValue placeholder="Select supplier…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {allSuppliers.length === 0 ? (
+                            <SelectItem value="__none" disabled>No suppliers yet — add one in Suppliers</SelectItem>
+                          ) : (
+                            allSuppliers.map(s => (
+                              <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="col-span-2">
+                        <Label className="text-xs">Description *</Label>
+                        <Input
+                          value={newSQ.description}
+                          onChange={e => setNewSQ(q => ({ ...q, description: e.target.value }))}
+                          placeholder="e.g. Full fit-out quote"
+                          className="mt-1 h-8 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Amount (£)</Label>
+                        <div className="relative mt-1">
+                          <PoundSterling className="absolute left-2.5 top-2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+                          <Input
+                            type="number"
+                            value={newSQ.amountGbp}
+                            onChange={e => setNewSQ(q => ({ ...q, amountGbp: e.target.value }))}
+                            placeholder="0"
+                            className="pl-8 h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Status</Label>
+                        <Select value={newSQ.status} onValueChange={v => setNewSQ(q => ({ ...q, status: v }))}>
+                          <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {["Requested", "Received", "Shortlisted", "Accepted", "Rejected"].map(s => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs">Notes</Label>
+                        <Textarea
+                          value={newSQ.notes}
+                          onChange={e => setNewSQ(q => ({ ...q, notes: e.target.value }))}
+                          placeholder="Optional notes…"
+                          className="mt-1 h-12 resize-none text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2 justify-end">
+                      <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setAddingSupplierQuote(false)}>Cancel</Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-7 text-xs"
+                        disabled={!newSQ.supplierId || !newSQ.description.trim() || createSQMut.isPending}
+                        onClick={() => {
+                          if (!newSQ.supplierId || !newSQ.description.trim()) return;
+                          createSQMut.mutate({
+                            id: newSQ.supplierId,
+                            data: {
+                              description: newSQ.description.trim(),
+                              amountGbp: newSQ.amountGbp ? parseFloat(newSQ.amountGbp) : null,
+                              status: newSQ.status,
+                              notes: newSQ.notes,
+                              taskId: task?.id ?? null,
+                            },
+                          });
+                        }}
+                      >
+                        {createSQMut.isPending ? "Saving…" : "Save Quote"}
+                      </Button>
+                    </div>
+                  </div>
+                )}
 
                 {addingQuote && (
                   <div className="border rounded-lg p-3 space-y-3 bg-muted/30">

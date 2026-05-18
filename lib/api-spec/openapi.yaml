@@ -1702,6 +1702,33 @@ paths:
                 items:
                   $ref: "#/components/schemas/CashflowMonth"
 
+  # Supplier quotes by task
+  /projects/{projectId}/tasks/{taskId}/supplier-quotes:
+    get:
+      operationId: listTaskSupplierQuotes
+      tags: [suppliers]
+      summary: List supplier quotes linked to a specific task
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Supplier quotes for the task with supplier info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TaskSupplierQuote"
+
   # Suppliers & Procurement
   /projects/{projectId}/suppliers:
     get:
@@ -4573,6 +4600,48 @@ components:
 
     # ── Supplier & Procurement ──────────────────────────────────────────────
 
+    TaskSupplierQuote:
+      type: object
+      properties:
+        id:
+          type: integer
+        supplierId:
+          type: integer
+        projectId:
+          type: integer
+        taskId:
+          type: integer
+          nullable: true
+        description:
+          type: string
+        amountGbp:
+          type: string
+          nullable: true
+        vatIncluded:
+          type: boolean
+        validUntil:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [Requested, Received, Shortlisted, Accepted, Rejected]
+        notes:
+          type: string
+        attachmentUrl:
+          type: string
+        receivedAt:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        supplierName:
+          type: string
+        supplierCategory:
+          type: string
+      required: [id, supplierId, projectId, description, vatIncluded, status, notes, attachmentUrl, createdAt, updatedAt, supplierName, supplierCategory]
+
     SupplierQuote:
       type: object
       properties:
@@ -4582,6 +4651,9 @@ components:
           type: integer
         projectId:
           type: integer
+        taskId:
+          type: integer
+          nullable: true
         description:
           type: string
         amountGbp:
@@ -4718,6 +4790,9 @@ components:
         receivedAt:
           type: string
           nullable: true
+        taskId:
+          type: integer
+          nullable: true
       required: [description]
 
     UpdateQuoteBody:
@@ -4741,6 +4816,9 @@ components:
           type: string
         receivedAt:
           type: string
+          nullable: true
+        taskId:
+          type: integer
           nullable: true
 
     SuppliersSummary:

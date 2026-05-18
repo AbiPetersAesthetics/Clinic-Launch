@@ -78,6 +78,7 @@ import type {
   Supplier,
   SupplierQuote,
   SuppliersSummary,
+  TaskSupplierQuote,
   UpdateComplianceItemBody,
   UpdateCostItemBody,
   UpdateCostOptimisationRuleBody,
@@ -6924,6 +6925,114 @@ export function useGetProjectCashflow<
   const queryOptions = getGetProjectCashflowQueryOptions(
     projectId,
     params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List supplier quotes linked to a specific task
+ */
+export const getListTaskSupplierQuotesUrl = (
+  projectId: number,
+  taskId: number,
+) => {
+  return `/api/projects/${projectId}/tasks/${taskId}/supplier-quotes`;
+};
+
+export const listTaskSupplierQuotes = async (
+  projectId: number,
+  taskId: number,
+  options?: RequestInit,
+): Promise<TaskSupplierQuote[]> => {
+  return customFetch<TaskSupplierQuote[]>(
+    getListTaskSupplierQuotesUrl(projectId, taskId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListTaskSupplierQuotesQueryKey = (
+  projectId: number,
+  taskId: number,
+) => {
+  return [
+    `/api/projects/${projectId}/tasks/${taskId}/supplier-quotes`,
+  ] as const;
+};
+
+export const getListTaskSupplierQuotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTaskSupplierQuotes>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  taskId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTaskSupplierQuotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListTaskSupplierQuotesQueryKey(projectId, taskId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTaskSupplierQuotes>>
+  > = ({ signal }) =>
+    listTaskSupplierQuotes(projectId, taskId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(projectId && taskId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTaskSupplierQuotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTaskSupplierQuotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTaskSupplierQuotes>>
+>;
+export type ListTaskSupplierQuotesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List supplier quotes linked to a specific task
+ */
+
+export function useListTaskSupplierQuotes<
+  TData = Awaited<ReturnType<typeof listTaskSupplierQuotes>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  taskId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTaskSupplierQuotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTaskSupplierQuotesQueryOptions(
+    projectId,
+    taskId,
     options,
   );
 
