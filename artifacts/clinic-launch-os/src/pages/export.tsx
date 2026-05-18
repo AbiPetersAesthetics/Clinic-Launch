@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useGetProjectDashboard,
   useGetFinancialModel,
@@ -160,6 +161,7 @@ export default function ExportPage() {
   const [leaseStrategy, setLeaseStrategy] = useState<any>(null);
   const [bLiveData, setBLiveData] = useState<any>(null);
 
+  const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [enabledSections, setEnabledSections] = useState<Set<string>>(
     () => new Set([
@@ -176,17 +178,17 @@ export default function ExportPage() {
     });
 
   // ── API hooks ────────────────────────────────────────────────────────────────
-  const { data: dashboard, refetch: refetchDashboard } = useGetProjectDashboard(PROJECT_ID);
-  const { data: financialModel, refetch: refetchFinancial } = useGetFinancialModel(PROJECT_ID);
-  const { data: cashflow, refetch: refetchCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario: "realistic" } as any);
-  const { data: fixedCosts, refetch: refetchFixedCosts } = useListFixedCostItems(PROJECT_ID);
-  const { data: phasesWithTasks, refetch: refetchPhases } = useGetPhasesWithTasks(PROJECT_ID);
-  const { data: optimisation, refetch: refetchOptimisation } = useGetOptimisationAnalysis(PROJECT_ID);
-  const { data: decisions, refetch: refetchDecisions } = useListDecisions(PROJECT_ID);
-  const { data: complianceItems, refetch: refetchCompliance } = useListComplianceItems(PROJECT_ID);
-  const { data: complianceSummary, refetch: refetchComplianceSummary } = useGetComplianceSummary(PROJECT_ID);
-  const { data: cqcMilestones, refetch: refetchCqc } = useListCqcMilestones(PROJECT_ID);
-  const { data: properties, refetch: refetchProperties } = useListProperties(PROJECT_ID);
+  const { data: dashboard } = useGetProjectDashboard(PROJECT_ID);
+  const { data: financialModel } = useGetFinancialModel(PROJECT_ID);
+  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario: "realistic" } as any);
+  const { data: fixedCosts } = useListFixedCostItems(PROJECT_ID);
+  const { data: phasesWithTasks } = useGetPhasesWithTasks(PROJECT_ID);
+  const { data: optimisation } = useGetOptimisationAnalysis(PROJECT_ID);
+  const { data: decisions } = useListDecisions(PROJECT_ID);
+  const { data: complianceItems } = useListComplianceItems(PROJECT_ID);
+  const { data: complianceSummary } = useGetComplianceSummary(PROJECT_ID);
+  const { data: cqcMilestones } = useListCqcMilestones(PROJECT_ID);
+  const { data: properties } = useListProperties(PROJECT_ID);
 
   // ── Raw fetches ───────────────────────────────────────────────────────────────
   const fetchRaw = useCallback(async () => {
@@ -219,16 +221,14 @@ export default function ExportPage() {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setRawFetchDone(false);
+    // invalidateQueries clears the TanStack cache AND bypasses HTTP 304 caching,
+    // guaranteeing fresh data is fetched from the server for all queries.
     await Promise.all([
-      refetchDashboard(), refetchFinancial(), refetchCashflow(),
-      refetchFixedCosts(), refetchPhases(), refetchOptimisation(),
-      refetchDecisions(), refetchCompliance(), refetchComplianceSummary(),
-      refetchCqc(), refetchProperties(), fetchRaw(),
+      queryClient.invalidateQueries({ refetchType: "active" }),
+      fetchRaw(),
     ]);
     setIsRefreshing(false);
-  }, [refetchDashboard, refetchFinancial, refetchCashflow, refetchFixedCosts,
-      refetchPhases, refetchOptimisation, refetchDecisions, refetchCompliance,
-      refetchComplianceSummary, refetchCqc, refetchProperties, fetchRaw]);
+  }, [queryClient, fetchRaw]);
 
   // ── AI analysis from cache ────────────────────────────────────────────────────
   useEffect(() => {
