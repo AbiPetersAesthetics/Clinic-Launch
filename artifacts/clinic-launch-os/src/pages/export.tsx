@@ -161,6 +161,19 @@ export default function ExportPage() {
   const [bLiveData, setBLiveData] = useState<any>(null);
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [enabledSections, setEnabledSections] = useState<Set<string>>(
+    () => new Set([
+      "AI Recommendation", "Financial Model", "Fixed Costs", "Cashflow",
+      "Project Plan", "Optimisation", "Properties", "Competitors",
+      "Compliance", "Decisions", "Marketing", "Life Design", "Bedhampton Live",
+    ])
+  );
+  const toggleSection = (key: string) =>
+    setEnabledSections(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
 
   // ── API hooks ────────────────────────────────────────────────────────────────
   const { data: dashboard, refetch: refetchDashboard } = useGetProjectDashboard(PROJECT_ID);
@@ -348,11 +361,26 @@ export default function ExportPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {completeness.map(c => (
-            <span key={c.label} className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide border ${c.full ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-50 text-gray-400 border-gray-200"}`}>
-              {c.label}
-            </span>
-          ))}
+          <span className="text-[9px] text-gray-400 self-center mr-1">Toggle sections:</span>
+          {completeness.map(c => {
+            const on = enabledSections.has(c.label);
+            return (
+              <button
+                key={c.label}
+                onClick={() => toggleSection(c.label)}
+                title={on ? "Click to hide from export" : "Click to include in export"}
+                className={`text-[9px] px-1.5 py-0.5 rounded font-semibold uppercase tracking-wide border transition-all cursor-pointer select-none ${
+                  !on
+                    ? "bg-gray-100 text-gray-300 border-gray-200 line-through"
+                    : c.full
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                    : "bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                {c.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -430,7 +458,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             1. AI LAUNCH RECOMMENDATION
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("AI Recommendation") ? undefined : 'none' }}>
           <SectionTitle label="1. AI Launch Recommendation" sub="Dashboard" />
 
           {!goNoGo ? (
@@ -691,7 +719,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             2. FINANCIAL ASSUMPTIONS
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("Financial Model") ? undefined : 'none' }}>
           <SectionTitle label="2. Financial Assumptions" sub="Financials → The Model (Winchester)" />
           <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4 text-xs text-amber-800">
             <span className="font-bold">Assumptions note:</span> All figures below are the inputs used to model the Winchester clinic. These drive all break-even, cashflow, and scenario calculations throughout this report. Bedhampton revenue is a support figure only — Winchester must be self-funding at the targets below.
@@ -804,7 +832,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             2b. LIVE BEDHAMPTON CLINIC PERFORMANCE
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-avoid-break">
+        <div className="print-avoid-break" style={{ display: enabledSections.has("Bedhampton Live") ? undefined : 'none' }}>
           <SectionTitle label="2b. Live Clinic Performance — Bedhampton" sub="Live data at time of export" />
 
           {!bLiveData ? (
@@ -873,7 +901,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             3. FIXED COSTS
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-avoid-break">
+        <div className="print-avoid-break" style={{ display: enabledSections.has("Fixed Costs") ? undefined : 'none' }}>
           <SectionTitle label="3. Fixed Costs Register" sub="Financials → Fixed Costs" />
           <div className="text-xs text-gray-500 mb-3 italic">These are the itemised fixed costs entered in the Fixed Costs tab. They override the model assumptions above and feed directly into break-even calculations.</div>
 
@@ -923,7 +951,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             4. CASHFLOW — MONTH BY MONTH
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-avoid-break">
+        <div className="print-avoid-break" style={{ display: enabledSections.has("Cashflow") ? undefined : 'none' }}>
           <SectionTitle label="4. 12-Month Cashflow Projection" sub="Financials → Overview (Realistic scenario)" />
           <div className="text-xs text-gray-500 mb-3 italic">Realistic scenario projections. Includes ramp-up curve. Cumulative cashflow shows when the business crosses into positive territory.</div>
 
@@ -977,7 +1005,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             5. PROJECT PLAN
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break">
+        <div className="print-break" style={{ display: enabledSections.has("Project Plan") ? undefined : 'none' }}>
           <SectionTitle label="5. Project Plan — All Phases & Tasks" sub="Project Plan page" />
           <div className="mb-3 flex gap-6 text-sm">
             <div><span className="text-gray-500">Total Selected Cost:</span> <span className="font-bold">{fmt(totalProjectCostSelected)}</span></div>
@@ -1052,7 +1080,7 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             6. COST OPTIMISATION
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-break print-avoid-break">
+        <div className="print-break print-avoid-break" style={{ display: enabledSections.has("Optimisation") ? undefined : 'none' }}>
           <SectionTitle label="6. Cost Optimisation Analysis" sub="Optimisation page" />
 
           {!optimisation ? (
