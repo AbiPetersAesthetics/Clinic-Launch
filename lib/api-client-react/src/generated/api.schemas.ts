@@ -516,6 +516,7 @@ export interface UpdateTaskBody {
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
+  phaseId?: number;
 }
 
 export interface FinancialModel {

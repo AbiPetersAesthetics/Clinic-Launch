@@ -54,7 +54,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { PageHeader } from "@/components/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1522,6 +1530,40 @@ export default function ProjectPage() {
                           </TableCell>
                           <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
+                              {/* Quick move to phase */}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                                    title="Move to phase"
+                                  >
+                                    <ArrowRightLeft className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56">
+                                  <DropdownMenuLabel className="text-xs text-muted-foreground">Move to phase</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  {phases?.map((p) => (
+                                    <DropdownMenuItem
+                                      key={p.id}
+                                      disabled={p.id === task.phaseId}
+                                      className={p.id === task.phaseId ? "font-semibold text-primary" : ""}
+                                      onClick={() => {
+                                        updateTask.mutate(
+                                          { id: task.id, data: { phaseId: p.id, ...(activePropertyId ? { propertyId: activePropertyId } as any : {}) } },
+                                          { onSuccess: invalidateAfterTaskChange }
+                                        );
+                                      }}
+                                    >
+                                      {p.id === task.phaseId && <Check className="w-3 h-3 mr-1.5 shrink-0" />}
+                                      <span className={p.id === task.phaseId ? "ml-0" : "ml-4.5"}>{p.name}</span>
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1880,6 +1922,7 @@ function TaskEditSheet({
   const [costLow, setCostLow] = useState(0);
   const [costMid, setCostMid] = useState(0);
   const [costHigh, setCostHigh] = useState(0);
+  const [targetPhaseId, setTargetPhaseId] = useState<number | null>(null);
   const [quotes, setQuotes] = useState<TaskQuote[]>([]);
   const [addingQuote, setAddingQuote] = useState(false);
   const [newQuote, setNewQuote] = useState<Partial<TaskQuote>>({ status: "pending" });
@@ -1984,6 +2027,7 @@ function TaskEditSheet({
       setCostLow(task.costLow ?? 0);
       setCostMid(task.costMid ?? 0);
       setCostHigh(task.costHigh ?? 0);
+      setTargetPhaseId(task.phaseId);
       setQuotes(Array.isArray(task.quotes) ? task.quotes : []);
       setAddingQuote(false);
       setNewQuote({ status: "pending" });
@@ -2049,6 +2093,7 @@ function TaskEditSheet({
       files: files.length > 0 ? JSON.stringify(files) : null,
       dependencies: dependencies.length > 0 ? dependencies : null,
       quotes,
+      ...(targetPhaseId !== null ? { phaseId: targetPhaseId } : {}),
       ...(activePropertyId ? { propertyId: activePropertyId } : {}),
     };
 
@@ -2078,6 +2123,32 @@ function TaskEditSheet({
         {task && (
           <form onSubmit={handleSubmit} className="space-y-6 pb-10">
             <div className="space-y-4">
+              {/* Move to phase */}
+              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 border border-border/60">
+                <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <Label className="text-xs text-muted-foreground block mb-1">Phase</Label>
+                  <Select
+                    value={String(targetPhaseId ?? task.phaseId)}
+                    onValueChange={(v) => setTargetPhaseId(Number(v))}
+                  >
+                    <SelectTrigger className="h-8 text-sm border-0 bg-transparent p-0 shadow-none focus:ring-0 w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allPhases.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {p.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {targetPhaseId !== null && targetPhaseId !== task.phaseId && (
+                  <span className="text-[10px] font-semibold text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">Moving</span>
+                )}
+              </div>
+
               <div>
                 <Label htmlFor="title">Title</Label>
                 <Input id="title" name="title" defaultValue={task.title} required className="mt-1" />
