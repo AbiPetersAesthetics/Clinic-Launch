@@ -127,12 +127,14 @@ function normaliseGoNoGo(d: any): any {
     concerns: _strArr(d.concerns),
     conditions: _strArr(d.conditions),
     negotiationPoints: _strArr(d.negotiationPoints),
-    thirtyDayPlan: (d.thirtyDayPlan ?? []).map((w: any) =>
-      typeof w === "string" ? w : { ...w, actions: _strArr(w.actions) }
-    ),
-    immediateActions: (d.immediateActions ?? []).map((a: any) =>
-      typeof a === "string" ? { action: a, priority: "high", deadline: "", rationale: "" } : a
-    ),
+    thirtyDayPlan: (d.thirtyDayPlan ?? []).map((w: any) => {
+      if (typeof w === "string") return { week: w, focus: "", actions: [] };
+      return { ...w, week: _toStr(w.week), focus: _toStr(w.focus), actions: _strArr(w.actions) };
+    }),
+    immediateActions: (d.immediateActions ?? []).map((a: any) => {
+      if (typeof a === "string") return { action: a, priority: "high", deadline: "", rationale: "" };
+      return { ...a, action: _toStr(a.action ?? a.text ?? a.task), rationale: _toStr(a.rationale), deadline: _toStr(a.deadline) };
+    }),
   };
 }
 function normaliseLeaseStrategy(d: any): any {
