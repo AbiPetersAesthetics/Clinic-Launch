@@ -1580,6 +1580,9 @@ export default function FinancialsPage() {
                     <thead>
                       <tr className="border-b bg-muted/40">
                         <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-muted/40 min-w-[80px]">Month</th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[52px]">
+                          <span title="Clinic occupancy % for this month — shows how full the appointment book is">Occ %</span>
+                        </th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Winc Rev</th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="Stock %, commissions, marketing, staffing, consumables">Variable</span>
@@ -1646,6 +1649,14 @@ export default function FinancialsPage() {
                               {m.calendarLabel === "Oct '26" && (
                                 <div className="text-[9px] text-red-600 dark:text-red-400 font-medium leading-tight mt-0.5">Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.</div>
                               )}
+                            </td>
+
+                            {/* Occupancy % */}
+                            <td className="text-right px-2 py-1.5 tabular-nums">
+                              {m.isPreOpening
+                                ? <span className="text-muted-foreground/30">—</span>
+                                : <span className={`font-medium ${m.occupancyPercent >= 60 ? "text-emerald-600 dark:text-emerald-400" : m.occupancyPercent >= 35 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{m.occupancyPercent}%</span>
+                              }
                             </td>
 
                             {/* Winchester Revenue */}

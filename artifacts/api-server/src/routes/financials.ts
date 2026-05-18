@@ -509,14 +509,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
-  const bedhProductCosts = bedhMonthlyRevenue * bedhStockPct;
   // Bedhampton running costs: location-specific only (rent, marketing, other catch-all).
   // Dual shared costs are handled separately — deducted from Bedh during pre-opening only.
+  // bedhProductCosts is computed per-month inside the loop using the capacity-capped revenue.
   const bedhRunningCosts =
     ((model as any).bedhRentGbp || 0) +
     ((model as any).bedhMarketingGbp || 0) +
     ((model as any).bedhamptonCostsGbp || 0);
-  const bedhBaseCosts = bedhProductCosts + bedhRunningCosts;
 
   // Bedhampton capacity ceiling: as Winchester fills slots, Bedhampton revenue tapers
   // Use || not ?? — the DB may store 0 as "not configured" and 0 would cap revenue at £0
@@ -628,15 +627,25 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     // ── Bedhampton: closed flag, capacity cap, dual costs ─────────────────────
     const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
 
-    // Capacity ceiling: as Winchester fills Abi's slots, Bedhampton revenue tapers
+    // Capacity ceiling: as Winchester fills Abi's slots, Bedhampton revenue tapers.
     const bedhRevenueUncapped = bedhClosed ? 0 : bedhMonthlyRevenue;
-    const bedhRevenue = bedhClosed ? 0
+    const bedhRevenueCapped = bedhClosed ? 0
       : Math.max(0, Math.min(bedhRevenueUncapped, Math.max(0, bedhCapacityCeil - wincRevenue)));
+
+    // De-facto closure: Abi would not travel to Bedhampton if it can't cover its fixed
+    // running costs (rent, marketing, etc.) after variable/stock costs — it'd be loss-making.
+    // Trigger when capped revenue < fixed running costs (can't break even on fixed overhead).
+    const bedhDeFactoClosed = !bedhClosed && bedhMonthlyRevenue > 0 && bedhRevenueCapped < bedhRunningCosts;
+    const bedhRevenue = bedhDeFactoClosed ? 0 : bedhRevenueCapped;
+
+    // Product costs scale with actual (capped) revenue, not with full bedhMonthlyRevenue.
+    // Using full revenue when capacity is capped would inflate costs and produce a false negative net.
+    const bedhProductCostsMonth = bedhRevenue * bedhStockPct;
 
     // Dual costs: borne by Bedhampton during pre-opening (Winchester not yet paying them).
     // After opening, dual costs are already in wincFixedCosts — don't double-count.
     const bedhDualCosts = isPreOpening ? dualFixedCosts : 0;
-    const bedhCosts = bedhClosed ? 0 : bedhBaseCosts + bedhDualCosts;
+    const bedhCosts = (bedhClosed || bedhDeFactoClosed) ? 0 : bedhProductCostsMonth + bedhRunningCosts + bedhDualCosts;
 
     // Pre-opening property costs: rent + rates from lease signing date.
     // Free rent runs from day 1 of the lease (pre-opening), NOT from opening day.
