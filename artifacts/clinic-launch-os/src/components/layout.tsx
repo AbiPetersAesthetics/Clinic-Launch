@@ -145,20 +145,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/project", label: "Project Plan", icon: ListTodo },
     { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/financials", label: "Financials", icon: Calculator },
+    { href: "/project", label: "Project Plan", icon: ListTodo },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
-    { href: "/competition", label: "Competition Intel", icon: Target },
-    { href: "/decisions", label: "Decisions", icon: BookOpen },
-    { href: "/optimisation", label: "Optimisation", icon: Zap },
+    { href: "/suppliers", label: "Suppliers", icon: ShoppingBag },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
+    { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
+    { href: "/competition", label: "Competition Intel", icon: Target },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
+    { href: "/decisions", label: "Decisions", icon: BookOpen },
+    { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/franchise", label: "Franchise Model", icon: Network },
-    { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
-    { href: "/suppliers", label: "Suppliers", icon: ShoppingBag },
   ];
 
   return (
