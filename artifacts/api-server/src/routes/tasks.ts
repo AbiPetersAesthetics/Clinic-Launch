@@ -121,11 +121,31 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
       await db.insert(propertyTaskOverridesTable).values(overrideRow);
     }
 
-    // Return the merged task
+    // Global fields (not property-specific) must also be written back to the base task.
+    // description, title, riskLevel, isNonNegotiable, isCriticalRisk have no columns in
+    // property_task_overrides — without this they are silently dropped on every save.
+    const globalUpdates: Record<string, unknown> = { updatedAt: new Date() };
+    if (body.title !== undefined)           globalUpdates.title = body.title;
+    if (body.description !== undefined)     globalUpdates.description = body.description;
+    if (body.riskLevel !== undefined)       globalUpdates.riskLevel = body.riskLevel;
+    if (body.isNonNegotiable !== undefined) globalUpdates.isNonNegotiable = body.isNonNegotiable;
+    if (body.isCriticalRisk !== undefined)  globalUpdates.isCriticalRisk = body.isCriticalRisk;
+    if (body.dependencies !== undefined) {
+      globalUpdates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
+    }
+
+    const [updatedBase] = await db.update(tasksTable)
+      .set(globalUpdates)
+      .where(eq(tasksTable.id, id))
+      .returning();
+
+    // Return the merged task: base (with global updates) + property override
     const mergedTask = {
-      ...existing,
+      ...(updatedBase ?? existing),
       ...overrideRow,
-      dependencies: existing.dependencies ? JSON.parse(existing.dependencies) : [],
+      dependencies: (updatedBase ?? existing).dependencies
+        ? JSON.parse((updatedBase ?? existing).dependencies as string)
+        : [],
       _hasOverride: true,
     };
     return res.json(mergedTask);
