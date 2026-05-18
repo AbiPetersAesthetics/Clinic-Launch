@@ -12,7 +12,7 @@ import {
   useListCqcMilestones,
   useListProperties,
 } from "@workspace/api-client-react";
-import { Printer, Loader2, AlertTriangle } from "lucide-react";
+import { Printer, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 
 const PROJECT_ID = 1;
 const API_BASE = "/api";
@@ -160,18 +160,20 @@ export default function ExportPage() {
   const [leaseStrategy, setLeaseStrategy] = useState<any>(null);
   const [bLiveData, setBLiveData] = useState<any>(null);
 
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // ── API hooks ────────────────────────────────────────────────────────────────
-  const { data: dashboard } = useGetProjectDashboard(PROJECT_ID);
-  const { data: financialModel } = useGetFinancialModel(PROJECT_ID);
-  const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario: "realistic" } as any);
-  const { data: fixedCosts } = useListFixedCostItems(PROJECT_ID);
-  const { data: phasesWithTasks } = useGetPhasesWithTasks(PROJECT_ID);
-  const { data: optimisation } = useGetOptimisationAnalysis(PROJECT_ID);
-  const { data: decisions } = useListDecisions(PROJECT_ID);
-  const { data: complianceItems } = useListComplianceItems(PROJECT_ID);
-  const { data: complianceSummary } = useGetComplianceSummary(PROJECT_ID);
-  const { data: cqcMilestones } = useListCqcMilestones(PROJECT_ID);
-  const { data: properties } = useListProperties(PROJECT_ID);
+  const { data: dashboard, refetch: refetchDashboard } = useGetProjectDashboard(PROJECT_ID);
+  const { data: financialModel, refetch: refetchFinancial } = useGetFinancialModel(PROJECT_ID);
+  const { data: cashflow, refetch: refetchCashflow } = useGetProjectCashflow(PROJECT_ID, { scenario: "realistic" } as any);
+  const { data: fixedCosts, refetch: refetchFixedCosts } = useListFixedCostItems(PROJECT_ID);
+  const { data: phasesWithTasks, refetch: refetchPhases } = useGetPhasesWithTasks(PROJECT_ID);
+  const { data: optimisation, refetch: refetchOptimisation } = useGetOptimisationAnalysis(PROJECT_ID);
+  const { data: decisions, refetch: refetchDecisions } = useListDecisions(PROJECT_ID);
+  const { data: complianceItems, refetch: refetchCompliance } = useListComplianceItems(PROJECT_ID);
+  const { data: complianceSummary, refetch: refetchComplianceSummary } = useGetComplianceSummary(PROJECT_ID);
+  const { data: cqcMilestones, refetch: refetchCqc } = useListCqcMilestones(PROJECT_ID);
+  const { data: properties, refetch: refetchProperties } = useListProperties(PROJECT_ID);
 
   // ── Raw fetches ───────────────────────────────────────────────────────────────
   const fetchRaw = useCallback(async () => {
@@ -200,6 +202,20 @@ export default function ExportPage() {
   }, []);
 
   useEffect(() => { fetchRaw(); }, [fetchRaw]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    setRawFetchDone(false);
+    await Promise.all([
+      refetchDashboard(), refetchFinancial(), refetchCashflow(),
+      refetchFixedCosts(), refetchPhases(), refetchOptimisation(),
+      refetchDecisions(), refetchCompliance(), refetchComplianceSummary(),
+      refetchCqc(), refetchProperties(), fetchRaw(),
+    ]);
+    setIsRefreshing(false);
+  }, [refetchDashboard, refetchFinancial, refetchCashflow, refetchFixedCosts,
+      refetchPhases, refetchOptimisation, refetchDecisions, refetchCompliance,
+      refetchComplianceSummary, refetchCqc, refetchProperties, fetchRaw]);
 
   // ── AI analysis from cache ────────────────────────────────────────────────────
   useEffect(() => {
@@ -301,8 +317,16 @@ export default function ExportPage() {
             </div>
           )}
           <button
+            onClick={handleRefresh}
+            disabled={isLoading || isRefreshing}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
+            {isRefreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <button
             onClick={() => window.print()}
-            disabled={isLoading}
+            disabled={isLoading || isRefreshing}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2d5016] text-white text-sm font-semibold hover:bg-[#3a6a1e] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Printer className="w-4 h-4" />
