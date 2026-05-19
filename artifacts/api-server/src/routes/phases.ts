@@ -89,6 +89,7 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         costHigh: o.costHigh ?? t.costHigh,
         selectedCost: o.selectedCost ?? t.selectedCost,
         dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
+        startDate: o.startDate !== undefined ? o.startDate : t.startDate,
         durationDays: o.durationDays !== undefined ? o.durationDays : t.durationDays,
         files: o.files !== undefined ? o.files : t.files,
         quotes: o.quotes !== undefined ? o.quotes : t.quotes,

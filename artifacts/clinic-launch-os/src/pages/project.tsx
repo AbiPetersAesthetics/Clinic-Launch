@@ -1593,15 +1593,26 @@ export default function ProjectPage() {
 
       {/* Flat list view */}
       {viewMode === "list" && !listGrouped && (() => {
-        const sortDate = (t: LaunchTask) => {
-          const raw = listSortBy === "startDate" ? (t.startDate || t.dueDate) : (t.dueDate || t.startDate);
-          return raw ? raw : "9999-12-31";
+        const getDate = (t: LaunchTask) => {
+          const ta = t as any;
+          return listSortBy === "startDate"
+            ? (ta.startDate || t.dueDate || null)
+            : (t.dueDate || ta.startDate || null);
         };
         const allTasks = (phases ?? [])
           .flatMap((ph, phIdx) =>
-            (ph.tasks ?? []).map(t => ({ task: t, phase: ph, phIdx }))
+            (ph.tasks ?? []).map((t, taskIdx) => ({ task: t, phase: ph, phIdx, taskIdx }))
           )
-          .sort((a, b) => sortDate(a.task).localeCompare(sortDate(b.task)));
+          .sort((a, b) => {
+            const aDate = getDate(a.task);
+            const bDate = getDate(b.task);
+            if (aDate && bDate) return aDate.localeCompare(bDate);
+            if (aDate && !bDate) return -1;   // dated before undated
+            if (!aDate && bDate) return 1;    // undated after dated
+            // both undated: preserve original phase/task order
+            if (a.phIdx !== b.phIdx) return a.phIdx - b.phIdx;
+            return a.taskIdx - b.taskIdx;
+          });
         const phaseColors = PHASE_PALETTE;
 
         return (
@@ -1722,10 +1733,19 @@ export default function ProjectPage() {
             win.status === "tight" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300" :
             "bg-destructive/15 text-destructive";
 
+          const getTaskDate = (t: LaunchTask) => {
+            const ta = t as any;
+            return listSortBy === "startDate"
+              ? (ta.startDate || t.dueDate || null)
+              : (t.dueDate || ta.startDate || null);
+          };
           const sortedTasks = [...(phase.tasks ?? [])].sort((a, b) => {
-            const aVal = (listSortBy === "startDate" ? (a.startDate || a.dueDate) : (a.dueDate || a.startDate)) ?? "9999-12-31";
-            const bVal = (listSortBy === "startDate" ? (b.startDate || b.dueDate) : (b.dueDate || b.startDate)) ?? "9999-12-31";
-            return aVal.localeCompare(bVal);
+            const aDate = getTaskDate(a);
+            const bDate = getTaskDate(b);
+            if (aDate && bDate) return aDate.localeCompare(bDate);
+            if (aDate && !bDate) return -1;
+            if (!aDate && bDate) return 1;
+            return 0; // both undated: keep original order
           });
 
           return (
