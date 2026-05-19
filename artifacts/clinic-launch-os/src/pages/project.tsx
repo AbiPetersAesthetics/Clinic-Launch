@@ -127,6 +127,19 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const [localDurations, setLocalDurations] = useState<Record<number, number>>({});
   const [collapsedPhases, setCollapsedPhases] = useState<Set<number>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+
+  // Gantt visible date range — user-controlled
+  const [ganttViewStartStr, setGanttViewStartStr] = useState<string>(() => {
+    let earliest = "2026-05-07";
+    for (const phase of phases) {
+      for (const t of phase.tasks ?? []) {
+        if (t.startDate && t.startDate < earliest) earliest = t.startDate;
+      }
+    }
+    return earliest;
+  });
+  const [ganttViewEndStr, setGanttViewEndStr] = useState<string>("");
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{
     taskId: number;
@@ -161,19 +174,17 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
     [localDurations],
   );
 
-  // Resolve absolute start day for a task:
-  // 1. If the task has a DB startDate and we have a project startDate, derive offset from real dates.
-  // 2. Otherwise fall back to localStorage taskOffsets or phase start.
+  // Resolve absolute start day for a task relative to the user-selected ganttViewStartStr.
   const getTaskAbsStart = useCallback(
     (t: LaunchTask, phaseStart: number): number => {
-      if (t.startDate && startDateObj) {
-        const s = new Date(t.startDate); s.setHours(0, 0, 0, 0);
-        const b = new Date(startDateObj); b.setHours(0, 0, 0, 0);
+      if (t.startDate && ganttViewStartStr) {
+        const s = new Date(t.startDate + "T00:00:00");
+        const b = new Date(ganttViewStartStr + "T00:00:00");
         return Math.round((s.getTime() - b.getTime()) / 86400000);
       }
       return taskOffsets[t.id] ?? phaseStart;
     },
-    [startDateObj, taskOffsets],
+    [ganttViewStartStr, taskOffsets],
   );
 
   // Phase start day = sum of max-duration of all preceding phases.
@@ -195,6 +206,12 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   }, [sortedPhases, getTaskAbsStart, getTaskDuration]);
 
   const totalDays = useMemo(() => {
+    if (ganttViewEndStr) {
+      const end = new Date(ganttViewEndStr + "T00:00:00");
+      const start = new Date((ganttViewStartStr || "2026-05-07") + "T00:00:00");
+      const diff = Math.round((end.getTime() - start.getTime()) / 86400000);
+      return Math.max(90, diff + 14);
+    }
     let max = 90;
     for (const phase of sortedPhases) {
       const phaseStart = phaseStartDays[phase.id] ?? 0;
@@ -203,9 +220,9 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       }
     }
     return max + 28;
-  }, [sortedPhases, phaseStartDays, getTaskAbsStart, getTaskDuration]);
+  }, [ganttViewStartStr, ganttViewEndStr, sortedPhases, phaseStartDays, getTaskAbsStart, getTaskDuration]);
 
-  const baseDate = startDateObj ?? new Date();
+  const baseDate = new Date((ganttViewStartStr || "2026-05-07") + "T00:00:00");
 
   // How many days from baseDate to today (for the "today" marker line)
   const todayDay = useMemo(() => {
@@ -383,8 +400,28 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
         />
         <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
         <span className="text-xs text-muted-foreground">{dayWidth}px / day</span>
+        <div className="h-4 w-px bg-border mx-1" />
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+          <span className="shrink-0">From</span>
+          <input
+            type="date"
+            value={ganttViewStartStr}
+            onChange={e => setGanttViewStartStr(e.target.value)}
+            className="rounded border border-input bg-background px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span className="shrink-0">To</span>
+          <input
+            type="date"
+            value={ganttViewEndStr}
+            onChange={e => setGanttViewEndStr(e.target.value)}
+            className="rounded border border-input bg-background px-1.5 py-0.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+        </label>
         <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-          <span>Drag bar to move · drag right edge to resize</span>
+          <span className="hidden lg:inline">Drag bar to move · drag right edge to resize</span>
           <button
             onClick={() => {
               setTaskOffsets({});
