@@ -1602,6 +1602,9 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
                           <span title="Project plan task costs charged this month (from Project Plan cost tiers). Undated tasks are spread across pre-opening months, weighted toward opening.">Proj costs</span>
                         </th>
+                        <th className="text-right px-3 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
+                          <span title="Owner's drawings taken from the business this month. Only active once Winchester is self-funding. Capped so at least £3,000/month is retained in the business.">Drawings</span>
+                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
@@ -1899,6 +1902,17 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
+                            {/* Owner's Drawings */}
+                            <td className="text-right px-3 py-1.5 tabular-nums">
+                              {m.drawingsActive && m.actualDrawings > 0 ? (
+                                <span className="text-orange-500 font-medium">({formatGBP(m.actualDrawings)})</span>
+                              ) : m.drawingsActive ? (
+                                <span className="text-muted-foreground/50 text-[10px]">ramping</span>
+                              ) : (
+                                <span className="text-muted-foreground/30">—</span>
+                              )}
+                            </td>
+
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
@@ -1918,6 +1932,7 @@ export default function FinancialsPage() {
                   <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
                   <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, and Bedhampton's share of VAT. <strong>Winc VAT</strong> = Winchester VAT only. Net Profit = Winc Rev − Variable − Fixed − Winc VAT + Bedh Net.</p>
                   <p><strong>Proj costs</strong> = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £{Math.round((pnlData ?? cashflow ?? []).reduce((s, m) => s + (m.projectCostBurn ?? 0), 0)).toLocaleString()}.</p>
+                  <p><strong>Drawings</strong> = Owner's drawings taken from the business once Winchester is self-funding. Capped so at least £3,000/month is always retained in the business. Set your target in Assumptions → Personal &amp; Runway.</p>
                 </div>
               </CardContent>
             </Card>

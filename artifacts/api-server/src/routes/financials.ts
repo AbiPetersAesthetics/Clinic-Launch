@@ -727,7 +727,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const drawingsActive = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
     // Pre-opening property cost (rent + rates from lease signing) included in gross surplus drain
     const grossSurplus = wincNet + bedhNet - projectCostBurn - preOpenPropertyCost;
-    const actualDrawings = drawingsActive ? Math.min(Math.max(0, grossSurplus), targetDrawings) : 0;
+    // Always retain at least £3,000/month in the business after drawings
+    const MIN_RETAINED = 3000;
+    const actualDrawings = drawingsActive ? Math.min(Math.max(0, grossSurplus - MIN_RETAINED), targetDrawings) : 0;
     const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
 
     const monthlyCashflow = grossSurplus - actualDrawings;
