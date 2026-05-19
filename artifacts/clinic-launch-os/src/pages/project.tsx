@@ -127,6 +127,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const [localDurations, setLocalDurations] = useState<Record<number, number>>({});
   const [collapsedPhases, setCollapsedPhases] = useState<Set<number>>(new Set());
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
+  const [groupByPhase, setGroupByPhase] = useState(true);
 
   // Gantt visible date range — user-controlled
   const [ganttViewStartStr, setGanttViewStartStr] = useState<string>(() => {
@@ -379,13 +380,40 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
   const totalWidth = totalDays * dayWidth;
 
-  const statusBarColor: Record<string, string> = {
-    complete:    "#059669",
-    in_progress: "#2563eb",
-    blocked:     "#dc2626",
-    deferred:    "#9ca3af",
-    not_started: "",
+  // Phase-colour-based bar opacity by status (bars always use phase colour)
+  const statusBarOpacity: Record<string, number> = {
+    complete:    0.92,
+    in_progress: 0.80,
+    blocked:     0.80,
+    deferred:    0.28,
+    not_started: 0.58,
   };
+  // Left-edge accent colour to indicate status on top of phase colour
+  const statusAccent: Record<string, string | null> = {
+    complete:    "rgba(255,255,255,0.55)",
+    in_progress: null,
+    blocked:     "#ef4444",
+    deferred:    null,
+    not_started: null,
+  };
+
+  // Flat view: all tasks across phases sorted by absolute start day
+  const flatTasks = useMemo(() => {
+    const rows: { task: LaunchTask; phase: PhaseWithTasks; phaseIdx: number; phaseStart: number; color: typeof PHASE_PALETTE[0] }[] = [];
+    for (let i = 0; i < sortedPhases.length; i++) {
+      const phase = sortedPhases[i];
+      const phaseStart = phaseStartDays[phase.id] ?? 0;
+      const color = PHASE_PALETTE[i % PHASE_PALETTE.length];
+      for (const task of phase.tasks ?? []) {
+        rows.push({ task, phase, phaseIdx: i, phaseStart, color });
+      }
+    }
+    return rows.sort((a, b) => {
+      const aStart = getTaskAbsStart(a.task, a.phaseStart);
+      const bStart = getTaskAbsStart(b.task, b.phaseStart);
+      return aStart - bStart;
+    });
+  }, [sortedPhases, phaseStartDays, getTaskAbsStart]);
 
   return (
     <div className="border rounded-xl overflow-hidden shadow-sm bg-card">
@@ -422,6 +450,16 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
         </label>
         <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
           <span className="hidden lg:inline">Drag bar to move · drag right edge to resize</span>
+          <button
+            onClick={() => setGroupByPhase(v => !v)}
+            className={`flex items-center gap-1 border rounded px-2 py-0.5 transition-colors ${groupByPhase ? "hover:text-foreground" : "bg-primary/10 text-primary border-primary/30 hover:bg-primary/20"}`}
+            title={groupByPhase ? "Switch to flat chronological view" : "Switch to grouped by phase view"}
+          >
+            {groupByPhase
+              ? <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><line x1="1" y1="3" x2="11" y2="3"/><line x1="1" y1="6" x2="11" y2="6"/><line x1="1" y1="9" x2="11" y2="9"/></svg> Flat view</>
+              : <><svg className="w-3 h-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="1" y="1" width="4" height="3" rx="0.5"/><line x1="7" y1="2.5" x2="11" y2="2.5"/><rect x="1" y="5" width="4" height="3" rx="0.5"/><line x1="7" y1="6.5" x2="11" y2="6.5"/></svg> Group by phase</>
+            }
+          </button>
           <button
             onClick={() => {
               setTaskOffsets({});
@@ -497,7 +535,87 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
           </div>
 
           {/* ── Phase + task rows ── */}
-          {sortedPhases.map((phase, phaseIdx) => {
+          {!groupByPhase && flatTasks.map(({ task, phase, phaseIdx, phaseStart, color }) => {
+            const absStart = getTaskAbsStart(task, phaseStart);
+            const dur = getTaskDuration(task);
+            const barW = Math.max(8, dur * dayWidth);
+            const isSaving = savingIds.has(task.id);
+            const barOpacity = statusBarOpacity[task.status] ?? 0.65;
+            const accent = statusAccent[task.status];
+
+            return (
+              <div key={task.id} style={{ display: "flex", height: GANTT_ROW_H, borderBottom: "1px solid hsl(var(--border)/0.35)" }}>
+                {/* Task name (sticky) */}
+                <div
+                  style={{
+                    width: GANTT_NAME_W, flexShrink: 0,
+                    position: "sticky", left: 0, zIndex: 10,
+                    background: "hsl(var(--card))",
+                    borderRight: "1px solid hsl(var(--border)/0.5)",
+                    borderLeft: `3px solid ${color.bar}`,
+                    display: "flex", alignItems: "center",
+                    padding: "0 10px 0 10px", gap: 6,
+                    cursor: "pointer",
+                  }}
+                  onClick={() => onTaskClick(task)}
+                  title={`${phase.name} · Click to edit`}
+                >
+                  <span style={{ fontSize: 10, color: color.bar, fontWeight: 700, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 56 }}
+                    title={phase.name}>{phase.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || phase.name}</span>
+                  <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, color: "hsl(var(--foreground))" }} title={task.title}>
+                    {task.title}
+                  </span>
+                  {isSaving && <Loader2 className="w-3 h-3 animate-spin shrink-0 text-muted-foreground" />}
+                </div>
+                {/* Timeline area */}
+                <div style={{ flex: 1, position: "relative", background: "hsl(var(--background))" }}>
+                  {weekMarkers.map(wk => (
+                    <div key={wk.day} style={{ position: "absolute", left: wk.day * dayWidth, top: 0, bottom: 0, borderLeft: "1px solid hsl(var(--border)/0.2)", pointerEvents: "none" }} />
+                  ))}
+                  {todayDay >= 0 && todayDay <= totalDays && (
+                    <div style={{ position: "absolute", left: todayDay * dayWidth, top: 0, bottom: 0, width: 2, background: "#dc2626", opacity: 0.35, pointerEvents: "none" }} />
+                  )}
+                  <div
+                    title={`${task.title}\n${task.startDate ? `${task.startDate} → ${task.dueDate?.split("T")[0] ?? "?"}` : `Day ${absStart}–${absStart + dur}`} · ${dur} day${dur !== 1 ? "s" : ""}`}
+                    style={{
+                      position: "absolute",
+                      left: absStart * dayWidth,
+                      top: 4, height: GANTT_ROW_H - 8,
+                      width: barW,
+                      background: color.bar,
+                      opacity: barOpacity,
+                      borderRadius: 4,
+                      cursor: "grab",
+                      display: "flex", alignItems: "center",
+                      paddingLeft: 7, paddingRight: 10,
+                      overflow: "hidden",
+                      userSelect: "none",
+                      boxShadow: isSaving ? `0 0 0 2px ${color.bar}` : "0 1px 3px rgba(0,0,0,0.15)",
+                    }}
+                    onMouseDown={e => handleBarMouseDown(e, task, "move", absStart, phaseStart)}
+                  >
+                    {accent && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: accent, borderRadius: "4px 0 0 4px" }} />}
+                    {barW > 36 && (
+                      <span style={{ color: "white", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, pointerEvents: "none", paddingLeft: accent ? 4 : 0 }}>
+                        {task.status === "complete" ? "✓ " : task.status === "blocked" ? "! " : ""}{task.title}
+                      </span>
+                    )}
+                    {barW > 70 && (
+                      <span style={{ color: "rgba(255,255,255,0.75)", fontSize: 9, flexShrink: 0, marginLeft: 4, pointerEvents: "none" }}>{dur}d</span>
+                    )}
+                    <div
+                      style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 9, cursor: "ew-resize", background: "rgba(0,0,0,0.18)", borderRadius: "0 4px 4px 0", display: "flex", alignItems: "center", justifyContent: "center" }}
+                      onMouseDown={e => { e.stopPropagation(); handleBarMouseDown(e, task, "resize", dur, phaseStart); }}
+                    >
+                      <div style={{ width: 1, height: 10, background: "rgba(255,255,255,0.5)" }} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {groupByPhase && sortedPhases.map((phase, phaseIdx) => {
             const color = PHASE_PALETTE[phaseIdx % PHASE_PALETTE.length];
             const phaseStart = phaseStartDays[phase.id] ?? 0;
             const isCollapsed = collapsedPhases.has(phase.id);
@@ -566,8 +684,9 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                   const dur = getTaskDuration(task);
                   const barW = Math.max(8, dur * dayWidth);
                   const isSaving = savingIds.has(task.id);
-                  const barColor = statusBarColor[task.status] || color.bar;
-                  const barOpacity = task.status === "deferred" ? 0.4 : task.status === "not_started" ? 0.65 : 0.88;
+                  const barColor = color.bar;
+                  const barOpacity = statusBarOpacity[task.status] ?? 0.65;
+                  const accent = statusAccent[task.status];
 
                   return (
                     <div key={task.id} style={{ display: "flex", height: GANTT_ROW_H, borderBottom: "1px solid hsl(var(--border)/0.35)" }}>
@@ -622,9 +741,10 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                           }}
                           onMouseDown={e => handleBarMouseDown(e, task, "move", absStart, phaseStart)}
                         >
+                          {accent && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: accent, borderRadius: "4px 0 0 4px" }} />}
                           {barW > 36 && (
-                            <span style={{ color: "white", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, pointerEvents: "none" }}>
-                              {task.title}
+                            <span style={{ color: "white", fontSize: 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, pointerEvents: "none", paddingLeft: accent ? 4 : 0 }}>
+                              {task.status === "complete" ? "✓ " : task.status === "blocked" ? "! " : ""}{task.title}
                             </span>
                           )}
                           {barW > 70 && (
@@ -658,19 +778,20 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t bg-muted/20 flex-wrap">
-        {[
-          { color: "#059669", label: "Complete" },
-          { color: "#2563eb", label: "In progress" },
-          { color: "#dc2626", label: "Blocked" },
-          { color: "#9ca3af", label: "Deferred" },
-          { color: "#6d28d9", label: "Not started (phase colour)" },
-        ].map(item => (
-          <div key={item.label} className="flex items-center gap-1.5">
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: item.color }} />
-            <span className="text-[10px] text-muted-foreground">{item.label}</span>
-          </div>
-        ))}
+      <div className="flex items-center gap-x-4 gap-y-1.5 px-4 py-2 border-t bg-muted/20 flex-wrap">
+        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mr-1">Phases:</span>
+        {sortedPhases.map((phase, i) => {
+          const c = PHASE_PALETTE[i % PHASE_PALETTE.length];
+          return (
+            <div key={phase.id} className="flex items-center gap-1.5">
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: c.bar }} />
+              <span className="text-[10px] text-muted-foreground">{phase.name}</span>
+            </div>
+          );
+        })}
+        <div className="w-px h-3 bg-border mx-1" />
+        <span className="text-[10px] text-muted-foreground">Opacity: <b>full</b> = complete · <b>mid</b> = in progress/blocked · <b>faint</b> = deferred</span>
+        <span className="text-[10px] text-muted-foreground">· ✓ complete · ! blocked</span>
       </div>
     </div>
   );
