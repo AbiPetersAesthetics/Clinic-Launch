@@ -73,7 +73,7 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
   }
 
   const result = await Promise.all(phases.map(async (phase) => {
-    const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id)).orderBy(tasksTable.sortOrder);
+    const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id)).orderBy(sql`${tasksTable.dueDate} ASC NULLS LAST, ${tasksTable.sortOrder} ASC`);
     const parsedTasks = tasks.map(t => {
       const o = overrideMap.get(t.id);
       const merged = o ? {
