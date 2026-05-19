@@ -721,10 +721,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isBedhamptonCloseMonth = isSelfFundingMonth;
 
     // Dynamic drawings:
-    // - Before self-funding: no drawings from the business (Bedhampton income sustains Abi personally)
-    // - After self-funding: Abi takes up to her desired income from the available surplus
-    // - Any surplus above drawings accrues as business capital
-    const drawingsActive = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
+    // - Pre-opening: no drawings (no Winchester revenue yet)
+    // - Post-opening (including while Bedhampton is still supporting): drawings taken from surplus
+    // - Always retain at least £3,000/month; any surplus above drawings accrues as business capital
+    const drawingsActive = !isPreOpening;
     // Pre-opening property cost (rent + rates from lease signing) included in gross surplus drain
     const grossSurplus = wincNet + bedhNet - projectCostBurn - preOpenPropertyCost;
     // Always retain at least £3,000/month in the business after drawings
