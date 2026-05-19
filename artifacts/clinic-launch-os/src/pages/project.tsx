@@ -1504,7 +1504,7 @@ export default function ProjectPage() {
                         <TableHead>Status</TableHead>
                         <TableHead>Risk</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
-                        <TableHead>Due Date</TableHead>
+                        <TableHead>Dates</TableHead>
                         <TableHead className="w-[80px] no-print"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1607,8 +1607,17 @@ export default function ProjectPage() {
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "-"}
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {task.startDate ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Start</span>{new Date(task.startDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                                <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}</span>
+                              </div>
+                            ) : task.dueDate ? (
+                              <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                            ) : (
+                              <span className="text-muted-foreground/40">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
