@@ -69,6 +69,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -2301,6 +2302,7 @@ function TaskEditSheet({
 }) {
   const queryClient = useQueryClient();
   const updateTask = useUpdateTask();
+  const { toast } = useToast();
 
   const [files, setFiles] = useState<string[]>([]);
   const [newFile, setNewFile] = useState("");
@@ -2324,6 +2326,11 @@ function TaskEditSheet({
     status: string;
     notes: string;
   }>({ supplierId: null, description: "", amountGbp: "", status: "Received", notes: "" });
+
+  const [taskStatus, setTaskStatus] = useState<UpdateTaskBodyStatus>("not_started");
+  const [taskRiskLevel, setTaskRiskLevel] = useState<UpdateTaskBodyRiskLevel>("low");
+  const [taskIsNonNegotiable, setTaskIsNonNegotiable] = useState(false);
+  const [taskIsCriticalRisk, setTaskIsCriticalRisk] = useState(false);
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
@@ -2418,11 +2425,15 @@ function TaskEditSheet({
       setCostMid(task.costMid ?? 0);
       setCostHigh(task.costHigh ?? 0);
       setTargetPhaseId(task.phaseId);
-      setTaskStartDate(task.startDate ? new Date(task.startDate).toISOString().split("T")[0] : "");
+      setTaskStartDate((task as any).startDate ? new Date((task as any).startDate).toISOString().split("T")[0] : "");
       setTaskEndDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
-      setQuotes(Array.isArray(task.quotes) ? task.quotes : []);
+      setQuotes(Array.isArray((task as any).quotes) ? (task as any).quotes : []);
       setAddingQuote(false);
       setNewQuote({ status: "pending" });
+      setTaskStatus(task.status as UpdateTaskBodyStatus);
+      setTaskRiskLevel(task.riskLevel as UpdateTaskBodyRiskLevel);
+      setTaskIsNonNegotiable(task.isNonNegotiable ?? false);
+      setTaskIsCriticalRisk(task.isCriticalRisk ?? false);
     }
   }, [task?.id]);
 
@@ -2487,10 +2498,10 @@ function TaskEditSheet({
         }
         return Number(formData.get("durationDays") || 0);
       })(),
-      riskLevel: formData.get("riskLevel") as UpdateTaskBodyRiskLevel,
-      status: formData.get("status") as UpdateTaskBodyStatus,
-      isNonNegotiable: formData.get("isNonNegotiable") === "on",
-      isCriticalRisk: formData.get("isCriticalRisk") === "on",
+      riskLevel: taskRiskLevel,
+      status: taskStatus,
+      isNonNegotiable: taskIsNonNegotiable,
+      isCriticalRisk: taskIsCriticalRisk,
       files: files.length > 0 ? JSON.stringify(files) : null,
       dependencies: dependencies.length > 0 ? dependencies : null,
       quotes,
@@ -2499,7 +2510,7 @@ function TaskEditSheet({
     };
 
     updateTask.mutate(
-      { id: task.id, data },
+      { id: task.id, data: data as any },
       {
         onSuccess: () => {
           const baseUrl = `/api/projects/${PROJECT_ID}/phases-with-tasks`;
@@ -2507,7 +2518,12 @@ function TaskEditSheet({
           queryClient.removeQueries({ queryKey: [baseUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+          toast({ title: "Task saved" });
           onClose();
+        },
+        onError: (err: any) => {
+          const msg = err?.message ?? err?.data?.error ?? "Unknown error";
+          toast({ title: "Save failed", description: msg, variant: "destructive" });
         },
       }
     );
@@ -2563,7 +2579,7 @@ function TaskEditSheet({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="status">Status</Label>
-                  <Select name="status" defaultValue={task.status}>
+                  <Select value={taskStatus} onValueChange={(v) => setTaskStatus(v as UpdateTaskBodyStatus)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="not_started">Not Started</SelectItem>
@@ -2576,7 +2592,7 @@ function TaskEditSheet({
                 </div>
                 <div>
                   <Label htmlFor="riskLevel">Priority Level</Label>
-                  <Select name="riskLevel" defaultValue={task.riskLevel}>
+                  <Select value={taskRiskLevel} onValueChange={(v) => setTaskRiskLevel(v as UpdateTaskBodyRiskLevel)}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="low">Low</SelectItem>
@@ -3096,7 +3112,11 @@ function TaskEditSheet({
                   <Label htmlFor="isNonNegotiable" className="text-base">Non-Negotiable (Must Do)</Label>
                   <p className="text-sm text-muted-foreground">This task is required for launch.</p>
                 </div>
-                <Switch id="isNonNegotiable" name="isNonNegotiable" defaultChecked={task.isNonNegotiable} />
+                <Switch
+                  id="isNonNegotiable"
+                  checked={taskIsNonNegotiable}
+                  onCheckedChange={setTaskIsNonNegotiable}
+                />
               </div>
 
               <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
@@ -3104,7 +3124,11 @@ function TaskEditSheet({
                   <Label htmlFor="isCriticalRisk" className="text-base text-destructive">Risk Flag</Label>
                   <p className="text-sm text-muted-foreground">Manually flag this task as a risk to the project.</p>
                 </div>
-                <Switch id="isCriticalRisk" name="isCriticalRisk" defaultChecked={task.isCriticalRisk} />
+                <Switch
+                  id="isCriticalRisk"
+                  checked={taskIsCriticalRisk}
+                  onCheckedChange={setTaskIsCriticalRisk}
+                />
               </div>
             </div>
 
