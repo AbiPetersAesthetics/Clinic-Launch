@@ -918,6 +918,8 @@ export default function ProjectPage() {
   const [importError, setImportError] = useState("");
 
   const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
+  const [listGrouped, setListGrouped] = useState(true);
+  const [listSortBy, setListSortBy] = useState<"startDate" | "dueDate">("startDate");
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
@@ -1562,11 +1564,155 @@ export default function ProjectPage() {
         </>
       )}
 
+      {viewMode === "list" && (
+        <div className="no-print flex items-center gap-3 flex-wrap">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sort by</span>
+          <div className="flex items-center gap-1 border rounded-md overflow-hidden text-xs">
+            <button
+              onClick={() => setListSortBy("startDate")}
+              className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "startDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+            >
+              Start date
+            </button>
+            <button
+              onClick={() => setListSortBy("dueDate")}
+              className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "dueDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+            >
+              Due date
+            </button>
+          </div>
+          <div className="h-4 w-px bg-border" />
+          <button
+            onClick={() => setListGrouped(v => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${listGrouped ? "text-muted-foreground hover:text-foreground hover:bg-muted" : "bg-primary/10 text-primary border-primary/30"}`}
+          >
+            {listGrouped ? "Flat list" : "Group by phase"}
+          </button>
+        </div>
+      )}
+
+      {/* Flat list view */}
+      {viewMode === "list" && !listGrouped && (() => {
+        const sortDate = (t: LaunchTask) => {
+          const raw = listSortBy === "startDate" ? (t.startDate || t.dueDate) : (t.dueDate || t.startDate);
+          return raw ? raw : "9999-12-31";
+        };
+        const allTasks = (phases ?? [])
+          .flatMap((ph, phIdx) =>
+            (ph.tasks ?? []).map(t => ({ task: t, phase: ph, phIdx }))
+          )
+          .sort((a, b) => sortDate(a.task).localeCompare(sortDate(b.task)));
+        const phaseColors = PHASE_PALETTE;
+
+        return (
+          <div className="border bg-card rounded-lg overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[260px]">Task</TableHead>
+                    <TableHead>Phase</TableHead>
+                    <TableHead>Owner</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Risk</TableHead>
+                    <TableHead>Cost Tier</TableHead>
+                    <TableHead>
+                      <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => setListSortBy(s => s === "startDate" ? "dueDate" : "startDate")}>
+                        {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
+                      </button>
+                    </TableHead>
+                    <TableHead className="w-[80px] no-print" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allTasks.map(({ task, phase, phIdx }) => {
+                    const color = phaseColors[phIdx % phaseColors.length];
+                    return (
+                      <TableRow
+                        key={task.id}
+                        id={`task-${task.id}`}
+                        className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
+                        onClick={() => setEditingTask(task)}
+                      >
+                        <TableCell>
+                          <div className="font-medium text-foreground">{task.title}</div>
+                          <div className="flex gap-2 mt-1 flex-wrap">
+                            {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
+                            {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">Critical</Badge>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap" style={{ color: color.bar }}>
+                            <span style={{ width: 8, height: 8, borderRadius: 2, background: color.bar, flexShrink: 0, display: "inline-block" }} />
+                            {phase.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || phase.name}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{task.owner || "—"}</TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Select value={task.status} onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}>
+                            <SelectTrigger className={`w-[130px] h-8 text-xs ${STATUS_COLORS[task.status] || ""}`}><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="not_started">Not Started</SelectItem>
+                              <SelectItem value="in_progress">In Progress</SelectItem>
+                              <SelectItem value="complete">Complete</SelectItem>
+                              <SelectItem value="blocked">Blocked</SelectItem>
+                              <SelectItem value="deferred">Deferred</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className={RISK_COLORS[task.riskLevel] || ""}>{task.riskLevel}</Badge>
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <div className="flex rounded-md overflow-hidden border border-border/60 w-max">
+                            {(["low", "mid", "high"] as const).map((tier, i) => (
+                              <button key={tier}
+                                onClick={() => handleCostTierChange(task, tier)}
+                                className={`px-2 py-1 text-[10px] font-medium transition-colors ${i > 0 ? "border-l border-border/60" : ""} ${task.costTier === tier ? tier === "low" ? "bg-primary/20 text-primary" : tier === "mid" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:bg-muted"}`}
+                              >
+                                {tier[0].toUpperCase()}: {formatGBP(tier === "low" ? task.costLow : tier === "mid" ? task.costMid : task.costHigh)}
+                              </button>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {task.startDate ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Start</span>{new Date(task.startDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                              <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}</span>
+                            </div>
+                          ) : task.dueDate ? (
+                            <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                          ) : <span className="text-muted-foreground/40">—</span>}
+                        </TableCell>
+                        <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingTask(task)}><Pencil className="w-4 h-4" /></Button>
+                            {confirmDeleteId === task.id ? (
+                              <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDeleteTask(task.id)}><Trash2 className="w-4 h-4" /></Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(task.id)}><Trash2 className="w-4 h-4" /></Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {allTasks.length === 0 && (
+                    <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No tasks found.</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        );
+      })()}
+
       <Accordion
         type="multiple"
         value={openPhases}
         onValueChange={setOpenPhases}
-        className={`space-y-4 ${viewMode === "gantt" ? "hidden" : ""}`}
+        className={`space-y-4 ${viewMode === "gantt" || !listGrouped ? "hidden" : ""}`}
       >
         {phases?.map((phase) => {
           const win = phaseWindows?.get(phase.id);
@@ -1575,6 +1721,12 @@ export default function ProjectPage() {
             win.status === "on_track" ? "bg-primary/15 text-primary" :
             win.status === "tight" ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300" :
             "bg-destructive/15 text-destructive";
+
+          const sortedTasks = [...(phase.tasks ?? [])].sort((a, b) => {
+            const aVal = (listSortBy === "startDate" ? (a.startDate || a.dueDate) : (a.dueDate || a.startDate)) ?? "9999-12-31";
+            const bVal = (listSortBy === "startDate" ? (b.startDate || b.dueDate) : (b.dueDate || b.startDate)) ?? "9999-12-31";
+            return aVal.localeCompare(bVal);
+          });
 
           return (
             <AccordionItem
@@ -1625,12 +1777,16 @@ export default function ProjectPage() {
                         <TableHead>Status</TableHead>
                         <TableHead>Risk</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
-                        <TableHead>Dates</TableHead>
+                        <TableHead>
+                          <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); setListSortBy(s => s === "startDate" ? "dueDate" : "startDate"); }}>
+                            {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
+                          </button>
+                        </TableHead>
                         <TableHead className="w-[80px] no-print"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {phase.tasks?.map((task) => (
+                      {sortedTasks.map((task) => (
                         <TableRow
                           key={task.id}
                           id={`task-${task.id}`}
