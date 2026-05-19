@@ -1133,15 +1133,15 @@ export default function ProjectPage() {
           const startStr = startDateObj ? fmtD(taskStart) : "TBD";
           const endStr = startDateObj && dur > 0 ? fmtD(taskEnd) : "TBD";
           const owner = task.owner || "—";
-          const risk = task.riskLevel || "low";
+          const priority = task.riskLevel || "low";
           const costStr = task.selectedCost > 0 ? `${formatGBP(task.selectedCost)} (${task.costTier})` : "£0";
           const flags = [
             task.isNonNegotiable ? "NON-NEGOTIABLE" : "",
-            task.isCriticalRisk ? "CRITICAL RISK" : "",
+            task.isCriticalRisk ? "RISK FLAG" : "",
           ].filter(Boolean).join(", ");
 
           lines.push(`${done} **${task.title}**`);
-          lines.push(`   ${startStr} → ${endStr} (${dur}d) | Status: ${task.status.replace("_", " ")} | Owner: ${owner} | Risk: ${risk} | Cost: ${costStr}${flags ? ` | ⚠ ${flags}` : ""}`);
+          lines.push(`   ${startStr} → ${endStr} (${dur}d) | Status: ${task.status.replace("_", " ")} | Owner: ${owner} | Priority: ${priority} | Cost: ${costStr}${flags ? ` | ⚠ ${flags}` : ""}`);
           if (task.notes) lines.push(`   Notes: ${task.notes}`);
         }
       }
@@ -1272,7 +1272,7 @@ export default function ProjectPage() {
       }
       maybeSet("status", update.status, "Status", task.status);
       maybeSet("owner", update.owner, "Owner", task.owner ?? "");
-      maybeSet("riskLevel", update.risk_level, "Risk", task.riskLevel ?? "low");
+      maybeSet("riskLevel", update.risk_level, "Priority", task.riskLevel ?? "low");
       maybeSet("costTier", update.cost_tier, "Cost tier", task.costTier ?? "");
 
       if (update.notes !== undefined && String(update.notes) !== (task.notes ?? "")) {
@@ -1614,7 +1614,7 @@ export default function ProjectPage() {
                     <TableHead>Phase</TableHead>
                     <TableHead>Owner</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Risk</TableHead>
+                    <TableHead>Priority</TableHead>
                     <TableHead>Cost Tier</TableHead>
                     <TableHead>
                       <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => setListSortBy(s => s === "startDate" ? "dueDate" : "startDate")}>
@@ -1638,7 +1638,7 @@ export default function ProjectPage() {
                           <div className="font-medium text-foreground">{task.title}</div>
                           <div className="flex gap-2 mt-1 flex-wrap">
                             {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
-                            {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">Critical</Badge>}
+                            {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1775,7 +1775,7 @@ export default function ProjectPage() {
                         <TableHead className="w-[300px]">Task</TableHead>
                         <TableHead>Owner</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Risk</TableHead>
+                        <TableHead>Priority</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
                         <TableHead>
                           <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); setListSortBy(s => s === "startDate" ? "dueDate" : "startDate"); }}>
@@ -1803,7 +1803,7 @@ export default function ProjectPage() {
                               )}
                               {task.isCriticalRisk && (
                                 <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
-                                  Critical
+                                  ⚠ Risk
                                 </Badge>
                               )}
                               {task.files && (
@@ -2244,7 +2244,7 @@ function AddTaskSheet({
               />
             </div>
             <div>
-              <Label htmlFor="newRisk">Risk Level</Label>
+              <Label htmlFor="newRisk">Priority Level</Label>
               <Select value={riskLevel} onValueChange={setRiskLevel}>
                 <SelectTrigger id="newRisk" className="mt-1"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -2555,7 +2555,7 @@ function TaskEditSheet({
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="riskLevel">Risk Level</Label>
+                  <Label htmlFor="riskLevel">Priority Level</Label>
                   <Select name="riskLevel" defaultValue={task.riskLevel}>
                     <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -3081,8 +3081,8 @@ function TaskEditSheet({
 
               <div className="flex items-center justify-between p-4 border rounded-lg bg-card">
                 <div>
-                  <Label htmlFor="isCriticalRisk" className="text-base text-destructive">Critical Risk Flag</Label>
-                  <p className="text-sm text-muted-foreground">Flag this task as a critical risk to the project.</p>
+                  <Label htmlFor="isCriticalRisk" className="text-base text-destructive">Risk Flag</Label>
+                  <p className="text-sm text-muted-foreground">Manually flag this task as a risk to the project.</p>
                 </div>
                 <Switch id="isCriticalRisk" name="isCriticalRisk" defaultChecked={task.isCriticalRisk} />
               </div>
