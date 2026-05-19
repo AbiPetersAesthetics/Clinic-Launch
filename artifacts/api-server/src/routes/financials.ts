@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable } from "@workspace/db";
+import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable, propertyTaskOverridesTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import {
   calcWincAtOccupancy,
@@ -453,12 +453,37 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // Fetch project for start + open dates
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
 
-  // Fetch tasks (with due dates) to build a month-by-month cost map
+  // Fetch tasks and merge property overrides to build a month-by-month cost map
   const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
   const phaseIds = phases.map((p) => p.id);
-  const allTasks = phaseIds.length > 0
+  const baseTasks = phaseIds.length > 0
     ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
     : [];
+
+  // Load overrides for the active property so costs/dates reflect property-specific data
+  const [activeProperty] = await db.select().from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+  let overrideMap = new Map<number, typeof propertyTaskOverridesTable.$inferSelect>();
+  if (activeProperty) {
+    const overrides = await db.select().from(propertyTaskOverridesTable)
+      .where(eq(propertyTaskOverridesTable.propertyId, activeProperty.id));
+    for (const o of overrides) overrideMap.set(o.taskId, o);
+  }
+
+  const allTasks = baseTasks.map(t => {
+    const o = overrideMap.get(t.id);
+    if (!o) return t;
+    return {
+      ...t,
+      costTier: o.costTier ?? t.costTier,
+      costLow: o.costLow ?? t.costLow,
+      costMid: o.costMid ?? t.costMid,
+      costHigh: o.costHigh ?? t.costHigh,
+      selectedCost: o.selectedCost ?? t.selectedCost,
+      startDate: o.startDate !== undefined ? o.startDate : (t as any).startDate,
+      dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
+    };
+  });
 
   // Load dynamic fixed cost items
   const fixedCostItems = await db
@@ -559,7 +584,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS_CF));
   }
 
-  // ── Build month-by-month project cost map from task due dates ──────────────
+  // ── Build month-by-month project cost map from task start dates ─────────────
+  // Use startDate as the scheduling anchor (when spend begins); fall back to dueDate.
   const monthCostMap: number[] = Array(TOTAL_MONTHS_CF).fill(0);
   const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS_CF }, () => []);
   let undatedTaskCost = 0;
@@ -568,10 +594,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const cost = task.selectedCost || 0;
     if (!cost) continue;
 
-    if (task.dueDate) {
-      const due = new Date(task.dueDate);
-      const idx = (due.getFullYear() - calendarStart.getFullYear()) * 12
-        + (due.getMonth() - calendarStart.getMonth());
+    const schedDate = (task as any).startDate || task.dueDate;
+    if (schedDate) {
+      const d = new Date(schedDate);
+      const idx = (d.getFullYear() - calendarStart.getFullYear()) * 12
+        + (d.getMonth() - calendarStart.getMonth());
       const clampedIdx = idx < 0 ? 0 : idx >= TOTAL_MONTHS_CF ? Math.max(0, openingMonthIndex - 1) : idx;
       monthCostMap[clampedIdx] += cost;
       monthTaskLabels[clampedIdx].push(task.title);
