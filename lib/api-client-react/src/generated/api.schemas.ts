@@ -508,6 +508,7 @@ export interface UpdateTaskBody {
   costLow?: number;
   costMid?: number;
   costHigh?: number;
+  startDate?: string | null;
   dueDate?: string | null;
   durationDays?: number | null;
   dependencies?: number[] | null;

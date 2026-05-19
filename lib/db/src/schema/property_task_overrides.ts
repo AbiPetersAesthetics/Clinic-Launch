@@ -15,6 +15,7 @@ export const propertyTaskOverridesTable = pgTable("property_task_overrides", {
   costMid: real("cost_mid"),
   costHigh: real("cost_high"),
   selectedCost: real("selected_cost"),
+  startDate: text("start_date"),
   dueDate: text("due_date"),
   durationDays: integer("duration_days"),
   files: text("files"),

@@ -77,7 +77,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
   if (propertyId) {
     const overridableFields: Record<string, unknown> = {};
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
-      "costTier", "costLow", "costMid", "costHigh", "dueDate", "durationDays", "files", "quotes"] as const;
+      "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes"] as const;
     for (const key of mutableKeys) {
       if (body[key] !== undefined) overridableFields[key === "costTier" ? "costTier" : key] = body[key];
     }
@@ -103,6 +103,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
       costMid: body.costMid ?? null,
       costHigh: body.costHigh ?? null,
       selectedCost: overridableFields.selectedCost as number,
+      startDate: body.startDate ?? null,
       dueDate: body.dueDate ?? null,
       durationDays: body.durationDays ?? null,
       files: body.files ?? null,

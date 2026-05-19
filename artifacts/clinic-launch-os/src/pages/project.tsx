@@ -161,6 +161,21 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
     [localDurations],
   );
 
+  // Resolve absolute start day for a task:
+  // 1. If the task has a DB startDate and we have a project startDate, derive offset from real dates.
+  // 2. Otherwise fall back to localStorage taskOffsets or phase start.
+  const getTaskAbsStart = useCallback(
+    (t: LaunchTask, phaseStart: number): number => {
+      if (t.startDate && startDateObj) {
+        const s = new Date(t.startDate); s.setHours(0, 0, 0, 0);
+        const b = new Date(startDateObj); b.setHours(0, 0, 0, 0);
+        return Math.round((s.getTime() - b.getTime()) / 86400000);
+      }
+      return taskOffsets[t.id] ?? phaseStart;
+    },
+    [startDateObj, taskOffsets],
+  );
+
   // Phase start day = sum of max-duration of all preceding phases.
   // A task's position within the Gantt = taskOffsets[id] if set, else phaseStartDay[phaseId].
   const phaseStartDays = useMemo<Record<number, number>>(() => {
@@ -170,26 +185,25 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       map[phase.id] = cursor;
       // phase duration = max end-day of any of its tasks (relative to cursor)
       const phaseEnd = phase.tasks?.reduce((maxEnd, t) => {
-        const tAbsStart = taskOffsets[t.id] ?? cursor;
+        const tAbsStart = getTaskAbsStart(t, cursor);
         const tEnd = tAbsStart + getTaskDuration(t) - cursor;
         return Math.max(maxEnd, tEnd);
       }, 0) ?? 0;
       cursor += Math.max(1, phaseEnd);
     }
     return map;
-  }, [sortedPhases, taskOffsets, getTaskDuration]);
+  }, [sortedPhases, getTaskAbsStart, getTaskDuration]);
 
   const totalDays = useMemo(() => {
     let max = 90;
     for (const phase of sortedPhases) {
       const phaseStart = phaseStartDays[phase.id] ?? 0;
       for (const t of phase.tasks ?? []) {
-        const absStart = taskOffsets[t.id] ?? phaseStart;
-        max = Math.max(max, absStart + getTaskDuration(t));
+        max = Math.max(max, getTaskAbsStart(t, phaseStart) + getTaskDuration(t));
       }
     }
     return max + 28;
-  }, [sortedPhases, phaseStartDays, taskOffsets, getTaskDuration]);
+  }, [sortedPhases, phaseStartDays, getTaskAbsStart, getTaskDuration]);
 
   const baseDate = startDateObj ?? new Date();
 
@@ -289,8 +303,14 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       if (type === "resize") {
         const newDur = Math.max(1, origValue + daysDelta);
         setSavingIds(s => new Set([...s, taskId]));
+        // If task has a startDate, derive the new dueDate from startDate + newDur
+        const resizePatch: Record<string, unknown> = { durationDays: newDur };
+        if (task.startDate) {
+          const newDue = addDays(new Date(task.startDate), newDur);
+          resizePatch.dueDate = newDue.toISOString().split("T")[0];
+        }
         updateTask.mutate(
-          { id: taskId, data: { durationDays: newDur } },
+          { id: taskId, data: resizePatch as Parameters<typeof updateTask.mutate>[0]["data"] },
           {
             onSuccess: () => {
               invalidateAfterTaskChange();
@@ -303,8 +323,33 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
             },
           },
         );
+      } else if (hasDragged) {
+        // Move drag: save startDate to DB (replaces localStorage-only approach)
+        const newAbsStart = Math.max(phaseStart, origValue + daysDelta);
+        const newStartDate = addDays(new Date(baseDate), newAbsStart);
+        const startDateStr = newStartDate.toISOString().split("T")[0];
+        const movePatch: Record<string, unknown> = { startDate: startDateStr };
+        // Also update dueDate to keep duration intact
+        const dur = task.durationDays ?? 0;
+        if (dur > 0) {
+          movePatch.dueDate = addDays(newStartDate, dur).toISOString().split("T")[0];
+        }
+        setSavingIds(s => new Set([...s, taskId]));
+        updateTask.mutate(
+          { id: taskId, data: movePatch as Parameters<typeof updateTask.mutate>[0]["data"] },
+          {
+            onSuccess: () => {
+              invalidateAfterTaskChange();
+              // Remove the localStorage offset since DB now holds the position
+              setTaskOffsets(prev => { const n = { ...prev }; delete n[taskId]; return n; });
+              setSavingIds(s => { const n = new Set(s); n.delete(taskId); return n; });
+            },
+            onError: () => {
+              setSavingIds(s => { const n = new Set(s); n.delete(taskId); return n; });
+            },
+          },
+        );
       }
-      // move: already persisted to localStorage via useEffect
 
       dragRef.current = null;
       document.removeEventListener("mousemove", onMove);
@@ -313,7 +358,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
-  }, [dayWidth, updateTask, invalidateAfterTaskChange, onTaskClick]);
+  }, [dayWidth, baseDate, updateTask, invalidateAfterTaskChange, onTaskClick]);
 
   const totalWidth = totalDays * dayWidth;
 
@@ -422,7 +467,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
             // Phase bar: from phaseStart to latest task end
             const phaseEndDay = (phase.tasks ?? []).reduce((maxEnd, t) => {
-              const absStart = taskOffsets[t.id] ?? phaseStart;
+              const absStart = getTaskAbsStart(t, phaseStart);
               return Math.max(maxEnd, absStart + getTaskDuration(t));
             }, phaseStart);
             const phaseBarW = Math.max(dayWidth, (phaseEndDay - phaseStart) * dayWidth);
@@ -480,7 +525,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
                 {/* Task rows */}
                 {!isCollapsed && (phase.tasks ?? []).map(task => {
-                  const absStart = taskOffsets[task.id] ?? phaseStart;
+                  const absStart = getTaskAbsStart(task, phaseStart);
                   const dur = getTaskDuration(task);
                   const barW = Math.max(8, dur * dayWidth);
                   const isSaving = savingIds.has(task.id);
@@ -522,7 +567,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
                         {/* Task bar */}
                         <div
-                          title={`${task.title}\nDay ${absStart}–${absStart + dur} · ${dur} day${dur !== 1 ? "s" : ""}\nDrag to reposition, drag right edge to resize`}
+                          title={`${task.title}\n${task.startDate ? `${task.startDate} → ${task.dueDate?.split("T")[0] ?? "?"}` : `Day ${absStart}–${absStart + dur}`} · ${dur} day${dur !== 1 ? "s" : ""}\nDrag to reposition, drag right edge to resize`}
                           style={{
                             position: "absolute",
                             left: absStart * dayWidth,
@@ -1923,6 +1968,8 @@ function TaskEditSheet({
   const [costMid, setCostMid] = useState(0);
   const [costHigh, setCostHigh] = useState(0);
   const [targetPhaseId, setTargetPhaseId] = useState<number | null>(null);
+  const [taskStartDate, setTaskStartDate] = useState("");
+  const [taskEndDate, setTaskEndDate] = useState("");
   const [quotes, setQuotes] = useState<TaskQuote[]>([]);
   const [addingQuote, setAddingQuote] = useState(false);
   const [newQuote, setNewQuote] = useState<Partial<TaskQuote>>({ status: "pending" });
@@ -2028,6 +2075,8 @@ function TaskEditSheet({
       setCostMid(task.costMid ?? 0);
       setCostHigh(task.costHigh ?? 0);
       setTargetPhaseId(task.phaseId);
+      setTaskStartDate(task.startDate ? new Date(task.startDate).toISOString().split("T")[0] : "");
+      setTaskEndDate(task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : "");
       setQuotes(Array.isArray(task.quotes) ? task.quotes : []);
       setAddingQuote(false);
       setNewQuote({ status: "pending" });
@@ -2084,8 +2133,17 @@ function TaskEditSheet({
       costLow,
       costMid,
       costHigh,
-      dueDate: (formData.get("dueDate") as string) || undefined,
-      durationDays: Number(formData.get("durationDays") || 0),
+      startDate: (formData.get("startDate") as string) || null,
+      dueDate: (formData.get("dueDate") as string) || null,
+      durationDays: (() => {
+        const s = formData.get("startDate") as string;
+        const e = formData.get("dueDate") as string;
+        if (s && e) {
+          const days = Math.round((new Date(e).getTime() - new Date(s).getTime()) / 86400000);
+          return days > 0 ? days : (Number(formData.get("durationDays") || 0));
+        }
+        return Number(formData.get("durationDays") || 0);
+      })(),
       riskLevel: formData.get("riskLevel") as UpdateTaskBodyRiskLevel,
       status: formData.get("status") as UpdateTaskBodyStatus,
       isNonNegotiable: formData.get("isNonNegotiable") === "on",
@@ -2249,21 +2307,52 @@ function TaskEditSheet({
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="dueDate">Due Date</Label>
-                  <Input
-                    id="dueDate"
-                    name="dueDate"
-                    type="date"
-                    defaultValue={task.dueDate ? new Date(task.dueDate).toISOString().split("T")[0] : ""}
-                    className="mt-1"
-                  />
+              {/* Schedule: start + end dates with auto-computed duration */}
+              <div className="space-y-2">
+                <Label>Schedule</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="taskStartDate" className="text-xs text-muted-foreground">Start Date</Label>
+                    <Input
+                      id="taskStartDate"
+                      name="startDate"
+                      type="date"
+                      value={taskStartDate}
+                      onChange={e => setTaskStartDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="taskEndDate" className="text-xs text-muted-foreground">End Date</Label>
+                    <Input
+                      id="taskEndDate"
+                      name="dueDate"
+                      type="date"
+                      value={taskEndDate}
+                      onChange={e => setTaskEndDate(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="durationDays">Duration (Days)</Label>
-                  <Input id="durationDays" name="durationDays" type="number" defaultValue={task.durationDays || ""} className="mt-1" />
-                </div>
+                {/* Duration row: auto-computed or manual */}
+                {taskStartDate && taskEndDate ? (() => {
+                  const days = Math.round((new Date(taskEndDate).getTime() - new Date(taskStartDate).getTime()) / 86400000);
+                  return (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/40 rounded-md">
+                      <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      {days > 0
+                        ? <span className="text-sm"><span className="font-semibold">{days}</span> <span className="text-muted-foreground">days duration (auto)</span></span>
+                        : <span className="text-xs text-destructive">End date must be after start date</span>
+                      }
+                    </div>
+                  );
+                })() : (
+                  <div className="flex items-center gap-3">
+                    <CalendarDays className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <Label htmlFor="durationDays" className="text-xs text-muted-foreground shrink-0">Manual duration (days)</Label>
+                    <Input id="durationDays" name="durationDays" type="number" defaultValue={task.durationDays || ""} className="h-7 w-24 text-sm" />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

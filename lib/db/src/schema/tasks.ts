@@ -29,6 +29,7 @@ export const tasksTable = pgTable("launch_tasks", {
   costMid: real("cost_mid").notNull().default(0),
   costHigh: real("cost_high").notNull().default(0),
   selectedCost: real("selected_cost").notNull().default(0),
+  startDate: text("start_date"),
   dueDate: text("due_date"),
   durationDays: integer("duration_days"),
   dependencies: text("dependencies"), // JSON array of task IDs
