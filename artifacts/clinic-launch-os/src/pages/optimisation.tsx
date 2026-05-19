@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "wouter";
 import {
   useGetOptimisationAnalysis,
@@ -6,9 +6,10 @@ import {
 } from "@workspace/api-client-react";
 import type { OptimisationItem } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Accordion,
   AccordionContent,
@@ -33,6 +34,10 @@ import {
   RefreshCw,
   Clock,
   ExternalLink,
+  ArrowRight,
+  Target,
+  CheckCircle2,
+  ChevronDown,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { useQueryClient } from "@tanstack/react-query";
@@ -47,6 +52,12 @@ type CategoryKey =
   | "non_negotiable"
   | "operationally_critical";
 
+type LeaderboardItem = OptimisationItem & {
+  recommendedTier: string;
+  riskOfCutting: "low" | "medium" | "high";
+  potentialSavingGbp: number;
+};
+
 const CATEGORY_CONFIG: Record<
   CategoryKey,
   {
@@ -55,7 +66,6 @@ const CATEGORY_CONFIG: Record<
     icon: React.ComponentType<{ className?: string }>;
     badgeClass: string;
     headerClass: string;
-    savingsText: string;
   }
 > = {
   dangerous_to_cut: {
@@ -64,7 +74,6 @@ const CATEGORY_CONFIG: Record<
     icon: ShieldOff,
     badgeClass: "bg-destructive/15 text-destructive",
     headerClass: "text-destructive",
-    savingsText: "Action required",
   },
   safe_to_reduce: {
     label: "Safe to Reduce",
@@ -72,7 +81,6 @@ const CATEGORY_CONFIG: Record<
     icon: TrendingDown,
     badgeClass: "bg-primary/10 text-primary",
     headerClass: "text-primary",
-    savingsText: "Potential saving",
   },
   luxury_item: {
     label: "Luxury Items",
@@ -80,7 +88,6 @@ const CATEGORY_CONFIG: Record<
     icon: Sparkles,
     badgeClass: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
     headerClass: "text-yellow-700 dark:text-yellow-400",
-    savingsText: "Potential saving",
   },
   delayable: {
     label: "Delayable",
@@ -88,7 +95,6 @@ const CATEGORY_CONFIG: Record<
     icon: Clock,
     badgeClass: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300",
     headerClass: "text-orange-700 dark:text-orange-400",
-    savingsText: "Deferrable",
   },
   non_negotiable: {
     label: "Non-Negotiable",
@@ -96,7 +102,6 @@ const CATEGORY_CONFIG: Record<
     icon: ShieldCheck,
     badgeClass: "bg-muted text-muted-foreground",
     headerClass: "text-muted-foreground",
-    savingsText: "Fixed",
   },
   operationally_critical: {
     label: "Operationally Critical",
@@ -104,7 +109,6 @@ const CATEGORY_CONFIG: Record<
     icon: Cpu,
     badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
     headerClass: "text-blue-700 dark:text-blue-400",
-    savingsText: "Required",
   },
 };
 
@@ -113,6 +117,279 @@ const TIER_BADGE: Record<string, string> = {
   mid: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
   high: "bg-destructive/15 text-destructive",
 };
+
+const RISK_BADGE: Record<string, string> = {
+  low: "bg-primary/10 text-primary",
+  medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300",
+  high: "bg-destructive/15 text-destructive",
+};
+
+function TierArrow({ from, to }: { from: string; to: string }) {
+  if (to === "defer") {
+    return (
+      <span className="flex items-center gap-1 text-xs">
+        <Badge className={`text-[10px] uppercase ${TIER_BADGE[from] ?? "bg-muted"}`}>{from}</Badge>
+        <span className="text-muted-foreground text-[10px]">→ defer</span>
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-xs">
+      <Badge className={`text-[10px] uppercase ${TIER_BADGE[from] ?? "bg-muted"}`}>{from}</Badge>
+      <ArrowRight className="w-3 h-3 text-muted-foreground shrink-0" />
+      <Badge className={`text-[10px] uppercase ${TIER_BADGE[to] ?? "bg-muted"}`}>{to}</Badge>
+    </span>
+  );
+}
+
+function SavingsBar({ saving, max }: { saving: number; max: number }) {
+  const pct = max > 0 ? Math.round((saving / max) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2 min-w-[80px]">
+      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function OverspendPlanner({
+  leaderboard,
+  totalSaving,
+}: {
+  leaderboard: LeaderboardItem[];
+  totalSaving: number;
+}) {
+  const [targetRaw, setTargetRaw] = useState("");
+  const target = parseInt(targetRaw.replace(/[^0-9]/g, "")) || 0;
+
+  const plan = useMemo(() => {
+    if (target <= 0 || leaderboard.length === 0) return [];
+    // Priority: luxury (lowest risk) → delayable → safe_to_reduce (medium risk)
+    // Sort within each group by saving desc
+    const prioritised = [
+      ...leaderboard.filter(i => i.riskOfCutting === "low").sort((a, b) => b.potentialSavingGbp - a.potentialSavingGbp),
+      ...leaderboard.filter(i => i.riskOfCutting === "medium").sort((a, b) => b.potentialSavingGbp - a.potentialSavingGbp),
+    ];
+    let running = 0;
+    const selected: (LeaderboardItem & { runningTotal: number; covers: boolean })[] = [];
+    for (const item of prioritised) {
+      if (running >= target) break;
+      running += item.potentialSavingGbp;
+      selected.push({ ...item, runningTotal: running, covers: running >= target });
+    }
+    return selected;
+  }, [target, leaderboard]);
+
+  const covered = plan.length > 0 ? plan[plan.length - 1].runningTotal : 0;
+  const pct = target > 0 ? Math.min(100, Math.round((covered / target) * 100)) : 0;
+  const gap = Math.max(0, target - covered);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Target className="w-4 h-4 text-primary" />
+          Overspend Scenario Planner
+        </CardTitle>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Enter the amount you need to recover. We'll show you the safest cuts in priority order.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground shrink-0">I need to find</span>
+          <div className="relative max-w-[160px]">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+            <Input
+              className="pl-7 text-sm"
+              placeholder="e.g. 5000"
+              value={targetRaw}
+              onChange={e => setTargetRaw(e.target.value.replace(/[^0-9]/g, ""))}
+            />
+          </div>
+          {target > 0 && totalSaving > 0 && (
+            <span className="text-xs text-muted-foreground">
+              of {formatGBP(totalSaving)} available
+            </span>
+          )}
+        </div>
+
+        {target > 0 && (
+          <>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>{pct}% of target covered by {plan.length} cut{plan.length !== 1 ? "s" : ""}</span>
+                <span className={gap > 0 ? "text-yellow-600 dark:text-yellow-400" : "text-primary font-medium"}>
+                  {gap > 0 ? `Still need ${formatGBP(gap)}` : "Target met ✓"}
+                </span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-primary" : "bg-yellow-500"}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </div>
+
+            {plan.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No safe cuts identified — all savings opportunities have been exhausted.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-6">#</TableHead>
+                      <TableHead>Task</TableHead>
+                      <TableHead className="min-w-[90px]">Move</TableHead>
+                      <TableHead className="text-right">Saving</TableHead>
+                      <TableHead className="text-right">Running total</TableHead>
+                      <TableHead className="w-[40px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plan.map((item, idx) => (
+                      <TableRow key={item.taskId} className={item.covers && idx === plan.findIndex(i => i.covers) ? "bg-primary/5" : ""}>
+                        <TableCell className="text-xs text-muted-foreground">{idx + 1}</TableCell>
+                        <TableCell className="text-sm font-medium max-w-[180px]">
+                          <span className="truncate block">{item.taskTitle}</span>
+                          <span className="text-xs text-muted-foreground font-normal">{item.phaseName}</span>
+                        </TableCell>
+                        <TableCell>
+                          <TierArrow from={item.costTier} to={item.recommendedTier} />
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-medium text-primary">
+                          +{formatGBP(item.potentialSavingGbp)}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">
+                          <span className={item.runningTotal >= target ? "text-primary font-semibold" : ""}>
+                            {formatGBP(item.runningTotal)}
+                          </span>
+                          {item.runningTotal >= target && idx === plan.findIndex(i => i.covers) && (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-primary inline ml-1" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Link href={`/project?taskId=${item.taskId}`}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                            </Button>
+                          </Link>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {gap > 0 && covered > 0 && (
+              <p className="text-xs text-muted-foreground border-t pt-3">
+                The remaining {formatGBP(gap)} cannot be recovered through safe cuts alone. Review the full task list or consider phasing the project.
+              </p>
+            )}
+            {target > totalSaving && totalSaving > 0 && covered === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No safe savings are available — the {formatGBP(totalSaving)} total saving is entirely from higher-risk reductions.
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SavingsLeaderboard({ leaderboard }: { leaderboard: LeaderboardItem[] }) {
+  const [showAll, setShowAll] = useState(false);
+  if (leaderboard.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground text-sm">
+          No savings opportunities identified at current cost tiers.
+        </CardContent>
+      </Card>
+    );
+  }
+  const maxSaving = leaderboard[0]?.potentialSavingGbp ?? 1;
+  const visible = showAll ? leaderboard : leaderboard.slice(0, 8);
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-primary" />
+            Savings Leaderboard — {leaderboard.length} opportunities found
+          </CardTitle>
+          <span className="text-xs text-muted-foreground">Ranked largest saving first</span>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-7 pl-4">#</TableHead>
+                <TableHead className="min-w-[140px]">Task</TableHead>
+                <TableHead className="min-w-[100px]">Move</TableHead>
+                <TableHead className="min-w-[60px]">Risk</TableHead>
+                <TableHead className="text-right min-w-[80px]">Saving</TableHead>
+                <TableHead className="min-w-[80px] hidden sm:table-cell"></TableHead>
+                <TableHead className="w-[40px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {visible.map((item, idx) => (
+                <TableRow key={item.taskId}>
+                  <TableCell className="text-xs text-muted-foreground pl-4">{idx + 1}</TableCell>
+                  <TableCell>
+                    <p className="text-sm font-medium truncate max-w-[180px]">{item.taskTitle}</p>
+                    <p className="text-xs text-muted-foreground">{item.phaseName}</p>
+                  </TableCell>
+                  <TableCell>
+                    <TierArrow from={item.costTier} to={item.recommendedTier} />
+                  </TableCell>
+                  <TableCell>
+                    <Badge className={`text-[10px] capitalize ${RISK_BADGE[item.riskOfCutting]}`}>
+                      {item.riskOfCutting}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right text-sm font-semibold text-primary">
+                    +{formatGBP(item.potentialSavingGbp)}
+                  </TableCell>
+                  <TableCell className="hidden sm:table-cell pr-4">
+                    <SavingsBar saving={item.potentialSavingGbp} max={maxSaving} />
+                  </TableCell>
+                  <TableCell>
+                    <Link href={`/project?taskId=${item.taskId}`}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" title="View task">
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+                      </Button>
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        {leaderboard.length > 8 && (
+          <div className="px-4 pb-4 pt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground gap-1"
+              onClick={() => setShowAll(v => !v)}
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAll ? "rotate-180" : ""}`} />
+              {showAll ? "Show less" : `Show ${leaderboard.length - 8} more`}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSaving: boolean }) {
   if (items.length === 0) return <p className="text-sm text-muted-foreground py-3">No items in this category.</p>;
@@ -149,7 +426,7 @@ function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSavin
               <TableCell className="text-xs text-muted-foreground max-w-[260px]">{item.rationale}</TableCell>
               <TableCell>
                 <Link href={`/project?taskId=${item.taskId}`}>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" title="View task in Project Plan">
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
                     <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
                   </Button>
                 </Link>
@@ -162,27 +439,10 @@ function ItemTable({ items, showSaving }: { items: OptimisationItem[]; showSavin
   );
 }
 
-function RiskScoreBar({ score }: { score: number }) {
-  const color = score >= 60 ? "bg-destructive" : score >= 30 ? "bg-yellow-500" : "bg-primary";
-  const label = score >= 60 ? "High Risk" : score >= 30 ? "Moderate" : "Healthy";
-  return (
-    <div>
-      <div className="flex justify-between text-xs text-muted-foreground mb-1">
-        <span>Operational Risk Score</span>
-        <span className={`font-semibold ${score >= 60 ? "text-destructive" : score >= 30 ? "text-yellow-600 dark:text-yellow-400" : "text-primary"}`}>
-          {score}/100 — {label}
-        </span>
-      </div>
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${score}%` }} />
-      </div>
-    </div>
-  );
-}
-
 export default function OptimisationPage() {
   const queryClient = useQueryClient();
-  const [openSections, setOpenSections] = useState<string[]>(["dangerous_to_cut", "safe_to_reduce", "luxury_item"]);
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  const [showAllFlags, setShowAllFlags] = useState(false);
 
   const { data: analysis, isLoading, isFetching } = useGetOptimisationAnalysis(PROJECT_ID, {
     query: {
@@ -194,6 +454,11 @@ export default function OptimisationPage() {
   function refresh() {
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
   }
+
+  const leaderboard = useMemo(() => {
+    if (!analysis) return [];
+    return ((analysis as any).savingsLeaderboard ?? []) as LeaderboardItem[];
+  }, [analysis]);
 
   const ORDERED_CATEGORIES: CategoryKey[] = [
     "dangerous_to_cut",
@@ -208,7 +473,7 @@ export default function OptimisationPage() {
     <div className="space-y-6">
       <PageHeader
         title="Cost Optimisation"
-        subtitle="Automated analysis of cost variance — tap any task row to jump directly to it in the Project Plan."
+        subtitle="Identify where to make savings if the project starts to overspend."
         action={
           <Button variant="outline" size="sm" onClick={refresh} disabled={isFetching} className="gap-2">
             <RefreshCw className={`w-4 h-4 ${isFetching ? "animate-spin" : ""}`} />
@@ -225,26 +490,35 @@ export default function OptimisationPage() {
         <Card><CardContent className="py-12 text-center text-muted-foreground">No data available.</CardContent></Card>
       ) : (
         <>
-          {/* Smart Risk Flags — derived from optimisation analysis */}
+          {/* Danger flags — always shown first if present */}
           {analysis.smartRiskFlags.length > 0 && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-4 space-y-2">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
-                <p className="text-sm font-semibold text-destructive">
-                  {analysis.smartRiskFlags.length} Smart Risk {analysis.smartRiskFlags.length === 1 ? "Flag" : "Flags"} — Immediate Attention Required
-                </p>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive shrink-0" />
+                  <p className="text-sm font-semibold text-destructive">
+                    {analysis.smartRiskFlags.length} item{analysis.smartRiskFlags.length !== 1 ? "s" : ""} need more budget — do not cut these
+                  </p>
+                </div>
+                {analysis.smartRiskFlags.length > 4 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-destructive h-7 px-2 hover:bg-destructive/10"
+                    onClick={() => setShowAllFlags(v => !v)}
+                  >
+                    {showAllFlags ? "Show less" : `Show all ${analysis.smartRiskFlags.length}`}
+                  </Button>
+                )}
               </div>
-              {analysis.smartRiskFlags.map((flag, i) => (
+              {(showAllFlags ? analysis.smartRiskFlags : analysis.smartRiskFlags.slice(0, 4)).map((flag, i) => (
                 <div key={i} className="flex gap-2 text-xs">
                   <span className={`shrink-0 mt-0.5 ${flag.level === "critical" ? "text-destructive" : "text-yellow-600"}`}>
                     {flag.level === "critical" ? "●" : "◐"}
                   </span>
                   <div>
                     {flag.taskTitle && flag.taskId ? (
-                      <Link
-                        href={`/project?taskId=${flag.taskId}`}
-                        className="font-medium text-foreground hover:underline"
-                      >
+                      <Link href={`/project?taskId=${flag.taskId}`} className="font-medium text-foreground hover:underline">
                         {flag.taskTitle}:{" "}
                       </Link>
                     ) : flag.taskTitle ? (
@@ -254,120 +528,108 @@ export default function OptimisationPage() {
                   </div>
                 </div>
               ))}
+              {!showAllFlags && analysis.smartRiskFlags.length > 4 && (
+                <p className="text-xs text-muted-foreground pt-1">
+                  + {analysis.smartRiskFlags.length - 4} more — <button className="underline text-destructive" onClick={() => setShowAllFlags(true)}>show all</button>
+                </p>
+              )}
             </div>
           )}
 
-          {/* Summary KPIs */}
+          {/* KPI summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="pt-4 pb-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Cash Requirement</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Current budget</p>
                 <p className="text-xl font-semibold mt-1">{formatGBP(analysis.currentCashRequirement)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Remaining task cost</p>
               </CardContent>
             </Card>
             <Card className="border-primary/40">
               <CardContent className="pt-4 pb-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">With All Savings</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">If all cuts made</p>
                 <p className="text-xl font-semibold mt-1 text-primary">{formatGBP(analysis.cashRequirementWithSavings)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">After all safe reductions</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-4 pb-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total Potential Saving</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total available saving</p>
                 <p className="text-xl font-semibold mt-1 text-primary">+{formatGBP(analysis.totalPotentialSaving)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Across {leaderboard.length} tasks</p>
               </CardContent>
             </Card>
-            <Card>
+            <Card className={analysis.categorised.dangerous_to_cut.length > 0 ? "border-destructive/40" : ""}>
               <CardContent className="pt-4 pb-4">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Dangerous Selections</p>
+                <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Underfunded items</p>
                 <p className={`text-xl font-semibold mt-1 ${analysis.categorised.dangerous_to_cut.length > 0 ? "text-destructive" : "text-primary"}`}>
                   {analysis.categorised.dangerous_to_cut.length}
                 </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Need budget increase</p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Runway KPIs — only shown when financial model is populated */}
-          {(analysis.runwayMonths !== null && analysis.runwayMonths !== undefined) && (
-            <div className="grid grid-cols-2 gap-4">
-              <Card className={analysis.runwayMonths < 3 ? "border-destructive/50" : analysis.runwayMonths < 6 ? "border-yellow-500/50" : "border-primary/40"}>
-                <CardContent className="pt-4 pb-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Post-Launch Runway (Current Plan)</p>
-                  <p className={`text-xl font-semibold mt-1 ${analysis.runwayMonths < 3 ? "text-destructive" : analysis.runwayMonths < 6 ? "text-yellow-600 dark:text-yellow-400" : "text-primary"}`}>
-                    {analysis.runwayMonths < 0 ? "Underfunded" : `${analysis.runwayMonths} months`}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">After launch spend at current cost tiers</p>
-                </CardContent>
-              </Card>
-              <Card className={(analysis.runwayMonthsWithSavings ?? 0) < 3 ? "border-destructive/50" : (analysis.runwayMonthsWithSavings ?? 0) < 6 ? "border-yellow-500/50" : "border-primary/40"}>
-                <CardContent className="pt-4 pb-4">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Post-Launch Runway (Optimised)</p>
-                  <p className={`text-xl font-semibold mt-1 ${(analysis.runwayMonthsWithSavings ?? 0) < 3 ? "text-destructive" : (analysis.runwayMonthsWithSavings ?? 0) < 6 ? "text-yellow-600 dark:text-yellow-400" : "text-primary"}`}>
-                    {(analysis.runwayMonthsWithSavings ?? 0) < 0 ? "Underfunded" : `${analysis.runwayMonthsWithSavings} months`}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground mt-1">After launch spend with all savings applied</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+          {/* Overspend Planner — core new feature */}
+          <OverspendPlanner
+            leaderboard={leaderboard}
+            totalSaving={analysis.totalPotentialSaving}
+          />
 
-          {/* Risk Score */}
-          <Card>
-            <CardContent className="pt-4 pb-4">
-              <RiskScoreBar score={analysis.operationalRiskScore} />
-            </CardContent>
-          </Card>
+          {/* Savings Leaderboard — ranked cuts */}
+          <SavingsLeaderboard leaderboard={leaderboard} />
 
-          {/* Category Breakdown */}
-          <Accordion
-            type="multiple"
-            value={openSections}
-            onValueChange={setOpenSections}
-            className="space-y-2"
-          >
-            {ORDERED_CATEGORIES.map(key => {
-              const config = CATEGORY_CONFIG[key];
-              const items = analysis.categorised[key];
-              const totalSaving = items.reduce((s, i) => s + i.potentialSavingGbp, 0);
-              const showSaving = key === "safe_to_reduce" || key === "luxury_item" || key === "delayable";
-              const Icon = config.icon;
+          {/* Full category breakdown — collapsed by default, available for detail */}
+          <div>
+            <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-3">Full breakdown by category</p>
+            <Accordion
+              type="multiple"
+              value={openSections}
+              onValueChange={setOpenSections}
+              className="space-y-2"
+            >
+              {ORDERED_CATEGORIES.map(key => {
+                const config = CATEGORY_CONFIG[key];
+                const items = analysis.categorised[key];
+                const totalSaving = items.reduce((s, i) => s + i.potentialSavingGbp, 0);
+                const showSaving = key === "safe_to_reduce" || key === "luxury_item" || key === "delayable";
+                const Icon = config.icon;
 
-              return (
-                <AccordionItem
-                  key={key}
-                  value={key}
-                  className={`border rounded-lg overflow-hidden ${key === "dangerous_to_cut" && items.length > 0 ? "border-destructive/40" : ""}`}
-                >
-                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40 [&[data-state=open]]:bg-muted/40">
-                    <div className="flex items-center justify-between w-full mr-3">
-                      <div className="flex items-center gap-3">
-                        <Icon className={`w-4 h-4 ${config.headerClass}`} />
-                        <div className="text-left">
-                          <p className={`text-sm font-medium ${config.headerClass}`}>{config.label}</p>
-                          <p className="text-xs text-muted-foreground font-normal">{config.description}</p>
+                return (
+                  <AccordionItem
+                    key={key}
+                    value={key}
+                    className={`border rounded-lg overflow-hidden ${key === "dangerous_to_cut" && items.length > 0 ? "border-destructive/40" : ""}`}
+                  >
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/40 [&[data-state=open]]:bg-muted/40">
+                      <div className="flex items-center justify-between w-full mr-3">
+                        <div className="flex items-center gap-3">
+                          <Icon className={`w-4 h-4 ${config.headerClass}`} />
+                          <div className="text-left">
+                            <p className={`text-sm font-medium ${config.headerClass}`}>{config.label}</p>
+                            <p className="text-xs text-muted-foreground font-normal hidden sm:block">{config.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0 ml-4">
+                          <Badge className={`text-[10px] ${config.badgeClass}`}>
+                            {items.length} {items.length === 1 ? "task" : "tasks"}
+                          </Badge>
+                          {showSaving && totalSaving > 0 && (
+                            <Badge className="text-[10px] bg-primary/10 text-primary">
+                              +{formatGBP(totalSaving)}
+                            </Badge>
+                          )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-4">
-                        <Badge className={`text-[10px] ${config.badgeClass}`}>
-                          {items.length} {items.length === 1 ? "task" : "tasks"}
-                        </Badge>
-                        {showSaving && totalSaving > 0 && (
-                          <Badge className="text-[10px] bg-primary/10 text-primary">
-                            +{formatGBP(totalSaving)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <div className="overflow-x-auto">
+                    </AccordionTrigger>
+                    <AccordionContent className="px-4 pb-4">
                       <ItemTable items={items} showSaving={showSaving} />
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
-          </Accordion>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
+          </div>
 
           <p className="text-[11px] text-muted-foreground text-right">
             Analysis generated: {new Date(analysis.generatedAt).toLocaleString("en-GB")}

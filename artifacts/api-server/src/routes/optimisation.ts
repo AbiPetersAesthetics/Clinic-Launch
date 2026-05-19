@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { phasesTable, tasksTable, costOptimisationRulesTable, financialsTable, fixedCostItemsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { phasesTable, tasksTable, costOptimisationRulesTable, financialsTable, fixedCostItemsTable, propertyTaskOverridesTable, propertiesTable } from "@workspace/db";
+import { eq, and } from "drizzle-orm";
 import type { LaunchTask, CostOptimisationRule } from "@workspace/db";
 import { calcLegacyFixed } from "../lib/financialEngine";
 
@@ -143,7 +143,11 @@ function deriveCategory(task: LaunchTask): { category: OptimisationCategory; pot
   const tier = task.costTier;
   const risk = task.riskLevel;
 
-  if ((isCritical || isNonNeg) && tier === "low") {
+  // Only flag as dangerous if there is a meaningful cost at stake.
+  // Zero-cost tasks on LOW tier are administrative/unbudgeted — not dangerously cut.
+  const hasMeaningfulCost = task.selectedCost > 0 || task.costMid > 0;
+
+  if ((isCritical || isNonNeg) && tier === "low" && hasMeaningfulCost) {
     return {
       category: "dangerous_to_cut",
       potentialSavingGbp: 0,
@@ -161,7 +165,7 @@ function deriveCategory(task: LaunchTask): { category: OptimisationCategory; pot
     };
   }
 
-  if (risk === "high" && tier === "low" && !isCritical) {
+  if (risk === "high" && tier === "low" && !isCritical && hasMeaningfulCost) {
     return {
       category: "dangerous_to_cut",
       potentialSavingGbp: 0,
@@ -234,9 +238,33 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const phaseMap = new Map(phases.map(p => [p.id, p.name]));
   const fin = financialsRows[0] ?? null;
 
-  const allTasks = (await Promise.all(
+  const baseTasks = (await Promise.all(
     phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id)))
   )).flat();
+
+  // Merge property overrides so cost tiers/amounts reflect property-specific selections
+  const [activeProperty] = await db.select().from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+  let overrideMap = new Map<number, typeof propertyTaskOverridesTable.$inferSelect>();
+  if (activeProperty) {
+    const overrides = await db.select().from(propertyTaskOverridesTable)
+      .where(eq(propertyTaskOverridesTable.propertyId, activeProperty.id));
+    for (const o of overrides) overrideMap.set(o.taskId, o);
+  }
+
+  const allTasks: LaunchTask[] = baseTasks.map(t => {
+    const o = overrideMap.get(t.id);
+    if (!o) return t;
+    return {
+      ...t,
+      status: (o.status ?? t.status) as LaunchTask["status"],
+      costTier: (o.costTier ?? t.costTier) as LaunchTask["costTier"],
+      costLow: o.costLow ?? t.costLow,
+      costMid: o.costMid ?? t.costMid,
+      costHigh: o.costHigh ?? t.costHigh,
+      selectedCost: o.selectedCost ?? t.selectedCost,
+    };
+  });
 
   const rules = await getOrSeedRules(projectId);
   const activeRules = rules.filter(r => r.isActive);
@@ -358,9 +386,25 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     }
   }
 
+  // Savings leaderboard: all items with savings potential, sorted largest saving first.
+  // Recommended tier shows the move to make (luxury → low, safe_to_reduce → mid, delayable → defer).
+  const savingsLeaderboard = items
+    .filter(i => i.potentialSavingGbp > 0)
+    .sort((a, b) => b.potentialSavingGbp - a.potentialSavingGbp)
+    .map(i => ({
+      ...i,
+      recommendedTier: i.category === "luxury_item" ? "low"
+        : i.category === "safe_to_reduce" ? "mid"
+        : "defer",
+      riskOfCutting: (i.category === "luxury_item" || i.category === "delayable") ? "low"
+        : i.category === "safe_to_reduce" ? "medium"
+        : "high",
+    }));
+
   return res.json({
     projectId,
     categorised,
+    savingsLeaderboard,
     totalPotentialSaving,
     currentCashRequirement,
     cashRequirementWithSavings,
