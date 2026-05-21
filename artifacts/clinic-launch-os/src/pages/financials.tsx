@@ -1078,52 +1078,64 @@ export default function FinancialsPage() {
           </Tooltip>
 
           {/* Card 3: Bedhampton Closes */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className={`rounded-xl border p-4 cursor-default ${cr?.combined.selfFundingMonth ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Closes</span>
-                  <Target className="w-4 h-4 text-emerald-500" />
-                </div>
-                <div className={`text-xl font-bold ${cr?.combined.selfFundingMonth ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
-                  {cr ? (cr.combined.selfFundingMonth ? `Month ${cr.combined.selfFundingMonth}` : "> 12 months") : "—"}
-                </div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {cr?.combined.selfFundingMonth
-                    ? `Abi full-time at ${clinicLabel} from Month ${cr.combined.selfFundingMonth}`
-                    : `${clinicLabel} doesn't hit ${cr?.winc.selfFundingBufferPercent ?? 20}% margin within 12mo`}
-                </div>
-              </div>
-            </TooltipTrigger>
-            {cr && (
-              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-60 font-normal">
-                <div className="px-3 pt-3 pb-2">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Self-funding milestone</p>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Required net/mo</span>
-                      <span className="font-medium">{formatGBP(cr.winc.sfNetProfitTarget)}</span>
+          {(() => {
+            const sfMonth = cashflow36?.find(m => m.isSelfFundingMonth);
+            const found = !!sfMonth;
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`rounded-xl border p-4 cursor-default ${found ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Bedhampton Closes</span>
+                      <Target className="w-4 h-4 text-emerald-500" />
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Required revenue/mo</span>
-                      <span className="font-medium">{formatGBP(cr.winc.sfRevenueTarget)}</span>
+                    <div className={`text-xl font-bold ${found ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                      {cashflow36 ? (found ? sfMonth!.calendarLabel : "> 36 mo") : "—"}
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Required occupancy</span>
-                      <span className="font-medium">{cr.winc.selfFundingOccupancy.toFixed(0)}%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Current scenario occ.</span>
-                      <span className={`font-medium ${cr.winc.occupancyUsed >= cr.winc.selfFundingOccupancy ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>{cr.winc.occupancyUsed}%</span>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {found
+                        ? `Abi full-time at ${clinicLabel} from ${sfMonth!.calendarLabel}`
+                        : `${clinicLabel} doesn't hit ${cr?.winc.selfFundingBufferPercent ?? 20}% margin within 36mo`}
                     </div>
                   </div>
-                </div>
-                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
-                  Margin threshold: {cr.winc.selfFundingBufferPercent}% net-to-revenue. Once hit, Bedhampton days reduce and {clinicLabel} runs independently.
-                </div>
-              </TooltipContent>
-            )}
-          </Tooltip>
+                </TooltipTrigger>
+                {cr && (
+                  <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-60 font-normal">
+                    <div className="px-3 pt-3 pb-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Self-funding milestone</p>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Required net/mo</span>
+                          <span className="font-medium">{formatGBP(cr.winc.sfNetProfitTarget)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Required revenue/mo</span>
+                          <span className="font-medium">{formatGBP(cr.winc.sfRevenueTarget)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Required occupancy</span>
+                          <span className="font-medium">{cr.winc.selfFundingOccupancy.toFixed(0)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Current scenario occ.</span>
+                          <span className={`font-medium ${cr.winc.occupancyUsed >= cr.winc.selfFundingOccupancy ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600"}`}>{cr.winc.occupancyUsed}%</span>
+                        </div>
+                        {found && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Winchester revenue then</span>
+                            <span className="font-medium">{formatGBP(sfMonth!.wincRevenue)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                      Margin threshold: {cr.winc.selfFundingBufferPercent}% net-to-revenue. Once hit, Bedhampton days reduce and {clinicLabel} runs independently.
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          })()}
 
           {/* Bedhampton dependency warning — shown when Bedhampton closes before Month 4 */}
           {cr?.combined.selfFundingMonth !== null && (cr?.combined.selfFundingMonth ?? 99) < 4 && (
