@@ -1605,7 +1605,9 @@ export default function FinancialsPage() {
                         <th className="text-right px-3 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
                           <span title="Owner's drawings taken from the business this month. Only active once Winchester is self-funding. Capped so at least £3,000/month is retained in the business.">Drawings</span>
                         </th>
-                        <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Net Profit</th>
+                        <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <span title="Combined net profit after owner's drawings have been taken. This is what accumulates in the business each month.">Net after Drawings</span>
+                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
                     </thead>
@@ -1613,7 +1615,7 @@ export default function FinancialsPage() {
                       {(pnlData ?? cashflow ?? []).map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
-                        const netProfitRow = m.wincNet + m.bedhNet;
+                        const netProfitRow = m.wincNet + m.bedhNet - (m.actualDrawings ?? 0);
 
                         // ── Bedhampton cost breakdown ──────────────────────
                         const _bedhStockPct  = (model as any)?.bedhStockPercent ?? 35;
@@ -1930,7 +1932,7 @@ export default function FinancialsPage() {
                 </div>
                 <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground space-y-0.5">
                   <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
-                  <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, and Bedhampton's share of VAT. <strong>Winc VAT</strong> = Winchester VAT only. Net Profit = Winc Rev − Variable − Fixed − Winc VAT + Bedh Net.</p>
+                  <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. <strong>Winc VAT</strong> = Winchester VAT only. <strong>Net after Drawings</strong> = Winc Net + Bedh Net − Owner's Drawings — what stays in the business each month.</p>
                   <p><strong>Proj costs</strong> = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £{Math.round((pnlData ?? cashflow ?? []).reduce((s, m) => s + (m.projectCostBurn ?? 0), 0)).toLocaleString()}.</p>
                   <p><strong>Drawings</strong> = Owner's drawings taken from the business once Winchester is self-funding. Capped so at least £3,000/month is always retained in the business. Set your target in Assumptions → Personal &amp; Runway.</p>
                 </div>
