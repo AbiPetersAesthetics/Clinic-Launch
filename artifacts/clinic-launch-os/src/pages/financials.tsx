@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -2015,8 +2015,13 @@ export default function FinancialsPage() {
                           : m.isVatRegistered
                           ? "bg-amber-50/40 dark:bg-amber-950/10"
                           : "";
+                        const cmp = compareProperty ? (comparePnlData?.find(c => c.calendarLabel === m.calendarLabel) ?? null) : null;
+                        const cmpNet = cmp ? cmp.wincNet + cmp.bedhNet : 0;
+                        const cmpFixed = cmp ? cmp.wincFixedCosts + (cmp.preOpenPropertyCost ?? 0) : 0;
+                        const cmpShortAddr = compareProperty ? compareProperty.address.split(",")[0].trim() : "";
                         return (
-                          <tr key={m.month} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                          <React.Fragment key={m.month}>
+                          <tr className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
                             <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {m.calendarLabel}
@@ -2082,19 +2087,6 @@ export default function FinancialsPage() {
                               ) : (
                                 <span className="text-muted-foreground/30">—</span>
                               )}
-                              {compareProperty && (() => {
-                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
-                                if (!cmp) return null;
-                                const cmpFixed = cmp.wincFixedCosts + (cmp.preOpenPropertyCost ?? 0);
-                                const primFixed = m.wincFixedCosts + (m.preOpenPropertyCost ?? 0);
-                                const diff = cmpFixed - primFixed;
-                                return (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">
-                                    {cmpFixed > 0 ? `(${formatGBP(cmpFixed)})` : "—"}
-                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff < 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
-                                  </div>
-                                );
-                              })()}
                             </td>
 
                             {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
@@ -2306,36 +2298,51 @@ export default function FinancialsPage() {
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
-                              {compareProperty && (() => {
-                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
-                                if (!cmp) return null;
-                                const cmpNet = cmp.wincNet + cmp.bedhNet;
-                                const diff = cmpNet - netProfitRow;
-                                return (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-normal mt-0.5 leading-tight">
-                                    {formatGBP(cmpNet)}
-                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
-                                  </div>
-                                );
-                              })()}
                             </td>
 
                             {/* Running cash balance */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-medium ${m.cashBalance >= 0 ? "" : "text-destructive"}`}>
                               {formatGBP(m.cashBalance)}
-                              {compareProperty && (() => {
-                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
-                                if (!cmp) return null;
-                                const diff = cmp.cashBalance - m.cashBalance;
-                                return (
-                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">
-                                    {formatGBP(cmp.cashBalance)}
-                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
-                                  </div>
-                                );
-                              })()}
                             </td>
                           </tr>
+                          {compareProperty && cmp && (
+                            <tr className="border-b border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/70 dark:hover:bg-amber-950/20 transition-colors">
+                              <td className="px-3 py-1.5 sticky left-0 bg-amber-50/60 dark:bg-amber-950/20">
+                                <div className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 font-medium">
+                                  <span className="opacity-50">↳</span>
+                                  <span className="truncate max-w-[120px]">{cmpShortAddr}</span>
+                                </div>
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
+                                {cmp.isPreOpening ? <span className="text-muted-foreground/30">—</span> : <span className="font-medium">{cmp.occupancyPercent}%</span>}
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
+                                {cmp.wincRevenue > 0 ? formatGBP(cmp.wincRevenue) : <span className="text-muted-foreground/30">—</span>}
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
+                                {cmp.wincVariableCosts > 0 ? <span>({formatGBP(cmp.wincVariableCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] font-semibold text-amber-700 dark:text-amber-400">
+                                {cmpFixed > 0 ? <span>({formatGBP(cmpFixed)})</span> : <span className="text-muted-foreground/30">—</span>}
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
+                                {cmp.wincVat > 0 ? <span>({formatGBP(cmp.wincVat)})</span> : "—"}
+                              </td>
+                              <td className={`text-right px-2 py-1.5 tabular-nums text-[11px] font-medium ${cmp.wincRevenue === 0 ? "text-muted-foreground/30" : cmp.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                                {cmp.wincRevenue === 0 ? "—" : `${cmp.wincNet >= 0 ? "+" : ""}${formatGBP(cmp.wincNet)}`}
+                              </td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
+                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
+                              <td className="text-right px-3 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
+                              <td className={`text-right px-3 py-1.5 tabular-nums text-[11px] font-semibold ${cmpNet > 0 ? "text-emerald-600 dark:text-emerald-400" : cmpNet < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                                {formatGBP(cmpNet)}
+                              </td>
+                              <td className={`text-right px-3 py-1.5 tabular-nums text-[11px] font-medium ${cmp.cashBalance >= 0 ? "text-amber-700 dark:text-amber-400" : "text-destructive"}`}>
+                                {formatGBP(cmp.cashBalance)}
+                              </td>
+                            </tr>
+                          )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

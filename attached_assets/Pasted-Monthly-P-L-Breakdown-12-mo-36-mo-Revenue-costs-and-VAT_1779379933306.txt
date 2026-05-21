@@ -1,0 +1,119 @@
+Monthly P&L Breakdown
+12 mo
+36 mo
+Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+Winchester opens
+Bedhampton closes
+VAT registered
+Month	Occ %	Winc Rev	Variable	Fixed (Winc)	Winc VAT (20.0%)	Winc ±	Bedh Net	Proj costs	Drawings	Net Profit	Capital
+May '26
+pre-open
+—	—	—	—
+—
+—	—	£5,514	(£4,112)	—	£5,514
+£5,514
+£30,402
+£30,402
+Jun '26
+VAT
+pre-open
+—	—	—	—
+—
+—	—	£3,514	(£2,690)	—	£3,514
+£3,514
+£31,226
+£31,226
+Jul '26
+VAT
+pre-open
+—	—	—	—
+—
+—	—	£2,518	(£4,098)	—	£2,518
+£2,519(+£1)
+£29,645
+£29,646(+£1)
+Aug '26
+VAT
+pre-open
+—	—	—	—
+—
+—	—	£2,518	(£6,788)	—	£2,518
+£2,519(+£1)
+£25,375
+£25,377(+£2)
+Sep '26
+VAT
+pre-open
+—	—	—	—
+—
+—	—	£2,518	(£8,676)	—	£2,518
+£2,519(+£1)
+£19,217
+£19,220(+£3)
+Oct '26
+VAT
+HIGH RISK
+pre-open
+Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.
+—	—	—	(£3,704)
+(£4,620)(+£916)
+—	—	£3,514	(£13,184)	—	£3,514
+£3,514
+£5,844
+£4,931(-£913)
+Nov '26
+VAT
+pre-open
+—	—	—	(£3,704)
+(£4,620)(+£916)
+—	—	£3,514	(£3,445)	—	£3,514
+£3,514
+£2,209
+£381(-£1,828)
+Dec '26
+OPEN
+15%	£6,452	(£1,632)	(£10,420)
+(£7,504)(-£2,916)
+(£1,290)	-£6,891	£5,156	—	ramping	-£1,735
+£1,181(+£2,916)
+£474
+£1,562(+£1,088)
+Jan '27
+VAT
+18.8%	£8,086	(£2,046)	(£10,420)
+(£7,504)(-£2,916)
+(£1,617)	-£5,997	£4,274	—	ramping	-£1,723
+£1,193(+£2,916)
+-£1,249
+£2,755(+£4,004)
+Feb '27
+VAT
+22.5%	£9,677	(£2,448)	(£10,420)
+(£7,504)(-£2,916)
+(£1,935)	-£5,127	£3,414	—	ramping	-£1,713
+£1,204(+£2,917)
+-£2,961
+£3,959(+£6,920)
+Mar '27
+VAT
+26.3%	£11,312	(£2,862)	(£10,420)
+(£7,504)(-£2,916)
+(£2,262)	-£4,233	£2,532	—	ramping	-£1,701
+£1,216(+£2,917)
+-£4,662
+£5,175(+£9,837)
+Apr '27
+VAT
+30%	£12,903	(£3,264)	(£10,420)
+(£7,504)(-£2,916)
+(£2,581)	-£3,362	£1,672	—	ramping	-£1,690
+£1,226(+£2,916)
+-£6,352
+£6,401(+£12,753)
+Variable = Winchester stock %, commissions %, marketing, staffing, consumables. Fixed (Winc) = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).
+
+Bedh Net = Bedhampton gross revenue minus stock, running costs, and Bedhampton's share of VAT. Winc VAT = Winchester VAT only. Net Profit = Winc Rev − Variable − Fixed − Winc VAT + Bedh Net.
+
+Proj costs = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £42,993.
+
+Drawings = Owner's drawings taken from the business once Winchester is self-funding. Capped so at least £3,000/month is always retained in the business. Set your target in Assumptions → Personal & Runway.
