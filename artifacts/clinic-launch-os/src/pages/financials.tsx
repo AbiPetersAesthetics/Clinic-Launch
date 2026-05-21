@@ -531,10 +531,11 @@ export default function FinancialsPage() {
             })
           : Promise.resolve(),
       ]);
-      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-      queryClient.invalidateQueries({ queryKey: ["project", PROJECT_ID] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow", PROJECT_ID] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow36", PROJECT_ID] });
+      // resetQueries removes cached data entirely so the next fetch skips ETag/304 caching
+      queryClient.resetQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+      queryClient.resetQueries({ queryKey: ["project", PROJECT_ID] });
+      queryClient.resetQueries({ queryKey: ["cashflow", PROJECT_ID] });
+      queryClient.resetQueries({ queryKey: ["cashflow36", PROJECT_ID] });
       toast({ title: "Key dates saved", description: "The financial model has been updated." });
     } catch {
       toast({ title: "Save failed", description: "Could not save key dates.", variant: "destructive" });

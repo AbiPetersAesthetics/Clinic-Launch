@@ -1748,6 +1748,26 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileName?: string; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
 
+  const [stageSaving, setStageSaving] = useState(false);
+
+  const handleStageChange = async (newStage: string) => {
+    if (!property) return;
+    setStageSaving(true);
+    try {
+      await fetch(`/api/properties/${property.id}/pipeline-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pipelineStatus: newStage }),
+      });
+      queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
+      onUpdated();
+    } catch {
+      toast({ title: "Stage update failed", variant: "destructive" });
+    } finally {
+      setStageSaving(false);
+    }
+  };
+
   const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
   const setPropertyActive = useSetPropertyActive();
@@ -1926,7 +1946,21 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
               <SheetTitle className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <Badge className={`text-xs ${stage.color}`}>{stage.label}</Badge>
+                    <Select
+                      value={property.pipelineStatus ?? "found"}
+                      onValueChange={handleStageChange}
+                      disabled={stageSaving || isActive}
+                    >
+                      <SelectTrigger className={`h-6 text-xs px-2 py-0 border-0 shadow-none rounded-full w-auto gap-1 font-medium ${stage.color}`}>
+                        {stageSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PIPELINE_STAGES.filter(s => s.key !== "selected").map(s => (
+                          <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {isActive && <Badge className="text-xs bg-primary text-primary-foreground gap-1"><Target className="w-3 h-3" />Active Property</Badge>}
                     {property.isFavourited && <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />}
                   </div>

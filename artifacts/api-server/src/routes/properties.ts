@@ -69,6 +69,19 @@ router.put("/properties/:id", async (req, res) => {
   return res.json(prop);
 });
 
+// Quick pipeline stage update — used by the inline selector in the detail panel
+router.patch("/properties/:id/pipeline-status", async (req, res) => {
+  const id = parseInt(req.params["id"] as string);
+  const { pipelineStatus } = req.body;
+  if (!pipelineStatus) return res.status(400).json({ error: "pipelineStatus required" });
+  const [prop] = await db.update(propertiesTable)
+    .set({ pipelineStatus, updatedAt: new Date() })
+    .where(eq(propertiesTable.id, id))
+    .returning();
+  if (!prop) return res.status(404).json({ error: "Not found" });
+  return res.json(prop);
+});
+
 router.delete("/properties/:id", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   await db.delete(propertiesTable).where(eq(propertiesTable.id, id));
