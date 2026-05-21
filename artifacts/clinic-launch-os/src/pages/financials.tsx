@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -25,7 +25,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw, Loader2, Wand2, Lock, Sliders, Calendar,
+  RefreshCw, Loader2, Wand2, Lock, Sliders, Calendar, X,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -487,6 +487,39 @@ export default function FinancialsPage() {
     placeholderData: (prev) => prev,
   });
   const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
+
+  // ── Financial comparison property (set from Properties tab) ──────────────────
+  const [finComparePropertyId, setFinComparePropertyId] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("finComparePropertyId"); return v ? parseInt(v) : null; } catch { return null; }
+  });
+  useEffect(() => {
+    const onStorage = () => {
+      try { const v = localStorage.getItem("finComparePropertyId"); setFinComparePropertyId(v ? parseInt(v) : null); } catch {}
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const clearFinCompare = () => { setFinComparePropertyId(null); localStorage.removeItem("finComparePropertyId"); };
+
+  const { data: compareCashflow } = useQuery<CashflowMonth[]>({
+    queryKey: ["cashflow-cmp", PROJECT_ID, scenario, rampTier, activeVat.rate, finComparePropertyId],
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&comparePropertyId=${finComparePropertyId}`)
+        .then((r) => r.json()),
+    enabled: finComparePropertyId !== null,
+    staleTime: 0,
+    placeholderData: (prev) => prev,
+  });
+  const { data: compareCashflow36 } = useQuery<CashflowMonth[]>({
+    queryKey: ["cashflow36-cmp", PROJECT_ID, scenario, rampTier, activeVat.rate, finComparePropertyId],
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&months=36&vatRate=${activeVat.rate}&comparePropertyId=${finComparePropertyId}`)
+        .then((r) => r.json()),
+    enabled: finComparePropertyId !== null && pnlMonths === 36,
+    staleTime: 0,
+    placeholderData: (prev) => prev,
+  });
+  const comparePnlData = pnlMonths === 36 ? compareCashflow36 : compareCashflow;
 
   // Project data — needed for targetOpeningDate (Key Dates card)
   const { data: projectData } = useQuery<any>({
@@ -1510,6 +1543,12 @@ export default function FinancialsPage() {
             <CardContent>
               <div className="h-[340px]">
                 {cashflow && cashflow.length > 0 ? (() => {
+                  const compareProperty = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
+                  const compareShortName = compareProperty?.address?.split(",")[0] ?? "Comparison";
+                  const chartData = cashflow.map((m, i) => ({
+                    ...m,
+                    compareBalance: compareCashflow?.[i]?.cashBalance ?? undefined,
+                  }));
                   const openingMonth = cashflow.find(m => m.isOpeningMonth);
                   const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
                   const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
@@ -1517,6 +1556,7 @@ export default function FinancialsPage() {
                   const allVals = [
                     ...cashflow.map(m => m.cashBalance),
                     ...cashflow.map(m => m.monthlyCashflow),
+                    ...(compareCashflow ? compareCashflow.map(m => m.cashBalance) : []),
                     0,
                   ];
                   const rawMin = Math.min(...allVals);
@@ -1528,7 +1568,7 @@ export default function FinancialsPage() {
                   ];
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={cashflow} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                      <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="cashGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
@@ -1652,6 +1692,7 @@ export default function FinancialsPage() {
                           formatter={(v) =>
                             v === "cashBalance" ? "Business capital (running balance)"
                             : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
+                            : v === "compareBalance" ? `${compareShortName} capital (comparison)`
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -1676,6 +1717,20 @@ export default function FinancialsPage() {
                           strokeWidth={2.5}
                           dot={false}
                         />
+
+                        {/* Comparison property capital line — purple overlay, read-only */}
+                        {compareCashflow && compareCashflow.length > 0 && (
+                          <Line
+                            type="monotone"
+                            dataKey="compareBalance"
+                            name="compareBalance"
+                            stroke="#a855f7"
+                            strokeWidth={2.5}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls={false}
+                          />
+                        )}
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
@@ -1735,6 +1790,21 @@ export default function FinancialsPage() {
                     <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 border border-amber-400 ml-1" /> VAT registered
                   </span>
                 </CardDescription>
+                {finComparePropertyId && (() => {
+                  const cp = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
+                  return cp ? (
+                    <div className="flex items-center gap-2 text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-md px-3 py-1.5 mt-1">
+                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                      <span className="text-purple-700 dark:text-purple-300 flex-1 min-w-0">
+                        Comparing <strong className="truncate">{cp.address}</strong>
+                        <span className="text-purple-500/70 ml-1">— purple rows below each month</span>
+                      </span>
+                      <button onClick={clearFinCompare} className="text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors shrink-0">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : null;
+                })()}
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -1772,7 +1842,8 @@ export default function FinancialsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(pnlData ?? cashflow ?? []).map((m) => {
+                      {(pnlData ?? cashflow ?? []).map((m, rowIdx) => {
+                        const cm = comparePnlData?.[rowIdx];
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet;
@@ -1800,8 +1871,10 @@ export default function FinancialsPage() {
                           : m.isVatRegistered
                           ? "bg-amber-50/40 dark:bg-amber-950/10"
                           : "";
+                        const cmNetProfit = cm ? (cm.wincNet + cm.bedhNet) : 0;
                         return (
-                          <tr key={m.month} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                          <Fragment key={m.month}>
+                          <tr className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
                             <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {m.calendarLabel}
@@ -2085,6 +2158,64 @@ export default function FinancialsPage() {
                               {formatGBP(m.cashBalance)}
                             </td>
                           </tr>
+                          {cm && (
+                            <tr className="border-b border-purple-200/50 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20">
+                              {/* Month label */}
+                              <td className="px-3 py-1 sticky left-0 bg-purple-50/70 dark:bg-purple-950/30">
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[8px] font-bold bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 px-1 py-0.5 rounded leading-none">↕ CMP</span>
+                                  <span className="text-purple-600 dark:text-purple-400 text-[11px]">{cm.calendarLabel}</span>
+                                </div>
+                              </td>
+                              {/* Occ % */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-600 dark:text-purple-400">
+                                {cm.isPreOpening ? <span className="opacity-30">—</span> : `${cm.occupancyPercent}%`}
+                              </td>
+                              {/* Winc Rev */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-700 dark:text-purple-300">
+                                {cm.wincRevenue > 0 ? formatGBP(cm.wincRevenue) : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Variable */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/80 dark:text-purple-400/80">
+                                {cm.wincVariableCosts > 0 ? <span>({formatGBP(cm.wincVariableCosts)})</span> : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Fixed */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/80 dark:text-purple-400/80">
+                                {(cm.wincFixedCosts + (cm.preOpenPropertyCost ?? 0)) > 0
+                                  ? <span>({formatGBP(cm.wincFixedCosts + (cm.preOpenPropertyCost ?? 0))})</span>
+                                  : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Winc VAT */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/70 dark:text-purple-400/70">
+                                {cm.wincVat > 0 ? <span>({formatGBP(cm.wincVat)})</span> : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Winc ± */}
+                              <td className={`text-right px-2 py-1 tabular-nums font-medium ${cm.wincRevenue === 0 ? "opacity-30" : cm.wincNet >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-800 dark:text-purple-300"}`}>
+                                {cm.wincRevenue === 0 ? "—" : `${cm.wincNet >= 0 ? "+" : ""}${formatGBP(cm.wincNet)}`}
+                              </td>
+                              {/* Bedh Net */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-400 dark:text-purple-500">
+                                {cm.bedhClosed ? <span className="line-through opacity-40">closed</span> : cm.bedhNet !== 0 ? formatGBP(cm.bedhNet) : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Proj costs */}
+                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/60 dark:text-purple-400/60">
+                                {(cm.projectCostBurn ?? 0) > 0 ? <span>({formatGBP(cm.projectCostBurn)})</span> : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Drawings */}
+                              <td className="text-right px-3 py-1 tabular-nums text-purple-500/60 dark:text-purple-400/60">
+                                {cm.drawingsActive && cm.actualDrawings > 0 ? <span>({formatGBP(cm.actualDrawings)})</span> : <span className="opacity-30">—</span>}
+                              </td>
+                              {/* Net Profit */}
+                              <td className={`text-right px-3 py-1 tabular-nums font-semibold ${cmNetProfit > 0 ? "text-purple-600 dark:text-purple-400" : cmNetProfit < 0 ? "text-purple-900 dark:text-purple-200" : "text-purple-400"}`}>
+                                {formatGBP(cmNetProfit)}
+                              </td>
+                              {/* Capital */}
+                              <td className={`text-right px-3 py-1 tabular-nums font-medium ${cm.cashBalance >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-900 dark:text-purple-200"}`}>
+                                {formatGBP(cm.cashBalance)}
+                              </td>
+                            </tr>
+                          )}
+                          </Fragment>
                         );
                       })}
                     </tbody>

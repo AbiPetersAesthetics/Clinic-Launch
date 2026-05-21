@@ -501,12 +501,28 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
   const activePropIdCf = activePropForCf?.id ?? null;
 
+  // Optional: comparePropertyId swaps fixed costs to a different property for overlay comparison
+  const comparePropertyIdParam = req.query.comparePropertyId ? parseInt(req.query.comparePropertyId as string) : null;
+  const effectivePropIdForCosts = comparePropertyIdParam ?? activePropIdCf;
+
+  // When comparing a different property, override model's rent/rates with the comparison property's values
+  // so the legacy-field fallback path also reflects the right property
+  if (comparePropertyIdParam) {
+    const [compareProp] = await db.select().from(propertiesTable)
+      .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.id, comparePropertyIdParam)));
+    if (compareProp) {
+      if (compareProp.monthlyRentGbp != null) (model as any).rentGbp = compareProp.monthlyRentGbp;
+      if (compareProp.businessRatesGbp != null) (model as any).ratesGbp = Math.round(compareProp.businessRatesGbp / 12);
+      (model as any).vatOnRent = compareProp.vatOnRent ?? false;
+    }
+  }
+
   const allFixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
-  const fixedCostItems = activePropIdCf
-    ? allFixedCostItems.filter(i => i.propertyId === activePropIdCf || i.propertyId === null)
+  const fixedCostItems = effectivePropIdForCosts
+    ? allFixedCostItems.filter(i => i.propertyId === effectivePropIdForCosts || i.propertyId === null)
     : allFixedCostItems;
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.

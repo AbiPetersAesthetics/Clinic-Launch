@@ -2302,6 +2302,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
 function PropertyCard({
   property, onOpen, compareMode = false, isSelected = false, onToggleSelect, rank,
+  isFinCompare = false, onToggleFinCompare,
 }: {
   property: ClinicProperty;
   onOpen: () => void;
@@ -2309,6 +2310,8 @@ function PropertyCard({
   isSelected?: boolean;
   onToggleSelect?: () => void;
   rank?: number;
+  isFinCompare?: boolean;
+  onToggleFinCompare?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
@@ -2393,15 +2396,24 @@ function PropertyCard({
           </span>
         )}
       </div>
-      {!compareMode && !property.isActiveForProject && property.pipelineStatus !== "rejected" && (
-        <div className="pt-1 border-t border-border/50">
+      {!compareMode && !property.isActiveForProject && (
+        <div className="pt-1 border-t border-border/50 flex flex-wrap items-center gap-x-3 gap-y-1">
+          {property.pipelineStatus !== "rejected" && (
+            <button
+              onClick={handleSetActive}
+              disabled={setPropertyActive.isPending}
+              className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+            >
+              <Target className="w-3 h-3" />
+              {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
+            </button>
+          )}
           <button
-            onClick={handleSetActive}
-            disabled={setPropertyActive.isPending}
-            className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
+            onClick={(e) => { e.stopPropagation(); onToggleFinCompare?.(); }}
+            className={`text-xs flex items-center gap-1 transition-colors ml-auto ${isFinCompare ? "text-purple-600 dark:text-purple-400 font-medium" : "text-muted-foreground/60 hover:text-purple-600 dark:hover:text-purple-400"}`}
           >
-            <Target className="w-3 h-3" />
-            {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
+            <BarChart3 className="w-3 h-3" />
+            {isFinCompare ? "Comparing ✓ (clear)" : "Compare financials"}
           </button>
         </div>
       )}
@@ -2981,6 +2993,15 @@ export default function PropertiesPage() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelected, setCompareSelected] = useState<Set<number>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
+  const [finComparePropertyId, setFinComparePropertyId] = useState<number | null>(() => {
+    try { const v = localStorage.getItem("finComparePropertyId"); return v ? parseInt(v) : null; } catch { return null; }
+  });
+  const handleToggleFinCompare = (id: number) => {
+    const next = finComparePropertyId === id ? null : id;
+    setFinComparePropertyId(next);
+    if (next === null) localStorage.removeItem("finComparePropertyId");
+    else localStorage.setItem("finComparePropertyId", String(next));
+  };
 
   const MAX_COMPARE = 4;
 
@@ -3160,6 +3181,8 @@ export default function PropertiesPage() {
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
                         rank={rankMap[prop.id]}
+                        isFinCompare={finComparePropertyId === prop.id}
+                        onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                       />
                     ))}
                   </div>
@@ -3182,6 +3205,8 @@ export default function PropertiesPage() {
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
                         rank={rankMap[prop.id]}
+                        isFinCompare={finComparePropertyId === prop.id}
+                        onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                       />
                     ))}
                   </div>
@@ -3219,6 +3244,8 @@ export default function PropertiesPage() {
                   isSelected={compareSelected.has(prop.id)}
                   onToggleSelect={() => toggleCompareSelect(prop.id)}
                   rank={rankMap[prop.id]}
+                  isFinCompare={finComparePropertyId === prop.id}
+                  onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                 />
               ))}
             </div>
