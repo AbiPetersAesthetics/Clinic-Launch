@@ -440,6 +440,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const rampTier = (req.query.rampTier as string) ?? "average";
   const vatRateParam = parseFloat((req.query.vatRate as string) ?? "0.20");
   const VAT_RATE_EFFECTIVE = isNaN(vatRateParam) ? 0.20 : Math.min(Math.max(vatRateParam, 0.05), 0.20);
+  // Optional: run the cashflow for a specific property (for comparison) instead of the active one
+  const overridePropertyId = req.query.overridePropertyId ? parseInt(req.query.overridePropertyId as string) : null;
 
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
