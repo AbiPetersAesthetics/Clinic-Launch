@@ -501,6 +501,35 @@ export default function FinancialsPage() {
   const [openDate, setOpenDate] = useState("");
   const [datesSaving, setDatesSaving] = useState(false);
 
+  // Compare property milestone dates
+  const [cmpLeaseSign, setCmpLeaseSign] = useState("");
+  const [cmpKeyHandover, setCmpKeyHandover] = useState("");
+  const [cmpOpenDate, setCmpOpenDate] = useState("");
+  const [cmpDatesSaving, setCmpDatesSaving] = useState(false);
+
+  const saveCmpDates = async () => {
+    if (!compareProperty) return;
+    setCmpDatesSaving(true);
+    try {
+      await fetch(`/api/properties/${compareProperty.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          leaseSignDate: cmpLeaseSign || null,
+          keyHandoverDate: cmpKeyHandover || null,
+          targetOpenDate: cmpOpenDate || null,
+        }),
+      });
+      queryClient.invalidateQueries({ queryKey: ["property-full", compareProperty.id] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow-compare", PROJECT_ID] });
+      toast({ title: "Compare dates saved", description: `Milestone dates saved for ${compareProperty.address}` });
+    } catch {
+      toast({ title: "Save failed", description: "Could not save compare dates.", variant: "destructive" });
+    } finally {
+      setCmpDatesSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (model) {
       setLeaseSignDate((model as any).leaseSignDate ?? "");
@@ -593,6 +622,23 @@ export default function FinancialsPage() {
     const map = new Map(compareCashflow.map(m => [m.calendarLabel, m]));
     return cashflow.map(m => ({ ...m, compareBalance: map.get(m.calendarLabel)?.cashBalance ?? null }));
   }, [cashflow, compareCashflow]);
+
+  // Fetch full property row for compare milestone dates
+  const { data: comparePropFull } = useQuery<any>({
+    queryKey: ["property-full", compareProperty?.id],
+    queryFn: () => fetch(`/api/properties/${compareProperty!.id}`).then(r => r.json()),
+    enabled: compareProperty != null,
+    staleTime: 30_000,
+  });
+  useEffect(() => {
+    if (comparePropFull) {
+      setCmpLeaseSign(comparePropFull.leaseSignDate ?? "");
+      setCmpKeyHandover(comparePropFull.keyHandoverDate ?? "");
+      setCmpOpenDate(comparePropFull.targetOpenDate ?? "");
+    } else if (!compareProperty) {
+      setCmpLeaseSign(""); setCmpKeyHandover(""); setCmpOpenDate("");
+    }
+  }, [comparePropFull, compareProperty]);
 
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
@@ -1427,6 +1473,92 @@ export default function FinancialsPage() {
                   Save dates
                 </Button>
               </div>
+
+              {/* ── Compare property dates row — only visible when comparing ── */}
+              {compareProperty && (
+                <div className="mt-5 pt-4 border-t border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-3">
+                    <BarChart3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Compare: </span>
+                    <span className="text-xs text-amber-600 dark:text-amber-500 truncate">{compareProperty.address}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                    {/* Cmp Lease Sign */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Target Lease Sign</label>
+                      <input
+                        type="date"
+                        value={cmpLeaseSign}
+                        onChange={(e) => setCmpLeaseSign(e.target.value)}
+                        className="w-full rounded-md border border-amber-300 dark:border-amber-700 bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                      {cmpLeaseSign && cmpOpenDate && (() => {
+                        const m = monthsBetween(cmpLeaseSign, cmpOpenDate);
+                        return m !== null ? (
+                          <p className="text-xs text-muted-foreground">
+                            {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
+                            {m > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400">→ {m}mo pre-opening costs</span>}
+                          </p>
+                        ) : null;
+                      })()}
+                      {!cmpLeaseSign && <p className="text-xs text-muted-foreground">Not set</p>}
+                    </div>
+
+                    {/* Cmp Key Handover */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Key Handover</label>
+                      <input
+                        type="date"
+                        value={cmpKeyHandover}
+                        onChange={(e) => setCmpKeyHandover(e.target.value)}
+                        className="w-full rounded-md border border-amber-300 dark:border-amber-700 bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      />
+                      {cmpKeyHandover && cmpOpenDate && (() => {
+                        const m = monthsBetween(cmpKeyHandover, cmpOpenDate);
+                        return m !== null ? (
+                          <p className="text-xs text-muted-foreground">
+                            {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
+                          </p>
+                        ) : null;
+                      })()}
+                      {cmpKeyHandover && cmpLeaseSign && (() => {
+                        const m = monthsBetween(cmpLeaseSign, cmpKeyHandover);
+                        return m !== null && m > 0 ? (
+                          <p className="text-xs text-muted-foreground">{m} month{m !== 1 ? "s" : ""} after lease sign</p>
+                        ) : null;
+                      })()}
+                    </div>
+
+                    {/* Cmp Open Date */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1">
+                        Clinic Opens
+                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">Compare</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={cmpOpenDate}
+                        onChange={(e) => setCmpOpenDate(e.target.value)}
+                        className="w-full rounded-md border border-amber-400 dark:border-amber-600 bg-background px-3 py-1.5 text-sm shadow-sm ring-1 ring-amber-200 dark:ring-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                      />
+                      {cmpOpenDate && (
+                        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                          {new Date(cmpOpenDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                        </p>
+                      )}
+                    </div>
+
+                  </div>
+                  <div className="mt-3 flex items-center justify-end">
+                    <Button size="sm" onClick={saveCmpDates} disabled={cmpDatesSaving} className="bg-amber-600 hover:bg-amber-700 text-white">
+                      {cmpDatesSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                      Save compare dates
+                    </Button>
+                  </div>
+                </div>
+              )}
+
             </CardContent>
           </Card>
 
