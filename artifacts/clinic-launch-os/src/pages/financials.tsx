@@ -981,7 +981,7 @@ export default function FinancialsPage() {
 
       {/* ─── Executive Summary Cards ─────────────────────────────────────────── */}
       <TooltipProvider delayDuration={150}>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
 
           {/* Card 1: Winchester Net */}
           <Tooltip>
@@ -1201,6 +1201,112 @@ export default function FinancialsPage() {
                       </span>
                     </div>
                   </div>
+                </div>
+              </TooltipContent>
+            )}
+          </Tooltip>
+
+          {/* Card 5: Month Abi takes full drawings */}
+          {(() => {
+            const fullDrawingsMonth = cashflow36?.find(
+              m => m.drawingsActive && (m.drawingsShortfall ?? 1) === 0 && (m.actualDrawings ?? 0) > 0
+            );
+            const found = !!fullDrawingsMonth;
+            return (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className={`rounded-xl border p-4 cursor-default ${found ? "border-emerald-200 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Full Drawings</span>
+                      <TrendingUp className={`w-4 h-4 ${found ? "text-emerald-500" : "text-amber-500"}`} />
+                    </div>
+                    <div className={`text-xl font-bold ${found ? "text-emerald-700 dark:text-emerald-400" : "text-amber-700 dark:text-amber-400"}`}>
+                      {cashflow36 ? (found ? fullDrawingsMonth!.calendarLabel : "> 36 mo") : "—"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {found
+                        ? `Full ${formatGBP(fullDrawingsMonth!.actualDrawings)}/mo from ${fullDrawingsMonth!.calendarLabel}`
+                        : "Target drawings not met within 36 months"}
+                    </div>
+                  </div>
+                </TooltipTrigger>
+                {cr && (
+                  <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-60 font-normal">
+                    <div className="px-3 pt-3 pb-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Owner drawings milestone</p>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Target drawings</span>
+                          <span className="font-medium">{formatGBP(cr.owner.salaryTarget ?? 0)}/mo</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">First full month</span>
+                          <span className="font-medium">{found ? fullDrawingsMonth!.calendarLabel : "Not within 36 mo"}</span>
+                        </div>
+                        {found && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Winchester revenue then</span>
+                            <span className="font-medium">{formatGBP(fullDrawingsMonth!.wincRevenue)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                      Drawings are capped at the surplus above a £3,000/mo minimum business retention. Full drawings = no shortfall vs your target.
+                    </div>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          })()}
+
+          {/* Card 6: Break-even revenue */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="rounded-xl border border-border/60 bg-card p-4 cursor-default">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Break-even</span>
+                  <Activity className="w-4 h-4 text-primary/50" />
+                </div>
+                <div className="text-xl font-bold text-foreground">
+                  {cr ? formatGBP(cr.winc.breakEvenRevenue) : "—"}
+                </div>
+                <div className="text-xs text-muted-foreground mt-0.5">
+                  {cr ? `${cr.winc.breakEvenOccupancy.toFixed(0)}% occupancy · ${cr.winc.treatmentsPerWeekToBreakeven.toFixed(1)} appts/wk` : ""}
+                </div>
+              </div>
+            </TooltipTrigger>
+            {cr && (
+              <TooltipContent side="bottom" sideOffset={6} className="bg-background text-foreground border border-border shadow-xl p-0 rounded-xl w-60 font-normal">
+                <div className="px-3 pt-3 pb-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2.5">Winchester break-even</p>
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Revenue needed</span>
+                      <span className="font-medium">{formatGBP(cr.winc.breakEvenRevenue)}/mo</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Occupancy needed</span>
+                      <span className="font-medium">{cr.winc.breakEvenOccupancy.toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Appointments/week</span>
+                      <span className="font-medium">{cr.winc.treatmentsPerWeekToBreakeven.toFixed(1)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total fixed costs</span>
+                      <span className="font-medium">{formatGBP(cr.winc.fixedCosts)}/mo</span>
+                    </div>
+                    <div className="border-t border-border pt-1.5 flex justify-between">
+                      <span className="text-muted-foreground">Current scenario rev</span>
+                      <span className={`font-medium ${cr.winc.grossRevenue >= cr.winc.breakEvenRevenue ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                        {formatGBP(cr.winc.grossRevenue)}/mo
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">
+                  Revenue at which Winchester covers all fixed and variable costs. Assumes {cr.winc.occupancyUsed}% occupancy scenario.
                 </div>
               </TooltipContent>
             )}
