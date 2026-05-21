@@ -5,7 +5,7 @@ import {
   fixedCostItemsTable, propertiesTable, financialsTable,
   phasesTable, tasksTable, decisionsTable,
   complianceItemsTable, cqcMilestonesTable,
-  lifestylePlanTable, competitorsTable,
+  lifestylePlanTable, competitorsTable, projectsTable,
 } from "@workspace/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
@@ -223,6 +223,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     bedhamptonRaw,
     lifestyleRaw,
     competitorsRaw,
+    projectRaw,
   ] = await Promise.all([
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
@@ -232,6 +233,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId))
       .orderBy(desc(competitorsTable.trustScore)),
+    db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).then(r => r[0] ?? null),
   ]);
 
   const financial = financialRaw[0] ?? null;
@@ -244,6 +246,17 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     ? [activeProperty.address, activeProperty.postcode].filter(Boolean).join(", ")
     : "selected property";
   const propertyTown = activeProperty?.postcode?.split(" ")[0] || activeProperty?.address?.split(",").at(-2)?.trim() || "the selected location";
+
+  // ── Opening date — driven by project.targetOpeningDate ────────────────────
+  const openingDateRaw: string = projectRaw?.targetOpeningDate ?? "2026-11-01";
+  const openingDateObj = new Date(openingDateRaw + "T00:00:00");
+  const openingDateLong = openingDateObj.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+  const openingMonthShort = openingDateObj.toLocaleDateString("en-GB", { month: "short", year: "numeric" }); // e.g. "Dec 2026"
+  // Build 12 month labels starting from the opening month
+  const forecastMonthLabels: string[] = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(openingDateObj.getFullYear(), openingDateObj.getMonth() + i, 1);
+    return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+  });
 
   // ── Financial calculations for all 3 scenarios ───────────────────────────
   // fixedCostsOverride: pass the actual fixed cost total from the items table so that
@@ -610,7 +623,7 @@ Client acquisition: Winchester is an Instagram-active, referral-driven market. L
   Revenue trend: ${revTrend}`;
   }
 
-  const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
+  const daysToOpening = Math.ceil((openingDateObj.getTime() - Date.now()) / 86400000);
 
   // ── Lifestyle / life-design context ───────────────────────────────────────
   let lifestyleContext = "Life design plan: not completed yet.";
@@ -699,7 +712,7 @@ LIFE READINESS SCORE: ${lifeReadinessPct}% (${doneChecks}/${totalChecks} conside
   // ── Master prompt ─────────────────────────────────────────────────────────
   const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
-THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of 1 November 2026?
+THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of ${openingDateLong}?
 
 IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity at this location justifies the risk.
 
@@ -786,7 +799,7 @@ ACTIVE SCENARIO RAMP PARAMETERS (use these exact values — they come from the m
   Target (plateau) occupancy: ${activeTargetOcc}%
   Linear ramp formula: each month adds approximately ${activeRampMonths > 0 ? Math.round((activeTargetOcc - activeStartOcc) / activeRampMonths) : 0}% occupancy until the ${activeTargetOcc}% ceiling is reached
 
-1. Launch: Nov 2026. Month 1 occupancy: ${activeStartOcc}% (this is the model's actual starting occupancy — do NOT use a different figure)
+1. Launch: ${openingMonthShort}. Month 1 occupancy: ${activeStartOcc}% (this is the model's actual starting occupancy — do NOT use a different figure)
 2. Ramp is marketing-led not referral-led: Abi has strong social media presence, META ads planned, Hampshire press/Muddy Stilettos coverage, and a soft launch event targeting local Winchester contacts. This accelerates new client acquisition above a typical cold-start curve, but does NOT substitute for the absence of a pre-built local client base.
 3. Apply the linear ramp above, reaching ${activeTargetOcc}% by Month ${activeRampMonths}, then plateau
 4. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
@@ -889,7 +902,7 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
   "nextReviewDate": "<ISO 8601 date>",
   "monthlyRevenueForecast": [
     {
-      "month": "Nov 2026",
+      "month": "${forecastMonthLabels[0]}",
       "monthIndex": 1,
       "projectedRevenue": <integer — use the formula: slots × occupancyPct/100 × ACV, rounded to nearest £50>,
       "occupancyPct": <integer — apply ramp-up + seasonal multiplier>,
@@ -900,17 +913,17 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
       "driverNote": "<1 sentence: what drives this month — e.g. 'Pre-Christmas demand spike + META ads converting early Winchester enquiries'>",
       "isBreakEven": <true if projectedRevenue >= breakEvenRevenue, else false>
     },
-    { "month": "Dec 2026", "monthIndex": 2 },
-    { "month": "Jan 2027", "monthIndex": 3 },
-    { "month": "Feb 2027", "monthIndex": 4 },
-    { "month": "Mar 2027", "monthIndex": 5 },
-    { "month": "Apr 2027", "monthIndex": 6 },
-    { "month": "May 2027", "monthIndex": 7 },
-    { "month": "Jun 2027", "monthIndex": 8 },
-    { "month": "Jul 2027", "monthIndex": 9 },
-    { "month": "Aug 2027", "monthIndex": 10 },
-    { "month": "Sep 2027", "monthIndex": 11 },
-    { "month": "Oct 2027", "monthIndex": 12 }
+    { "month": "${forecastMonthLabels[1]}", "monthIndex": 2 },
+    { "month": "${forecastMonthLabels[2]}", "monthIndex": 3 },
+    { "month": "${forecastMonthLabels[3]}", "monthIndex": 4 },
+    { "month": "${forecastMonthLabels[4]}", "monthIndex": 5 },
+    { "month": "${forecastMonthLabels[5]}", "monthIndex": 6 },
+    { "month": "${forecastMonthLabels[6]}", "monthIndex": 7 },
+    { "month": "${forecastMonthLabels[7]}", "monthIndex": 8 },
+    { "month": "${forecastMonthLabels[8]}", "monthIndex": 9 },
+    { "month": "${forecastMonthLabels[9]}", "monthIndex": 10 },
+    { "month": "${forecastMonthLabels[10]}", "monthIndex": 11 },
+    { "month": "${forecastMonthLabels[11]}", "monthIndex": 12 }
   ],
   "revenueForecast": {
     "breakEvenMonth": <integer 1-12, or null if break-even not reached within 12 months>,

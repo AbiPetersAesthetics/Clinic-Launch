@@ -41,6 +41,22 @@ router.put("/projects/:id", async (req, res) => {
   return res.json(project);
 });
 
+// Partial update — only sets fields that are explicitly provided in the request body
+router.patch("/projects/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const allowed = ["name", "description", "targetLocation", "startDate", "targetOpeningDate", "status"] as const;
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  for (const key of allowed) {
+    if (key in req.body) patch[key] = req.body[key];
+  }
+  const [project] = await db.update(projectsTable)
+    .set(patch)
+    .where(eq(projectsTable.id, id))
+    .returning();
+  if (!project) return res.status(404).json({ error: "Not found" });
+  return res.json(project);
+});
+
 router.delete("/projects/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(projectsTable).where(eq(projectsTable.id, id));
