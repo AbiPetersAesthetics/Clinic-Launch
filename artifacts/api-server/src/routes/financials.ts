@@ -705,11 +705,13 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
     }
     const isVatRegistered = vatRegistered;
-    const bedhVat = 0; // Bedhampton net is pre-VAT in this model
+    // VAT deducted from Bedhampton from the registration month onwards (July),
+    // and from Winchester from its opening month (already post-registration).
+    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_RATE : 0;
     const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
-    const vatLiability = wincVat; // Total P&L VAT charge = Winchester only
+    const vatLiability = bedhVat + wincVat;
 
-    const bedhNet = bedhRevenue - bedhCosts - bedhFreeRentRates; // no VAT deducted from Bedh
+    const bedhNet = bedhRevenue - bedhCosts - bedhVat - bedhFreeRentRates;
 
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
     // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
@@ -767,6 +769,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       bedhRevenue: Math.round(bedhRevenue),
       bedhDualCosts: Math.round(bedhDualCosts),
       bedhCosts: Math.round(bedhCosts),
+      bedhVat: Math.round(bedhVat),
       bedhNet: Math.round(bedhNet),
       monthlyCashflow: Math.round(monthlyCashflow),
       cashBalance: Math.round(cashBalance),

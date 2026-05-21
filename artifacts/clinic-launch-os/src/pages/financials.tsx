@@ -1621,7 +1621,7 @@ export default function FinancialsPage() {
                         const _bedhRent      = (model as any)?.bedhRentGbp ?? 0;
                         const _bedhMarketing = (model as any)?.bedhMarketingGbp ?? 0;
                         const _bedhOther     = (model as any)?.bedhamptonCostsGbp ?? 0;
-                        const _bedhVat       = Math.round(m.bedhRevenue - m.bedhCosts - m.bedhNet);
+                        const _bedhVat       = m.bedhVat ?? 0;
 
                         // ── Winchester variable cost breakdown ─────────────
                         const _wincStockPct  = (model as any)?.stockPercent ?? 0;
