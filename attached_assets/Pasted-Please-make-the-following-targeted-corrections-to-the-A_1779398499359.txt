@@ -1,0 +1,16 @@
+Please make the following targeted corrections to the AI Launch Recommendation and Dashboard. Do not change anything not listed here.
+1. Business rates
+The business rates figure displayed on the dashboard must pull directly from the Fixed Monthly Costs assumptions, not be hardcoded or calculated independently. Whatever figure is entered in the assumptions for Business Rates is the figure used everywhere in the model — dashboard, P&L, break-even calculation, and AI assessment. Remove any independent rates calculation logic.
+2. Break-even calculation
+The break-even revenue figure must be calculated as: total fixed costs plus total variable costs (stock %, commissions, marketing, staffing) plus VAT on revenue at the applicable rate, solved for the revenue level at which Winchester net profit equals zero. It must not use any other methodology. Recalculate break-even occupancy percentage from this corrected figure using the corrected revenue ceiling from point 3.
+3. Capacity and revenue ceiling
+The revenue ceiling and all occupancy percentage calculations must pull from the Life Design assumptions (clinic days per month and hours per day per room) which in turn feed the financial assumptions. The revenue ceiling should be: clinic days per month × hours per day per room × number of treatment rooms × (60 divided by average treatment duration in minutes) × average client value. All occupancy percentages in the ramp, P&L table and dashboard must be expressed as a percentage of this figure. If the Life Design assumptions change, all downstream figures update automatically. Remove any hardcoded ceiling figures.
+4. Consumables
+No change needed. Consumables are already captured within the variable cost percentages. Remove any flagging of consumables as a missing or zero cost item from the AI assessment concerns section.
+5. Bedhampton revenue in the model
+The Bedhampton gross monthly revenue used in all P&L calculations, cash runway and safety net metrics must pull from the figure manually entered in the Bedhampton assumptions section, not from the live ANS data feed. The live data feed figures (last month, projected this month, 3-month average) should be displayed as reference information only — clearly labelled as reference, not used in any calculation. The model calculates from the manually entered assumption.
+6. Property comparison
+Add an explicit property comparison section to the AI assessment covering 9A Jewry Street versus 34A Jewry Street. Compare on: corrected true monthly all-in cost for each, revenue ceiling (two rooms vs one room), listed building fit-out risk at 34A, signage viability, break-even occupancy for each property using the model’s own cost figures, and a named recommendation with brief reasoning. Pull all cost figures from the assumptions already entered for each property in the Properties section. Do not hardcode any figures.
+7. VAT on rent
+VAT on rent for 9A is confirmed No and is already marked as such in the model. Remove any at-risk flag or concern referencing VAT on rent for 9A from the AI assessment. The model already handles this correctly.
+Do not change the scenario selector, project plan, risk register, compliance tracker, pricing inputs, competition intelligence section, or any other section not listed above.

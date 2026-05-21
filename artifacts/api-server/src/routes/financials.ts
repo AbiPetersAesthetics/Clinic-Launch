@@ -273,12 +273,8 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
 
-  // If existingClinicRevenueGbp is 0 (not set / accidentally cleared),
-  // use the live 3-month Bedhampton average so calculations are never silently zeroed.
-  const bedhResolved = await resolveBedhamptonRevenue(model);
-  if (bedhResolved.fromLive && bedhResolved.revenue > 0) {
-    (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
-  }
+  // Bedhampton revenue ALWAYS comes from the manually entered model assumption.
+  // Live ANS data is displayed as reference only — never used in calculations.
 
   // Issue 1: Derive working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
   // Falls back to stored financial_models values if no lifestyle plan exists.
@@ -436,12 +432,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   if (!model) return res.status(404).json({ error: "No financial model found" });
   model = await applyPropertyFallback(model as any, projectId);
 
-  // If existingClinicRevenueGbp is 0 (not set / accidentally cleared),
-  // use the live 3-month Bedhampton average so the cashflow is never silently zeroed.
-  const bedhResolved = await resolveBedhamptonRevenue(model);
-  if (bedhResolved.fromLive && bedhResolved.revenue > 0) {
-    (model as any).existingClinicRevenueGbp = bedhResolved.revenue;
-  }
+  // Bedhampton revenue ALWAYS comes from the manually entered model assumption.
+  // Live ANS data is displayed as reference only — never used in calculations.
 
   // Issue 1: Derive working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
   const lifestyleScheduleCf = await deriveLifestyleSchedule(projectId);

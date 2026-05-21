@@ -290,6 +290,26 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     activeTargetOcc = Math.round(activeProf.getTargetOcc(financial));
     activeScenarioNote = activeProf.note;
 
+    // Item 3: Apply lifestyle-derived working days and hours (same logic as deriveLifestyleSchedule
+    // in financials.ts) so AI uses the current Life Design schedule, not a potentially stale DB value.
+    if (lifestyleRaw) {
+      const ls = lifestyleRaw;
+      const parseArr = (v: unknown): string[] => {
+        if (Array.isArray(v)) return v;
+        try { return v ? JSON.parse(v as string) : []; } catch { return []; }
+      };
+      const clinicDays = parseArr(ls.clinicDays);
+      if (clinicDays.length > 0) {
+        (financial as any).workingDaysPerMonth = Math.round(clinicDays.length * 4.33);
+      }
+      if (ls.clinicOpenTime && ls.clinicCloseTime) {
+        const toMins = (t: string) => { const [h, m] = t.split(":").map(Number); return h * 60 + (m || 0); };
+        const rawMins = toMins(String(ls.clinicCloseTime)) - toMins(String(ls.clinicOpenTime));
+        const derivedHours = Math.max(1, Math.round((rawMins / 60 - 0.5) * 2) / 2); // 30-min lunch
+        (financial as any).practitionerHoursPerDay = derivedHours;
+      }
+    }
+
     // All three scenarios now use wincAcvGbp (Winchester-specific ACV, e.g. £230)
     // rather than the legacy averageClientValueGbp (originally set from Bedhampton).
     const wincAcv = financial.wincAcvGbp || financial.averageClientValueGbp;
@@ -401,7 +421,7 @@ Variable cost assumptions (these drive profitability — flag any zero values as
   Commissions: ${financial.commissionsPercent}% of revenue
   Marketing (fixed monthly): £${financial.marketingGbp}
   Staffing (fixed monthly): £${financial.staffingGbp}
-  Consumables (fixed monthly): £${financial.consumablesGbp}${financial.consumablesGbp === 0 ? " ⚠ DATA GAP — clinical consumables (cannulas, gloves, swabs, syringes) typically £80–£150/mo. Currently zero." : ""}
+  Consumables (fixed monthly): £${financial.consumablesGbp} (already captured within variable cost percentages — do NOT flag as missing or a data gap)
   Total variable % of revenue: ${Math.round(variableRatio * 100)}% | Total fixed variable items: £${fixedVarItems.toLocaleString()}/mo
 
 Winchester ACV:${financial.wincAcvGbp ? ` £${financial.wincAcvGbp} (Winchester-specific)` : ` £${financial.averageClientValueGbp} (⚠ FALLBACK — Winchester ACV not entered; using Bedhampton's £${financial.averageClientValueGbp}. Winchester is a premium clinic; its ACV may differ significantly.)`}
@@ -433,9 +453,59 @@ Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate
     ? `Itemised fixed costs (${fixedCostsRaw.length} items, £${totalFixedItemsCost.toLocaleString()}/mo total):\n${fixedCostsRaw.map((c) => `  • ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
     : "No itemised fixed costs entered yet — financial model uses category totals only.";
 
+  // ── Property comparison context (Item 6) ─────────────────────────────────
+  // Computes break-even for each property using its rent/rates substituted into
+  // the shared fixed cost base. Used in the AI prompt for a direct comparison.
+  const propertyComparisonContext = (financial && allPropertiesRaw.length >= 2) ? (() => {
+    const wincAcv2 = financial.wincAcvGbp || financial.averageClientValueGbp;
+    const variableRatioP = (financial.stockPercent + financial.commissionsPercent) / 100;
+    const fixedVarItemsP = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
+    const activePropRent  = activeProperty?.monthlyRentGbp || 0;
+    const activePropRates = Math.round((activeProperty?.businessRatesGbp || 0) / 12);
+    // Shared costs = total fixed items minus active property's rent + rates
+    const sharedFixed = totalFixedItemsCost - activePropRent - activePropRates;
+
+    const propDetails = allPropertiesRaw.map(p => {
+      const monthlyRent  = p.monthlyRentGbp || 0;
+      const monthlyRates = Math.round((p.businessRatesGbp || 0) / 12);
+      const monthlyServiceCharge = Math.round((p.serviceChargeGbp || 0) / 12);
+      const propFixed    = sharedFixed + monthlyRent + monthlyRates;
+      const beRev        = Math.round((propFixed + fixedVarItemsP) / Math.max(1 - variableRatioP - vatRateForCalc, 0.01));
+      const slots1Room   = financial.practitionerHoursPerDay * financial.workingDaysPerMonth;
+      const revCeiling1  = Math.round(slots1Room * wincAcv2);
+      const revCeiling2  = Math.round(slots1Room * 2 * wincAcv2);
+      const beOcc1 = revCeiling1 > 0 ? Math.round((beRev / revCeiling1) * 100) : 0;
+      const beOcc2 = revCeiling2 > 0 ? Math.round((beRev / revCeiling2) * 100) : 0;
+      return { p, monthlyRent, monthlyRates, monthlyServiceCharge, propFixed, beRev, beOcc1, beOcc2, revCeiling1, revCeiling2 };
+    });
+
+    const lines = propDetails.map(({ p, monthlyRent, monthlyRates, monthlyServiceCharge, propFixed, beRev, beOcc1, beOcc2, revCeiling1, revCeiling2 }) =>
+      `${p.isActiveForProject ? "★ ACTIVE" : "○ ALTERNATIVE"}: ${p.address || "Unknown"} (${p.postcode || "?"})
+  Monthly rent: £${monthlyRent.toLocaleString()} | Monthly rates: £${monthlyRates.toLocaleString()} | Service charge: ~£${monthlyServiceCharge.toLocaleString()}/mo
+  Total monthly fixed costs (with this property's rent/rates): £${propFixed.toLocaleString()}/mo
+  Break-even revenue: £${beRev.toLocaleString()}/mo
+  Break-even occupancy — 1 treatment room model: ${beOcc1}% (rev ceiling £${revCeiling1.toLocaleString()}/mo at 100%)
+  Break-even occupancy — 2 treatment room model: ${beOcc2}% (rev ceiling £${revCeiling2.toLocaleString()}/mo at 100%)
+  VAT on rent: ${p.vatOnRent ? "YES — adds 20% to monthly cost" : "NO (confirmed)"}
+  Size: ${p.sqFootage || "?"}sqft | Use class: ${p.useClass || "?"} | Status: ${p.status || "unknown"}
+  Notes: ${p.notes || "none"}`
+    ).join("\n\n");
+
+    return `=== PROPERTY COMPARISON: ${allPropertiesRaw.map(p => p.address).join(" vs ")} ===
+${lines}
+
+INSTRUCTIONS FOR propertyComparison FIELD — address ALL six points:
+1. True all-in monthly cost for each property: use the computed figures above (not your own estimates)
+2. Revenue ceiling: 9A = 1 room (£${Math.round(financial.practitionerHoursPerDay * financial.workingDaysPerMonth * wincAcv2).toLocaleString()}/mo at 100%). If 34A has 2 rooms, use the 2-room ceiling above. State the practical implication for growth.
+3. Listed building fit-out risk at 34A Jewry Street: specific constraints (listed building consents required, structural changes restricted, partition/fit-out limitations, higher insurance, longer planning timeline — these are material to cost and opening date)
+4. Signage viability: compare ability to install external clinical branding at each property; listed building planning restrictions vs 9A
+5. Break-even occupancy: use the computed figures above — state both, compare, recommend which is more achievable given the ramp model
+6. Named recommendation: state clearly which property you recommend and why in 2–3 sentences`;
+  })() : "";
+
   // ── Property context ──────────────────────────────────────────────────────
   const allPropertyLines = allPropertiesRaw.map((p) =>
-    `  ${p.isActiveForProject ? "★ SELECTED" : "○"} ${p.address || "Unknown"} (${p.postcode || "?"}): £${p.monthlyRentGbp || "?"}/mo | ${p.sqFootage || "?"}sqft | Stage: ${p.status || "unknown"} | Use class: ${p.useClass || "?"} | VAT on rent: ${p.vatOnRent ? "Yes" : "No/unknown"}`
+    `  ${p.isActiveForProject ? "★ SELECTED" : "○"} ${p.address || "Unknown"} (${p.postcode || "?"}): £${p.monthlyRentGbp || "?"}/mo | ${p.sqFootage || "?"}sqft | Stage: ${p.status || "unknown"} | Use class: ${p.useClass || "?"} | VAT on rent: ${p.vatOnRent ? "Yes (landlord opted to tax — adds 20% to monthly cost)" : "No (confirmed)"}`
   ).join("\n");
 
   const propertyContext = allPropertiesRaw.length > 0
@@ -643,7 +713,7 @@ ${fixedCostContext}
 
 === PROPERTY PIPELINE ===
 ${propertyContext}
-
+${propertyComparisonContext ? `\n${propertyComparisonContext}\n` : ""}
 === LIVE BEDHAMPTON CLINIC PERFORMANCE (her existing business — the financial safety net) ===
 ${bedhContext}
 
@@ -680,7 +750,7 @@ Variable cost breakdown (drives every month's net P&L — gaps will overstate pr
   Commissions: ${financial.commissionsPercent}% of revenue
   Marketing (fixed/mo): £${financial.marketingGbp}
   Staffing (fixed/mo): £${financial.staffingGbp}
-  Consumables (fixed/mo): £${financial.consumablesGbp}${financial.consumablesGbp === 0 ? " ⚠ DATA GAP: cannulas, gloves, swabs typically £80–150/mo." : ""}
+  Consumables (fixed/mo): £${financial.consumablesGbp} (captured in variable costs — do NOT flag as missing)
   Total fixed variable items (marketing+staffing+consumables): £${fixedMonthlyCosts2.toLocaleString()}/mo
 Total monthly cost base (fixed + fixed-variable items): £${totalMonthlyCost.toLocaleString()}
 Variable cost rate applied to revenue (stock + commissions): ${Math.round(varRate * 100)}% of revenue
@@ -723,6 +793,15 @@ ACTIVE SCENARIO RAMP PARAMETERS (use these exact values — they come from the m
 5. Do NOT exceed ${Math.round(activeTargetOcc * 1.15)}% occupancy in any month (cap at 115% of the active scenario's target occupancy of ${activeTargetOcc}%)
 6. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
 })() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
+
+MANDATORY CONSTRAINTS — you MUST comply with ALL of the following before generating your response:
+1. BUSINESS RATES: The business rates figure is taken exclusively from the itemised fixed costs list provided above. Do NOT independently calculate, estimate, or override rates — use only the exact figure from that list.
+2. BEDHAMPTON REVENUE: All calculations use the manually entered model figure (£${financial?.existingClinicRevenueGbp || 0}/mo). The live Bedhampton feed figures shown in the context are for reference only — they must NOT be used in any calculation.
+3. CONSUMABLES: Do NOT include consumables as a concern, data gap, or missing cost item. Consumables are captured within the variable cost percentages. Remove any consumables flag from concerns or conditions.
+4. VAT ON RENT at 9A Jewry Street: This is CONFIRMED NO VAT on rent — a verified fact. Do NOT flag VAT on rent as a risk, concern, condition, or negotiation point for 9A Jewry Street under any circumstances whatsoever.
+5. BREAK-EVEN FIGURES: Use only the pre-computed break-even revenue (£${breakEvenRevenue.toLocaleString()}/mo) supplied above. Do NOT recalculate independently.
+6. CAPACITY MODEL: The revenue ceiling and break-even occupancy use the exact working days (${financial?.workingDaysPerMonth || 0} days/mo) and hours/day (${financial?.practitionerHoursPerDay || 0} hrs) from the Life Design plan above. Do NOT substitute different figures.
+7. PROPERTY COMPARISON: You MUST populate the propertyComparison field. Use the computed figures from the PROPERTY COMPARISON section above — do not substitute your own estimates.
 
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
@@ -792,6 +871,29 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "<key point 3 — e.g. repairing obligations: internal only + schedule of condition>",
     "<key point 4 — e.g. fit-out contribution: ask £X or equivalent rent-free>"
   ],
+  "propertyComparison": {
+    "properties": [
+      {
+        "address": "<full address>",
+        "isActive": <true for the currently selected property>,
+        "monthlyRent": <integer>,
+        "monthlyRates": <integer>,
+        "monthlyAllIn": <integer — rent + rates + service charge>,
+        "totalMonthlyFixed": <integer — all fixed costs with this property's rent/rates>,
+        "breakEvenRevenue": <integer — use the computed figure from PROPERTY COMPARISON section above>,
+        "breakEvenOccupancy1Room": <integer % — use computed figure>,
+        "breakEvenOccupancy2Rooms": <integer % — use computed figure if 2 rooms available>,
+        "revenueCeiling1Room": <integer — £/mo at 100% occupancy, 1 room>,
+        "revenueCeiling2Rooms": <integer — £/mo at 100% occupancy, 2 rooms>,
+        "vatOnRent": <boolean>,
+        "listedBuildingRisk": "<specific fit-out and planning constraints for listed buildings, or 'None' if not listed>",
+        "signageViability": "<assessment of external signage options and planning constraints>",
+        "notes": "<any other commercially relevant property-specific notes>"
+      }
+    ],
+    "recommendation": "<named recommendation: state clearly which property you recommend and why in 2-3 sentences — cite real numbers>",
+    "keyDifferentiators": ["<specific difference 1 with numbers>", "<specific difference 2>", "<specific difference 3>"]
+  },
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
   "nextReviewDate": "<ISO 8601 date>",
   "monthlyRevenueForecast": [
