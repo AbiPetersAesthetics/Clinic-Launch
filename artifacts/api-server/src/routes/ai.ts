@@ -208,6 +208,8 @@ Respond in this exact JSON format only, no preamble:
 router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const projectId = parseInt(req.params.projectId as string);
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
+  const rawCmpId = req.body?.comparePropertyId;
+  const comparePropertyId = (rawCmpId != null && rawCmpId !== "") ? parseInt(rawCmpId as string) : null;
 
   // ── Gather all data in parallel ───────────────────────────────────────────
   // NOTE: This analysis is about whether to proceed with property negotiation
