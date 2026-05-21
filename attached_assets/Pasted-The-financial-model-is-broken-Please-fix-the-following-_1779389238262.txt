@@ -1,0 +1,23 @@
+The financial model is broken. Please fix the following issues completely:
+1. Fixed costs data is corrupted
+The fixed costs list contains duplicate entries — Rent appears 3 times, Business Rates appears 3 times (including a -£1 entry), and there are multiple blank £0 entries. Strip out all duplicates and £0 placeholder rows. Each cost item should appear exactly once. The correct unique Winchester costs are: Rent/Lease £2,708, Business Rates £996, Service Charge £518, Electricity £180, Water £30, Internet £40, Contents Insurance £60, Public Liability Insurance £25, Indemnity Uplift £60, NMC Registration £10, RCN Registration £15, ACE Registration £20, JCCP/BCAM Registration £40. The correct dual costs (shared, counted once) are: ANS Software £72, Web Hosting £7, QuickBooks £10, Accountant £150, Banking £10, Clinical Waste £25, Marketing Ads £600, GoHighLevel £82, Card Terminal £30. Recalculate total fixed costs correctly from these figures only.
+2. Restore correct P&L logic
+Pre-opening (before Winchester opens):
+
+Bedhampton net = Bedhampton gross revenue minus stock cost (26%) minus dual costs only
+Winchester fixed costs do not apply yet
+Project costs burn from business capital each month
+
+Post-opening (Winchester open):
+
+Winchester P&L = Winchester revenue minus variable costs (stock %, commissions, marketing, staffing, consumables) minus ALL fixed costs (unique + dual) minus VAT on Winchester revenue once threshold crossed
+Bedhampton net = Bedhampton gross revenue minus stock cost minus ZERO fixed costs (all dual costs have transferred to Winchester and must not be double-charged to Bedhampton)
+Net profit each month = Winchester P&L plus Bedhampton net minus drawings
+
+3. Bedhampton close trigger
+Bedhampton closes when Winchester net profit (Winchester revenue minus variable minus fixed minus VAT) divided by Winchester gross revenue exceeds the self-funding buffer percentage set in assumptions (default 20%). This calculation must use Winchester figures only, not combined figures.
+4. Cash runway
+Business capital starts at the figure set in assumptions. Pre-opening: capital changes each month by Bedhampton net minus project costs. Post-opening: capital changes each month by net profit (Winchester P&L plus Bedhampton net) minus drawings. Capital must never go below zero in the model display — show a warning if it does but do not clamp the number.
+5. VAT
+VAT applies to Winchester revenue only once combined rolling 12-month turnover crosses the threshold set in assumptions (default £90,000). Once triggered, apply VAT at the rate set in the VAT offset selector. Do not apply VAT to Bedhampton revenue in the P&L — Bedhampton net is shown post-stock and post-dual-costs only.
+6. Do not change anything else — leave all UI, tabs, charts, risk register, project plan and assumptions inputs exactly as they are. Only fix the P&L calculation logic and the fixed costs deduplication.

@@ -530,12 +530,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     .reduce((sum, item) => sum + (item.amountGbp || 0), 0);
 
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
-  // When the fixed cost items table is in use it is the single source of truth for all fixed costs
-  // (including marketing, staffing, consumables). Adding model.marketingGbp etc. on top would
-  // double-count those line items — so zero them out here and let the items table own them.
-  const fixedVariableItems = fixedCostItems.length > 0
-    ? 0
-    : (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
+  // Variable overheads (marketing, staffing, consumables) are always deducted from Winchester P&L
+  // in addition to the fixed cost items table. These are separate concepts:
+  //   - fixedCostItems = fixed premises/overhead (rent, rates, utilities, insurance, etc.)
+  //   - fixedVariableItems = month-on-month variable spend (marketing budget, staffing, consumables)
+  const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
@@ -697,18 +696,20 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     // Rates Bedhampton absorbs during free-rent months (Winchester not yet open to pay them)
     const bedhFreeRentRates = preOpenIsFreeRent ? monthlyRates : 0;
 
-    // VAT — tracked across the whole business (Bedhampton + Winchester combined)
+    // VAT — registration triggered by combined rolling turnover (both clinics), but the P&L
+    // liability is charged to Winchester only. Bedhampton net is shown post-stock and
+    // post-dual-costs only; its VAT liability is not deducted in this model.
     const monthTotalRevenue = bedhRevenue + wincRevenue;
     if (!vatRegistered) {
       vatCumulativeTurnover += monthTotalRevenue;
       if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
     }
     const isVatRegistered = vatRegistered;
-    const vatLiability = isVatRegistered ? monthTotalRevenue * VAT_RATE : 0;
-    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_RATE : 0;
+    const bedhVat = 0; // Bedhampton net is pre-VAT in this model
     const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
+    const vatLiability = wincVat; // Total P&L VAT charge = Winchester only
 
-    const bedhNet = bedhRevenue - bedhCosts - bedhVat - bedhFreeRentRates;
+    const bedhNet = bedhRevenue - bedhCosts - bedhFreeRentRates; // no VAT deducted from Bedh
 
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
     // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
