@@ -440,8 +440,6 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const rampTier = (req.query.rampTier as string) ?? "average";
   const vatRateParam = parseFloat((req.query.vatRate as string) ?? "0.20");
   const VAT_RATE_EFFECTIVE = isNaN(vatRateParam) ? 0.20 : Math.min(Math.max(vatRateParam, 0.05), 0.20);
-  // Optional: run the cashflow for a specific property (for comparison) instead of the active one
-  const overridePropertyId = req.query.overridePropertyId ? parseInt(req.query.overridePropertyId as string) : null;
 
   let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   if (!model) return res.status(404).json({ error: "No financial model found" });
@@ -496,52 +494,20 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     };
   });
 
-  // Load dynamic fixed cost items — scoped to the active property (or overridePropertyId for compare)
+  // Load dynamic fixed cost items — scoped to the active property
   const [activePropForCf] = await db
     .select()
     .from(propertiesTable)
     .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-
-  // When comparing, apply the compare property's rent/rates to the model copy
-  let overridePropForCf: typeof propertiesTable.$inferSelect | null = null;
-  if (overridePropertyId) {
-    const [overrideProp] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, overridePropertyId));
-    if (overrideProp) {
-      overridePropForCf = overrideProp;
-      if (overrideProp.monthlyRentGbp != null) (model as any).rentGbp = overrideProp.monthlyRentGbp;
-      if (overrideProp.businessRatesGbp != null) (model as any).ratesGbp = Math.round(overrideProp.businessRatesGbp / 12);
-      (model as any).vatOnRent = overrideProp.vatOnRent ?? false;
-    }
-  }
+  const activePropIdCf = activePropForCf?.id ?? null;
 
   const allFixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
-
-  const effectivePropIdCf = overridePropertyId ?? activePropForCf?.id ?? null;
-  // Items scoped to the compare property, or shared (propertyId = null)
-  const compareSpecificItems = effectivePropIdCf
-    ? allFixedCostItems.filter(i => i.propertyId === effectivePropIdCf || i.propertyId === null)
+  const fixedCostItems = activePropIdCf
+    ? allFixedCostItems.filter(i => i.propertyId === activePropIdCf || i.propertyId === null)
     : allFixedCostItems;
-
-  // If the compare property has no items of its own, fall back to the active property's items
-  // and patch rent/rates in-memory so the comparison is like-for-like (same ops costs, different property costs)
-  let fixedCostItems = compareSpecificItems;
-  if (overridePropertyId && compareSpecificItems.length === 0) {
-    const activeItems = allFixedCostItems.filter(i => i.propertyId === activePropForCf?.id || i.propertyId === null);
-    fixedCostItems = activeItems.map(item => {
-      const isRent  = /rent|lease/i.test(item.name);
-      const isRates = /rate/i.test(item.name);
-      if (isRent && overridePropForCf?.monthlyRentGbp != null) {
-        return { ...item, amountGbp: overridePropForCf.monthlyRentGbp };
-      }
-      if (isRates && overridePropForCf?.businessRatesGbp != null) {
-        return { ...item, amountGbp: Math.round(overridePropForCf.businessRatesGbp / 12) };
-      }
-      return item;
-    });
-  }
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
   const reqMonths = parseInt((req.query.months as string) || "12");

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -501,35 +501,6 @@ export default function FinancialsPage() {
   const [openDate, setOpenDate] = useState("");
   const [datesSaving, setDatesSaving] = useState(false);
 
-  // Compare property milestone dates
-  const [cmpLeaseSign, setCmpLeaseSign] = useState("");
-  const [cmpKeyHandover, setCmpKeyHandover] = useState("");
-  const [cmpOpenDate, setCmpOpenDate] = useState("");
-  const [cmpDatesSaving, setCmpDatesSaving] = useState(false);
-
-  const saveCmpDates = async () => {
-    if (!compareProperty) return;
-    setCmpDatesSaving(true);
-    try {
-      await fetch(`/api/properties/${compareProperty.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          leaseSignDate: cmpLeaseSign || null,
-          keyHandoverDate: cmpKeyHandover || null,
-          targetOpenDate: cmpOpenDate || null,
-        }),
-      });
-      queryClient.invalidateQueries({ queryKey: ["property-full", compareProperty.id] });
-      queryClient.invalidateQueries({ queryKey: ["cashflow-compare", PROJECT_ID] });
-      toast({ title: "Compare dates saved", description: `Milestone dates saved for ${compareProperty.address}` });
-    } catch {
-      toast({ title: "Save failed", description: "Could not save compare dates.", variant: "destructive" });
-    } finally {
-      setCmpDatesSaving(false);
-    }
-  };
-
   useEffect(() => {
     if (model) {
       setLeaseSignDate((model as any).leaseSignDate ?? "");
@@ -578,67 +549,6 @@ export default function FinancialsPage() {
     const a = new Date(d1), b = new Date(d2);
     return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
   };
-
-  // ── Property financial comparison ──────────────────────────────────────────
-  const [compareProperty, setCompareProperty] = useState<{ id: number; address: string } | null>(null);
-  useEffect(() => {
-    const stored = localStorage.getItem("financialCompareProperty");
-    if (stored) { try { setCompareProperty(JSON.parse(stored)); } catch {} }
-    const handler = (e: StorageEvent) => {
-      if (e.key !== "financialCompareProperty") return;
-      if (e.newValue) { try { setCompareProperty(JSON.parse(e.newValue)); } catch {} }
-      else setCompareProperty(null);
-    };
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
-  }, []);
-  const clearCompare = () => {
-    localStorage.removeItem("financialCompareProperty");
-    setCompareProperty(null);
-  };
-  const compareQKBase = ["cashflow-compare", PROJECT_ID, scenario, rampTier, activeVat.rate, compareProperty?.id] as const;
-  const { data: compareCashflow } = useQuery<CashflowMonth[]>({
-    queryKey: compareQKBase,
-    queryFn: () =>
-      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&overridePropertyId=${compareProperty!.id}`)
-        .then((r) => r.json()),
-    enabled: compareProperty != null,
-    staleTime: 0,
-    placeholderData: (prev) => prev,
-  });
-  const { data: compareCashflow36 } = useQuery<CashflowMonth[]>({
-    queryKey: [...compareQKBase, "36"],
-    queryFn: () =>
-      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&months=36&overridePropertyId=${compareProperty!.id}`)
-        .then((r) => r.json()),
-    enabled: compareProperty != null,
-    staleTime: 0,
-    placeholderData: (prev) => prev,
-  });
-  const comparePnlData = pnlMonths === 36 ? compareCashflow36 : compareCashflow;
-  const mergedCashflow = useMemo(() => {
-    if (!cashflow) return cashflow;
-    if (!compareCashflow) return cashflow;
-    const map = new Map(compareCashflow.map(m => [m.calendarLabel, m]));
-    return cashflow.map(m => ({ ...m, compareBalance: map.get(m.calendarLabel)?.cashBalance ?? null }));
-  }, [cashflow, compareCashflow]);
-
-  // Fetch full property row for compare milestone dates
-  const { data: comparePropFull } = useQuery<any>({
-    queryKey: ["property-full", compareProperty?.id],
-    queryFn: () => fetch(`/api/properties/${compareProperty!.id}`).then(r => r.json()),
-    enabled: compareProperty != null,
-    staleTime: 30_000,
-  });
-  useEffect(() => {
-    if (comparePropFull) {
-      setCmpLeaseSign(comparePropFull.leaseSignDate ?? "");
-      setCmpKeyHandover(comparePropFull.keyHandoverDate ?? "");
-      setCmpOpenDate(comparePropFull.targetOpenDate ?? "");
-    } else if (!compareProperty) {
-      setCmpLeaseSign(""); setCmpKeyHandover(""); setCmpOpenDate("");
-    }
-  }, [comparePropFull, compareProperty]);
 
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
@@ -1473,117 +1383,8 @@ export default function FinancialsPage() {
                   Save dates
                 </Button>
               </div>
-
-              {/* ── Compare property dates row — only visible when comparing ── */}
-              {compareProperty && (
-                <div className="mt-5 pt-4 border-t border-amber-200 dark:border-amber-800">
-                  <div className="flex items-center gap-2 mb-3">
-                    <BarChart3 className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide">Compare: </span>
-                    <span className="text-xs text-amber-600 dark:text-amber-500 truncate">{compareProperty.address}</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-                    {/* Cmp Lease Sign */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Target Lease Sign</label>
-                      <input
-                        type="date"
-                        value={cmpLeaseSign}
-                        onChange={(e) => setCmpLeaseSign(e.target.value)}
-                        className="w-full rounded-md border border-amber-300 dark:border-amber-700 bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                      />
-                      {cmpLeaseSign && cmpOpenDate && (() => {
-                        const m = monthsBetween(cmpLeaseSign, cmpOpenDate);
-                        return m !== null ? (
-                          <p className="text-xs text-muted-foreground">
-                            {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
-                            {m > 0 && <span className="ml-1 text-amber-600 dark:text-amber-400">→ {m}mo pre-opening costs</span>}
-                          </p>
-                        ) : null;
-                      })()}
-                      {!cmpLeaseSign && <p className="text-xs text-muted-foreground">Not set</p>}
-                    </div>
-
-                    {/* Cmp Key Handover */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">Key Handover</label>
-                      <input
-                        type="date"
-                        value={cmpKeyHandover}
-                        onChange={(e) => setCmpKeyHandover(e.target.value)}
-                        className="w-full rounded-md border border-amber-300 dark:border-amber-700 bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-                      />
-                      {cmpKeyHandover && cmpOpenDate && (() => {
-                        const m = monthsBetween(cmpKeyHandover, cmpOpenDate);
-                        return m !== null ? (
-                          <p className="text-xs text-muted-foreground">
-                            {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
-                          </p>
-                        ) : null;
-                      })()}
-                      {cmpKeyHandover && cmpLeaseSign && (() => {
-                        const m = monthsBetween(cmpLeaseSign, cmpKeyHandover);
-                        return m !== null && m > 0 ? (
-                          <p className="text-xs text-muted-foreground">{m} month{m !== 1 ? "s" : ""} after lease sign</p>
-                        ) : null;
-                      })()}
-                    </div>
-
-                    {/* Cmp Open Date */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide flex items-center gap-1">
-                        Clinic Opens
-                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 dark:bg-amber-900 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700">Compare</span>
-                      </label>
-                      <input
-                        type="date"
-                        value={cmpOpenDate}
-                        onChange={(e) => setCmpOpenDate(e.target.value)}
-                        className="w-full rounded-md border border-amber-400 dark:border-amber-600 bg-background px-3 py-1.5 text-sm shadow-sm ring-1 ring-amber-200 dark:ring-amber-800 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
-                      />
-                      {cmpOpenDate && (
-                        <p className="text-xs font-medium text-amber-600 dark:text-amber-400">
-                          {new Date(cmpOpenDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-                        </p>
-                      )}
-                    </div>
-
-                  </div>
-                  <div className="mt-3 flex items-center justify-end">
-                    <Button size="sm" onClick={saveCmpDates} disabled={cmpDatesSaving} className="bg-amber-600 hover:bg-amber-700 text-white">
-                      {cmpDatesSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-                      Save compare dates
-                    </Button>
-                  </div>
-                </div>
-              )}
-
             </CardContent>
           </Card>
-
-          {/* ── Property Comparison Banner ───────────────────────────────────── */}
-          {compareProperty && (
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 px-4 py-2.5">
-              <div className="flex items-center gap-2 min-w-0">
-                <BarChart3 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                <div className="min-w-0">
-                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Comparing financials: </span>
-                  <span className="text-xs text-amber-700 dark:text-amber-400 font-medium truncate">{compareProperty.address}</span>
-                  <span className="ml-2 text-[10px] text-amber-600/70 dark:text-amber-500/70">
-                    Orange lines / values = this property · Green = active property
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={clearCompare}
-                className="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 shrink-0 flex items-center gap-1 transition-colors"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-                Clear
-              </button>
-            </div>
-          )}
 
           {/* ── Live Bedhampton Performance ───────────────────────────────────── */}
           <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-950/20">
@@ -1708,7 +1509,6 @@ export default function FinancialsPage() {
             <CardContent>
               <div className="h-[340px]">
                 {cashflow && cashflow.length > 0 ? (() => {
-                  const chartData = mergedCashflow ?? cashflow;
                   const openingMonth = cashflow.find(m => m.isOpeningMonth);
                   const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
                   const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
@@ -1716,7 +1516,6 @@ export default function FinancialsPage() {
                   const allVals = [
                     ...cashflow.map(m => m.cashBalance),
                     ...cashflow.map(m => m.monthlyCashflow),
-                    ...(compareCashflow ? compareCashflow.map(m => m.cashBalance) : []),
                     0,
                   ];
                   const rawMin = Math.min(...allVals);
@@ -1728,7 +1527,7 @@ export default function FinancialsPage() {
                   ];
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                      <ComposedChart data={cashflow} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="cashGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
@@ -1850,9 +1649,8 @@ export default function FinancialsPage() {
                         />
                         <Legend
                           formatter={(v) =>
-                            v === "cashBalance" ? "Business capital — active property"
+                            v === "cashBalance" ? "Business capital (running balance)"
                             : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
-                            : v === "compareBalance" ? `Business capital — ${compareProperty?.address ?? "compare"}`
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -1877,20 +1675,6 @@ export default function FinancialsPage() {
                           strokeWidth={2.5}
                           dot={false}
                         />
-
-                        {/* Comparison property capital line */}
-                        {compareProperty && (
-                          <Line
-                            type="monotone"
-                            dataKey="compareBalance"
-                            name="compareBalance"
-                            stroke="#f59e0b"
-                            strokeWidth={2}
-                            strokeDasharray="6 3"
-                            dot={false}
-                            connectNulls
-                          />
-                        )}
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
@@ -2015,13 +1799,8 @@ export default function FinancialsPage() {
                           : m.isVatRegistered
                           ? "bg-amber-50/40 dark:bg-amber-950/10"
                           : "";
-                        const cmp = compareProperty ? (comparePnlData?.find(c => c.calendarLabel === m.calendarLabel) ?? null) : null;
-                        const cmpNet = cmp ? cmp.wincNet + cmp.bedhNet : 0;
-                        const cmpFixed = cmp ? cmp.wincFixedCosts + (cmp.preOpenPropertyCost ?? 0) : 0;
-                        const cmpShortAddr = compareProperty ? compareProperty.address.split(",")[0].trim() : "";
                         return (
-                          <React.Fragment key={m.month}>
-                          <tr className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                          <tr key={m.month} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
                             <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {m.calendarLabel}
@@ -2305,44 +2084,6 @@ export default function FinancialsPage() {
                               {formatGBP(m.cashBalance)}
                             </td>
                           </tr>
-                          {compareProperty && cmp && (
-                            <tr className="border-b border-amber-200/60 dark:border-amber-800/40 bg-amber-50/40 dark:bg-amber-950/10 hover:bg-amber-50/70 dark:hover:bg-amber-950/20 transition-colors">
-                              <td className="px-3 py-1.5 sticky left-0 bg-amber-50/60 dark:bg-amber-950/20">
-                                <div className="flex items-center gap-1 text-[10px] text-amber-700 dark:text-amber-400 font-medium">
-                                  <span className="opacity-50">↳</span>
-                                  <span className="truncate max-w-[120px]">{cmpShortAddr}</span>
-                                </div>
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
-                                {cmp.isPreOpening ? <span className="text-muted-foreground/30">—</span> : <span className="font-medium">{cmp.occupancyPercent}%</span>}
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
-                                {cmp.wincRevenue > 0 ? formatGBP(cmp.wincRevenue) : <span className="text-muted-foreground/30">—</span>}
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
-                                {cmp.wincVariableCosts > 0 ? <span>({formatGBP(cmp.wincVariableCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] font-semibold text-amber-700 dark:text-amber-400">
-                                {cmpFixed > 0 ? <span>({formatGBP(cmpFixed)})</span> : <span className="text-muted-foreground/30">—</span>}
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-amber-700 dark:text-amber-400">
-                                {cmp.wincVat > 0 ? <span>({formatGBP(cmp.wincVat)})</span> : "—"}
-                              </td>
-                              <td className={`text-right px-2 py-1.5 tabular-nums text-[11px] font-medium ${cmp.wincRevenue === 0 ? "text-muted-foreground/30" : cmp.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
-                                {cmp.wincRevenue === 0 ? "—" : `${cmp.wincNet >= 0 ? "+" : ""}${formatGBP(cmp.wincNet)}`}
-                              </td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
-                              <td className="text-right px-2 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
-                              <td className="text-right px-3 py-1.5 tabular-nums text-[11px] text-muted-foreground/40">—</td>
-                              <td className={`text-right px-3 py-1.5 tabular-nums text-[11px] font-semibold ${cmpNet > 0 ? "text-emerald-600 dark:text-emerald-400" : cmpNet < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                                {formatGBP(cmpNet)}
-                              </td>
-                              <td className={`text-right px-3 py-1.5 tabular-nums text-[11px] font-medium ${cmp.cashBalance >= 0 ? "text-amber-700 dark:text-amber-400" : "text-destructive"}`}>
-                                {formatGBP(cmp.cashBalance)}
-                              </td>
-                            </tr>
-                          )}
-                          </React.Fragment>
                         );
                       })}
                     </tbody>

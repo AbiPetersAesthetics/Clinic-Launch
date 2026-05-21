@@ -5,7 +5,7 @@ import {
   fixedCostItemsTable, propertiesTable, financialsTable,
   phasesTable, tasksTable, decisionsTable,
   complianceItemsTable, cqcMilestonesTable,
-  lifestylePlanTable, competitorsTable, projectsTable,
+  lifestylePlanTable, competitorsTable,
 } from "@workspace/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
@@ -208,8 +208,6 @@ Respond in this exact JSON format only, no preamble:
 router.post("/projects/:projectId/go-no-go", async (req, res) => {
   const projectId = parseInt(req.params.projectId as string);
   if (isNaN(projectId)) return res.status(400).json({ error: "Invalid project ID" });
-  const rawCmpId = req.body?.comparePropertyId;
-  const comparePropertyId = (rawCmpId != null && rawCmpId !== "") ? parseInt(rawCmpId as string) : null;
 
   // ── Gather all data in parallel ───────────────────────────────────────────
   // NOTE: This analysis is about whether to proceed with property negotiation
@@ -223,7 +221,6 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     bedhamptonRaw,
     lifestyleRaw,
     competitorsRaw,
-    projectRaw,
   ] = await Promise.all([
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
@@ -233,30 +230,16 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId))
       .orderBy(desc(competitorsTable.trustScore)),
-    db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).then(r => r[0] ?? null),
   ]);
 
   const financial = financialRaw[0] ?? null;
   const activeProperty = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
-  const comparePropertyRow = (comparePropertyId && !isNaN(comparePropertyId))
-    ? (allPropertiesRaw.find(p => p.id === comparePropertyId) ?? null) : null;
 
   // Dynamic property label used throughout prompts — never hardcode location name
   const propertyLabel = activeProperty
     ? [activeProperty.address, activeProperty.postcode].filter(Boolean).join(", ")
     : "selected property";
   const propertyTown = activeProperty?.postcode?.split(" ")[0] || activeProperty?.address?.split(",").at(-2)?.trim() || "the selected location";
-
-  // ── Opening date — driven by project.targetOpeningDate ────────────────────
-  const openingDateRaw: string = projectRaw?.targetOpeningDate ?? "2026-11-01";
-  const openingDateObj = new Date(openingDateRaw + "T00:00:00");
-  const openingDateLong = openingDateObj.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-  const openingMonthShort = openingDateObj.toLocaleDateString("en-GB", { month: "short", year: "numeric" }); // e.g. "Dec 2026"
-  // Build 12 month labels starting from the opening month
-  const forecastMonthLabels: string[] = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(openingDateObj.getFullYear(), openingDateObj.getMonth() + i, 1);
-    return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
-  });
 
   // ── Financial calculations for all 3 scenarios ───────────────────────────
   // fixedCostsOverride: pass the actual fixed cost total from the items table so that
@@ -297,13 +280,6 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   let activeRampMonths = 6;
   let activeTargetOcc = 60;
   let activeScenarioNote = "Realistic occupancy, standard 6-month ramp";
-
-  // Compare property context — populated inside if (financial) if comparePropertyRow is set
-  let compareContext = "";
-  let cmpComputedMonthlyFixed = 0;
-  let cmpComputedBreakEven = 0;
-  let cmpComputedRealisticNet = 0;
-  let cmpComputedRentToRevPct = 0;
 
   if (financial) {
     // Resolve the active scenario from the model's selectedScenario field
@@ -452,65 +428,6 @@ VAT risk:
   ${vatRiskDetail}
 
 Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate: ${financial.repeatBookingRatePercent}%`;
-
-    // ── Compare property financial computation ────────────────────────────────
-    if (comparePropertyRow) {
-      const wincAcvCmp = financial.wincAcvGbp || financial.averageClientValueGbp;
-      const cmpRent = comparePropertyRow.monthlyRentGbp ?? 0;
-      const cmpRates = comparePropertyRow.businessRatesGbp ? Math.round(comparePropertyRow.businessRatesGbp / 12) : 0;
-
-      // Fixed costs scoped to compare property (property-specific + shared/null)
-      const cmpFixedItems = fixedCostsRaw.filter(i => (i as any).propertyId === comparePropertyRow.id || (i as any).propertyId === null);
-      const cmpTotalFixed = cmpFixedItems.length > 0
-        ? cmpFixedItems.reduce((s, c) => s + (c.amountGbp ?? 0), 0)
-        : Math.round(cmpRent + cmpRates + financial.utilitiesGbp + financial.internetGbp +
-            financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp +
-            financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp +
-            financial.financeRepaymentsGbp);
-      cmpComputedMonthlyFixed = cmpTotalFixed;
-
-      const varRatioCmp = (financial.stockPercent + financial.commissionsPercent) / 100;
-      const fixedVarItemsCmp = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
-      cmpComputedBreakEven = Math.round((cmpTotalFixed + fixedVarItemsCmp) / Math.max(1 - varRatioCmp - vatRateForCalc, 0.01));
-
-      const conservativeOccCmp = financial.conservativeOccupancyPercent > 0 ? financial.conservativeOccupancyPercent : Math.max(Math.round(financial.realisticOccupancyPercent * 0.5), 20);
-      const aggressiveOccCmp  = financial.aggressiveOccupancyPercent  > 0 ? financial.aggressiveOccupancyPercent  : Math.min(Math.round(financial.realisticOccupancyPercent * 1.35), 95);
-
-      const cmpModel = { ...financial, rentGbp: cmpRent, ratesGbp: cmpRates } as typeof financial;
-      const cmpConservative = calcScenario(conservativeOccCmp, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
-      const cmpRealistic    = calcScenario(financial.realisticOccupancyPercent, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
-      const cmpAggressive   = calcScenario(aggressiveOccCmp, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
-      cmpComputedRealisticNet = cmpRealistic.net;
-      cmpComputedRentToRevPct = cmpRealistic.revenue > 0 ? Math.round((cmpRent / cmpRealistic.revenue) * 100) : 0;
-
-      const activeTotalFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : Math.round(financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp);
-      const fixedDiff = cmpTotalFixed - activeTotalFixed;
-      const netDiff   = cmpRealistic.net - realistic.net;
-      const beDiff    = cmpComputedBreakEven - breakEvenRevenue;
-
-      compareContext = `
-=== PROPERTY COMPARISON MODE ===
-You are evaluating TWO properties side-by-side. All revenue assumptions are IDENTICAL (same ACV, occupancy ramp, variable cost rates). Only cost structure differs.
-
-PROPERTY A — ACTIVE (${propertyLabel}):
-  Monthly rent: £${(financial.rentGbp || activeProperty?.monthlyRentGbp || 0).toLocaleString()}/mo | Business rates: £${(financial.ratesGbp || (activeProperty?.businessRatesGbp ? Math.round(activeProperty.businessRatesGbp / 12) : 0)).toLocaleString()}/mo
-  Total monthly fixed costs: £${activeTotalFixed.toLocaleString()}/mo
-  Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo | Rent as % of realistic revenue: ${rentToRevenuePct}%
-  Conservative net: £${conservative.net.toLocaleString()}/mo | Realistic net: £${realistic.net.toLocaleString()}/mo | Aggressive net: £${aggressive.net.toLocaleString()}/mo
-
-PROPERTY B — COMPARE (${comparePropertyRow.address}${comparePropertyRow.postcode ? `, ${comparePropertyRow.postcode}` : ""}):
-  Monthly rent: £${cmpRent.toLocaleString()}/mo | Business rates: £${cmpRates.toLocaleString()}/mo
-  Total monthly fixed costs: £${cmpTotalFixed.toLocaleString()}/mo (${cmpFixedItems.length > 0 ? `${cmpFixedItems.length} itemised cost lines` : "computed from model overrides"})
-  Break-even revenue needed: £${cmpComputedBreakEven.toLocaleString()}/mo | Rent as % of realistic revenue: ${cmpComputedRentToRevPct}%
-  Conservative net: £${cmpConservative.net.toLocaleString()}/mo | Realistic net: £${cmpRealistic.net.toLocaleString()}/mo | Aggressive net: £${cmpAggressive.net.toLocaleString()}/mo
-
-KEY FINANCIAL DIFFERENCES (B vs A):
-  Fixed cost gap: ${Math.abs(fixedDiff) < 50 ? "Essentially identical" : fixedDiff > 0 ? `Property B is £${fixedDiff.toLocaleString()}/mo MORE expensive` : `Property B is £${Math.abs(fixedDiff).toLocaleString()}/mo CHEAPER`}
-  Break-even gap: ${Math.abs(beDiff) < 100 ? "Virtually identical break-even" : beDiff > 0 ? `Property B needs £${beDiff.toLocaleString()}/mo MORE revenue to break even` : `Property B needs £${Math.abs(beDiff).toLocaleString()}/mo LESS revenue to break even`}
-  Realistic net profit: ${Math.abs(netDiff) < 100 ? "Negligible profit difference" : netDiff > 0 ? `Property B generates £${netDiff.toLocaleString()}/mo MORE net profit` : `Property A generates £${Math.abs(netDiff).toLocaleString()}/mo MORE net profit`}
-
-IMPORTANT: Your overall verdict, confidence score, and executive summary should reflect BOTH properties. In the propertyComparison block you MUST clearly state which property is the better financial choice using the actual £ numbers above. Consider both financial metrics (fixed costs, break-even, net profit) and non-financial factors (location, footfall, competition proximity, fit-out complexity, lease risk). Do NOT leave propertyComparison null or omit it.`;
-    }
   }
   const fixedCostContext = fixedCostsRaw.length > 0
     ? `Itemised fixed costs (${fixedCostsRaw.length} items, £${totalFixedItemsCost.toLocaleString()}/mo total):\n${fixedCostsRaw.map((c) => `  • ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
@@ -623,7 +540,7 @@ Client acquisition: Winchester is an Instagram-active, referral-driven market. L
   Revenue trend: ${revTrend}`;
   }
 
-  const daysToOpening = Math.ceil((openingDateObj.getTime() - Date.now()) / 86400000);
+  const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
 
   // ── Lifestyle / life-design context ───────────────────────────────────────
   let lifestyleContext = "Life design plan: not completed yet.";
@@ -712,7 +629,7 @@ LIFE READINESS SCORE: ${lifeReadinessPct}% (${doneChecks}/${totalChecks} conside
   // ── Master prompt ─────────────────────────────────────────────────────────
   const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
-THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of ${openingDateLong}?
+THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of 1 November 2026?
 
 IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity at this location justifies the risk.
 
@@ -799,15 +716,13 @@ ACTIVE SCENARIO RAMP PARAMETERS (use these exact values — they come from the m
   Target (plateau) occupancy: ${activeTargetOcc}%
   Linear ramp formula: each month adds approximately ${activeRampMonths > 0 ? Math.round((activeTargetOcc - activeStartOcc) / activeRampMonths) : 0}% occupancy until the ${activeTargetOcc}% ceiling is reached
 
-1. Launch: ${openingMonthShort}. Month 1 occupancy: ${activeStartOcc}% (this is the model's actual starting occupancy — do NOT use a different figure)
+1. Launch: Nov 2026. Month 1 occupancy: ${activeStartOcc}% (this is the model's actual starting occupancy — do NOT use a different figure)
 2. Ramp is marketing-led not referral-led: Abi has strong social media presence, META ads planned, Hampshire press/Muddy Stilettos coverage, and a soft launch event targeting local Winchester contacts. This accelerates new client acquisition above a typical cold-start curve, but does NOT substitute for the absence of a pre-built local client base.
 3. Apply the linear ramp above, reaching ${activeTargetOcc}% by Month ${activeRampMonths}, then plateau
 4. Seasonal multipliers (apply to baseline occupancy): Nov +5% (pre-Christmas demand spike), Dec -12% (holiday quiet), Jan +10% (new year resolution surge), Feb -5% (quietest month), Mar +3%, Apr +2%, May +5% (pre-summer), Jun +3%, Jul -4%, Aug -6%, Sep +2%, Oct +4% (pre-Christmas early bookings)
 5. Do NOT exceed ${Math.round(activeTargetOcc * 1.15)}% occupancy in any month (cap at 115% of the active scenario's target occupancy of ${activeTargetOcc}%)
 6. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
 })() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
-
-${compareContext}
 
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
@@ -877,32 +792,11 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "<key point 3 — e.g. repairing obligations: internal only + schedule of condition>",
     "<key point 4 — e.g. fit-out contribution: ask £X or equivalent rent-free>"
   ],
-  ${comparePropertyRow ? `"propertyComparison": {
-    "recommendedProperty": "active" | "compare" | "neither",
-    "winnerAddress": "<full address of the recommended property, or 'Neither' if inconclusive>",
-    "margin": "significant" | "marginal" | "negligible",
-    "rationale": "<2-3 sentences: which property wins financially and on non-financial factors — cite actual £ differences>",
-    "activePropertySummary": {
-      "monthlyFixed": <number — monthly fixed costs>,
-      "breakEven": <number — monthly break-even revenue>,
-      "realisticNet": <number — realistic scenario net profit/loss per month>,
-      "keyAdvantage": "<one sentence: what does this property have going for it>",
-      "keyRisk": "<one sentence: biggest concern with this property>"
-    },
-    "comparePropertySummary": {
-      "address": "<full address of compare property>",
-      "monthlyFixed": <number>,
-      "breakEven": <number>,
-      "realisticNet": <number>,
-      "keyAdvantage": "<one sentence>",
-      "keyRisk": "<one sentence>"
-    }
-  },` : ""}
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
   "nextReviewDate": "<ISO 8601 date>",
   "monthlyRevenueForecast": [
     {
-      "month": "${forecastMonthLabels[0]}",
+      "month": "Nov 2026",
       "monthIndex": 1,
       "projectedRevenue": <integer — use the formula: slots × occupancyPct/100 × ACV, rounded to nearest £50>,
       "occupancyPct": <integer — apply ramp-up + seasonal multiplier>,
@@ -913,17 +807,17 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
       "driverNote": "<1 sentence: what drives this month — e.g. 'Pre-Christmas demand spike + META ads converting early Winchester enquiries'>",
       "isBreakEven": <true if projectedRevenue >= breakEvenRevenue, else false>
     },
-    { "month": "${forecastMonthLabels[1]}", "monthIndex": 2 },
-    { "month": "${forecastMonthLabels[2]}", "monthIndex": 3 },
-    { "month": "${forecastMonthLabels[3]}", "monthIndex": 4 },
-    { "month": "${forecastMonthLabels[4]}", "monthIndex": 5 },
-    { "month": "${forecastMonthLabels[5]}", "monthIndex": 6 },
-    { "month": "${forecastMonthLabels[6]}", "monthIndex": 7 },
-    { "month": "${forecastMonthLabels[7]}", "monthIndex": 8 },
-    { "month": "${forecastMonthLabels[8]}", "monthIndex": 9 },
-    { "month": "${forecastMonthLabels[9]}", "monthIndex": 10 },
-    { "month": "${forecastMonthLabels[10]}", "monthIndex": 11 },
-    { "month": "${forecastMonthLabels[11]}", "monthIndex": 12 }
+    { "month": "Dec 2026", "monthIndex": 2 },
+    { "month": "Jan 2027", "monthIndex": 3 },
+    { "month": "Feb 2027", "monthIndex": 4 },
+    { "month": "Mar 2027", "monthIndex": 5 },
+    { "month": "Apr 2027", "monthIndex": 6 },
+    { "month": "May 2027", "monthIndex": 7 },
+    { "month": "Jun 2027", "monthIndex": 8 },
+    { "month": "Jul 2027", "monthIndex": 9 },
+    { "month": "Aug 2027", "monthIndex": 10 },
+    { "month": "Sep 2027", "monthIndex": 11 },
+    { "month": "Oct 2027", "monthIndex": 12 }
   ],
   "revenueForecast": {
     "breakEvenMonth": <integer 1-12, or null if break-even not reached within 12 months>,
@@ -995,14 +889,6 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
         vatRiskDetail,
         bedhCoverageMonths,
         daysToOpening,
-        ...(comparePropertyRow ? {
-          comparePropertyId: comparePropertyRow.id,
-          comparePropertyAddress: comparePropertyRow.address,
-          cmpMonthlyFixed: cmpComputedMonthlyFixed,
-          cmpBreakEven: cmpComputedBreakEven,
-          cmpRealisticNet: cmpComputedRealisticNet,
-          cmpRentToRevPct: cmpComputedRentToRevPct,
-        } : {}),
       },
       generatedAt: new Date().toISOString(),
     });

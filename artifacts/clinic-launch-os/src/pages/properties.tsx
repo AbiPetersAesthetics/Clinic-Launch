@@ -2360,7 +2360,7 @@ function PropertyCard({
         )}
       </div>
       {!compareMode && !property.isActiveForProject && property.pipelineStatus !== "rejected" && (
-        <div className="pt-1 border-t border-border/50 space-y-1">
+        <div className="pt-1 border-t border-border/50">
           <button
             onClick={handleSetActive}
             disabled={setPropertyActive.isPending}
@@ -2368,17 +2368,6 @@ function PropertyCard({
           >
             <Target className="w-3 h-3" />
             {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              localStorage.setItem("financialCompareProperty", JSON.stringify({ id: property.id, address: property.address ?? "Unknown" }));
-              navigate("/financials");
-            }}
-            className="text-xs text-amber-600/80 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 transition-colors flex items-center gap-1"
-          >
-            <BarChart3 className="w-3 h-3" />
-            Compare in Financials
           </button>
         </div>
       )}
