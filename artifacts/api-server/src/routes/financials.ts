@@ -559,7 +559,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   // Dual cost items — shared across both clinics, already counted ONCE in Winchester's fixed costs.
   // During pre-opening months Bedhampton bears them (Winchester is not yet open / paying).
-  const dualFixedCosts = fixedCostItems
+  // Always derived from the ACTIVE property's items — dual costs are shared business overheads
+  // that exist regardless of which clinic location is being compared.
+  const activeFixedCostItems = comparePropertyIdParam
+    ? allFixedCostItems.filter(i => i.propertyId === activePropIdCf || i.propertyId === null)
+    : fixedCostItems;
+  const dualFixedCosts = activeFixedCostItems
     .filter(item => item.costType === "dual")
     .reduce((sum, item) => sum + (item.amountGbp || 0), 0);
 
