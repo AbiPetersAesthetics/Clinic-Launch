@@ -530,7 +530,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     .reduce((sum, item) => sum + (item.amountGbp || 0), 0);
 
   const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
-  const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
+  // When the fixed cost items table is in use it is the single source of truth for all fixed costs
+  // (including marketing, staffing, consumables). Adding model.marketingGbp etc. on top would
+  // double-count those line items — so zero them out here and let the items table own them.
+  const fixedVariableItems = fixedCostItems.length > 0
+    ? 0
+    : (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
   const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
@@ -665,8 +670,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const bedhDeFactoClosed = !bedhClosed && bedhMonthlyRevenue > 0 && bedhRevenueCapped < bedhRunningCosts;
     const bedhRevenue = bedhDeFactoClosed ? 0 : bedhRevenueCapped;
 
-    // Product costs scale with actual (capped) revenue, not with full bedhMonthlyRevenue.
-    // Using full revenue when capacity is capped would inflate costs and produce a false negative net.
+    // Variable / product costs scale with actual (capped) revenue, mirroring Winchester's treatment.
     const bedhProductCostsMonth = bedhRevenue * bedhStockPct;
 
     // Dual costs: borne by Bedhampton during pre-opening (Winchester not yet paying them).

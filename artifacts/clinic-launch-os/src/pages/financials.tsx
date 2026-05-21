@@ -1744,19 +1744,19 @@ export default function FinancialsPage() {
                                           <span className="tabular-nums text-red-600">({formatGBP(_wincComm)})</span>
                                         </div>
                                       )}
-                                      {_wincMarketing > 0 && (
+                                      {fixedCostItems.length === 0 && _wincMarketing > 0 && (
                                         <div className="flex justify-between items-center pl-1">
                                           <span className="text-gray-500">Marketing</span>
                                           <span className="tabular-nums text-red-600">({formatGBP(_wincMarketing)})</span>
                                         </div>
                                       )}
-                                      {_wincStaffing > 0 && (
+                                      {fixedCostItems.length === 0 && _wincStaffing > 0 && (
                                         <div className="flex justify-between items-center pl-1">
                                           <span className="text-gray-500">Staffing</span>
                                           <span className="tabular-nums text-red-600">({formatGBP(_wincStaffing)})</span>
                                         </div>
                                       )}
-                                      {_wincConsumables > 0 && (
+                                      {fixedCostItems.length === 0 && _wincConsumables > 0 && (
                                         <div className="flex justify-between items-center pl-1">
                                           <span className="text-gray-500">Consumables</span>
                                           <span className="tabular-nums text-red-600">({formatGBP(_wincConsumables)})</span>
