@@ -288,21 +288,12 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     (model as any).practitionerHoursPerDay = lifestyleSchedule.practitionerHoursPerDay;
   }
 
-  // Load dynamic fixed cost items — scoped to the active property so each property
-  // has its own saved cost list. Falls back to all project items if none are property-scoped.
-  const [activePropForFinancials] = await db
-    .select()
-    .from(propertiesTable)
-    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-  const activePropId = activePropForFinancials?.id ?? null;
-
-  const fixedCostItemsAll = await db
+  // Load dynamic fixed cost items — these replace the hardcoded fixed cost fields
+  // if any exist. If none exist yet, fall back to legacy hardcoded fields.
+  const fixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
-  const fixedCostItems = activePropId
-    ? fixedCostItemsAll.filter(i => i.propertyId === activePropId || i.propertyId === null)
-    : fixedCostItemsAll;
 
   // All fixed cost items go into Winchester's fixed cost base.
   // Dual items count once — they don't get added to Bedhampton separately.
@@ -494,36 +485,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     };
   });
 
-  // Load dynamic fixed cost items — scoped to the active property
-  const [activePropForCf] = await db
-    .select()
-    .from(propertiesTable)
-    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-  const activePropIdCf = activePropForCf?.id ?? null;
-
-  // Optional: comparePropertyId swaps fixed costs to a different property for overlay comparison
-  const comparePropertyIdParam = req.query.comparePropertyId ? parseInt(req.query.comparePropertyId as string) : null;
-  const effectivePropIdForCosts = comparePropertyIdParam ?? activePropIdCf;
-
-  // When comparing a different property, override model's rent/rates with the comparison property's values
-  // so the legacy-field fallback path also reflects the right property
-  if (comparePropertyIdParam) {
-    const [compareProp] = await db.select().from(propertiesTable)
-      .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.id, comparePropertyIdParam)));
-    if (compareProp) {
-      if (compareProp.monthlyRentGbp != null) (model as any).rentGbp = compareProp.monthlyRentGbp;
-      if (compareProp.businessRatesGbp != null) (model as any).ratesGbp = Math.round(compareProp.businessRatesGbp / 12);
-      (model as any).vatOnRent = compareProp.vatOnRent ?? false;
-    }
-  }
-
-  const allFixedCostItems = await db
+  // Load dynamic fixed cost items
+  const fixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
-  const fixedCostItems = effectivePropIdForCosts
-    ? allFixedCostItems.filter(i => i.propertyId === effectivePropIdForCosts || i.propertyId === null)
-    : allFixedCostItems;
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
   const reqMonths = parseInt((req.query.months as string) || "12");
@@ -580,17 +546,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // Use || not ?? — the DB may store 0 as "not configured" and 0 would cap revenue at £0
   const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp || 16000;
 
-  // Pre-opening property costs: derive from leaseSignDate vs openDate when both are set.
-  // Falls back to the stored preOpeningPropertyMonths assumption.
-  let preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
-  const leaseSignDate = (model as any).leaseSignDate;
-  const openDateStr = project?.targetOpeningDate;
-  if (leaseSignDate && openDateStr) {
-    const ls = new Date(leaseSignDate);
-    const od = new Date(openDateStr);
-    const diffMonths = (od.getFullYear() - ls.getFullYear()) * 12 + (od.getMonth() - ls.getMonth());
-    if (diffMonths >= 0) preOpenPropMonths = diffMonths;
-  }
+  // Pre-opening property costs: rent + rates apply from lease signing, before Winchester opens
+  // IMPORTANT: use cfRentAmount (from fixedCostItems) not model.rentGbp — the active property
+  // may have rentGbp=0 which applyPropertyFallback overwrites the model field with.
+  const preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
   const cfRatesAmount = fixedCostItems.length > 0
     ? fixedCostItems.filter(item => /rates/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : (model.ratesGbp || 0);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -8,11 +8,12 @@ import {
   useCalculateFinancials,
   getGetOptimisationAnalysisQueryKey,
   getGetProjectDashboardQueryKey,
+  useListFixedCostItems,
+  getListFixedCostItemsQueryKey,
   useCreateFixedCostItem,
   useUpdateFixedCostItem,
   useDeleteFixedCostItem,
   useListProperties,
-  useUpdateProperty,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -26,7 +27,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw, Loader2, Wand2, Lock, Sliders, Calendar, X,
+  RefreshCw, Loader2, Wand2, Lock, Sliders,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -214,7 +215,7 @@ export default function FinancialsPage() {
   async function resetFinancials() {
     await fetch(`/api/projects/1/reset/financials`, { method: "POST" });
     queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-    queryClient.invalidateQueries({ queryKey: ["fixed-cost-items", PROJECT_ID] });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
   }
 
   // ── Lifestyle plan — drives locked financial model fields ─────────────────
@@ -307,20 +308,12 @@ export default function FinancialsPage() {
     };
   }, [lifestylePlan]);
 
-  // ── Properties — loaded first so activeProp is available for all scoped queries ──
+  // ── Fixed cost items (dynamic, replaces hardcoded fixed cost fields) ──────
+  const { data: fixedCostItems = [] } = useListFixedCostItems(PROJECT_ID, {
+    query: { queryKey: getListFixedCostItemsQueryKey(PROJECT_ID), enabled: true },
+  });
   const { data: propertiesData = [] } = useListProperties(PROJECT_ID);
   const activeProp = (propertiesData as any[]).find((p: any) => p.isActiveForProject);
-  const activePropId = activeProp?.id ?? null;
-
-  // ── Fixed cost items — scoped per-property so each property keeps its own list ──
-  const fixedCostQK = ["fixed-cost-items", PROJECT_ID, activePropId];
-  const { data: fixedCostItems = [] } = useQuery<any[]>({
-    queryKey: fixedCostQK,
-    queryFn: () => fetch(
-      `/api/projects/${PROJECT_ID}/fixed-cost-items${activePropId ? `?propertyId=${activePropId}` : ""}`
-    ).then(r => r.json()),
-    enabled: true,
-  });
   const clinicLabel = activeProp
     ? (() => {
         const parts = (activeProp.address || "").split(",");
@@ -345,9 +338,9 @@ export default function FinancialsPage() {
     if (!newCostName.trim() || !newCostAmount) return;
     await createFixedCostItem.mutateAsync({
       projectId: PROJECT_ID,
-      data: { name: newCostName.trim(), amountGbp: Number(newCostAmount), costType: newCostType, sortOrder: fixedCostItems.length, ...(activePropId ? { propertyId: activePropId } : {}) } as any,
+      data: { name: newCostName.trim(), amountGbp: Number(newCostAmount), costType: newCostType, sortOrder: fixedCostItems.length },
     });
-    queryClient.invalidateQueries({ queryKey: fixedCostQK });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
     setNewCostName("");
     setNewCostAmount("");
     setNewCostType("unique");
@@ -355,14 +348,14 @@ export default function FinancialsPage() {
 
   const handleUpdateCostItem = async (id: number, field: string, value: string | number) => {
     await updateFixedCostItem.mutateAsync({ id, data: { [field]: value } });
-    queryClient.invalidateQueries({ queryKey: fixedCostQK });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
     // Recalculate after cost change
     if (model) runCalculation();
   };
 
   const handleDeleteCostItem = async (id: number) => {
     await deleteFixedCostItem.mutateAsync({ id });
-    queryClient.invalidateQueries({ queryKey: fixedCostQK });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
     if (model) runCalculation();
   };
 
@@ -402,9 +395,9 @@ export default function FinancialsPage() {
   const applyAiAdditionalCost = async (cost: { name: string; estimatedMonthly: number; costType: string }) => {
     await createFixedCostItem.mutateAsync({
       projectId: PROJECT_ID,
-      data: { name: cost.name, amountGbp: cost.estimatedMonthly, costType: cost.costType as "unique" | "dual", sortOrder: fixedCostItems.length, ...(activePropId ? { propertyId: activePropId } : {}) } as any,
+      data: { name: cost.name, amountGbp: cost.estimatedMonthly, costType: cost.costType as "unique" | "dual", sortOrder: fixedCostItems.length },
     });
-    queryClient.invalidateQueries({ queryKey: fixedCostQK });
+    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
   };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
@@ -488,124 +481,6 @@ export default function FinancialsPage() {
     placeholderData: (prev) => prev,
   });
   const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
-
-  // ── Financial comparison property (set from Properties tab) ──────────────────
-  const [finComparePropertyId, setFinComparePropertyId] = useState<number | null>(() => {
-    try { const v = localStorage.getItem("finComparePropertyId"); return v ? parseInt(v) : null; } catch { return null; }
-  });
-  useEffect(() => {
-    const onStorage = () => {
-      try { const v = localStorage.getItem("finComparePropertyId"); setFinComparePropertyId(v ? parseInt(v) : null); } catch {}
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-  const clearFinCompare = () => { setFinComparePropertyId(null); localStorage.removeItem("finComparePropertyId"); };
-
-  // Date fields for comparison property
-  const { mutate: updatePropertyDates } = useUpdateProperty();
-  const [cmpDates, setCmpDates] = useState<{ leaseSignDate: string; keyHandoverDate: string; targetOpenDate: string }>({
-    leaseSignDate: "", keyHandoverDate: "", targetOpenDate: "",
-  });
-  // Sync local date state whenever comparison property changes
-  useEffect(() => {
-    if (!finComparePropertyId || !propertiesData) { setCmpDates({ leaseSignDate: "", keyHandoverDate: "", targetOpenDate: "" }); return; }
-    const cp = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
-    if (cp) setCmpDates({
-      leaseSignDate: cp.leaseSignDate ?? "",
-      keyHandoverDate: cp.keyHandoverDate ?? "",
-      targetOpenDate: cp.targetOpenDate ?? "",
-    });
-  }, [finComparePropertyId, propertiesData]);
-
-  const saveCmpDate = (field: "leaseSignDate" | "keyHandoverDate" | "targetOpenDate", value: string) => {
-    if (!finComparePropertyId) return;
-    setCmpDates(prev => ({ ...prev, [field]: value }));
-    updatePropertyDates({ id: finComparePropertyId, data: { [field]: value || null } });
-  };
-
-  const { data: compareCashflow } = useQuery<CashflowMonth[]>({
-    queryKey: ["cashflow-cmp", PROJECT_ID, scenario, rampTier, activeVat.rate, finComparePropertyId],
-    queryFn: () =>
-      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&comparePropertyId=${finComparePropertyId}`)
-        .then((r) => r.json()),
-    enabled: finComparePropertyId !== null,
-    staleTime: 0,
-    placeholderData: (prev) => prev,
-  });
-  const { data: compareCashflow36 } = useQuery<CashflowMonth[]>({
-    queryKey: ["cashflow36-cmp", PROJECT_ID, scenario, rampTier, activeVat.rate, finComparePropertyId],
-    queryFn: () =>
-      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&months=36&vatRate=${activeVat.rate}&comparePropertyId=${finComparePropertyId}`)
-        .then((r) => r.json()),
-    enabled: finComparePropertyId !== null && pnlMonths === 36,
-    staleTime: 0,
-    placeholderData: (prev) => prev,
-  });
-  const comparePnlData = pnlMonths === 36 ? compareCashflow36 : compareCashflow;
-
-  // Project data — needed for targetOpeningDate (Key Dates card)
-  const { data: projectData } = useQuery<any>({
-    queryKey: ["project", PROJECT_ID],
-    queryFn: () => fetch(`/api/projects/${PROJECT_ID}`).then((r) => r.json()),
-    staleTime: 60_000,
-  });
-
-  // Key Dates state — synced from model / project when data loads
-  const [leaseSignDate, setLeaseSignDate] = useState("");
-  const [keyHandoverDate, setKeyHandoverDate] = useState("");
-  const [openDate, setOpenDate] = useState("");
-  const [datesSaving, setDatesSaving] = useState(false);
-
-  useEffect(() => {
-    if (model) {
-      setLeaseSignDate((model as any).leaseSignDate ?? "");
-      setKeyHandoverDate((model as any).keyHandoverDate ?? "");
-    }
-  }, [model]);
-
-  useEffect(() => {
-    if (projectData?.targetOpeningDate) {
-      setOpenDate(projectData.targetOpeningDate);
-    }
-  }, [projectData]);
-
-  const saveDates = async () => {
-    setDatesSaving(true);
-    try {
-      await Promise.all([
-        fetch(`/api/projects/${PROJECT_ID}/financial`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leaseSignDate: leaseSignDate || null, keyHandoverDate: keyHandoverDate || null }),
-        }),
-        openDate
-          ? fetch(`/api/projects/${PROJECT_ID}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ targetOpeningDate: openDate }),
-            })
-          : Promise.resolve(),
-      ]);
-      // resetQueries removes cached data entirely so the next fetch skips ETag/304 caching
-      queryClient.resetQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-      queryClient.resetQueries({ queryKey: ["project", PROJECT_ID] });
-      queryClient.resetQueries({ queryKey: ["cashflow", PROJECT_ID] });
-      queryClient.resetQueries({ queryKey: ["cashflow36", PROJECT_ID] });
-      toast({ title: "Key dates saved", description: "The financial model has been updated." });
-    } catch {
-      toast({ title: "Save failed", description: "Could not save key dates.", variant: "destructive" });
-    } finally {
-      setDatesSaving(false);
-    }
-  };
-
-  // Helper: months between two YYYY-MM-DD dates (positive = d2 after d1)
-  const monthsBetween = (d1: string, d2: string) => {
-    if (!d1 || !d2) return null;
-    const a = new Date(d1), b = new Date(d2);
-    return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
-  };
 
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
@@ -830,7 +705,7 @@ export default function FinancialsPage() {
       });
       if (!res.ok) throw new Error("Apply failed");
       queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-      queryClient.invalidateQueries({ queryKey: ["fixed-cost-items", PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
       setAiProposal(null);
       toast({ title: `${selectedCosts.length} assumptions applied`, description: "Review the form below and save when ready." });
     } catch {
@@ -1350,99 +1225,6 @@ export default function FinancialsPage() {
       {tab === "overview" && (
         <div className="space-y-6">
 
-          {/* ── Key Milestone Dates ───────────────────────────────────────────── */}
-          <Card className="shadow-sm border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/20">
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-violet-500" />
-                <CardTitle className="text-sm text-violet-700 dark:text-violet-300">Key Milestone Dates</CardTitle>
-              </div>
-              <CardDescription className="text-xs">
-                The <strong>Open Date</strong> drives the entire financial model — all revenue, costs, and cashflow are calculated from it. Set Lease Sign to automatically derive how many months of pre-opening property costs to apply.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-
-                {/* Lease Sign */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Lease Sign</label>
-                  <input
-                    type="date"
-                    value={leaseSignDate}
-                    onChange={(e) => setLeaseSignDate(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-                  />
-                  {leaseSignDate && openDate && (() => {
-                    const m = monthsBetween(leaseSignDate, openDate);
-                    return m !== null ? (
-                      <p className="text-xs text-muted-foreground">
-                        {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
-                        {m > 0 && <span className="ml-1 text-violet-600 dark:text-violet-400">→ model uses {m}mo pre-opening property costs</span>}
-                      </p>
-                    ) : null;
-                  })()}
-                  {!leaseSignDate && (
-                    <p className="text-xs text-muted-foreground">Not set — uses Assumptions value</p>
-                  )}
-                </div>
-
-                {/* Key Handover */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Key Handover</label>
-                  <input
-                    type="date"
-                    value={keyHandoverDate}
-                    onChange={(e) => setKeyHandoverDate(e.target.value)}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
-                  />
-                  {keyHandoverDate && openDate && (() => {
-                    const m = monthsBetween(keyHandoverDate, openDate);
-                    return m !== null ? (
-                      <p className="text-xs text-muted-foreground">
-                        {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
-                      </p>
-                    ) : null;
-                  })()}
-                  {keyHandoverDate && leaseSignDate && (() => {
-                    const m = monthsBetween(leaseSignDate, keyHandoverDate);
-                    return m !== null && m > 0 ? (
-                      <p className="text-xs text-muted-foreground">{m} month{m !== 1 ? "s" : ""} after lease sign</p>
-                    ) : null;
-                  })()}
-                </div>
-
-                {/* Open Date */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-violet-700 dark:text-violet-300 uppercase tracking-wide flex items-center gap-1">
-                    Clinic Opens
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700">Model Driver</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={openDate}
-                    onChange={(e) => setOpenDate(e.target.value)}
-                    className="w-full rounded-md border border-violet-300 dark:border-violet-700 bg-background px-3 py-1.5 text-sm shadow-sm ring-1 ring-violet-200 dark:ring-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-500 font-medium"
-                  />
-                  {openDate && (
-                    <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
-                      {new Date(openDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
-                    </p>
-                  )}
-                </div>
-
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Changes take effect across all charts and projections on save.</p>
-                <Button size="sm" onClick={saveDates} disabled={datesSaving} className="bg-violet-600 hover:bg-violet-700 text-white">
-                  {datesSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
-                  Save dates
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
           {/* ── Live Bedhampton Performance ───────────────────────────────────── */}
           <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-950/20">
             <CardHeader className="pb-3">
@@ -1566,12 +1348,6 @@ export default function FinancialsPage() {
             <CardContent>
               <div className="h-[340px]">
                 {cashflow && cashflow.length > 0 ? (() => {
-                  const compareProperty = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
-                  const compareShortName = compareProperty?.address?.split(",")[0] ?? "Comparison";
-                  const chartData = cashflow.map((m, i) => ({
-                    ...m,
-                    compareBalance: compareCashflow?.[i]?.cashBalance ?? undefined,
-                  }));
                   const openingMonth = cashflow.find(m => m.isOpeningMonth);
                   const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
                   const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
@@ -1579,7 +1355,6 @@ export default function FinancialsPage() {
                   const allVals = [
                     ...cashflow.map(m => m.cashBalance),
                     ...cashflow.map(m => m.monthlyCashflow),
-                    ...(compareCashflow ? compareCashflow.map(m => m.cashBalance) : []),
                     0,
                   ];
                   const rawMin = Math.min(...allVals);
@@ -1591,7 +1366,7 @@ export default function FinancialsPage() {
                   ];
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                      <ComposedChart data={cashflow} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="cashGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
@@ -1715,7 +1490,6 @@ export default function FinancialsPage() {
                           formatter={(v) =>
                             v === "cashBalance" ? "Business capital (running balance)"
                             : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
-                            : v === "compareBalance" ? `${compareShortName} capital (comparison)`
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -1740,20 +1514,6 @@ export default function FinancialsPage() {
                           strokeWidth={2.5}
                           dot={false}
                         />
-
-                        {/* Comparison property capital line — purple overlay, read-only */}
-                        {compareCashflow && compareCashflow.length > 0 && (
-                          <Line
-                            type="monotone"
-                            dataKey="compareBalance"
-                            name="compareBalance"
-                            stroke="#a855f7"
-                            strokeWidth={2.5}
-                            strokeDasharray="6 3"
-                            dot={false}
-                            connectNulls={false}
-                          />
-                        )}
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
@@ -1813,39 +1573,6 @@ export default function FinancialsPage() {
                     <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 border border-amber-400 ml-1" /> VAT registered
                   </span>
                 </CardDescription>
-                {finComparePropertyId && (() => {
-                  const cp = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
-                  return cp ? (
-                    <div className="mt-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-md px-3 py-2 space-y-2">
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
-                        <span className="text-purple-700 dark:text-purple-300 flex-1 min-w-0 font-medium truncate">
-                          Comparing: {cp.address?.split(",")[0]}
-                        </span>
-                        <button onClick={clearFinCompare} className="text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors shrink-0" title="Clear comparison">
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        {([ 
-                          { field: "leaseSignDate" as const, label: "Lease sign", icon: "📝" },
-                          { field: "keyHandoverDate" as const, label: "Keys", icon: "🔑" },
-                          { field: "targetOpenDate" as const, label: "Open date", icon: "🏥" },
-                        ] as const).map(({ field, label, icon }) => (
-                          <div key={field} className="flex flex-col gap-0.5">
-                            <label className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{icon} {label}</label>
-                            <input
-                              type="date"
-                              value={cmpDates[field]}
-                              onChange={e => saveCmpDate(field, e.target.value)}
-                              className="text-[11px] border border-purple-200 dark:border-purple-700 rounded px-1.5 py-0.5 bg-white dark:bg-purple-950/60 text-purple-900 dark:text-purple-100 focus:outline-none focus:ring-1 focus:ring-purple-400 w-full"
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null;
-                })()}
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
@@ -1883,8 +1610,7 @@ export default function FinancialsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {(pnlData ?? cashflow ?? []).map((m, rowIdx) => {
-                        const cm = comparePnlData?.[rowIdx];
+                      {(pnlData ?? cashflow ?? []).map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet;
@@ -1912,10 +1638,8 @@ export default function FinancialsPage() {
                           : m.isVatRegistered
                           ? "bg-amber-50/40 dark:bg-amber-950/10"
                           : "";
-                        const cmNetProfit = cm ? (cm.wincNet + cm.bedhNet) : 0;
                         return (
-                          <Fragment key={m.month}>
-                          <tr className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                          <tr key={m.month} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
                             <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {m.calendarLabel}
@@ -2199,64 +1923,6 @@ export default function FinancialsPage() {
                               {formatGBP(m.cashBalance)}
                             </td>
                           </tr>
-                          {cm && (
-                            <tr className="border-b border-purple-200/50 dark:border-purple-900/40 bg-purple-50/50 dark:bg-purple-950/20">
-                              {/* Month label */}
-                              <td className="px-3 py-1 sticky left-0 bg-purple-50/70 dark:bg-purple-950/30">
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[8px] font-bold bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 px-1 py-0.5 rounded leading-none">↕ CMP</span>
-                                  <span className="text-purple-600 dark:text-purple-400 text-[11px]">{cm.calendarLabel}</span>
-                                </div>
-                              </td>
-                              {/* Occ % */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-600 dark:text-purple-400">
-                                {cm.isPreOpening ? <span className="opacity-30">—</span> : `${cm.occupancyPercent}%`}
-                              </td>
-                              {/* Winc Rev */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-700 dark:text-purple-300">
-                                {cm.wincRevenue > 0 ? formatGBP(cm.wincRevenue) : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Variable */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/80 dark:text-purple-400/80">
-                                {cm.wincVariableCosts > 0 ? <span>({formatGBP(cm.wincVariableCosts)})</span> : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Fixed */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/80 dark:text-purple-400/80">
-                                {(cm.wincFixedCosts + (cm.preOpenPropertyCost ?? 0)) > 0
-                                  ? <span>({formatGBP(cm.wincFixedCosts + (cm.preOpenPropertyCost ?? 0))})</span>
-                                  : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Winc VAT */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/70 dark:text-purple-400/70">
-                                {cm.wincVat > 0 ? <span>({formatGBP(cm.wincVat)})</span> : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Winc ± */}
-                              <td className={`text-right px-2 py-1 tabular-nums font-medium ${cm.wincRevenue === 0 ? "opacity-30" : cm.wincNet >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-800 dark:text-purple-300"}`}>
-                                {cm.wincRevenue === 0 ? "—" : `${cm.wincNet >= 0 ? "+" : ""}${formatGBP(cm.wincNet)}`}
-                              </td>
-                              {/* Bedh Net */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-400 dark:text-purple-500">
-                                {cm.bedhClosed ? <span className="line-through opacity-40">closed</span> : cm.bedhNet !== 0 ? formatGBP(cm.bedhNet) : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Proj costs */}
-                              <td className="text-right px-2 py-1 tabular-nums text-purple-500/60 dark:text-purple-400/60">
-                                {(cm.projectCostBurn ?? 0) > 0 ? <span>({formatGBP(cm.projectCostBurn)})</span> : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Drawings */}
-                              <td className="text-right px-3 py-1 tabular-nums text-purple-500/60 dark:text-purple-400/60">
-                                {cm.drawingsActive && cm.actualDrawings > 0 ? <span>({formatGBP(cm.actualDrawings)})</span> : <span className="opacity-30">—</span>}
-                              </td>
-                              {/* Net Profit */}
-                              <td className={`text-right px-3 py-1 tabular-nums font-semibold ${cmNetProfit > 0 ? "text-purple-600 dark:text-purple-400" : cmNetProfit < 0 ? "text-purple-900 dark:text-purple-200" : "text-purple-400"}`}>
-                                {formatGBP(cmNetProfit)}
-                              </td>
-                              {/* Capital */}
-                              <td className={`text-right px-3 py-1 tabular-nums font-medium ${cm.cashBalance >= 0 ? "text-purple-600 dark:text-purple-400" : "text-purple-900 dark:text-purple-200"}`}>
-                                {formatGBP(cm.cashBalance)}
-                              </td>
-                            </tr>
-                          )}
-                          </Fragment>
                         );
                       })}
                     </tbody>

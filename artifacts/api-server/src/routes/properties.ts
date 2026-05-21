@@ -69,19 +69,6 @@ router.put("/properties/:id", async (req, res) => {
   return res.json(prop);
 });
 
-// Quick pipeline stage update — used by the inline selector in the detail panel
-router.patch("/properties/:id/pipeline-status", async (req, res) => {
-  const id = parseInt(req.params["id"] as string);
-  const { pipelineStatus } = req.body;
-  if (!pipelineStatus) return res.status(400).json({ error: "pipelineStatus required" });
-  const [prop] = await db.update(propertiesTable)
-    .set({ pipelineStatus, updatedAt: new Date() })
-    .where(eq(propertiesTable.id, id))
-    .returning();
-  if (!prop) return res.status(404).json({ error: "Not found" });
-  return res.json(prop);
-});
-
 router.delete("/properties/:id", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   await db.delete(propertiesTable).where(eq(propertiesTable.id, id));
@@ -132,19 +119,14 @@ router.put("/properties/:id/set-active", async (req, res) => {
     });
   }
 
-  // ── Step 4: Sync property amounts into this property's fixed cost items ──────
-  // Each property has its own set of fixed cost items (scoped by propertyId).
-  // On first activation: seed a default list. On subsequent activations: only
-  // update Rent/Lease, Business Rates, Service Charge — leave everything else.
+  // ── Step 4: Sync property amounts into matching fixed cost items ────────────
+  // Only updates Rent/Lease, Business Rates, Service Charge rows — leaves
+  // every other fixed cost item (utilities, software, etc.) untouched.
   const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const existingItems = await db.select().from(fixedCostItemsTable)
-    .where(and(
-      eq(fixedCostItemsTable.projectId, property.projectId),
-      eq(fixedCostItemsTable.propertyId, id)
-    ));
+    .where(eq(fixedCostItemsTable.projectId, property.projectId));
 
   if (existingItems.length > 0) {
-    // Property already has items — only sync property-specific cost lines
     for (const item of existingItems) {
       const n = normName(item.name);
       let newAmount: number | null = null;
@@ -158,7 +140,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
       }
     }
   } else {
-    // First time this property is activated — seed a default list scoped to it
+    // First time — no items yet, seed a minimal default list
     const defaultItems = [
       { name: "Rent / Lease",                     amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
       { name: "Service Charge",                   amountGbp: monthlyServiceCharge, costType: "unique", sortOrder: 1 },
@@ -175,7 +157,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
       { name: "Subscriptions & Sundries",         amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
     ];
     await db.insert(fixedCostItemsTable).values(
-      defaultItems.map(item => ({ projectId: property.projectId, propertyId: id, ...item }))
+      defaultItems.map(item => ({ projectId: property.projectId, ...item }))
     );
   }
 

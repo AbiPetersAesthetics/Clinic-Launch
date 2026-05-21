@@ -1748,26 +1748,6 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
   const [extraction, setExtraction] = useState<(PropertyExtraction & { fileName?: string; fileSizeBytes?: number; tempFileName?: string; fileType?: "pdf" | "image" }) | null>(null);
   const [showExtractionReview, setShowExtractionReview] = useState(false);
 
-  const [stageSaving, setStageSaving] = useState(false);
-
-  const handleStageChange = async (newStage: string) => {
-    if (!property) return;
-    setStageSaving(true);
-    try {
-      await fetch(`/api/properties/${property.id}/pipeline-status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pipelineStatus: newStage }),
-      });
-      queryClient.invalidateQueries({ queryKey: getListPropertiesQueryKey(PROJECT_ID) });
-      onUpdated();
-    } catch {
-      toast({ title: "Stage update failed", variant: "destructive" });
-    } finally {
-      setStageSaving(false);
-    }
-  };
-
   const updateProperty = useUpdateProperty();
   const deleteProperty = useDeleteProperty();
   const setPropertyActive = useSetPropertyActive();
@@ -1946,21 +1926,7 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
               <SheetTitle className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <Select
-                      value={property.pipelineStatus ?? "found"}
-                      onValueChange={handleStageChange}
-                      disabled={stageSaving || isActive}
-                    >
-                      <SelectTrigger className={`h-6 text-xs px-2 py-0 border-0 shadow-none rounded-full w-auto gap-1 font-medium ${stage.color}`}>
-                        {stageSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PIPELINE_STAGES.filter(s => s.key !== "selected").map(s => (
-                          <SelectItem key={s.key} value={s.key} className="text-xs">{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Badge className={`text-xs ${stage.color}`}>{stage.label}</Badge>
                     {isActive && <Badge className="text-xs bg-primary text-primary-foreground gap-1"><Target className="w-3 h-3" />Active Property</Badge>}
                     {property.isFavourited && <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />}
                   </div>
@@ -2302,7 +2268,6 @@ function PropertyDetailSheet({ property, onClose, onUpdated, onDeleted }: {
 
 function PropertyCard({
   property, onOpen, compareMode = false, isSelected = false, onToggleSelect, rank,
-  isFinCompare = false, onToggleFinCompare,
 }: {
   property: ClinicProperty;
   onOpen: () => void;
@@ -2310,8 +2275,6 @@ function PropertyCard({
   isSelected?: boolean;
   onToggleSelect?: () => void;
   rank?: number;
-  isFinCompare?: boolean;
-  onToggleFinCompare?: () => void;
 }) {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
@@ -2396,24 +2359,15 @@ function PropertyCard({
           </span>
         )}
       </div>
-      {!compareMode && !property.isActiveForProject && (
-        <div className="pt-1 border-t border-border/50 flex flex-wrap items-center gap-x-3 gap-y-1">
-          {property.pipelineStatus !== "rejected" && (
-            <button
-              onClick={handleSetActive}
-              disabled={setPropertyActive.isPending}
-              className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
-            >
-              <Target className="w-3 h-3" />
-              {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
-            </button>
-          )}
+      {!compareMode && !property.isActiveForProject && property.pipelineStatus !== "rejected" && (
+        <div className="pt-1 border-t border-border/50">
           <button
-            onClick={(e) => { e.stopPropagation(); onToggleFinCompare?.(); }}
-            className={`text-xs flex items-center gap-1 transition-colors ml-auto ${isFinCompare ? "text-purple-600 dark:text-purple-400 font-medium" : "text-muted-foreground/60 hover:text-purple-600 dark:hover:text-purple-400"}`}
+            onClick={handleSetActive}
+            disabled={setPropertyActive.isPending}
+            className="text-xs text-primary/70 hover:text-primary transition-colors flex items-center gap-1"
           >
-            <BarChart3 className="w-3 h-3" />
-            {isFinCompare ? "Comparing ✓ (clear)" : "Compare financials"}
+            <Target className="w-3 h-3" />
+            {setPropertyActive.isPending ? "Setting…" : "Use this property for project"}
           </button>
         </div>
       )}
@@ -2993,15 +2947,6 @@ export default function PropertiesPage() {
   const [compareMode, setCompareMode] = useState(false);
   const [compareSelected, setCompareSelected] = useState<Set<number>>(new Set());
   const [showComparison, setShowComparison] = useState(false);
-  const [finComparePropertyId, setFinComparePropertyId] = useState<number | null>(() => {
-    try { const v = localStorage.getItem("finComparePropertyId"); return v ? parseInt(v) : null; } catch { return null; }
-  });
-  const handleToggleFinCompare = (id: number) => {
-    const next = finComparePropertyId === id ? null : id;
-    setFinComparePropertyId(next);
-    if (next === null) localStorage.removeItem("finComparePropertyId");
-    else localStorage.setItem("finComparePropertyId", String(next));
-  };
 
   const MAX_COMPARE = 4;
 
@@ -3181,8 +3126,6 @@ export default function PropertiesPage() {
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
                         rank={rankMap[prop.id]}
-                        isFinCompare={finComparePropertyId === prop.id}
-                        onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                       />
                     ))}
                   </div>
@@ -3205,8 +3148,6 @@ export default function PropertiesPage() {
                         isSelected={compareSelected.has(prop.id)}
                         onToggleSelect={() => toggleCompareSelect(prop.id)}
                         rank={rankMap[prop.id]}
-                        isFinCompare={finComparePropertyId === prop.id}
-                        onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                       />
                     ))}
                   </div>
@@ -3244,8 +3185,6 @@ export default function PropertiesPage() {
                   isSelected={compareSelected.has(prop.id)}
                   onToggleSelect={() => toggleCompareSelect(prop.id)}
                   rank={rankMap[prop.id]}
-                  isFinCompare={finComparePropertyId === prop.id}
-                  onToggleFinCompare={() => handleToggleFinCompare(prop.id)}
                 />
               ))}
             </div>

@@ -77,9 +77,6 @@ export const financialsTable = pgTable("financial_models", {
   plannedPricingJson: text("planned_pricing_json").notNull().default("{}"),
   // Scenario selection — persisted so the banner always reflects the user's chosen model
   selectedScenario: text("selected_scenario").notNull().default("realistic"),
-  // Key milestone dates — when set, leaseSignDate auto-derives preOpeningPropertyMonths
-  leaseSignDate: text("lease_sign_date"),
-  keyHandoverDate: text("key_handover_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
