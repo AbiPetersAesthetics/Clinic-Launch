@@ -80,6 +80,9 @@ export const propertiesTable = pgTable("clinic_properties", {
   viewingChecklistData: jsonb("viewing_checklist_data").$type<Record<string, { checked: boolean; note?: string }>>(),
   savedFinancialModel: jsonb("saved_financial_model").$type<Record<string, any>>(),
   savedFixedCostItems: jsonb("saved_fixed_cost_items").$type<Array<Record<string, any>>>(),
+  leaseSignDate: text("lease_sign_date"),
+  keyHandoverDate: text("key_handover_date"),
+  targetOpenDate: text("target_open_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

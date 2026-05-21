@@ -12,6 +12,7 @@ import {
   useUpdateFixedCostItem,
   useDeleteFixedCostItem,
   useListProperties,
+  useUpdateProperty,
 } from "@workspace/api-client-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -500,6 +501,28 @@ export default function FinancialsPage() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
   const clearFinCompare = () => { setFinComparePropertyId(null); localStorage.removeItem("finComparePropertyId"); };
+
+  // Date fields for comparison property
+  const { mutate: updatePropertyDates } = useUpdateProperty();
+  const [cmpDates, setCmpDates] = useState<{ leaseSignDate: string; keyHandoverDate: string; targetOpenDate: string }>({
+    leaseSignDate: "", keyHandoverDate: "", targetOpenDate: "",
+  });
+  // Sync local date state whenever comparison property changes
+  useEffect(() => {
+    if (!finComparePropertyId || !propertiesData) { setCmpDates({ leaseSignDate: "", keyHandoverDate: "", targetOpenDate: "" }); return; }
+    const cp = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
+    if (cp) setCmpDates({
+      leaseSignDate: cp.leaseSignDate ?? "",
+      keyHandoverDate: cp.keyHandoverDate ?? "",
+      targetOpenDate: cp.targetOpenDate ?? "",
+    });
+  }, [finComparePropertyId, propertiesData]);
+
+  const saveCmpDate = (field: "leaseSignDate" | "keyHandoverDate" | "targetOpenDate", value: string) => {
+    if (!finComparePropertyId) return;
+    setCmpDates(prev => ({ ...prev, [field]: value }));
+    updatePropertyDates({ id: finComparePropertyId, data: { [field]: value || null } });
+  };
 
   const { data: compareCashflow } = useQuery<CashflowMonth[]>({
     queryKey: ["cashflow-cmp", PROJECT_ID, scenario, rampTier, activeVat.rate, finComparePropertyId],
@@ -1793,15 +1816,33 @@ export default function FinancialsPage() {
                 {finComparePropertyId && (() => {
                   const cp = (propertiesData as any[]).find((p: any) => p.id === finComparePropertyId);
                   return cp ? (
-                    <div className="flex items-center gap-2 text-xs bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-md px-3 py-1.5 mt-1">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
-                      <span className="text-purple-700 dark:text-purple-300 flex-1 min-w-0">
-                        Comparing <strong className="truncate">{cp.address}</strong>
-                        <span className="text-purple-500/70 ml-1">— purple rows below each month</span>
-                      </span>
-                      <button onClick={clearFinCompare} className="text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors shrink-0">
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="mt-2 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 rounded-md px-3 py-2 space-y-2">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shrink-0" />
+                        <span className="text-purple-700 dark:text-purple-300 flex-1 min-w-0 font-medium truncate">
+                          Comparing: {cp.address?.split(",")[0]}
+                        </span>
+                        <button onClick={clearFinCompare} className="text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 transition-colors shrink-0" title="Clear comparison">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        {([ 
+                          { field: "leaseSignDate" as const, label: "Lease sign", icon: "📝" },
+                          { field: "keyHandoverDate" as const, label: "Keys", icon: "🔑" },
+                          { field: "targetOpenDate" as const, label: "Open date", icon: "🏥" },
+                        ] as const).map(({ field, label, icon }) => (
+                          <div key={field} className="flex flex-col gap-0.5">
+                            <label className="text-[10px] text-purple-600 dark:text-purple-400 font-medium">{icon} {label}</label>
+                            <input
+                              type="date"
+                              value={cmpDates[field]}
+                              onChange={e => saveCmpDate(field, e.target.value)}
+                              className="text-[11px] border border-purple-200 dark:border-purple-700 rounded px-1.5 py-0.5 bg-white dark:bg-purple-950/60 text-purple-900 dark:text-purple-100 focus:outline-none focus:ring-1 focus:ring-purple-400 w-full"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ) : null;
                 })()}
