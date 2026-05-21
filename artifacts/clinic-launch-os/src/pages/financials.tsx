@@ -8,8 +8,6 @@ import {
   useCalculateFinancials,
   getGetOptimisationAnalysisQueryKey,
   getGetProjectDashboardQueryKey,
-  useListFixedCostItems,
-  getListFixedCostItemsQueryKey,
   useCreateFixedCostItem,
   useUpdateFixedCostItem,
   useDeleteFixedCostItem,
@@ -215,7 +213,7 @@ export default function FinancialsPage() {
   async function resetFinancials() {
     await fetch(`/api/projects/1/reset/financials`, { method: "POST" });
     queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: ["fixed-cost-items", PROJECT_ID] });
   }
 
   // ── Lifestyle plan — drives locked financial model fields ─────────────────
@@ -308,12 +306,20 @@ export default function FinancialsPage() {
     };
   }, [lifestylePlan]);
 
-  // ── Fixed cost items (dynamic, replaces hardcoded fixed cost fields) ──────
-  const { data: fixedCostItems = [] } = useListFixedCostItems(PROJECT_ID, {
-    query: { queryKey: getListFixedCostItemsQueryKey(PROJECT_ID), enabled: true },
-  });
+  // ── Properties — loaded first so activeProp is available for all scoped queries ──
   const { data: propertiesData = [] } = useListProperties(PROJECT_ID);
   const activeProp = (propertiesData as any[]).find((p: any) => p.isActiveForProject);
+  const activePropId = activeProp?.id ?? null;
+
+  // ── Fixed cost items — scoped per-property so each property keeps its own list ──
+  const fixedCostQK = ["fixed-cost-items", PROJECT_ID, activePropId];
+  const { data: fixedCostItems = [] } = useQuery<any[]>({
+    queryKey: fixedCostQK,
+    queryFn: () => fetch(
+      `/api/projects/${PROJECT_ID}/fixed-cost-items${activePropId ? `?propertyId=${activePropId}` : ""}`
+    ).then(r => r.json()),
+    enabled: true,
+  });
   const clinicLabel = activeProp
     ? (() => {
         const parts = (activeProp.address || "").split(",");
@@ -338,9 +344,9 @@ export default function FinancialsPage() {
     if (!newCostName.trim() || !newCostAmount) return;
     await createFixedCostItem.mutateAsync({
       projectId: PROJECT_ID,
-      data: { name: newCostName.trim(), amountGbp: Number(newCostAmount), costType: newCostType, sortOrder: fixedCostItems.length },
+      data: { name: newCostName.trim(), amountGbp: Number(newCostAmount), costType: newCostType, sortOrder: fixedCostItems.length, ...(activePropId ? { propertyId: activePropId } : {}) } as any,
     });
-    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: fixedCostQK });
     setNewCostName("");
     setNewCostAmount("");
     setNewCostType("unique");
@@ -348,14 +354,14 @@ export default function FinancialsPage() {
 
   const handleUpdateCostItem = async (id: number, field: string, value: string | number) => {
     await updateFixedCostItem.mutateAsync({ id, data: { [field]: value } });
-    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: fixedCostQK });
     // Recalculate after cost change
     if (model) runCalculation();
   };
 
   const handleDeleteCostItem = async (id: number) => {
     await deleteFixedCostItem.mutateAsync({ id });
-    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: fixedCostQK });
     if (model) runCalculation();
   };
 
@@ -395,9 +401,9 @@ export default function FinancialsPage() {
   const applyAiAdditionalCost = async (cost: { name: string; estimatedMonthly: number; costType: string }) => {
     await createFixedCostItem.mutateAsync({
       projectId: PROJECT_ID,
-      data: { name: cost.name, amountGbp: cost.estimatedMonthly, costType: cost.costType as "unique" | "dual", sortOrder: fixedCostItems.length },
+      data: { name: cost.name, amountGbp: cost.estimatedMonthly, costType: cost.costType as "unique" | "dual", sortOrder: fixedCostItems.length, ...(activePropId ? { propertyId: activePropId } : {}) } as any,
     });
-    queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: fixedCostQK });
   };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
@@ -705,7 +711,7 @@ export default function FinancialsPage() {
       });
       if (!res.ok) throw new Error("Apply failed");
       queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
-      queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
+      queryClient.invalidateQueries({ queryKey: ["fixed-cost-items", PROJECT_ID] });
       setAiProposal(null);
       toast({ title: `${selectedCosts.length} assumptions applied`, description: "Review the form below and save when ready." });
     } catch {

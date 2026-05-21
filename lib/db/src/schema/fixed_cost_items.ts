@@ -13,6 +13,7 @@ import { z } from "zod/v4";
 export const fixedCostItemsTable = pgTable("fixed_cost_items", {
   id: serial("id").primaryKey(),
   projectId: integer("project_id").notNull(),
+  propertyId: integer("property_id"),
   name: text("name").notNull(),
   amountGbp: real("amount_gbp").notNull().default(0),
   // "unique" = Winchester only | "dual" = shared, counts once across both clinics

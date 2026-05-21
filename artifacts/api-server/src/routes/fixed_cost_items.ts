@@ -8,10 +8,16 @@ const router = Router();
 // ─── GET /projects/:projectId/fixed-cost-items ────────────────────────────────
 router.get("/projects/:projectId/fixed-cost-items", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
+  const propertyId = req.query.propertyId ? parseInt(req.query.propertyId as string) : null;
+
+  const where = propertyId
+    ? and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.propertyId, propertyId))
+    : eq(fixedCostItemsTable.projectId, projectId);
+
   const items = await db
     .select()
     .from(fixedCostItemsTable)
-    .where(eq(fixedCostItemsTable.projectId, projectId))
+    .where(where)
     .orderBy(fixedCostItemsTable.sortOrder, fixedCostItemsTable.createdAt);
   return res.json(items);
 });
@@ -19,7 +25,7 @@ router.get("/projects/:projectId/fixed-cost-items", async (req, res) => {
 // ─── POST /projects/:projectId/fixed-cost-items ───────────────────────────────
 router.post("/projects/:projectId/fixed-cost-items", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
-  const { name, amountGbp, costType, sortOrder } = req.body;
+  const { name, amountGbp, costType, sortOrder, propertyId } = req.body;
 
   if (!name || typeof name !== "string") {
     return res.status(400).json({ error: "name is required" });
@@ -32,6 +38,7 @@ router.post("/projects/:projectId/fixed-cost-items", async (req, res) => {
     .insert(fixedCostItemsTable)
     .values({
       projectId,
+      propertyId: propertyId ? parseInt(propertyId) : null,
       name: name.trim(),
       amountGbp: amountGbp ?? 0,
       costType: costType ?? "unique",

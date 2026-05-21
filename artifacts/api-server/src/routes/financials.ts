@@ -288,12 +288,21 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     (model as any).practitionerHoursPerDay = lifestyleSchedule.practitionerHoursPerDay;
   }
 
-  // Load dynamic fixed cost items — these replace the hardcoded fixed cost fields
-  // if any exist. If none exist yet, fall back to legacy hardcoded fields.
-  const fixedCostItems = await db
+  // Load dynamic fixed cost items — scoped to the active property so each property
+  // has its own saved cost list. Falls back to all project items if none are property-scoped.
+  const [activePropForFinancials] = await db
+    .select()
+    .from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+  const activePropId = activePropForFinancials?.id ?? null;
+
+  const fixedCostItemsAll = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
+  const fixedCostItems = activePropId
+    ? fixedCostItemsAll.filter(i => i.propertyId === activePropId || i.propertyId === null)
+    : fixedCostItemsAll;
 
   // All fixed cost items go into Winchester's fixed cost base.
   // Dual items count once — they don't get added to Bedhampton separately.
@@ -485,11 +494,20 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     };
   });
 
-  // Load dynamic fixed cost items
-  const fixedCostItems = await db
+  // Load dynamic fixed cost items — scoped to the active property
+  const [activePropForCf] = await db
+    .select()
+    .from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+  const activePropIdCf = activePropForCf?.id ?? null;
+
+  const allFixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
+  const fixedCostItems = activePropIdCf
+    ? allFixedCostItems.filter(i => i.propertyId === activePropIdCf || i.propertyId === null)
+    : allFixedCostItems;
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
   const reqMonths = parseInt((req.query.months as string) || "12");

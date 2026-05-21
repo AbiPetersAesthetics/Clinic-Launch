@@ -119,14 +119,19 @@ router.put("/properties/:id/set-active", async (req, res) => {
     });
   }
 
-  // ── Step 4: Sync property amounts into matching fixed cost items ────────────
-  // Only updates Rent/Lease, Business Rates, Service Charge rows — leaves
-  // every other fixed cost item (utilities, software, etc.) untouched.
+  // ── Step 4: Sync property amounts into this property's fixed cost items ──────
+  // Each property has its own set of fixed cost items (scoped by propertyId).
+  // On first activation: seed a default list. On subsequent activations: only
+  // update Rent/Lease, Business Rates, Service Charge — leave everything else.
   const normName = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
   const existingItems = await db.select().from(fixedCostItemsTable)
-    .where(eq(fixedCostItemsTable.projectId, property.projectId));
+    .where(and(
+      eq(fixedCostItemsTable.projectId, property.projectId),
+      eq(fixedCostItemsTable.propertyId, id)
+    ));
 
   if (existingItems.length > 0) {
+    // Property already has items — only sync property-specific cost lines
     for (const item of existingItems) {
       const n = normName(item.name);
       let newAmount: number | null = null;
@@ -140,7 +145,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
       }
     }
   } else {
-    // First time — no items yet, seed a minimal default list
+    // First time this property is activated — seed a default list scoped to it
     const defaultItems = [
       { name: "Rent / Lease",                     amountGbp: monthlyRent,          costType: "unique", sortOrder: 0 },
       { name: "Service Charge",                   amountGbp: monthlyServiceCharge, costType: "unique", sortOrder: 1 },
@@ -157,7 +162,7 @@ router.put("/properties/:id/set-active", async (req, res) => {
       { name: "Subscriptions & Sundries",         amountGbp: 0,                    costType: "dual",   sortOrder: 12 },
     ];
     await db.insert(fixedCostItemsTable).values(
-      defaultItems.map(item => ({ projectId: property.projectId, ...item }))
+      defaultItems.map(item => ({ projectId: property.projectId, propertyId: id, ...item }))
     );
   }
 
