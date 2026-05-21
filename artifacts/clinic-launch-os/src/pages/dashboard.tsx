@@ -120,6 +120,18 @@ type RevenueForecast = {
   revenueViabilityVerdict: "strong" | "viable" | "marginal" | "unlikely";
   keyRampRisks: string[]; keyRampCatalysts: string[];
 };
+type PropertyComparisonSummary = {
+  monthlyFixed: number; breakEven: number; realisticNet: number;
+  keyAdvantage: string; keyRisk: string;
+};
+type PropertyComparison = {
+  recommendedProperty: "active" | "compare" | "neither";
+  winnerAddress: string;
+  margin: "significant" | "marginal" | "negligible";
+  rationale: string;
+  activePropertySummary: PropertyComparisonSummary;
+  comparePropertySummary: PropertyComparisonSummary & { address: string };
+};
 type GoNoGoResult = {
   verdict: GoNoGoVerdict;
   verdictLabel: string;
@@ -138,10 +150,13 @@ type GoNoGoResult = {
   revenueForecast?: RevenueForecast;
   reviewTrigger: string;
   nextReviewDate: string;
+  propertyComparison?: PropertyComparison | null;
   _computed: {
     breakEvenRevenue: number; rentToRevenuePct: number; cashRunwayMonths: number;
     vatRisk: boolean; vatRiskDetail: string; bedhCoverageMonths: number;
     daysToOpening: number;
+    comparePropertyId?: number; comparePropertyAddress?: string;
+    cmpMonthlyFixed?: number; cmpBreakEven?: number; cmpRealisticNet?: number; cmpRentToRevPct?: number;
   };
   generatedAt: string;
 };
@@ -212,10 +227,26 @@ const VERDICT_CONFIG: Record<GoNoGoVerdict, { label: string; icon: React.ReactNo
 export default function DashboardPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
 
+  // ── Compare property (synced from localStorage, set by Properties page) ──
+  const [compareProperty, setCompareProperty] = useState<{ id: number; address: string } | null>(() => {
+    try { const v = localStorage.getItem("financialCompareProperty"); return v ? JSON.parse(v) : null; } catch { return null; }
+  });
+
+  useEffect(() => {
+    function onStorage(e: StorageEvent) {
+      if (e.key === "financialCompareProperty") {
+        try { setCompareProperty(e.newValue ? JSON.parse(e.newValue) : null); } catch { setCompareProperty(null); }
+      }
+    }
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   // ── Go/No-Go recommendation ───────────────────────────────────────────────
-  const CACHE_KEY = "goNoGoResult_v2";
-  const CACHE_AT_KEY = "goNoGoResultAt_v2";
   const STALE_MS = 24 * 60 * 60 * 1000; // 24 hours
+  // Different cache keys when a compare property is active — avoids stomping the single-property cache
+  const CACHE_KEY    = compareProperty ? `goNoGoResult_v2_cmp${compareProperty.id}`    : "goNoGoResult_v2";
+  const CACHE_AT_KEY = compareProperty ? `goNoGoResultAt_v2_cmp${compareProperty.id}` : "goNoGoResultAt_v2";
 
   const [goNoGo, setGoNoGo] = useState<GoNoGoResult | null>(null);
   const [goNoGoLoading, setGoNoGoLoading] = useState(false);
@@ -241,7 +272,14 @@ export default function DashboardPage() {
     setGoNoGoError(null);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 115_000);
-    fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal })
+    const body: Record<string, unknown> = {};
+    if (compareProperty?.id) body.comparePropertyId = compareProperty.id;
+    fetch("/api/projects/1/go-no-go", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    })
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
       .then((d: GoNoGoResult) => {
         clearTimeout(timer);
@@ -261,8 +299,8 @@ export default function DashboardPage() {
         setGoNoGoError(msg);
         setGoNoGoLoading(false);
       });
-
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareProperty?.id]);
 
   function clearDashboardCache() {
     try { localStorage.removeItem(CACHE_KEY); } catch {}
@@ -272,12 +310,17 @@ export default function DashboardPage() {
     setGoNoGoStale(false);
   }
 
-  // On mount: restore from cache if available; only auto-run if no cache exists
+  // Restore from cache (or auto-run) whenever the compare property changes or on mount
   useEffect(() => {
+    setGoNoGo(null);
+    setGoNoGoCachedAt(null);
+    setGoNoGoStale(false);
     let hasCachedMain = false;
     try {
-      const cached = localStorage.getItem(CACHE_KEY);
-      const cachedAt = localStorage.getItem(CACHE_AT_KEY);
+      const cacheKey    = compareProperty ? `goNoGoResult_v2_cmp${compareProperty.id}`    : "goNoGoResult_v2";
+      const cacheAtKey  = compareProperty ? `goNoGoResultAt_v2_cmp${compareProperty.id}` : "goNoGoResultAt_v2";
+      const cached   = localStorage.getItem(cacheKey);
+      const cachedAt = localStorage.getItem(cacheAtKey);
       if (cached && cachedAt) {
         setGoNoGo(normaliseGoNoGo(JSON.parse(cached)) as GoNoGoResult);
         setGoNoGoCachedAt(cachedAt);
@@ -294,7 +337,7 @@ export default function DashboardPage() {
     } catch {}
     if (!hasCachedMain) runGoNoGo();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [compareProperty?.id]);
 
   const { data: dashboard } = useGetProjectDashboard(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) },
@@ -498,6 +541,12 @@ export default function DashboardPage() {
               <p className="text-xs text-muted-foreground">
                 Financial viability, property terms, and market analysis for the heads of terms decision — not a launch readiness check.
               </p>
+              {compareProperty && (
+                <div className="flex items-center gap-2 mt-1 px-3 py-2 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                  <span className="font-semibold shrink-0">Comparison mode:</span>
+                  <span className="truncate">analysis includes <span className="font-medium">{compareProperty.address}</span> vs active property</span>
+                </div>
+              )}
             </CardHeader>
 
             <CardContent className="space-y-6">
@@ -667,6 +716,108 @@ export default function DashboardPage() {
                       <p className="text-sm text-foreground/90 leading-relaxed">{goNoGo.executiveSummary}</p>
                     </div>
                   )}
+
+                  {/* ── Property Comparison Panel ─────────────────────────── */}
+                  {goNoGo.propertyComparison && (() => {
+                    const cmp = goNoGo.propertyComparison!;
+                    const winner = cmp.recommendedProperty;
+                    const isActive  = winner === "active";
+                    const isCompare = winner === "compare";
+                    const isNeither = winner === "neither";
+                    const winnerBorder = isActive  ? "border-emerald-400 dark:border-emerald-600"
+                                       : isCompare ? "border-amber-400 dark:border-amber-600"
+                                       : "border-border/60";
+                    const winnerBg    = isActive  ? "bg-emerald-50/60 dark:bg-emerald-950/20"
+                                       : isCompare ? "bg-amber-50/60 dark:bg-amber-950/20"
+                                       : "bg-muted/30";
+                    const c = goNoGo._computed;
+                    const activeFmt  = (n?: number) => n != null ? `£${Math.round(n).toLocaleString()}` : "—";
+                    return (
+                      <div className={`rounded-lg border-2 ${winnerBorder} ${winnerBg} p-4 space-y-3`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Property Comparison</span>
+                          {!isNeither && (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide
+                              ${isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                                         : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"}`}>
+                              {isActive ? "★ Active property recommended" : "★ Compare property recommended"}
+                            </span>
+                          )}
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium
+                            ${cmp.margin === "significant" ? "bg-primary/10 text-primary"
+                              : cmp.margin === "marginal" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"
+                              : "bg-muted text-muted-foreground"}`}>
+                            {cmp.margin === "significant" ? "Significant difference" : cmp.margin === "marginal" ? "Marginal difference" : "Negligible difference"}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-foreground/90 leading-relaxed">{cmp.rationale}</p>
+
+                        {/* Side-by-side property cards */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Active property */}
+                          <div className={`rounded-lg border p-3 space-y-2 ${isActive ? "border-emerald-300 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-border/50 bg-background/50"}`}>
+                            <div className="flex items-center gap-1.5">
+                              {isActive && <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">★ Winner</span>}
+                              <span className="text-[10px] font-semibold text-foreground/70">Active Property</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 text-center">
+                              <div>
+                                <div className="text-xs font-bold text-foreground">{activeFmt(c?.breakEvenRevenue)}</div>
+                                <div className="text-[9px] text-muted-foreground">Break-even</div>
+                              </div>
+                              <div>
+                                <div className={`text-xs font-bold ${(cmp.activePropertySummary?.realisticNet ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                                  {activeFmt(cmp.activePropertySummary?.realisticNet)}
+                                </div>
+                                <div className="text-[9px] text-muted-foreground">Realistic net</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-foreground">{c?.rentToRevenuePct != null ? `${c.rentToRevenuePct}%` : "—"}</div>
+                                <div className="text-[9px] text-muted-foreground">Rent/rev</div>
+                              </div>
+                            </div>
+                            {cmp.activePropertySummary?.keyAdvantage && (
+                              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 leading-snug">↑ {cmp.activePropertySummary.keyAdvantage}</p>
+                            )}
+                            {cmp.activePropertySummary?.keyRisk && (
+                              <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-snug">⚠ {cmp.activePropertySummary.keyRisk}</p>
+                            )}
+                          </div>
+
+                          {/* Compare property */}
+                          <div className={`rounded-lg border p-3 space-y-2 ${isCompare ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/20" : "border-border/50 bg-background/50"}`}>
+                            <div className="flex items-center gap-1.5">
+                              {isCompare && <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">★ Winner</span>}
+                              <span className="text-[10px] font-semibold text-foreground/70 truncate">{cmp.comparePropertySummary?.address ?? compareProperty?.address ?? "Compare property"}</span>
+                            </div>
+                            <div className="grid grid-cols-3 gap-1 text-center">
+                              <div>
+                                <div className="text-xs font-bold text-foreground">{activeFmt(c?.cmpBreakEven)}</div>
+                                <div className="text-[9px] text-muted-foreground">Break-even</div>
+                              </div>
+                              <div>
+                                <div className={`text-xs font-bold ${(cmp.comparePropertySummary?.realisticNet ?? 0) >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-500"}`}>
+                                  {activeFmt(cmp.comparePropertySummary?.realisticNet)}
+                                </div>
+                                <div className="text-[9px] text-muted-foreground">Realistic net</div>
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-foreground">{c?.cmpRentToRevPct != null ? `${c.cmpRentToRevPct}%` : "—"}</div>
+                                <div className="text-[9px] text-muted-foreground">Rent/rev</div>
+                              </div>
+                            </div>
+                            {cmp.comparePropertySummary?.keyAdvantage && (
+                              <p className="text-[10px] text-emerald-700 dark:text-emerald-400 leading-snug">↑ {cmp.comparePropertySummary.keyAdvantage}</p>
+                            )}
+                            {cmp.comparePropertySummary?.keyRisk && (
+                              <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-snug">⚠ {cmp.comparePropertySummary.keyRisk}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* ── Detailed Assessment ────────────────────────────────── */}
                   {goNoGo.detailedAssessment && Object.values(goNoGo.detailedAssessment).some(Boolean) && (

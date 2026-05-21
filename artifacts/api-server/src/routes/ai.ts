@@ -236,6 +236,8 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
 
   const financial = financialRaw[0] ?? null;
   const activeProperty = allPropertiesRaw.find((p) => p.isActiveForProject) ?? allPropertiesRaw[0] ?? null;
+  const comparePropertyRow = (comparePropertyId && !isNaN(comparePropertyId))
+    ? (allPropertiesRaw.find(p => p.id === comparePropertyId) ?? null) : null;
 
   // Dynamic property label used throughout prompts — never hardcode location name
   const propertyLabel = activeProperty
@@ -282,6 +284,13 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
   let activeRampMonths = 6;
   let activeTargetOcc = 60;
   let activeScenarioNote = "Realistic occupancy, standard 6-month ramp";
+
+  // Compare property context — populated inside if (financial) if comparePropertyRow is set
+  let compareContext = "";
+  let cmpComputedMonthlyFixed = 0;
+  let cmpComputedBreakEven = 0;
+  let cmpComputedRealisticNet = 0;
+  let cmpComputedRentToRevPct = 0;
 
   if (financial) {
     // Resolve the active scenario from the model's selectedScenario field
@@ -430,6 +439,65 @@ VAT risk:
   ${vatRiskDetail}
 
 Membership revenue: £${financial.membershipRevenueGbp}/mo | Repeat booking rate: ${financial.repeatBookingRatePercent}%`;
+
+    // ── Compare property financial computation ────────────────────────────────
+    if (comparePropertyRow) {
+      const wincAcvCmp = financial.wincAcvGbp || financial.averageClientValueGbp;
+      const cmpRent = comparePropertyRow.monthlyRentGbp ?? 0;
+      const cmpRates = comparePropertyRow.businessRatesGbp ? Math.round(comparePropertyRow.businessRatesGbp / 12) : 0;
+
+      // Fixed costs scoped to compare property (property-specific + shared/null)
+      const cmpFixedItems = fixedCostsRaw.filter(i => (i as any).propertyId === comparePropertyRow.id || (i as any).propertyId === null);
+      const cmpTotalFixed = cmpFixedItems.length > 0
+        ? cmpFixedItems.reduce((s, c) => s + (c.amountGbp ?? 0), 0)
+        : Math.round(cmpRent + cmpRates + financial.utilitiesGbp + financial.internetGbp +
+            financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp +
+            financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp +
+            financial.financeRepaymentsGbp);
+      cmpComputedMonthlyFixed = cmpTotalFixed;
+
+      const varRatioCmp = (financial.stockPercent + financial.commissionsPercent) / 100;
+      const fixedVarItemsCmp = financial.marketingGbp + financial.staffingGbp + financial.consumablesGbp;
+      cmpComputedBreakEven = Math.round((cmpTotalFixed + fixedVarItemsCmp) / Math.max(1 - varRatioCmp - vatRateForCalc, 0.01));
+
+      const conservativeOccCmp = financial.conservativeOccupancyPercent > 0 ? financial.conservativeOccupancyPercent : Math.max(Math.round(financial.realisticOccupancyPercent * 0.5), 20);
+      const aggressiveOccCmp  = financial.aggressiveOccupancyPercent  > 0 ? financial.aggressiveOccupancyPercent  : Math.min(Math.round(financial.realisticOccupancyPercent * 1.35), 95);
+
+      const cmpModel = { ...financial, rentGbp: cmpRent, ratesGbp: cmpRates } as typeof financial;
+      const cmpConservative = calcScenario(conservativeOccCmp, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
+      const cmpRealistic    = calcScenario(financial.realisticOccupancyPercent, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
+      const cmpAggressive   = calcScenario(aggressiveOccCmp, wincAcvCmp, cmpModel, cmpTotalFixed, vatRateForCalc);
+      cmpComputedRealisticNet = cmpRealistic.net;
+      cmpComputedRentToRevPct = cmpRealistic.revenue > 0 ? Math.round((cmpRent / cmpRealistic.revenue) * 100) : 0;
+
+      const activeTotalFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : Math.round(financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp);
+      const fixedDiff = cmpTotalFixed - activeTotalFixed;
+      const netDiff   = cmpRealistic.net - realistic.net;
+      const beDiff    = cmpComputedBreakEven - breakEvenRevenue;
+
+      compareContext = `
+=== PROPERTY COMPARISON MODE ===
+You are evaluating TWO properties side-by-side. All revenue assumptions are IDENTICAL (same ACV, occupancy ramp, variable cost rates). Only cost structure differs.
+
+PROPERTY A — ACTIVE (${propertyLabel}):
+  Monthly rent: £${(financial.rentGbp || activeProperty?.monthlyRentGbp || 0).toLocaleString()}/mo | Business rates: £${(financial.ratesGbp || (activeProperty?.businessRatesGbp ? Math.round(activeProperty.businessRatesGbp / 12) : 0)).toLocaleString()}/mo
+  Total monthly fixed costs: £${activeTotalFixed.toLocaleString()}/mo
+  Break-even revenue needed: £${breakEvenRevenue.toLocaleString()}/mo | Rent as % of realistic revenue: ${rentToRevenuePct}%
+  Conservative net: £${conservative.net.toLocaleString()}/mo | Realistic net: £${realistic.net.toLocaleString()}/mo | Aggressive net: £${aggressive.net.toLocaleString()}/mo
+
+PROPERTY B — COMPARE (${comparePropertyRow.address}${comparePropertyRow.postcode ? `, ${comparePropertyRow.postcode}` : ""}):
+  Monthly rent: £${cmpRent.toLocaleString()}/mo | Business rates: £${cmpRates.toLocaleString()}/mo
+  Total monthly fixed costs: £${cmpTotalFixed.toLocaleString()}/mo (${cmpFixedItems.length > 0 ? `${cmpFixedItems.length} itemised cost lines` : "computed from model overrides"})
+  Break-even revenue needed: £${cmpComputedBreakEven.toLocaleString()}/mo | Rent as % of realistic revenue: ${cmpComputedRentToRevPct}%
+  Conservative net: £${cmpConservative.net.toLocaleString()}/mo | Realistic net: £${cmpRealistic.net.toLocaleString()}/mo | Aggressive net: £${cmpAggressive.net.toLocaleString()}/mo
+
+KEY FINANCIAL DIFFERENCES (B vs A):
+  Fixed cost gap: ${Math.abs(fixedDiff) < 50 ? "Essentially identical" : fixedDiff > 0 ? `Property B is £${fixedDiff.toLocaleString()}/mo MORE expensive` : `Property B is £${Math.abs(fixedDiff).toLocaleString()}/mo CHEAPER`}
+  Break-even gap: ${Math.abs(beDiff) < 100 ? "Virtually identical break-even" : beDiff > 0 ? `Property B needs £${beDiff.toLocaleString()}/mo MORE revenue to break even` : `Property B needs £${Math.abs(beDiff).toLocaleString()}/mo LESS revenue to break even`}
+  Realistic net profit: ${Math.abs(netDiff) < 100 ? "Negligible profit difference" : netDiff > 0 ? `Property B generates £${netDiff.toLocaleString()}/mo MORE net profit` : `Property A generates £${Math.abs(netDiff).toLocaleString()}/mo MORE net profit`}
+
+IMPORTANT: Your overall verdict, confidence score, and executive summary should reflect BOTH properties. In the propertyComparison block you MUST clearly state which property is the better financial choice using the actual £ numbers above. Consider both financial metrics (fixed costs, break-even, net profit) and non-financial factors (location, footfall, competition proximity, fit-out complexity, lease risk). Do NOT leave propertyComparison null or omit it.`;
+    }
   }
   const fixedCostContext = fixedCostsRaw.length > 0
     ? `Itemised fixed costs (${fixedCostsRaw.length} items, £${totalFixedItemsCost.toLocaleString()}/mo total):\n${fixedCostsRaw.map((c) => `  • ${c.name}: £${c.amountGbp}/mo (${c.costType})`).join("\n")}`
@@ -726,6 +794,8 @@ ACTIVE SCENARIO RAMP PARAMETERS (use these exact values — they come from the m
 6. In driverNote for each month, reference Winchester-specific acquisition drivers only (e.g. META ads, Google reviews, walk-in footfall, Hampshire press, repeat bookings from early clients) — NEVER mention Bedhampton clients`;
 })() : "Financial model not yet entered — cannot compute ramp-up model inputs."}
 
+${compareContext}
+
 Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 {
   "verdict": "PROCEED" | "PROCEED_WITH_CONDITIONS" | "DELAY" | "DO_NOT_PROCEED",
@@ -794,6 +864,27 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
     "<key point 3 — e.g. repairing obligations: internal only + schedule of condition>",
     "<key point 4 — e.g. fit-out contribution: ask £X or equivalent rent-free>"
   ],
+  ${comparePropertyRow ? `"propertyComparison": {
+    "recommendedProperty": "active" | "compare" | "neither",
+    "winnerAddress": "<full address of the recommended property, or 'Neither' if inconclusive>",
+    "margin": "significant" | "marginal" | "negligible",
+    "rationale": "<2-3 sentences: which property wins financially and on non-financial factors — cite actual £ differences>",
+    "activePropertySummary": {
+      "monthlyFixed": <number — monthly fixed costs>,
+      "breakEven": <number — monthly break-even revenue>,
+      "realisticNet": <number — realistic scenario net profit/loss per month>,
+      "keyAdvantage": "<one sentence: what does this property have going for it>",
+      "keyRisk": "<one sentence: biggest concern with this property>"
+    },
+    "comparePropertySummary": {
+      "address": "<full address of compare property>",
+      "monthlyFixed": <number>,
+      "breakEven": <number>,
+      "realisticNet": <number>,
+      "keyAdvantage": "<one sentence>",
+      "keyRisk": "<one sentence>"
+    }
+  },` : ""}
   "reviewTrigger": "<what would change your verdict — e.g. rent increases above X, Bedhampton revenue drops below Y>",
   "nextReviewDate": "<ISO 8601 date>",
   "monthlyRevenueForecast": [
@@ -891,6 +982,14 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
         vatRiskDetail,
         bedhCoverageMonths,
         daysToOpening,
+        ...(comparePropertyRow ? {
+          comparePropertyId: comparePropertyRow.id,
+          comparePropertyAddress: comparePropertyRow.address,
+          cmpMonthlyFixed: cmpComputedMonthlyFixed,
+          cmpBreakEven: cmpComputedBreakEven,
+          cmpRealisticNet: cmpComputedRealisticNet,
+          cmpRentToRevPct: cmpComputedRentToRevPct,
+        } : {}),
       },
       generatedAt: new Date().toISOString(),
     });
