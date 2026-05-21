@@ -550,6 +550,50 @@ export default function FinancialsPage() {
     return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
   };
 
+  // ── Property financial comparison ──────────────────────────────────────────
+  const [compareProperty, setCompareProperty] = useState<{ id: number; address: string } | null>(null);
+  useEffect(() => {
+    const stored = localStorage.getItem("financialCompareProperty");
+    if (stored) { try { setCompareProperty(JSON.parse(stored)); } catch {} }
+    const handler = (e: StorageEvent) => {
+      if (e.key !== "financialCompareProperty") return;
+      if (e.newValue) { try { setCompareProperty(JSON.parse(e.newValue)); } catch {} }
+      else setCompareProperty(null);
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+  const clearCompare = () => {
+    localStorage.removeItem("financialCompareProperty");
+    setCompareProperty(null);
+  };
+  const compareQKBase = ["cashflow-compare", PROJECT_ID, scenario, rampTier, activeVat.rate, compareProperty?.id] as const;
+  const { data: compareCashflow } = useQuery<CashflowMonth[]>({
+    queryKey: compareQKBase,
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&overridePropertyId=${compareProperty!.id}`)
+        .then((r) => r.json()),
+    enabled: compareProperty != null,
+    staleTime: 0,
+    placeholderData: (prev) => prev,
+  });
+  const { data: compareCashflow36 } = useQuery<CashflowMonth[]>({
+    queryKey: [...compareQKBase, "36"],
+    queryFn: () =>
+      fetch(`/api/projects/${PROJECT_ID}/cashflow?scenario=${scenario}&rampTier=${rampTier}&vatRate=${activeVat.rate}&months=36&overridePropertyId=${compareProperty!.id}`)
+        .then((r) => r.json()),
+    enabled: compareProperty != null,
+    staleTime: 0,
+    placeholderData: (prev) => prev,
+  });
+  const comparePnlData = pnlMonths === 36 ? compareCashflow36 : compareCashflow;
+  const mergedCashflow = useMemo(() => {
+    if (!cashflow) return cashflow;
+    if (!compareCashflow) return cashflow;
+    const map = new Map(compareCashflow.map(m => [m.calendarLabel, m]));
+    return cashflow.map(m => ({ ...m, compareBalance: map.get(m.calendarLabel)?.cashBalance ?? null }));
+  }, [cashflow, compareCashflow]);
+
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
 
@@ -1386,6 +1430,29 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
+          {/* ── Property Comparison Banner ───────────────────────────────────── */}
+          {compareProperty && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50/70 dark:bg-amber-950/20 px-4 py-2.5">
+              <div className="flex items-center gap-2 min-w-0">
+                <BarChart3 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-amber-800 dark:text-amber-300">Comparing financials: </span>
+                  <span className="text-xs text-amber-700 dark:text-amber-400 font-medium truncate">{compareProperty.address}</span>
+                  <span className="ml-2 text-[10px] text-amber-600/70 dark:text-amber-500/70">
+                    Orange lines / values = this property · Green = active property
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={clearCompare}
+                className="text-xs text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-200 shrink-0 flex items-center gap-1 transition-colors"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            </div>
+          )}
+
           {/* ── Live Bedhampton Performance ───────────────────────────────────── */}
           <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-950/20">
             <CardHeader className="pb-3">
@@ -1509,6 +1576,7 @@ export default function FinancialsPage() {
             <CardContent>
               <div className="h-[340px]">
                 {cashflow && cashflow.length > 0 ? (() => {
+                  const chartData = mergedCashflow ?? cashflow;
                   const openingMonth = cashflow.find(m => m.isOpeningMonth);
                   const closeMonth = cashflow.find(m => m.isSelfFundingMonth);
                   const preOpenEnd = cashflow.find(m => m.isOpeningMonth);
@@ -1516,6 +1584,7 @@ export default function FinancialsPage() {
                   const allVals = [
                     ...cashflow.map(m => m.cashBalance),
                     ...cashflow.map(m => m.monthlyCashflow),
+                    ...(compareCashflow ? compareCashflow.map(m => m.cashBalance) : []),
                     0,
                   ];
                   const rawMin = Math.min(...allVals);
@@ -1527,7 +1596,7 @@ export default function FinancialsPage() {
                   ];
                   return (
                     <ResponsiveContainer width="100%" height="100%">
-                      <ComposedChart data={cashflow} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
+                      <ComposedChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 0 }}>
                         <defs>
                           <linearGradient id="cashGradient" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.22} />
@@ -1649,8 +1718,9 @@ export default function FinancialsPage() {
                         />
                         <Legend
                           formatter={(v) =>
-                            v === "cashBalance" ? "Business capital (running balance)"
+                            v === "cashBalance" ? "Business capital — active property"
                             : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
+                            : v === "compareBalance" ? `Business capital — ${compareProperty?.address ?? "compare"}`
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -1675,6 +1745,20 @@ export default function FinancialsPage() {
                           strokeWidth={2.5}
                           dot={false}
                         />
+
+                        {/* Comparison property capital line */}
+                        {compareProperty && (
+                          <Line
+                            type="monotone"
+                            dataKey="compareBalance"
+                            name="compareBalance"
+                            stroke="#f59e0b"
+                            strokeWidth={2}
+                            strokeDasharray="6 3"
+                            dot={false}
+                            connectNulls
+                          />
+                        )}
                       </ComposedChart>
                     </ResponsiveContainer>
                   );
@@ -1866,6 +1950,19 @@ export default function FinancialsPage() {
                               ) : (
                                 <span className="text-muted-foreground/30">—</span>
                               )}
+                              {compareProperty && (() => {
+                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
+                                if (!cmp) return null;
+                                const cmpFixed = cmp.wincFixedCosts + (cmp.preOpenPropertyCost ?? 0);
+                                const primFixed = m.wincFixedCosts + (m.preOpenPropertyCost ?? 0);
+                                const diff = cmpFixed - primFixed;
+                                return (
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">
+                                    {cmpFixed > 0 ? `(${formatGBP(cmpFixed)})` : "—"}
+                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff < 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
@@ -2077,11 +2174,34 @@ export default function FinancialsPage() {
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
+                              {compareProperty && (() => {
+                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
+                                if (!cmp) return null;
+                                const cmpNet = cmp.wincNet + cmp.bedhNet;
+                                const diff = cmpNet - netProfitRow;
+                                return (
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 font-normal mt-0.5 leading-tight">
+                                    {formatGBP(cmpNet)}
+                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             {/* Running cash balance */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-medium ${m.cashBalance >= 0 ? "" : "text-destructive"}`}>
                               {formatGBP(m.cashBalance)}
+                              {compareProperty && (() => {
+                                const cmp = comparePnlData?.find(c => c.calendarLabel === m.calendarLabel);
+                                if (!cmp) return null;
+                                const diff = cmp.cashBalance - m.cashBalance;
+                                return (
+                                  <div className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 leading-tight">
+                                    {formatGBP(cmp.cashBalance)}
+                                    {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-emerald-500" : "text-red-400"}`}>({diff > 0 ? "+" : ""}{formatGBP(diff)})</span>}
+                                  </div>
+                                );
+                              })()}
                             </td>
                           </tr>
                         );

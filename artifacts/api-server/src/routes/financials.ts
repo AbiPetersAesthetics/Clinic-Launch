@@ -496,19 +496,28 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     };
   });
 
-  // Load dynamic fixed cost items — scoped to the active property
+  // Load dynamic fixed cost items — scoped to the active property (or overridePropertyId for compare)
   const [activePropForCf] = await db
     .select()
     .from(propertiesTable)
     .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-  const activePropIdCf = activePropForCf?.id ?? null;
+  // When comparing, use the override property's fixed costs; also apply its rent/rates to the model copy
+  const effectivePropIdCf = overridePropertyId ?? activePropForCf?.id ?? null;
+  if (overridePropertyId) {
+    const [overrideProp] = await db.select().from(propertiesTable).where(eq(propertiesTable.id, overridePropertyId));
+    if (overrideProp) {
+      if (overrideProp.monthlyRentGbp != null) (model as any).rentGbp = overrideProp.monthlyRentGbp;
+      if (overrideProp.businessRatesGbp != null) (model as any).ratesGbp = Math.round(overrideProp.businessRatesGbp / 12);
+      (model as any).vatOnRent = overrideProp.vatOnRent ?? false;
+    }
+  }
 
   const allFixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
     .where(eq(fixedCostItemsTable.projectId, projectId));
-  const fixedCostItems = activePropIdCf
-    ? allFixedCostItems.filter(i => i.propertyId === activePropIdCf || i.propertyId === null)
+  const fixedCostItems = effectivePropIdCf
+    ? allFixedCostItems.filter(i => i.propertyId === effectivePropIdCf || i.propertyId === null)
     : allFixedCostItems;
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
