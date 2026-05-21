@@ -25,7 +25,7 @@ import {
   Save, AlertTriangle, Info, CheckCircle2, XCircle,
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
-  RefreshCw, Loader2, Wand2, Lock, Sliders,
+  RefreshCw, Loader2, Wand2, Lock, Sliders, Calendar,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -487,6 +487,68 @@ export default function FinancialsPage() {
     placeholderData: (prev) => prev,
   });
   const pnlData = pnlMonths === 36 ? cashflow36 : cashflow;
+
+  // Project data — needed for targetOpeningDate (Key Dates card)
+  const { data: projectData } = useQuery<any>({
+    queryKey: ["project", PROJECT_ID],
+    queryFn: () => fetch(`/api/projects/${PROJECT_ID}`).then((r) => r.json()),
+    staleTime: 60_000,
+  });
+
+  // Key Dates state — synced from model / project when data loads
+  const [leaseSignDate, setLeaseSignDate] = useState("");
+  const [keyHandoverDate, setKeyHandoverDate] = useState("");
+  const [openDate, setOpenDate] = useState("");
+  const [datesSaving, setDatesSaving] = useState(false);
+
+  useEffect(() => {
+    if (model) {
+      setLeaseSignDate((model as any).leaseSignDate ?? "");
+      setKeyHandoverDate((model as any).keyHandoverDate ?? "");
+    }
+  }, [model]);
+
+  useEffect(() => {
+    if (projectData?.targetOpeningDate) {
+      setOpenDate(projectData.targetOpeningDate);
+    }
+  }, [projectData]);
+
+  const saveDates = async () => {
+    setDatesSaving(true);
+    try {
+      await Promise.all([
+        fetch(`/api/projects/${PROJECT_ID}/financial`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leaseSignDate: leaseSignDate || null, keyHandoverDate: keyHandoverDate || null }),
+        }),
+        openDate
+          ? fetch(`/api/projects/${PROJECT_ID}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ targetOpeningDate: openDate }),
+            })
+          : Promise.resolve(),
+      ]);
+      queryClient.invalidateQueries({ queryKey: getGetFinancialModelQueryKey(PROJECT_ID) });
+      queryClient.invalidateQueries({ queryKey: ["project", PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow", PROJECT_ID] });
+      queryClient.invalidateQueries({ queryKey: ["cashflow36", PROJECT_ID] });
+      toast({ title: "Key dates saved", description: "The financial model has been updated." });
+    } catch {
+      toast({ title: "Save failed", description: "Could not save key dates.", variant: "destructive" });
+    } finally {
+      setDatesSaving(false);
+    }
+  };
+
+  // Helper: months between two YYYY-MM-DD dates (positive = d2 after d1)
+  const monthsBetween = (d1: string, d2: string) => {
+    if (!d1 || !d2) return null;
+    const a = new Date(d1), b = new Date(d2);
+    return (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+  };
 
   const upsertModel = useUpsertFinancialModel();
   const calculateFinancials = useCalculateFinancials();
@@ -1230,6 +1292,99 @@ export default function FinancialsPage() {
       {/* ═══ TAB: OVERVIEW ═══════════════════════════════════════════════════ */}
       {tab === "overview" && (
         <div className="space-y-6">
+
+          {/* ── Key Milestone Dates ───────────────────────────────────────────── */}
+          <Card className="shadow-sm border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50/60 to-transparent dark:from-violet-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-violet-500" />
+                <CardTitle className="text-sm text-violet-700 dark:text-violet-300">Key Milestone Dates</CardTitle>
+              </div>
+              <CardDescription className="text-xs">
+                The <strong>Open Date</strong> drives the entire financial model — all revenue, costs, and cashflow are calculated from it. Set Lease Sign to automatically derive how many months of pre-opening property costs to apply.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+                {/* Lease Sign */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Target Lease Sign</label>
+                  <input
+                    type="date"
+                    value={leaseSignDate}
+                    onChange={(e) => setLeaseSignDate(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  />
+                  {leaseSignDate && openDate && (() => {
+                    const m = monthsBetween(leaseSignDate, openDate);
+                    return m !== null ? (
+                      <p className="text-xs text-muted-foreground">
+                        {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
+                        {m > 0 && <span className="ml-1 text-violet-600 dark:text-violet-400">→ model uses {m}mo pre-opening property costs</span>}
+                      </p>
+                    ) : null;
+                  })()}
+                  {!leaseSignDate && (
+                    <p className="text-xs text-muted-foreground">Not set — uses Assumptions value</p>
+                  )}
+                </div>
+
+                {/* Key Handover */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Key Handover</label>
+                  <input
+                    type="date"
+                    value={keyHandoverDate}
+                    onChange={(e) => setKeyHandoverDate(e.target.value)}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-violet-400"
+                  />
+                  {keyHandoverDate && openDate && (() => {
+                    const m = monthsBetween(keyHandoverDate, openDate);
+                    return m !== null ? (
+                      <p className="text-xs text-muted-foreground">
+                        {m > 0 ? `${m} month${m !== 1 ? "s" : ""} before opening` : m === 0 ? "Same month as opening" : `${Math.abs(m)} month${Math.abs(m) !== 1 ? "s" : ""} after opening`}
+                      </p>
+                    ) : null;
+                  })()}
+                  {keyHandoverDate && leaseSignDate && (() => {
+                    const m = monthsBetween(leaseSignDate, keyHandoverDate);
+                    return m !== null && m > 0 ? (
+                      <p className="text-xs text-muted-foreground">{m} month{m !== 1 ? "s" : ""} after lease sign</p>
+                    ) : null;
+                  })()}
+                </div>
+
+                {/* Open Date */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-violet-700 dark:text-violet-300 uppercase tracking-wide flex items-center gap-1">
+                    Clinic Opens
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-700">Model Driver</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={openDate}
+                    onChange={(e) => setOpenDate(e.target.value)}
+                    className="w-full rounded-md border border-violet-300 dark:border-violet-700 bg-background px-3 py-1.5 text-sm shadow-sm ring-1 ring-violet-200 dark:ring-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-500 font-medium"
+                  />
+                  {openDate && (
+                    <p className="text-xs font-medium text-violet-700 dark:text-violet-300">
+                      {new Date(openDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  )}
+                </div>
+
+              </div>
+
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Changes take effect across all charts and projections on save.</p>
+                <Button size="sm" onClick={saveDates} disabled={datesSaving} className="bg-violet-600 hover:bg-violet-700 text-white">
+                  {datesSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" /> : <Save className="w-3.5 h-3.5 mr-1.5" />}
+                  Save dates
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* ── Live Bedhampton Performance ───────────────────────────────────── */}
           <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50/60 to-transparent dark:from-blue-950/20">

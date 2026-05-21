@@ -564,10 +564,17 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // Use || not ?? — the DB may store 0 as "not configured" and 0 would cap revenue at £0
   const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp || 16000;
 
-  // Pre-opening property costs: rent + rates apply from lease signing, before Winchester opens
-  // IMPORTANT: use cfRentAmount (from fixedCostItems) not model.rentGbp — the active property
-  // may have rentGbp=0 which applyPropertyFallback overwrites the model field with.
-  const preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
+  // Pre-opening property costs: derive from leaseSignDate vs openDate when both are set.
+  // Falls back to the stored preOpeningPropertyMonths assumption.
+  let preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
+  const leaseSignDate = (model as any).leaseSignDate;
+  const openDateStr = project?.targetOpeningDate;
+  if (leaseSignDate && openDateStr) {
+    const ls = new Date(leaseSignDate);
+    const od = new Date(openDateStr);
+    const diffMonths = (od.getFullYear() - ls.getFullYear()) * 12 + (od.getMonth() - ls.getMonth());
+    if (diffMonths >= 0) preOpenPropMonths = diffMonths;
+  }
   const cfRatesAmount = fixedCostItems.length > 0
     ? fixedCostItems.filter(item => /rates/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : (model.ratesGbp || 0);
