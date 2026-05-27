@@ -5,15 +5,18 @@ import { eq, and, desc } from "drizzle-orm";
 
 // Apply a quoted amount to a task's base row + all existing property overrides,
 // and upsert an override for the active property if none exists yet.
-async function applyQuotedCostToTask(taskId: number, amount: number, projectId: number) {
+// Task costs are stored inc-VAT, so if the quote is ex-VAT (vatIncluded=false) we gross up ×1.2.
+async function applyQuotedCostToTask(taskId: number, amount: number, projectId: number, vatIncluded: boolean) {
+  const incVatAmount = vatIncluded ? amount : Math.round(amount * 1.2 * 100) / 100;
+
   await db
     .update(tasksTable)
-    .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+    .set({ selectedCost: incVatAmount, costTier: "quoted", updatedAt: new Date() })
     .where(eq(tasksTable.id, taskId));
 
   await db
     .update(propertyTaskOverridesTable)
-    .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+    .set({ selectedCost: incVatAmount, costTier: "quoted", updatedAt: new Date() })
     .where(eq(propertyTaskOverridesTable.taskId, taskId));
 
   const [activeProperty] = await db
@@ -33,7 +36,7 @@ async function applyQuotedCostToTask(taskId: number, amount: number, projectId: 
       await db.insert(propertyTaskOverridesTable).values({
         propertyId: activeProperty.id,
         taskId,
-        selectedCost: amount,
+        selectedCost: incVatAmount,
         costTier: "quoted",
         updatedAt: new Date(),
       });
@@ -245,7 +248,7 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
   if (quote.status === "Accepted" && quote.taskId != null && quote.amountGbp != null) {
     const amount = parseFloat(quote.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await applyQuotedCostToTask(quote.taskId, amount, supplier.projectId);
+      await applyQuotedCostToTask(quote.taskId, amount, supplier.projectId, quote.vatIncluded ?? false);
     }
   }
 
@@ -284,7 +287,7 @@ router.put("/quotes/:id", async (req, res) => {
   if (updated.status === "Accepted" && updated.taskId != null && updated.amountGbp != null) {
     const amount = parseFloat(updated.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await applyQuotedCostToTask(updated.taskId, amount, updated.projectId!);
+      await applyQuotedCostToTask(updated.taskId, amount, updated.projectId!, updated.vatIncluded ?? false);
     }
   }
 
