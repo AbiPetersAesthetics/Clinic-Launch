@@ -5,7 +5,8 @@ import { eq, and, sql } from "drizzle-orm";
 
 const router = Router();
 
-function getSelectedCost(costTier: string, costLow: number, costMid: number, costHigh: number): number {
+function getSelectedCost(costTier: string, costLow: number, costMid: number, costHigh: number, currentSelectedCost = 0): number {
+  if (costTier === "quoted") return currentSelectedCost; // preserve quote-applied amount
   if (costTier === "low") return costLow;
   if (costTier === "high") return costHigh;
   return costMid;
@@ -86,7 +87,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     const low = body.costLow ?? existing.costLow;
     const mid = body.costMid ?? existing.costMid;
     const high = body.costHigh ?? existing.costHigh;
-    overridableFields.selectedCost = getSelectedCost(tier, low, mid, high);
+    overridableFields.selectedCost = getSelectedCost(tier, low, mid, high, body.selectedCost ?? existing.selectedCost);
     overridableFields.updatedAt = new Date();
 
     // Map camelCase to snake_case column names for Drizzle
@@ -161,7 +162,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
 
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
   delete updates.propertyId;
-  updates.selectedCost = getSelectedCost(tier, low, mid, high);
+  // For "quoted" tier, preserve the quote-set selectedCost unless explicitly overridden
+  updates.selectedCost = getSelectedCost(tier, low, mid, high, body.selectedCost ?? existing.selectedCost);
 
   if (body.dependencies !== undefined) {
     updates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;

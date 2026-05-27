@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { suppliersTable, supplierQuotesTable } from "@workspace/db/schema";
+import { suppliersTable, supplierQuotesTable, tasksTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 const router = Router();
@@ -203,6 +203,17 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
       .where(eq(suppliersTable.id, supplierId));
   }
 
+  // If quote is Accepted and linked to a task, apply the quoted amount as the task's selectedCost
+  if (quote.status === "Accepted" && quote.taskId != null && quote.amountGbp != null) {
+    const amount = parseFloat(quote.amountGbp);
+    if (!isNaN(amount) && amount > 0) {
+      await db
+        .update(tasksTable)
+        .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+        .where(eq(tasksTable.id, quote.taskId));
+    }
+  }
+
   return res.status(201).json(quote);
 });
 
@@ -233,6 +244,18 @@ router.put("/quotes/:id", async (req, res) => {
     .returning();
 
   if (!updated) return res.status(404).json({ error: "Quote not found" });
+
+  // If quote is now Accepted and linked to a task, apply the quoted amount as selectedCost
+  if (updated.status === "Accepted" && updated.taskId != null && updated.amountGbp != null) {
+    const amount = parseFloat(updated.amountGbp);
+    if (!isNaN(amount) && amount > 0) {
+      await db
+        .update(tasksTable)
+        .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+        .where(eq(tasksTable.id, updated.taskId));
+    }
+  }
+
   return res.json(updated);
 });
 

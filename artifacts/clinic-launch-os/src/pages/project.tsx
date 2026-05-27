@@ -1676,16 +1676,24 @@ export default function ProjectPage() {
                           <Badge variant="secondary" className={RISK_COLORS[task.riskLevel] || ""}>{task.riskLevel}</Badge>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <div className="flex rounded-md overflow-hidden border border-border/60 w-max">
-                            {(["low", "mid", "high"] as const).map((tier, i) => (
-                              <button key={tier}
-                                onClick={() => handleCostTierChange(task, tier)}
-                                className={`px-2 py-1 text-[10px] font-medium transition-colors ${i > 0 ? "border-l border-border/60" : ""} ${task.costTier === tier ? tier === "low" ? "bg-primary/20 text-primary" : tier === "mid" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:bg-muted"}`}
-                              >
-                                {tier[0].toUpperCase()}: {formatGBP(tier === "low" ? task.costLow : tier === "mid" ? task.costMid : task.costHigh)}
-                              </button>
-                            ))}
-                          </div>
+                          {task.costTier === "quoted" ? (
+                            <div className="flex items-center gap-1">
+                              <span className="px-2 py-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                Quoted: {formatGBP(task.selectedCost)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex rounded-md overflow-hidden border border-border/60 w-max">
+                              {(["low", "mid", "high"] as const).map((tier, i) => (
+                                <button key={tier}
+                                  onClick={() => handleCostTierChange(task, tier)}
+                                  className={`px-2 py-1 text-[10px] font-medium transition-colors ${i > 0 ? "border-l border-border/60" : ""} ${task.costTier === tier ? tier === "low" ? "bg-primary/20 text-primary" : tier === "mid" ? "bg-amber-500/20 text-amber-700 dark:text-amber-400" : "bg-destructive/20 text-destructive" : "bg-card text-muted-foreground hover:bg-muted"}`}
+                                >
+                                  {tier[0].toUpperCase()}: {formatGBP(tier === "low" ? task.costLow : tier === "mid" ? task.costMid : task.costHigh)}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {task.startDate ? (
@@ -1863,47 +1871,58 @@ export default function ProjectPage() {
                             </Badge>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
-                            <div className="flex flex-col gap-1 w-max">
-                              <div className="flex rounded-md overflow-hidden border border-border/60">
-                                <button
-                                  onClick={() => handleCostTierChange(task, "low")}
-                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                    task.costTier === "low"
-                                      ? "bg-primary/20 text-primary"
-                                      : "bg-card text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  Low: {formatGBP(task.costLow)}
-                                </button>
-                                <div className="w-px bg-border/60"></div>
-                                <button
-                                  onClick={() => handleCostTierChange(task, "mid")}
-                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                    task.costTier === "mid"
-                                      ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
-                                      : "bg-card text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  Mid: {formatGBP(task.costMid)}
-                                </button>
-                                <div className="w-px bg-border/60"></div>
-                                <button
-                                  onClick={() => handleCostTierChange(task, "high")}
-                                  className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
-                                    task.costTier === "high"
-                                      ? "bg-destructive/20 text-destructive"
-                                      : "bg-card text-muted-foreground hover:bg-muted"
-                                  }`}
-                                >
-                                  High: {formatGBP(task.costHigh)}
-                                </button>
-                              </div>
-                              {task.costLow === 0 && task.costHigh === 0 && task.costMid === 0 ? null : (
-                                <div className="text-[10px] text-muted-foreground text-right mt-0.5">
-                                  Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
+                            {task.costTier === "quoted" ? (
+                              <div className="flex flex-col gap-1 w-max">
+                                <span className="px-2.5 py-1 text-[10px] font-semibold bg-emerald-100 text-emerald-700 rounded border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                  Quoted: {formatGBP(task.selectedCost)}
+                                </span>
+                                <div className="text-[10px] text-muted-foreground">
+                                  Est: L {formatGBP(task.costLow)} / M {formatGBP(task.costMid)} / H {formatGBP(task.costHigh)}
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1 w-max">
+                                <div className="flex rounded-md overflow-hidden border border-border/60">
+                                  <button
+                                    onClick={() => handleCostTierChange(task, "low")}
+                                    className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                      task.costTier === "low"
+                                        ? "bg-primary/20 text-primary"
+                                        : "bg-card text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    Low: {formatGBP(task.costLow)}
+                                  </button>
+                                  <div className="w-px bg-border/60"></div>
+                                  <button
+                                    onClick={() => handleCostTierChange(task, "mid")}
+                                    className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                      task.costTier === "mid"
+                                        ? "bg-amber-500/20 text-amber-700 dark:text-amber-400"
+                                        : "bg-card text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    Mid: {formatGBP(task.costMid)}
+                                  </button>
+                                  <div className="w-px bg-border/60"></div>
+                                  <button
+                                    onClick={() => handleCostTierChange(task, "high")}
+                                    className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                      task.costTier === "high"
+                                        ? "bg-destructive/20 text-destructive"
+                                        : "bg-card text-muted-foreground hover:bg-muted"
+                                    }`}
+                                  >
+                                    High: {formatGBP(task.costHigh)}
+                                  </button>
+                                </div>
+                                {task.costLow === 0 && task.costHigh === 0 && task.costMid === 0 ? null : (
+                                  <div className="text-[10px] text-muted-foreground text-right mt-0.5">
+                                    Selected: <span className="font-semibold text-foreground">{formatGBP(task.selectedCost)}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {task.startDate ? (
@@ -2308,7 +2327,7 @@ function TaskEditSheet({
   const [newFile, setNewFile] = useState("");
   const [dependencies, setDependencies] = useState<number[]>([]);
   const [depSearch, setDepSearch] = useState("");
-  const [costTier, setCostTier] = useState<"low" | "mid" | "high">("mid");
+  const [costTier, setCostTier] = useState<"low" | "mid" | "high" | "quoted">("mid");
   const [costLow, setCostLow] = useState(0);
   const [costMid, setCostMid] = useState(0);
   const [costHigh, setCostHigh] = useState(0);
@@ -2420,7 +2439,7 @@ function TaskEditSheet({
       setFiles(parseFiles(task.files));
       setDependencies(task.dependencies ?? []);
       setDepSearch("");
-      setCostTier((task.costTier as "low" | "mid" | "high") ?? "mid");
+      setCostTier((task.costTier as "low" | "mid" | "high" | "quoted") ?? "mid");
       setCostLow(task.costLow ?? 0);
       setCostMid(task.costMid ?? 0);
       setCostHigh(task.costHigh ?? 0);
@@ -2437,7 +2456,7 @@ function TaskEditSheet({
     }
   }, [task?.id]);
 
-  const previewSelectedCost = costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
+  const previewSelectedCost = costTier === "quoted" ? (task?.selectedCost ?? 0) : costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
 
   const taskPhaseIndex = allPhases.findIndex((p) => (p.tasks ?? []).some((t) => t.id === task?.id));
   const depPhases = allPhases
@@ -2606,6 +2625,21 @@ function TaskEditSheet({
 
               <div className="space-y-3">
                 <Label>Cost Tier</Label>
+                {costTier === "quoted" && (
+                  <div className="flex items-center justify-between rounded-md border border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-2">
+                    <div>
+                      <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Quoted / Actual</span>
+                      <span className="text-xs text-emerald-600 dark:text-emerald-500 ml-2">{formatGBP(task?.selectedCost ?? 0)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCostTier("mid")}
+                      className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                    >
+                      Revert to estimate
+                    </button>
+                  </div>
+                )}
                 <div className="flex rounded-md overflow-hidden border border-border/60">
                   {(["low", "mid", "high"] as const).map((tier, i) => (
                     <button

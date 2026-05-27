@@ -384,7 +384,7 @@ function QuoteModal({ open, onClose, supplierId, projectId, existing, allTasks =
                 onValueChange={v => setForm(f => ({ ...f, taskId: v === "none" ? null : parseInt(v) }))}
               >
                 <SelectTrigger><SelectValue placeholder="No task linked" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60 overflow-y-auto">
                   <SelectItem value="none">No task linked</SelectItem>
                   {allTasks.map(t => (
                     <SelectItem key={t.id} value={t.id.toString()}>
