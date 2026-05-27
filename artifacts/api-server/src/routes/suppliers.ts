@@ -1,7 +1,45 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { suppliersTable, supplierQuotesTable, tasksTable } from "@workspace/db/schema";
+import { suppliersTable, supplierQuotesTable, tasksTable, propertiesTable, propertyTaskOverridesTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+
+// Apply a quoted amount to a task's base row + all existing property overrides,
+// and upsert an override for the active property if none exists yet.
+async function applyQuotedCostToTask(taskId: number, amount: number, projectId: number) {
+  await db
+    .update(tasksTable)
+    .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+    .where(eq(tasksTable.id, taskId));
+
+  await db
+    .update(propertyTaskOverridesTable)
+    .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
+    .where(eq(propertyTaskOverridesTable.taskId, taskId));
+
+  const [activeProperty] = await db
+    .select({ id: propertiesTable.id })
+    .from(propertiesTable)
+    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
+
+  if (activeProperty) {
+    const [existing] = await db
+      .select({ id: propertyTaskOverridesTable.id })
+      .from(propertyTaskOverridesTable)
+      .where(and(
+        eq(propertyTaskOverridesTable.propertyId, activeProperty.id),
+        eq(propertyTaskOverridesTable.taskId, taskId),
+      ));
+    if (!existing) {
+      await db.insert(propertyTaskOverridesTable).values({
+        propertyId: activeProperty.id,
+        taskId,
+        selectedCost: amount,
+        costTier: "quoted",
+        updatedAt: new Date(),
+      });
+    }
+  }
+}
 
 const router = Router();
 
@@ -207,10 +245,7 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
   if (quote.status === "Accepted" && quote.taskId != null && quote.amountGbp != null) {
     const amount = parseFloat(quote.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await db
-        .update(tasksTable)
-        .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
-        .where(eq(tasksTable.id, quote.taskId));
+      await applyQuotedCostToTask(quote.taskId, amount, supplier.projectId);
     }
   }
 
@@ -249,10 +284,7 @@ router.put("/quotes/:id", async (req, res) => {
   if (updated.status === "Accepted" && updated.taskId != null && updated.amountGbp != null) {
     const amount = parseFloat(updated.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await db
-        .update(tasksTable)
-        .set({ selectedCost: amount, costTier: "quoted", updatedAt: new Date() })
-        .where(eq(tasksTable.id, updated.taskId));
+      await applyQuotedCostToTask(updated.taskId, amount, updated.projectId!);
     }
   }
 
