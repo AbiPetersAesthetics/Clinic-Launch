@@ -76,52 +76,38 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
 
   // If a propertyId is provided, upsert into property_task_overrides instead of the base task
   if (propertyId) {
-    const overridableFields: Record<string, unknown> = {};
-    const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
-      "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes"] as const;
-    for (const key of mutableKeys) {
-      if (body[key] !== undefined) overridableFields[key === "costTier" ? "costTier" : key] = body[key];
-    }
-
-    const tier = (body.costTier ?? existing.costTier) as string;
-    const low = body.costLow ?? existing.costLow;
-    const mid = body.costMid ?? existing.costMid;
-    const high = body.costHigh ?? existing.costHigh;
-    overridableFields.selectedCost = getSelectedCost(tier, low, mid, high, body.selectedCost ?? existing.selectedCost);
-    overridableFields.updatedAt = new Date();
-
-    // Map camelCase to snake_case column names for Drizzle
-    const overrideRow = {
-      propertyId,
-      taskId: id,
-      status: body.status ?? null,
-      notes: body.notes ?? null,
-      owner: body.owner ?? null,
-      contractor: body.contractor ?? null,
-      supplier: body.supplier ?? null,
-      costTier: body.costTier ?? null,
-      costLow: body.costLow ?? null,
-      costMid: body.costMid ?? null,
-      costHigh: body.costHigh ?? null,
-      selectedCost: overridableFields.selectedCost as number,
-      startDate: body.startDate ?? null,
-      dueDate: body.dueDate ?? null,
-      durationDays: body.durationDays ?? null,
-      files: body.files ?? null,
-      quotes: body.quotes ?? null,
-      updatedAt: new Date(),
-    };
-
+    // Fetch existing override FIRST so we can use it as a fallback for selectedCost calculation
     const [existing_override] = await db.select().from(propertyTaskOverridesTable)
       .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, id)));
 
+    // Build a patch containing ONLY the fields explicitly present in the request body.
+    // Never write null for fields not in the request — the merge in phases-with-tasks uses
+    // `o.field !== undefined ? o.field : t.field`, so a stored null would wipe the base task value.
+    const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
+      "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes"] as const;
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    for (const key of mutableKeys) {
+      if (body[key] !== undefined) patch[key] = body[key];
+    }
+
+    // Recalculate selectedCost using override → base fallback chain
+    const tier = (body.costTier ?? existing_override?.costTier ?? existing.costTier) as string;
+    const low = body.costLow ?? existing_override?.costLow ?? existing.costLow;
+    const mid = body.costMid ?? existing_override?.costMid ?? existing.costMid;
+    const high = body.costHigh ?? existing_override?.costHigh ?? existing.costHigh;
+    const currentSelectedCost = body.selectedCost ?? existing_override?.selectedCost ?? existing.selectedCost;
+    patch.selectedCost = getSelectedCost(tier, low, mid, high, currentSelectedCost);
+
     if (existing_override) {
       await db.update(propertyTaskOverridesTable)
-        .set(overrideRow)
+        .set(patch)
         .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, id)));
     } else {
-      await db.insert(propertyTaskOverridesTable).values(overrideRow);
+      await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: id, ...patch });
     }
+
+    // Build a synthetic overrideRow for the return value (merges patch over existing override)
+    const overrideRow = { ...(existing_override ?? {}), ...patch, propertyId, taskId: id };
 
     // Global fields (not property-specific) must also be written back to the base task.
     // description, title, riskLevel, isNonNegotiable, isCriticalRisk have no columns in
