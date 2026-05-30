@@ -191,7 +191,7 @@ export default function ExportPage() {
         fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`, nc),
         fetch(`${API_BASE}/bedhampton/summary`, nc),
-        fetch(`${API_BASE}/projects/${PROJECT_ID}/cashflow?scenario=realistic`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/cashflow?scenario=delayed_ramp&rampTier=average&months=36`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/dashboard`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, nc),
@@ -992,51 +992,109 @@ export default function ExportPage() {
         {/* ════════════════════════════════════════════════════════════════════
             4. CASHFLOW — MONTH BY MONTH
         ════════════════════════════════════════════════════════════════════ */}
-        <div className="print-avoid-break" style={{ display: enabledSections.has("Cashflow") ? undefined : 'none' }}>
-          <SectionTitle label="4. 12-Month Cashflow Projection" sub="Financials → Overview (Realistic scenario)" />
-          <div className="text-xs text-gray-500 mb-3 italic">Realistic scenario projections. Includes ramp-up curve. Cumulative cashflow shows when the business crosses into positive territory.</div>
+        <div style={{ display: enabledSections.has("Cashflow") ? undefined : 'none' }}>
+          <SectionTitle label="4. 36-Month P&L Projection" sub="Base planning scenario — delayed ramp / average" />
+          <div className="text-xs text-gray-500 mb-3 italic">
+            Revenue, costs and VAT month by month over 36 months. Matches the Monthly P&L Breakdown in the Financials page exactly.
+            VAT turns on once rolling 12-month turnover crosses £90k.
+            <span className="ml-2 inline-flex items-center gap-2">
+              <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 bg-purple-100 border border-purple-300 rounded-sm" /> Opens</span>
+              <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 bg-emerald-100 border border-emerald-300 rounded-sm" /> Bedh closes</span>
+              <span className="inline-flex items-center gap-1"><span className="inline-block w-2 h-2 bg-amber-100 border border-amber-300 rounded-sm" /> VAT registered</span>
+            </span>
+          </div>
 
           {cashflowData.length === 0 ? (
             <p className="text-sm text-gray-400 italic">Cashflow data not available. Ensure financial model is saved.</p>
           ) : (
-            <div className="rounded border border-gray-200 overflow-hidden">
-              <table className="w-full text-xs">
-                <thead className="bg-gray-50 border-b">
+            <div className="rounded border border-gray-200 overflow-x-auto">
+              <table className="w-full text-[10px]" style={{ minWidth: 900 }}>
+                <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    {["Month", "Winc Rev", "Bedh Support", "Fixed Costs", "Variable", "Occ %", "Net CF", "Balance", ""].map(h => (
-                      <th key={h} className="text-left px-2.5 py-2 font-semibold text-gray-500 whitespace-nowrap">{h}</th>
-                    ))}
+                    <th className="text-left px-2 py-2 font-semibold text-gray-500 whitespace-nowrap min-w-[80px]">Month</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Occ %</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Winc Rev</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Variable</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Gross</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Fixed (Winc)</th>
+                    <th className="text-right px-2 py-2 font-semibold text-amber-600 whitespace-nowrap">Winc VAT</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Winc ±</th>
+                    <th className="text-right px-2 py-2 font-semibold text-blue-600 whitespace-nowrap">Bedh Net</th>
+                    <th className="text-right px-2 py-2 font-semibold text-orange-600 whitespace-nowrap">Proj costs</th>
+                    <th className="text-right px-2 py-2 font-semibold text-orange-600 whitespace-nowrap">Drawings</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Net after Drwgs</th>
+                    <th className="text-right px-2 py-2 font-semibold text-gray-500 whitespace-nowrap">Capital</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {cashflowData.map((row: any, i: number) => (
-                    <tr key={i} className={`border-b border-gray-100 last:border-0 ${row.isSelfFundingMonth ? "bg-emerald-50" : row.isPreOpening ? "bg-gray-50/60" : ""}`}>
-                      <td className="px-2.5 py-1.5 font-medium whitespace-nowrap">
-                        {row.calendarLabel ?? row.monthLabel ?? `Mo ${row.month}`}
-                        {row.isPreOpening && <span className="ml-1 text-[9px] text-gray-400">(pre)</span>}
-                      </td>
-                      <td className="px-2.5 py-1.5">{row.isPreOpening ? "—" : fmt(row.wincRevenue)}</td>
-                      <td className="px-2.5 py-1.5 text-blue-700">{(row.bedhRevenue ?? 0) > 0 ? fmt(row.bedhRevenue) : "—"}</td>
-                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.wincFixedCosts ?? row.fixedCosts)}</td>
-                      <td className="px-2.5 py-1.5 text-gray-600">{fmt(row.wincVariableCosts ?? row.variableCosts)}</td>
-                      <td className="px-2.5 py-1.5 text-gray-500">{row.occupancyPercent != null ? `${row.occupancyPercent}%` : "—"}</td>
-                      <td className={`px-2.5 py-1.5 font-semibold ${(row.monthlyCashflow ?? row.netCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                        {(row.monthlyCashflow ?? row.netCashflow) != null
-                          ? ((row.monthlyCashflow ?? row.netCashflow) >= 0 ? "+" : "") + fmt(row.monthlyCashflow ?? row.netCashflow)
-                          : "—"}
-                      </td>
-                      <td className={`px-2.5 py-1.5 font-semibold ${(row.cashBalance ?? row.cumulativeCashflow ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                        {(row.cashBalance ?? row.cumulativeCashflow) != null
-                          ? ((row.cashBalance ?? row.cumulativeCashflow) >= 0 ? "+" : "") + fmt(row.cashBalance ?? row.cumulativeCashflow)
-                          : "—"}
-                      </td>
-                      <td className="px-2.5 py-1.5">
-                        {row.isSelfFundingMonth && <TagBadge label="Self-funding" color="green" />}
-                        {row.isBedhamptonCloseMonth && <TagBadge label="Bedh closes" color="blue" />}
-                        {row.isOpeningMonth && <TagBadge label="Opens" color="purple" />}
-                      </td>
-                    </tr>
-                  ))}
+                  {cashflowData.map((row: any, i: number) => {
+                    const isOpen  = row.isOpeningMonth;
+                    const isClose = row.isSelfFundingMonth || row.isBedhamptonCloseMonth;
+                    const grossProfit    = (row.wincRevenue ?? 0) - (row.wincVariableCosts ?? 0);
+                    const netAfterDrawings = (row.wincNet ?? 0) + (row.bedhNet ?? 0) - (row.actualDrawings ?? 0);
+                    const fixedTotal     = (row.wincFixedCosts ?? 0) + (row.preOpenPropertyCost ?? 0);
+                    const rowBg = isClose
+                      ? "bg-emerald-50"
+                      : isOpen
+                      ? "bg-purple-50"
+                      : row.isVatRegistered
+                      ? "bg-amber-50"
+                      : i % 2 === 0 ? "bg-white" : "bg-gray-50/40";
+                    return (
+                      <tr key={i} className={`border-b border-gray-100 last:border-0 ${rowBg}`}>
+                        <td className="px-2 py-1 font-medium whitespace-nowrap">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {row.calendarLabel ?? row.monthLabel ?? `Mo ${row.month}`}
+                            {isOpen  && <span className="text-[8px] bg-purple-100 text-purple-700 border border-purple-200 px-1 rounded font-bold">OPEN</span>}
+                            {isClose && <span className="text-[8px] bg-emerald-100 text-emerald-700 border border-emerald-200 px-1 rounded font-bold">BEDH CLOSES</span>}
+                            {row.isVatRegistered && !isClose && !isOpen && <span className="text-[8px] bg-amber-100 text-amber-700 border border-amber-200 px-1 rounded">VAT</span>}
+                            {(row.calendarLabel === "Oct '26" || row.monthLabel === "Oct '26") && <span className="text-[8px] bg-red-100 text-red-700 border border-red-200 px-1 rounded font-bold">HIGH RISK</span>}
+                          </div>
+                          {row.isPreOpening && <div className="text-[8px] text-gray-400">pre-open</div>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums">
+                          {row.isPreOpening
+                            ? <span className="text-gray-300">—</span>
+                            : <span className={row.occupancyPercent >= 60 ? "text-emerald-700 font-medium" : row.occupancyPercent >= 35 ? "text-amber-700 font-medium" : "text-gray-500"}>{row.occupancyPercent}%</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums">
+                          {(row.wincRevenue ?? 0) > 0 ? fmt(row.wincRevenue) : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums text-red-600">
+                          {(row.wincVariableCosts ?? 0) > 0 ? `(${fmt(row.wincVariableCosts)})` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums font-medium">
+                          {(row.wincRevenue ?? 0) > 0
+                            ? <span className={grossProfit >= 0 ? "text-emerald-700" : "text-red-700"}>{grossProfit >= 0 ? "+" : ""}{fmt(grossProfit)}</span>
+                            : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums text-red-600">
+                          {fixedTotal > 0 ? `(${fmt(fixedTotal)})` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums text-amber-700">
+                          {(row.wincVat ?? 0) > 0 ? `(${fmt(row.wincVat)})` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className={`text-right px-2 py-1 tabular-nums font-medium ${(row.wincRevenue ?? 0) === 0 ? "text-gray-300" : (row.wincNet ?? 0) >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                          {(row.wincRevenue ?? 0) === 0 ? "—" : `${(row.wincNet ?? 0) >= 0 ? "+" : ""}${fmt(row.wincNet)}`}
+                        </td>
+                        <td className={`text-right px-2 py-1 tabular-nums font-medium ${row.bedhClosed ? "text-gray-400" : "text-blue-700"}`}>
+                          {row.bedhClosed ? "closed" : fmt(row.bedhNet)}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums text-orange-700">
+                          {(row.projectCostBurn ?? 0) > 0 ? `(${fmt(row.projectCostBurn)})` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1 tabular-nums text-orange-700">
+                          {(row.actualDrawings ?? 0) > 0 ? `(${fmt(row.actualDrawings)})` : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className={`text-right px-2 py-1 tabular-nums font-semibold ${netAfterDrawings >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                          {netAfterDrawings >= 0 ? "+" : ""}{fmt(netAfterDrawings)}
+                        </td>
+                        <td className={`text-right px-2 py-1 tabular-nums font-semibold ${(row.cashBalance ?? 0) >= 0 ? "text-gray-800" : "text-red-700"}`}>
+                          {fmt(row.cashBalance ?? 0)}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
