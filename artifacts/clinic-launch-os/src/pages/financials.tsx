@@ -4541,40 +4541,54 @@ export default function FinancialsPage() {
             const ig  = fa?.investmentGap;
             const is  = investmentSummary;
 
-            // Real ask = project cost minus existing business capital and pre-opening Bedhampton income
-            const grossSelected    = ig?._capitalSelected   ?? is?.capitalSelectedGbp   ?? 0;
-            const grossHighRisk    = ig?._capitalHighRisk   ?? is?.capitalHighRiskGbp   ?? 0;
-            const bizCapital       = is?.businessCapitalGbp       ?? 0;
-            const preOpenBedh      = is?.preOpenBedhNetGbp        ?? 0;
-            const totalSelfFund    = is?.totalSelfFundableGbp     ?? (bizCapital + preOpenBedh);
-            const realNeed         = is?.realFundingNeedGbp       ?? Math.max(0, grossSelected - totalSelfFund);
-            const realNeedHigh     = is?.realFundingNeedHighGbp   ?? Math.max(0, grossHighRisk - totalSelfFund);
-            const committed        = ig?._totalCommitted          ?? is?.totalCapitalGbp ?? 0;
+            // ── Cash state at opening (from live cashflow model) ──────────────
+            const minCashEntry = cashflow?.reduce<CashflowMonth | null>(
+              (a, b) => a === null || b.cashBalance < a.cashBalance ? b : a, null
+            );
+            const minCashBalance  = minCashEntry?.cashBalance ?? 0;
+            const minCashLabel    = minCashEntry?.calendarLabel ?? "—";
+            const deficitToZero   = Math.max(0, -minCashBalance);
+
+            // Monthly fixed costs — prefer live calc result, fallback to annual summary
+            const y1             = (is as any)?.annualSummary?.y1;
+            const fixedMonthly   = cr?.winc?.fixedCosts
+              ?? (y1 ? Math.round(y1.fixedCosts / (y1.tradingMonths || 12)) : 0);
+
+            // Working capital = 2 months of fixed overheads
+            const workingCapital  = fixedMonthly * 2;
+            const minimumToLaunch = deficitToZero + workingCapital;
+
+            // Tiers — AI overrides take precedence once analysis is run
+            const lowBase  = ig?.gapLow    ?? minimumToLaunch;
+            const medBase  = ig?.gapMedium ?? Math.round(minimumToLaunch * 1.25);
+            const highBase = ig?.gapHigh   ?? Math.round(medBase * 1.30);
+
+            const committed = ig?._totalCommitted ?? is?.totalCapitalGbp ?? 0;
 
             const tiers = [
               {
                 key: "low",
                 label: "Low",
-                amount: ig?.gapLow ?? Math.max(0, realNeed - committed),
-                sublabel: ig?.lowLabel ?? "Covers real ask exactly",
-                detail: ig?.lowDetail ?? "Funds the net investment need with no contingency. Assumes business capital and Bedhampton income land exactly as modelled.",
+                amount: lowBase,
+                sublabel: ig?.lowLabel ?? "Deficit + 2 months working capital",
+                detail: ig?.lowDetail ?? "The minimum viable raise — covers the pre-opening cash deficit and two months of fixed overheads. No contingency; assumes Bedhampton income and project timelines land exactly as modelled.",
                 color: { border: "border-amber-200 dark:border-amber-800", bg: "bg-amber-50/40 dark:bg-amber-950/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-400" },
               },
               {
                 key: "medium",
                 label: "Medium",
-                amount: ig?.gapMedium ?? Math.max(0, Math.round(realNeed * 1.2) - committed),
-                sublabel: ig?.mediumLabel ?? "Real ask + 20% working capital buffer",
-                detail: ig?.mediumDetail ?? "Adds a 20% buffer for working capital and early trading costs. Recommended for comfort without excessive dilution.",
+                amount: medBase,
+                sublabel: ig?.mediumLabel ?? "Low + 25% contingency",
+                detail: ig?.mediumDetail ?? "Adds a 25% contingency buffer for minor fit-out overruns, delays, or early trading underperformance. The recommended baseline raise for a prudent first-time launch.",
                 color: { border: "border-primary/30 dark:border-primary/40", bg: "bg-primary/5 dark:bg-primary/10", badge: "bg-primary/10 text-primary dark:bg-primary/20", dot: "bg-primary" },
                 recommended: ig?.recommendedTier === "medium" || !ig?.recommendedTier,
               },
               {
                 key: "high",
                 label: "High",
-                amount: ig?.gapHigh ?? Math.max(0, realNeedHigh - committed),
-                sublabel: ig?.highLabel ?? "Worst-case full coverage",
-                detail: ig?.highDetail ?? "Covers the high-risk project cost in full, net of self-funded resources. Maximum runway for a risk-averse structure.",
+                amount: highBase,
+                sublabel: ig?.highLabel ?? "Medium + 30% safety margin",
+                detail: ig?.highDetail ?? "Full resilience against significant overruns, regulatory delays, or a prolonged ramp. Appropriate for risk-averse structures or volatile build environments.",
                 color: { border: "border-blue-200 dark:border-blue-800", bg: "bg-blue-50/40 dark:bg-blue-950/20", badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
               },
             ];
@@ -4584,7 +4598,7 @@ export default function FinancialsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-primary/70 shrink-0" />
-                    <CardTitle className="text-base">Real Investment Ask</CardTitle>
+                    <CardTitle className="text-base">Investment Need</CardTitle>
                     {committed > 0 && (
                       <span className="ml-auto text-[10px] text-muted-foreground">
                         {formatGBP(committed)} committed
@@ -4592,38 +4606,42 @@ export default function FinancialsPage() {
                     )}
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    Net of what the business can self-fund before launch.
+                    Launch cash state and what it takes to open safely.
                     {ig?.gapNarrative && <span className="block mt-1 text-foreground/70">{ig.gapNarrative}</span>}
                   </CardDescription>
                 </CardHeader>
-                {/* ── Self-funding breakdown ─────────────────────────────── */}
-                {grossSelected > 0 && (
+
+                {/* ── Financial state at opening ───────────────────────── */}
+                {cashflow && cashflow.length > 0 && (
                   <div className="mx-6 mb-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3 space-y-1.5 text-xs">
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Gross project cost (all tasks, base plan)</span>
-                      <span className="tabular-nums font-medium text-foreground">{formatGBP(grossSelected)}</span>
+                      <span>Worst-case cash balance ({minCashLabel})</span>
+                      <span className={`tabular-nums font-medium ${minCashBalance < 0 ? "text-red-600" : "text-emerald-600"}`}>
+                        {minCashBalance < 0 ? `−${formatGBP(-minCashBalance)}` : formatGBP(minCashBalance)}
+                      </span>
                     </div>
-                    {bizCapital > 0 && (
+                    {fixedMonthly > 0 && (
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Less: business capital already in the bank</span>
-                        <span className="tabular-nums text-emerald-600">−{formatGBP(bizCapital)}</span>
+                        <span>Monthly fixed overheads</span>
+                        <span className="tabular-nums">{formatGBP(fixedMonthly)}</span>
                       </div>
                     )}
-                    {preOpenBedh > 0 && (
+                    {fixedMonthly > 0 && (
                       <div className="flex justify-between text-muted-foreground">
-                        <span>Less: Bedhampton net income pre-opening{is?.preOpenMonths ? ` (${is.preOpenMonths} mo)` : ""}</span>
-                        <span className="tabular-nums text-emerald-600">−{formatGBP(preOpenBedh)}</span>
+                        <span>Working capital target (2 months)</span>
+                        <span className="tabular-nums text-amber-600">+{formatGBP(workingCapital)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-semibold border-t border-border/40 pt-1.5 mt-1">
-                      <span>Real investment ask</span>
-                      <span className="tabular-nums text-primary">{formatGBP(realNeed)}</span>
+                      <span>Minimum to launch safely</span>
+                      <span className="tabular-nums text-primary">{formatGBP(minimumToLaunch)}</span>
                     </div>
                   </div>
                 )}
+
                 <CardContent className="space-y-3">
                   {!fa && (
-                    <p className="text-xs text-muted-foreground italic">Run the AI Funding Analysis below to generate gap scenarios with full narrative.</p>
+                    <p className="text-xs text-muted-foreground italic">Run the AI Funding Analysis below to generate tailored gap scenarios with full narrative.</p>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     {tiers.map(tier => (
@@ -4633,14 +4651,12 @@ export default function FinancialsPage() {
                             ★ Recommended
                           </span>
                         )}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${tier.color.dot}`} />
-                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tier.label}</span>
-                          </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${tier.color.dot}`} />
+                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tier.label}</span>
                         </div>
                         <div className="text-2xl font-bold tabular-nums">
-                          {tier.amount === 0 ? <span className="text-emerald-600 text-lg">Fully funded ✓</span> : formatGBP(tier.amount)}
+                          {formatGBP(tier.amount)}
                         </div>
                         <div className="text-[11px] font-medium text-foreground/80">{tier.sublabel}</div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">{tier.detail}</p>
@@ -4650,9 +4666,7 @@ export default function FinancialsPage() {
                   {committed > 0 && (
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border/30 pt-3">
                       <span className="font-semibold text-emerald-700">{formatGBP(committed)}</span>
-                      <span>already committed via investment instruments ·</span>
-                      <span className="font-semibold">{formatGBP(selected)}</span>
-                      <span>base plan total</span>
+                      <span>already committed via investment instruments</span>
                     </div>
                   )}
                 </CardContent>
