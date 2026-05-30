@@ -376,7 +376,84 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const y2 = calcFyMetrics(fy1StartYear + 1, fy2Loans);
   const y3 = calcFyMetrics(fy1StartYear + 2, fy3Loans);
 
-  const distributableProfit12m = y1.distributable;
+  // ── Rolling 12-month P&L from clinic opening (trading months 0–11) ──────────
+  // This crosses FY boundaries (e.g. Nov '26 – Oct '27) and is the fairest
+  // basis for an investor valuation of a new business.
+  function calcRolling12m() {
+    let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
+    let totOperating = 0, totDirector = 0;
+    const rolling12mLoans = loanRepaymentsInWindow(1, 12);
+
+    for (let tradingMonthIdx = 0; tradingMonthIdx < 12; tradingMonthIdx++) {
+      const monthDate = new Date(
+        openingFirst.getFullYear(),
+        openingFirst.getMonth() + tradingMonthIdx,
+        1,
+      );
+
+      const f = getRampFactor(tradingMonthIdx);
+      let monthRevenue = ssRevenue * f;
+
+      for (const clin of additionalClinicians) {
+        if (!clin.startDate) continue;
+        const clinStart = new Date(clin.startDate);
+        const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
+        if (monthDate < clinFirst) continue;
+        const clinTradingIdx = (monthDate.getFullYear() - clinFirst.getFullYear()) * 12
+          + (monthDate.getMonth() - clinFirst.getMonth());
+        const cf = getRampFactor(clinTradingIdx);
+        const clinRooms = clin.rooms ?? 1;
+        const clinHours = clin.hoursPerDay ?? hours;
+        const clinDays = clin.daysPerMonth ?? days;
+        monthRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+      }
+
+      const varCost = monthRevenue * variableRatio + variableOverheads * f;
+      const gross = monthRevenue - varCost;
+      const operating = gross - fixedMonthly;
+      const drawings = operating > MIN_RETAINED
+        ? Math.min(operating - MIN_RETAINED, targetDrawings)
+        : 0;
+
+      totRevenue   += monthRevenue;
+      totVariable  += varCost;
+      totGross     += gross;
+      totFixed     += fixedMonthly;
+      totOperating += operating;
+      totDirector  += drawings;
+    }
+
+    const netAfterDirector = totOperating - totDirector;
+    const netAfterLoans    = netAfterDirector - rolling12mLoans;
+    const bufferRetained   = netAfterLoans > 0 ? Math.round(netAfterLoans * CASH_RESERVE_PCT) : 0;
+    const distributable    = Math.max(0, Math.round(netAfterLoans - bufferRetained));
+
+    // Label: e.g. "Nov '26 – Oct '27"
+    const endDate = new Date(openingFirst.getFullYear(), openingFirst.getMonth() + 11, 1);
+    const fmt = (d: Date) =>
+      `${d.toLocaleString("en-GB", { month: "short" })} '${String(d.getFullYear()).slice(2)}`;
+
+    return {
+      label:           `${fmt(openingFirst)} – ${fmt(endDate)}`,
+      tradingMonths:   12,
+      revenue:         Math.round(totRevenue),
+      variableCosts:   Math.round(totVariable),
+      grossProfit:     Math.round(totGross),
+      grossMarginPct:  totRevenue > 0 ? Math.round((totGross     / totRevenue) * 100) : 0,
+      fixedCosts:      Math.round(totFixed),
+      operatingProfit: Math.round(totOperating),
+      directorSalary:  Math.round(totDirector),
+      netAfterDirector: Math.round(netAfterDirector),
+      netMarginPct:    totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
+      loanRepayments:  Math.round(rolling12mLoans),
+      bufferRetained,
+      distributable,
+    };
+  }
+
+  const rolling12m = calcRolling12m();
+
+  const distributableProfit12m = rolling12m.distributable;
   const totalLoanRepaymentsYear1 = fy1Loans;
 
   const totalSharesPercent = shareholders.reduce((s, sh) => s + sh.equityPercent, 0);
@@ -400,6 +477,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     totalSharesPercent,
     payouts,
     annualSummary:              { y1, y2, y3 },
+    rolling12m,
     breakdown12m:               y1,
     capitalSelectedGbp,
     capitalHighRiskGbp,
