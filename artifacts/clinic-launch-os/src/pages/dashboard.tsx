@@ -226,6 +226,7 @@ export default function DashboardPage() {
   // ── Funding Analysis widget ───────────────────────────────────────────────
   const [fundingAnalysis, setFundingAnalysis] = useState<any>(null);
   const [invSummary, setInvSummary] = useState<any>(null);
+  const [dashCashflow, setDashCashflow] = useState<any[] | null>(null);
 
   useEffect(() => {
     fetch("/api/projects/1/funding-analysis")
@@ -235,6 +236,10 @@ export default function DashboardPage() {
     fetch("/api/projects/1/investment-summary")
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setInvSummary(d); })
+      .catch(() => {});
+    fetch("/api/projects/1/cashflow")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d)) setDashCashflow(d); })
       .catch(() => {});
   }, []);
 
@@ -1028,12 +1033,12 @@ export default function DashboardPage() {
         const y2d  = y2?.distributable ?? 0;
         const blendD = Math.round((5 * r12d + y2d) / 6); // 5:1 Y1-biased blend
         const preMoney = Math.round(blendD * 7); // 7× blended earnings
-        // cashflow min balance drives deficit calculation — approximate from investmentSummary
-        const bizCap    = is?.businessCapitalGbp ?? 0;
-        const projCost  = is?.capitalSelectedGbp ?? 0;
-        const bedhNet   = is?.preOpenBedhNetGbp  ?? 0;
-        const approxMin = bizCap + bedhNet - projCost; // approximate worst-case
-        const deficit   = Math.max(0, -approxMin);
+        // Use real cashflow minimum balance — same method as the Financials page
+        const minCashEntry = dashCashflow?.reduce<any>(
+          (a: any, b: any) => a === null || b.cashBalance < a.cashBalance ? b : a, null
+        );
+        const minCashBalance = minCashEntry?.cashBalance ?? 0;
+        const deficit   = Math.max(0, -minCashBalance);
         const fixedMo   = y1 ? Math.round(y1.fixedCosts / (y1.tradingMonths || 12)) : 0;
         const lowAmt    = deficit + fixedMo * 2;
         const medAmt    = Math.round(lowAmt * 1.25);
