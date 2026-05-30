@@ -4564,10 +4564,12 @@ export default function FinancialsPage() {
           </Card>
 
           {/* ── Business Valuation ──────────────────────────────────────────── */}
-          {investmentSummary?.annualSummary?.y1 && (() => {
-            const y1d = investmentSummary.annualSummary.y1.distributable ?? 0;
-            const y1r = investmentSummary.annualSummary.y1.revenue ?? 0;
-            const preMoney = Math.round(y1d * valuationMultiple);
+          {(() => {
+            const y1    = investmentSummary?.annualSummary?.y1;
+            const y1d   = y1?.distributable ?? 0;
+            const y1r   = y1?.revenue ?? 0;
+            const ready = !!y1;
+            const preMoney = ready ? Math.round(y1d * valuationMultiple) : 0;
             const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
               { val: 5,  label: "5×", desc: "Conservative" },
               { val: 7,  label: "7×", desc: "Base case" },
@@ -4607,19 +4609,28 @@ export default function FinancialsPage() {
                   </div>
 
                   {/* Valuation figure */}
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money valuation</div>
-                      <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
-                      <div className="text-[11px] text-muted-foreground mt-1">
-                        {formatGBP(y1d)} Y1 distributable × {valuationMultiple}×
+                  {ready ? (
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money valuation</div>
+                        <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
+                        <div className="text-[11px] text-muted-foreground mt-1">
+                          {formatGBP(y1d)} Y1 distributable × {valuationMultiple}×
+                        </div>
+                      </div>
+                      <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
+                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.2))}</span> (1.2× revenue)</div>
+                        <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
                       </div>
                     </div>
-                    <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
-                      <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.2))}</span> (1.2× revenue)</div>
-                      <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
+                  ) : (
+                    <div className="rounded-lg border border-border/40 bg-muted/30 px-4 py-3 flex items-center gap-3">
+                      {invLoading
+                        ? <><RefreshCw className="w-4 h-4 text-muted-foreground animate-spin shrink-0" /><span className="text-xs text-muted-foreground">Loading financial model…</span></>
+                        : <span className="text-xs text-muted-foreground italic">Save your financial assumptions on the Model tab, then the valuation will calculate automatically.</span>
+                      }
                     </div>
-                  </div>
+                  )}
 
                   {/* Methodology note */}
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
