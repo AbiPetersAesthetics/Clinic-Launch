@@ -1023,8 +1023,11 @@ export default function DashboardPage() {
 
         // ── Live investment need tiers (always from cashflow model) ──────────
         const y1 = is?.annualSummary?.y1;
-        const y1d = y1?.distributable ?? 0;
-        const preMoney = Math.round(y1d * 7); // 7× base earnings multiple
+        const y2 = is?.annualSummary?.y2;
+        const r12d = is?.rolling12m?.distributable ?? 0;
+        const y2d  = y2?.distributable ?? 0;
+        const blendD = Math.round((5 * r12d + y2d) / 6); // 5:1 Y1-biased blend
+        const preMoney = Math.round(blendD * 7); // 7× blended earnings
         // cashflow min balance drives deficit calculation — approximate from investmentSummary
         const bizCap    = is?.businessCapitalGbp ?? 0;
         const projCost  = is?.capitalSelectedGbp ?? 0;
@@ -1085,7 +1088,7 @@ export default function DashboardPage() {
                   {/* Valuation KPI */}
                   {preMoney > 0 && (
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Pre-money valuation <span className="text-[10px]">(7× Y1 earnings)</span></span>
+                      <span className="text-muted-foreground">Pre-money valuation <span className="text-[10px]">(7× blended, 5:1 Y1)</span></span>
                       <span className="font-bold text-primary tabular-nums">£{preMoney.toLocaleString()}</span>
                     </div>
                   )}
