@@ -441,11 +441,12 @@ export default function FinancialsPage() {
   const loadInvestmentData = useCallback(async (scenarioKey = "realistic", rampTierKey = "average") => {
     setInvLoading(true);
     try {
+      const nc = { cache: "no-store" } as RequestInit;
       const [invRes, shRes, sumRes, faRes] = await Promise.all([
-        fetch(`/api/projects/${PROJECT_ID}/investments`),
-        fetch(`/api/projects/${PROJECT_ID}/shareholders`),
-        fetch(`/api/projects/${PROJECT_ID}/investment-summary?scenario=${scenarioKey}&rampTier=${rampTierKey}`, { cache: "no-store" }),
-        fetch(`/api/projects/${PROJECT_ID}/funding-analysis`),
+        fetch(`/api/projects/${PROJECT_ID}/investments`, nc),
+        fetch(`/api/projects/${PROJECT_ID}/shareholders`, nc),
+        fetch(`/api/projects/${PROJECT_ID}/investment-summary?scenario=${scenarioKey}&rampTier=${rampTierKey}`, nc),
+        fetch(`/api/projects/${PROJECT_ID}/funding-analysis`, nc),
       ]);
       if (invRes.ok) setInvestments(await invRes.json());
       if (shRes.ok) setShareholders(await shRes.json());
@@ -3977,7 +3978,7 @@ export default function FinancialsPage() {
               <h2 className="text-base font-semibold">Investment & Ownership</h2>
               <p className="text-xs text-muted-foreground mt-0.5">Model your capital structure, loan repayments, and 12-month shareholder payout at the point of investment.</p>
             </div>
-            <Button variant="outline" size="sm" onClick={loadInvestmentData} disabled={invLoading} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => loadInvestmentData(scenario, rampTier)} disabled={invLoading} className="gap-1.5">
               <RefreshCw className={`w-3.5 h-3.5 ${invLoading ? "animate-spin" : ""}`} />
               Refresh
             </Button>
@@ -3991,12 +3992,14 @@ export default function FinancialsPage() {
 
           {/* ── Business Valuation ──────────────────────────────────────────── */}
           {(() => {
-            const y1    = investmentSummary?.annualSummary?.y1;
             const y2    = investmentSummary?.annualSummary?.y2;
-            const y1d   = y1?.distributable ?? 0;
-            const y2r   = y2?.revenue ?? 0;
-            const ready = !!y1;
-            const preMoney = ready ? Math.round(y1d * valuationMultiple) : 0;
+            const y3    = investmentSummary?.annualSummary?.y3;
+            const y2d   = y2?.distributable ?? 0;
+            const y3d   = y3?.distributable ?? 0;
+            const y3r   = y3?.revenue ?? 0;
+            const ready = !!y2;
+            const preMoney  = ready ? Math.round(y2d * valuationMultiple) : 0;
+            const preMoney3 = ready && y3 ? Math.round(y3d * valuationMultiple) : 0;
             const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
               { val: 5,  label: "5×", desc: "Conservative" },
               { val: 7,  label: "7×", desc: "Base case" },
@@ -4011,7 +4014,7 @@ export default function FinancialsPage() {
                     <span className="ml-auto text-[10px] text-muted-foreground">Pre-money estimate</span>
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    Indicative pre-money valuation based on Year 1 distributable profit using an earnings multiple — the standard approach for small UK aesthetics practices at this stage.
+                    Indicative pre-money valuation based on the first full 12-month trading year (FY27/28) distributable profit — the standard approach for small UK aesthetics practices. Steady-state (FY28/29) shown as reference.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -4034,15 +4037,22 @@ export default function FinancialsPage() {
                     </div>
                   </div>
                   {ready ? (
-                    <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money valuation</div>
-                        <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
-                        <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y1d)} Y1 distributable × {valuationMultiple}×</div>
+                    <div className="space-y-2">
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
+                        <div>
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — FY27/28 (first full year)</div>
+                          <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
+                          <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y2d)} distributable × {valuationMultiple}×</div>
+                        </div>
+                        <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[160px]">
+                          <div className="font-semibold text-foreground text-xs">Steady state (FY28/29)</div>
+                          <div className="text-lg font-bold text-foreground tabular-nums">{formatGBP(preMoney3)}</div>
+                          <div className="text-[10px]">{formatGBP(y3d)} distributable × {valuationMultiple}×</div>
+                        </div>
                       </div>
-                      <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
-                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{y2r ? formatGBP(y2r) : "—"}</span> (FY27/28 — first full 12-mo)</div>
-                        <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
+                      <div className="rounded-md bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex justify-between">
+                        <span>Revenue cross-check (FY28/29 steady state)</span>
+                        <span className="font-semibold text-foreground">{y3r ? formatGBP(y3r) : "—"}</span>
                       </div>
                     </div>
                   ) : (
@@ -4062,7 +4072,7 @@ export default function FinancialsPage() {
                     </div>
                   )}
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to Year 1 distributable profit — the most common pre-revenue UK small-business valuation method. Conservative (5×) is appropriate for an unproven clinic; base case (7×) reflects established aesthetics practice comparables; growth (10×) prices in brand expansion potential. This is an indicative figure — any external fundraise should be supported by a formal valuation.
+                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to the first full 12-month trading year (FY27/28) distributable profit. FY26/27 is excluded as a micro-year (9 trading months from opening). Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
                   </div>
                 </CardContent>
               </Card>
