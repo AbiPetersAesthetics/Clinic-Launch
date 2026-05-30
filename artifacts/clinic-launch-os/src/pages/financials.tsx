@@ -3992,8 +3992,9 @@ export default function FinancialsPage() {
           {/* ── Business Valuation ──────────────────────────────────────────── */}
           {(() => {
             const y1    = investmentSummary?.annualSummary?.y1;
+            const y2    = investmentSummary?.annualSummary?.y2;
             const y1d   = y1?.distributable ?? 0;
-            const y1r   = y1?.revenue ?? 0;
+            const y2r   = y2?.revenue ?? 0;
             const ready = !!y1;
             const preMoney = ready ? Math.round(y1d * valuationMultiple) : 0;
             const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
@@ -4040,7 +4041,7 @@ export default function FinancialsPage() {
                         <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y1d)} Y1 distributable × {valuationMultiple}×</div>
                       </div>
                       <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
-                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.5))}</span> (1.5× revenue — micro-year adj.)</div>
+                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{y2r ? formatGBP(y2r) : "—"}</span> (FY27/28 — first full 12-mo)</div>
                         <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
                       </div>
                     </div>
