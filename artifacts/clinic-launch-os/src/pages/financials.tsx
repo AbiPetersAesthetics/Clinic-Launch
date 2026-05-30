@@ -439,7 +439,7 @@ export default function FinancialsPage() {
       const [invRes, shRes, sumRes, faRes] = await Promise.all([
         fetch(`/api/projects/${PROJECT_ID}/investments`),
         fetch(`/api/projects/${PROJECT_ID}/shareholders`),
-        fetch(`/api/projects/${PROJECT_ID}/investment-summary?scenario=${scenarioKey}&rampTier=${rampTierKey}`),
+        fetch(`/api/projects/${PROJECT_ID}/investment-summary?scenario=${scenarioKey}&rampTier=${rampTierKey}`, { cache: "no-store" }),
         fetch(`/api/projects/${PROJECT_ID}/funding-analysis`),
       ]);
       if (invRes.ok) setInvestments(await invRes.json());
@@ -4040,10 +4040,18 @@ export default function FinancialsPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-border/40 bg-muted/30 px-4 py-3 flex items-center gap-3">
+                    <div className="rounded-lg border border-border/40 bg-muted/30 px-4 py-3 flex items-center justify-between gap-3">
                       {invLoading
                         ? <><RefreshCw className="w-4 h-4 text-muted-foreground animate-spin shrink-0" /><span className="text-xs text-muted-foreground">Loading financial model…</span></>
-                        : <span className="text-xs text-muted-foreground italic">Save your financial assumptions on the Model tab, then the valuation will calculate automatically.</span>
+                        : <>
+                            <span className="text-xs text-muted-foreground">Valuation data not loaded yet.</span>
+                            <button
+                              onClick={() => loadInvestmentData(scenario, rampTier)}
+                              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                            >
+                              <RefreshCw className="w-3 h-3" /> Load now
+                            </button>
+                          </>
                       }
                     </div>
                   )}
