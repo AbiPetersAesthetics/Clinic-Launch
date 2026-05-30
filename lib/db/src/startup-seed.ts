@@ -407,6 +407,8 @@ export async function runStartupSeed(): Promise<void> {
         await runV6Migration(projectId);
         // V7 migration: add additional_clinicians_json column (idempotent DDL)
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS additional_clinicians_json TEXT DEFAULT '[]'`);
+        // V7 data repair: fix rows where the column was initialised to '0' instead of '[]'
+        await db.execute(sql`UPDATE financial_models SET additional_clinicians_json = '[]' WHERE additional_clinicians_json IS NULL OR additional_clinicians_json = '0' OR additional_clinicians_json = ''`);
         // V8 migration: archive old phases, create 12 new active phases with 111 tasks
         await runV8Migration(projectId);
         return;

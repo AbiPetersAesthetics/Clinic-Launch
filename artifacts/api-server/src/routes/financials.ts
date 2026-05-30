@@ -620,7 +620,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   let additionalClinicians: ExtraClinician[] = [];
   try {
     const raw = (model as any).additionalCliniciansJson;
-    if (raw) additionalClinicians = JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(String(raw));
+      if (Array.isArray(parsed)) additionalClinicians = parsed;
+    }
   } catch {}
 
   let cashBalance = startingCash;
