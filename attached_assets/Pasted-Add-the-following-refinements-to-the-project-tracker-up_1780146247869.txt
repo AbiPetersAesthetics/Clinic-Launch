@@ -1,0 +1,516 @@
+Add the following refinements to the project tracker update.
+
+The previous instruction correctly changed the project from a self-managed build to a contractor/project-managed fit-out model. However, the tracker also needs to capture the premium finish, furnishing, treatment room setup, internal signage and VAT treatment properly.
+
+The finish we are aiming for is a premium white/off-white medical aesthetics clinic with:
+
+* soft white / off-white walls
+* classic wall panelling / moulding detail
+* herringbone-style warm wood flooring or equivalent visual finish
+* black accents on handles, frames and ironmongery
+* soft warm lighting
+* LED-lit product shelving
+* branded internal wall logo
+* framed certificates
+* premium anatomy / skincare wall art
+* greenery / plants
+* clean clinical treatment rooms
+* consultation space with soft chairs and table
+* premium but calm reception feel
+* white cabinetry with stone-effect or marble-effect worktops
+* black tapware / handles where appropriate
+
+This is not just a basic contractor fit-out. The tracker must include the final client-facing finish and equipment required to make the clinic operational and brand-consistent.
+
+TASK 1 — ADD VAT HANDLING TO COST MODEL
+
+Update the cost model so every task can clearly state whether costs are:
+
+* ex VAT
+* inc VAT
+* VAT not applicable
+* VAT unknown
+* mixed / depends on supplier
+
+If the app currently only stores one cost number, add one of the following:
+
+Preferred option:
+
+* costLowExVat
+* costMidExVat
+* costHighExVat
+* costLowIncVat
+* costMidIncVat
+* costHighIncVat
+* vatStatus
+
+Alternative simpler option:
+
+* costLow
+* costMid
+* costHigh
+* costVatStatus
+* costNotes
+
+Use this logic:
+
+If a quote is from a VAT-registered professional company, assume the quoted figure may be ex VAT unless clearly stated otherwise.
+
+If a task cost is an estimate, mark VAT status as “VAT unknown / estimate”.
+
+If costs are likely to include retail purchases, mark as “inc VAT estimate” unless trade pricing is expected.
+
+If costs are professional fees, contractor works, design fees or commercial services, mark as “ex VAT unless confirmed”.
+
+The dashboard should show both:
+
+* Estimated cost excluding VAT
+* Estimated cost including VAT
+
+Where VAT status is unknown, include the cost in the “possible VAT exposure” calculation.
+
+Add a dashboard warning:
+
+“Some project costs may be ex VAT. Confirm VAT status before final budget lock. Use inc VAT figures for cashflow planning unless VAT recovery has been confirmed by the accountant.”
+
+TASK 2 — ADD START AND END DATES
+
+Use the following date structure for the managed route. These should replace the old self-managed dates where relevant.
+
+Assume current planning point is late May / early June 2026 and target clinic opening is November / December 2026.
+
+Use these date ranges unless the app already has better global project dates.
+
+Design, Approvals and Procurement
+
+1. Appoint Design / Building Regulations Lead
+   Start: 3 June 2026
+   End: 14 June 2026
+
+2. Confirm Planning / Conservation / Advertisement Consent Position
+   Start: 3 June 2026
+   End: 21 June 2026
+
+3. Produce Employer’s Requirements / Contractor Fit-Out Brief
+   Start: 10 June 2026
+   End: 24 June 2026
+
+4. Contractor Site Survey and Buildability Review
+   Start: 17 June 2026
+   End: 1 July 2026
+
+5. Tender / Quote Managed Fit-Out Package
+   Start: 24 June 2026
+   End: 15 July 2026
+
+6. Final Scope Lock and Fixed Cost Agreement
+   Start: 15 July 2026
+   End: 31 July 2026
+
+Legal / Lease / Permissions
+
+7. Licence for Alterations — Contractor Drawings and Method Support
+   Start: 15 July 2026
+   End: 31 August 2026
+
+8. Building Control Submission / Initial Notice
+   Start: 1 August 2026
+   End: 31 August 2026
+
+9. Contractor Pre-Start Meeting and Programme Confirmation
+   Start: 1 September 2026
+   End: 7 September 2026
+
+Main Works
+
+10. Main Contractor Fit-Out Package — Internal Works
+    Start: 14 September 2026
+    End: 23 October 2026
+
+11. Electrical Works — Included Within Main Contractor Package
+    Start: 14 September 2026
+    End: 16 October 2026
+
+12. Plumbing / Clinical Basin Works — Included Within Main Contractor Package
+    Start: 14 September 2026
+    End: 16 October 2026
+
+13. Clinical Flooring Package
+    Start: 12 October 2026
+    End: 23 October 2026
+
+14. Internal Decoration and Finishing
+    Start: 12 October 2026
+    End: 30 October 2026
+
+15. Joinery / Reception Desk / Clinical Cabinetry Decision
+    Start: 1 July 2026
+    End: 31 July 2026
+
+16. Joinery / Reception Desk / Clinical Cabinetry Installation
+    Start: 12 October 2026
+    End: 30 October 2026
+
+External Works
+
+17. Shopfront Repaint — External Decorator or Contractor Managed
+    Start: 12 October 2026
+    End: 24 October 2026
+
+18. External Signage Package
+    Start: 19 October 2026
+    End: 31 October 2026
+
+Internal Branding, Furnishing and Launch Setup
+
+19. Internal Signage and Branding Package
+    Start: 1 October 2026
+    End: 7 November 2026
+
+20. Reception Furniture and Styling Package
+    Start: 1 October 2026
+    End: 7 November 2026
+
+21. Consultation Room Furniture and Styling Package
+    Start: 1 October 2026
+    End: 7 November 2026
+
+22. Treatment Room Furniture, Equipment and Styling Package
+    Start: 1 October 2026
+    End: 7 November 2026
+
+23. Product Display, Retail Shelving and LED Lighting Setup
+    Start: 1 October 2026
+    End: 7 November 2026
+
+Handover
+
+24. Contractor Handover Pack
+    Start: 24 October 2026
+    End: 7 November 2026
+
+25. Snagging Inspection and Final Defects Close-Out
+    Start: 31 October 2026
+    End: 14 November 2026
+
+26. Building Regulations Completion Certificate
+    Start: 31 October 2026
+    End: 14 November 2026
+
+27. Professional Deep Clean Before Clinical Setup
+    Start: 9 November 2026
+    End: 16 November 2026
+
+28. Furniture, Treatment Couch and Loose Equipment Installation
+    Start: 9 November 2026
+    End: 21 November 2026
+
+29. Final Clinical Readiness Check
+    Start: 16 November 2026
+    End: 23 November 2026
+
+30. Soft Launch Readiness
+    Start: 23 November 2026
+    End: 30 November 2026
+
+TASK 3 — ADD MISSING FURNISHING / FF&E LINES
+
+Add the following new task lines.
+
+A. Reception Furniture and Styling Package
+
+Phase: Fit-out completion / FF&E
+Owner: Abi + David
+Status: Not Started
+Priority: High
+Start Date: 1 October 2026
+End Date: 7 November 2026
+Cost Low: £1,500
+Cost Mid: £4,000
+Cost High: £8,000
+VAT Status: inc VAT estimate / mixed retail purchases
+Risk Flag: Medium
+
+Notes:
+Reception furniture and styling to deliver the premium clinic feel. Includes reception chairs or seating, console table, coffee table if required, side tables, mirror/artwork, plants, vase, soft décor, branded front-of-house styling, client water station if required, and small accessories. Must match the premium white/off-white, black accent and warm natural finish shown in the visual concept. This is separate from contractor works unless included in a turnkey package.
+
+B. Consultation Room Furniture and Styling Package
+
+Phase: Fit-out completion / FF&E
+Owner: Abi + David
+Status: Not Started
+Priority: High
+Start Date: 1 October 2026
+End Date: 7 November 2026
+Cost Low: £1,000
+Cost Mid: £3,000
+Cost High: £6,000
+VAT Status: inc VAT estimate / mixed retail purchases
+Risk Flag: Medium
+
+Notes:
+Consultation room setup including two or three soft consultation chairs, small round consultation table, side table, soft lighting if required, framed certificates, wall art, plant/greenery, mirror and décor. The space should feel premium, calm and consultative rather than clinical. Must align with the visual concept of soft chairs, white/off-white walls, black accents and warm flooring.
+
+C. Treatment Room Furniture, Equipment and Styling Package
+
+Phase: Fit-out completion / FF&E
+Owner: Abi + David
+Status: Not Started
+Priority: Critical
+Start Date: 1 October 2026
+End Date: 7 November 2026
+Cost Low: £4,000
+Cost Mid: £8,000
+Cost High: £15,000
+VAT Status: inc VAT estimate / mixed supplier purchases
+Risk Flag: Yes
+
+Notes:
+Treatment room operational setup. Includes electric treatment couch, clinician stool, trolley, mirror, clinical bins, sharps bin holders, storage accessories, couch roll holder, small side table, wall art, certificates where appropriate, clinical lighting/task lighting if not included by contractor, hooks, dispensers, and treatment room styling. This line must not be limited to the treatment couch only. It should ensure the treatment rooms are operational, compliant-looking and visually aligned with the premium mock-up.
+
+D. Product Display, Retail Shelving and LED Lighting Setup
+
+Phase: Fit-out completion / FF&E
+Owner: Main Contractor / Joinery Supplier / Abi + David
+Status: Not Started
+Priority: High
+Start Date: 1 October 2026
+End Date: 7 November 2026
+Cost Low: £1,000
+Cost Mid: £3,500
+Cost High: £8,000
+VAT Status: mixed / confirm by supplier
+Risk Flag: Medium
+
+Notes:
+Product display shelving and retail presentation area. Includes floating shelves or glass shelves, LED strip lighting, product display lighting, skincare display area, stock presentation, concealed cabling if needed, and styling accessories. Must match the reference finish with illuminated shelving and premium skincare display. Confirm whether this is included in main contractor joinery, family joinery, or separate supplier package.
+
+E. Internal Signage and Branding Package
+
+Phase: Fit-out completion / Branding
+Owner: David + Signage Supplier
+Status: Not Started
+Priority: High
+Start Date: 1 October 2026
+End Date: 7 November 2026
+Cost Low: £750
+Cost Mid: £2,500
+Cost High: £6,000
+VAT Status: ex VAT unless confirmed / supplier quote required
+Risk Flag: Medium
+
+Notes:
+Internal signage and branding package. Includes reception wall logo, internal AP / Abi Peters Skin Clinic branding, room door signs, toilet sign, consultation room sign, treatment room signs, opening hours display if internal, wall vinyls, frosted/internal window vinyl if required, and any directional signage. Should coordinate with external signage package but be tracked separately. Must reflect the premium black-on-white brand look shown in the mock-ups.
+
+F. Wall Panelling / Decorative Moulding Feature Finish
+
+Phase: Fit-out works / Interior finish
+Owner: Main Contractor / Joinery Supplier
+Status: Not Started
+Priority: High
+Start Date: 14 September 2026
+End Date: 30 October 2026
+Cost Low: £2,000
+Cost Mid: £5,000
+Cost High: £10,000
+VAT Status: ex VAT unless confirmed
+Risk Flag: Medium
+
+Notes:
+Decorative wall panelling/moulding to create the premium skin clinic finish shown in the concept images. This should be priced separately or explicitly included in the main contractor package. Clarify which walls receive moulding/panelling: reception, corridor, consultation room, treatment rooms or feature walls only. This is a major part of the desired finish and should not be lost inside a generic “decoration” line.
+
+G. Wall Art, Certificates and Picture Lighting
+
+Phase: Fit-out completion / FF&E
+Owner: Abi + David
+Status: Not Started
+Priority: Medium
+Start Date: 1 October 2026
+End Date: 14 November 2026
+Cost Low: £500
+Cost Mid: £1,500
+Cost High: £4,000
+VAT Status: inc VAT estimate / mixed retail purchases
+Risk Flag: Low
+
+Notes:
+Framed certificates, branded anatomy artwork, skincare/face line art, picture lights, frames and wall styling. The treatment room and consultation room visuals rely heavily on premium framed artwork and certificates. Include picture lights if not included in electrical package.
+
+H. Door Furniture, Room Labels and Black Ironmongery Finish
+
+Phase: Fit-out works / Interior finish
+Owner: Main Contractor
+Status: Not Started
+Priority: Medium
+Start Date: 14 September 2026
+End Date: 30 October 2026
+Cost Low: £500
+Cost Mid: £1,500
+Cost High: £3,000
+VAT Status: ex VAT unless confirmed
+Risk Flag: Medium
+
+Notes:
+Black handles, hinges, locks, privacy indicators where required, door stops, kick plates if required, room labels and consistent black ironmongery. Must be included in contractor package or tracked separately. Ensure treatment rooms have appropriate privacy/security hardware.
+
+I. Clinical Smallwares and Consumables Setup
+
+Phase: Clinical readiness
+Owner: Abi
+Status: Not Started
+Priority: Critical
+Start Date: 1 November 2026
+End Date: 23 November 2026
+Cost Low: £1,000
+Cost Mid: £3,000
+Cost High: £6,000
+VAT Status: mixed / supplier dependent
+Risk Flag: Yes
+
+Notes:
+Opening stock of clinical smallwares and consumables required to operate from day one. Includes gloves, gauze, couch roll, disinfectant, sharps containers, aprons/PPE if needed, clinical cleaning products, patient wipes, dressings, emergency consumables, aftercare materials and other clinical disposables. Keep separate from treatment stock/injectable product stock.
+
+J. Retail / Skincare Opening Stock
+
+Phase: Clinical readiness / Retail
+Owner: Abi
+Status: Not Started
+Priority: Medium
+Start Date: 1 November 2026
+End Date: 23 November 2026
+Cost Low: £2,000
+Cost Mid: £5,000
+Cost High: £12,000
+VAT Status: ex VAT unless confirmed by supplier
+Risk Flag: Medium
+
+Notes:
+Opening skincare and retail stock for display and sale. This may include Obagi or other skincare ranges depending on final retail strategy. Keep separate from furniture and contractor works because it affects working capital rather than fit-out cost.
+
+TASK 4 — UPDATE EXISTING FURNITURE LINE
+
+If there is already a generic line called something like:
+
+“Reception & consultation room furnishings — chairs, consultation table, décor and soft finishes”
+
+Do not leave it as the only furnishing line.
+
+Either split it into the new separate lines above, or mark the original as superseded by:
+
+* Reception Furniture and Styling Package
+* Consultation Room Furniture and Styling Package
+* Treatment Room Furniture, Equipment and Styling Package
+* Product Display, Retail Shelving and LED Lighting Setup
+* Wall Art, Certificates and Picture Lighting
+
+TASK 5 — UPDATE TREATMENT COUCH LINE
+
+If there is currently a single task for “Treatment couch × 1”, keep it but make it clear this is not the whole treatment room setup.
+
+Update notes to say:
+
+“This line covers the electric treatment couch only. It does not include the full treatment room setup. Treatment room furniture, stool, trolley, clinical bins, lighting, storage, mirror, artwork and accessories are covered separately under Treatment Room Furniture, Equipment and Styling Package.”
+
+TASK 6 — ADD FINISH QUALITY WARNING
+
+Add this dashboard note:
+
+“The desired clinic finish is premium and client-facing. Do not treat the fit-out as a basic clinical shell only. Budget must include the final visible finish: wall panelling, lighting, internal branding, treatment room equipment, consultation furniture, reception styling, product display and signage.”
+
+TASK 7 — UPDATE TOTAL PROJECT COST RANGE
+
+Update the total project cost model to include the missing FF&E and styling items.
+
+The managed contractor model should now show:
+
+Core managed fit-out:
+Low: £35,000 inc VAT allowance
+Mid: £50,000 inc VAT allowance
+High: £70,000 inc VAT allowance
+
+FF&E, treatment room setup and styling:
+Low: £10,000 inc VAT allowance
+Mid: £25,000 inc VAT allowance
+High: £50,000 inc VAT allowance
+
+Retail/skincare opening stock:
+Low: £2,000
+Mid: £5,000
+High: £12,000
+
+Total project cash requirement:
+Low: £47,000
+Mid: £80,000
+High: £132,000
+
+Important:
+These are planning allowances, not final quotes. The system should clearly label them as planning estimates.
+
+TASK 8 — DO NOT DOUBLE COUNT
+
+Avoid double counting.
+
+If an item is included in the main contractor package, mark the related separate item as “Included in contractor package” with cost £0 but retain the line for visibility.
+
+Examples:
+
+* internal decoration may be included in the contractor package
+* basic door ironmongery may be included
+* clinical basins may be included
+* product shelving may be contractor/joinery package or separate
+* wall panelling may be contractor package or separate
+* lighting may be electrical package or separate
+
+The tracker should allow David to see whether each visible finish item is:
+
+* included
+* excluded
+* client supplied
+* contractor supplied
+* still to confirm
+
+TASK 9 — ADD PROCUREMENT STATUS FIELD IF POSSIBLE
+
+If easy, add a procurement status field with options:
+
+* Not Required
+* To Specify
+* To Quote
+* Quote Received
+* Approved
+* Ordered
+* Delivered
+* Installed
+* Included in Contractor Package
+* Excluded / Client Direct
+
+Apply this especially to:
+
+* treatment couch
+* furniture
+* internal signage
+* external signage
+* product shelving
+* wall art
+* lighting
+* clinical equipment
+* retail stock
+* clinical consumables
+
+TASK 10 — FINAL RESULT
+
+The final tracker should not just answer “can we build the rooms?”
+
+It should answer:
+
+1. Can we legally and technically build the clinic?
+2. Who is managing the build?
+3. What is included in the contractor package?
+4. What is excluded and still needs buying?
+5. What costs are ex VAT and inc VAT?
+6. What is the true cash requirement?
+7. When does each phase start and finish?
+8. What must be ready before opening?
+9. Are we budgeting for the premium finish shown in the mock-ups?
+
+Please implement this without rebuilding the whole app unless absolutely necessary. Focus on task data, cost model, date fields, dashboard warnings, VAT handling and procurement status.
