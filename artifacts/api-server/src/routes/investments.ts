@@ -137,6 +137,27 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const capitalHighRiskGbp  = Math.round(Number(costRow.capital_high_risk ?? 0));
 
   const totalCapitalGbp = investments.reduce((s, i) => s + i.amountGbp, 0);
+
+  // ── Real funding need: project cost net of existing resources ──────────────
+  // The business already has capital + will earn Bedhampton income pre-opening.
+  // The investor ask is only what's left after offsetting those.
+  const businessCapitalGbp   = Math.round((fin as any)?.runwaySavingsGbp || 0);
+  const bedhMonthlyRevenue   = (fin as any)?.existingClinicRevenueGbp || 0;
+  const bedhStockPct         = (fin as any)?.bedhStockPercent ?? 35;
+  const bedhRunningCosts     = ((fin as any)?.bedhRentGbp || 0) +
+    ((fin as any)?.bedhMarketingGbp || 0) + ((fin as any)?.bedhamptonCostsGbp || 0) +
+    ((fin as any)?.bedhSoftwareGbp || 0) + ((fin as any)?.bedhStaffingGbp || 0) +
+    ((fin as any)?.bedhInsuranceGbp || 0);
+  const bedhNetMonthly       = Math.max(0, bedhMonthlyRevenue * (1 - bedhStockPct / 100) - bedhRunningCosts);
+  const targetOpenDate       = project?.targetOpeningDate ? new Date(project.targetOpeningDate) : null;
+  const nowDate              = new Date();
+  const preOpenMonths        = targetOpenDate
+    ? Math.max(0, (targetOpenDate.getFullYear() - nowDate.getFullYear()) * 12 + (targetOpenDate.getMonth() - nowDate.getMonth()))
+    : 0;
+  const preOpenBedhNetGbp    = Math.round(bedhNetMonthly * preOpenMonths);
+  const totalSelfFundableGbp = businessCapitalGbp + preOpenBedhNetGbp;
+  const realFundingNeedGbp     = Math.max(0, capitalSelectedGbp   - totalSelfFundableGbp);
+  const realFundingNeedHighGbp = Math.max(0, capitalHighRiskGbp   - totalSelfFundableGbp);
   const totalEquityGivenUpPercent = investments.reduce((s, i) => s + i.equityPercent, 0);
 
   // Per-investment loan repayment schedule
@@ -351,6 +372,12 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     breakdown12m:               y1,
     capitalSelectedGbp,
     capitalHighRiskGbp,
+    businessCapitalGbp,
+    preOpenBedhNetGbp,
+    preOpenMonths,
+    totalSelfFundableGbp,
+    realFundingNeedGbp,
+    realFundingNeedHighGbp,
   });
 });
 

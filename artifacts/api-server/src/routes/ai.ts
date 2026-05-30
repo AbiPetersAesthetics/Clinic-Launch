@@ -1497,6 +1497,26 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
   const capitalSelected = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.selected_cost ?? 0), 0);
   const capitalHighRisk  = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.high_risk_cost ?? 0), 0);
 
+  // ── 2b. Pre-opening resources available (business capital + Bedhampton income) ─
+  const businessCapital      = financial?.runwaySavingsGbp ?? 0;
+  const bedhMonthlyRev       = (financial as any)?.existingClinicRevenueGbp || 0;
+  const bedhStockP           = (financial as any)?.bedhStockPercent ?? 35;
+  const bedhRunning          = ((financial as any)?.bedhRentGbp || 0) +
+    ((financial as any)?.bedhMarketingGbp || 0) + ((financial as any)?.bedhamptonCostsGbp || 0) +
+    ((financial as any)?.bedhSoftwareGbp || 0) + ((financial as any)?.bedhStaffingGbp || 0) +
+    ((financial as any)?.bedhInsuranceGbp || 0);
+  const bedhNetMonthlyAI     = Math.max(0, bedhMonthlyRev * (1 - bedhStockP / 100) - bedhRunning);
+  const projRow              = await db.select().from((await import("@workspace/db")).projectsTable).where((await import("drizzle-orm")).eq((await import("@workspace/db")).projectsTable.id, projectId)).limit(1);
+  const openingDateAI        = projRow[0]?.targetOpeningDate ? new Date(projRow[0].targetOpeningDate) : null;
+  const nowAI                = new Date();
+  const preOpenMonthsAI      = openingDateAI
+    ? Math.max(0, (openingDateAI.getFullYear() - nowAI.getFullYear()) * 12 + (openingDateAI.getMonth() - nowAI.getMonth()))
+    : 0;
+  const preOpenBedhNetAI     = Math.round(bedhNetMonthlyAI * preOpenMonthsAI);
+  const totalSelfFundableAI  = Math.round(businessCapital + preOpenBedhNetAI);
+  const realNeedSelected     = Math.max(0, Math.round(capitalSelected   - totalSelfFundableAI));
+  const realNeedHighRisk     = Math.max(0, Math.round(capitalHighRisk   - totalSelfFundableAI));
+
   // ── 3. Quick financial projections (FY1-3) ────────────────────────────────
   const loans   = investments.filter(i => i.type === "loan");
   const equity  = investments.filter(i => i.type === "equity");
@@ -1541,23 +1561,32 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
   const grossMargin = monthlyRevenue > 0 ? (grossMonthlyProfit / monthlyRevenue) : 0;
 
   // ── 3b. Investment gap scenarios ─────────────────────────────────────────
-  // Low  = exactly covers the selected/base plan cost
-  // Medium = selected + 15% contingency buffer (covers typical overruns)
-  // High = full worst-case / high-risk cost coverage
-  const gapLow    = Math.max(0, Math.round(capitalSelected - totalCapital));
-  const gapMedium = Math.max(0, Math.round(capitalSelected * 1.15 - totalCapital));
-  const gapHigh   = Math.max(0, Math.round(capitalHighRisk - totalCapital));
+  // Gaps are calculated against the REAL funding need (after offsetting existing
+  // business capital and pre-opening Bedhampton income) — NOT the gross project cost.
+  const gapLow    = Math.max(0, realNeedSelected - totalCapital);
+  const gapMedium = Math.max(0, Math.round(realNeedSelected * 1.2) - totalCapital); // +20% working capital buffer
+  const gapHigh   = Math.max(0, realNeedHighRisk - totalCapital);
 
   // ── 4. Build prompt ───────────────────────────────────────────────────────
   const financialContext = `
-CAPITAL REQUIREMENT (all-in fit-out + working capital):
-- Selected (base) cost: £${Math.round(capitalSelected).toLocaleString()}
-- High-risk (worst-case) cost: £${Math.round(capitalHighRisk).toLocaleString()}
+GROSS PROJECT COST (fit-out + all tasks):
+- Selected (base) plan: £${Math.round(capitalSelected).toLocaleString()}
+- High-risk (worst-case) plan: £${Math.round(capitalHighRisk).toLocaleString()}
 
-INVESTMENT GAP (capital still needed after existing commitments):
-- Low tier — covers base plan exactly: £${gapLow.toLocaleString()} still needed
-- Medium tier — covers base + 15% contingency buffer: £${gapMedium.toLocaleString()} still needed
-- High tier — covers worst-case / high-risk cost: £${gapHigh.toLocaleString()} still needed
+PRE-OPENING RESOURCES (self-fundable — do NOT include in the investor ask):
+- Business capital already in the business: £${Math.round(businessCapital).toLocaleString()}
+- Pre-opening Bedhampton net income (${preOpenMonthsAI} months to launch): £${preOpenBedhNetAI.toLocaleString()}
+- Total self-fundable: £${totalSelfFundableAI.toLocaleString()}
+
+REAL INVESTMENT ASK (gross cost minus self-fundable resources):
+- Against base plan: £${realNeedSelected.toLocaleString()} — this is what needs external funding
+- Against worst-case: £${realNeedHighRisk.toLocaleString()}
+- IMPORTANT: Do NOT present the £${Math.round(capitalSelected).toLocaleString()} gross cost as the investor ask. The business has £${totalSelfFundableAI.toLocaleString()} it can self-fund. The real ask is £${realNeedSelected.toLocaleString()}.
+
+INVESTMENT GAP TIERS (based on real ask, after existing capital and Bedhampton income):
+- Low — covers real ask exactly: £${gapLow.toLocaleString()} still needed
+- Medium — real ask + 20% working capital buffer: £${gapMedium.toLocaleString()} still needed
+- High — worst-case real ask: £${gapHigh.toLocaleString()} still needed
 
 FUNDING ALREADY MODELLED IN DB:
 - Total capital committed: £${Math.round(totalCapital).toLocaleString()}

@@ -4535,35 +4535,44 @@ export default function FinancialsPage() {
 
           {/* ── Investment Gap ──────────────────────────────────────────────── */}
           {(() => {
-            const fa = fundingAnalysis;
-            const ig = fa?.investmentGap;
-            const selected  = ig?._capitalSelected  ?? investmentSummary?.capitalSelectedGbp  ?? 0;
-            const highRisk  = ig?._capitalHighRisk   ?? investmentSummary?.capitalHighRiskGbp  ?? 0;
-            const committed = ig?._totalCommitted    ?? investmentSummary?.totalCapitalGbp     ?? 0;
+            const fa  = fundingAnalysis;
+            const ig  = fa?.investmentGap;
+            const is  = investmentSummary;
+
+            // Real ask = project cost minus existing business capital and pre-opening Bedhampton income
+            const grossSelected    = ig?._capitalSelected   ?? is?.capitalSelectedGbp   ?? 0;
+            const grossHighRisk    = ig?._capitalHighRisk   ?? is?.capitalHighRiskGbp   ?? 0;
+            const bizCapital       = is?.businessCapitalGbp       ?? 0;
+            const preOpenBedh      = is?.preOpenBedhNetGbp        ?? 0;
+            const totalSelfFund    = is?.totalSelfFundableGbp     ?? (bizCapital + preOpenBedh);
+            const realNeed         = is?.realFundingNeedGbp       ?? Math.max(0, grossSelected - totalSelfFund);
+            const realNeedHigh     = is?.realFundingNeedHighGbp   ?? Math.max(0, grossHighRisk - totalSelfFund);
+            const committed        = ig?._totalCommitted          ?? is?.totalCapitalGbp ?? 0;
+
             const tiers = [
               {
                 key: "low",
                 label: "Low",
-                amount: ig?.gapLow ?? Math.max(0, selected - committed),
-                sublabel: ig?.lowLabel ?? "Covers base plan exactly",
-                detail: ig?.lowDetail ?? "Funds the selected project cost with no contingency. Any overrun requires emergency capital.",
+                amount: ig?.gapLow ?? Math.max(0, realNeed - committed),
+                sublabel: ig?.lowLabel ?? "Covers real ask exactly",
+                detail: ig?.lowDetail ?? "Funds the net investment need with no contingency. Assumes business capital and Bedhampton income land exactly as modelled.",
                 color: { border: "border-amber-200 dark:border-amber-800", bg: "bg-amber-50/40 dark:bg-amber-950/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-400" },
               },
               {
                 key: "medium",
                 label: "Medium",
-                amount: ig?.gapMedium ?? Math.max(0, Math.round(selected * 1.15) - committed),
-                sublabel: ig?.mediumLabel ?? "Base plan + 15% contingency",
-                detail: ig?.mediumDetail ?? "Adds a 15% buffer on top of the base plan, covering typical fit-out overruns and early working capital needs.",
+                amount: ig?.gapMedium ?? Math.max(0, Math.round(realNeed * 1.2) - committed),
+                sublabel: ig?.mediumLabel ?? "Real ask + 20% working capital buffer",
+                detail: ig?.mediumDetail ?? "Adds a 20% buffer for working capital and early trading costs. Recommended for comfort without excessive dilution.",
                 color: { border: "border-primary/30 dark:border-primary/40", bg: "bg-primary/5 dark:bg-primary/10", badge: "bg-primary/10 text-primary dark:bg-primary/20", dot: "bg-primary" },
                 recommended: ig?.recommendedTier === "medium" || !ig?.recommendedTier,
               },
               {
                 key: "high",
                 label: "High",
-                amount: ig?.gapHigh ?? Math.max(0, highRisk - committed),
-                sublabel: ig?.highLabel ?? "Full worst-case coverage",
-                detail: ig?.highDetail ?? "Covers the high-risk cost estimate in full. Provides maximum runway and stress-test resilience for a risk-averse investor.",
+                amount: ig?.gapHigh ?? Math.max(0, realNeedHigh - committed),
+                sublabel: ig?.highLabel ?? "Worst-case full coverage",
+                detail: ig?.highDetail ?? "Covers the high-risk project cost in full, net of self-funded resources. Maximum runway for a risk-averse structure.",
                 color: { border: "border-blue-200 dark:border-blue-800", bg: "bg-blue-50/40 dark:bg-blue-950/20", badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
               },
             ];
@@ -4573,18 +4582,43 @@ export default function FinancialsPage() {
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-2">
                     <TrendingUp className="w-4 h-4 text-primary/70 shrink-0" />
-                    <CardTitle className="text-base">Investment Gap</CardTitle>
+                    <CardTitle className="text-base">Real Investment Ask</CardTitle>
                     {committed > 0 && (
                       <span className="ml-auto text-[10px] text-muted-foreground">
-                        {formatGBP(committed)} committed · {formatGBP(selected)} required
+                        {formatGBP(committed)} committed
                       </span>
                     )}
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    How much capital is still needed and what each level unlocks.
+                    Net of what the business can self-fund before launch.
                     {ig?.gapNarrative && <span className="block mt-1 text-foreground/70">{ig.gapNarrative}</span>}
                   </CardDescription>
                 </CardHeader>
+                {/* ── Self-funding breakdown ─────────────────────────────── */}
+                {grossSelected > 0 && (
+                  <div className="mx-6 mb-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3 space-y-1.5 text-xs">
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Gross project cost (all tasks, base plan)</span>
+                      <span className="tabular-nums font-medium text-foreground">{formatGBP(grossSelected)}</span>
+                    </div>
+                    {bizCapital > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Less: business capital already in the bank</span>
+                        <span className="tabular-nums text-emerald-600">−{formatGBP(bizCapital)}</span>
+                      </div>
+                    )}
+                    {preOpenBedh > 0 && (
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Less: Bedhampton net income pre-opening{is?.preOpenMonths ? ` (${is.preOpenMonths} mo)` : ""}</span>
+                        <span className="tabular-nums text-emerald-600">−{formatGBP(preOpenBedh)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold border-t border-border/40 pt-1.5 mt-1">
+                      <span>Real investment ask</span>
+                      <span className="tabular-nums text-primary">{formatGBP(realNeed)}</span>
+                    </div>
+                  </div>
+                )}
                 <CardContent className="space-y-3">
                   {!fa && (
                     <p className="text-xs text-muted-foreground italic">Run the AI Funding Analysis below to generate gap scenarios with full narrative.</p>
