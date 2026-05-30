@@ -4638,32 +4638,59 @@ export default function FinancialsPage() {
                 </CardHeader>
 
                 {/* ── Financial state at opening ───────────────────────── */}
-                {cashflow && cashflow.length > 0 && (
-                  <div className="mx-6 mb-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3 space-y-1.5 text-xs">
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Worst-case cash balance ({minCashLabel})</span>
-                      <span className={`tabular-nums font-medium ${minCashBalance < 0 ? "text-red-600" : "text-emerald-600"}`}>
-                        {minCashBalance < 0 ? `−${formatGBP(-minCashBalance)}` : formatGBP(minCashBalance)}
-                      </span>
-                    </div>
-                    {fixedMonthly > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Monthly fixed overheads</span>
-                        <span className="tabular-nums">{formatGBP(fixedMonthly)}</span>
+                {cashflow && cashflow.length > 0 && (() => {
+                  const bizCap      = is?.businessCapitalGbp ?? 0;
+                  const projectCost = is?.capitalSelectedGbp ?? 0;
+                  const bedhIncome  = is?.preOpenBedhNetGbp  ?? 0;
+                  const bedhMonths  = is?.preOpenMonths      ?? 0;
+                  return (
+                    <div className="mx-6 mb-3 rounded-lg border border-border/50 bg-muted/30 px-4 py-3 space-y-1.5 text-xs">
+                      {/* ── Project cost context ── */}
+                      {bizCap > 0 && (
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Business capital (available at start)</span>
+                          <span className="tabular-nums text-emerald-600">+{formatGBP(bizCap)}</span>
+                        </div>
+                      )}
+                      {projectCost > 0 && (
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Project costs (base plan fit-out)</span>
+                          <span className="tabular-nums text-red-600">−{formatGBP(projectCost)}</span>
+                        </div>
+                      )}
+                      {bedhIncome > 0 && (
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Bedhampton net income{bedhMonths > 0 ? ` (${bedhMonths} mo pre-opening)` : ""}</span>
+                          <span className="tabular-nums text-emerald-600">+{formatGBP(bedhIncome)}</span>
+                        </div>
+                      )}
+                      {/* ── Resulting cash position ── */}
+                      <div className={`flex justify-between font-semibold border-t border-border/40 pt-1.5 mt-1 ${minCashBalance < 0 ? "text-red-700" : "text-emerald-700"}`}>
+                        <span>Working capital at open ({minCashLabel})</span>
+                        <span className="tabular-nums">
+                          {minCashBalance < 0 ? `−${formatGBP(-minCashBalance)}` : `+${formatGBP(minCashBalance)}`}
+                        </span>
                       </div>
-                    )}
-                    {fixedMonthly > 0 && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Working capital target (2 months)</span>
-                        <span className="tabular-nums text-amber-600">+{formatGBP(workingCapital)}</span>
+                      {/* ── What's needed to cover it ── */}
+                      {fixedMonthly > 0 && (
+                        <div className="flex justify-between text-muted-foreground pt-2 mt-1 border-t border-border/30">
+                          <span>Monthly fixed overheads</span>
+                          <span className="tabular-nums">{formatGBP(fixedMonthly)}</span>
+                        </div>
+                      )}
+                      {fixedMonthly > 0 && (
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Working capital buffer (2 months)</span>
+                          <span className="tabular-nums text-amber-600">+{formatGBP(workingCapital)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-semibold border-t border-border/40 pt-1.5 mt-1 text-primary">
+                        <span>Minimum to launch safely</span>
+                        <span className="tabular-nums">{formatGBP(minimumToLaunch)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between font-semibold border-t border-border/40 pt-1.5 mt-1">
-                      <span>Minimum to launch safely</span>
-                      <span className="tabular-nums text-primary">{formatGBP(minimumToLaunch)}</span>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 <CardContent className="space-y-3">
                   {!fa && (
