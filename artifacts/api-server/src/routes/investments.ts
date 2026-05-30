@@ -323,7 +323,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         if (monthDate < clinFirst) continue;
         const clinTradingIdx = (monthDate.getFullYear() - clinFirst.getFullYear()) * 12
           + (monthDate.getMonth() - clinFirst.getMonth());
-        const cf = clinTradingIdx < RAMP_FACTORS.length ? RAMP_FACTORS[clinTradingIdx] : 1.0;
+        const cf = getRampFactor(clinTradingIdx);
         const clinRooms = clin.rooms ?? 1;
         const clinHours = clin.hoursPerDay ?? hours;
         const clinDays = clin.daysPerMonth ?? days;
