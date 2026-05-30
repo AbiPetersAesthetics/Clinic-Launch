@@ -3997,8 +3997,10 @@ export default function FinancialsPage() {
             const r12d  = r12?.distributable ?? 0;
             const y2d   = y2?.distributable ?? 0;
             const y2r   = y2?.revenue ?? 0;
+            const blendD = Math.round((r12d + y2d) / 2);
             const ready = !!r12;
-            const preMoney  = ready ? Math.round(r12d * valuationMultiple) : 0;
+            const preMoney  = ready ? Math.round(blendD * valuationMultiple) : 0;
+            const preMoney12 = ready ? Math.round(r12d * valuationMultiple) : 0;
             const preMoney2 = ready && y2 ? Math.round(y2d * valuationMultiple) : 0;
             const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
               { val: 5,  label: "5×", desc: "Conservative" },
@@ -4014,7 +4016,7 @@ export default function FinancialsPage() {
                     <span className="ml-auto text-[10px] text-muted-foreground">Pre-money estimate</span>
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    Indicative pre-money valuation based on the first 12 months of trading from opening ({r12?.label ?? "Nov '26 – Oct '27"}) — the fairest basis for a new business. First full FY ({y2?.fyLabel ?? "FY27/28"}) shown as stable reference.
+                    Blended pre-money valuation: average of the first 12 months from opening ({r12?.label ?? "Nov '26 – Oct '27"}) and the first full stable FY ({y2?.fyLabel ?? "FY27/28"}). Neither alone is reliable at this stage — the blend reflects both ramp-up reality and steady-state trajectory.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -4038,20 +4040,27 @@ export default function FinancialsPage() {
                   </div>
                   {ready ? (
                     <div className="space-y-2">
-                      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — 12 months from opening ({r12?.label ?? "Nov '26 – Oct '27"})</div>
-                          <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
-                          <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(r12d)} distributable × {valuationMultiple}×</div>
+                      {/* Blended primary figure */}
+                      <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                        <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — blended valuation</div>
+                        <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
+                        <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(blendD)} blended distributable × {valuationMultiple}×</div>
+                      </div>
+                      {/* Two components side by side */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Year 1 — {r12?.label ?? "Nov '26 – Oct '27"}</div>
+                          <div className="text-base font-bold text-foreground tabular-nums">{formatGBP(preMoney12)}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{formatGBP(r12d)} distributable × {valuationMultiple}× (ramp-up)</div>
                         </div>
-                        <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[160px]">
-                          <div className="font-semibold text-foreground text-xs">First full FY ({y2?.fyLabel ?? "FY27/28"})</div>
-                          <div className="text-lg font-bold text-foreground tabular-nums">{formatGBP(preMoney2)}</div>
-                          <div className="text-[10px]">{formatGBP(y2d)} distributable × {valuationMultiple}×</div>
+                        <div className="rounded-md border border-border/60 bg-muted/20 px-3 py-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Year 2 — {y2?.fyLabel ?? "FY27/28"} (stable)</div>
+                          <div className="text-base font-bold text-foreground tabular-nums">{formatGBP(preMoney2)}</div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{formatGBP(y2d)} distributable × {valuationMultiple}× (full FY)</div>
                         </div>
                       </div>
                       <div className="rounded-md bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex justify-between">
-                        <span>Revenue cross-check (first full FY, {y2?.fyLabel ?? "FY27/28"})</span>
+                        <span>Revenue cross-check (Year 2 stable, {y2?.fyLabel ?? "FY27/28"})</span>
                         <span className="font-semibold text-foreground">{y2r ? formatGBP(y2r) : "—"}</span>
                       </div>
                     </div>
@@ -4072,7 +4081,7 @@ export default function FinancialsPage() {
                     </div>
                   )}
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to the first 12 calendar months of trading from clinic opening ({r12?.label ?? "Nov '26 – Oct '27"}). This crosses FY boundaries and represents actual investor Year 1 returns — the standard approach for valuing a new business. First full financial year ({y2?.fyLabel ?? "FY27/28"}) is shown as a stable upside reference. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
+                    <span className="font-semibold text-foreground">Methodology:</span> Blended earnings multiple — simple average of two distributable profit figures: (1) first 12 months from opening ({r12?.label ?? "Nov '26 – Oct '27"}, ramp-up phase) and (2) first full financial year ({y2?.fyLabel ?? "FY27/28"}, stable). Neither alone is reliable at the point of investment; the blend captures both ramp-up reality and the trajectory once the clinic is established. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
                   </div>
                 </CardContent>
               </Card>
