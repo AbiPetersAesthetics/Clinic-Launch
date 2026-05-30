@@ -1775,6 +1775,9 @@ export default function FinancialsPage() {
                           <span title="Stock %, commissions, marketing, staffing, consumables">Variable</span>
                         </th>
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
+                          <span title="Gross profit = Winchester Revenue minus all variable costs (stock %, commissions, marketing, staffing, consumables). Before fixed overheads are deducted.">Gross</span>
+                        </th>
+                        <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="All fixed cost items from Assumptions (rent, rates, insurance, dual costs — counted once)">Fixed (Winc)</span>
                         </th>
                         <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
@@ -1803,6 +1806,7 @@ export default function FinancialsPage() {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
                         const netProfitRow = m.wincNet + m.bedhNet - (m.actualDrawings ?? 0);
+                        const grossProfitRow = m.wincRevenue - m.wincVariableCosts;
 
                         // ── Bedhampton cost breakdown ──────────────────────
                         const _bedhStockPct  = (model as any)?.bedhStockPercent ?? 35;
@@ -1860,6 +1864,15 @@ export default function FinancialsPage() {
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
                               {m.wincVariableCosts > 0
                                 ? <span className="text-red-500/70">({formatGBP(m.wincVariableCosts)})</span>
+                                : <span className="text-muted-foreground/30">—</span>}
+                            </td>
+
+                            {/* Gross Profit = Revenue − Variable */}
+                            <td className="text-right px-2 py-1.5 tabular-nums">
+                              {m.wincRevenue > 0
+                                ? <span title={`Revenue ${formatGBP(m.wincRevenue)} − Variable ${formatGBP(m.wincVariableCosts)} = Gross ${formatGBP(grossProfitRow)}`} className={`font-medium ${grossProfitRow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                                    {grossProfitRow >= 0 ? "+" : ""}{formatGBP(grossProfitRow)}
+                                  </span>
                                 : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
@@ -3802,6 +3815,72 @@ export default function FinancialsPage() {
             </div>
           )}
 
+          {/* ── 3-Year Performance Outlook ──────────────────────────────────── */}
+          {investmentSummary?.annualSummary && (
+            <Card className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-sm">3-Year Performance Outlook</CardTitle>
+                </div>
+                <CardDescription className="text-xs mt-1">
+                  Winchester clinic P&L by year. Year 1 uses a standard ramp curve (30%→100% occupancy); Years 2–3 at full realistic occupancy. Director salary deducted monthly once profitable. 20% cash buffer retained before dividends.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-muted/40">
+                        <th className="text-left px-4 py-2 font-semibold text-muted-foreground min-w-[200px]">Line</th>
+                        {(["y1", "y2", "y3"] as const).map((k, i) => (
+                          <th key={k} className="text-right px-4 py-2 font-semibold text-muted-foreground min-w-[130px]">
+                            <div>Year {i + 1}</div>
+                            <div className="text-[10px] font-normal text-muted-foreground/70">{i === 0 ? "Ramp 30→100%" : i === 1 ? "Full occupancy" : "Mature"}</div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {([
+                        { label: "Revenue", key: "revenue" },
+                        { label: "Variable Costs", key: "variableCosts", isDeduction: true, color: "text-muted-foreground" },
+                        { label: "Gross Profit", key: "grossProfit", pctKey: "grossMarginPct", isBold: true, divider: true },
+                        { label: "Fixed Costs", key: "fixedCosts", isDeduction: true, color: "text-muted-foreground" },
+                        { label: "Operating Profit", key: "operatingProfit", isBold: true, divider: true },
+                        { label: "Director Salary (Abi Peters)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
+                        { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
+                        { label: "Net before Buffer", key: "netAfterDirector", isBold: true, pctKey: "netMarginPct", divider: true },
+                        { label: "20% Cash Buffer (retained)", key: "bufferRetained", isDeduction: true, color: "text-muted-foreground" },
+                        { label: "Distributable to Shareholders", key: "distributable", isBold: true, isHighlight: true, divider: true },
+                      ] as { label: string; key: string; isDeduction?: boolean; color?: string; isBold?: boolean; pctKey?: string; divider?: boolean; isHighlight?: boolean }[]).map((row) => {
+                        const years = [investmentSummary.annualSummary.y1, investmentSummary.annualSummary.y2, investmentSummary.annualSummary.y3];
+                        return (
+                          <tr key={row.label} className={`border-b border-border/40 ${row.isHighlight ? "bg-emerald-50/60 dark:bg-emerald-950/20" : row.divider ? "bg-muted/20" : ""}`}>
+                            <td className={`px-4 py-2 ${row.isBold ? "font-semibold" : "text-muted-foreground"}`}>{row.label}</td>
+                            {years.map((yr, i) => {
+                              const val: number = (yr as any)[row.key] ?? 0;
+                              const pct: number | null = row.pctKey ? (yr as any)[row.pctKey] : null;
+                              const display = row.isDeduction
+                                ? val > 0 ? `(${formatGBP(val)})` : "—"
+                                : val > 0 ? `+${formatGBP(val)}` : val < 0 ? formatGBP(val) : "—";
+                              return (
+                                <td key={i} className={`text-right px-4 py-2 tabular-nums ${row.isBold ? "font-semibold" : ""} ${row.isHighlight ? "text-emerald-700 font-bold text-sm" : row.color ?? ""}`}>
+                                  {display}
+                                  {pct !== null && val !== 0 && <span className="ml-1 text-[10px] text-muted-foreground">{pct}%</span>}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── Capital Summary KPIs ─────────────────────────────────────────── */}
           {investmentSummary && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -4157,20 +4236,50 @@ export default function FinancialsPage() {
                     </div>
                   )}
 
-                  {/* Distributable profit */}
+                  {/* Distributable profit — waterfall breakdown */}
                   <div className={`rounded-lg border p-4 ${investmentSummary.distributableProfit12m >= 0 ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50/50 dark:bg-red-950/20"}`}>
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-3">
                       <div>
-                        <div className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Estimated 12-Month Distributable Profit</div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Year 1 — Distributable Profit Breakdown</div>
                         <div className={`text-3xl font-bold mt-1 ${investmentSummary.distributableProfit12m >= 0 ? "text-emerald-700" : "text-red-700"}`}>
                           {investmentSummary.distributableProfit12m >= 0 ? "+" : ""}{formatGBP(investmentSummary.distributableProfit12m)}
                         </div>
-                        <div className="text-xs text-muted-foreground mt-1">Net profit over 12 operating months after all costs, drawings, and ramp-up. Distributable as dividends.</div>
+                        <div className="text-xs text-muted-foreground mt-0.5">Available to distribute as dividends after director salary and cash buffer retention</div>
                       </div>
                       {investmentSummary.distributableProfit12m < 0 && (
                         <div className="shrink-0 ml-4"><AlertTriangle className="w-8 h-8 text-red-500" /></div>
                       )}
                     </div>
+                    {investmentSummary.breakdown12m && (() => {
+                      const b = investmentSummary.breakdown12m;
+                      const waterfallRows: { label: string; value: number; suffix?: string; isBold?: boolean; isHighlight?: boolean; indent?: boolean; color?: string }[] = [
+                        { label: "Gross revenue (12 months)", value: b.revenue },
+                        { label: "Less: variable costs", value: -b.variableCosts, suffix: `gross margin ${b.grossMarginPct}%`, indent: true, color: "text-muted-foreground" },
+                        { label: "Gross profit", value: b.grossProfit, isBold: true },
+                        { label: "Less: fixed costs", value: -b.fixedCosts, indent: true, color: "text-muted-foreground" },
+                        { label: "Operating profit", value: b.operatingProfit, isBold: true },
+                        { label: "Less: director salary (Abi Peters)", value: -b.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
+                        { label: "Less: loan repayments", value: -b.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
+                        { label: "Net before buffer", value: b.netAfterDirector, isBold: true, suffix: `net margin ${b.netMarginPct}%` },
+                        { label: "Less: 20% cash buffer retained", value: -b.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
+                        { label: "Distributable profit", value: b.distributable, isBold: true, isHighlight: true },
+                      ];
+                      return (
+                        <div className="rounded-md border overflow-hidden">
+                          {waterfallRows.map((row, i) => (
+                            <div key={i} className={`flex justify-between items-center text-xs border-b border-border/30 last:border-0 px-3 py-1.5
+                              ${row.isHighlight ? "bg-emerald-50 dark:bg-emerald-950/40" : i % 2 === 0 ? "bg-muted/10" : ""}
+                              ${row.indent ? "pl-6" : ""}`}>
+                              <span className={`${row.isBold ? "font-semibold" : "text-muted-foreground"} ${row.color ?? ""}`}>{row.label}</span>
+                              <span className={`tabular-nums ${row.isHighlight ? "text-emerald-700 font-bold" : row.isBold ? "font-semibold" : "text-muted-foreground"}`}>
+                                {row.value > 0 ? `+${formatGBP(row.value)}` : row.value < 0 ? `(${formatGBP(Math.abs(row.value))})` : "—"}
+                                {row.suffix && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">{row.suffix}</span>}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     {investmentSummary.cashflowNote && (
                       <div className="mt-2 text-[10px] text-muted-foreground italic border-t border-border/30 pt-2">{investmentSummary.cashflowNote}</div>
                     )}
