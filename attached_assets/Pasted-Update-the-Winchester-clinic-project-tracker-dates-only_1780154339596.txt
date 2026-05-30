@@ -1,0 +1,528 @@
+Update the Winchester clinic project tracker dates only.
+
+Do not alter:
+
+* task names
+* phases
+* owners
+* statuses
+* priorities
+* costs
+* low/mid/high values
+* selected costs
+* VAT treatment
+* budget status
+* includeInLaunchBudget
+* includeInRiskView
+* notes
+* risk flags
+* must-do flags
+* dashboard totals
+* budget logic
+
+This is a dates-only update.
+
+Today’s date is 30 May 2026.
+
+Project assumptions:
+
+* Today / planning baseline: 30 May 2026
+* Lease / unit available from: 1 September 2026
+* Target open date currently in the app: 2 November 2026
+* Building works should not start before 1 September 2026 unless specifically a design, legal, procurement or admin task.
+* Final readiness should aim for 2 November 2026.
+* Marketing campaigns may continue after opening where already intended.
+* If the app uses dueDate instead of endDate, apply the end date as dueDate.
+* Every active task must have a startDate and dueDate.
+* No active task should show “—”, blank date, missing start date, missing due date or DueInvalid Date.
+
+Use ISO date format:
+YYYY-MM-DD
+
+Apply the following date schedule exactly.
+
+PHASE 1 — PRE-LEASE DUE DILIGENCE
+
+Search WCC Public Access — s.106, conditions, Article 4 Directions
+startDate: 2026-05-12
+dueDate: 2026-05-14
+
+Confirm Use Class E(e) — clinic use position
+startDate: 2026-05-20
+dueDate: 2026-06-14
+
+Listed Building / Conservation Context Check
+startDate: 2026-05-20
+dueDate: 2026-06-21
+
+Check Local Authority Licensing — Health and Care Act 2022
+startDate: 2026-05-30
+dueDate: 2026-06-14
+
+Check Rateable Value and Business Rates Position
+startDate: 2026-05-30
+dueDate: 2026-06-14
+
+Negotiate Heads of Terms with Agent/Landlord
+startDate: 2026-05-30
+dueDate: 2026-06-30
+
+PHASE 2 — LEGAL, LEASE & HANDOVER
+
+Commercial Property Solicitor — Lease Negotiation
+startDate: 2026-05-27
+dueDate: 2026-07-31
+
+Solicitor Scope Clarification
+startDate: 2026-05-30
+dueDate: 2026-06-07
+
+Lease Repairing Obligation Review
+startDate: 2026-06-01
+dueDate: 2026-06-20
+
+Landlord Alterations Rights Review
+startDate: 2026-06-01
+dueDate: 2026-06-20
+
+RICS Schedule of Condition
+startDate: 2026-06-16
+dueDate: 2026-07-04
+
+Exchange and Complete Lease
+startDate: 2026-07-15
+dueDate: 2026-07-31
+
+Rent Deposit / Lease Cash Requirement
+startDate: 2026-07-15
+dueDate: 2026-07-31
+
+Rent-Free / Fit-Out Period Cashflow Planning — 2 Months
+startDate: 2026-09-01
+dueDate: 2026-10-31
+
+PHASE 3 — DESIGN, APPROVALS & PROCUREMENT
+
+Appoint Design / Building Regulations Lead
+startDate: 2026-05-30
+dueDate: 2026-06-14
+
+Confirm Planning / Conservation / Advertisement Consent Position
+startDate: 2026-05-30
+dueDate: 2026-06-21
+
+Produce Employer's Requirements / Contractor Fit-Out Brief
+startDate: 2026-06-10
+dueDate: 2026-06-24
+
+Contractor Site Survey and Buildability Review
+startDate: 2026-06-17
+dueDate: 2026-07-01
+
+Tender / Quote Managed Fit-Out Package
+startDate: 2026-06-24
+dueDate: 2026-07-15
+
+Final Scope Lock and Fixed Cost Agreement
+startDate: 2026-07-15
+dueDate: 2026-07-31
+
+Licence for Alterations
+startDate: 2026-07-15
+dueDate: 2026-08-31
+
+Building Control Submission / Initial Notice
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Advertisement Consent — Shopfront / Signage
+startDate: 2026-07-08
+dueDate: 2026-09-27
+
+PHASE 4 — MANAGED BUILDING WORKS
+
+Contractor Pre-Start Meeting and Programme Confirmation
+startDate: 2026-09-01
+dueDate: 2026-09-07
+
+Main Contractor Fit-Out Package — Internal Works
+startDate: 2026-09-08
+dueDate: 2026-10-18
+
+Electrical Works
+startDate: 2026-09-08
+dueDate: 2026-10-09
+
+Plumbing / Clinical Basin Works
+startDate: 2026-09-08
+dueDate: 2026-10-09
+
+Clinical Flooring Package
+startDate: 2026-10-05
+dueDate: 2026-10-16
+
+Internal Decoration and Finishing
+startDate: 2026-10-05
+dueDate: 2026-10-23
+
+Joinery / Reception Desk / Clinical Cabinetry — Decision
+startDate: 2026-07-01
+dueDate: 2026-07-31
+
+Joinery / Reception Desk / Clinical Cabinetry — Installation
+startDate: 2026-10-05
+dueDate: 2026-10-23
+
+Wall Panelling / Decorative Moulding Feature Finish
+startDate: 2026-10-01
+dueDate: 2026-10-23
+
+Door Furniture, Room Labels and Black Ironmongery
+startDate: 2026-10-05
+dueDate: 2026-10-23
+
+Shopfront Repaint
+startDate: 2026-10-05
+dueDate: 2026-10-18
+
+External Signage Package
+startDate: 2026-10-12
+dueDate: 2026-10-25
+
+PHASE 5 — FF&E, EQUIPMENT & CLINIC STYLING
+
+Treatment Couch x1
+startDate: 2026-07-31
+dueDate: 2026-10-14
+
+Internal Signage and Branding Package
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Reception Furniture and Styling Package
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Consultation Room Furniture and Styling Package
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Treatment Room Furniture, Equipment and Styling Package
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Product Display / Retail Shelving / LED Setup
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Wall Art, Certificates and Picture Lighting
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Furniture / Equipment Installation and Room Dressing
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+PHASE 6 — CLINICAL GOVERNANCE & COMPLIANCE
+
+CPD Documentation Log
+startDate: 2026-05-30
+dueDate: 2026-06-30
+
+ACE Membership — Confirm Winchester Cover
+startDate: 2026-05-30
+dueDate: 2026-06-30
+
+BLS Certification — Confirm Current
+startDate: 2026-05-30
+dueDate: 2026-06-30
+
+DBS Check
+startDate: 2026-05-27
+dueDate: 2026-06-03
+
+NMC Face-to-Face Prescribing SOP
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Complaints and Incident Log
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Batch Number and Traceability Log
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Adverse Event Protocol
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Sharps Safety Policy
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+IPC Policy
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+COSHH Risk Assessments
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Consent Forms and Questionnaires — Winchester Setup
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Delegation and Supervision Policy
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+JCCP Practitioner Register
+startDate: 2026-08-01
+dueDate: 2026-09-30
+
+Save Face Registration
+startDate: 2026-07-08
+dueDate: 2026-09-30
+
+Clinical Waste Contract
+startDate: 2026-08-01
+dueDate: 2026-09-30
+
+Fire Risk Assessment — Post Fit-Out
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+Emergency Drugs and Equipment Kit
+startDate: 2026-10-12
+dueDate: 2026-10-30
+
+Baseline Photography Protocol
+startDate: 2026-10-12
+dueDate: 2026-10-30
+
+Final Clinical Readiness Check
+startDate: 2026-10-26
+dueDate: 2026-11-02
+
+PHASE 7 — STOCK, SUPPLIERS & CLINICAL SETUP
+
+Allergan Practitioner Pathway — Notify Winchester
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Allergan Direct — Register 9A Delivery Address
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Galderma / Azzalure — Register Jewry Street Delivery Address
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Derma Focus / Polynucleotides — Register Jewry Street
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+Opening Injectable Stock
+startDate: 2026-10-12
+dueDate: 2026-10-30
+
+Clinical Smallwares and Consumables
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Retail / Skincare Opening Stock
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+PHASE 8 — FINANCE, INSURANCE & ADMIN
+
+Accounting Software — Xero or QuickBooks
+startDate: 2026-05-30
+dueDate: 2026-06-30
+
+Clinic Management Software — Check ANS Plan
+startDate: 2026-08-01
+dueDate: 2026-08-31
+
+ICO Data Protection Fee
+startDate: 2026-07-31
+dueDate: 2026-08-01
+
+Hamilton Fraser / Indemnity / Premises Insurance
+startDate: 2026-08-01
+dueDate: 2026-08-15
+
+Register for Business Rates
+startDate: 2026-08-31
+dueDate: 2026-09-07
+
+Notify Utilities — Electricity, Water, Broadband
+startDate: 2026-08-31
+dueDate: 2026-09-03
+
+Broadband Availability / Setup
+startDate: 2026-05-30
+dueDate: 2026-08-31
+
+Air Conditioning Inspection / Service
+startDate: 2026-09-01
+dueDate: 2026-09-14
+
+Legionella Risk Assessment
+startDate: 2026-09-01
+dueDate: 2026-09-14
+
+PAT Testing Setup
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+Card Payment Terminal for Winchester
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+Klarna — Set Up Winchester
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+VAT Registration Monitoring
+startDate: 2026-05-30
+dueDate: 2026-11-02
+
+PHASE 9 — MARKETING & LAUNCH
+
+Winchester SEO — Treatment Landing Pages
+startDate: 2026-05-30
+dueDate: 2026-07-31
+
+Website — Winchester Page, Photos, Privacy Notice
+startDate: 2026-05-30
+dueDate: 2026-07-31
+
+Winchester BID Registration
+startDate: 2026-08-01
+dueDate: 2026-08-07
+
+Google Business Profile — Winchester Location
+startDate: 2026-08-01
+dueDate: 2026-08-14
+
+Google Tag Manager / Conversion Tracking
+startDate: 2026-08-01
+dueDate: 2026-08-07
+
+Meta Ads — Winchester Launch
+startDate: 2026-08-15
+dueDate: 2027-01-30
+
+Google Ads — Winchester Launch
+startDate: 2026-09-01
+dueDate: 2027-01-01
+
+Google Review Acquisition System
+startDate: 2026-09-01
+dueDate: 2026-09-15
+
+Before & After Content Bank Creation
+startDate: 2026-09-01
+dueDate: 2026-10-25
+
+Winchester Local Partnerships Outreach
+startDate: 2026-09-01
+dueDate: 2026-10-25
+
+Instagram Pre-Launch Campaign
+startDate: 2026-09-15
+dueDate: 2026-10-31
+
+Existing Client Migration Campaign
+startDate: 2026-09-15
+dueDate: 2026-10-31
+
+Referral Programme Setup
+startDate: 2026-09-15
+dueDate: 2026-10-15
+
+Email Campaign to 600 Existing Bedhampton Clients
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Local PR / Founder Story Campaign
+startDate: 2026-10-01
+dueDate: 2026-10-25
+
+Soft Launch Event
+startDate: 2026-10-15
+dueDate: 2026-10-29
+
+Professional Photography of Completed Clinic
+startDate: 2026-10-26
+dueDate: 2026-11-02
+
+PHASE 10 — HANDOVER, SNAGGING & OPENING
+
+Contractor Handover Pack
+startDate: 2026-10-19
+dueDate: 2026-10-30
+
+Building Regulations Completion Certificate
+startDate: 2026-10-19
+dueDate: 2026-11-02
+
+Snagging Inspection and Defects Close-Out
+startDate: 2026-10-19
+dueDate: 2026-11-02
+
+Professional Deep Clean Before Clinical Setup
+startDate: 2026-10-26
+dueDate: 2026-10-30
+
+Soft Launch Readiness
+startDate: 2026-10-26
+dueDate: 2026-11-02
+
+PHASE 11 — DEFERRED / STRETCH ITEMS
+
+Healthcare Specialist Accountant
+startDate: 2026-11-02
+dueDate: 2026-11-30
+
+Business Continuity Plan — Paid Support
+startDate: 2026-11-02
+dueDate: 2026-11-30
+
+Additional Retail / Skincare Stock Upgrade
+startDate: 2026-11-02
+dueDate: 2026-11-30
+
+FF&E / Styling Upgrade Reserve
+startDate: 2026-11-02
+dueDate: 2026-11-30
+
+Marketing Spend Upgrade
+startDate: 2026-11-02
+dueDate: 2027-01-30
+
+PHASE 12 — PROJECT CONTINGENCY
+
+Contingency Reserve — Controlled by David
+startDate: 2026-05-30
+dueDate: 2026-11-02
+
+VALIDATION REQUIRED
+
+After applying the dates, validate:
+
+1. No active task has a blank startDate.
+2. No active task has a blank dueDate.
+3. No active task displays “—” in the Start Date column.
+4. No active task displays “DueInvalid Date”.
+5. No active task has a dueDate earlier than its startDate.
+6. No managed building works task starts before 2026-09-01.
+7. All pre-lease, legal and procurement tasks start from 2026-05-30 or their actual earlier start date.
+8. All final opening tasks complete by 2026-11-02 unless they are ongoing marketing campaigns or deferred/stretch items.
+9. Do not alter any costs or budget values.
+10. Do not alter VAT tracking.
+11. Do not alter task names or phases.
+
+This is a dates-only update.
