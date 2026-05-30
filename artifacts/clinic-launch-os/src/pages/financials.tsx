@@ -3997,7 +3997,7 @@ export default function FinancialsPage() {
             const r12d  = r12?.distributable ?? 0;
             const y2d   = y2?.distributable ?? 0;
             const y2r   = y2?.revenue ?? 0;
-            const blendD = Math.round((r12d + y2d) / 2);
+            const blendD = Math.round((5 * r12d + y2d) / 6);
             const ready = !!r12;
             const preMoney  = ready ? Math.round(blendD * valuationMultiple) : 0;
             const preMoney12 = ready ? Math.round(r12d * valuationMultiple) : 0;
@@ -4016,7 +4016,7 @@ export default function FinancialsPage() {
                     <span className="ml-auto text-[10px] text-muted-foreground">Pre-money estimate</span>
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    Blended pre-money valuation: average of the first 12 months from opening ({r12?.label ?? "Nov '26 – Oct '27"}) and the first full stable FY ({y2?.fyLabel ?? "FY27/28"}). Neither alone is reliable at this stage — the blend reflects both ramp-up reality and steady-state trajectory.
+                    Blended pre-money valuation weighted 5:1 toward Year 1. Year 1 ({r12?.label ?? "Nov '26 – Oct '27"}) carries most of the weight — reflecting reality at the point of investment. Year 2 ({y2?.fyLabel ?? "FY27/28"}) anchors the stable trajectory.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -4044,7 +4044,7 @@ export default function FinancialsPage() {
                       <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                         <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — blended valuation</div>
                         <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
-                        <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(blendD)} blended distributable × {valuationMultiple}×</div>
+                        <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(blendD)} blended distributable (5:1 Y1 weighted) × {valuationMultiple}×</div>
                       </div>
                       {/* Two components side by side */}
                       <div className="grid grid-cols-2 gap-2">
@@ -4081,7 +4081,7 @@ export default function FinancialsPage() {
                     </div>
                   )}
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-                    <span className="font-semibold text-foreground">Methodology:</span> Blended earnings multiple — simple average of two distributable profit figures: (1) first 12 months from opening ({r12?.label ?? "Nov '26 – Oct '27"}, ramp-up phase) and (2) first full financial year ({y2?.fyLabel ?? "FY27/28"}, stable). Neither alone is reliable at the point of investment; the blend captures both ramp-up reality and the trajectory once the clinic is established. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
+                    <span className="font-semibold text-foreground">Methodology:</span> 5:1 weighted blend of two distributable profit figures: Year 1 ({r12?.label ?? "Nov '26 – Oct '27"}, first 12 months from opening) receives 5 parts weight; Year 2 ({y2?.fyLabel ?? "FY27/28"}, first full stable FY) receives 1 part. This heavy Year 1 bias reflects the reality that at the point of investment the business is unproven — Year 2 anchors the upside trajectory without inflating the headline figure. Formula: (5 × Y1 + Y2) ÷ 6. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
                   </div>
                 </CardContent>
               </Card>
