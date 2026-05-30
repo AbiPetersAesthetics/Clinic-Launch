@@ -4558,10 +4558,10 @@ export default function FinancialsPage() {
             const workingCapital  = fixedMonthly * 2;
             const minimumToLaunch = deficitToZero + workingCapital;
 
-            // Tiers — AI overrides take precedence once analysis is run
-            const lowBase  = ig?.gapLow    ?? minimumToLaunch;
-            const medBase  = ig?.gapMedium ?? Math.round(minimumToLaunch * 1.25);
-            const highBase = ig?.gapHigh   ?? Math.round(medBase * 1.30);
+            // Tier amounts always from the live cashflow model — AI only provides narrative
+            const lowBase  = minimumToLaunch;
+            const medBase  = Math.round(minimumToLaunch * 1.25);
+            const highBase = Math.round(medBase * 1.30);
 
             const committed = ig?._totalCommitted ?? is?.totalCapitalGbp ?? 0;
 
@@ -4570,25 +4570,25 @@ export default function FinancialsPage() {
                 key: "low",
                 label: "Low",
                 amount: lowBase,
-                sublabel: ig?.lowLabel ?? "Deficit + 2 months working capital",
-                detail: ig?.lowDetail ?? "The minimum viable raise — covers the pre-opening cash deficit and two months of fixed overheads. No contingency; assumes Bedhampton income and project timelines land exactly as modelled.",
+                sublabel: "Deficit + 2 months working capital",
+                detail: "The minimum viable raise — covers the pre-opening cash deficit and two months of fixed overheads. No margin for error; assumes Bedhampton income and project timelines land exactly as modelled.",
                 color: { border: "border-amber-200 dark:border-amber-800", bg: "bg-amber-50/40 dark:bg-amber-950/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-400" },
               },
               {
                 key: "medium",
                 label: "Medium",
                 amount: medBase,
-                sublabel: ig?.mediumLabel ?? "Low + 25% contingency",
-                detail: ig?.mediumDetail ?? "Adds a 25% contingency buffer for minor fit-out overruns, delays, or early trading underperformance. The recommended baseline raise for a prudent first-time launch.",
+                sublabel: "Low + 25% contingency",
+                detail: "Adds a 25% contingency buffer above the minimum — covers minor fit-out overruns, permit delays, or a slower ramp without running dry. The recommended raise for a first-time clinic launch.",
                 color: { border: "border-primary/30 dark:border-primary/40", bg: "bg-primary/5 dark:bg-primary/10", badge: "bg-primary/10 text-primary dark:bg-primary/20", dot: "bg-primary" },
-                recommended: ig?.recommendedTier === "medium" || !ig?.recommendedTier,
+                recommended: true,
               },
               {
                 key: "high",
                 label: "High",
                 amount: highBase,
-                sublabel: ig?.highLabel ?? "Medium + 30% safety margin",
-                detail: ig?.highDetail ?? "Full resilience against significant overruns, regulatory delays, or a prolonged ramp. Appropriate for risk-averse structures or volatile build environments.",
+                sublabel: "Medium + 30% safety margin",
+                detail: "Full resilience against significant overruns, regulatory delays, or a prolonged trading ramp. Appropriate if you want to avoid any further fundraising rounds before self-sufficiency.",
                 color: { border: "border-blue-200 dark:border-blue-800", bg: "bg-blue-50/40 dark:bg-blue-950/20", badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
               },
             ];
