@@ -22,6 +22,7 @@ import competitionRouter from "./competition";
 import resetRouter from "./reset";
 import risksRouter from "./risks";
 import suppliersRouter from "./suppliers";
+import investmentsRouter from "./investments";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(competitionRouter);
 router.use(resetRouter);
 router.use(risksRouter);
 router.use(suppliersRouter);
+router.use(investmentsRouter);
 
 export default router;

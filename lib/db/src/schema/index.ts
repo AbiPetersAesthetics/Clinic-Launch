@@ -17,3 +17,4 @@ export * from "./marketing";
 export * from "./competition";
 export * from "./risks";
 export * from "./suppliers";
+export * from "./investments";

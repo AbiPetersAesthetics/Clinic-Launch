@@ -28,6 +28,7 @@ import {
   Shield, ChevronRight, BarChart3, Building2, Target,
   Plus, Trash2, Sparkles, TrendingUp, TrendingDown, Activity,
   RefreshCw, Loader2, Wand2, Lock, Sliders,
+  Banknote, Users, PieChart, Edit2, X, ChevronDown,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -60,7 +61,7 @@ const VAT_PRESETS: { key: VatPresetKey; label: string; rate: number; pct: string
   { key: "significant", label: "Significant", rate: 0.12,  pct: "12.0%", note: "Majority of arguable treatments claimed as exempt, full input recovery on remainder. Requires robust documentation." },
   { key: "maximum",     label: "Maximum",     rate: 0.09,  pct: "9.0%",  note: "Specialist adviser engaged, maximum legitimate recovery applied. Upper end — achievable where high proportion of treatments have clear medical indication." },
 ];
-type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom";
+type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom" | "investment";
 
 type WincMetrics = {
   grossRevenue: number; fixedCosts: number; variableCosts: number;
@@ -401,6 +402,74 @@ export default function FinancialsPage() {
   };
   const [tab, setTab] = useState<TabKey>("overview");
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
+
+  // ── Investment & Ownership state ──────────────────────────────────────────
+  const [investments, setInvestments] = useState<any[]>([]);
+  const [shareholders, setShareholders] = useState<any[]>([]);
+  const [investmentSummary, setInvestmentSummary] = useState<any>(null);
+  const [invLoading, setInvLoading] = useState(false);
+  const [addingInvType, setAddingInvType] = useState<"loan" | "equity" | null>(null);
+  const [addingShareholder, setAddingShareholder] = useState(false);
+  const [editingInv, setEditingInv] = useState<any | null>(null);
+  const [editingSh, setEditingSh] = useState<any | null>(null);
+  const [newInv, setNewInv] = useState({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
+  const [newSh, setNewSh] = useState({ name: "", role: "", equityPercent: "", notes: "" });
+
+  const loadInvestmentData = useCallback(async () => {
+    setInvLoading(true);
+    try {
+      const [invRes, shRes, sumRes] = await Promise.all([
+        fetch(`/api/projects/${PROJECT_ID}/investments`),
+        fetch(`/api/projects/${PROJECT_ID}/shareholders`),
+        fetch(`/api/projects/${PROJECT_ID}/investment-summary`),
+      ]);
+      if (invRes.ok) setInvestments(await invRes.json());
+      if (shRes.ok) setShareholders(await shRes.json());
+      if (sumRes.ok) setInvestmentSummary(await sumRes.json());
+    } finally {
+      setInvLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (tab === "investment") loadInvestmentData();
+  }, [tab, loadInvestmentData]);
+
+  const addInvestment = async () => {
+    const type = addingInvType ?? "loan";
+    const payload = { name: newInv.name, type, amountGbp: parseFloat(newInv.amountGbp) || 0, equityPercent: parseFloat(newInv.equityPercent) || 0, interestRatePercent: parseFloat(newInv.interestRatePercent) || 0, repaymentTermMonths: parseInt(newInv.repaymentTermMonths) || 0, repaymentStartMonth: parseInt(newInv.repaymentStartMonth) || 1, notes: newInv.notes };
+    await fetch(`/api/projects/${PROJECT_ID}/investments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    setNewInv({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
+    setAddingInvType(null);
+    await loadInvestmentData();
+  };
+  const deleteInvestment = async (id: number) => {
+    await fetch(`/api/investments/${id}`, { method: "DELETE" });
+    await loadInvestmentData();
+  };
+  const saveEditInv = async () => {
+    if (!editingInv) return;
+    await fetch(`/api/investments/${editingInv.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingInv) });
+    setEditingInv(null);
+    await loadInvestmentData();
+  };
+
+  const addShareholder = async () => {
+    await fetch(`/api/projects/${PROJECT_ID}/shareholders`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newSh.name, role: newSh.role, equityPercent: parseFloat(newSh.equityPercent) || 0, notes: newSh.notes }) });
+    setNewSh({ name: "", role: "", equityPercent: "", notes: "" });
+    setAddingShareholder(false);
+    await loadInvestmentData();
+  };
+  const deleteShareholder = async (id: number) => {
+    await fetch(`/api/shareholders/${id}`, { method: "DELETE" });
+    await loadInvestmentData();
+  };
+  const saveEditSh = async () => {
+    if (!editingSh) return;
+    await fetch(`/api/shareholders/${editingSh.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingSh) });
+    setEditingSh(null);
+    await loadInvestmentData();
+  };
 
   // ── Live Bedhampton data ──────────────────────────────────────────────────
   type BLiveSummary = {
@@ -1329,12 +1398,12 @@ export default function FinancialsPage() {
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
-        {(["overview", "model", "owner", "domestics", "risks", "custom"] as TabKey[]).map((t) => (
+        {(["overview", "model", "owner", "domestics", "risks", "custom", "investment"] as TabKey[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
               tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}>
-            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : t === "risks" ? "Risks" : "Custom Model"}
+            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : t === "risks" ? "Risks" : t === "investment" ? "Investment" : "Custom Model"}
           </button>
         ))}
       </div>
@@ -3708,6 +3777,485 @@ export default function FinancialsPage() {
 
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ═══ TAB: INVESTMENT & OWNERSHIP ════════════════════════════════════ */}
+      {tab === "investment" && (
+        <div className="space-y-6">
+
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold">Investment & Ownership</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Model your capital structure, loan repayments, and 12-month shareholder payout at the point of investment.</p>
+            </div>
+            <Button variant="outline" size="sm" onClick={loadInvestmentData} disabled={invLoading} className="gap-1.5">
+              <RefreshCw className={`w-3.5 h-3.5 ${invLoading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+          </div>
+
+          {invLoading && !investmentSummary && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+              <Loader2 className="w-4 h-4 animate-spin" /> Loading investment data…
+            </div>
+          )}
+
+          {/* ── Capital Summary KPIs ─────────────────────────────────────────── */}
+          {investmentSummary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {[
+                { label: "Total Capital Raised", value: formatGBP(investmentSummary.totalCapitalGbp), icon: <Banknote className="w-4 h-4 text-emerald-600" />, sub: `${investments.length} instrument${investments.length !== 1 ? "s" : ""}`, color: "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" },
+                { label: "Equity Given Up", value: `${investmentSummary.totalEquityGivenUpPercent.toFixed(1)}%`, icon: <PieChart className="w-4 h-4 text-amber-600" />, sub: `Founder retains ${investmentSummary.founderEquityPercent.toFixed(1)}%`, color: investmentSummary.totalEquityGivenUpPercent > 49 ? "border-red-200 bg-red-50/50 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20" },
+                { label: "Loan Repayments — Year 1", value: formatGBP(investmentSummary.totalLoanRepaymentsYear1), icon: <TrendingDown className="w-4 h-4 text-blue-600" />, sub: "Total across all loans", color: "border-blue-200 bg-blue-50/50 dark:bg-blue-950/20" },
+                { label: "Est. Distributable — 12m", value: formatGBP(investmentSummary.distributableProfit12m), icon: <TrendingUp className="w-4 h-4 text-primary" />, sub: investmentSummary.distributableProfit12m >= 0 ? "Profit available to distribute" : "Business in loss at 12m", color: investmentSummary.distributableProfit12m >= 0 ? "border-primary/30 bg-primary/5" : "border-red-200 bg-red-50/50 dark:bg-red-950/20" },
+              ].map(k => (
+                <div key={k.label} className={`rounded-lg border p-3 ${k.color}`}>
+                  <div className="flex items-center gap-1.5 mb-1">{k.icon}<span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{k.label}</span></div>
+                  <div className="text-xl font-bold">{k.value}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Investment Instruments ───────────────────────────────────────── */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Banknote className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-sm">Investment Instruments</CardTitle>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setAddingInvType("loan"); setAddingShareholder(false); }}>
+                    <Plus className="w-3.5 h-3.5" /> Add Loan
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => { setAddingInvType("equity"); setAddingShareholder(false); }}>
+                    <Plus className="w-3.5 h-3.5" /> Add Equity Investment
+                  </Button>
+                </div>
+              </div>
+              <CardDescription className="text-xs mt-1">
+                <span className="font-semibold">Loan</span> — borrowed capital with scheduled repayments; optionally gives up equity. &nbsp;
+                <span className="font-semibold">Equity investment</span> — lump-sum capital in exchange for a share of the business.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+
+              {/* Add investment form */}
+              {addingInvType && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold capitalize flex items-center gap-2">
+                      {addingInvType === "loan" ? <Banknote className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+                      New {addingInvType === "loan" ? "Loan" : "Equity Investment"}
+                    </div>
+                    <button onClick={() => setAddingInvType(null)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="col-span-2 sm:col-span-3">
+                      <label className="text-xs text-muted-foreground">Name / Description *</label>
+                      <Input className="h-8 mt-1 text-sm" placeholder={addingInvType === "loan" ? "e.g. NatWest Business Loan" : "e.g. Angel Investor — J. Smith"} value={newInv.name} onChange={e => setNewInv(p => ({ ...p, name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Amount (£) *</label>
+                      <Input className="h-8 mt-1 text-sm" type="number" placeholder="50000" value={newInv.amountGbp} onChange={e => setNewInv(p => ({ ...p, amountGbp: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Equity Given Up (%)</label>
+                      <Input className="h-8 mt-1 text-sm" type="number" placeholder="0" value={newInv.equityPercent} onChange={e => setNewInv(p => ({ ...p, equityPercent: e.target.value }))} />
+                    </div>
+                    {addingInvType === "loan" && (<>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Annual Interest Rate (%)</label>
+                        <Input className="h-8 mt-1 text-sm" type="number" placeholder="6.5" value={newInv.interestRatePercent} onChange={e => setNewInv(p => ({ ...p, interestRatePercent: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Repayment Term (months)</label>
+                        <Input className="h-8 mt-1 text-sm" type="number" placeholder="60" value={newInv.repaymentTermMonths} onChange={e => setNewInv(p => ({ ...p, repaymentTermMonths: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Repayments Start (month)</label>
+                        <Input className="h-8 mt-1 text-sm" type="number" placeholder="1" value={newInv.repaymentStartMonth} onChange={e => setNewInv(p => ({ ...p, repaymentStartMonth: e.target.value }))} />
+                      </div>
+                    </>)}
+                    <div className="col-span-2 sm:col-span-3">
+                      <label className="text-xs text-muted-foreground">Notes</label>
+                      <Input className="h-8 mt-1 text-sm" placeholder="Optional notes about this instrument…" value={newInv.notes} onChange={e => setNewInv(p => ({ ...p, notes: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="gap-1.5 text-xs" onClick={addInvestment} disabled={!newInv.name || !newInv.amountGbp}>
+                      <Plus className="w-3.5 h-3.5" /> Add {addingInvType === "loan" ? "Loan" : "Investment"}
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => setAddingInvType(null)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Investment list */}
+              {investments.length === 0 && !addingInvType ? (
+                <p className="text-sm text-muted-foreground italic py-2">No investment instruments added yet. Use the buttons above to add a loan or equity investment.</p>
+              ) : investments.length > 0 ? (
+                <div className="rounded-md border overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-muted/50 border-b">
+                      <tr>
+                        {["Instrument", "Type", "Amount", "Equity %", "Monthly Repayment", "Rate", "Term", "Notes", ""].map(h => (
+                          <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {investments.map((inv: any) => {
+                        const isEditing = editingInv?.id === inv.id;
+                        const monthlyPmt = inv.type === "loan" && inv.interestRatePercent > 0 && inv.repaymentTermMonths > 0
+                          ? inv.amountGbp * ((inv.interestRatePercent / 100 / 12) * Math.pow(1 + inv.interestRatePercent / 100 / 12, inv.repaymentTermMonths)) / (Math.pow(1 + inv.interestRatePercent / 100 / 12, inv.repaymentTermMonths) - 1)
+                          : inv.type === "loan" && inv.repaymentTermMonths > 0 ? inv.amountGbp / inv.repaymentTermMonths : 0;
+                        return (
+                          <tr key={inv.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                            {isEditing ? (
+                              <>
+                                <td className="px-2 py-1.5" colSpan={8}>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <Input className="h-7 text-xs" value={editingInv.name} onChange={e => setEditingInv((p: any) => ({ ...p, name: e.target.value }))} placeholder="Name" />
+                                    <Input className="h-7 text-xs" type="number" value={editingInv.amountGbp} onChange={e => setEditingInv((p: any) => ({ ...p, amountGbp: parseFloat(e.target.value) || 0 }))} placeholder="Amount £" />
+                                    <Input className="h-7 text-xs" type="number" value={editingInv.equityPercent} onChange={e => setEditingInv((p: any) => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} placeholder="Equity %" />
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.interestRatePercent} onChange={e => setEditingInv((p: any) => ({ ...p, interestRatePercent: parseFloat(e.target.value) || 0 }))} placeholder="Rate %" />}
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.repaymentTermMonths} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentTermMonths: parseInt(e.target.value) || 0 }))} placeholder="Term mo." />}
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.repaymentStartMonth} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentStartMonth: parseInt(e.target.value) || 1 }))} placeholder="Start mo." />}
+                                    <Input className="h-7 text-xs col-span-2" value={editingInv.notes} onChange={e => setEditingInv((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Notes" />
+                                  </div>
+                                  <div className="flex gap-2 mt-2">
+                                    <Button size="sm" className="h-6 text-xs" onClick={saveEditInv}>Save</Button>
+                                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingInv(null)}>Cancel</Button>
+                                  </div>
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-3 py-2 font-medium">{inv.name}</td>
+                                <td className="px-3 py-2">
+                                  <Badge variant="outline" className={`text-[10px] font-semibold ${inv.type === "loan" ? "border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-950/30" : "border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30"}`}>
+                                    {inv.type === "loan" ? "Loan" : "Equity"}
+                                  </Badge>
+                                </td>
+                                <td className="px-3 py-2 font-semibold">{formatGBP(inv.amountGbp)}</td>
+                                <td className="px-3 py-2">{inv.equityPercent > 0 ? `${inv.equityPercent}%` : "—"}</td>
+                                <td className="px-3 py-2">{inv.type === "loan" && monthlyPmt > 0 ? <span className="text-blue-700 font-semibold">{formatGBP(Math.round(monthlyPmt))}/mo</span> : "—"}</td>
+                                <td className="px-3 py-2">{inv.type === "loan" && inv.interestRatePercent > 0 ? `${inv.interestRatePercent}%` : "—"}</td>
+                                <td className="px-3 py-2">{inv.type === "loan" && inv.repaymentTermMonths > 0 ? `${inv.repaymentTermMonths}mo` : "—"}</td>
+                                <td className="px-3 py-2 text-muted-foreground max-w-[120px] truncate">{inv.notes || "—"}</td>
+                                <td className="px-3 py-2">
+                                  <div className="flex gap-1">
+                                    <button onClick={() => setEditingInv({ ...inv })} className="text-muted-foreground hover:text-foreground transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                                    <button onClick={() => deleteInvestment(inv.id)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                  </div>
+                                </td>
+                              </>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-muted/50 border-t-2">
+                      <tr>
+                        <td className="px-3 py-2 font-bold text-xs" colSpan={2}>Total</td>
+                        <td className="px-3 py-2 font-bold text-xs">{formatGBP(investments.reduce((s: number, i: any) => s + i.amountGbp, 0))}</td>
+                        <td className="px-3 py-2 font-bold text-xs">{investments.reduce((s: number, i: any) => s + i.equityPercent, 0).toFixed(1)}%</td>
+                        <td colSpan={5} />
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* ── Ownership Register ───────────────────────────────────────────── */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-sm">Ownership Register</CardTitle>
+                </div>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setAddingShareholder(p => !p)}>
+                  <Plus className="w-3.5 h-3.5" /> Add Shareholder
+                </Button>
+              </div>
+              <CardDescription className="text-xs mt-1">
+                List all shareholders and their equity %. Include the founder, any investors who received equity, and any other equity holders. Equity percentages should sum to 100%.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+
+              {/* Add shareholder form */}
+              {addingShareholder && (
+                <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-semibold flex items-center gap-2"><Users className="w-4 h-4" /> New Shareholder</div>
+                    <button onClick={() => setAddingShareholder(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="col-span-2">
+                      <label className="text-xs text-muted-foreground">Name *</label>
+                      <Input className="h-8 mt-1 text-sm" placeholder="e.g. Abi Peters" value={newSh.name} onChange={e => setNewSh(p => ({ ...p, name: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Role</label>
+                      <Input className="h-8 mt-1 text-sm" placeholder="e.g. Founder, Investor" value={newSh.role} onChange={e => setNewSh(p => ({ ...p, role: e.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Equity % *</label>
+                      <Input className="h-8 mt-1 text-sm" type="number" placeholder="100" value={newSh.equityPercent} onChange={e => setNewSh(p => ({ ...p, equityPercent: e.target.value }))} />
+                    </div>
+                    <div className="col-span-2 sm:col-span-4">
+                      <label className="text-xs text-muted-foreground">Notes</label>
+                      <Input className="h-8 mt-1 text-sm" placeholder="Optional notes…" value={newSh.notes} onChange={e => setNewSh(p => ({ ...p, notes: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <Button size="sm" className="gap-1.5 text-xs" onClick={addShareholder} disabled={!newSh.name || !newSh.equityPercent}>
+                      <Plus className="w-3.5 h-3.5" /> Add Shareholder
+                    </Button>
+                    <Button size="sm" variant="ghost" className="text-xs" onClick={() => setAddingShareholder(false)}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+
+              {shareholders.length === 0 && !addingShareholder ? (
+                <p className="text-sm text-muted-foreground italic py-2">No shareholders listed yet. Add the founder first, then any investors who received equity.</p>
+              ) : shareholders.length > 0 ? (
+                <>
+                  <div className="rounded-md border overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/50 border-b">
+                        <tr>
+                          {["Name", "Role", "Equity %", "Notes", ""].map(h => (
+                            <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {shareholders.map((sh: any) => {
+                          const isEditing = editingSh?.id === sh.id;
+                          return (
+                            <tr key={sh.id} className="border-b border-border/50 last:border-0 hover:bg-muted/30">
+                              {isEditing ? (
+                                <td className="px-2 py-1.5" colSpan={5}>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <Input className="h-7 text-xs" value={editingSh.name} onChange={e => setEditingSh((p: any) => ({ ...p, name: e.target.value }))} placeholder="Name" />
+                                    <Input className="h-7 text-xs" value={editingSh.role} onChange={e => setEditingSh((p: any) => ({ ...p, role: e.target.value }))} placeholder="Role" />
+                                    <Input className="h-7 text-xs" type="number" value={editingSh.equityPercent} onChange={e => setEditingSh((p: any) => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} placeholder="Equity %" />
+                                    <Input className="h-7 text-xs" value={editingSh.notes} onChange={e => setEditingSh((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Notes" />
+                                  </div>
+                                  <div className="flex gap-2 mt-2">
+                                    <Button size="sm" className="h-6 text-xs" onClick={saveEditSh}>Save</Button>
+                                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingSh(null)}>Cancel</Button>
+                                  </div>
+                                </td>
+                              ) : (
+                                <>
+                                  <td className="px-3 py-2 font-medium">{sh.name}</td>
+                                  <td className="px-3 py-2 text-muted-foreground">{sh.role || "—"}</td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden min-w-[40px]">
+                                        <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${Math.min(100, sh.equityPercent)}%` }} />
+                                      </div>
+                                      <span className="font-semibold text-foreground w-10 text-right">{sh.equityPercent}%</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 text-muted-foreground">{sh.notes || "—"}</td>
+                                  <td className="px-3 py-2">
+                                    <div className="flex gap-1">
+                                      <button onClick={() => setEditingSh({ ...sh })} className="text-muted-foreground hover:text-foreground transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                                      <button onClick={() => deleteShareholder(sh.id)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                                    </div>
+                                  </td>
+                                </>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                      <tfoot className="bg-muted/50 border-t-2">
+                        <tr>
+                          <td className="px-3 py-2 font-bold text-xs" colSpan={2}>Total</td>
+                          <td className="px-3 py-2" colSpan={3}>
+                            {(() => {
+                              const total = shareholders.reduce((s: number, sh: any) => s + sh.equityPercent, 0);
+                              return (
+                                <div className="flex items-center gap-2">
+                                  <span className={`font-bold text-xs ${Math.abs(total - 100) < 0.1 ? "text-emerald-600" : "text-amber-600"}`}>{total.toFixed(1)}%</span>
+                                  {Math.abs(total - 100) > 0.1 && <Badge variant="outline" className="text-[10px] border-amber-300 text-amber-700 bg-amber-50">{total < 100 ? `${(100 - total).toFixed(1)}% unallocated` : `${(total - 100).toFixed(1)}% over 100%`}</Badge>}
+                                  {Math.abs(total - 100) < 0.1 && <Badge variant="outline" className="text-[10px] border-emerald-300 text-emerald-700 bg-emerald-50">✓ Fully allocated</Badge>}
+                                </div>
+                              );
+                            })()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          {/* ── 12-Month Payout Analysis ─────────────────────────────────────── */}
+          <Card className="shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-primary" />
+                <CardTitle className="text-sm">12-Month Payout Analysis</CardTitle>
+              </div>
+              <CardDescription className="text-xs mt-1">
+                Estimated distribution to each shareholder at the 12-month mark after investment, based on the realistic scenario cashflow with standard ramp curve.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+
+              {investmentSummary && (
+                <>
+                  {/* Loan repayment schedule */}
+                  {investmentSummary.loanInstruments?.length > 0 && (
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Loan Repayment Summary — Year 1</div>
+                      <div className="rounded-md border overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50 border-b">
+                            <tr>
+                              {["Loan", "Amount", "Rate", "Monthly Repayment", "Payments in Year 1", "Total Repaid Year 1"].map(h => (
+                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {investmentSummary.loanInstruments.map((l: any) => (
+                              <tr key={l.id} className="border-b border-border/50 last:border-0">
+                                <td className="px-3 py-2 font-medium">{l.name}</td>
+                                <td className="px-3 py-2">{formatGBP(l.amountGbp)}</td>
+                                <td className="px-3 py-2">{l.interestRatePercent > 0 ? `${l.interestRatePercent}% p.a.` : "0%"}</td>
+                                <td className="px-3 py-2 text-blue-700 font-semibold">{formatGBP(l.monthlyPayment)}/mo</td>
+                                <td className="px-3 py-2">{l.paymentsInYear1} months</td>
+                                <td className="px-3 py-2 font-semibold text-red-700">{formatGBP(l.totalRepaidYear1)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="bg-muted/50 border-t-2">
+                            <tr>
+                              <td className="px-3 py-2 font-bold text-xs" colSpan={5}>Total loan repayments — Year 1</td>
+                              <td className="px-3 py-2 font-bold text-xs text-red-700">{formatGBP(investmentSummary.totalLoanRepaymentsYear1)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Distributable profit */}
+                  <div className={`rounded-lg border p-4 ${investmentSummary.distributableProfit12m >= 0 ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50/50 dark:bg-red-950/20"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Estimated 12-Month Distributable Profit</div>
+                        <div className={`text-3xl font-bold mt-1 ${investmentSummary.distributableProfit12m >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                          {investmentSummary.distributableProfit12m >= 0 ? "+" : ""}{formatGBP(investmentSummary.distributableProfit12m)}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1">Net profit over 12 operating months after all costs, drawings, and ramp-up. Distributable as dividends.</div>
+                      </div>
+                      {investmentSummary.distributableProfit12m < 0 && (
+                        <div className="shrink-0 ml-4"><AlertTriangle className="w-8 h-8 text-red-500" /></div>
+                      )}
+                    </div>
+                    {investmentSummary.cashflowNote && (
+                      <div className="mt-2 text-[10px] text-muted-foreground italic border-t border-border/30 pt-2">{investmentSummary.cashflowNote}</div>
+                    )}
+                  </div>
+
+                  {/* Per-shareholder payout */}
+                  {investmentSummary.payouts?.length > 0 ? (
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Per-Shareholder Payout at 12 Months</div>
+                      <div className="rounded-md border overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50 border-b">
+                            <tr>
+                              {["Shareholder", "Role", "Equity %", "Payout (Year 1 Dividend)", "Note"].map(h => (
+                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {investmentSummary.payouts.map((p: any) => (
+                              <tr key={p.id} className="border-b border-border/50 last:border-0">
+                                <td className="px-3 py-2 font-medium">{p.name}</td>
+                                <td className="px-3 py-2 text-muted-foreground">{p.role || "—"}</td>
+                                <td className="px-3 py-2">{p.payoutPercent}%</td>
+                                <td className={`px-3 py-2 font-bold text-base ${p.payoutGbp >= 0 ? "text-emerald-700" : "text-red-700"}`}>
+                                  {p.payoutGbp >= 0 ? "+" : ""}{formatGBP(p.payoutGbp)}
+                                </td>
+                                <td className="px-3 py-2 text-muted-foreground text-[10px]">
+                                  {investmentSummary.distributableProfit12m <= 0 ? "Business in loss — no distribution" : p.payoutPercent === 0 ? "No equity held" : "Dividend on distributable profit"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3 text-xs text-amber-800">
+                      <AlertTriangle className="w-3.5 h-3.5 inline mr-1.5" />
+                      Add shareholders to the Ownership Register above to see per-shareholder payout figures.
+                    </div>
+                  )}
+
+                  {/* Return on investment summary */}
+                  {investmentSummary.equityInvestments?.length > 0 && (
+                    <div>
+                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Return on Investment — Equity Investors (Year 1)</div>
+                      <div className="rounded-md border overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted/50 border-b">
+                            <tr>
+                              {["Investor", "Capital In", "Equity %", "Year 1 Return", "Year 1 ROI %"].map(h => (
+                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {investmentSummary.equityInvestments.map((inv: any) => {
+                              const return1y = investmentSummary.distributableProfit12m * (inv.equityPercent / 100);
+                              const roi = inv.amountGbp > 0 ? (return1y / inv.amountGbp) * 100 : 0;
+                              return (
+                                <tr key={inv.id} className="border-b border-border/50 last:border-0">
+                                  <td className="px-3 py-2 font-medium">{inv.name}</td>
+                                  <td className="px-3 py-2">{formatGBP(inv.amountGbp)}</td>
+                                  <td className="px-3 py-2">{inv.equityPercent}%</td>
+                                  <td className={`px-3 py-2 font-semibold ${return1y >= 0 ? "text-emerald-700" : "text-red-700"}`}>{return1y >= 0 ? "+" : ""}{formatGBP(Math.round(return1y))}</td>
+                                  <td className={`px-3 py-2 font-semibold ${roi >= 0 ? "text-emerald-700" : "text-red-700"}`}>{roi.toFixed(1)}%</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mt-2 italic">Note: Year 1 ROI reflects dividend income only, not equity appreciation. A full return includes the value of the equity stake at exit.</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!investmentSummary && !invLoading && (
+                <p className="text-sm text-muted-foreground italic">Summary not available. Add investments and shareholders, then refresh.</p>
+              )}
+            </CardContent>
+          </Card>
+
         </div>
       )}
 
