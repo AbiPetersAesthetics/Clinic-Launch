@@ -1,0 +1,147 @@
+12-Month Cash Position
+Business capital burns through project setup costs, partially offset by Bedhampton net income. Winchester opens Nov '26 and starts recovering the position. Bedhampton closes Feb '27 once Winchester is self-funding. Set your Business Capital in the Assumptions → Personal & Runway section to see the burndown from your actual starting point.
+May '26
+Jul '26
+Sep '26
+Nov '26
+Jan '27
+Mar '27
+£-25k
+£-5k
+£15k
+£50k
+Pre-opening
+Business capital £43k
+Winchester opens
+Bedhampton closes
+Monthly net → business capital (after drawings)Additional clinician revenueBusiness capital (running balance)
+Starting capital
+£42,500
+Lowest cash point
+-£14,460
+Cash at month 12
+£3,540
+Monthly P&L Breakdown
+12 mo
+36 mo
+Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+Winchester opens
+Bedhampton closes
+VAT registered
+Month	Occ %	Winc Rev	Variable	Gross	Fixed (Winc)	Winc VAT (20.0%)	Winc ±	Bedh Net	Proj costs	Drawings	Net after Drawings	Capital
+May '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,414	(£3,974)	—	£4,414	£42,940
+Jun '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,414	(£7,947)	—	£4,414	£39,407
+Jul '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,414	(£11,921)	—	£4,414	£31,901
+Aug '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,414	(£15,894)	—	£4,414	£20,421
+Sep '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,414	(£19,868)	—	£4,414	£4,967
+Oct '26
+VAT
+HIGH RISK
+pre-open
+Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.
+—	—	—	—	—	—	—	£4,414	(£23,841)	—	£4,414	-£14,460
+Nov '26
+OPEN
+15%	£6,452	(£1,632)	+£4,820	(£4,174)	(£1,290)	-£645	£5,156	—	(£1,511)	£3,000	-£11,460
+Dec '26
+VAT
+19.6%	£8,430	(£2,133)	+£6,297	(£4,174)	(£1,686)	+£437	£4,088	—	(£1,525)	£3,000	-£8,460
+Jan '27
+VAT
+24.2%	£10,408	(£2,633)	+£7,775	(£4,174)	(£2,082)	+£1,519	£3,019	—	(£1,539)	£2,999	-£5,460
+Feb '27
+BEDH CLOSES
+28.8%	£12,387	(£3,134)	+£9,253	(£4,174)	(£2,477)	+£2,602	£1,951	—	(£1,553)	£3,000	-£2,460
+Mar '27
+VAT
+33.3%	£14,322	(£3,624)	+£10,698	(£4,174)	(£2,864)	+£3,660	closed	—	(£660)	£3,000	£540
+Apr '27
+VAT
+37.9%	£16,301	(£4,124)	+£12,177	(£4,174)	(£3,260)	+£4,743	closed	—	(£1,743)	£3,000	£3,540
+May '27
+VAT
+42.5%	£18,279	(£4,625)	+£13,654	(£4,174)	(£3,656)	+£5,825	closed	—	(£2,825)	£3,000	£6,540
+Jun '27
+VAT
+47.1%	£20,258	(£5,125)	+£15,133	(£4,174)	(£4,052)	+£6,907	closed	—	(£3,907)	£3,000	£9,540
+Jul '27
+VAT
+51.7%	£22,236	(£5,626)	+£16,610	(£4,174)	(£4,447)	+£7,989	closed	—	(£4,166)	£3,823	£13,363
+Aug '27
+VAT
+56.3%	£24,215	(£6,126)	+£18,089	(£4,174)	(£4,843)	+£9,071	closed	—	(£4,166)	£4,905	£18,269
+Sep '27
+VAT
+60.8%	£26,150	(£6,616)	+£19,534	(£4,174)	(£5,230)	+£10,130	closed	—	(£4,166)	£5,964	£24,233
+Oct '27
+VAT
+65.4%	£28,129	(£7,117)	+£21,012	(£4,174)	(£5,626)	+£11,212	closed	—	(£4,166)	£7,046	£31,279
+Nov '27
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£39,408
+Dec '27
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£47,536
+Jan '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£55,665
+Feb '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£63,793
+Mar '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£71,922
+Apr '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£80,050
+May '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£88,179
+Jun '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£96,307
+Jul '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£104,436
+Aug '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£112,564
+Sep '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£120,693
+Oct '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£128,821
+Nov '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£136,950
+Dec '28
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£145,078
+Jan '29
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£153,207
+Feb '29
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£161,335
+Mar '29
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£169,464
+Apr '29
+VAT
+70%	£30,107	(£7,617)	+£22,490	(£4,174)	(£6,021)	+£12,295	closed	—	(£4,166)	£8,129	£177,593

@@ -633,10 +633,12 @@ export default function FinancialsPage() {
   const pendingValuesRef = useRef<Record<string, any> | null>(null);
 
   const processValues = (values: Record<string, any>) => {
-    const { vatOnRent: vatOnRentVal, ...rest } = values;
+    const { vatOnRent: vatOnRentVal, additionalCliniciansJson: cliniciansRaw, ...rest } = values;
     return {
       ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
       vatOnRent: Boolean(vatOnRentVal),
+      // Preserve as-is — must not be coerced to a number
+      additionalCliniciansJson: typeof cliniciansRaw === "string" ? cliniciansRaw : JSON.stringify(cliniciansRaw ?? []),
       // These map to integer DB columns — must be whole numbers
       workingDaysPerMonth: Math.round(Number(values.workingDaysPerMonth) || 17),
       practitionerHoursPerDay: Math.round(Number(values.practitionerHoursPerDay) || 7),
