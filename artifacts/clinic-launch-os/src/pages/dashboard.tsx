@@ -233,11 +233,11 @@ export default function DashboardPage() {
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setFundingAnalysis(d); })
       .catch(() => {});
-    fetch("/api/projects/1/investment-summary")
+    fetch("/api/projects/1/investment-summary?scenario=delayed_ramp&rampTier=average")
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setInvSummary(d); })
       .catch(() => {});
-    fetch("/api/projects/1/cashflow")
+    fetch("/api/projects/1/cashflow?scenario=delayed_ramp&rampTier=average")
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (Array.isArray(d)) setDashCashflow(d); })
       .catch(() => {});
