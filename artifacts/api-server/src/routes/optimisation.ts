@@ -231,7 +231,7 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
 
   const [phases, financialsRows, fixedCostItems] = await Promise.all([
-    db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
+    db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"))),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
   ]);

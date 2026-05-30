@@ -9,7 +9,7 @@ import {
   investmentsTable, projectAiAnalysesTable,
   propertyTaskOverridesTable,
 } from "@workspace/db";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
 
 const router = Router();
@@ -1015,7 +1015,7 @@ router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => 
   const [financialRaw, allPropertiesRaw, projectPhases, fixedItems] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
-    db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)),
+    db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"))),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
   ]);
 

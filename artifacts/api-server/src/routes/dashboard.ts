@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable } from "@workspace/db";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -13,7 +13,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Not found" });
 
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
   const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
   const totalTaskCount = allTasks.length;
@@ -276,7 +276,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
 
 router.get("/projects/:projectId/risk-flags", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
   const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
   const flags: Array<{ level: string; category: string; message: string; taskId?: number; taskTitle?: string }> = [];
@@ -332,7 +332,7 @@ router.get("/projects/:projectId/burndown", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
   if (!project) return res.status(404).json({ error: "Not found" });
 
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
   const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
   const totalTasks = allTasks.length;

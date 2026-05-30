@@ -446,7 +446,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
 
   // Fetch tasks and merge property overrides to build a month-by-month cost map
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
   const phaseIds = phases.map((p) => p.id);
   const baseTasks = phaseIds.length > 0
     ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
