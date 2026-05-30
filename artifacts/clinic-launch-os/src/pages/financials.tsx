@@ -117,6 +117,7 @@ type CashflowMonth = {
   actualDrawings: number; targetDrawings: number; drawingsShortfall: number; drawingsActive: boolean;
   monthlyCashflow: number; cashBalance: number;
   occupancyPercent: number;
+  additionalClinicianRevenue: number; additionalClinicianSalary: number;
   isSelfFundingMonth: boolean; bedhClosed: boolean;
   bedhSupport: number; combinedNet: number;
 };
@@ -416,7 +417,7 @@ export default function FinancialsPage() {
   const [shareholders, setShareholders] = useState<any[]>([]);
   const [investmentSummary, setInvestmentSummary] = useState<any>(null);
   const [invLoading, setInvLoading] = useState(false);
-  const [additionalClinicians, setAdditionalClinicians] = useState<{id: string; name: string; startDate: string}[]>([]);
+  const [additionalClinicians, setAdditionalClinicians] = useState<{id: string; name: string; startDate: string; salaryGbp?: number}[]>([]);
   const [addingInvType, setAddingInvType] = useState<"loan" | "equity" | null>(null);
   const [addingShareholder, setAddingShareholder] = useState(false);
   const [editingInv, setEditingInv] = useState<any | null>(null);
@@ -1683,7 +1684,20 @@ export default function FinancialsPage() {
                                 <div className="space-y-1">
                                   <div className="flex justify-between gap-4"><span className="text-muted-foreground">Business capital</span><span className="font-bold">{formatGBP(d.cashBalance)}</span></div>
                                   {d.bedhNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Bedhampton net</span><span className={d.bedhNet >= 0 ? "text-blue-600" : "text-destructive"}>{formatGBP(d.bedhNet)}</span></div>}
-                                  {d.wincRevenue > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} revenue</span><span>{formatGBP(d.wincRevenue)}</span></div>}
+                                  {d.wincRevenue > 0 && (
+                                    <div>
+                                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} revenue</span><span>{formatGBP(d.wincRevenue)}</span></div>
+                                      {(d.additionalClinicianRevenue ?? 0) > 0 && (
+                                        <div className="flex justify-between gap-4 pl-2"><span className="text-muted-foreground text-[10px]">↳ Abi</span><span className="text-[10px]">{formatGBP(d.wincRevenue - (d.additionalClinicianRevenue ?? 0))}</span></div>
+                                      )}
+                                      {(d.additionalClinicianRevenue ?? 0) > 0 && (
+                                        <div className="flex justify-between gap-4 pl-2"><span style={{color:"#a78bfa"}} className="text-[10px]">↳ Clinician</span><span className="text-[10px]" style={{color:"#a78bfa"}}>{formatGBP(d.additionalClinicianRevenue ?? 0)}</span></div>
+                                      )}
+                                      {(d.additionalClinicianSalary ?? 0) > 0 && (
+                                        <div className="flex justify-between gap-4 pl-2"><span className="text-muted-foreground text-[10px]">↳ Salary cost</span><span className="text-red-500 text-[10px]">−{formatGBP(d.additionalClinicianSalary ?? 0)}</span></div>
+                                      )}
+                                    </div>
+                                  )}
                                   {d.vatLiability > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">VAT liability (20%)</span><span className="text-amber-600">−{formatGBP(d.vatLiability)}</span></div>}
                                   {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
                                   {d.projectCostBurn > 0 && (
@@ -1726,6 +1740,7 @@ export default function FinancialsPage() {
                           formatter={(v) =>
                             v === "cashBalance" ? "Business capital (running balance)"
                             : v === "monthlyCashflow" ? "Monthly net → business capital (after drawings)"
+                            : v === "additionalClinicianRevenue" ? "Additional clinician revenue"
                             : v
                           }
                           wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
@@ -1737,6 +1752,15 @@ export default function FinancialsPage() {
                           name="monthlyCashflow"
                           fill="#93c5fd"
                           fillOpacity={0.7}
+                          radius={[2, 2, 0, 0]}
+                        />
+
+                        {/* Additional clinician revenue — distinct bar, only visible after their start date */}
+                        <Bar
+                          dataKey="additionalClinicianRevenue"
+                          name="additionalClinicianRevenue"
+                          fill="#a78bfa"
+                          fillOpacity={0.8}
                           radius={[2, 2, 0, 0]}
                         />
 
@@ -2028,6 +2052,15 @@ export default function FinancialsPage() {
                                             </div>
                                           )
                                       }
+                                      {(m.additionalClinicianSalary ?? 0) > 0 && (
+                                        <>
+                                          <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Clinician salary</div>
+                                          <div className="flex justify-between items-center pl-1">
+                                            <span className="text-gray-500">Monthly salary</span>
+                                            <span className="tabular-nums text-red-600">({formatGBP(m.additionalClinicianSalary ?? 0)})</span>
+                                          </div>
+                                        </>
+                                      )}
                                       {m.wincVat > 0 && (
                                         <>
                                           <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">VAT</div>
@@ -2813,7 +2846,7 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["wincAcvGbp","Avg Client Value (£)"],
-                        ["treatmentRoomsCount","Treatment Rooms"],
+                        ["treatmentRoomsCount","Clinicians (Abi)"],
                         ["membershipRevenueGbp","Membership Rev (£/mo)"],
                         ["conservativeOccupancyPercent","Conservative Occ %"],["realisticOccupancyPercent","Realistic Occ %"],
                         ["aggressiveOccupancyPercent","Aggressive Occ %"],
@@ -3617,7 +3650,7 @@ export default function FinancialsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {([
                       ["wincAcvGbp",             "Avg Client Value",  "£", ""],
-                      ["treatmentRoomsCount",     "Treatment Rooms",   "",  ""],
+                      ["treatmentRoomsCount",     "Clinicians (Abi)",  "",  ""],
                       ["practitionerHoursPerDay", "Hours / Day",       "",  "hr"],
                       ["workingDaysPerMonth",      "Working Days / Mo", "",  "d"],
                       ["membershipRevenueGbp",     "Membership Rev",    "£", "/mo"],
@@ -3654,37 +3687,57 @@ export default function FinancialsPage() {
                       <span className="text-[10px] text-muted-foreground">Opens with clinic</span>
                     </div>
                     {additionalClinicians.map((clin, idx) => (
-                      <div key={clin.id} className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={clin.name}
-                          onChange={(e) => {
-                            const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, name: e.target.value } : c);
-                            setAdditionalClinicians(updated);
-                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                          }}
-                          placeholder="Clinician name"
-                          className="flex-1 h-8 rounded-md border border-input bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <input
-                          type="month"
-                          value={clin.startDate ? clin.startDate.slice(0, 7) : ""}
-                          onChange={(e) => {
-                            const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, startDate: e.target.value ? e.target.value + "-01" : "" } : c);
-                            setAdditionalClinicians(updated);
-                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                          }}
-                          className="h-8 w-34 rounded-md border border-input bg-background text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const updated = additionalClinicians.filter((_, i) => i !== idx);
-                            setAdditionalClinicians(updated);
-                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                          }}
-                          className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-base leading-none"
-                        >×</button>
+                      <div key={clin.id} className="space-y-1.5 p-2 rounded-md border border-border/60 bg-muted/20">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={clin.name}
+                            onChange={(e) => {
+                              const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, name: e.target.value } : c);
+                              setAdditionalClinicians(updated);
+                              form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                            }}
+                            placeholder="Clinician name"
+                            className="flex-1 h-8 rounded-md border border-input bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <input
+                            type="month"
+                            value={clin.startDate ? clin.startDate.slice(0, 7) : ""}
+                            onChange={(e) => {
+                              const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, startDate: e.target.value ? e.target.value + "-01" : "" } : c);
+                              setAdditionalClinicians(updated);
+                              form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                            }}
+                            className="h-8 w-34 rounded-md border border-input bg-background text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = additionalClinicians.filter((_, i) => i !== idx);
+                              setAdditionalClinicians(updated);
+                              form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                            }}
+                            className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-base leading-none"
+                          >×</button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <label className="text-[10px] text-muted-foreground w-20 shrink-0">Monthly salary</label>
+                          <div className="relative flex-1">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">£</span>
+                            <input
+                              type="number"
+                              value={clin.salaryGbp ?? ""}
+                              onChange={(e) => {
+                                const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, salaryGbp: e.target.value ? Number(e.target.value) : undefined } : c);
+                                setAdditionalClinicians(updated);
+                                form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                              }}
+                              placeholder="0"
+                              className="h-7 w-full rounded-md border border-input bg-background text-xs pl-5 pr-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground shrink-0">/mo deducted from clinic net</span>
+                        </div>
                       </div>
                     ))}
                     <button

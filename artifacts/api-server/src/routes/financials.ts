@@ -616,7 +616,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // Parse additional clinicians from financial model
-  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; }
+  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; salaryGbp?: number; }
   let additionalClinicians: ExtraClinician[] = [];
   try {
     const raw = (model as any).additionalCliniciansJson;
@@ -646,6 +646,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let wincNet = 0;
     let occupancyPercent = 0;
     let effectiveFixed = 0; // hoisted so display uses same value as net calculation
+    let additionalClinicianRevenue = 0;
+    let additionalClinicianSalary = 0;
 
     if (!isPreOpening) {
       const wincMonth = i - openingMonthIndex; // 0-based months since opening
@@ -665,7 +667,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
           const clinRooms = clin.rooms ?? 1;
           const clinSlots = clinRooms * clinHours * clinDays;
           const clinOcc = Math.min(startOcc + (clinMonth * (targetOcc - startOcc) / rampMonths), targetOcc);
-          wincRevenue += clinSlots * (clinOcc / 100) * acv;
+          const clinRevenue = clinSlots * (clinOcc / 100) * acv;
+          additionalClinicianRevenue += clinRevenue;
+          wincRevenue += clinRevenue;
+          additionalClinicianSalary += (clin.salaryGbp ?? 0);
         }
       }
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
@@ -735,7 +740,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
     // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
     const wincFixedCostsMonth = !isPreOpening ? effectiveFixed : 0;
-    wincCosts += wincVat;
+    wincCosts += wincVat + additionalClinicianSalary;
     wincNet = wincRevenue - wincCosts;
 
     // Self-funding check after VAT applied
@@ -785,6 +790,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincVat: Math.round(wincVat),
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
+      additionalClinicianRevenue: Math.round(additionalClinicianRevenue),
+      additionalClinicianSalary: Math.round(additionalClinicianSalary),
       bedhRevenue: Math.round(bedhRevenue),
       bedhDualCosts: Math.round(bedhDualCosts),
       bedhCosts: Math.round(bedhCosts),
