@@ -4040,7 +4040,7 @@ export default function FinancialsPage() {
                         <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y1d)} Y1 distributable × {valuationMultiple}×</div>
                       </div>
                       <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
-                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.2))}</span> (1.2× revenue)</div>
+                        <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.5))}</span> (1.5× revenue — micro-year adj.)</div>
                         <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
                       </div>
                     </div>
