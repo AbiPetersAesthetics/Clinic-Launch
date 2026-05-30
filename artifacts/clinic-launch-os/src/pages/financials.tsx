@@ -402,8 +402,13 @@ export default function FinancialsPage() {
     });
     queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
   };
-  const [tab, setTab] = useState<TabKey>("overview");
   const search = useSearch();
+  const [tab, setTab] = useState<TabKey>(() => {
+    const p = new URLSearchParams(search);
+    const t = p.get("tab") as TabKey | null;
+    const VALID: TabKey[] = ["overview", "model", "owner", "domestics", "risks", "custom", "investment"];
+    return (t && VALID.includes(t)) ? t : "overview";
+  });
   useEffect(() => {
     const params = new URLSearchParams(search);
     const t = params.get("tab") as TabKey | null;
