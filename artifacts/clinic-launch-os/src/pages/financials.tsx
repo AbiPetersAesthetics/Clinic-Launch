@@ -408,6 +408,7 @@ export default function FinancialsPage() {
   const [shareholders, setShareholders] = useState<any[]>([]);
   const [investmentSummary, setInvestmentSummary] = useState<any>(null);
   const [invLoading, setInvLoading] = useState(false);
+  const [additionalClinicians, setAdditionalClinicians] = useState<{id: string; name: string; startDate: string}[]>([]);
   const [addingInvType, setAddingInvType] = useState<"loan" | "equity" | null>(null);
   const [addingShareholder, setAddingShareholder] = useState(false);
   const [editingInv, setEditingInv] = useState<any | null>(null);
@@ -685,6 +686,7 @@ export default function FinancialsPage() {
         schoolFeesGbp: (m as any).schoolFeesGbp ?? 0,
         travelGbp: (m as any).travelGbp ?? 0,
         otherHouseholdGbp: (m as any).otherHouseholdGbp ?? 0,
+        additionalCliniciansJson: (m as any).additionalCliniciansJson ?? "[]",
       });
       // Restore the previously selected scenario
       if (m.selectedScenario) setScenario(m.selectedScenario as ScenarioKey);
@@ -693,6 +695,12 @@ export default function FinancialsPage() {
         const pj = m.plannedPricingJson;
         if (pj) { const parsed = JSON.parse(pj); if (Array.isArray(parsed)) setTreatmentMix(parsed); }
       } catch {}
+      // Parse additional clinicians list
+      try {
+        const raw = (m as any).additionalCliniciansJson;
+        if (raw) setAdditionalClinicians(JSON.parse(raw));
+        else setAdditionalClinicians([]);
+      } catch { setAdditionalClinicians([]); }
       // Allow watch subscription to fire again after reset settles
       setTimeout(() => { isSilentReset.current = false; }, 50);
       setSaveStatus("saved");
@@ -3591,6 +3599,69 @@ export default function FinancialsPage() {
                 </CardContent>
               </Card>
 
+              {/* Staff Schedule */}
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm">Clinic Staff Schedule</CardTitle>
+                  <CardDescription className="text-xs">Each clinician ramps revenue independently from their start date using the same occupancy model.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 py-1.5 px-3 rounded-md bg-muted/40 border border-border/60">
+                      <span className="flex-1 text-xs font-medium">Abi Peters</span>
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Primary</span>
+                      <span className="text-[10px] text-muted-foreground">Opens with clinic</span>
+                    </div>
+                    {additionalClinicians.map((clin, idx) => (
+                      <div key={clin.id} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={clin.name}
+                          onChange={(e) => {
+                            const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, name: e.target.value } : c);
+                            setAdditionalClinicians(updated);
+                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                          }}
+                          placeholder="Clinician name"
+                          className="flex-1 h-8 rounded-md border border-input bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <input
+                          type="month"
+                          value={clin.startDate ? clin.startDate.slice(0, 7) : ""}
+                          onChange={(e) => {
+                            const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, startDate: e.target.value ? e.target.value + "-01" : "" } : c);
+                            setAdditionalClinicians(updated);
+                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                          }}
+                          className="h-8 w-34 rounded-md border border-input bg-background text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = additionalClinicians.filter((_, i) => i !== idx);
+                            setAdditionalClinicians(updated);
+                            form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                          }}
+                          className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-base leading-none"
+                        >×</button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newClin = { id: crypto.randomUUID(), name: "", startDate: "" };
+                        const updated = [...additionalClinicians, newClin];
+                        setAdditionalClinicians(updated);
+                        form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                      }}
+                      className="w-full h-8 rounded-md border border-dashed border-input text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex items-center justify-center gap-1"
+                    >
+                      <span className="text-base leading-none">+</span> Add clinician
+                    </button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Cost structure */}
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
@@ -3824,7 +3895,7 @@ export default function FinancialsPage() {
                   <CardTitle className="text-sm">3-Year Performance Outlook</CardTitle>
                 </div>
                 <CardDescription className="text-xs mt-1">
-                  Winchester clinic P&L by year. Year 1 uses a standard ramp curve (30%→100% occupancy); Years 2–3 at full realistic occupancy. Director salary deducted monthly once profitable. 20% cash buffer retained before dividends.
+                  Winchester clinic P&L aligned to your August–July financial year. Pre-opening months within FY1 contribute zero revenue. Each clinician ramps independently from their start date. 20% cash buffer retained before dividends.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -3833,12 +3904,15 @@ export default function FinancialsPage() {
                     <thead>
                       <tr className="border-b bg-muted/40">
                         <th className="text-left px-4 py-2 font-semibold text-muted-foreground min-w-[200px]">Line</th>
-                        {(["y1", "y2", "y3"] as const).map((k, i) => (
-                          <th key={k} className="text-right px-4 py-2 font-semibold text-muted-foreground min-w-[130px]">
-                            <div>Year {i + 1}</div>
-                            <div className="text-[10px] font-normal text-muted-foreground/70">{i === 0 ? "Ramp 30→100%" : i === 1 ? "Full occupancy" : "Mature"}</div>
-                          </th>
-                        ))}
+                        {(["y1", "y2", "y3"] as const).map((k) => {
+                          const yr = investmentSummary.annualSummary[k];
+                          return (
+                            <th key={k} className="text-right px-4 py-2 font-semibold text-muted-foreground min-w-[130px]">
+                              <div>{yr.fyLabel}</div>
+                              <div className="text-[10px] font-normal text-muted-foreground/70">{yr.fyDesc} · {yr.tradingMonths}mo trading</div>
+                            </th>
+                          );
+                        })}
                       </tr>
                     </thead>
                     <tbody>

@@ -401,6 +401,8 @@ export async function runStartupSeed(): Promise<void> {
         }
         // V6 migration: add managed contractor phases + FF&E phase + update treatment couch notes
         await runV6Migration(projectId);
+        // V7 migration: add additional_clinicians_json column (idempotent DDL)
+        await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS additional_clinicians_json TEXT DEFAULT '[]'`);
         return;
       }
 

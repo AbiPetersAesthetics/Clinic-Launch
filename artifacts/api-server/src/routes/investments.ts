@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable } from "@workspace/db";
+import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable, projectsTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
 
 const router = Router();
@@ -103,21 +103,24 @@ router.delete("/shareholders/:id", async (req, res) => {
   res.status(204).send();
 });
 
-// ─── Investment Summary — 3-year payout analysis ─────────────────────────────
-// Calculates per-year P&L with proper ramp curve, constant fixed costs,
-// per-month director drawings, 20% cash buffer retention before dividends.
+// ─── Investment Summary — 3-year payout analysis (aligned to Aug–Jul FY) ─────
+// Revenue calculated per calendar month mapped to actual Aug–Jul financial years.
+// Pre-opening months within FY1 contribute zero revenue. Each additional clinician
+// has their own independent ramp from their start date.
 
 router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
 
-  const [investments, shareholders, model, fixedCostItems] = await Promise.all([
+  const [investments, shareholders, model, fixedCostItems, projectRow] = await Promise.all([
     db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
     db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).limit(1),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1),
   ]);
 
   const fin = model[0];
+  const project = projectRow[0];
 
   const totalCapitalGbp = investments.reduce((s, i) => s + i.amountGbp, 0);
   const totalEquityGivenUpPercent = investments.reduce((s, i) => s + i.equityPercent, 0);
@@ -138,7 +141,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       };
     });
 
-  // Helper: total loan repayments within a given month window
+  // Helper: total loan repayments within trading-month window [fromMonth, toMonth] (1-based)
   function loanRepaymentsInWindow(fromMonth: number, toMonth: number): number {
     return loanInstruments.reduce((s, l) => {
       const startM = Math.max(1, l.repaymentStartMonth);
@@ -147,10 +150,6 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       return s + l.monthlyPayment * payments;
     }, 0);
   }
-
-  const totalLoanRepaymentsYear1 = loanRepaymentsInWindow(1, 12);
-  const totalLoanRepaymentsYear2 = loanRepaymentsInWindow(13, 24);
-  const totalLoanRepaymentsYear3 = loanRepaymentsInWindow(25, 36);
 
   if (!fin) {
     return res.json({
@@ -178,6 +177,14 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const occupancyPct = ((fin as any).realisticOccupancyPercent ?? 65) / 100;
   const ssRevenue = slotsPerMonth * occupancyPct * acv + ((fin as any).membershipRevenueGbp ?? 0);
 
+  // ── Additional clinicians ─────────────────────────────────────────────────
+  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; }
+  let additionalClinicians: ExtraClinician[] = [];
+  try {
+    const raw = (fin as any).additionalCliniciansJson;
+    if (raw) additionalClinicians = JSON.parse(raw);
+  } catch {}
+
   // ── Fixed costs — prefer dynamic items table over legacy fields ─────────────
   const fixedMonthly = fixedCostItems.length > 0
     ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
@@ -193,30 +200,75 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   // Director salary/drawings
   const targetDrawings = (fin as any).ownerDrawingsGbp || (fin as any).targetDrawingsGbp || 0;
 
-  // Cash reserve: retain this % of net before paying dividends
   const CASH_RESERVE_PCT = 0.20;
-  // Minimum business cash retained monthly (same as cashflow route)
   const MIN_RETAINED = 3000;
 
-  // ── Annual P&L calculator ─────────────────────────────────────────────────
-  // factors: array of occupancy multipliers (one per month, where 1.0 = full realistic occ)
-  // loanRepayments: total loan repayments for this year period
-  function calcYearMetrics(factors: number[], loanRepayments: number) {
+  // ── Financial Year alignment (Aug 1 – Jul 31) ─────────────────────────────
+  const FY_START_MONTH = 7; // 0-indexed: August
+  const RAMP_FACTORS = [0.30, 0.45, 0.60, 0.70, 0.80, 0.90, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
+
+  const openingDate: Date = project?.targetOpeningDate
+    ? new Date(project.targetOpeningDate)
+    : new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000);
+  const openingFirst = new Date(openingDate.getFullYear(), openingDate.getMonth(), 1);
+
+  // FY1 starts in August of the year that contains or precedes the opening month.
+  // e.g. opening Nov 2026 → Aug 2026 ≤ Nov 2026 → fy1StartYear = 2026
+  const fy1StartYear = openingDate.getMonth() >= FY_START_MONTH
+    ? openingDate.getFullYear()
+    : openingDate.getFullYear() - 1;
+
+  // Number of trading months in FY1 (non-pre-opening months within that Aug–Jul)
+  const preOpenMonthsInFY1 = (openingFirst.getFullYear() - fy1StartYear) * 12
+    + (openingFirst.getMonth() - FY_START_MONTH);
+  const fy1TradingMonths = 12 - preOpenMonthsInFY1; // e.g. 9 for Nov opening
+
+  // Loan repayments mapped to FY trading-month windows
+  const fy1Loans = loanRepaymentsInWindow(1, fy1TradingMonths);
+  const fy2Loans = loanRepaymentsInWindow(fy1TradingMonths + 1, fy1TradingMonths + 12);
+  const fy3Loans = loanRepaymentsInWindow(fy1TradingMonths + 13, fy1TradingMonths + 24);
+
+  // ── Per-FY P&L calculator ─────────────────────────────────────────────────
+  function calcFyMetrics(fyStartYear: number, loanRepayments: number) {
     let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
     let totOperating = 0, totDirector = 0;
+    let tradingMonthsCount = 0;
 
-    for (const f of factors) {
-      // Revenue and variable costs scale with occupancy/ramp factor
-      const rev = ssRevenue * f;
-      const varCost = rev * variableRatio + variableOverheads * f;
-      const gross = rev - varCost;
-      // Fixed costs are constant regardless of occupancy
+    for (let m = 0; m < 12; m++) {
+      const monthDate = new Date(fyStartYear, FY_START_MONTH + m, 1);
+      if (monthDate < openingFirst) continue; // skip pre-opening months
+
+      tradingMonthsCount++;
+      const tradingMonthIdx = (monthDate.getFullYear() - openingFirst.getFullYear()) * 12
+        + (monthDate.getMonth() - openingFirst.getMonth());
+
+      // Abi's revenue ramped from her trading month 0
+      const f = tradingMonthIdx < RAMP_FACTORS.length ? RAMP_FACTORS[tradingMonthIdx] : 1.0;
+      let monthRevenue = ssRevenue * f;
+
+      // Additional clinicians: each ramps independently from their own start date
+      for (const clin of additionalClinicians) {
+        if (!clin.startDate) continue;
+        const clinStart = new Date(clin.startDate);
+        const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
+        if (monthDate < clinFirst) continue;
+        const clinTradingIdx = (monthDate.getFullYear() - clinFirst.getFullYear()) * 12
+          + (monthDate.getMonth() - clinFirst.getMonth());
+        const cf = clinTradingIdx < RAMP_FACTORS.length ? RAMP_FACTORS[clinTradingIdx] : 1.0;
+        const clinRooms = clin.rooms ?? 1;
+        const clinHours = clin.hoursPerDay ?? hours;
+        const clinDays = clin.daysPerMonth ?? days;
+        monthRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+      }
+
+      const varCost = monthRevenue * variableRatio + variableOverheads * f;
+      const gross = monthRevenue - varCost;
       const operating = gross - fixedMonthly;
-      // Director salary: only taken when monthly profit covers MIN_RETAINED after drawings
       const drawings = operating > MIN_RETAINED
         ? Math.min(operating - MIN_RETAINED, targetDrawings)
         : 0;
-      totRevenue  += rev;
+
+      totRevenue  += monthRevenue;
       totVariable += varCost;
       totGross    += gross;
       totFixed    += fixedMonthly;
@@ -225,13 +277,17 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     }
 
     const netAfterDirector = totOperating - totDirector;
-    // Deduct loan repayments before declaring dividends
     const netAfterLoans = netAfterDirector - loanRepayments;
-    // Retain 20% cash buffer in business before distributing
     const bufferRetained = netAfterLoans > 0 ? Math.round(netAfterLoans * CASH_RESERVE_PCT) : 0;
     const distributable  = Math.max(0, Math.round(netAfterLoans - bufferRetained));
 
+    const shortY1 = String(fyStartYear).slice(2);
+    const shortY2 = String(fyStartYear + 1).slice(2);
+
     return {
+      fyLabel:           `FY${shortY1}/${shortY2}`,
+      fyDesc:            `Aug '${shortY1} – Jul '${shortY2}`,
+      tradingMonths:     tradingMonthsCount,
       revenue:           Math.round(totRevenue),
       variableCosts:     Math.round(totVariable),
       grossProfit:       Math.round(totGross),
@@ -247,16 +303,12 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     };
   }
 
-  // Year 1: standard ramp from 30% → 100% realistic occupancy over 12 months
-  const rampFactors = [0.30, 0.45, 0.60, 0.70, 0.80, 0.90, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
-  // Year 2 & 3: full realistic occupancy (ramp complete)
-  const fullFactors = Array(12).fill(1.0);
-
-  const y1 = calcYearMetrics(rampFactors, totalLoanRepaymentsYear1);
-  const y2 = calcYearMetrics(fullFactors, totalLoanRepaymentsYear2);
-  const y3 = calcYearMetrics(fullFactors, totalLoanRepaymentsYear3);
+  const y1 = calcFyMetrics(fy1StartYear, fy1Loans);
+  const y2 = calcFyMetrics(fy1StartYear + 1, fy2Loans);
+  const y3 = calcFyMetrics(fy1StartYear + 2, fy3Loans);
 
   const distributableProfit12m = y1.distributable;
+  const totalLoanRepaymentsYear1 = fy1Loans;
 
   const totalSharesPercent = shareholders.reduce((s, sh) => s + sh.equityPercent, 0);
   const payouts = shareholders.map(sh => ({
@@ -275,7 +327,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     founderEquityPercent:       Math.max(0, 100 - totalEquityGivenUpPercent),
     totalLoanRepaymentsYear1:   Math.round(totalLoanRepaymentsYear1),
     distributableProfit12m,
-    cashflowNote:               "Winchester only. Revenue and variable costs ramp 30%→100% over 12 months; fixed costs constant. Director salary deducted monthly once profitable. 20% cash buffer retained before dividends.",
+    cashflowNote:               `Winchester P&L aligned to financial year (Aug–Jul). ${y1.fyLabel} includes ${y1.tradingMonths} trading months. Variable costs and director salary are dynamic; fixed costs are constant. 20% cash buffer retained before dividends.`,
     totalSharesPercent,
     payouts,
     annualSummary:              { y1, y2, y3 },

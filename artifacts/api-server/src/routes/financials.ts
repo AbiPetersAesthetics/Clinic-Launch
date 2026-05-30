@@ -615,6 +615,14 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+  // Parse additional clinicians from financial model
+  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; }
+  let additionalClinicians: ExtraClinician[] = [];
+  try {
+    const raw = (model as any).additionalCliniciansJson;
+    if (raw) additionalClinicians = JSON.parse(raw);
+  } catch {}
+
   let cashBalance = startingCash;
   let selfFundingMonthIndex: number | null = null;
 
@@ -641,6 +649,22 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
       const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
+      // Additional clinicians: each ramps independently from their start date
+      for (const clin of additionalClinicians) {
+        if (!clin.startDate) continue;
+        const clinStart = new Date(clin.startDate);
+        const clinStartIdx = (clinStart.getFullYear() - calendarStart.getFullYear()) * 12
+          + (clinStart.getMonth() - calendarStart.getMonth());
+        if (i >= clinStartIdx) {
+          const clinMonth = i - clinStartIdx;
+          const clinHours = clin.hoursPerDay ?? ((model as any).practitionerHoursPerDay ?? 7);
+          const clinDays = clin.daysPerMonth ?? ((model as any).workingDaysPerMonth ?? 17);
+          const clinRooms = clin.rooms ?? 1;
+          const clinSlots = clinRooms * clinHours * clinDays;
+          const clinOcc = Math.min(startOcc + (clinMonth * (targetOcc - startOcc) / rampMonths), targetOcc);
+          wincRevenue += clinSlots * (clinOcc / 100) * acv;
+        }
+      }
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
       // Free rent is a pre-opening (lease period) benefit — post-opening always pays full fixed costs
       effectiveFixed = wincFixedCosts;
