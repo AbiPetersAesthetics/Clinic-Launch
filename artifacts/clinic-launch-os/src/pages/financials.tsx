@@ -431,13 +431,13 @@ export default function FinancialsPage() {
   const [fundingAnalysisError, setFundingAnalysisError] = useState<string | null>(null);
   const [fundingContextNote, setFundingContextNote] = useState("");
 
-  const loadInvestmentData = useCallback(async () => {
+  const loadInvestmentData = useCallback(async (scenarioKey = "realistic", rampTierKey = "average") => {
     setInvLoading(true);
     try {
       const [invRes, shRes, sumRes, faRes] = await Promise.all([
         fetch(`/api/projects/${PROJECT_ID}/investments`),
         fetch(`/api/projects/${PROJECT_ID}/shareholders`),
-        fetch(`/api/projects/${PROJECT_ID}/investment-summary`),
+        fetch(`/api/projects/${PROJECT_ID}/investment-summary?scenario=${scenarioKey}&rampTier=${rampTierKey}`),
         fetch(`/api/projects/${PROJECT_ID}/funding-analysis`),
       ]);
       if (invRes.ok) setInvestments(await invRes.json());
@@ -475,8 +475,8 @@ export default function FinancialsPage() {
   }, [fundingContextNote]);
 
   useEffect(() => {
-    if (tab === "investment") loadInvestmentData();
-  }, [tab, loadInvestmentData]);
+    if (tab === "investment") loadInvestmentData(scenario, rampTier);
+  }, [tab, scenario, rampTier, loadInvestmentData]);
 
   const addInvestment = async () => {
     const type = addingInvType ?? "loan";

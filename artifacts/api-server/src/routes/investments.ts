@@ -5,6 +5,26 @@ import { eq, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
+// ─── Scenario profiles (mirrors financials.ts) ────────────────────────────────
+const INV_SCENARIO_PROFILES: Record<string, {
+  getTargetOcc: (m: any) => number;
+  acvMultiplier: number;
+  startOcc: number;
+  rampMonths: number;
+}> = {
+  conservative:      { getTargetOcc: (m) => m.conservativeOccupancyPercent || 40,             acvMultiplier: 1,    startOcc: 20, rampMonths: 8  },
+  realistic:         { getTargetOcc: (m) => m.realisticOccupancyPercent    || 68,             acvMultiplier: 1,    startOcc: 25, rampMonths: 6  },
+  aggressive:        { getTargetOcc: (m) => m.aggressiveOccupancyPercent   || 85,             acvMultiplier: 1,    startOcc: 35, rampMonths: 4  },
+  delayed_ramp:      { getTargetOcc: (m) => m.realisticOccupancyPercent    || 68,             acvMultiplier: 1,    startOcc: 15, rampMonths: 12 },
+  economic_downturn: { getTargetOcc: (m) => (m.conservativeOccupancyPercent || 40) * 0.8,    acvMultiplier: 0.85, startOcc: 15, rampMonths: 9  },
+  stress_test:       { getTargetOcc: (m) => Math.max((m.conservativeOccupancyPercent || 40) * 0.65, 12), acvMultiplier: 0.9, startOcc: 5, rampMonths: 10 },
+};
+const INV_RAMP_TIER_MODIFIERS: Record<string, { startOccMult: number; rampMonthsMult: number }> = {
+  slow:    { startOccMult: 0.30, rampMonthsMult: 2.0  },
+  average: { startOccMult: 1.0,  rampMonthsMult: 1.0  },
+  fast:    { startOccMult: 1.45, rampMonthsMult: 0.65 },
+};
+
 // ─── Loan repayment helper ────────────────────────────────────────────────────
 function monthlyRepayment(principal: number, annualRatePercent: number, termMonths: number): number {
   if (termMonths <= 0 || principal <= 0) return 0;
@@ -203,13 +223,25 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     });
   }
 
-  // ── Revenue model (Winchester at realistic occupancy) ──────────────────────
-  const acv = (fin as any).wincAcvGbp || (fin as any).averageClientValueGbp || 155;
+  // ── Revenue model — scenario-aware ────────────────────────────────────────
+  const scenarioKey = (req.query.scenario as string) || "realistic";
+  const rampTierKey = (req.query.rampTier  as string) || "average";
+  const baseProfile = INV_SCENARIO_PROFILES[scenarioKey] ?? INV_SCENARIO_PROFILES.realistic;
+  const tierMod     = INV_RAMP_TIER_MODIFIERS[rampTierKey] ?? INV_RAMP_TIER_MODIFIERS.average;
+  const effStartOcc    = Math.max(Math.round(baseProfile.startOcc    * tierMod.startOccMult),   3);
+  const effRampMonths  = Math.max(Math.round(baseProfile.rampMonths  * tierMod.rampMonthsMult), 2);
+  const targetOccPct   = baseProfile.getTargetOcc(fin);   // e.g. 68 for realistic
+  // ramp factor for trading month m: interpolates startOcc→targetOcc over effRampMonths
+  function getRampFactor(m: number): number {
+    return (effStartOcc + (targetOccPct - effStartOcc) * Math.min(m / effRampMonths, 1)) / targetOccPct;
+  }
+
+  const acv = ((fin as any).wincAcvGbp || (fin as any).averageClientValueGbp || 155) * baseProfile.acvMultiplier;
   const rooms = (fin as any).treatmentRoomsCount ?? 1;
   const hours = (fin as any).practitionerHoursPerDay ?? 7;
   const days = (fin as any).workingDaysPerMonth ?? 17;
   const slotsPerMonth = rooms * hours * days;
-  const occupancyPct = ((fin as any).realisticOccupancyPercent ?? 65) / 100;
+  const occupancyPct = targetOccPct / 100;
   const ssRevenue = slotsPerMonth * occupancyPct * acv + ((fin as any).membershipRevenueGbp ?? 0);
 
   // ── Additional clinicians ─────────────────────────────────────────────────
@@ -243,7 +275,6 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
 
   // ── Financial Year alignment (Aug 1 – Jul 31) ─────────────────────────────
   const FY_START_MONTH = 7; // 0-indexed: August
-  const RAMP_FACTORS = [0.30, 0.45, 0.60, 0.70, 0.80, 0.90, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0];
 
   const openingDate: Date = project?.targetOpeningDate
     ? new Date(project.targetOpeningDate)
@@ -280,8 +311,8 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       const tradingMonthIdx = (monthDate.getFullYear() - openingFirst.getFullYear()) * 12
         + (monthDate.getMonth() - openingFirst.getMonth());
 
-      // Abi's revenue ramped from her trading month 0
-      const f = tradingMonthIdx < RAMP_FACTORS.length ? RAMP_FACTORS[tradingMonthIdx] : 1.0;
+      // Abi's revenue ramped from her trading month 0 using scenario ramp curve
+      const f = getRampFactor(tradingMonthIdx);
       let monthRevenue = ssRevenue * f;
 
       // Additional clinicians: each ramps independently from their own start date
