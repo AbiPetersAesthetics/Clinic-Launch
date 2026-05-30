@@ -1486,11 +1486,12 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
       COALESCE(pto.selected_cost_gbp, t.selected_cost_gbp)  AS selected_cost,
       COALESCE(pto.high_risk_cost_gbp, t.high_risk_cost_gbp) AS high_risk_cost,
       COALESCE(pto.status, t.status) AS eff_status
-    FROM tasks t
-    JOIN phases ph ON ph.id = t.phase_id
+    FROM launch_tasks t
+    JOIN launch_phases ph ON ph.id = t.phase_id
     LEFT JOIN property_task_overrides pto
       ON pto.task_id = t.id AND pto.property_id = 11
     WHERE ph.project_id = ${projectId}
+      AND ph.status = 'active'
       AND COALESCE(pto.status, t.status) NOT IN ('superseded','deferred')
   `);
   const capitalSelected = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.selected_cost ?? 0), 0);
