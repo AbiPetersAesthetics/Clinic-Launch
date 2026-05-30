@@ -4355,18 +4355,44 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
-          {/* ── 12-Month Payout Analysis ─────────────────────────────────────── */}
+          {/* ── Payout Analysis ──────────────────────────────────────────────── */}
           <Card className="shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-primary" />
-                <CardTitle className="text-sm">12-Month Payout Analysis</CardTitle>
+                <CardTitle className="text-sm">Payout Analysis</CardTitle>
               </div>
               <CardDescription className="text-xs mt-1">
                 Estimated distribution to each shareholder at the 12-month mark after investment, based on the realistic scenario cashflow with standard ramp curve.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+
+              {/* ── Year-end distributable profit — Y1 / Y2 / Y3 ───────────── */}
+              {investmentSummary?.annualSummary && (() => {
+                const { y1, y2, y3 } = investmentSummary.annualSummary;
+                return (
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { yr: y1, label: "Year-end distributable profit" },
+                      { yr: y2, label: "Year-end distributable profit" },
+                      { yr: y3, label: "Year-end distributable profit" },
+                    ].map(({ yr, label }, i) => {
+                      const positive = yr.distributable >= 0;
+                      return (
+                        <div key={i} className={`rounded-lg border p-3 ${positive ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50/50 dark:bg-red-950/20"}`}>
+                          <div className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-1">{yr.fyLabel}</div>
+                          <div className={`text-xl font-bold tabular-nums ${positive ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+                            {positive ? "+" : ""}{formatGBP(yr.distributable)}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
+                          <div className="text-[10px] text-muted-foreground/70 mt-0.5">{yr.tradingMonths} trading months</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               {investmentSummary && (
                 <>
