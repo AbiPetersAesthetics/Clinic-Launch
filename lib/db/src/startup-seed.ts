@@ -7,6 +7,7 @@
 import { db } from "./index";
 import * as schema from "./schema";
 import { eq, and, sql } from "drizzle-orm";
+import { runV8Migration } from "./v8-migration";
 
 async function seedRisks(projectId: number) {
   const SEED_RISKS = [
@@ -271,9 +272,12 @@ async function seedCqcMilestones(projectId: number): Promise<void> {
 }
 
 async function runV6Migration(projectId: number): Promise<void> {
-  // Guard: only run if Phase 8 (FF&E) doesn't already exist
+  // Guard: skip if Phase 8 already exists (active or archived — V8 migration archives it)
   const existingPhase8 = await db.select().from(schema.phasesTable)
-    .where(and(eq(schema.phasesTable.projectId, projectId), eq(schema.phasesTable.name, "Phase 8 — FF&E & Clinic Styling")));
+    .where(and(
+      eq(schema.phasesTable.projectId, projectId),
+      sql`(${schema.phasesTable.name} = 'Phase 8 — FF&E & Clinic Styling' OR ${schema.phasesTable.name} = 'ARCHIVED: Phase 8 — FF&E & Clinic Styling')`
+    ));
   if (existingPhase8.length > 0) {
     return; // already migrated
   }
@@ -403,6 +407,8 @@ export async function runStartupSeed(): Promise<void> {
         await runV6Migration(projectId);
         // V7 migration: add additional_clinicians_json column (idempotent DDL)
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS additional_clinicians_json TEXT DEFAULT '[]'`);
+        // V8 migration: archive old phases, create 12 new active phases with 111 tasks
+        await runV8Migration(projectId);
         return;
       }
 
