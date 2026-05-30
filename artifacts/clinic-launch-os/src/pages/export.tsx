@@ -1,17 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  useGetProjectDashboard,
-  useGetFinancialModel,
-  useListFixedCostItems,
-  useGetPhasesWithTasks,
-  useGetOptimisationAnalysis,
-  useListDecisions,
-  useListComplianceItems,
-  useGetComplianceSummary,
-  useListCqcMilestones,
-  useListProperties,
-} from "@workspace/api-client-react";
 import { Printer, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -151,6 +138,7 @@ function normaliseLeaseStrategy(d: any): any {
 // ── Main Export Page ──────────────────────────────────────────────────────────
 
 export default function ExportPage() {
+  // ── All data stored in local state — fetched fresh via cache:'no-store' ──────
   const [marketing, setMarketing] = useState<any[]>([]);
   const [competitors, setCompetitors] = useState<any[]>([]);
   const [lifestyle, setLifestyle] = useState<any>(null);
@@ -160,8 +148,17 @@ export default function ExportPage() {
   const [leaseStrategy, setLeaseStrategy] = useState<any>(null);
   const [bLiveData, setBLiveData] = useState<any>(null);
   const [cashflowData, setCashflowData] = useState<any[]>([]);
+  const [dashboard, setDashboard] = useState<any>(null);
+  const [financialModel, setFinancialModel] = useState<any>(null);
+  const [fixedCosts, setFixedCosts] = useState<any[]>([]);
+  const [phasesWithTasks, setPhasesWithTasks] = useState<any[]>([]);
+  const [optimisation, setOptimisation] = useState<any>(null);
+  const [decisions, setDecisions] = useState<any[]>([]);
+  const [complianceItems, setComplianceItems] = useState<any[]>([]);
+  const [complianceSummary, setComplianceSummary] = useState<any>(null);
+  const [cqcMilestones, setCqcMilestones] = useState<any[]>([]);
+  const [properties, setProperties] = useState<any[]>([]);
 
-  const queryClient = useQueryClient();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [enabledSections, setEnabledSections] = useState<Set<string>>(
     () => new Set([
@@ -177,44 +174,86 @@ export default function ExportPage() {
       return next;
     });
 
-  // ── API hooks ────────────────────────────────────────────────────────────────
-  const { data: dashboard } = useGetProjectDashboard(PROJECT_ID);
-  const { data: financialModel } = useGetFinancialModel(PROJECT_ID);
-  const { data: fixedCosts } = useListFixedCostItems(PROJECT_ID);
-  const { data: phasesWithTasks } = useGetPhasesWithTasks(PROJECT_ID);
-  const { data: optimisation } = useGetOptimisationAnalysis(PROJECT_ID);
-  const { data: decisions } = useListDecisions(PROJECT_ID);
-  const { data: complianceItems } = useListComplianceItems(PROJECT_ID);
-  const { data: complianceSummary } = useGetComplianceSummary(PROJECT_ID);
-  const { data: cqcMilestones } = useListCqcMilestones(PROJECT_ID);
-  const { data: properties } = useListProperties(PROJECT_ID);
-
-  // ── Raw fetches ───────────────────────────────────────────────────────────────
-  // These use cache: 'no-store' to bypass browser HTTP 304 caching entirely —
-  // critical for financial data that must always reflect the current model.
+  // ── All fetches use cache:'no-store' — bypasses ETags so export always ────────
+  // reflects the live model. Phases are fetched in a second step once we know
+  // the active propertyId, so property-specific task overrides are applied.
   const fetchRaw = useCallback(async () => {
     try {
       const nc = { cache: "no-store" as RequestCache };
-      const [mktRes, compRes, lifeRes, bLiveRes, cfRes] = await Promise.all([
+
+      // Round 1: all independent endpoints in parallel
+      const [
+        mktRes, compRes, lifeRes, bLiveRes, cfRes,
+        propRes, dashRes, finRes, fixedRes, opRes,
+        decRes, compItemsRes, compSumRes, cqcRes,
+      ] = await Promise.all([
         fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/lifestyle`, nc),
         fetch(`${API_BASE}/bedhampton/summary`, nc),
         fetch(`${API_BASE}/projects/${PROJECT_ID}/cashflow?scenario=realistic`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/dashboard`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/fixed-cost-items`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/optimisation-analysis`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/decisions`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/compliance/items`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/compliance/summary`, nc),
+        fetch(`${API_BASE}/projects/${PROJECT_ID}/compliance/milestones`, nc),
       ]);
+
       if (mktRes.ok) {
-        const mktData = await mktRes.json();
-        setMarketing(Array.isArray(mktData) ? mktData : (mktData?.items ?? []));
+        const d = await mktRes.json();
+        setMarketing(Array.isArray(d) ? d : (d?.items ?? []));
       }
       if (compRes.ok) {
-        const compData = await compRes.json();
-        setCompetitors(Array.isArray(compData) ? compData : (compData?.competitors ?? compData?.items ?? []));
+        const d = await compRes.json();
+        setCompetitors(Array.isArray(d) ? d : (d?.competitors ?? d?.items ?? []));
       }
       if (lifeRes.ok) setLifestyle(await lifeRes.json());
       if (bLiveRes.ok) setBLiveData(await bLiveRes.json());
       if (cfRes.ok) {
-        const cfData = await cfRes.json();
-        setCashflowData(Array.isArray(cfData) ? cfData : []);
+        const d = await cfRes.json();
+        setCashflowData(Array.isArray(d) ? d : []);
+      }
+      if (dashRes.ok) setDashboard(await dashRes.json());
+      if (finRes.ok) setFinancialModel(await finRes.json());
+      if (fixedRes.ok) {
+        const d = await fixedRes.json();
+        setFixedCosts(Array.isArray(d) ? d : (d?.items ?? []));
+      }
+      if (opRes.ok) setOptimisation(await opRes.json());
+      if (decRes.ok) {
+        const d = await decRes.json();
+        setDecisions(Array.isArray(d) ? d : (d?.items ?? []));
+      }
+      if (compItemsRes.ok) {
+        const d = await compItemsRes.json();
+        setComplianceItems(Array.isArray(d) ? d : (d?.items ?? []));
+      }
+      if (compSumRes.ok) setComplianceSummary(await compSumRes.json());
+      if (cqcRes.ok) {
+        const d = await cqcRes.json();
+        setCqcMilestones(Array.isArray(d) ? d : (d?.items ?? []));
+      }
+
+      // Round 2: properties → derive activePropertyId → fetch phases with overrides
+      let activePropId: number | null = null;
+      if (propRes.ok) {
+        const d = await propRes.json();
+        const propsArr = Array.isArray(d) ? d : (d?.properties ?? []);
+        setProperties(propsArr);
+        const active = propsArr.find((p: any) => p.isActiveForProject);
+        if (active) activePropId = active.id;
+      }
+      const phasesUrl = activePropId
+        ? `${API_BASE}/projects/${PROJECT_ID}/phases-with-tasks?propertyId=${activePropId}`
+        : `${API_BASE}/projects/${PROJECT_ID}/phases-with-tasks`;
+      const phasesRes = await fetch(phasesUrl, nc);
+      if (phasesRes.ok) {
+        const d = await phasesRes.json();
+        setPhasesWithTasks(Array.isArray(d) ? d : []);
       }
     } catch (e) {
       setFetchError("Some data could not be loaded.");
@@ -228,13 +267,9 @@ export default function ExportPage() {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setRawFetchDone(false);
-    // removeQueries wipes cached ETags from TanStack so the next fetch sends
-    // no If-None-Match header and the server always returns a fresh 200.
-    // fetchRaw uses cache:'no-store' for financial data, bypassing browser HTTP cache.
-    queryClient.removeQueries();
     await fetchRaw();
     setIsRefreshing(false);
-  }, [queryClient, fetchRaw]);
+  }, [fetchRaw]);
 
   // ── AI analysis from cache ────────────────────────────────────────────────────
   useEffect(() => {
@@ -247,7 +282,7 @@ export default function ExportPage() {
   }, []);
 
   // ── Loading state ─────────────────────────────────────────────────────────────
-  const isLoading = !dashboard || !financialModel || !rawFetchDone;
+  const isLoading = !rawFetchDone;
 
   // ── Derived data ──────────────────────────────────────────────────────────────
   const totalFixedCosts = (fixedCosts ?? []).reduce((s, i) => s + i.amountGbp, 0);
