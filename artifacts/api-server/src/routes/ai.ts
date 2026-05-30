@@ -1540,11 +1540,24 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
   const fy3Revenue = monthlyRevenue * 12 * 1.08;
   const grossMargin = monthlyRevenue > 0 ? (grossMonthlyProfit / monthlyRevenue) : 0;
 
+  // ── 3b. Investment gap scenarios ─────────────────────────────────────────
+  // Low  = exactly covers the selected/base plan cost
+  // Medium = selected + 15% contingency buffer (covers typical overruns)
+  // High = full worst-case / high-risk cost coverage
+  const gapLow    = Math.max(0, Math.round(capitalSelected - totalCapital));
+  const gapMedium = Math.max(0, Math.round(capitalSelected * 1.15 - totalCapital));
+  const gapHigh   = Math.max(0, Math.round(capitalHighRisk - totalCapital));
+
   // ── 4. Build prompt ───────────────────────────────────────────────────────
   const financialContext = `
 CAPITAL REQUIREMENT (all-in fit-out + working capital):
 - Selected (base) cost: £${Math.round(capitalSelected).toLocaleString()}
 - High-risk (worst-case) cost: £${Math.round(capitalHighRisk).toLocaleString()}
+
+INVESTMENT GAP (capital still needed after existing commitments):
+- Low tier — covers base plan exactly: £${gapLow.toLocaleString()} still needed
+- Medium tier — covers base + 15% contingency buffer: £${gapMedium.toLocaleString()} still needed
+- High tier — covers worst-case / high-risk cost: £${gapHigh.toLocaleString()} still needed
 
 FUNDING ALREADY MODELLED IN DB:
 - Total capital committed: £${Math.round(totalCapital).toLocaleString()}
@@ -1618,6 +1631,19 @@ Respond with ONLY valid JSON (no markdown, no prose outside JSON) in this exact 
     "breakEvenNote": "string",
     "capacityNote": "string"
   },
+  "investmentGap": {
+    "gapLow": ${gapLow},
+    "gapMedium": ${gapMedium},
+    "gapHigh": ${gapHigh},
+    "lowLabel": "string (≤8 words — what Low covers)",
+    "mediumLabel": "string (≤8 words — what Medium covers)",
+    "highLabel": "string (≤8 words — what High covers)",
+    "lowDetail": "string (2 sentences — what this amount unlocks and the risk of stopping here)",
+    "mediumDetail": "string (2 sentences — what this amount unlocks and why the 15% buffer matters)",
+    "highDetail": "string (2 sentences — what full worst-case coverage buys and who it's for)",
+    "recommendedTier": "low" | "medium" | "high",
+    "gapNarrative": "string (2-3 sentences summarising the overall funding gap position)"
+  },
   "keyRisks": ["string", ...],
   "actionItems": ["string", ...],
   "dashboardSummary": "string (≤12 words for dashboard widget)"
@@ -1641,6 +1667,15 @@ Respond with ONLY valid JSON (no markdown, no prose outside JSON) in this exact 
   } catch {
     return res.status(500).json({ error: "AI returned malformed JSON", raw });
   }
+
+  // Always stamp server-calculated gap numbers — AI narrative is additive only
+  if (!result.investmentGap) result.investmentGap = {};
+  result.investmentGap.gapLow    = gapLow;
+  result.investmentGap.gapMedium = gapMedium;
+  result.investmentGap.gapHigh   = gapHigh;
+  result.investmentGap._capitalSelected = Math.round(capitalSelected);
+  result.investmentGap._capitalHighRisk = Math.round(capitalHighRisk);
+  result.investmentGap._totalCommitted  = Math.round(totalCapital);
 
   // ── 6. Persist ────────────────────────────────────────────────────────────
   await db.delete(projectAiAnalysesTable)

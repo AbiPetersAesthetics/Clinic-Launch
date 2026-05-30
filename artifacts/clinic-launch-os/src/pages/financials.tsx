@@ -4480,6 +4480,97 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
+          {/* ── Investment Gap ──────────────────────────────────────────────── */}
+          {(() => {
+            const fa = fundingAnalysis;
+            const ig = fa?.investmentGap;
+            const selected = ig?._capitalSelected ?? 0;
+            const highRisk = ig?._capitalHighRisk ?? 0;
+            const committed = ig?._totalCommitted ?? 0;
+            const tiers = [
+              {
+                key: "low",
+                label: "Low",
+                amount: ig?.gapLow ?? Math.max(0, selected - committed),
+                sublabel: ig?.lowLabel ?? "Covers base plan exactly",
+                detail: ig?.lowDetail ?? "Funds the selected project cost with no contingency. Any overrun requires emergency capital.",
+                color: { border: "border-amber-200 dark:border-amber-800", bg: "bg-amber-50/40 dark:bg-amber-950/20", badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300", dot: "bg-amber-400" },
+              },
+              {
+                key: "medium",
+                label: "Medium",
+                amount: ig?.gapMedium ?? Math.max(0, Math.round(selected * 1.15) - committed),
+                sublabel: ig?.mediumLabel ?? "Base plan + 15% contingency",
+                detail: ig?.mediumDetail ?? "Adds a 15% buffer on top of the base plan, covering typical fit-out overruns and early working capital needs.",
+                color: { border: "border-primary/30 dark:border-primary/40", bg: "bg-primary/5 dark:bg-primary/10", badge: "bg-primary/10 text-primary dark:bg-primary/20", dot: "bg-primary" },
+                recommended: ig?.recommendedTier === "medium" || !ig?.recommendedTier,
+              },
+              {
+                key: "high",
+                label: "High",
+                amount: ig?.gapHigh ?? Math.max(0, highRisk - committed),
+                sublabel: ig?.highLabel ?? "Full worst-case coverage",
+                detail: ig?.highDetail ?? "Covers the high-risk cost estimate in full. Provides maximum runway and stress-test resilience for a risk-averse investor.",
+                color: { border: "border-blue-200 dark:border-blue-800", bg: "bg-blue-50/40 dark:bg-blue-950/20", badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300", dot: "bg-blue-500" },
+              },
+            ];
+
+            return (
+              <Card className="shadow-sm border-border/60">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-primary/70 shrink-0" />
+                    <CardTitle className="text-base">Investment Gap</CardTitle>
+                    {committed > 0 && (
+                      <span className="ml-auto text-[10px] text-muted-foreground">
+                        {formatGBP(committed)} committed · {formatGBP(selected)} required
+                      </span>
+                    )}
+                  </div>
+                  <CardDescription className="text-xs mt-1">
+                    How much capital is still needed and what each level unlocks.
+                    {ig?.gapNarrative && <span className="block mt-1 text-foreground/70">{ig.gapNarrative}</span>}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {!fa && (
+                    <p className="text-xs text-muted-foreground italic">Run the AI Funding Analysis below to generate gap scenarios with full narrative.</p>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {tiers.map(tier => (
+                      <div key={tier.key} className={`relative rounded-lg border p-4 space-y-2 ${tier.color.border} ${tier.color.bg}`}>
+                        {(tier as any).recommended && (
+                          <span className={`absolute -top-2 left-3 text-[10px] font-semibold px-2 py-0.5 rounded-full ${tier.color.badge}`}>
+                            ★ Recommended
+                          </span>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${tier.color.dot}`} />
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tier.label}</span>
+                          </div>
+                        </div>
+                        <div className="text-2xl font-bold tabular-nums">
+                          {tier.amount === 0 ? <span className="text-emerald-600 text-lg">Fully funded ✓</span> : formatGBP(tier.amount)}
+                        </div>
+                        <div className="text-[11px] font-medium text-foreground/80">{tier.sublabel}</div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{tier.detail}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {committed > 0 && (
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border/30 pt-3">
+                      <span className="font-semibold text-emerald-700">{formatGBP(committed)}</span>
+                      <span>already committed via investment instruments ·</span>
+                      <span className="font-semibold">{formatGBP(selected)}</span>
+                      <span>base plan total</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* ── AI Funding Adviser ──────────────────────────────────────────── */}
           {(() => {
             const fa = fundingAnalysis;

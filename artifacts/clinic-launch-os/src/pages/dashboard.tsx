@@ -1054,6 +1054,30 @@ export default function DashboardPage() {
                   Full analysis <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
+              {fa.investmentGap && (
+                <div className="mt-3 pt-3 border-t border-border/40">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Investment Gap</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { key: "low",    label: "Low",    amount: fa.investmentGap.gapLow,    sublabel: fa.investmentGap.lowLabel,    color: "text-amber-700 dark:text-amber-400",   bg: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800" },
+                      { key: "medium", label: "Medium", amount: fa.investmentGap.gapMedium, sublabel: fa.investmentGap.mediumLabel, color: "text-primary",                           bg: "bg-primary/5 border-primary/25",          recommended: fa.investmentGap.recommendedTier === "medium" || !fa.investmentGap.recommendedTier },
+                      { key: "high",   label: "High",   amount: fa.investmentGap.gapHigh,   sublabel: fa.investmentGap.highLabel,   color: "text-blue-700 dark:text-blue-400",     bg: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" },
+                    ].map(t => (
+                      <div key={t.key} className={`relative rounded-md border p-2 text-center ${t.bg}`}>
+                        {(t as any).recommended && <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-primary bg-background border border-primary/30 px-1.5 rounded-full whitespace-nowrap">★ Rec.</span>}
+                        <div className={`text-sm font-bold tabular-nums mt-1 ${t.color}`}>
+                          {t.amount === 0 ? <span className="text-emerald-600 text-xs font-semibold">Funded ✓</span> : `£${Math.round(t.amount).toLocaleString()}`}
+                        </div>
+                        <div className="text-[10px] font-semibold text-muted-foreground">{t.label}</div>
+                        {t.sublabel && <div className="text-[9px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{t.sublabel}</div>}
+                      </div>
+                    ))}
+                  </div>
+                  {fa.investmentGap.gapNarrative && (
+                    <p className="text-[10px] text-muted-foreground mt-2 leading-snug">{fa.investmentGap.gapNarrative}</p>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         );
