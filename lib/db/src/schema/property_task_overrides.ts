@@ -20,6 +20,9 @@ export const propertyTaskOverridesTable = pgTable("property_task_overrides", {
   durationDays: integer("duration_days"),
   files: text("files"),
   quotes: jsonb("quotes").$type<TaskQuote[]>(),
+  costVatStatus: text("cost_vat_status"),
+  supplyScope: text("supply_scope"),
+  procurementStatus: text("procurement_status"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -1,0 +1,1 @@
+- [V6 migration pattern](v6-migration.md) — DB migrations use runV6Migration() gated by phase-name check; phases table is `launch_phases` not `phases`

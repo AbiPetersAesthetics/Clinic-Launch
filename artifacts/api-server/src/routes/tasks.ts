@@ -23,8 +23,9 @@ router.post("/phases/:phaseId/tasks", async (req, res) => {
   const {
     title, description, owner, contractor, supplier,
     status, riskLevel, costTier, costLow, costMid, costHigh,
-    dueDate, durationDays, dependencies, notes,
+    dueDate, startDate, durationDays, dependencies, notes,
     isNonNegotiable, isCriticalRisk, sortOrder,
+    costVatStatus, supplyScope, procurementStatus,
   } = req.body;
 
   const tier = costTier ?? "mid";
@@ -46,12 +47,16 @@ router.post("/phases/:phaseId/tasks", async (req, res) => {
     costMid: mid,
     costHigh: high,
     selectedCost: getSelectedCost(tier, low, mid, high),
+    startDate,
     dueDate,
     durationDays,
     dependencies: dependencies ? JSON.stringify(dependencies) : null,
     notes,
     isNonNegotiable: isNonNegotiable ?? false,
     isCriticalRisk: isCriticalRisk ?? false,
+    costVatStatus: costVatStatus ?? "vat_unknown",
+    supplyScope: supplyScope ?? "to_confirm",
+    procurementStatus: procurementStatus ?? "to_specify",
     sortOrder: sortOrder ?? 0,
   }).returning();
 
@@ -84,7 +89,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     // Never write null for fields not in the request — the merge in phases-with-tasks uses
     // `o.field !== undefined ? o.field : t.field`, so a stored null would wipe the base task value.
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
-      "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes"] as const;
+      "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes",
+      "costVatStatus", "supplyScope", "procurementStatus"] as const;
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];

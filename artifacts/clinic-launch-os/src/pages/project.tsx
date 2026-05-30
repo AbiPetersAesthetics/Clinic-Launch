@@ -1536,8 +1536,32 @@ export default function ProjectPage() {
 
           {/* Cost summary */}
           <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
+            <div>
+              <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5">Benchmark: Low £47k · Mid £80k · High £132k (inc. fit-out, FF&amp;E &amp; stock)</p>
+            </div>
             <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
+          </div>
+          {/* Warning: tasks with unknown VAT status */}
+          {(() => {
+            const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown").length ?? 0;
+            return vatUnknownCount > 0 ? (
+              <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3">
+                <span className="text-amber-600 dark:text-amber-400 text-base shrink-0">⚠</span>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{vatUnknownCount} task{vatUnknownCount !== 1 ? "s" : ""} have unknown VAT status</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Your selected cost total may be understated by up to 20%. Open each task and set the VAT status to clarify whether costs are inc. or ex. VAT before finalising your budget.</p>
+                </div>
+              </div>
+            ) : null;
+          })()}
+          {/* Warning: premium fit-out quality */}
+          <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 px-4 py-3">
+            <span className="text-blue-500 text-base shrink-0">ℹ</span>
+            <div>
+              <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Premium clinical fit-out quality matters</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Abi Peters Aesthetics is a premium brand. A poor-quality finish will directly undermine client confidence and revenue. Budget accordingly: mid-range fit-out typically £50k, full premium (with FF&amp;E and opening stock) £80k–£132k. Do not cut finish quality to save budget — invest in areas clients see.</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1651,6 +1675,8 @@ export default function ProjectPage() {
                           <div className="flex gap-2 mt-1 flex-wrap">
                             {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
                             {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
+                            {((task as any).costVatStatus === "vat_unknown" || !(task as any).costVatStatus) && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30">VAT?</Badge>}
+                            {(task as any).costVatStatus === "ex_vat" && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-950/20">+VAT</Badge>}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -2350,6 +2376,9 @@ function TaskEditSheet({
   const [taskRiskLevel, setTaskRiskLevel] = useState<UpdateTaskBodyRiskLevel>("low");
   const [taskIsNonNegotiable, setTaskIsNonNegotiable] = useState(false);
   const [taskIsCriticalRisk, setTaskIsCriticalRisk] = useState(false);
+  const [costVatStatus, setCostVatStatus] = useState("vat_unknown");
+  const [supplyScope, setSupplyScope] = useState("to_confirm");
+  const [procurementStatus, setProcurementStatus] = useState("to_specify");
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
@@ -2453,6 +2482,9 @@ function TaskEditSheet({
       setTaskRiskLevel(task.riskLevel as UpdateTaskBodyRiskLevel);
       setTaskIsNonNegotiable(task.isNonNegotiable ?? false);
       setTaskIsCriticalRisk(task.isCriticalRisk ?? false);
+      setCostVatStatus((task as any).costVatStatus ?? "vat_unknown");
+      setSupplyScope((task as any).supplyScope ?? "to_confirm");
+      setProcurementStatus((task as any).procurementStatus ?? "to_specify");
     }
   }, [task?.id]);
 
@@ -2524,6 +2556,9 @@ function TaskEditSheet({
       files: files.length > 0 ? JSON.stringify(files) : null,
       dependencies: dependencies.length > 0 ? dependencies : null,
       quotes,
+      costVatStatus,
+      supplyScope,
+      procurementStatus,
       ...(targetPhaseId !== null ? { phaseId: targetPhaseId } : {}),
       ...(activePropertyId ? { propertyId: activePropertyId } : {}),
     };
@@ -2746,6 +2781,57 @@ function TaskEditSheet({
                     <Input id="durationDays" name="durationDays" type="number" defaultValue={task.durationDays || ""} className="h-7 w-24 text-sm" />
                   </div>
                 )}
+              </div>
+
+              {/* Cost metadata: VAT status, supply scope, procurement status */}
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/30 p-4">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Cost &amp; Procurement</p>
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">VAT Status</Label>
+                    <Select value={costVatStatus} onValueChange={setCostVatStatus}>
+                      <SelectTrigger className="mt-1 h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="vat_unknown">⚠ Unknown — needs clarification</SelectItem>
+                        <SelectItem value="inc_vat">Inc. VAT — price includes 20% VAT</SelectItem>
+                        <SelectItem value="ex_vat">Ex. VAT — add 20% on top</SelectItem>
+                        <SelectItem value="vat_na">N/A — no VAT applicable</SelectItem>
+                        <SelectItem value="mixed">Mixed — partially VAT-bearing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Supply Scope</Label>
+                    <Select value={supplyScope} onValueChange={setSupplyScope}>
+                      <SelectTrigger className="mt-1 h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="to_confirm">To Confirm</SelectItem>
+                        <SelectItem value="included">Included in package</SelectItem>
+                        <SelectItem value="excluded">Excluded</SelectItem>
+                        <SelectItem value="client_supplied">Client supplied</SelectItem>
+                        <SelectItem value="contractor_supplied">Contractor supplied</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Procurement Status</Label>
+                    <Select value={procurementStatus} onValueChange={setProcurementStatus}>
+                      <SelectTrigger className="mt-1 h-8 text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_required">Not Required</SelectItem>
+                        <SelectItem value="to_specify">To Specify</SelectItem>
+                        <SelectItem value="to_quote">To Quote</SelectItem>
+                        <SelectItem value="quote_received">Quote Received</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="ordered">Ordered</SelectItem>
+                        <SelectItem value="delivered">Delivered</SelectItem>
+                        <SelectItem value="installed">Installed</SelectItem>
+                        <SelectItem value="included_in_contractor">Included in contractor pkg</SelectItem>
+                        <SelectItem value="excluded_client_direct">Excluded — client direct</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
