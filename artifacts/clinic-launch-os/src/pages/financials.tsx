@@ -4484,9 +4484,9 @@ export default function FinancialsPage() {
           {(() => {
             const fa = fundingAnalysis;
             const ig = fa?.investmentGap;
-            const selected = ig?._capitalSelected ?? 0;
-            const highRisk = ig?._capitalHighRisk ?? 0;
-            const committed = ig?._totalCommitted ?? 0;
+            const selected  = ig?._capitalSelected  ?? investmentSummary?.capitalSelectedGbp  ?? 0;
+            const highRisk  = ig?._capitalHighRisk   ?? investmentSummary?.capitalHighRiskGbp  ?? 0;
+            const committed = ig?._totalCommitted    ?? investmentSummary?.totalCapitalGbp     ?? 0;
             const tiers = [
               {
                 key: "low",

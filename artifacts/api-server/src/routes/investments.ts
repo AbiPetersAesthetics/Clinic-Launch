@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable, projectsTable } from "@workspace/db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 
 const router = Router();
 
@@ -111,16 +111,30 @@ router.delete("/shareholders/:id", async (req, res) => {
 router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
 
-  const [investments, shareholders, model, fixedCostItems, projectRow] = await Promise.all([
+  const [investments, shareholders, model, fixedCostItems, projectRow, taskCostRows] = await Promise.all([
     db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
     db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).limit(1),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1),
+    db.execute(sql`
+      SELECT
+        COALESCE(SUM(COALESCE(pto.selected_cost, t.selected_cost)), 0) AS capital_selected,
+        COALESCE(SUM(COALESCE(pto.cost_high,     t.cost_high)),     0) AS capital_high_risk
+      FROM launch_tasks t
+      JOIN launch_phases ph ON ph.id = t.phase_id
+      LEFT JOIN property_task_overrides pto ON pto.task_id = t.id AND pto.property_id = 11
+      WHERE ph.project_id = ${projectId}
+        AND ph.status = 'active'
+        AND COALESCE(pto.status, t.status) NOT IN ('superseded','deferred')
+    `),
   ]);
 
   const fin = model[0];
   const project = projectRow[0];
+  const costRow = (taskCostRows.rows as any[])[0] ?? {};
+  const capitalSelectedGbp = Math.round(Number(costRow.capital_selected ?? 0));
+  const capitalHighRiskGbp  = Math.round(Number(costRow.capital_high_risk ?? 0));
 
   const totalCapitalGbp = investments.reduce((s, i) => s + i.amountGbp, 0);
   const totalEquityGivenUpPercent = investments.reduce((s, i) => s + i.equityPercent, 0);
@@ -182,7 +196,10 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   let additionalClinicians: ExtraClinician[] = [];
   try {
     const raw = (fin as any).additionalCliniciansJson;
-    if (raw) additionalClinicians = JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(String(raw));
+      if (Array.isArray(parsed)) additionalClinicians = parsed;
+    }
   } catch {}
 
   // ── Fixed costs — prefer dynamic items table over legacy fields ─────────────
@@ -332,6 +349,8 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     payouts,
     annualSummary:              { y1, y2, y3 },
     breakdown12m:               y1,
+    capitalSelectedGbp,
+    capitalHighRiskGbp,
   });
 });
 

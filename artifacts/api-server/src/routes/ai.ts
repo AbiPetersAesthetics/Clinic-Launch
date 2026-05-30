@@ -1483,8 +1483,8 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
     SELECT
       t.id,
       t.status,
-      COALESCE(pto.selected_cost_gbp, t.selected_cost_gbp)  AS selected_cost,
-      COALESCE(pto.high_risk_cost_gbp, t.high_risk_cost_gbp) AS high_risk_cost,
+      COALESCE(pto.selected_cost, t.selected_cost)  AS selected_cost,
+      COALESCE(pto.cost_high,     t.cost_high)       AS high_risk_cost,
       COALESCE(pto.status, t.status) AS eff_status
     FROM launch_tasks t
     JOIN launch_phases ph ON ph.id = t.phase_id
