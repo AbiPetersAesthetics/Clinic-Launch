@@ -1586,40 +1586,46 @@ export default function ProjectPage() {
               const ph = (id: number) => phases?.find(p => p.id === id);
               const cats = [
                 {
-                  label: "Build / design / statutory works",
-                  note: "Phase 3A",
-                  selected: ph(17)?.selectedCostTotal ?? 0,
-                  high: ph(17)?.totalCostHigh ?? 0,
+                  label: "Design / statutory / building works",
+                  note: "Phases 3–4",
+                  selected: (ph(21)?.selectedCostTotal ?? 0) + (ph(22)?.selectedCostTotal ?? 0),
+                  high: (ph(21)?.totalCostHigh ?? 0) + (ph(22)?.totalCostHigh ?? 0),
                 },
                 {
-                  label: "Legal / lease / RICS / completion",
-                  note: "Phases 1–2",
-                  selected: (ph(10)?.selectedCostTotal ?? 0) + (ph(11)?.selectedCostTotal ?? 0),
-                  high: (ph(10)?.totalCostHigh ?? 0) + (ph(11)?.totalCostHigh ?? 0),
+                  label: "Legal / lease / RICS / deposit",
+                  note: "Phase 2",
+                  selected: ph(20)?.selectedCostTotal ?? 0,
+                  high: ph(20)?.totalCostHigh ?? 0,
                 },
                 {
-                  label: "FF&E / styling / equipment",
-                  note: "Phase 8",
-                  selected: ph(18)?.selectedCostTotal ?? 0,
-                  high: ph(18)?.totalCostHigh ?? 0,
+                  label: "FF&E / equipment / styling",
+                  note: "Phase 5",
+                  selected: ph(23)?.selectedCostTotal ?? 0,
+                  high: ph(23)?.totalCostHigh ?? 0,
                 },
                 {
                   label: "Clinical / compliance / stock",
-                  note: "Phases 4–5",
-                  selected: (ph(13)?.selectedCostTotal ?? 0) + (ph(14)?.selectedCostTotal ?? 0),
-                  high: (ph(13)?.totalCostHigh ?? 0) + (ph(14)?.totalCostHigh ?? 0),
+                  note: "Phases 6–7",
+                  selected: (ph(24)?.selectedCostTotal ?? 0) + (ph(25)?.selectedCostTotal ?? 0),
+                  high: (ph(24)?.totalCostHigh ?? 0) + (ph(25)?.totalCostHigh ?? 0),
                 },
                 {
-                  label: "Marketing / launch",
-                  note: "Phase 7",
-                  selected: ph(16)?.selectedCostTotal ?? 0,
-                  high: ph(16)?.totalCostHigh ?? 0,
+                  label: "Finance / insurance / admin",
+                  note: "Phase 8",
+                  selected: ph(26)?.selectedCostTotal ?? 0,
+                  high: ph(26)?.totalCostHigh ?? 0,
                 },
                 {
-                  label: "Finance admin / contingency reserve",
-                  note: "Phase 6",
-                  selected: ph(15)?.selectedCostTotal ?? 0,
-                  high: ph(15)?.totalCostHigh ?? 0,
+                  label: "Marketing / launch / handover",
+                  note: "Phases 9–10",
+                  selected: (ph(27)?.selectedCostTotal ?? 0) + (ph(28)?.selectedCostTotal ?? 0),
+                  high: (ph(27)?.totalCostHigh ?? 0) + (ph(28)?.totalCostHigh ?? 0),
+                },
+                {
+                  label: "Contingency reserve",
+                  note: "Phase 12",
+                  selected: ph(30)?.selectedCostTotal ?? 0,
+                  high: ph(30)?.totalCostHigh ?? 0,
                 },
               ];
               const grandHigh = cats.reduce((s, c) => s + c.high, 0);
@@ -1649,11 +1655,24 @@ export default function ProjectPage() {
               );
             })()}
 
+            {/* Deferred / stretch row */}
+            {(() => {
+              const ph = (id: number) => phases?.find(p => p.id === id);
+              const deferredHigh = ph(29)?.totalCostHigh ?? 0;
+              if (deferredHigh === 0) return null;
+              return (
+                <div className="flex items-center justify-between text-xs px-1 text-muted-foreground">
+                  <span>Deferred / stretch items <span className="text-muted-foreground/60">(Phase 11 — excluded from cap)</span></span>
+                  <span className="tabular-nums font-medium">{formatGBP(deferredHigh)} high-risk</span>
+                </div>
+              );
+            })()}
+
             {/* True all-in note */}
             <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-4 py-3">
               <span className="text-muted-foreground text-sm shrink-0">ℹ</span>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                <strong>True all-in risk model:</strong> If all legal, lease, RICS, compliance, stock, marketing and contingency lines are included, the full cash requirement may sit closer to £65k–£70k. The £60k target is achievable only by controlling FF&amp;E, stock, marketing, and deferring non-essential spend.
+                David's target launch cap is <strong>£60,000 inc VAT</strong>. The full clean tracker includes all known legal, build, FF&amp;E, compliance, stock, marketing and contingency lines. If all core lines are included, the true cash requirement may sit closer to <strong>£65k–£70k</strong>. Anything above £70k is unapproved. Use the deferred/stretch toggles to protect the £60k working cap.
               </p>
             </div>
 

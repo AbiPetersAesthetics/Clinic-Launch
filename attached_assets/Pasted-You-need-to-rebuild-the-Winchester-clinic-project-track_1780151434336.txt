@@ -1,0 +1,2250 @@
+You need to rebuild the Winchester clinic project tracker from scratch using a clean master task list.
+
+Do not patch the existing task list.
+
+The current tracker has become unreliable because it contains:
+
+* old self-managed Dad/David build tasks
+* duplicate managed contractor tasks
+* duplicate FF&E/styling tasks
+* old STEP tasks still active
+* admin/procurement tasks carrying large costs
+* invalid dates
+* unknown VAT statuses
+* duplicated signage, furniture, flooring, electrical, plumbing and joinery lines
+* selected project total showing £229,064, which is wrong
+
+The correct solution is to archive the current live tracker and rebuild the active tracker from a clean master dataset.
+
+DO NOT delete old records permanently if the app supports history. Instead, move all current tasks into an archived/superseded state and create a clean active project tracker.
+
+PROJECT CONTEXT
+
+Project: Abi Peters Aesthetics / Abi Peters Skin Clinic
+Location: 9A Jewry Street, Winchester
+Unit: approximately 614 sq ft
+Use: premium nurse-led medical aesthetics clinic
+Target opening: late November / early December 2026
+Available from / assumed lease start: 1 September 2026
+Hard target open date in system: 2 November 2026 may be too tight and should be treated as provisional, not final.
+Fit-out approach: lean managed contractor model, not self-managed DIY build.
+David is not acting as build manager.
+David’s role is client-side budget, approvals, supplier selection, scope control and sign-off.
+Contractor/design lead owns technical/build delivery.
+
+BUDGET PRINCIPLES
+
+The system must support two budget views:
+
+1. APPROVED LAUNCH BUDGET
+   This is the controlled working budget.
+   Target: £60,000 inc VAT.
+   This must be the default selected budget view.
+
+2. TRUE ALL-IN RISK VIEW
+   This shows what the project could become if optional/stretched items are included.
+   Allowed risk range: £60,000–£70,000 inc VAT.
+   Anything above £70,000 must be marked red/unapproved.
+
+Do not show a selected/default project total above £60,000 unless the user manually switches to stretch/risk mode.
+
+The system must not show £100k+ selected totals.
+
+VAT PRINCIPLES
+
+Every active task must have VAT status.
+
+Allowed VAT statuses:
+
+* inc VAT planning allowance
+* ex VAT quote — VAT to add
+* VAT unknown — confirm
+* no VAT expected
+* mixed VAT treatment
+* N/A — no cost
+* included inside another package
+* deferred / not in launch cap
+* superseded / archived
+
+All selected costs below should be treated as inc VAT planning allowances unless stated otherwise.
+
+DATE PRINCIPLES
+
+Every active task must have:
+
+* start date
+* due date / end date
+
+No active task may show:
+
+* DueInvalid Date
+* blank due date
+* blank start date
+* missing owner
+* missing phase
+
+If the database uses dueDate instead of endDate, use dueDate as the end date.
+
+ARCHIVE RULE
+
+Before creating the clean tracker:
+
+1. Set every existing task to:
+   Status: Archived / Superseded
+   Budget Status: Excluded — old tracker archived
+   includeInLaunchBudget: false
+   selectedCost: 0 unless preserving historical selected cost in a separate archived field
+   Notes: “Archived during clean rebuild of Winchester clinic tracker. Replaced by master task list.”
+
+2. Do not include archived tasks in any dashboard selected totals.
+
+3. Create the following new active task list only.
+
+DATA MODEL REQUIREMENTS
+
+For every new task, use or create these fields where possible:
+
+* taskName
+* phase
+* owner
+* status
+* priority
+* startDate
+* dueDate
+* costLow
+* costMid
+* costHigh
+* selectedCost
+* vatStatus
+* budgetStatus
+* includeInLaunchBudget
+* includeInRiskView
+* mustDo
+* riskFlag
+* notes
+* dependencies
+
+Budget Status options:
+
+* Included in approved launch budget
+* Included in risk view only
+* Deferred / not in launch cap
+* £0 admin task
+* Included inside another package
+* Excluded — superseded
+* Excluded — duplicate
+
+Default:
+includeInLaunchBudget = true only for core required launch tasks.
+includeInRiskView = true for all active non-archived tasks, including optional/risk items.
+
+PHASE STRUCTURE
+
+Create these phases in this order:
+
+1. Pre-Lease Due Diligence
+2. Legal, Lease & Handover
+3. Design, Approvals & Procurement
+4. Managed Building Works
+5. FF&E, Equipment & Clinic Styling
+6. Clinical Governance & Compliance
+7. Stock, Suppliers & Clinical Setup
+8. Finance, Insurance & Admin
+9. Marketing & Launch
+10. Handover, Snagging & Opening
+11. Deferred / Stretch Items
+12. Project Contingency
+
+MASTER TASK LIST
+
+Create only the following tasks as active.
+
+PHASE 1 — PRE-LEASE DUE DILIGENCE
+
+1. Search WCC Public Access — s.106, conditions, Article 4 Directions
+   Owner: David
+   Status: Complete
+   Priority: Medium
+   Start: 12 May 2026
+   Due: 14 May 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: No
+   Notes: Confirm any planning restrictions, Article 4 directions, historical constraints or conditions affecting the unit.
+
+2. Confirm Use Class E(e) — clinic use position
+   Owner: David / Design Lead
+   Status: Complete or In Progress
+   Priority: High
+   Start: 20 May 2026
+   Due: 14 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: Yes
+   Notes: Confirm internal aesthetics clinic use is acceptable under Class E. Keep separate from signage/frontage consent.
+
+3. Listed Building / Conservation Context Check
+   Owner: David / Design Lead / Solicitor
+   Status: In Progress
+   Priority: High
+   Start: 20 May 2026
+   Due: 21 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: Yes
+   Notes: Check whether conservation area, neighbouring listed building context or frontage constraints affect signage, painting, fixings or external works.
+
+4. Check Local Authority Licensing — Health and Care Act 2022
+   Owner: David
+   Status: Not Started
+   Priority: Low
+   Start: 3 June 2026
+   Due: 14 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: No
+   Notes: Confirm no additional local licensing requirement is triggered by the proposed aesthetics clinic activity.
+
+5. Check Rateable Value and Business Rates Position
+   Owner: David
+   Status: In Progress
+   Priority: Medium
+   Start: 3 June 2026
+   Due: 14 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: No
+   Notes: Confirm rateable value, multiplier, transitional relief if any, and expected monthly rates liability after occupation.
+
+6. Negotiate Heads of Terms with Agent/Landlord
+   Owner: David
+   Status: In Progress
+   Priority: Critical
+   Start: 3 June 2026
+   Due: 30 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — no cost
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: Yes
+   Notes: Lock rent, rent-free period, deposit, break clause, landlord consent process, repairing obligations and VAT on rent.
+
+PHASE 2 — LEGAL, LEASE & HANDOVER
+
+7. Commercial Property Solicitor — Lease Negotiation
+   Owner: Solicitor
+   Status: In Progress
+   Priority: Critical
+   Start: 27 May 2026
+   Due: 31 July 2026
+   Low: £2,000
+   Mid: £3,500
+   High: £5,500
+   Selected: £3,500
+   VAT Status: inc VAT planning allowance / confirm quote
+   Budget Status: Included in approved launch budget
+   includeInLaunchBudget: true
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: Yes
+   Notes: Legal work for commercial lease review, negotiation, reporting and completion. Avoid double counting with Exchange and Complete Lease line.
+
+8. Solicitor Scope Clarification
+   Owner: David / Solicitor
+   Status: Not Started
+   Priority: Critical
+   Start: 27 May 2026
+   Due: 7 June 2026
+   Low: £0
+   Mid: £0
+   High: £0
+   Selected: £0
+   VAT Status: N/A — admin task
+   Budget Status: £0 admin task
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: No
+   Notes: Confirm exactly what the solicitor fee includes: lease negotiation, licence for alterations, schedule of condition annexing, completion statement and landlord solicitor liaison.
+
+9. Lease Repairing Obligation Review
+   Owner: Solicitor
+   Status: Not Started
+   Priority: High
+   Start: 1 June 2026
+   Due: 20 June 2026
+   Low: £0
+   Mid: £0
+   High: £750
+   Selected: £0
+   VAT Status: included in solicitor allowance unless separately quoted
+   Budget Status: Included inside another package
+   includeInLaunchBudget: false
+   includeInRiskView: true
+   Must Do: Yes
+   Risk Flag: Yes
+   Notes: Must clarify FRI exposure and ensure Schedule of Condition protects Abi Peters Aesthetics.
+
+10. Landlord Alterations Rights Review
+    Owner: Solicitor
+    Status: Not Started
+    Priority: High
+    Start: 1 June 2026
+    Due: 20 June 2026
+    Low: £0
+    Mid: £0
+    High: £500
+    Selected: £0
+    VAT Status: included in solicitor allowance unless separately quoted
+    Budget Status: Included inside another package
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Confirm what alterations require consent and whether licence for alterations is needed for partitions, basins, signage and fixings.
+
+11. RICS Schedule of Condition
+    Owner: RICS Surveyor
+    Status: In Progress
+    Priority: Critical
+    Start: 16 June 2026
+    Due: 4 July 2026
+    Low: £800
+    Mid: £1,500
+    High: £2,500
+    Selected: £1,500
+    VAT Status: inc VAT planning allowance / confirm quote
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Must be completed and annexed to the lease before signing to limit repairing liability under FRI lease.
+
+12. Exchange and Complete Lease
+    Owner: Solicitor
+    Status: Not Started
+    Priority: Critical
+    Start: 15 July 2026
+    Due: 31 July 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — completion milestone
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Milestone only. Do not put solicitor fees here because they are captured separately. Completion must include Schedule of Condition annexed and VAT on rent confirmed.
+
+13. Rent Deposit / Lease Cash Requirement
+    Owner: David
+    Status: Not Started
+    Priority: Critical
+    Start: 15 July 2026
+    Due: 31 July 2026
+    Low: £2,708
+    Mid: £2,708
+    High: £8,124
+    Selected: £2,708
+    VAT Status: no VAT expected unless confirmed otherwise
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: One-month deposit planning assumption. Increase manually if final Heads of Terms require three months.
+
+14. Rent-Free / Fit-Out Period Cashflow Planning — 2 Months
+    Owner: David
+    Status: Not Started
+    Priority: Critical
+    Start: 1 August 2026
+    Due: 30 September 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no spend if rent-free granted
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Rent-free period protects cashflow during fit-out. Does not remove insurance, utilities, business rates or fit-out spend.
+
+PHASE 3 — DESIGN, APPROVALS & PROCUREMENT
+
+15. Appoint Design / Building Regulations Lead
+    Owner: David
+    Status: Not Started
+    Priority: Critical
+    Start: 3 June 2026
+    Due: 14 June 2026
+    Low: £800
+    Mid: £2,400
+    High: £4,000
+    Selected: £2,400
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Technician-led design/building regulations package, not a full architect-led luxury design process. Must include measured survey/drawings, proposed layout and building regulations detail sufficient for contractor pricing and approval.
+
+16. Confirm Planning / Conservation / Advertisement Consent Position
+    Owner: Design Lead + David
+    Status: Not Started
+    Priority: Critical
+    Start: 3 June 2026
+    Due: 21 June 2026
+    Low: £0
+    Mid: £500
+    High: £2,500
+    Selected: £500
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Separate internal Class E use from external signage/frontage/conservation matters.
+
+17. Produce Employer’s Requirements / Contractor Fit-Out Brief
+    Owner: David + Design Lead
+    Status: Not Started
+    Priority: High
+    Start: 10 June 2026
+    Due: 24 June 2026
+    Low: £0
+    Mid: £0
+    High: £500
+    Selected: £0
+    VAT Status: N/A — admin/specification task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Create clear scope for contractor pricing. No separate spend unless outsourced.
+
+18. Contractor Site Survey and Buildability Review
+    Owner: Main Contractor / Project Manager
+    Status: Not Started
+    Priority: Medium
+    Start: 17 June 2026
+    Due: 1 July 2026
+    Low: £0
+    Mid: £0
+    High: £500
+    Selected: £0
+    VAT Status: included in contractor quote / N/A
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Contractor verifies ceiling void, existing electrics, drainage routes, ventilation, fire alarm, emergency lighting and access.
+
+19. Tender / Quote Managed Fit-Out Package
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 24 June 2026
+    Due: 15 July 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — procurement task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: This is a procurement task only. Do not assign £35k–£70k here. Actual build cost is captured in the building works lines.
+
+20. Final Scope Lock and Fixed Cost Agreement
+    Owner: David + Main Contractor
+    Status: Not Started
+    Priority: Critical
+    Start: 15 July 2026
+    Due: 31 July 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin/contract decision
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Lock drawings, specification, inclusions, exclusions, VAT position, payment milestones and variation process before works start.
+
+21. Licence for Alterations
+    Owner: Solicitor + David + Design Lead / Contractor
+    Status: Not Started
+    Priority: Critical
+    Start: 15 July 2026
+    Due: 31 August 2026
+    Low: £600
+    Mid: £1,200
+    High: £3,500
+    Selected: £1,200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Covers landlord consent support for partitions, basins, electrics, signage fixings, shopfront repaint and any penetrations.
+
+22. Building Control Submission / Initial Notice
+    Owner: Design Lead / Building Control / Approved Inspector
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £400
+    Mid: £900
+    High: £2,500
+    Selected: £900
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Building regulations route for internal works. Do not duplicate with another Building Notice line.
+
+23. Advertisement Consent — Shopfront / Signage
+    Owner: David / Signage Supplier / Design Lead
+    Status: Not Started
+    Priority: High
+    Start: 8 July 2026
+    Due: 27 September 2026
+    Low: £168
+    Mid: £350
+    High: £700
+    Selected: £350
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Allowance for signage/advert consent if required due to conservation area and shopfront works.
+
+PHASE 4 — MANAGED BUILDING WORKS
+
+24. Contractor Pre-Start Meeting and Programme Confirmation
+    Owner: Main Contractor + David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 September 2026
+    Due: 7 September 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Confirm programme, access, responsibilities, certificates, inspection points and handover requirements.
+
+25. Main Contractor Fit-Out Package — Internal Works
+    Owner: Contractor
+    Status: Not Started
+    Priority: Critical
+    Start: 14 September 2026
+    Due: 23 October 2026
+    Low: £18,000
+    Mid: £21,500
+    High: £30,000
+    Selected: £21,500
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Lean core build package. Includes enabling, partitions, coordination, basic making good, doors/linings and contractor management. Does not double count separate electrical, plumbing, flooring, decoration or joinery lines unless contractor quote later includes them.
+
+26. Electrical Works
+    Owner: Contractor / Qualified Electrician
+    Status: Not Started
+    Priority: High
+    Start: 14 September 2026
+    Due: 16 October 2026
+    Low: £3,000
+    Mid: £4,800
+    High: £7,000
+    Selected: £4,800
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Treatment room sockets, lighting changes, emergency lighting implications, certification. If included in contractor package later, set this line to included inside another package.
+
+27. Plumbing / Clinical Basin Works
+    Owner: Contractor / Qualified Plumber
+    Status: Not Started
+    Priority: High
+    Start: 14 September 2026
+    Due: 16 October 2026
+    Low: £2,000
+    Mid: £4,200
+    High: £6,000
+    Selected: £4,200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Two clinical basins, hot/cold supply, waste, isolation and coordination with cabinetry.
+
+28. Clinical Flooring Package
+    Owner: Contractor / Specialist Flooring Installer
+    Status: Not Started
+    Priority: High
+    Start: 12 October 2026
+    Due: 23 October 2026
+    Low: £1,500
+    Mid: £3,200
+    High: £4,500
+    Selected: £3,200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Clinical vinyl to treatment areas only unless final quote expands scope.
+
+29. Internal Decoration and Finishing
+    Owner: Contractor
+    Status: Not Started
+    Priority: Medium
+    Start: 12 October 2026
+    Due: 30 October 2026
+    Low: £1,000
+    Mid: £1,800
+    High: £3,000
+    Selected: £1,800
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Clean premium finish, not luxury decorative scheme.
+
+30. Joinery / Reception Desk / Clinical Cabinetry — Decision
+    Owner: David + Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 July 2026
+    Due: 31 July 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — decision task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Decide whether family joinery, contractor joinery, or hybrid. No cost here.
+
+31. Joinery / Reception Desk / Clinical Cabinetry — Installation
+    Owner: Contractor / Joinery Supplier / Family Joinery
+    Status: Not Started
+    Priority: Medium
+    Start: 12 October 2026
+    Due: 30 October 2026
+    Low: £1,500
+    Mid: £3,000
+    High: £6,000
+    Selected: £3,000
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Tight allowance. Simple reception/joinery only. Avoid bespoke overspend.
+
+32. Wall Panelling / Decorative Moulding Feature Finish
+    Owner: Contractor / Joinery Supplier
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £5,000
+    Selected: £0
+    VAT Status: included inside contractor/joinery allowance unless separately approved
+    Budget Status: Included inside another package
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Do not assign separate cost unless David approves upgrade.
+
+33. Door Furniture, Room Labels and Black Ironmongery
+    Owner: Contractor / Signage Supplier
+    Status: Not Started
+    Priority: Medium
+    Start: 12 October 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £1,500
+    Selected: £0
+    VAT Status: included inside contractor/joinery/signage allowance
+    Budget Status: Included inside another package
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Keep visible but do not double count.
+
+34. Shopfront Repaint
+    Owner: External Decorator / Contractor
+    Status: Not Started
+    Priority: Medium
+    Start: 12 October 2026
+    Due: 24 October 2026
+    Low: £1,000
+    Mid: £1,200
+    High: £2,500
+    Selected: £1,200
+    VAT Status: inc VAT planning allowance / confirm quote
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Repaint purple frontage to off-white/white and refresh dark detailing. Must follow landlord/signage consent.
+
+35. External Signage Package
+    Owner: Signage Supplier
+    Status: Not Started
+    Priority: High
+    Start: 19 October 2026
+    Due: 31 October 2026
+    Low: £900
+    Mid: £1,800
+    High: £3,000
+    Selected: £1,800
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Keep simple and non-overdesigned unless separately approved.
+
+PHASE 5 — FF&E, EQUIPMENT & CLINIC STYLING
+
+36. Treatment Couch x1
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 31 July 2026
+    Due: 14 October 2026
+    Low: £1,707
+    Mid: £2,438
+    High: £3,657
+    Selected: £2,438
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Couch only. Does not include full treatment room equipment.
+
+37. Internal Signage and Branding Package
+    Owner: David + Signage Supplier
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 7 November 2026
+    Low: £500
+    Mid: £900
+    High: £2,500
+    Selected: £900
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Reception wall logo, door plaques, basic room signs. Not a full graphics programme.
+
+38. Reception Furniture and Styling Package
+    Owner: Abi + David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 7 November 2026
+    Low: £800
+    Mid: £1,200
+    High: £3,000
+    Selected: £1,200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Lean premium reception styling using off-the-shelf items.
+
+39. Consultation Room Furniture and Styling Package
+    Owner: Abi + David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 7 November 2026
+    Low: £500
+    Mid: £900
+    High: £2,000
+    Selected: £900
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Chairs, table, simple premium finish.
+
+40. Treatment Room Furniture, Equipment and Styling Package
+    Owner: Abi + David
+    Status: Not Started
+    Priority: Critical
+    Start: 1 October 2026
+    Due: 7 November 2026
+    Low: £1,500
+    Mid: £3,200
+    High: £6,000
+    Selected: £3,200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Stool, trolley, bins, mirrors, basic storage accessories, styling. Excludes treatment couch.
+
+41. Product Display / Retail Shelving / LED Setup
+    Owner: Abi + David / Joinery Supplier
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 7 November 2026
+    Low: £250
+    Mid: £750
+    High: £2,500
+    Selected: £750
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Lean display only. Upgrade later if needed.
+
+42. Wall Art, Certificates and Picture Lighting
+    Owner: Abi + David
+    Status: Not Started
+    Priority: Low
+    Start: 15 October 2026
+    Due: 7 November 2026
+    Low: £250
+    Mid: £500
+    High: £1,500
+    Selected: £500
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Lean artwork/certificates allowance. Picture lights only if budget allows.
+
+43. Furniture / Equipment Installation and Room Dressing
+    Owner: Abi + David
+    Status: Not Started
+    Priority: High
+    Start: 9 November 2026
+    Due: 21 November 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin/setup task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Installation/setup task only. Costs captured in FF&E lines.
+
+PHASE 6 — CLINICAL GOVERNANCE & COMPLIANCE
+
+44. CPD Documentation Log
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 3 June 2026
+    Due: 30 June 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Set up clinical CPD evidence log.
+
+45. ACE Membership — Confirm Winchester Cover
+    Owner: Abi
+    Status: Not Started
+    Priority: Low
+    Start: 3 June 2026
+    Due: 30 June 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Confirm existing professional membership/cover position.
+
+46. BLS Certification — Confirm Current
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 3 June 2026
+    Due: 30 June 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost unless renewal needed
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Confirm valid within required timeframe.
+
+47. DBS Check
+    Owner: Abi
+    Status: In Progress
+    Priority: Low
+    Start: 27 May 2026
+    Due: 3 June 2026
+    Low: £0
+    Mid: £38
+    High: £80
+    Selected: £38
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Enhanced disclosure if required.
+
+48. NMC Face-to-Face Prescribing SOP
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Written procedure for Winchester.
+
+49. Complaints and Incident Log
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Set up before opening.
+
+50. Batch Number and Traceability Log
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Required for injectable traceability.
+
+51. Adverse Event Protocol
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £56
+    Mid: £80
+    High: £120
+    Selected: £80
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Vascular occlusion, anaphylaxis, vasovagal and emergency response procedure.
+
+52. Sharps Safety Policy
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Written policy.
+
+53. IPC Policy
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Written infection prevention and control policy for 9A.
+
+54. COSHH Risk Assessments
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: COSHH for relevant substances used in clinic.
+
+55. Consent Forms and Questionnaires — Winchester Setup
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Configure forms in clinic management software.
+
+56. Delegation and Supervision Policy
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Required before any second practitioner model.
+
+57. JCCP Practitioner Register
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 30 September 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost unless fee applies
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Apply online if required/desired.
+
+58. Save Face Registration
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 8 July 2026
+    Due: 30 September 2026
+    Low: £500
+    Mid: £700
+    High: £900
+    Selected: £700
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Online application and clinic assessment if continuing with Save Face.
+
+59. Clinical Waste Contract
+    Owner: Abi + David
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 30 September 2026
+    Low: £399
+    Mid: £570
+    High: £855
+    Selected: £570
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Licensed clinical waste carrier.
+
+60. Fire Risk Assessment — Post Fit-Out
+    Owner: Fire Assessor + Abi
+    Status: Not Started
+    Priority: High
+    Start: 31 October 2026
+    Due: 14 November 2026
+    Low: £332
+    Mid: £475
+    High: £712
+    Selected: £475
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Full written FRA after fit-out.
+
+61. Emergency Drugs and Equipment Kit
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 November 2026
+    Due: 14 November 2026
+    Low: £140
+    Mid: £200
+    High: £300
+    Selected: £200
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Emergency drugs/equipment setup.
+
+62. Baseline Photography Protocol
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 November 2026
+    Due: 14 November 2026
+    Low: £21
+    Mid: £30
+    High: £45
+    Selected: £30
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Standardised clinical photography protocol.
+
+63. Final Clinical Readiness Check
+    Owner: Abi + David
+    Status: Not Started
+    Priority: Critical
+    Start: 16 November 2026
+    Due: 23 November 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Confirm rooms, documents, equipment, emergency kit, waste, forms and patient flow before launch.
+
+PHASE 7 — STOCK, SUPPLIERS & CLINICAL SETUP
+
+64. Allergan Practitioner Pathway — Notify Winchester
+    Owner: Abi
+    Status: Not Started
+    Priority: Low
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Notify or update address as required.
+
+65. Allergan Direct — Register 9A Delivery Address
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Supplier delivery setup.
+
+66. Galderma / Azzalure — Register Jewry Street Delivery Address
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Supplier delivery setup.
+
+67. Derma Focus / Polynucleotides — Register Jewry Street
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Supplier location update.
+
+68. Opening Injectable Stock
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 November 2026
+    Due: 23 November 2026
+    Low: £3,000
+    Mid: £4,250
+    High: £6,500
+    Selected: £4,250
+    VAT Status: inc VAT planning allowance / supplier dependent
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Opening injectable stock only. Keep lean initially.
+
+69. Clinical Smallwares and Consumables
+    Owner: Abi
+    Status: Not Started
+    Priority: Critical
+    Start: 15 October 2026
+    Due: 14 November 2026
+    Low: £750
+    Mid: £1,000
+    High: £3,000
+    Selected: £1,000
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Gloves, gauze, couch roll, disinfectant, sharps containers, disposables, aftercare materials.
+
+70. Retail / Skincare Opening Stock
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 15 October 2026
+    Due: 14 November 2026
+    Low: £1,000
+    Mid: £2,000
+    High: £8,000
+    Selected: £1,000
+    VAT Status: inc VAT planning allowance / supplier dependent
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Lean opening retail stock. Extra retail stock is a stretch/deferred item.
+
+PHASE 8 — FINANCE, INSURANCE & ADMIN
+
+71. Accounting Software — Xero or QuickBooks
+    Owner: David
+    Status: Complete
+    Priority: Medium
+    Start: 3 June 2026
+    Due: 30 June 2026
+    Low: £120
+    Mid: £300
+    High: £420
+    Selected: £300
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Keep existing accounting system live and ready for Winchester cost tracking.
+
+72. Clinic Management Software — Check ANS Plan
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — included in existing software unless plan changes
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Check ANS setup for Winchester location.
+
+73. ICO Data Protection Fee
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 31 July 2026
+    Due: 1 August 2026
+    Low: £33
+    Mid: £47
+    High: £70
+    Selected: £47
+    VAT Status: no VAT expected / confirm
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Register/pay data protection fee as controller.
+
+74. Hamilton Fraser / Indemnity / Premises Insurance
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 15 August 2026
+    Low: £1,330
+    Mid: £1,900
+    High: £2,850
+    Selected: £1,900
+    VAT Status: inc VAT planning allowance / confirm
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Update indemnity and add premises insurance.
+
+75. Register for Business Rates
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 31 July 2026
+    Due: 7 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Notify Winchester City Council after occupation.
+
+76. Notify Utilities — Electricity, Water, Broadband
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 31 July 2026
+    Due: 3 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — setup admin
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Take meter readings at handover and arrange supplier accounts.
+
+77. Broadband Availability / Setup
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 3 June 2026
+    Due: 31 August 2026
+    Low: £0
+    Mid: £100
+    High: £300
+    Selected: £100
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Check broadband availability and setup.
+
+78. Air Conditioning Inspection / Service
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £192
+    Mid: £275
+    High: £412
+    Selected: £275
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Inspect/service existing AC.
+
+79. Legionella Risk Assessment
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 August 2026
+    Due: 31 August 2026
+    Low: £122
+    Mid: £175
+    High: £262
+    Selected: £175
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Water safety assessment.
+
+80. PAT Testing Setup
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 1 November 2026
+    Due: 14 November 2026
+    Low: £35
+    Mid: £50
+    High: £75
+    Selected: £50
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: PAT testing arrangements for equipment.
+
+81. Card Payment Terminal for Winchester
+    Owner: David
+    Status: Deferred
+    Priority: Low
+    Start: 1 November 2026
+    Due: 14 November 2026
+    Low: £29
+    Mid: £69
+    High: £149
+    Selected: £0
+    VAT Status: deferred / not in launch cap
+    Budget Status: Deferred / not in launch cap
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Use existing payment solution initially if possible.
+
+82. Klarna — Set Up Winchester
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 1 November 2026
+    Due: 14 November 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Admin setup only.
+
+83. VAT Registration Monitoring
+    Owner: Accountant + David
+    Status: Not Started
+    Priority: High
+    Start: 1 August 2026
+    Due: 30 November 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — monitoring task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Monitor rolling 12-month taxable turnover and registration trigger.
+
+PHASE 9 — MARKETING & LAUNCH
+
+84. Winchester SEO — Treatment Landing Pages
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 20 May 2026
+    Due: 31 July 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — David-led
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Build SEO base 3–6 months ahead.
+
+85. Website — Winchester Page, Photos, Privacy Notice
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 3 June 2026
+    Due: 31 July 2026
+    Low: £0
+    Mid: £150
+    High: £500
+    Selected: £150
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Add Winchester page and privacy/location updates.
+
+86. Winchester BID Registration
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 1 August 2026
+    Due: 7 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — admin task
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Register if relevant.
+
+87. Google Business Profile — Winchester Location
+    Owner: David
+    Status: Not Started
+    Priority: Critical
+    Start: 1 August 2026
+    Due: 14 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — no cost
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Create/verify GBP for new location.
+
+88. Google Tag Manager / Conversion Tracking
+    Owner: David
+    Status: Not Started
+    Priority: Low
+    Start: 1 August 2026
+    Due: 7 August 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — David-led
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Ensure bookings/leads are tracked.
+
+89. Meta Ads — Winchester Launch
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 15 August 2026
+    Due: 30 January 2027
+    Low: £600
+    Mid: £1,000
+    High: £3,500
+    Selected: £1,000
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Lean launch spend only. Higher spend is stretch/risk.
+
+90. Google Ads — Winchester Launch
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 September 2026
+    Due: 1 January 2027
+    Low: £300
+    Mid: £500
+    High: £2,400
+    Selected: £500
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Lean search launch spend only.
+
+91. Google Review Acquisition System
+    Owner: David
+    Status: Not Started
+    Priority: Critical
+    Start: 1 September 2026
+    Due: 15 September 2026
+    Low: £0
+    Mid: £0
+    High: £100
+    Selected: £0
+    VAT Status: N/A — David-led
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: Yes
+    Notes: Review acquisition process for Winchester.
+
+92. Before & After Content Bank Creation
+    Owner: Abi
+    Status: Not Started
+    Priority: High
+    Start: 1 September 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — internal
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Build content bank pre-launch.
+
+93. Winchester Local Partnerships Outreach
+    Owner: Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 September 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — internal
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Local brand-building outreach.
+
+94. Instagram Pre-Launch Campaign
+    Owner: David + Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 15 September 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — internal
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: 4–6 week teaser content.
+
+95. Existing Client Migration Campaign
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 15 September 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — internal
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Email/SMS/WhatsApp campaign to existing clients.
+
+96. Referral Programme Setup
+    Owner: David
+    Status: Not Started
+    Priority: High
+    Start: 15 September 2026
+    Due: 15 October 2026
+    Low: £0
+    Mid: £300
+    High: £300
+    Selected: £300
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Referral structure and launch messaging.
+
+97. Email Campaign to 600 Existing Bedhampton Clients
+    Owner: David
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £0
+    High: £0
+    Selected: £0
+    VAT Status: N/A — internal
+    Budget Status: £0 admin task
+    includeInLaunchBudget: false
+    includeInRiskView: true
+    Must Do: Yes
+    Risk Flag: No
+    Notes: Migration/launch email campaign.
+
+98. Local PR / Founder Story Campaign
+    Owner: David + Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 1 October 2026
+    Due: 31 October 2026
+    Low: £0
+    Mid: £300
+    High: £300
+    Selected: £300
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Local awareness/story campaign.
+
+99. Soft Launch Event
+    Owner: David + Abi
+    Status: Not Started
+    Priority: Medium
+    Start: 15 October 2026
+    Due: 29 October 2026
+    Low: £0
+    Mid: £150
+    High: £500
+    Selected: £150
+    VAT Status: inc VAT planning allowance
+    Budget Status: Included in approved launch budget
+    includeInLaunchBudget: true
+    includeInRiskView: true
+    Must Do: No
+    Risk Flag: No
+    Notes: Lean invite-only soft launch.
+
+100. Professional Photography of Completed Clinic
+     Owner: David
+     Status: Not Started
+     Priority: Medium
+     Start: 7 November 2026
+     Due: 21 November 2026
+     Low: £0
+     Mid: £500
+     High: £862
+     Selected: £500
+     VAT Status: inc VAT planning allowance
+     Budget Status: Included in approved launch budget
+     includeInLaunchBudget: true
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: No
+     Notes: Completed clinic photography for website/ads/GBP.
+
+PHASE 10 — HANDOVER, SNAGGING & OPENING
+
+101. Contractor Handover Pack
+     Owner: Contractor
+     Status: Not Started
+     Priority: High
+     Start: 24 October 2026
+     Due: 7 November 2026
+     Low: £0
+     Mid: £0
+     High: £0
+     Selected: £0
+     VAT Status: N/A — included in contractor package
+     Budget Status: £0 admin task
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: Yes
+     Notes: Electrical certs, plumbing details, fire door info, warranties, as-builts, flooring specs, paint specs and handover evidence.
+
+102. Building Regulations Completion Certificate
+     Owner: Building Control / Approved Inspector
+     Status: Not Started
+     Priority: High
+     Start: 31 October 2026
+     Due: 14 November 2026
+     Low: £0
+     Mid: £0
+     High: £0
+     Selected: £0
+     VAT Status: included in Building Control allowance
+     Budget Status: Included inside another package
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: Yes
+     Notes: Completion sign-off. Cost captured in Building Control line.
+
+103. Snagging Inspection and Defects Close-Out
+     Owner: David + Abi + Contractor
+     Status: Not Started
+     Priority: High
+     Start: 31 October 2026
+     Due: 14 November 2026
+     Low: £0
+     Mid: £0
+     High: £500
+     Selected: £0
+     VAT Status: N/A — admin/sign-off task
+     Budget Status: £0 admin task
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: Yes
+     Notes: Final payment should not be released until critical snags and certificates are resolved.
+
+104. Professional Deep Clean Before Clinical Setup
+     Owner: Specialist Cleaner / Abi
+     Status: Not Started
+     Priority: Medium
+     Start: 9 November 2026
+     Due: 16 November 2026
+     Low: £250
+     Mid: £250
+     High: £800
+     Selected: £250
+     VAT Status: inc VAT planning allowance
+     Budget Status: Included in approved launch budget
+     includeInLaunchBudget: true
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: No
+     Notes: Post-works clean before stock and full clinical setup.
+
+105. Soft Launch Readiness
+     Owner: Abi + David
+     Status: Not Started
+     Priority: Critical
+     Start: 23 November 2026
+     Due: 30 November 2026
+     Low: £0
+     Mid: £0
+     High: £0
+     Selected: £0
+     VAT Status: N/A — admin task
+     Budget Status: £0 admin task
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: Yes
+     Notes: Final go/no-go before opening.
+
+PHASE 11 — DEFERRED / STRETCH ITEMS
+
+106. Healthcare Specialist Accountant
+     Owner: David
+     Status: Deferred
+     Priority: Low
+     Start: 1 November 2026
+     Due: 30 November 2026
+     Low: £0
+     Mid: £0
+     High: £2,400
+     Selected: £0
+     VAT Status: deferred / not in launch cap
+     Budget Status: Deferred / not in launch cap
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: No
+     Risk Flag: No
+     Notes: Do not include in launch cap unless manually activated.
+
+107. Business Continuity Plan — Paid Support
+     Owner: David
+     Status: Deferred
+     Priority: Medium
+     Start: 1 November 2026
+     Due: 30 November 2026
+     Low: £0
+     Mid: £0
+     High: £600
+     Selected: £0
+     VAT Status: deferred / not in launch cap
+     Budget Status: Deferred / not in launch cap
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: No
+     Risk Flag: No
+     Notes: Create internally first.
+
+108. Additional Retail / Skincare Stock Upgrade
+     Owner: Abi
+     Status: Deferred
+     Priority: Medium
+     Start: 1 November 2026
+     Due: 30 November 2026
+     Low: £0
+     Mid: £0
+     High: £7,000
+     Selected: £0
+     VAT Status: deferred / not in launch cap
+     Budget Status: Deferred / not in launch cap
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: No
+     Risk Flag: No
+     Notes: Additional retail stock beyond £1,000 opening lean allowance.
+
+109. FF&E / Styling Upgrade Reserve
+     Owner: Abi + David
+     Status: Deferred
+     Priority: Medium
+     Start: 1 November 2026
+     Due: 30 November 2026
+     Low: £0
+     Mid: £0
+     High: £7,000
+     Selected: £0
+     VAT Status: deferred / not in launch cap
+     Budget Status: Deferred / not in launch cap
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: No
+     Risk Flag: No
+     Notes: Only activate if core launch budget allows.
+
+110. Marketing Spend Upgrade
+     Owner: David
+     Status: Deferred
+     Priority: Medium
+     Start: 1 November 2026
+     Due: 30 January 2027
+     Low: £0
+     Mid: £0
+     High: £4,000
+     Selected: £0
+     VAT Status: deferred / not in launch cap
+     Budget Status: Deferred / not in launch cap
+     includeInLaunchBudget: false
+     includeInRiskView: true
+     Must Do: No
+     Risk Flag: No
+     Notes: Additional ad spend above lean launch budget.
+
+PHASE 12 — PROJECT CONTINGENCY
+
+111. Contingency Reserve — Controlled by David
+     Owner: David
+     Status: Not Started
+     Priority: Critical
+     Start: 3 June 2026
+     Due: 30 November 2026
+     Low: £2,000
+     Mid: £3,000
+     High: £10,000
+     Selected: £3,000
+     VAT Status: mixed
+     Budget Status: Included in approved launch budget
+     includeInLaunchBudget: true
+     includeInRiskView: true
+     Must Do: Yes
+     Risk Flag: Yes
+     Notes: Controlled reserve. Not pre-spend. Requires David approval before allocation.
+
+DASHBOARD REQUIREMENTS
+
+After rebuilding, the dashboard must show:
+
+1. Approved Launch Budget
+   Only include tasks where:
+   includeInLaunchBudget = true
+   and Budget Status = Included in approved launch budget
+
+2. True All-In Risk View
+   Include active tasks where includeInRiskView = true, including deferred and high-cost ranges.
+
+3. Excluded / Archived Total
+   Optional: show how much has been excluded from the old tracker, but do not include it in selected budget.
+
+Approved Launch Budget target:
+Must be approximately £60,000 inc VAT.
+If the sum comes out slightly above £60,000, show a warning and recommend reductions, but do not allow the default dashboard to show £100k+.
+
+Expected approximate approved launch categories:
+
+* Design / statutory / building works: about £46,500
+* Legal / lease / RICS / deposit: about £7,700
+* FF&E / equipment / styling: about £9,900
+* Clinical / compliance / stock: about £8,100
+* Finance / insurance / admin: about £2,800
+* Marketing / launch: about £2,900
+* Contingency: £3,000
+
+This totals above £60,000 if every single line is included. Therefore the dashboard must allow a controlled launch cap view and clearly show where reductions/deferrals are needed.
+
+Add this dashboard note:
+
+“David’s target launch cap is £60,000 inc VAT. The full clean tracker includes all known legal, build, FF&E, compliance, stock, marketing and contingency lines. If all core lines are included, the true cash requirement may sit closer to £65k–£70k. Anything above £70k is unapproved. Use the deferred/stretch toggles to protect the £60k working cap.”
+
+VALIDATION RULES
+
+After the rebuild, run validation:
+
+* No active task has missing start date.
+* No active task has missing due date.
+* No active task shows DueInvalid Date.
+* No active task has unknown VAT status.
+* No active task has missing phase.
+* No active task has missing owner.
+* No active task has missing budget status.
+* No duplicate active task names.
+* No active old STEP tasks remain in the launch budget.
+* Tender / quote task is £0.
+* Admin/procurement/decision tasks are £0 unless they represent genuine paid services.
+* Selected/default dashboard no longer shows £229,064.
+* Dashboard does not show £100k+ selected cost.
+* Approved launch budget and true all-in risk view are calculated separately.
+* Archived/superseded tasks are excluded from selected totals.
+
+FINAL OUTPUT
+
+When complete, report:
+
+* how many old tasks were archived
+* how many new clean tasks were created
+* approved launch budget total
+* true all-in risk exposure
+* any tasks still missing dates
+* any tasks still missing VAT status
+* any tasks excluded from the launch cap
+* whether the selected/default total is now below or around £60,000

@@ -7,7 +7,9 @@ const router = Router();
 
 router.get("/projects/:projectId/phases", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)).orderBy(phasesTable.sortOrder);
+  const phases = await db.select().from(phasesTable)
+    .where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")))
+    .orderBy(phasesTable.sortOrder);
 
   // Enrich with task counts and cost totals
   const enriched = await Promise.all(phases.map(async (phase) => {
@@ -62,7 +64,9 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const propertyId = req.query.propertyId ? parseInt(req.query.propertyId as string) : null;
 
-  const phases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)).orderBy(phasesTable.sortOrder);
+  const phases = await db.select().from(phasesTable)
+    .where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")))
+    .orderBy(phasesTable.sortOrder);
 
   // Pre-load property overrides for all tasks if a property context is requested
   let overrideMap = new Map<number, typeof propertyTaskOverridesTable.$inferSelect>();
