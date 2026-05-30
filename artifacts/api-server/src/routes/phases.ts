@@ -100,10 +100,11 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         dependencies: t.dependencies ? JSON.parse(t.dependencies) : [],
       };
     });
-    const totalCostLow = parsedTasks.reduce((sum, t) => sum + (t.costLow ?? 0), 0);
-    const totalCostMid = parsedTasks.reduce((sum, t) => sum + (t.costMid ?? 0), 0);
-    const totalCostHigh = parsedTasks.reduce((sum, t) => sum + (t.costHigh ?? 0), 0);
-    const selectedCostTotal = parsedTasks.reduce((sum, t) => sum + (t.selectedCost ?? 0), 0);
+    const activeTasks = parsedTasks.filter(t => t.status !== "superseded" && t.status !== "deferred");
+    const totalCostLow = activeTasks.reduce((sum, t) => sum + (t.costLow ?? 0), 0);
+    const totalCostMid = activeTasks.reduce((sum, t) => sum + (t.costMid ?? 0), 0);
+    const totalCostHigh = activeTasks.reduce((sum, t) => sum + (t.costHigh ?? 0), 0);
+    const selectedCostTotal = activeTasks.reduce((sum, t) => sum + (t.selectedCost ?? 0), 0);
     const completedTaskCount = parsedTasks.filter(t => t.status === "complete").length;
     return {
       ...phase,

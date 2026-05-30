@@ -1534,34 +1534,142 @@ export default function ProjectPage() {
             </div>
           )}
 
-          {/* Cost summary */}
-          <div className="pt-2 border-t border-border/50 flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">Benchmark: Low £47k · Mid £80k · High £132k (inc. fit-out, FF&amp;E &amp; stock)</p>
-            </div>
-            <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
-          </div>
-          {/* Warning: tasks with unknown VAT status */}
-          {(() => {
-            const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown").length ?? 0;
-            return vatUnknownCount > 0 ? (
-              <div className="mt-3 flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3">
-                <span className="text-amber-600 dark:text-amber-400 text-base shrink-0">⚠</span>
-                <div>
-                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{vatUnknownCount} task{vatUnknownCount !== 1 ? "s" : ""} have unknown VAT status</p>
-                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">Your selected cost total may be understated by up to 20%. Open each task and set the VAT status to clarify whether costs are inc. or ex. VAT before finalising your budget.</p>
-                </div>
+          {/* Budget Summary */}
+          <div className="pt-2 border-t border-border/50 space-y-3">
+            {/* Grand total */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-0.5">Active tasks only · inc VAT planning allowances · deferred &amp; superseded excluded</p>
               </div>
-            ) : null;
-          })()}
-          {/* Warning: premium fit-out quality */}
-          <div className="mt-2 flex items-start gap-2.5 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800 px-4 py-3">
-            <span className="text-blue-500 text-base shrink-0">ℹ</span>
-            <div>
-              <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Premium clinical fit-out quality matters</p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Abi Peters Aesthetics is a premium brand. A poor-quality finish will directly undermine client confidence and revenue. Budget accordingly: mid-range fit-out typically £50k, full premium (with FF&amp;E and opening stock) £80k–£132k. Do not cut finish quality to save budget — invest in areas clients see.</p>
+              <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
             </div>
+
+            {/* Traffic-light budget cap */}
+            {(() => {
+              const isGreen = totalSelectedCost <= 60000;
+              const isAmber = !isGreen && totalSelectedCost <= 70000;
+              const borderCls = isGreen
+                ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700"
+                : isAmber
+                ? "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
+                : "border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700";
+              const headCls = isGreen
+                ? "text-emerald-800 dark:text-emerald-300"
+                : isAmber ? "text-amber-800 dark:text-amber-300"
+                : "text-red-800 dark:text-red-300";
+              const bodyCls = isGreen
+                ? "text-emerald-700 dark:text-emerald-400"
+                : isAmber ? "text-amber-700 dark:text-amber-400"
+                : "text-red-700 dark:text-red-400";
+              const icon = isGreen ? "✓" : isAmber ? "⚠" : "✕";
+              const headline = isGreen
+                ? "Within £60k approved launch cap"
+                : isAmber
+                ? "STRETCH / RISK — above £60k target, within £70k outer limit"
+                : "RED FLAG — above £70k. Not approved without David's sign-off.";
+              return (
+                <div className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${borderCls}`}>
+                  <span className={`text-base shrink-0 font-bold ${headCls}`}>{icon}</span>
+                  <div>
+                    <p className={`text-sm font-semibold ${headCls}`}>{headline}</p>
+                    <p className={`text-xs mt-0.5 ${bodyCls}`}>
+                      David's approved launch cap is <strong>£60,000 inc VAT</strong>. Stretch / risk range: £60k–£70k. Anything above £70k is unapproved — use deferrals to control the selected total.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Category breakdown */}
+            {(() => {
+              const ph = (id: number) => phases?.find(p => p.id === id);
+              const cats = [
+                {
+                  label: "Build / design / statutory works",
+                  note: "Phase 3A",
+                  selected: ph(17)?.selectedCostTotal ?? 0,
+                  high: ph(17)?.totalCostHigh ?? 0,
+                },
+                {
+                  label: "Legal / lease / RICS / completion",
+                  note: "Phases 1–2",
+                  selected: (ph(10)?.selectedCostTotal ?? 0) + (ph(11)?.selectedCostTotal ?? 0),
+                  high: (ph(10)?.totalCostHigh ?? 0) + (ph(11)?.totalCostHigh ?? 0),
+                },
+                {
+                  label: "FF&E / styling / equipment",
+                  note: "Phase 8",
+                  selected: ph(18)?.selectedCostTotal ?? 0,
+                  high: ph(18)?.totalCostHigh ?? 0,
+                },
+                {
+                  label: "Clinical / compliance / stock",
+                  note: "Phases 4–5",
+                  selected: (ph(13)?.selectedCostTotal ?? 0) + (ph(14)?.selectedCostTotal ?? 0),
+                  high: (ph(13)?.totalCostHigh ?? 0) + (ph(14)?.totalCostHigh ?? 0),
+                },
+                {
+                  label: "Marketing / launch",
+                  note: "Phase 7",
+                  selected: ph(16)?.selectedCostTotal ?? 0,
+                  high: ph(16)?.totalCostHigh ?? 0,
+                },
+                {
+                  label: "Finance admin / contingency reserve",
+                  note: "Phase 6",
+                  selected: ph(15)?.selectedCostTotal ?? 0,
+                  high: ph(15)?.totalCostHigh ?? 0,
+                },
+              ];
+              const grandHigh = cats.reduce((s, c) => s + c.high, 0);
+              return (
+                <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
+                  <div className="bg-muted/50 px-3 py-1.5 grid grid-cols-[1fr_auto_auto] gap-4">
+                    <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Category</span>
+                    <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">Selected</span>
+                    <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">High risk</span>
+                  </div>
+                  {cats.map((c, i) => (
+                    <div key={i} className={`grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2 ${i % 2 !== 0 ? "bg-muted/20" : ""}`}>
+                      <div>
+                        <span className="text-foreground">{c.label}</span>
+                        <span className="text-muted-foreground/60 ml-1.5">{c.note}</span>
+                      </div>
+                      <span className="font-semibold w-20 text-right tabular-nums">{formatGBP(c.selected)}</span>
+                      <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(c.high)}</span>
+                    </div>
+                  ))}
+                  <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2 border-t bg-muted/40 font-bold">
+                    <span>Grand total</span>
+                    <span className={`w-20 text-right tabular-nums ${totalSelectedCost > 70000 ? "text-destructive" : totalSelectedCost > 60000 ? "text-amber-600 dark:text-amber-400" : ""}`}>{formatGBP(totalSelectedCost)}</span>
+                    <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(grandHigh)}</span>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* True all-in note */}
+            <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-4 py-3">
+              <span className="text-muted-foreground text-sm shrink-0">ℹ</span>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                <strong>True all-in risk model:</strong> If all legal, lease, RICS, compliance, stock, marketing and contingency lines are included, the full cash requirement may sit closer to £65k–£70k. The £60k target is achievable only by controlling FF&amp;E, stock, marketing, and deferring non-essential spend.
+              </p>
+            </div>
+
+            {/* Warning: tasks with unknown VAT status */}
+            {(() => {
+              const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown").length ?? 0;
+              return vatUnknownCount > 0 ? (
+                <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3">
+                  <span className="text-amber-600 dark:text-amber-400 text-base shrink-0">⚠</span>
+                  <div>
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{vatUnknownCount} task{vatUnknownCount !== 1 ? "s" : ""} with unknown VAT status</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">The selected total above may be understated if some costs are ex-VAT. Open each task and confirm VAT status before finalising the budget.</p>
+                  </div>
+                </div>
+              ) : null;
+            })()}
           </div>
         </CardContent>
       </Card>
