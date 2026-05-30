@@ -3992,14 +3992,14 @@ export default function FinancialsPage() {
 
           {/* ── Business Valuation ──────────────────────────────────────────── */}
           {(() => {
+            const y1    = investmentSummary?.annualSummary?.y1;
             const y2    = investmentSummary?.annualSummary?.y2;
-            const y3    = investmentSummary?.annualSummary?.y3;
+            const y1d   = y1?.distributable ?? 0;
             const y2d   = y2?.distributable ?? 0;
-            const y3d   = y3?.distributable ?? 0;
-            const y3r   = y3?.revenue ?? 0;
-            const ready = !!y2;
-            const preMoney  = ready ? Math.round(y2d * valuationMultiple) : 0;
-            const preMoney3 = ready && y3 ? Math.round(y3d * valuationMultiple) : 0;
+            const y2r   = y2?.revenue ?? 0;
+            const ready = !!y1;
+            const preMoney  = ready ? Math.round(y1d * valuationMultiple) : 0;
+            const preMoney2 = ready && y2 ? Math.round(y2d * valuationMultiple) : 0;
             const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
               { val: 5,  label: "5×", desc: "Conservative" },
               { val: 7,  label: "7×", desc: "Base case" },
@@ -4014,7 +4014,7 @@ export default function FinancialsPage() {
                     <span className="ml-auto text-[10px] text-muted-foreground">Pre-money estimate</span>
                   </div>
                   <CardDescription className="text-xs mt-1">
-                    Indicative pre-money valuation based on the first full 12-month trading year (FY27/28) distributable profit — the standard approach for small UK aesthetics practices. Steady-state (FY28/29) shown as reference.
+                    Indicative pre-money valuation. Year 1 ({y1?.fyLabel ?? "FY26/27"}) is the ramp-up trading year — conservative basis. Year 2 ({y2?.fyLabel ?? "FY27/28"}) is the first full stable year — shown as reference.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -4040,19 +4040,19 @@ export default function FinancialsPage() {
                     <div className="space-y-2">
                       <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
                         <div>
-                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — FY27/28 (first full year)</div>
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money — Year 1 ramp-up ({y1?.fyLabel ?? "FY26/27"}, {y1?.tradingMonths ?? 9} trading months)</div>
                           <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
-                          <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y2d)} distributable × {valuationMultiple}×</div>
+                          <div className="text-[11px] text-muted-foreground mt-1">{formatGBP(y1d)} distributable × {valuationMultiple}×</div>
                         </div>
                         <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[160px]">
-                          <div className="font-semibold text-foreground text-xs">Steady state (FY28/29)</div>
-                          <div className="text-lg font-bold text-foreground tabular-nums">{formatGBP(preMoney3)}</div>
-                          <div className="text-[10px]">{formatGBP(y3d)} distributable × {valuationMultiple}×</div>
+                          <div className="font-semibold text-foreground text-xs">Year 2 stable ({y2?.fyLabel ?? "FY27/28"})</div>
+                          <div className="text-lg font-bold text-foreground tabular-nums">{formatGBP(preMoney2)}</div>
+                          <div className="text-[10px]">{formatGBP(y2d)} distributable × {valuationMultiple}×</div>
                         </div>
                       </div>
                       <div className="rounded-md bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex justify-between">
-                        <span>Revenue cross-check (FY28/29 steady state)</span>
-                        <span className="font-semibold text-foreground">{y3r ? formatGBP(y3r) : "—"}</span>
+                        <span>Revenue cross-check (Year 2 stable, {y2?.fyLabel ?? "FY27/28"})</span>
+                        <span className="font-semibold text-foreground">{y2r ? formatGBP(y2r) : "—"}</span>
                       </div>
                     </div>
                   ) : (
@@ -4072,7 +4072,7 @@ export default function FinancialsPage() {
                     </div>
                   )}
                   <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
-                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to the first full 12-month trading year (FY27/28) distributable profit. FY26/27 is excluded as a micro-year (9 trading months from opening). Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
+                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to Year 1 distributable profit ({y1?.fyLabel ?? "FY26/27"}, {y1?.tradingMonths ?? 9} trading months from opening). This is a conservative basis reflecting the ramp-up phase. Year 2 ({y2?.fyLabel ?? "FY27/28"}, first full stable year) is shown as an upside reference. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
                   </div>
                 </CardContent>
               </Card>
