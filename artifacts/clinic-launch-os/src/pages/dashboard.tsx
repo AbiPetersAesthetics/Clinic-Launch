@@ -225,11 +225,16 @@ export default function DashboardPage() {
 
   // ── Funding Analysis widget ───────────────────────────────────────────────
   const [fundingAnalysis, setFundingAnalysis] = useState<any>(null);
+  const [invSummary, setInvSummary] = useState<any>(null);
 
   useEffect(() => {
     fetch("/api/projects/1/funding-analysis")
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d) setFundingAnalysis(d); })
+      .catch(() => {});
+    fetch("/api/projects/1/investment-summary")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setInvSummary(d); })
       .catch(() => {});
   }, []);
 
@@ -1012,8 +1017,26 @@ export default function DashboardPage() {
       })()}
 
       {/* 0b. Funding Strategy Widget */}
-      {fundingAnalysis && (() => {
+      {(fundingAnalysis || invSummary) && (() => {
         const fa = fundingAnalysis;
+        const is = invSummary;
+
+        // ── Live investment need tiers (always from cashflow model) ──────────
+        const y1 = is?.annualSummary?.y1;
+        const y1d = y1?.distributable ?? 0;
+        const preMoney = Math.round(y1d * 7); // 7× base earnings multiple
+        // cashflow min balance drives deficit calculation — approximate from investmentSummary
+        const bizCap    = is?.businessCapitalGbp ?? 0;
+        const projCost  = is?.capitalSelectedGbp ?? 0;
+        const bedhNet   = is?.preOpenBedhNetGbp  ?? 0;
+        const approxMin = bizCap + bedhNet - projCost; // approximate worst-case
+        const deficit   = Math.max(0, -approxMin);
+        const fixedMo   = y1 ? Math.round(y1.fixedCosts / (y1.tradingMonths || 12)) : 0;
+        const lowAmt    = deficit + fixedMo * 2;
+        const medAmt    = Math.round(lowAmt * 1.25);
+        const highAmt   = Math.round(medAmt * 1.30);
+        const medEquity = preMoney > 0 ? ((medAmt / (preMoney + medAmt)) * 100).toFixed(1) : null;
+
         const VERDICT_COLORS: Record<string, { bg: string; border: string; badge: string; icon: string }> = {
           LOAN_RECOMMENDED:   { bg: "bg-blue-50/40 dark:bg-blue-950/20",     border: "border-blue-200 dark:border-blue-800",     badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",     icon: "💳" },
           EQUITY_RECOMMENDED: { bg: "bg-violet-50/40 dark:bg-violet-950/20", border: "border-violet-200 dark:border-violet-800", badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300", icon: "🤝" },
@@ -1021,26 +1044,27 @@ export default function DashboardPage() {
           SELF_FUND:          { bg: "bg-emerald-50/40 dark:bg-emerald-950/20",border: "border-emerald-200 dark:border-emerald-800",badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",icon: "✅" },
           INSUFFICIENT_DATA:  { bg: "",  border: "border-border/60", badge: "bg-muted text-muted-foreground", icon: "❓" },
         };
-        const vc = VERDICT_COLORS[fa.verdict] ?? VERDICT_COLORS.INSUFFICIENT_DATA;
+        const vc = VERDICT_COLORS[fa?.verdict] ?? VERDICT_COLORS.INSUFFICIENT_DATA;
         return (
           <Card className={`shadow-sm border ${vc.border} ${vc.bg}`}>
-            <CardContent className="p-4">
+            <CardContent className="p-4 space-y-3">
+              {/* Header row */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3 min-w-0">
                   <Sparkles className="w-4 h-4 text-primary/70 shrink-0 mt-0.5" />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-sm font-semibold text-foreground">AI Funding Adviser</span>
-                      {fa.verdictLabel && (
+                      <span className="text-sm font-semibold text-foreground">Funding Strategy</span>
+                      {fa?.verdictLabel && (
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${vc.badge}`}>
                           {vc.icon} {fa.verdictLabel}
                         </span>
                       )}
                     </div>
-                    {fa.dashboardSummary && (
+                    {fa?.dashboardSummary && (
                       <p className="text-xs text-muted-foreground leading-snug">{fa.dashboardSummary}</p>
                     )}
-                    {fa.repaymentCapacity?.debtServiceCoverRatio != null && (
+                    {fa?.repaymentCapacity?.debtServiceCoverRatio != null && (
                       <p className="text-[10px] text-muted-foreground mt-1">
                         Debt service cover: <span className={`font-semibold ${fa.repaymentCapacity.debtServiceCoverRatio >= 1.5 ? "text-emerald-600" : fa.repaymentCapacity.debtServiceCoverRatio >= 1 ? "text-amber-600" : "text-red-600"}`}>{fa.repaymentCapacity.debtServiceCoverRatio.toFixed(2)}×</span>
                         {fa.repaymentCapacity.maxAffordableMonthlyGbp != null && (
@@ -1054,27 +1078,37 @@ export default function DashboardPage() {
                   Full analysis <ChevronRight className="w-3 h-3" />
                 </Link>
               </div>
-              {fa.investmentGap && (
-                <div className="mt-3 pt-3 border-t border-border/40">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Investment Gap</p>
+
+              {/* Valuation + investment need row */}
+              {is && lowAmt > 0 && (
+                <div className="pt-2 border-t border-border/40 space-y-2">
+                  {/* Valuation KPI */}
+                  {preMoney > 0 && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Pre-money valuation <span className="text-[10px]">(7× Y1 earnings)</span></span>
+                      <span className="font-bold text-primary tabular-nums">£{preMoney.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {/* Investment need tiers */}
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Investment need</p>
                   <div className="grid grid-cols-3 gap-2">
                     {[
-                      { key: "low",    label: "Low",    amount: fa.investmentGap.gapLow,    sublabel: fa.investmentGap.lowLabel,    color: "text-amber-700 dark:text-amber-400",   bg: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800" },
-                      { key: "medium", label: "Medium", amount: fa.investmentGap.gapMedium, sublabel: fa.investmentGap.mediumLabel, color: "text-primary",                           bg: "bg-primary/5 border-primary/25",          recommended: fa.investmentGap.recommendedTier === "medium" || !fa.investmentGap.recommendedTier },
-                      { key: "high",   label: "High",   amount: fa.investmentGap.gapHigh,   sublabel: fa.investmentGap.highLabel,   color: "text-blue-700 dark:text-blue-400",     bg: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" },
+                      { label: "Low",    amount: lowAmt,  sublabel: "Deficit + 2mo WC",      color: "text-amber-700 dark:text-amber-400",  bg: "bg-amber-50/60 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800" },
+                      { label: "Medium", amount: medAmt,  sublabel: "Low + 25% contingency", color: "text-primary",                          bg: "bg-primary/5 border-primary/25",         recommended: true,
+                        equity: medEquity },
+                      { label: "High",   amount: highAmt, sublabel: "Medium + 30% safety",   color: "text-blue-700 dark:text-blue-400",    bg: "bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800" },
                     ].map(t => (
-                      <div key={t.key} className={`relative rounded-md border p-2 text-center ${t.bg}`}>
+                      <div key={t.label} className={`relative rounded-md border p-2 text-center ${t.bg}`}>
                         {(t as any).recommended && <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[9px] font-bold text-primary bg-background border border-primary/30 px-1.5 rounded-full whitespace-nowrap">★ Rec.</span>}
-                        <div className={`text-sm font-bold tabular-nums mt-1 ${t.color}`}>
-                          {t.amount === 0 ? <span className="text-emerald-600 text-xs font-semibold">Funded ✓</span> : `£${Math.round(t.amount).toLocaleString()}`}
-                        </div>
+                        <div className={`text-sm font-bold tabular-nums mt-1 ${t.color}`}>£{t.amount.toLocaleString()}</div>
                         <div className="text-[10px] font-semibold text-muted-foreground">{t.label}</div>
-                        {t.sublabel && <div className="text-[9px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{t.sublabel}</div>}
+                        <div className="text-[9px] text-muted-foreground leading-tight mt-0.5">{t.sublabel}</div>
+                        {(t as any).equity && <div className="text-[9px] font-semibold text-primary mt-0.5">{(t as any).equity}% equity</div>}
                       </div>
                     ))}
                   </div>
-                  {fa.investmentGap.gapNarrative && (
-                    <p className="text-[10px] text-muted-foreground mt-2 leading-snug">{fa.investmentGap.gapNarrative}</p>
+                  {fa?.investmentGap?.gapNarrative && (
+                    <p className="text-[10px] text-muted-foreground leading-snug">{fa.investmentGap.gapNarrative}</p>
                   )}
                 </div>
               )}

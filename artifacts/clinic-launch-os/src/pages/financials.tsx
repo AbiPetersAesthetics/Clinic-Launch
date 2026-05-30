@@ -420,6 +420,8 @@ export default function FinancialsPage() {
   const [additionalClinicians, setAdditionalClinicians] = useState<{id: string; name: string; startDate: string; salaryGbp?: number}[]>([]);
   const [addingInvType, setAddingInvType] = useState<"loan" | "equity" | null>(null);
   const [addingShareholder, setAddingShareholder] = useState(false);
+  const [valuationMultiple, setValuationMultiple] = useState<5 | 7 | 10>(7);
+  const [selectedInvTier, setSelectedInvTier] = useState<"low" | "medium" | "high" | null>(null);
   const [editingInv, setEditingInv] = useState<any | null>(null);
   const [editingSh, setEditingSh] = useState<any | null>(null);
   const [newInv, setNewInv] = useState({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
@@ -4561,6 +4563,73 @@ export default function FinancialsPage() {
             </CardContent>
           </Card>
 
+          {/* ── Business Valuation ──────────────────────────────────────────── */}
+          {investmentSummary?.annualSummary?.y1 && (() => {
+            const y1d = investmentSummary.annualSummary.y1.distributable ?? 0;
+            const y1r = investmentSummary.annualSummary.y1.revenue ?? 0;
+            const preMoney = Math.round(y1d * valuationMultiple);
+            const multiples: { val: 5 | 7 | 10; label: string; desc: string }[] = [
+              { val: 5,  label: "5×", desc: "Conservative" },
+              { val: 7,  label: "7×", desc: "Base case" },
+              { val: 10, label: "10×", desc: "Growth" },
+            ];
+            return (
+              <Card className="shadow-sm border-border/60">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <PieChart className="w-4 h-4 text-primary/70 shrink-0" />
+                    <CardTitle className="text-base">Business Valuation</CardTitle>
+                    <span className="ml-auto text-[10px] text-muted-foreground">Pre-money estimate</span>
+                  </div>
+                  <CardDescription className="text-xs mt-1">
+                    Indicative pre-money valuation based on Year 1 distributable profit using an earnings multiple — the standard approach for small UK aesthetics practices at this stage.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Multiple selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Earnings multiple:</span>
+                    <div className="flex gap-1.5">
+                      {multiples.map(m => (
+                        <button
+                          key={m.val}
+                          onClick={() => setValuationMultiple(m.val)}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
+                            valuationMultiple === m.val
+                              ? "bg-primary text-primary-foreground border-primary"
+                              : "border-border text-muted-foreground hover:border-primary/40"
+                          }`}
+                        >
+                          {m.label} <span className="font-normal opacity-70">{m.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Valuation figure */}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-0.5">Pre-money valuation</div>
+                      <div className="text-3xl font-bold text-primary tabular-nums">{formatGBP(preMoney)}</div>
+                      <div className="text-[11px] text-muted-foreground mt-1">
+                        {formatGBP(y1d)} Y1 distributable × {valuationMultiple}×
+                      </div>
+                    </div>
+                    <div className="text-right text-[11px] text-muted-foreground space-y-1 max-w-[180px]">
+                      <div>Revenue cross-check: <span className="font-semibold text-foreground">{formatGBP(Math.round(y1r * 1.2))}</span> (1.2× revenue)</div>
+                      <div className="text-[10px] leading-snug opacity-80">A professional valuation would also include goodwill, brand, equipment, and growth trajectory.</div>
+                    </div>
+                  </div>
+
+                  {/* Methodology note */}
+                  <div className="rounded-md bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground leading-relaxed">
+                    <span className="font-semibold text-foreground">Methodology:</span> Earnings multiple applied to Year 1 distributable profit — the most common pre-revenue UK small-business valuation method. Conservative (5×) is appropriate for an unproven clinic; base case (7×) reflects established aesthetics practice comparables; growth (10×) prices in brand expansion potential. This is an indicative figure — any external fundraise should be supported by a formal valuation.
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
           {/* ── Investment Gap ──────────────────────────────────────────────── */}
           {(() => {
             const fa  = fundingAnalysis;
@@ -4697,25 +4766,79 @@ export default function FinancialsPage() {
                     <p className="text-xs text-muted-foreground italic">Run the AI Funding Analysis below to generate tailored gap scenarios with full narrative.</p>
                   )}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {tiers.map(tier => (
-                      <div key={tier.key} className={`relative rounded-lg border p-4 space-y-2 ${tier.color.border} ${tier.color.bg}`}>
-                        {(tier as any).recommended && (
-                          <span className={`absolute -top-2 left-3 text-[10px] font-semibold px-2 py-0.5 rounded-full ${tier.color.badge}`}>
-                            ★ Recommended
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full shrink-0 ${tier.color.dot}`} />
-                          <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tier.label}</span>
+                    {tiers.map(tier => {
+                      const isSelected = selectedInvTier === tier.key;
+                      return (
+                        <div
+                          key={tier.key}
+                          onClick={() => setSelectedInvTier(isSelected ? null : tier.key as any)}
+                          className={`relative rounded-lg border p-4 space-y-2 cursor-pointer transition-all ${tier.color.border} ${tier.color.bg} ${isSelected ? "ring-2 ring-primary ring-offset-1" : "hover:shadow-md"}`}
+                        >
+                          {(tier as any).recommended && (
+                            <span className={`absolute -top-2 left-3 text-[10px] font-semibold px-2 py-0.5 rounded-full ${tier.color.badge}`}>
+                              ★ Recommended
+                            </span>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${tier.color.dot}`} />
+                              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tier.label}</span>
+                            </div>
+                            {isSelected && <span className="text-[10px] text-primary font-semibold">▼ Equity calc</span>}
+                          </div>
+                          <div className="text-2xl font-bold tabular-nums">
+                            {formatGBP(tier.amount)}
+                          </div>
+                          <div className="text-[11px] font-medium text-foreground/80">{tier.sublabel}</div>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">{tier.detail}</p>
                         </div>
-                        <div className="text-2xl font-bold tabular-nums">
-                          {formatGBP(tier.amount)}
-                        </div>
-                        <div className="text-[11px] font-medium text-foreground/80">{tier.sublabel}</div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{tier.detail}</p>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
+
+                  {/* ── Equity calculator — shows when a tier is selected ── */}
+                  {selectedInvTier && (() => {
+                    const tier = tiers.find(t => t.key === selectedInvTier)!;
+                    const y1d = (is as any)?.annualSummary?.y1?.distributable ?? 0;
+                    const preMoney = Math.round(y1d * valuationMultiple);
+                    const postMoney = preMoney + tier.amount;
+                    const equityPct = preMoney > 0 ? (tier.amount / postMoney) * 100 : 0;
+                    const founderRetains = 100 - equityPct;
+                    return (
+                      <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs font-semibold text-primary uppercase tracking-wide">
+                            Equity calculator — {tier.label} raise ({formatGBP(tier.amount)})
+                          </div>
+                          <button onClick={() => setSelectedInvTier(null)} className="text-muted-foreground hover:text-foreground text-xs">✕</button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { label: "Investment", value: formatGBP(tier.amount), sub: `${tier.label} tier raise` },
+                            { label: "Pre-money valuation", value: formatGBP(preMoney), sub: `Y1 distributable × ${valuationMultiple}×` },
+                            { label: "Post-money valuation", value: formatGBP(postMoney), sub: "pre-money + raise" },
+                            { label: "Equity given up", value: `${equityPct.toFixed(1)}%`, sub: `Founder retains ${founderRetains.toFixed(1)}%`, highlight: true },
+                          ].map(k => (
+                            <div key={k.label} className={`rounded-md p-3 ${(k as any).highlight ? "bg-primary text-primary-foreground" : "bg-background border border-border/60"}`}>
+                              <div className={`text-[10px] uppercase tracking-wide font-semibold mb-1 ${(k as any).highlight ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{k.label}</div>
+                              <div className={`text-lg font-bold tabular-nums ${(k as any).highlight ? "" : ""}`}>{k.value}</div>
+                              <div className={`text-[10px] mt-0.5 ${(k as any).highlight ? "text-primary-foreground/70" : "text-muted-foreground"}`}>{k.sub}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {preMoney > 0 ? (
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            Raising {formatGBP(tier.amount)} at a pre-money valuation of {formatGBP(preMoney)} ({valuationMultiple}× Y1 earnings) implies a post-money of {formatGBP(postMoney)}.
+                            An investor at this tier would receive <strong className="text-foreground">{equityPct.toFixed(1)}% equity</strong> — you retain <strong className="text-foreground">{founderRetains.toFixed(1)}%</strong>.
+                            {equityPct < 15 ? " This is a relatively low dilution for a seed-stage raise, making it attractive for both sides." : equityPct < 25 ? " This is within typical seed-stage dilution range for a UK small business." : " This is meaningful dilution — consider whether the valuation multiple should be increased, or whether the raise can be structured with a loan component to reduce equity given up."}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-muted-foreground italic">Set your financial assumptions to generate a valuation and equity calculation.</p>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {committed > 0 && (
                     <div className="flex items-center gap-2 text-[11px] text-muted-foreground border-t border-border/30 pt-3">
                       <span className="font-semibold text-emerald-700">{formatGBP(committed)}</span>
