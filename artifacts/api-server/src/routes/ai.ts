@@ -6,6 +6,8 @@ import {
   phasesTable, tasksTable, decisionsTable,
   complianceItemsTable, cqcMilestonesTable,
   lifestylePlanTable, competitorsTable,
+  investmentsTable, projectAiAnalysesTable,
+  propertyTaskOverridesTable,
 } from "@workspace/db";
 import { eq, desc, inArray } from "drizzle-orm";
 import { getBedhamptonContext, fetchBedhamptonLive } from "./bedhampton";
@@ -1447,6 +1449,210 @@ router.post("/projects/:projectId/financial/apply-proposal", async (req, res) =>
   const updatedItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
 
   return res.json({ model: updatedModel, fixedCostItems: updatedItems });
+});
+
+// ─── Funding Analysis ─────────────────────────────────────────────────────────
+
+// GET  /api/projects/:projectId/funding-analysis  — fetch latest saved analysis
+router.get("/projects/:projectId/funding-analysis", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const rows = await db.select()
+    .from(projectAiAnalysesTable)
+    .where(eq(projectAiAnalysesTable.projectId, projectId))
+    .orderBy(desc(projectAiAnalysesTable.createdAt))
+    .limit(1);
+  if (!rows.length) return res.json(null);
+  return res.json({ ...rows[0].resultJson as object, _savedAt: rows[0].createdAt, _contextNote: rows[0].contextNote });
+});
+
+// POST /api/projects/:projectId/funding-analysis  — run AI analysis
+router.post("/projects/:projectId/funding-analysis", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const contextNote: string = (req.body.contextNote ?? "").trim();
+
+  // ── 1. Load raw data ───────────────────────────────────────────────────────
+  const [investments, fin, fixedCostItems] = await Promise.all([
+    db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
+    db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).then(r => r[0] ?? null),
+    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+  ]);
+
+  // ── 2. Capital requirement from tasks + overrides ─────────────────────────
+  const { sql: sqlTmpl } = await import("drizzle-orm");
+  const taskRows = await db.execute(sqlTmpl`
+    SELECT
+      t.id,
+      t.status,
+      COALESCE(pto.selected_cost_gbp, t.selected_cost_gbp)  AS selected_cost,
+      COALESCE(pto.high_risk_cost_gbp, t.high_risk_cost_gbp) AS high_risk_cost,
+      COALESCE(pto.status, t.status) AS eff_status
+    FROM tasks t
+    JOIN phases ph ON ph.id = t.phase_id
+    LEFT JOIN property_task_overrides pto
+      ON pto.task_id = t.id AND pto.property_id = 11
+    WHERE ph.project_id = ${projectId}
+      AND COALESCE(pto.status, t.status) NOT IN ('superseded','deferred')
+  `);
+  const capitalSelected = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.selected_cost ?? 0), 0);
+  const capitalHighRisk  = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.high_risk_cost ?? 0), 0);
+
+  // ── 3. Quick financial projections (FY1-3) ────────────────────────────────
+  const loans   = investments.filter(i => i.type === "loan");
+  const equity  = investments.filter(i => i.type === "equity");
+  const totalCapital = investments.reduce((s, i) => s + (i.amountGbp ?? 0), 0);
+  const totalEquityPct = equity.reduce((s, i) => s + (i.equityPercent ?? 0), 0);
+
+  function monthlyRepaymentCalc(principal: number, annualRate: number, term: number): number {
+    if (term <= 0 || principal <= 0) return 0;
+    if (annualRate <= 0) return principal / term;
+    const r = annualRate / 100 / 12;
+    return principal * (r * Math.pow(1 + r, term)) / (Math.pow(1 + r, term) - 1);
+  }
+
+  const totalMonthlyLoanRepayment = loans.reduce((s, l) => {
+    return s + monthlyRepaymentCalc(l.amountGbp ?? 0, l.interestRatePercent ?? 0, l.repaymentTermMonths ?? 0);
+  }, 0);
+
+  const acv           = (fin as any)?.wincAcvGbp || (fin as any)?.averageClientValueGbp || 155;
+  const rooms         = (fin as any)?.treatmentRoomsCount ?? 1;
+  const hours         = (fin as any)?.practitionerHoursPerDay ?? 7;
+  const days          = (fin as any)?.workingDaysPerMonth ?? 17;
+  const realisticOcc  = ((fin as any)?.realisticOccupancyPercent ?? 65) / 100;
+  const slotsPerMonth = rooms * hours * days;
+  const monthlyRevenue = slotsPerMonth * realisticOcc * acv + ((fin as any)?.membershipRevenueGbp ?? 0);
+
+  const fixedMonthly  = fixedCostItems.length > 0
+    ? fixedCostItems.reduce((s, i) => s + (i.amountGbp ?? 0), 0)
+    : ((fin as any)?.rentGbp ?? 0) + ((fin as any)?.ratesGbp ?? 0) + ((fin as any)?.utilitiesGbp ?? 0) +
+      ((fin as any)?.insuranceGbp ?? 0) + ((fin as any)?.accountantGbp ?? 0) + ((fin as any)?.softwareGbp ?? 0);
+
+  const variableRatio    = (((fin as any)?.stockPercent ?? 12) + ((fin as any)?.commissionsPercent ?? 0)) / 100;
+  const variableMonthly  = monthlyRevenue * variableRatio + ((fin as any)?.marketingGbp ?? 0);
+  const directorSalary   = (fin as any)?.ownerDrawingsGbp || (fin as any)?.targetDrawingsGbp || 0;
+  const grossMonthlyProfit = monthlyRevenue - variableMonthly - fixedMonthly;
+  const netMonthlyBeforeDirector = grossMonthlyProfit;
+  const netMonthlyAfterAll = netMonthlyBeforeDirector - (directorSalary / 12) - totalMonthlyLoanRepayment;
+
+  // FY estimates (approximated — real computation is in investments.ts)
+  const fy1Revenue = monthlyRevenue * 7;   // ~7 trading months in FY1
+  const fy2Revenue = monthlyRevenue * 12;
+  const fy3Revenue = monthlyRevenue * 12 * 1.08;
+  const grossMargin = monthlyRevenue > 0 ? (grossMonthlyProfit / monthlyRevenue) : 0;
+
+  // ── 4. Build prompt ───────────────────────────────────────────────────────
+  const financialContext = `
+CAPITAL REQUIREMENT (all-in fit-out + working capital):
+- Selected (base) cost: £${Math.round(capitalSelected).toLocaleString()}
+- High-risk (worst-case) cost: £${Math.round(capitalHighRisk).toLocaleString()}
+
+FUNDING ALREADY MODELLED IN DB:
+- Total capital committed: £${Math.round(totalCapital).toLocaleString()}
+- Loans: ${loans.length > 0 ? loans.map(l => `${l.name}: £${l.amountGbp?.toLocaleString()} at ${l.interestRatePercent}% over ${l.repaymentTermMonths} months`).join("; ") : "None"}
+- Equity investors: ${equity.length > 0 ? equity.map(e => `${e.name}: £${e.amountGbp?.toLocaleString()} for ${e.equityPercent}% equity`).join("; ") : "None"}
+- Total equity given up: ${totalEquityPct.toFixed(1)}%
+- Total monthly loan repayment: £${Math.round(totalMonthlyLoanRepayment).toLocaleString()}
+
+FINANCIAL MODEL (Winchester clinic, realistic scenario):
+- Avg treatment value: £${acv}
+- Treatment slots/month: ${slotsPerMonth}
+- Realistic occupancy: ${Math.round(realisticOcc * 100)}%
+- Est. monthly revenue at realistic occupancy: £${Math.round(monthlyRevenue).toLocaleString()}
+- Monthly fixed costs: £${Math.round(fixedMonthly).toLocaleString()}
+- Monthly variable costs: £${Math.round(variableMonthly).toLocaleString()}
+- Director salary (annual): £${Math.round(directorSalary).toLocaleString()}
+- Gross monthly profit: £${Math.round(grossMonthlyProfit).toLocaleString()}
+- Net monthly after director + loan repayments: £${Math.round(netMonthlyAfterAll).toLocaleString()}
+- Gross margin: ${(grossMargin * 100).toFixed(1)}%
+
+3-YEAR REVENUE TRAJECTORY (approximated, realistic scenario):
+- FY1 (Aug 2026–Jul 2027, ~7 trading months): £${Math.round(fy1Revenue).toLocaleString()}
+- FY2 (full year, +0%): £${Math.round(fy2Revenue).toLocaleString()}
+- FY3 (full year, +8% growth): £${Math.round(fy3Revenue).toLocaleString()}
+`.trim();
+
+  const userContext = contextNote
+    ? `\n\nADDITIONAL CONTEXT FROM ABI:\n${contextNote}`
+    : "\n\nNo additional context provided.";
+
+  const prompt = `${financialContext}${userContext}
+
+Based on this data, provide a structured funding strategy analysis for Abi's Winchester clinic launch. Consider:
+1. Can the projected cash flows service debt comfortably?
+2. Is the capital requirement achievable through loan alone, equity alone, hybrid, or self-funding?
+3. What are the specific risks and opportunity costs of each route?
+4. What are the concrete next steps?
+
+Respond with ONLY valid JSON (no markdown, no prose outside JSON) in this exact structure:
+{
+  "verdict": "LOAN_RECOMMENDED" | "EQUITY_RECOMMENDED" | "HYBRID" | "SELF_FUND" | "INSUFFICIENT_DATA",
+  "verdictLabel": "string (short label, e.g. 'Loan Finance Recommended')",
+  "verdictSummary": "string (2-3 sentence overall verdict)",
+  "recommendation": "string (3-5 sentence detailed recommendation paragraph)",
+  "loanCase": {
+    "suitabilityScore": number (1-10),
+    "pros": ["string", ...],
+    "cons": ["string", ...],
+    "suggestedAmount": number (GBP),
+    "suggestedTermMonths": number,
+    "estimatedMonthlyRepayment": number (GBP),
+    "affordabilityNote": "string"
+  },
+  "equityCase": {
+    "suitabilityScore": number (1-10),
+    "pros": ["string", ...],
+    "cons": ["string", ...],
+    "dilutionRisk": "Low" | "Medium" | "High",
+    "dilutionNote": "string"
+  },
+  "selfFundCase": {
+    "feasible": boolean,
+    "suitabilityScore": number (1-10),
+    "pros": ["string", ...],
+    "cons": ["string", ...],
+    "note": "string"
+  },
+  "repaymentCapacity": {
+    "maxAffordableMonthlyGbp": number,
+    "debtServiceCoverRatio": number,
+    "breakEvenNote": "string",
+    "capacityNote": "string"
+  },
+  "keyRisks": ["string", ...],
+  "actionItems": ["string", ...],
+  "dashboardSummary": "string (≤12 words for dashboard widget)"
+}`;
+
+  // ── 5. Call OpenAI ────────────────────────────────────────────────────────
+  const completion = await openai.chat.completions.create({
+    model: "gpt-4.1",
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.3,
+    max_tokens: 2000,
+  });
+
+  const raw = completion.choices[0]?.message?.content ?? "{}";
+  let result: any;
+  try {
+    result = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());
+  } catch {
+    return res.status(500).json({ error: "AI returned malformed JSON", raw });
+  }
+
+  // ── 6. Persist ────────────────────────────────────────────────────────────
+  await db.delete(projectAiAnalysesTable)
+    .where(eq(projectAiAnalysesTable.projectId, projectId));
+
+  const [saved] = await db.insert(projectAiAnalysesTable).values({
+    projectId,
+    analysisType: "funding",
+    contextNote,
+    resultJson: result,
+  }).returning();
+
+  return res.json({ ...result, _savedAt: saved.createdAt, _contextNote: contextNote });
 });
 
 export default router;

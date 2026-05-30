@@ -223,6 +223,16 @@ export default function DashboardPage() {
   const [goNoGoStale, setGoNoGoStale] = useState(false);
   const [goNoGoCachedAt, setGoNoGoCachedAt] = useState<string | null>(null);
 
+  // ── Funding Analysis widget ───────────────────────────────────────────────
+  const [fundingAnalysis, setFundingAnalysis] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/projects/1/funding-analysis")
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setFundingAnalysis(d); })
+      .catch(() => {});
+  }, []);
+
   const [leaseSummary, setLeaseSummary] = useState<{ openingOfferRent: number; targetSettlement: number; walkAwayRent?: number; walkAwayRentMax?: number; walkAwayRentMin?: number } | null>(null);
 
   function formatCachedAge(isoString: string | null): string {
@@ -996,6 +1006,54 @@ export default function DashboardPage() {
                   </div>
                 </>
               )}
+            </CardContent>
+          </Card>
+        );
+      })()}
+
+      {/* 0b. Funding Strategy Widget */}
+      {fundingAnalysis && (() => {
+        const fa = fundingAnalysis;
+        const VERDICT_COLORS: Record<string, { bg: string; border: string; badge: string; icon: string }> = {
+          LOAN_RECOMMENDED:   { bg: "bg-blue-50/40 dark:bg-blue-950/20",     border: "border-blue-200 dark:border-blue-800",     badge: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",     icon: "💳" },
+          EQUITY_RECOMMENDED: { bg: "bg-violet-50/40 dark:bg-violet-950/20", border: "border-violet-200 dark:border-violet-800", badge: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300", icon: "🤝" },
+          HYBRID:             { bg: "bg-amber-50/40 dark:bg-amber-950/20",   border: "border-amber-200 dark:border-amber-800",   badge: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",   icon: "⚖️" },
+          SELF_FUND:          { bg: "bg-emerald-50/40 dark:bg-emerald-950/20",border: "border-emerald-200 dark:border-emerald-800",badge: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",icon: "✅" },
+          INSUFFICIENT_DATA:  { bg: "",  border: "border-border/60", badge: "bg-muted text-muted-foreground", icon: "❓" },
+        };
+        const vc = VERDICT_COLORS[fa.verdict] ?? VERDICT_COLORS.INSUFFICIENT_DATA;
+        return (
+          <Card className={`shadow-sm border ${vc.border} ${vc.bg}`}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0">
+                  <Sparkles className="w-4 h-4 text-primary/70 shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-sm font-semibold text-foreground">AI Funding Adviser</span>
+                      {fa.verdictLabel && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${vc.badge}`}>
+                          {vc.icon} {fa.verdictLabel}
+                        </span>
+                      )}
+                    </div>
+                    {fa.dashboardSummary && (
+                      <p className="text-xs text-muted-foreground leading-snug">{fa.dashboardSummary}</p>
+                    )}
+                    {fa.repaymentCapacity?.debtServiceCoverRatio != null && (
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        Debt service cover: <span className={`font-semibold ${fa.repaymentCapacity.debtServiceCoverRatio >= 1.5 ? "text-emerald-600" : fa.repaymentCapacity.debtServiceCoverRatio >= 1 ? "text-amber-600" : "text-red-600"}`}>{fa.repaymentCapacity.debtServiceCoverRatio.toFixed(2)}×</span>
+                        {fa.repaymentCapacity.maxAffordableMonthlyGbp != null && (
+                          <span className="ml-2">· Max repayment: <span className="font-semibold">£{Math.round(fa.repaymentCapacity.maxAffordableMonthlyGbp).toLocaleString()}/mo</span></span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <Link href="/financials?tab=investment" className="shrink-0 inline-flex items-center gap-1 text-[10px] font-semibold text-primary hover:underline whitespace-nowrap mt-0.5">
+                  Full analysis <ChevronRight className="w-3 h-3" />
+                </Link>
+              </div>
             </CardContent>
           </Card>
         );

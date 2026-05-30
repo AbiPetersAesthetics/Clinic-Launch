@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { useSearch } from "wouter";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import {
@@ -401,6 +402,13 @@ export default function FinancialsPage() {
     queryClient.invalidateQueries({ queryKey: getListFixedCostItemsQueryKey(PROJECT_ID) });
   };
   const [tab, setTab] = useState<TabKey>("overview");
+  const search = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const t = params.get("tab") as TabKey | null;
+    const VALID: TabKey[] = ["overview", "model", "owner", "domestics", "risks", "custom", "investment"];
+    if (t && VALID.includes(t)) setTab(t);
+  }, [search]);
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
 
   // ── Investment & Ownership state ──────────────────────────────────────────
@@ -416,21 +424,54 @@ export default function FinancialsPage() {
   const [newInv, setNewInv] = useState({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
   const [newSh, setNewSh] = useState({ name: "", role: "", equityPercent: "", notes: "" });
 
+  // ── AI Funding Adviser state ───────────────────────────────────────────────
+  const [fundingAnalysis, setFundingAnalysis] = useState<any>(null);
+  const [fundingAnalysisLoading, setFundingAnalysisLoading] = useState(false);
+  const [fundingAnalysisError, setFundingAnalysisError] = useState<string | null>(null);
+  const [fundingContextNote, setFundingContextNote] = useState("");
+
   const loadInvestmentData = useCallback(async () => {
     setInvLoading(true);
     try {
-      const [invRes, shRes, sumRes] = await Promise.all([
+      const [invRes, shRes, sumRes, faRes] = await Promise.all([
         fetch(`/api/projects/${PROJECT_ID}/investments`),
         fetch(`/api/projects/${PROJECT_ID}/shareholders`),
         fetch(`/api/projects/${PROJECT_ID}/investment-summary`),
+        fetch(`/api/projects/${PROJECT_ID}/funding-analysis`),
       ]);
       if (invRes.ok) setInvestments(await invRes.json());
       if (shRes.ok) setShareholders(await shRes.json());
       if (sumRes.ok) setInvestmentSummary(await sumRes.json());
+      if (faRes.ok) {
+        const fa = await faRes.json();
+        if (fa) setFundingAnalysis(fa);
+      }
     } finally {
       setInvLoading(false);
     }
   }, []);
+
+  const runFundingAnalysis = useCallback(async () => {
+    setFundingAnalysisLoading(true);
+    setFundingAnalysisError(null);
+    try {
+      const r = await fetch(`/api/projects/${PROJECT_ID}/funding-analysis`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contextNote: fundingContextNote }),
+      });
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}));
+        throw new Error((e as any).error ?? "Analysis failed");
+      }
+      const data = await r.json();
+      setFundingAnalysis(data);
+    } catch (e: any) {
+      setFundingAnalysisError(e.message ?? "Analysis failed — please try again.");
+    } finally {
+      setFundingAnalysisLoading(false);
+    }
+  }, [fundingContextNote]);
 
   useEffect(() => {
     if (tab === "investment") loadInvestmentData();
@@ -4438,6 +4479,309 @@ export default function FinancialsPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* ── AI Funding Adviser ──────────────────────────────────────────── */}
+          {(() => {
+            const fa = fundingAnalysis;
+            const VERDICT_STYLES: Record<string, { badge: string; border: string; bg: string; icon: string }> = {
+              LOAN_RECOMMENDED:  { badge: "bg-blue-100 text-blue-700 border border-blue-200 dark:bg-blue-900/40 dark:text-blue-300 dark:border-blue-700",     border: "border-blue-200 dark:border-blue-800",     bg: "bg-blue-50/40 dark:bg-blue-950/20",     icon: "💳" },
+              EQUITY_RECOMMENDED:{ badge: "bg-violet-100 text-violet-700 border border-violet-200 dark:bg-violet-900/40 dark:text-violet-300 dark:border-violet-700", border: "border-violet-200 dark:border-violet-800", bg: "bg-violet-50/40 dark:bg-violet-950/20", icon: "🤝" },
+              HYBRID:            { badge: "bg-amber-100 text-amber-700 border border-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:border-amber-700",    border: "border-amber-200 dark:border-amber-800",    bg: "bg-amber-50/40 dark:bg-amber-950/20",    icon: "⚖️" },
+              SELF_FUND:         { badge: "bg-emerald-100 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-300 dark:border-emerald-700", border: "border-emerald-200 dark:border-emerald-800", bg: "bg-emerald-50/40 dark:bg-emerald-950/20", icon: "✅" },
+              INSUFFICIENT_DATA: { badge: "bg-muted text-muted-foreground border border-border", border: "border-border", bg: "", icon: "❓" },
+            };
+            const style = fa ? (VERDICT_STYLES[fa.verdict] ?? VERDICT_STYLES.INSUFFICIENT_DATA) : null;
+
+            const ScoreBar = ({ score, label }: { score: number; label: string }) => {
+              const pct = Math.round((score / 10) * 100);
+              const color = score >= 7 ? "bg-emerald-500" : score >= 5 ? "bg-amber-500" : "bg-red-400";
+              return (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="w-24 text-right text-muted-foreground shrink-0">{label}</span>
+                  <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <span className="w-5 text-right font-semibold text-foreground">{score}</span>
+                </div>
+              );
+            };
+
+            return (
+              <Card className={`shadow-sm ${style ? `border ${style.border} ${style.bg}` : "border-border/60"}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Sparkles className="w-4 h-4 text-primary/70 shrink-0" />
+                      <CardTitle className="text-base">AI Funding Adviser</CardTitle>
+                      {fa && style && (
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${style.badge}`}>
+                          <span>{style.icon}</span>
+                          {fa.verdictLabel}
+                        </span>
+                      )}
+                      {fa?._savedAt && (
+                        <span className="text-[10px] text-muted-foreground">
+                          · {(() => {
+                            const ms = Date.now() - new Date(fa._savedAt).getTime();
+                            const h = Math.floor(ms / 3600000);
+                            const m = Math.floor(ms / 60000);
+                            if (h > 0) return `${h}h ago`;
+                            if (m > 0) return `${m}m ago`;
+                            return "just now";
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={runFundingAnalysis} disabled={fundingAnalysisLoading} className="h-7 px-2 text-xs gap-1 shrink-0">
+                      <RefreshCw className={`w-3 h-3 ${fundingAnalysisLoading ? "animate-spin" : ""}`} />
+                      {fundingAnalysisLoading ? "Analysing…" : fa ? "Re-run" : "Run Analysis"}
+                    </Button>
+                  </div>
+                  <CardDescription className="text-xs mt-1">
+                    AI assessment of loan vs equity vs self-funding for the Winchester clinic fit-out, based on your 3-year projections and capital requirement.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="space-y-5">
+                  {/* Context input — shown when no result yet */}
+                  {!fa && !fundingAnalysisLoading && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-medium text-foreground mb-1.5 block">Additional context (optional)</label>
+                        <textarea
+                          className="w-full text-xs rounded-md border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                          rows={3}
+                          placeholder="e.g. I've received a loan offer from HSBC at 8.5% over 5 years for £40k. My parents can invest £20k for no equity. I'd prefer to avoid diluting ownership…"
+                          value={fundingContextNote}
+                          onChange={e => setFundingContextNote(e.target.value)}
+                        />
+                      </div>
+                      <Button size="sm" onClick={runFundingAnalysis} className="gap-1.5">
+                        <Wand2 className="w-3.5 h-3.5" />
+                        Run Funding Analysis
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Loading skeleton */}
+                  {fundingAnalysisLoading && (
+                    <div className="space-y-4 animate-pulse">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-4 bg-muted rounded w-full" />
+                      <div className="grid grid-cols-3 gap-3">
+                        {[0,1,2].map(i => <div key={i} className="h-32 bg-muted rounded-lg" />)}
+                      </div>
+                      <div className="space-y-2">
+                        {[0,1,2].map(i => <div key={i} className="h-3 bg-muted rounded w-5/6" />)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error */}
+                  {fundingAnalysisError && !fundingAnalysisLoading && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                      {fundingAnalysisError}
+                      <button onClick={runFundingAnalysis} className="underline text-primary ml-1">Try again</button>
+                    </div>
+                  )}
+
+                  {/* Results */}
+                  {fa && !fundingAnalysisLoading && (
+                    <>
+                      {/* Verdict summary */}
+                      <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+                        <p className="text-xs leading-relaxed text-foreground">{fa.verdictSummary}</p>
+                        {fa.recommendation && (
+                          <p className="text-xs leading-relaxed text-muted-foreground mt-2">{fa.recommendation}</p>
+                        )}
+                      </div>
+
+                      {/* Suitability scores */}
+                      {(fa.loanCase?.suitabilityScore != null || fa.equityCase?.suitabilityScore != null || fa.selfFundCase?.suitabilityScore != null) && (
+                        <div className="space-y-1.5">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Suitability Scores (1–10)</div>
+                          {fa.loanCase?.suitabilityScore != null && <ScoreBar score={fa.loanCase.suitabilityScore} label="Loan" />}
+                          {fa.equityCase?.suitabilityScore != null && <ScoreBar score={fa.equityCase.suitabilityScore} label="Equity" />}
+                          {fa.selfFundCase?.suitabilityScore != null && <ScoreBar score={fa.selfFundCase.suitabilityScore} label="Self-fund" />}
+                        </div>
+                      )}
+
+                      {/* Three-column comparison */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {fa.loanCase && (
+                          <div className="rounded-lg border border-blue-200/60 dark:border-blue-800/40 bg-blue-50/30 dark:bg-blue-950/20 p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-400">💳 Loan Finance</div>
+                              {fa.loanCase.suggestedAmount && (
+                                <span className="text-[10px] font-semibold text-blue-700 dark:text-blue-300">{formatGBP(fa.loanCase.suggestedAmount)}</span>
+                              )}
+                            </div>
+                            {fa.loanCase.estimatedMonthlyRepayment && (
+                              <div className="text-xs text-muted-foreground">~{formatGBP(Math.round(fa.loanCase.estimatedMonthlyRepayment))}/mo · {fa.loanCase.suggestedTermMonths ?? "?"}mo term</div>
+                            )}
+                            {fa.loanCase.pros?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.loanCase.pros.slice(0, 3).map((p: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />{p}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.loanCase.cons?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.loanCase.cons.slice(0, 2).map((c: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-red-600 dark:text-red-400"><XCircle className="w-3 h-3 shrink-0 mt-0.5" />{c}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.loanCase.affordabilityNote && (
+                              <p className="text-[10px] text-muted-foreground italic">{fa.loanCase.affordabilityNote}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {fa.equityCase && (
+                          <div className="rounded-lg border border-violet-200/60 dark:border-violet-800/40 bg-violet-50/30 dark:bg-violet-950/20 p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[10px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-400">🤝 Equity Investment</div>
+                              {fa.equityCase.dilutionRisk && (
+                                <span className={`text-[10px] font-semibold ${fa.equityCase.dilutionRisk === "High" ? "text-red-600" : fa.equityCase.dilutionRisk === "Medium" ? "text-amber-600" : "text-emerald-600"}`}>
+                                  {fa.equityCase.dilutionRisk} dilution risk
+                                </span>
+                              )}
+                            </div>
+                            {fa.equityCase.pros?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.equityCase.pros.slice(0, 3).map((p: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />{p}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.equityCase.cons?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.equityCase.cons.slice(0, 2).map((c: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-red-600 dark:text-red-400"><XCircle className="w-3 h-3 shrink-0 mt-0.5" />{c}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.equityCase.dilutionNote && (
+                              <p className="text-[10px] text-muted-foreground italic">{fa.equityCase.dilutionNote}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {fa.selfFundCase && (
+                          <div className={`rounded-lg border p-3 space-y-2 ${fa.selfFundCase.feasible ? "border-emerald-200/60 dark:border-emerald-800/40 bg-emerald-50/30 dark:bg-emerald-950/20" : "border-border/40 bg-muted/20"}`}>
+                            <div className="flex items-center justify-between">
+                              <div className={`text-[10px] font-semibold uppercase tracking-wider ${fa.selfFundCase.feasible ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}`}>✅ Self-Fund</div>
+                              <span className={`text-[10px] font-semibold ${fa.selfFundCase.feasible ? "text-emerald-600" : "text-muted-foreground"}`}>{fa.selfFundCase.feasible ? "Feasible" : "Challenging"}</span>
+                            </div>
+                            {fa.selfFundCase.pros?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.selfFundCase.pros.slice(0, 3).map((p: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-emerald-700 dark:text-emerald-400"><CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />{p}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.selfFundCase.cons?.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {fa.selfFundCase.cons.slice(0, 2).map((c: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-1 text-[10px] text-red-600 dark:text-red-400"><XCircle className="w-3 h-3 shrink-0 mt-0.5" />{c}</li>
+                                ))}
+                              </ul>
+                            )}
+                            {fa.selfFundCase.note && (
+                              <p className="text-[10px] text-muted-foreground italic">{fa.selfFundCase.note}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Repayment capacity */}
+                      {fa.repaymentCapacity && (
+                        <div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2">
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Debt Repayment Capacity</div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {fa.repaymentCapacity.maxAffordableMonthlyGbp != null && (
+                              <div className="text-center">
+                                <div className="text-sm font-bold text-foreground">{formatGBP(Math.round(fa.repaymentCapacity.maxAffordableMonthlyGbp))}/mo</div>
+                                <div className="text-[9px] text-muted-foreground">Max Affordable Repayment</div>
+                              </div>
+                            )}
+                            {fa.repaymentCapacity.debtServiceCoverRatio != null && (
+                              <div className="text-center">
+                                <div className={`text-sm font-bold ${fa.repaymentCapacity.debtServiceCoverRatio >= 1.5 ? "text-emerald-700" : fa.repaymentCapacity.debtServiceCoverRatio >= 1 ? "text-amber-600" : "text-red-600"}`}>
+                                  {fa.repaymentCapacity.debtServiceCoverRatio.toFixed(2)}×
+                                </div>
+                                <div className="text-[9px] text-muted-foreground">Debt Service Cover</div>
+                              </div>
+                            )}
+                            {fa.repaymentCapacity.breakEvenNote && (
+                              <div className="text-center col-span-2 sm:col-span-1">
+                                <div className="text-xs font-medium text-foreground">{fa.repaymentCapacity.breakEvenNote}</div>
+                                <div className="text-[9px] text-muted-foreground">Break-even note</div>
+                              </div>
+                            )}
+                          </div>
+                          {fa.repaymentCapacity.capacityNote && (
+                            <p className="text-[10px] text-muted-foreground italic">{fa.repaymentCapacity.capacityNote}</p>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Key risks */}
+                      {fa.keyRisks?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Key Risks</div>
+                          <ul className="space-y-1">
+                            {(fa.keyRisks as string[]).map((r, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                                <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5 text-amber-500" />
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Action items */}
+                      {fa.actionItems?.length > 0 && (
+                        <div>
+                          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Recommended Next Steps</div>
+                          <ol className="space-y-1 list-none">
+                            {(fa.actionItems as string[]).map((a, i) => (
+                              <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                                <span className="shrink-0 mt-0.5 w-4 h-4 rounded-full bg-primary/10 text-primary text-[9px] font-bold flex items-center justify-center">{i + 1}</span>
+                                {a}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      )}
+
+                      {/* Re-run with updated context */}
+                      <div className="pt-1 border-t border-border/40">
+                        <div className="text-[10px] font-semibold text-muted-foreground mb-1.5">Update context &amp; re-run</div>
+                        <div className="flex gap-2">
+                          <textarea
+                            className="flex-1 text-xs rounded-md border border-border bg-background px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                            rows={2}
+                            placeholder="e.g. I've received a £40k loan offer at 7.9%…"
+                            value={fundingContextNote}
+                            onChange={e => setFundingContextNote(e.target.value)}
+                          />
+                          <Button size="sm" variant="outline" onClick={runFundingAnalysis} disabled={fundingAnalysisLoading} className="self-end gap-1.5 text-xs">
+                            <Wand2 className="w-3.5 h-3.5" />
+                            Re-run
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
 
         </div>
       )}

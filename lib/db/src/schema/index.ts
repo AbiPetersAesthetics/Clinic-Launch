@@ -18,3 +18,4 @@ export * from "./competition";
 export * from "./risks";
 export * from "./suppliers";
 export * from "./investments";
+export * from "./project_ai_analyses";
