@@ -211,6 +211,8 @@ const VERDICT_CONFIG: Record<GoNoGoVerdict, { label: string; icon: React.ReactNo
 
 export default function DashboardPage() {
   const [scenario, setScenario] = useState<ScenarioKey>("realistic");
+  const [pnlMonths, setPnlMonths] = useState<12 | 36>(12);
+  const [cashflow36, setCashflow36] = useState<any[] | null>(null);
 
   // ── Go/No-Go recommendation ───────────────────────────────────────────────
   const CACHE_KEY = "goNoGoResult_v2";
@@ -323,6 +325,13 @@ export default function DashboardPage() {
   const { data: cashflow } = useGetProjectCashflow(PROJECT_ID, { scenario }, {
     query: { enabled: true, queryKey: getGetProjectCashflowQueryKey(PROJECT_ID, { scenario }) },
   });
+
+  useEffect(() => {
+    fetch(`/api/projects/1/cashflow?scenario=${scenario}&months=36`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (Array.isArray(d)) setCashflow36(d); })
+      .catch(() => {});
+  }, [scenario]);
 
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
     query: { enabled: true, queryKey: getGetRiskFlagsQueryKey(PROJECT_ID) },
@@ -1702,6 +1711,191 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 7b. Monthly P&L Breakdown */}
+      {cashflow && cashflow.length > 0 && (
+        <Card className="shadow-sm border-border/60">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div>
+                <CardTitle className="text-lg">Monthly P&L Breakdown</CardTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+                  <span className="ml-2 inline-flex items-center gap-1 text-[10px]">
+                    <span className="inline-block w-2 h-2 rounded-sm bg-primary/20 border border-primary/40" /> Winchester opens
+                    <span className="inline-block w-2 h-2 rounded-sm bg-emerald-200 dark:bg-emerald-800 border border-emerald-400 ml-1" /> Bedhampton closes
+                    <span className="inline-block w-2 h-2 rounded-sm bg-amber-200 dark:bg-amber-800 border border-amber-400 ml-1" /> VAT registered
+                  </span>
+                </p>
+              </div>
+              <div className="flex items-center border rounded-md overflow-hidden text-xs shrink-0">
+                <button onClick={() => setPnlMonths(12)} className={`px-3 py-1 transition-colors ${pnlMonths === 12 ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>12 mo</button>
+                <button onClick={() => setPnlMonths(36)} className={`px-3 py-1 transition-colors ${pnlMonths === 36 ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}>36 mo</button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b bg-muted/40">
+                    <th className="text-left px-3 py-2 font-semibold text-muted-foreground sticky left-0 bg-muted/40 min-w-[90px]">Month</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[48px]">Occ %</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[76px]">Winc Rev</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[76px]">Variable</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[76px]">Gross</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">Fixed (Winc)</th>
+                    <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[68px]">Winc VAT</th>
+                    <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[76px]">Winc ±</th>
+                    <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[76px]">Bedh Net</th>
+                    <th className="text-right px-2 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[76px]">Proj costs</th>
+                    <th className="text-right px-3 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[76px]">Drawings</th>
+                    <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[84px]">Net after Drwgs</th>
+                    <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[76px]">Capital</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(pnlMonths === 36 ? (cashflow36 ?? cashflow) : cashflow)?.map((m: any) => {
+                    const isOpen = m.isOpeningMonth;
+                    const isClose = m.isSelfFundingMonth || m.isBedhamptonCloseMonth;
+                    const grossProfit = m.wincRevenue - m.wincVariableCosts;
+                    const netAfterDrawings = m.wincNet + m.bedhNet - (m.actualDrawings ?? 0);
+                    const rowBg = isClose
+                      ? "bg-emerald-50 dark:bg-emerald-950/30"
+                      : isOpen
+                      ? "bg-primary/5"
+                      : m.isVatRegistered
+                      ? "bg-amber-50/40 dark:bg-amber-950/10"
+                      : "";
+                    return (
+                      <tr key={`pnl-${m.month}-${m.calendarLabel}`} className={`border-b border-border/40 hover:bg-muted/20 transition-colors ${rowBg}`}>
+                        <td className={`px-3 py-1.5 font-medium sticky left-0 ${rowBg || "bg-card"}`}>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {m.calendarLabel}
+                            {isOpen && <span className="text-[9px] bg-primary/20 text-primary px-1 rounded font-bold">OPEN</span>}
+                            {isClose && <span className="text-[9px] bg-emerald-200 dark:bg-emerald-800 text-emerald-800 dark:text-emerald-200 px-1 rounded font-bold">BEDH CLOSES</span>}
+                            {m.isVatRegistered && !isClose && !isOpen && <span className="text-[9px] bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-1 rounded">VAT</span>}
+                            {m.calendarLabel === "Oct '26" && <span className="text-[9px] bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 px-1 rounded font-bold">HIGH RISK</span>}
+                          </div>
+                          {m.isPreOpening && <div className="text-[9px] text-muted-foreground">pre-open</div>}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {m.isPreOpening
+                            ? <span className="text-muted-foreground/30">—</span>
+                            : <span className={`font-medium ${m.occupancyPercent >= 60 ? "text-emerald-600 dark:text-emerald-400" : m.occupancyPercent >= 35 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{m.occupancyPercent}%</span>}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {m.wincRevenue > 0 ? formatGBP(m.wincRevenue) : <span className="text-muted-foreground/40">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {m.wincVariableCosts > 0 ? <span className="text-red-500/70">({formatGBP(m.wincVariableCosts)})</span> : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {m.wincRevenue > 0
+                            ? <span className={`font-medium ${grossProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{grossProfit >= 0 ? "+" : ""}{formatGBP(grossProfit)}</span>
+                            : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {(m.wincFixedCosts > 0 || (m.preOpenPropertyCost ?? 0) > 0)
+                            ? <span className="text-red-500/70">({formatGBP(m.wincFixedCosts + (m.preOpenPropertyCost ?? 0))})</span>
+                            : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                        <td className={`text-right px-2 py-1.5 tabular-nums ${m.wincVat > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
+                          {m.wincVat > 0 ? <span>({formatGBP(m.wincVat)})</span> : "—"}
+                        </td>
+                        <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.wincRevenue === 0 ? "text-muted-foreground/30" : m.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                          {m.wincRevenue === 0 ? "—" : `${m.wincNet >= 0 ? "+" : ""}${formatGBP(m.wincNet)}`}
+                        </td>
+                        <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.bedhClosed ? "text-muted-foreground/30" : "text-blue-600 dark:text-blue-400"}`}>
+                          {m.bedhClosed ? "closed" : formatGBP(m.bedhNet)}
+                        </td>
+                        <td className="text-right px-2 py-1.5 tabular-nums">
+                          {(m.projectCostBurn ?? 0) > 0 ? <span className="text-orange-600 dark:text-orange-400">({formatGBP(m.projectCostBurn)})</span> : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                        <td className="text-right px-3 py-1.5 tabular-nums">
+                          {(m.actualDrawings ?? 0) > 0 ? <span className="text-orange-600 dark:text-orange-400">({formatGBP(m.actualDrawings)})</span> : <span className="text-muted-foreground/30">—</span>}
+                        </td>
+                        <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netAfterDrawings >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                          {netAfterDrawings >= 0 ? "+" : ""}{formatGBP(netAfterDrawings)}
+                        </td>
+                        <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${(m.cashBalance ?? 0) >= 0 ? "" : "text-destructive"}`}>
+                          {formatGBP(m.cashBalance ?? 0)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 7c. Y1–3 Annual Net Forecast */}
+      {invSummary?.annualSummary && (() => {
+        const { y1, y2, y3 } = invSummary.annualSummary;
+        if (!y1 || !y2 || !y3) return null;
+        const years = [y1, y2, y3];
+        const rows: { label: string; key: string; fmt?: (v: number) => string; bold?: boolean; pctKey?: string }[] = [
+          { label: "Revenue",           key: "revenue" },
+          { label: "Variable Costs",    key: "variableCosts",   fmt: v => `(${formatGBP(v)})` },
+          { label: "Gross Profit",      key: "grossProfit",     bold: true, pctKey: "grossMarginPct" },
+          { label: "Fixed Costs",       key: "fixedCosts",      fmt: v => `(${formatGBP(v)})` },
+          { label: "Operating Profit",  key: "operatingProfit", bold: true },
+          { label: "Director Salary",   key: "directorSalary",  fmt: v => `(${formatGBP(v)})` },
+          { label: "Distributable",     key: "distributable",   bold: true },
+        ];
+        return (
+          <Card className="shadow-sm border-border/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">3-Year Financial Forecast</CardTitle>
+              <p className="text-sm text-muted-foreground mt-0.5">Annual P&L summary — base planning scenario (delayed ramp / average)</p>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/40">
+                      <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground w-40">Metric</th>
+                      {years.map(y => (
+                        <th key={y.fyLabel} className="text-right px-4 py-2.5 font-semibold">
+                          <div>{y.fyLabel}</div>
+                          <div className="text-[10px] font-normal text-muted-foreground">{y.fyDesc}</div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {rows.map(({ label, key, fmt, bold, pctKey }) => (
+                      <tr key={label} className="hover:bg-muted/20">
+                        <td className="px-4 py-2 text-muted-foreground">{label}</td>
+                        {years.map(y => {
+                          const v: number = (y as any)[key] ?? 0;
+                          const pct: number | undefined = pctKey ? (y as any)[pctKey] : undefined;
+                          const isDistributable = key === "distributable";
+                          const isOpProfit = key === "operatingProfit";
+                          return (
+                            <td key={y.fyLabel} className={`text-right px-4 py-2 tabular-nums ${bold ? "font-semibold" : ""} ${isDistributable ? "text-emerald-600 dark:text-emerald-400" : isOpProfit && v > 0 ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                              {fmt ? fmt(v) : formatGBP(v)}
+                              {pct !== undefined && <span className="text-muted-foreground text-[10px] ml-1">({pct}%)</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                    <tr className="bg-muted/30 border-t-2 border-border">
+                      <td className="px-4 py-2 text-xs text-muted-foreground">Trading months</td>
+                      {years.map(y => (
+                        <td key={y.fyLabel} className="text-right px-4 py-2 text-xs text-muted-foreground tabular-nums">{y.tradingMonths} mo</td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       {/* 8. Burndown */}
       <Card className="shadow-sm border-border/60">
