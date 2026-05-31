@@ -918,7 +918,7 @@ export default function ProjectPage() {
   const [importDiffs, setImportDiffs] = useState<ImportDiff[] | null>(null);
   const [importError, setImportError] = useState("");
 
-  const [viewMode, setViewMode] = useState<"list" | "gantt">("list");
+  const [viewMode, setViewMode] = useState<"list" | "gantt" | "vat">("list");
   const [listGrouped, setListGrouped] = useState(true);
   const [listSortBy, setListSortBy] = useState<"startDate" | "dueDate">("startDate");
   const [localStartDate, setLocalStartDate] = useState("");
@@ -1423,6 +1423,17 @@ export default function ProjectPage() {
                 <GanttChartSquare className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Gantt</span>
               </button>
+              <button
+                onClick={() => setViewMode("vat")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
+                  viewMode === "vat"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">VAT Reclaim</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1692,6 +1703,232 @@ export default function ProjectPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── VAT RECLAIM VIEW ──────────────────────────────────────────────────── */}
+      {viewMode === "vat" && phases && (() => {
+        const VAT_STATUS_LABEL: Record<string, string> = {
+          inc_vat: "Inc. VAT",
+          ex_vat: "Ex. VAT (+20%)",
+          vat_na: "No VAT",
+          vat_unknown: "Unknown",
+          mixed: "Mixed / partial",
+        };
+        const VAT_STATUS_COLOR: Record<string, string> = {
+          inc_vat: "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-700",
+          ex_vat: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-700",
+          vat_na: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-muted dark:text-muted-foreground dark:border-border",
+          vat_unknown: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-700",
+          mixed: "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-950/40 dark:text-orange-300 dark:border-orange-700",
+        };
+
+        // Flatten all tasks that have any cost set
+        const allRows = phases.flatMap((ph, phIdx) =>
+          (ph.tasks ?? [])
+            .filter((t) => (t.selectedCost ?? 0) > 0 || (t.costMid ?? 0) > 0)
+            .map((task) => {
+              const cost = task.selectedCost > 0 ? task.selectedCost : (task.costMid ?? 0);
+              const status: string = (task as any).costVatStatus || "vat_unknown";
+              let vatElement: number | null = null;
+              let claimable: number | null = null;
+              if (status === "inc_vat") {
+                vatElement = cost / 6; // 20/120
+                claimable = vatElement;
+              } else if (status === "ex_vat") {
+                vatElement = cost * 0.2;
+                claimable = vatElement;
+              } else if (status === "vat_na") {
+                vatElement = 0;
+                claimable = 0;
+              }
+              // vat_unknown / mixed → null (uncertain)
+              return { task, phase: ph, phIdx, cost, status, vatElement, claimable };
+            })
+        );
+
+        const confirmedClaimable = allRows.reduce((s, r) => s + (r.claimable ?? 0), 0);
+        const uncertainRows = allRows.filter((r) => r.claimable === null);
+        const uncertainMaxClaimable = uncertainRows.reduce((s, r) => s + r.cost / 6, 0); // max if all inc_vat
+        const unknownCount = uncertainRows.length;
+
+        // Group by phase, preserving phase order
+        const byPhase = new Map<number, typeof allRows>();
+        for (const row of allRows) {
+          if (!byPhase.has(row.phase.id)) byPhase.set(row.phase.id, []);
+          byPhase.get(row.phase.id)!.push(row);
+        }
+
+        return (
+          <div className="space-y-5">
+            {/* ── Summary KPI cards ── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800 p-4">
+                <div className="text-[10px] uppercase tracking-widest text-emerald-700 dark:text-emerald-400 font-semibold mb-1.5">Confirmed reclaimable</div>
+                <div className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 tabular-nums">{formatGBP(confirmedClaimable)}</div>
+                <div className="text-xs text-emerald-600 dark:text-emerald-500 mt-1.5">{allRows.filter((r) => (r.claimable ?? 0) > 0).length} tasks confirmed</div>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 p-4">
+                <div className="text-[10px] uppercase tracking-widest text-amber-700 dark:text-amber-400 font-semibold mb-1.5">Potential additional</div>
+                <div className="text-2xl font-bold text-amber-800 dark:text-amber-300 tabular-nums">+{formatGBP(uncertainMaxClaimable)}</div>
+                <div className="text-xs text-amber-600 dark:text-amber-500 mt-1.5">If {unknownCount} unknown tasks are taxable</div>
+              </div>
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mb-1.5">Best-case total</div>
+                <div className="text-2xl font-bold text-foreground tabular-nums">{formatGBP(confirmedClaimable + uncertainMaxClaimable)}</div>
+                <div className="text-xs text-muted-foreground mt-1.5">Confirmed + all unknowns taxable</div>
+              </div>
+              <div className={`rounded-xl border p-4 ${unknownCount > 0 ? "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700" : "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800"}`}>
+                <div className={`text-[10px] uppercase tracking-widest font-semibold mb-1.5 ${unknownCount > 0 ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>Needs clarifying</div>
+                <div className={`text-2xl font-bold tabular-nums ${unknownCount > 0 ? "text-amber-800 dark:text-amber-300" : "text-emerald-800 dark:text-emerald-300"}`}>{unknownCount}</div>
+                <div className={`text-xs mt-1.5 ${unknownCount > 0 ? "text-amber-600 dark:text-amber-500" : "text-emerald-600 dark:text-emerald-500"}`}>
+                  {unknownCount > 0 ? "tasks with unknown VAT status" : "All VAT statuses confirmed ✓"}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Guidance banner ── */}
+            <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+              <Receipt className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold">
+                  Likely VAT reclaim: {formatGBP(confirmedClaimable)}
+                  {unknownCount > 0 && <span className="font-normal text-muted-foreground"> — up to {formatGBP(confirmedClaimable + uncertainMaxClaimable)} if all unknowns are VAT-bearing</span>}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Figures are based on the selected cost for each task and the VAT status you have recorded.
+                  Inc. VAT costs: the VAT element is 1/6th of the total. Ex. VAT costs: 20% is added on top.
+                  Open any task to update its VAT status — it will recalculate here immediately.
+                  A valid HMRC VAT invoice is required for every line claimed.
+                </p>
+              </div>
+            </div>
+
+            {/* ── Per-task table ── */}
+            <div className="rounded-lg border bg-card overflow-hidden shadow-sm">
+              <div className="px-4 py-3 border-b bg-muted/30 flex items-center gap-2">
+                <PoundSterling className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">VAT Reclaim by Task</span>
+                <span className="text-xs text-muted-foreground ml-auto hidden sm:block">Click any task to update its VAT status</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/20">
+                      <th className="text-left px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Task</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">Selected cost</th>
+                      <th className="text-center px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">VAT status</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">VAT element</th>
+                      <th className="text-right px-4 py-2.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Claimable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phases
+                      .filter((ph) => byPhase.has(ph.id))
+                      .map((ph, phIdx) => {
+                        const phaseRows = byPhase.get(ph.id)!;
+                        const phaseConfirmed = phaseRows.reduce((s, r) => s + (r.claimable ?? 0), 0);
+                        const phaseHasUncertain = phaseRows.some((r) => r.claimable === null);
+                        const color = PHASE_PALETTE[phIdx % PHASE_PALETTE.length];
+                        return (
+                          <>
+                            {/* Phase header row */}
+                            <tr key={`hdr-${ph.id}`} className="bg-muted/30 border-b border-t">
+                              <td className="px-4 py-2" colSpan={4}>
+                                <div className="flex items-center gap-2">
+                                  <span style={{ width: 8, height: 8, borderRadius: 2, background: color.bar, display: "inline-block", flexShrink: 0 }} />
+                                  <span className="text-xs font-bold" style={{ color: color.bar }}>{ph.name}</span>
+                                  <span className="text-xs text-muted-foreground">· {phaseRows.length} item{phaseRows.length !== 1 ? "s" : ""}</span>
+                                </div>
+                              </td>
+                              <td className="text-right px-4 py-2 text-xs font-bold">
+                                {phaseHasUncertain
+                                  ? <span className="text-amber-700 dark:text-amber-400">{formatGBP(phaseConfirmed)} + ?</span>
+                                  : <span className={phaseConfirmed > 0 ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"}>{formatGBP(phaseConfirmed)}</span>}
+                              </td>
+                            </tr>
+                            {/* Task rows */}
+                            {phaseRows.map(({ task, cost, status, vatElement, claimable }) => (
+                              <tr
+                                key={task.id}
+                                className="border-b border-border/50 last:border-0 hover:bg-muted/30 cursor-pointer transition-colors"
+                                onClick={() => setEditingTask(task)}
+                              >
+                                <td className="px-4 py-2.5 pl-8">
+                                  <div className="font-medium text-sm leading-snug">{task.title}</div>
+                                  {task.costTier === "quoted" && (
+                                    <div className="text-[10px] text-muted-foreground mt-0.5">quoted price</div>
+                                  )}
+                                </td>
+                                <td className="text-right px-4 py-2.5 tabular-nums font-medium">{formatGBP(cost)}</td>
+                                <td className="text-center px-4 py-2.5">
+                                  <span className={`inline-block text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded border ${VAT_STATUS_COLOR[status] ?? VAT_STATUS_COLOR.vat_unknown}`}>
+                                    {VAT_STATUS_LABEL[status] ?? "Unknown"}
+                                  </span>
+                                </td>
+                                <td className="text-right px-4 py-2.5 tabular-nums text-muted-foreground">
+                                  {vatElement === null
+                                    ? <span className="text-amber-500">?</span>
+                                    : vatElement === 0
+                                    ? <span className="text-muted-foreground/40">—</span>
+                                    : formatGBP(vatElement)}
+                                </td>
+                                <td className="text-right px-4 py-2.5 tabular-nums font-semibold">
+                                  {claimable === null
+                                    ? <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">unclear</span>
+                                    : claimable === 0
+                                    ? <span className="text-muted-foreground/40">—</span>
+                                    : <span className="text-emerald-700 dark:text-emerald-400">{formatGBP(claimable)}</span>}
+                                </td>
+                              </tr>
+                            ))}
+                          </>
+                        );
+                      })}
+                  </tbody>
+                  <tfoot className="border-t-2 border-border">
+                    <tr className="bg-muted/40">
+                      <td className="px-4 py-3 font-bold">Total</td>
+                      <td className="text-right px-4 py-3 font-bold tabular-nums">{formatGBP(allRows.reduce((s, r) => s + r.cost, 0))}</td>
+                      <td />
+                      <td className="text-right px-4 py-3 font-bold tabular-nums text-muted-foreground">
+                        {formatGBP(allRows.filter((r) => r.vatElement !== null).reduce((s, r) => s + (r.vatElement ?? 0), 0))}
+                      </td>
+                      <td className="text-right px-4 py-3">
+                        <div className="font-bold text-emerald-700 dark:text-emerald-400 tabular-nums">{formatGBP(confirmedClaimable)}</div>
+                        {unknownCount > 0 && (
+                          <div className="text-[10px] text-amber-600 dark:text-amber-400 whitespace-nowrap">+{formatGBP(uncertainMaxClaimable)} potential</div>
+                        )}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </div>
+
+            {/* ── HMRC rules callout ── */}
+            <div className="rounded-lg border bg-card p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertCircle className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm font-semibold">HMRC Input Tax Recovery — Key Rules</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs text-muted-foreground">
+                {([
+                  ["Pre-registration recovery", "Goods: input tax reclaimable for up to 4 years before VAT registration if the goods are still held. Services: up to 6 months before registration. A valid VAT invoice is required for every line."],
+                  ["Registration threshold", "Mandatory registration when rolling 12-month turnover exceeds £90,000. The VAT Horizon indicator on the dashboard shows your projected threshold date."],
+                  ["Valid VAT invoice required", "Every claim must be supported by a supplier VAT invoice showing: supplier VAT number, supply date, description, net amount, VAT rate, and VAT amount. Retain all invoices indefinitely."],
+                  ["Aesthetics & VAT exemption", "Standard aesthetic treatments (injectables, laser, facials) are generally standard-rated at 20%. CQC-registered clinical services may be exempt — confirm with a specialist VAT adviser before registering."],
+                  ["Capital Goods Scheme", "Fixtures, fit-out, or equipment over £50,000 (ex-VAT) may fall into the Capital Goods Scheme — HMRC can claw back input tax over 5–10 years if the use of the asset changes."],
+                  ["Professional advice required", "This is a planning estimate only. Confirm the reclaim position with a qualified accountant before submitting any VAT return. Incorrect claims carry penalties and interest."],
+                ] as [string, string][]).map(([title, body]) => (
+                  <div key={title} className="flex gap-2">
+                    <span className="text-primary font-bold shrink-0 mt-0.5">→</span>
+                    <div><span className="font-semibold text-foreground">{title}:</span> {body}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {viewMode === "gantt" && phases && (
         <>
