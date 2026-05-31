@@ -78,6 +78,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const PROJECT_ID = 1;
 
@@ -108,6 +114,86 @@ const PHASE_PALETTE = [
 
 const GANTT_NAME_W = 264;
 const GANTT_ROW_H = 34;
+
+const VAT_LABEL: Record<string, string> = {
+  inc_vat: "Inc. VAT (20% included)",
+  ex_vat: "Ex. VAT (+20% on top)",
+  vat_na: "No VAT applicable",
+  vat_unknown: "VAT unclear — needs confirmation",
+};
+const SCOPE_LABEL: Record<string, string> = {
+  client_supplied: "Client supplied",
+  contractor_supplied: "Contractor supplied",
+  included_in_package: "Included in package",
+  excluded: "Excluded from budget",
+  to_confirm: "To confirm",
+};
+const PROC_LABEL: Record<string, string> = {
+  not_required: "Not required",
+  approved: "Approved",
+  quote_received: "Quote received",
+  to_quote: "To quote",
+  to_specify: "To specify",
+  included_in_contractor_pkg: "Included in contractor pkg",
+};
+
+function TRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <span className="text-[11px] text-muted-foreground col-span-1 whitespace-nowrap">{label}</span>
+      <span className="text-[11px] font-medium col-span-1">{value}</span>
+    </>
+  );
+}
+
+function TaskDetailTooltip({ task, children }: { task: LaunchTask; children: React.ReactNode }) {
+  const t = task as any;
+  const hasCosts = (task.costLow ?? 0) > 0 || (task.costMid ?? 0) > 0 || (task.costHigh ?? 0) > 0;
+  return (
+    <TooltipProvider delayDuration={350}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent
+          side="right"
+          sideOffset={8}
+          className="max-w-[300px] p-0 bg-popover text-popover-foreground border border-border shadow-xl rounded-lg z-50"
+        >
+          <div className="p-3 space-y-2 text-left">
+            <p className="font-semibold text-[13px] leading-snug">{task.title}</p>
+            {task.description && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-border pt-2">{task.description}</p>
+            )}
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 border-t border-border pt-2">
+              {t.costVatStatus && t.costVatStatus !== "vat_unknown" && <TRow label="VAT" value={VAT_LABEL[t.costVatStatus] ?? t.costVatStatus} />}
+              {t.costVatStatus === "vat_unknown" && <TRow label="VAT" value="⚠ Needs clarification" />}
+              {t.supplyScope && t.supplyScope !== "to_confirm" && <TRow label="Supply" value={SCOPE_LABEL[t.supplyScope] ?? t.supplyScope} />}
+              {t.procurementStatus && t.procurementStatus !== "to_specify" && <TRow label="Procurement" value={PROC_LABEL[t.procurementStatus] ?? t.procurementStatus} />}
+              {task.owner && <TRow label="Owner" value={task.owner} />}
+              {task.durationDays ? <TRow label="Duration" value={`${task.durationDays} day${task.durationDays !== 1 ? "s" : ""}`} /> : null}
+              {task.riskLevel && task.riskLevel !== "low" && <TRow label="Risk" value={task.riskLevel.charAt(0).toUpperCase() + task.riskLevel.slice(1)} />}
+            </div>
+            {hasCosts && (
+              <div className="border-t border-border pt-2 flex gap-4 text-xs">
+                {(task.costLow ?? 0) > 0 && <span><span className="text-muted-foreground">Low </span><span className="font-medium">{formatGBP(task.costLow)}</span></span>}
+                {(task.costMid ?? 0) > 0 && <span><span className="text-muted-foreground">Mid </span><span className="font-medium">{formatGBP(task.costMid)}</span></span>}
+                {(task.costHigh ?? 0) > 0 && <span><span className="text-muted-foreground">High </span><span className="font-medium">{formatGBP(task.costHigh)}</span></span>}
+              </div>
+            )}
+            {(task.isNonNegotiable || task.isCriticalRisk) && (
+              <div className="border-t border-border pt-2 flex gap-1.5 flex-wrap">
+                {task.isNonNegotiable && <span className="text-[10px] px-1.5 py-0.5 rounded border border-border text-muted-foreground">Must Do</span>}
+                {task.isCriticalRisk && <span className="text-[10px] px-1.5 py-0.5 rounded bg-destructive/10 text-destructive border border-destructive/20">⚠ Critical Risk</span>}
+              </div>
+            )}
+            {task.notes && (
+              <p className="text-[11px] text-muted-foreground border-t border-border pt-2 italic leading-relaxed">{task.notes}</p>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 const GANTT_PHASE_H = 30;
 const GANTT_HEADER_H = 42;
 const GANTT_LS_KEY = "clinic_gantt_offsets_v1";
@@ -2035,13 +2121,17 @@ export default function ProjectPage() {
                         onClick={() => setEditingTask(task)}
                       >
                         <TableCell>
-                          <div className="font-medium text-foreground">{task.title}</div>
-                          <div className="flex gap-2 mt-1 flex-wrap">
-                            {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
-                            {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
-                            {((task as any).costVatStatus === "vat_unknown" || !(task as any).costVatStatus) && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30">VAT?</Badge>}
-                            {(task as any).costVatStatus === "ex_vat" && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-950/20">+VAT</Badge>}
-                          </div>
+                          <TaskDetailTooltip task={task}>
+                            <div>
+                              <div className="font-medium text-foreground">{task.title}</div>
+                              <div className="flex gap-2 mt-1 flex-wrap">
+                                {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
+                                {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
+                                {((task as any).costVatStatus === "vat_unknown" || !(task as any).costVatStatus) && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30">VAT?</Badge>}
+                                {(task as any).costVatStatus === "ex_vat" && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-blue-300 text-blue-700 bg-blue-50 dark:bg-blue-950/20">+VAT</Badge>}
+                              </div>
+                            </div>
+                          </TaskDetailTooltip>
                         </TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap" style={{ color: color.bar }}>
@@ -2213,29 +2303,33 @@ export default function ProjectPage() {
                           onClick={() => setEditingTask(task)}
                         >
                           <TableCell>
-                            <div className="font-medium text-foreground">{task.title}</div>
-                            <div className="flex gap-2 mt-1.5 flex-wrap">
-                              {task.isNonNegotiable && (
-                                <Badge variant="outline" className="text-[10px] h-4 py-0">
-                                  Must Do
-                                </Badge>
-                              )}
-                              {task.isCriticalRisk && (
-                                <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
-                                  ⚠ Risk
-                                </Badge>
-                              )}
-                              {task.files && (
-                                <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
-                                  Files attached
-                                </Badge>
-                              )}
-                              {task.dependencies && task.dependencies.length > 0 && (
-                                <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
-                                  {task.dependencies.length} dep{task.dependencies.length !== 1 ? "s" : ""}
-                                </Badge>
-                              )}
-                            </div>
+                            <TaskDetailTooltip task={task}>
+                              <div>
+                                <div className="font-medium text-foreground">{task.title}</div>
+                                <div className="flex gap-2 mt-1.5 flex-wrap">
+                                  {task.isNonNegotiable && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0">
+                                      Must Do
+                                    </Badge>
+                                  )}
+                                  {task.isCriticalRisk && (
+                                    <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">
+                                      ⚠ Risk
+                                    </Badge>
+                                  )}
+                                  {task.files && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                      Files attached
+                                    </Badge>
+                                  )}
+                                  {task.dependencies && task.dependencies.length > 0 && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
+                                      {task.dependencies.length} dep{task.dependencies.length !== 1 ? "s" : ""}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
+                            </TaskDetailTooltip>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
