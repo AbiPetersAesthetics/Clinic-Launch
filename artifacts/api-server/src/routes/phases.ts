@@ -97,6 +97,9 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         durationDays: o.durationDays !== undefined ? o.durationDays : t.durationDays,
         files: o.files !== undefined ? o.files : t.files,
         quotes: o.quotes !== undefined ? o.quotes : t.quotes,
+        costVatStatus: o.costVatStatus !== undefined ? o.costVatStatus : t.costVatStatus,
+        supplyScope: o.supplyScope !== undefined ? o.supplyScope : t.supplyScope,
+        procurementStatus: o.procurementStatus !== undefined ? o.procurementStatus : t.procurementStatus,
         _hasOverride: true,
       } : { ...t, _hasOverride: false };
       return {
