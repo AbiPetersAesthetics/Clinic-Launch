@@ -1675,6 +1675,25 @@ paths:
                 items:
                   $ref: "#/components/schemas/PhaseWithTasks"
 
+  /projects/{projectId}/timeline:
+    get:
+      operationId: getProjectTimeline
+      tags: [phases]
+      summary: Get Gantt timeline for a project back-calculated from the target opening date
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Project timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectTimeline"
+
   /projects/{projectId}/cashflow:
     get:
       operationId: getProjectCashflow
@@ -2930,6 +2949,62 @@ components:
         - taskCount
         - completedTaskCount
         - tasks
+
+    PhaseTimeline:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        status:
+          type: string
+        durationDays:
+          type: integer
+        startDate:
+          type: string
+        endDate:
+          type: string
+        criticalTasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/LaunchTask"
+      required:
+        - id
+        - projectId
+        - name
+        - sortOrder
+        - status
+        - durationDays
+        - startDate
+        - endDate
+        - criticalTasks
+
+    ProjectTimeline:
+      type: object
+      properties:
+        projectId:
+          type: integer
+        targetOpeningDate:
+          type: string
+          nullable: true
+        totalDurationDays:
+          type: integer
+        phases:
+          type: array
+          items:
+            $ref: "#/components/schemas/PhaseTimeline"
+      required:
+        - projectId
+        - totalDurationDays
+        - phases
 
     RiskFlag:
       type: object

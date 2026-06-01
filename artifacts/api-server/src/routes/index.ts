@@ -24,6 +24,7 @@ import risksRouter from "./risks";
 import suppliersRouter from "./suppliers";
 import investmentsRouter from "./investments";
 import riskIntelligenceRouter from "./risk-intelligence";
+import timelineRouter from "./timeline";
 
 const router: IRouter = Router();
 
@@ -52,5 +53,6 @@ router.use(risksRouter);
 router.use(suppliersRouter);
 router.use(investmentsRouter);
 router.use(riskIntelligenceRouter);
+router.use(timelineRouter);
 
 export default router;

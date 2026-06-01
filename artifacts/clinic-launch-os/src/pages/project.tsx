@@ -18,8 +18,11 @@ import {
   useCreateQuote,
   useListSuppliers,
   getListSuppliersQueryKey,
+  useGetProjectTimeline,
+  getGetProjectTimelineQueryKey,
+  getGetProjectQueryKey,
 } from "@workspace/api-client-react";
-import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks, TaskQuote } from "@workspace/api-client-react";
+import type { LaunchTask, UpdateTaskBodyStatus, UpdateTaskBodyRiskLevel, PhaseWithTasks, TaskQuote, PhaseTimeline, ProjectTimeline } from "@workspace/api-client-react";
 import { formatGBP } from "@/lib/format";
 
 import {
@@ -28,7 +31,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -980,6 +983,269 @@ function computePhaseWindows(
   return map;
 }
 
+// ─── Timeline view components ────────────────────────────────────────────────
+
+const PHASE_BAR_COLORS = [
+  "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b",
+  "#10b981", "#3b82f6", "#ef4444", "#14b8a6",
+];
+const PHASE_BAR_COLORS_LIGHT = [
+  "#e0e7ff", "#ede9fe", "#fce7f3", "#fef3c7",
+  "#d1fae5", "#dbeafe", "#fee2e2", "#ccfbf1",
+];
+
+function formatDateShort(dateStr: string): string {
+  return new Date(dateStr + "T00:00:00").toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+function daysBetween(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T00:00:00").getTime() - new Date(a + "T00:00:00").getTime()) / 86400000,
+  );
+}
+
+function TimelineGanttChart({ phases }: { phases: PhaseTimeline[] }) {
+  if (!phases.length) return null;
+
+  const allStart = phases.map((p) => p.startDate).sort()[0];
+  const allEnd = phases.map((p) => p.endDate).sort().reverse()[0];
+  const totalDays = Math.max(1, daysBetween(allStart, allEnd));
+
+  return (
+    <div className="space-y-2">
+      {/* Header: month markers */}
+      <div className="relative h-6 ml-40 border-b border-border">
+        {(() => {
+          const markers: React.ReactNode[] = [];
+          const start = new Date(allStart + "T00:00:00");
+          const d = new Date(start.getFullYear(), start.getMonth(), 1);
+          while (d <= new Date(allEnd + "T00:00:00")) {
+            const offset = Math.max(0, Math.round((d.getTime() - start.getTime()) / 86400000));
+            const pct = (offset / totalDays) * 100;
+            if (pct <= 100) {
+              markers.push(
+                <span
+                  key={d.toISOString()}
+                  className="absolute text-[10px] text-muted-foreground whitespace-nowrap"
+                  style={{ left: `${pct}%` }}
+                >
+                  {d.toLocaleDateString("en-GB", { month: "short", year: "2-digit" })}
+                </span>,
+              );
+            }
+            d.setMonth(d.getMonth() + 1);
+          }
+          return markers;
+        })()}
+      </div>
+
+      {/* Phase rows */}
+      {phases.map((phase, idx) => {
+        const barStart = Math.max(0, daysBetween(allStart, phase.startDate));
+        const barLen = Math.max(1, daysBetween(phase.startDate, phase.endDate));
+        const leftPct = (barStart / totalDays) * 100;
+        const widthPct = Math.min(100 - leftPct, (barLen / totalDays) * 100);
+        const color = PHASE_BAR_COLORS[idx % PHASE_BAR_COLORS.length];
+        const colorLight = PHASE_BAR_COLORS_LIGHT[idx % PHASE_BAR_COLORS_LIGHT.length];
+
+        return (
+          <div key={phase.id} className="flex items-center gap-2">
+            <div className="w-40 shrink-0 text-right pr-2">
+              <span className="text-xs font-medium text-foreground leading-tight line-clamp-2">
+                {phase.name}
+              </span>
+            </div>
+            <div className="flex-1 relative h-7 bg-muted/40 rounded">
+              <div
+                className="absolute top-1 bottom-1 rounded flex items-center px-2"
+                style={{
+                  left: `${leftPct}%`,
+                  width: `${widthPct}%`,
+                  backgroundColor: colorLight,
+                  borderLeft: `3px solid ${color}`,
+                }}
+              >
+                <span className="text-[10px] font-medium whitespace-nowrap overflow-hidden" style={{ color }}>
+                  {formatDateShort(phase.startDate)} – {formatDateShort(phase.endDate)}
+                </span>
+              </div>
+            </div>
+            <div className="w-16 shrink-0 text-right text-[10px] text-muted-foreground">
+              {phase.durationDays}d
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CriticalTaskList({ phases }: { phases: PhaseTimeline[] }) {
+  const criticalPhases = phases.filter((p) => p.criticalTasks.length > 0);
+  if (criticalPhases.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 space-y-4">
+      <p className="text-sm font-semibold flex items-center gap-2 text-destructive">
+        <AlertTriangle className="w-4 h-4" />
+        Critical Path Tasks
+      </p>
+      {criticalPhases.map((phase) => (
+        <div key={phase.id}>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            {phase.name} — due by {formatDateShort(phase.endDate)}
+          </p>
+          <div className="space-y-1">
+            {phase.criticalTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-2 text-sm py-1.5 px-3 bg-background rounded-md border border-destructive/20"
+              >
+                <Flag className="w-3 h-3 text-destructive shrink-0" />
+                <span className="flex-1">{task.title}</span>
+                {task.dueDate && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Due {formatDateShort(task.dueDate)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TimelineView({ projectId }: { projectId: number }) {
+  const updateProject = useUpdateProject();
+  const queryClient = useQueryClient();
+
+  const { data: project, isLoading: isProjectLoading } = useGetProject(projectId, {
+    query: { queryKey: getGetProjectQueryKey(projectId) },
+  });
+
+  const { data: timeline, isLoading: isTimelineLoading } = useGetProjectTimeline(projectId, {
+    query: { queryKey: getGetProjectTimelineQueryKey(projectId) },
+  });
+
+  const [dateInput, setDateInput] = useState("");
+
+  useEffect(() => {
+    if (project?.targetOpeningDate) setDateInput(project.targetOpeningDate);
+  }, [project?.targetOpeningDate]);
+
+  const handleSaveDate = () => {
+    if (!dateInput) return;
+    updateProject.mutate(
+      {
+        id: projectId,
+        data: {
+          name: project?.name ?? "Winchester Clinic Opening Plan",
+          targetOpeningDate: dateInput,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetProjectQueryKey(projectId) });
+          queryClient.invalidateQueries({ queryKey: getGetProjectTimelineQueryKey(projectId) });
+        },
+      },
+    );
+  };
+
+  const isLoading = isProjectLoading || isTimelineLoading;
+
+  return (
+    <div className="space-y-6">
+      {/* Target opening date editor */}
+      <div className="flex items-center gap-3 p-4 rounded-xl border bg-card">
+        <Calendar className="w-4 h-4 text-primary shrink-0" />
+        <div className="flex-1">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Target Opening Date</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              className="h-8 rounded-md border border-border bg-background px-2 text-sm"
+              value={dateInput}
+              onChange={(e) => setDateInput(e.target.value)}
+            />
+            <button
+              onClick={handleSaveDate}
+              disabled={updateProject.isPending || dateInput === project?.targetOpeningDate}
+              className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-medium disabled:opacity-50"
+            >
+              {updateProject.isPending ? "Saving…" : "Save"}
+            </button>
+          </div>
+        </div>
+        {timeline && (
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Total timeline</p>
+            <p className="text-sm font-semibold">{timeline.totalDays} days</p>
+          </div>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span className="text-sm">Loading timeline…</span>
+        </div>
+      )}
+
+      {!isLoading && !timeline && (
+        <div className="text-center py-12 text-muted-foreground">
+          <Calendar className="w-8 h-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">Set a target opening date above to generate the timeline.</p>
+        </div>
+      )}
+
+      {!isLoading && timeline && (
+        <>
+          {/* Gantt chart */}
+          <div className="rounded-xl border bg-card p-4">
+            <p className="text-sm font-semibold mb-4">Phase Schedule</p>
+            <TimelineGanttChart phases={timeline.phases} />
+          </div>
+
+          {/* Phase summary cards */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {timeline.phases.map((phase, idx) => {
+              const color = PHASE_BAR_COLORS[idx % PHASE_BAR_COLORS.length];
+              return (
+                <div key={phase.id} className="rounded-xl border bg-card p-4 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                    <p className="text-xs font-semibold leading-snug">{phase.name}</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {formatDateShort(phase.startDate)} → {formatDateShort(phase.endDate)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {phase.durationDays} days · {phase.taskCount} task{phase.taskCount !== 1 ? "s" : ""}
+                    {phase.criticalTasks.length > 0 && (
+                      <span className="ml-2 text-destructive font-medium">
+                        {phase.criticalTasks.length} critical
+                      </span>
+                    )}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Critical tasks */}
+          <CriticalTaskList phases={timeline.phases} />
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function ProjectPage() {
   const queryClient = useQueryClient();
   const [editingTask, setEditingTask] = useState<LaunchTask | null>(null);
@@ -1004,7 +1270,7 @@ export default function ProjectPage() {
   const [importDiffs, setImportDiffs] = useState<ImportDiff[] | null>(null);
   const [importError, setImportError] = useState("");
 
-  const [viewMode, setViewMode] = useState<"list" | "gantt" | "vat">("list");
+  const [viewMode, setViewMode] = useState<"list" | "gantt" | "vat" | "timeline">("list");
   const [listGrouped, setListGrouped] = useState(true);
   const [listSortBy, setListSortBy] = useState<"startDate" | "dueDate">("startDate");
   const [localStartDate, setLocalStartDate] = useState("");
@@ -1150,6 +1416,8 @@ export default function ProjectPage() {
 
   const totalSelectedCost = phases?.reduce((sum, phase) => sum + phase.selectedCostTotal, 0) || 0;
   const criticalRiskCount = risks?.filter((r) => r.level === "critical").length || 0;
+
+  const defaultTab = highlightedTaskId ? "plan" : "plan";
 
   if (isPhasesLoading) {
     return (
@@ -1519,6 +1787,17 @@ export default function ProjectPage() {
               >
                 <Receipt className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">VAT Reclaim</span>
+              </button>
+              <button
+                onClick={() => setViewMode("timeline")}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-sm font-medium transition-colors ${
+                  viewMode === "timeline"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Timeline</span>
               </button>
             </div>
           </div>
@@ -2037,6 +2316,10 @@ export default function ProjectPage() {
             />
           </div>
         </>
+      )}
+
+      {viewMode === "timeline" && (
+        <TimelineView projectId={PROJECT_ID} />
       )}
 
       {viewMode === "list" && (
@@ -3030,6 +3313,7 @@ function TaskEditSheet({
           queryClient.removeQueries({ queryKey: [baseUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: getGetProjectTimelineQueryKey(PROJECT_ID) });
           toast({ title: "Task saved" });
           onClose();
         },

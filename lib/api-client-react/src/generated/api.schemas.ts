@@ -679,6 +679,26 @@ export interface PhaseWithTasks {
   tasks: LaunchTask[];
 }
 
+export interface PhaseTimeline {
+  id: number;
+  projectId: number;
+  name: string;
+  description?: string | null;
+  sortOrder: number;
+  status: string;
+  durationDays: number;
+  startDate: string;
+  endDate: string;
+  criticalTasks: LaunchTask[];
+}
+
+export interface ProjectTimeline {
+  projectId: number;
+  targetOpeningDate?: string | null;
+  totalDurationDays: number;
+  phases: PhaseTimeline[];
+}
+
 export type RiskFlagLevel = (typeof RiskFlagLevel)[keyof typeof RiskFlagLevel];
 
 export const RiskFlagLevel = {

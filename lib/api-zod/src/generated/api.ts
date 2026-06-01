@@ -2880,6 +2880,69 @@ export const GetPhasesWithTasksResponse = zod.array(
 );
 
 /**
+ * @summary Get Gantt timeline for a project back-calculated from the target opening date
+ */
+export const GetProjectTimelineParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetProjectTimelineResponse = zod.object({
+  projectId: zod.number(),
+  targetOpeningDate: zod.string().nullish(),
+  totalDurationDays: zod.number(),
+  phases: zod.array(
+    zod.object({
+      id: zod.number(),
+      projectId: zod.number(),
+      name: zod.string(),
+      description: zod.string().nullish(),
+      sortOrder: zod.number(),
+      status: zod.string(),
+      durationDays: zod.number(),
+      startDate: zod.string(),
+      endDate: zod.string(),
+      criticalTasks: zod.array(
+        zod.object({
+          id: zod.number(),
+          phaseId: zod.number(),
+          title: zod.string(),
+          description: zod.string().nullish(),
+          owner: zod.string().nullish(),
+          contractor: zod.string().nullish(),
+          supplier: zod.string().nullish(),
+          status: zod.enum([
+            "not_started",
+            "in_progress",
+            "complete",
+            "blocked",
+            "deferred",
+          ]),
+          riskLevel: zod.enum(["low", "medium", "high", "critical"]),
+          costTier: zod.enum(["low", "mid", "high"]),
+          costLow: zod.number(),
+          costMid: zod.number(),
+          costHigh: zod.number(),
+          selectedCost: zod.number(),
+          dueDate: zod.string().nullish(),
+          durationDays: zod.number().nullish(),
+          dependencies: zod.array(zod.number()).nullish(),
+          notes: zod.string().nullish(),
+          files: zod
+            .string()
+            .nullish()
+            .describe("JSON array of file references [{name, url, type}]"),
+          isNonNegotiable: zod.boolean(),
+          isCriticalRisk: zod.boolean(),
+          sortOrder: zod.number(),
+          createdAt: zod.string(),
+          updatedAt: zod.string(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
  * @summary Get monthly cashflow projection for a project
  */
 export const GetProjectCashflowParams = zod.object({

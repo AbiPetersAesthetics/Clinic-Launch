@@ -65,6 +65,7 @@ import type {
   OptimisationAnalysis,
   PhaseWithTasks,
   Project,
+  ProjectTimeline,
   PropertyAiAnalysis,
   PropertyAnalysisComparison,
   PropertyExtraction,
@@ -6807,6 +6808,95 @@ export function useGetPhasesWithTasks<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetPhasesWithTasksQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get Gantt timeline for a project back-calculated from the target opening date
+ */
+export const getGetProjectTimelineUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/timeline`;
+};
+
+export const getProjectTimeline = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<ProjectTimeline> => {
+  return customFetch<ProjectTimeline>(getGetProjectTimelineUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectTimelineQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/timeline`] as const;
+};
+
+export const getGetProjectTimelineQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectTimeline>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectTimeline>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectTimelineQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectTimeline>>
+  > = ({ signal }) =>
+    getProjectTimeline(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectTimeline>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectTimelineQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectTimeline>>
+>;
+export type GetProjectTimelineQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get Gantt timeline for a project back-calculated from the target opening date
+ */
+
+export function useGetProjectTimeline<
+  TData = Awaited<ReturnType<typeof getProjectTimeline>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectTimeline>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectTimelineQueryOptions(projectId, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;
