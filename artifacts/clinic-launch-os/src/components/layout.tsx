@@ -29,6 +29,7 @@ import {
   FileDown,
   Scale,
   ShoppingBag,
+  Brain,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 
@@ -153,6 +154,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/suppliers", label: "Suppliers", icon: ShoppingBag },
     { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
+    { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/competition", label: "Competition Intel", icon: Target },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },

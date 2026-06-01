@@ -22,6 +22,7 @@ import LeaseStrategyPage from "@/pages/lease-strategy";
 import ExportPage from "@/pages/export";
 import RiskRegisterPage from "@/pages/risk-register";
 import SuppliersPage from "@/pages/suppliers";
+import RiskIntelligencePage from "@/pages/risk-intelligence";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -84,6 +85,7 @@ function Router() {
         <Route path="/export" component={ExportPage} />
         <Route path="/risk-register" component={RiskRegisterPage} />
         <Route path="/suppliers" component={SuppliersPage} />
+        <Route path="/risk-intelligence" component={RiskIntelligencePage} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>
