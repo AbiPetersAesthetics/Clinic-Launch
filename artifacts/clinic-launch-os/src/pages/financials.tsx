@@ -520,6 +520,9 @@ export default function FinancialsPage() {
     if (tab === "investment") loadInvestmentData(scenario, rampTier);
   }, [tab, scenario, rampTier, loadInvestmentData]);
 
+  const invalidateCashflow = () =>
+    queryClient.invalidateQueries({ predicate: (q) => JSON.stringify(q.queryKey).includes("cashflow") });
+
   const addInvestment = async () => {
     const type = addingInvType ?? "loan";
     const payload = { name: newInv.name, type, amountGbp: parseFloat(newInv.amountGbp) || 0, equityPercent: parseFloat(newInv.equityPercent) || 0, interestRatePercent: parseFloat(newInv.interestRatePercent) || 0, repaymentTermMonths: parseInt(newInv.repaymentTermMonths) || 0, depositDate: newInv.depositDate || null, agreementStartDate: newInv.agreementStartDate || null, firstPaymentDate: newInv.firstPaymentDate || null, notes: newInv.notes };
@@ -527,16 +530,19 @@ export default function FinancialsPage() {
     setNewInv({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", depositDate: "", agreementStartDate: "", firstPaymentDate: "", notes: "" });
     setAddingInvType(null);
     await loadInvestmentData();
+    invalidateCashflow();
   };
   const deleteInvestment = async (id: number) => {
     await fetch(`/api/investments/${id}`, { method: "DELETE" });
     await loadInvestmentData();
+    invalidateCashflow();
   };
   const saveEditInv = async () => {
     if (!editingInv) return;
     await fetch(`/api/investments/${editingInv.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(editingInv) });
     setEditingInv(null);
     await loadInvestmentData();
+    invalidateCashflow();
   };
 
   const addShareholder = async () => {
