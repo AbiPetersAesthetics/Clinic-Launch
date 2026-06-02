@@ -679,11 +679,14 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
         if (!isActive) continue;
 
-        // Employer cost to business via PAYE; fall back to legacy monthly salary
-        if (clin.annualGrossSalaryGbp != null && clin.annualGrossSalaryGbp > 0) {
-          clinicianTotalCost += calcPayeBreakdown(clin.annualGrossSalaryGbp).totalCostMonthly;
-        } else if (clin.salaryGbp != null && clin.salaryGbp > 0) {
-          clinicianTotalCost += clin.salaryGbp;
+        // Primary practitioner cost is already tracked via target_drawings_gbp / actualDrawings.
+        // Only add cost for secondary/additional clinicians (non-primary).
+        if (!isPrimary) {
+          if (clin.annualGrossSalaryGbp != null && clin.annualGrossSalaryGbp > 0) {
+            clinicianTotalCost += calcPayeBreakdown(clin.annualGrossSalaryGbp).totalCostMonthly;
+          } else if (clin.salaryGbp != null && clin.salaryGbp > 0) {
+            clinicianTotalCost += clin.salaryGbp;
+          }
         }
 
         // Non-primary clinicians also generate revenue from their startDate

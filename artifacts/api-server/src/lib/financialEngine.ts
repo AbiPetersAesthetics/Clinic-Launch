@@ -76,6 +76,8 @@ export function calcCliniciansMonthlyCost(cliniciansJson: string | null | undefi
     const parsed = JSON.parse(String(cliniciansJson));
     if (!Array.isArray(parsed)) return 0;
     return Math.round(parsed.reduce((sum: number, c: any) => {
+      // Primary practitioner cost is tracked via target_drawings_gbp / actualDrawings — exclude here
+      if (c.isPrimary === true) return sum;
       if (c.annualGrossSalaryGbp != null && c.annualGrossSalaryGbp > 0) {
         return sum + calcPayeBreakdown(c.annualGrossSalaryGbp).totalCostMonthly;
       }
