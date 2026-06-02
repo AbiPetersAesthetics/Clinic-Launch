@@ -177,6 +177,40 @@ const PhaseChip = ({ ok, label }: { ok: boolean; label: string }) => (
   </span>
 );
 
+interface Clinician {
+  id: string;
+  name: string;
+  isPrimary?: boolean;
+  startDate: string | null;
+  annualGrossSalaryGbp?: number;
+  salaryGbp?: number; // backward compat
+}
+
+function calcPayeBreakdown(annualGross: number) {
+  const g = Math.max(0, annualGross);
+  const employeeNI = g > 12570
+    ? (Math.min(g, 50270) - 12570) * 0.12 + (g > 50270 ? (g - 50270) * 0.02 : 0)
+    : 0;
+  const employerNI = g > 9100 ? (g - 9100) * 0.138 : 0;
+  const employerPension = Math.max(0, Math.min(g, 50270) - 6240) * 0.03;
+  const totalCostAnnual = g + employerNI + employerPension;
+  const incomeTax = g > 12570
+    ? (Math.min(g, 50270) - 12570) * 0.20 + (g > 50270 ? (Math.min(g, 125140) - 50270) * 0.40 : 0)
+    : 0;
+  return {
+    annualGross: Math.round(g),
+    employeeNI: Math.round(employeeNI),
+    employerNI: Math.round(employerNI),
+    employerPension: Math.round(employerPension),
+    totalCostAnnual: Math.round(totalCostAnnual),
+    totalCostMonthly: Math.round(totalCostAnnual / 12),
+    incomeTax: Math.round(incomeTax),
+    netMonthlyTakeHome: Math.round((g - employeeNI - incomeTax) / 12),
+  };
+}
+
+const ABI_DEFAULT: Clinician = { id: "abi", name: "Abi Peters", isPrimary: true, startDate: null, annualGrossSalaryGbp: 0 };
+
 export default function FinancialsPage() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -422,7 +456,7 @@ export default function FinancialsPage() {
   const [shareholders, setShareholders] = useState<any[]>([]);
   const [investmentSummary, setInvestmentSummary] = useState<any>(null);
   const [invLoading, setInvLoading] = useState(false);
-  const [additionalClinicians, setAdditionalClinicians] = useState<{id: string; name: string; startDate: string; salaryGbp?: number}[]>([]);
+  const [additionalClinicians, setAdditionalClinicians] = useState<Clinician[]>([ABI_DEFAULT]);
   const [addingInvType, setAddingInvType] = useState<"loan" | "equity" | null>(null);
   const [addingShareholder, setAddingShareholder] = useState(false);
   const [valuationMultiple, setValuationMultiple] = useState<5 | 7 | 10>(7);
@@ -747,12 +781,14 @@ export default function FinancialsPage() {
         const pj = m.plannedPricingJson;
         if (pj) { const parsed = JSON.parse(pj); if (Array.isArray(parsed)) setTreatmentMix(parsed); }
       } catch {}
-      // Parse additional clinicians list
+      // Parse clinicians — ensure Abi is always the first (primary) entry
       try {
         const raw = (m as any).additionalCliniciansJson;
-        if (raw) setAdditionalClinicians(JSON.parse(raw));
-        else setAdditionalClinicians([]);
-      } catch { setAdditionalClinicians([]); }
+        const parsed: Clinician[] = raw ? JSON.parse(raw) : [];
+        const hasAbi = Array.isArray(parsed) && parsed.some((c: Clinician) => c.isPrimary === true);
+        if (!hasAbi) parsed.unshift({ ...ABI_DEFAULT });
+        setAdditionalClinicians(Array.isArray(parsed) ? parsed : [{ ...ABI_DEFAULT }]);
+      } catch { setAdditionalClinicians([{ ...ABI_DEFAULT }]); }
       // Allow watch subscription to fire again after reset settles
       setTimeout(() => { isSilentReset.current = false; }, 50);
       setSaveStatus("saved");

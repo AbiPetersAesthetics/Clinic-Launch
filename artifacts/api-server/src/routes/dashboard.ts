@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
+import { calcCliniciansMonthlyCost } from "../lib/financialEngine";
 
 const router = Router();
 
@@ -83,7 +84,8 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     // Use itemised fixed costs when available (more accurate than legacy fields)
     const totalFixedItemsCost = fixedCostItems.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
     const legacyFixed = financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp;
-    const actualFixed = totalFixedItemsCost > 0 ? totalFixedItemsCost : legacyFixed;
+    const clinicianCostDash = calcCliniciansMonthlyCost((financial as any).additionalCliniciansJson);
+    const actualFixed = (totalFixedItemsCost > 0 ? totalFixedItemsCost : legacyFixed) + clinicianCostDash;
 
     const acv = financial.wincAcvGbp || financial.averageClientValueGbp;
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;

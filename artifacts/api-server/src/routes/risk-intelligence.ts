@@ -17,6 +17,7 @@ import {
   calcCombined,
   calcOwner,
   calcWincAtOccupancy,
+  calcCliniciansMonthlyCost,
 } from "../lib/financialEngine";
 
 const router = Router();
@@ -101,8 +102,10 @@ async function buildContext(projectId: number): Promise<string> {
   }
 
   const fixedCostItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
-  const dynamicFixedCosts = fixedCostItems.length > 0
-    ? fixedCostItems.reduce((s, i) => s + (i.amountGbp || 0), 0)
+  const fixedItemsRI = fixedCostItems.reduce((s, i) => s + (i.amountGbp || 0), 0);
+  const clinicianCostRI = calcCliniciansMonthlyCost(model.additionalCliniciansJson);
+  const dynamicFixedCosts = fixedCostItems.length > 0 || clinicianCostRI > 0
+    ? fixedItemsRI + clinicianCostRI
     : undefined;
 
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));

@@ -15,6 +15,77 @@
 export const VAT_THRESHOLD = 90000;
 export const VAT_RATE = 0.20;
 
+// ─── UK PAYE / employer cost calculator (2024/25 rates) ──────────────────────
+// Spec: employee NI 12% above £12,570 to £50,270 / 2% above; employer NI 13.8%
+// above £9,100; employer pension 3% on qualifying earnings £6,240–£50,270.
+export function calcPayeBreakdown(annualGross: number) {
+  const g = Math.max(0, annualGross);
+  const PRIMARY_THRESHOLD = 12570;
+  const UPPER_EARNINGS = 50270;
+  const EMPLOYER_NI_THRESHOLD = 9100;
+  const PENSION_LOWER = 6240;
+  const PENSION_UPPER = 50270;
+  const PERSONAL_ALLOWANCE = 12570;
+
+  // Employee NI
+  let employeeNI = 0;
+  if (g > PRIMARY_THRESHOLD) {
+    employeeNI += (Math.min(g, UPPER_EARNINGS) - PRIMARY_THRESHOLD) * 0.12;
+    if (g > UPPER_EARNINGS) employeeNI += (g - UPPER_EARNINGS) * 0.02;
+  }
+
+  // Employer NI: 13.8% on earnings above £9,100
+  const employerNI = g > EMPLOYER_NI_THRESHOLD ? (g - EMPLOYER_NI_THRESHOLD) * 0.138 : 0;
+
+  // Employer pension: 3% on qualifying earnings between £6,240 and £50,270
+  const pensionEarnings = Math.max(0, Math.min(g, PENSION_UPPER) - PENSION_LOWER);
+  const employerPension = pensionEarnings * 0.03;
+
+  // Total cost to business
+  const totalCostAnnual = g + employerNI + employerPension;
+  const totalCostMonthly = totalCostAnnual / 12;
+
+  // Income tax: 20% basic rate above personal allowance; 40% above £50,270
+  let incomeTax = 0;
+  if (g > PERSONAL_ALLOWANCE) {
+    incomeTax += (Math.min(g, 50270) - PERSONAL_ALLOWANCE) * 0.20;
+    if (g > 50270) incomeTax += (Math.min(g, 125140) - 50270) * 0.40;
+  }
+
+  const netMonthlyTakeHome = (g - employeeNI - incomeTax) / 12;
+
+  return {
+    annualGross: Math.round(g),
+    employeeNI: Math.round(employeeNI),
+    employerNI: Math.round(employerNI),
+    employerPension: Math.round(employerPension),
+    totalCostAnnual: Math.round(totalCostAnnual),
+    totalCostMonthly: Math.round(totalCostMonthly),
+    incomeTax: Math.round(incomeTax),
+    netMonthlyTakeHome: Math.round(netMonthlyTakeHome),
+  };
+}
+
+// ─── Sum total monthly employer cost across all clinicians ────────────────────
+// Parses the additionalCliniciansJson string and sums up total cost to business
+// per month for all entries (date-agnostic — used for static break-even model).
+// Backward compat: if only salaryGbp (monthly) present, uses that directly.
+export function calcCliniciansMonthlyCost(cliniciansJson: string | null | undefined): number {
+  if (!cliniciansJson) return 0;
+  try {
+    const parsed = JSON.parse(String(cliniciansJson));
+    if (!Array.isArray(parsed)) return 0;
+    return Math.round(parsed.reduce((sum: number, c: any) => {
+      if (c.annualGrossSalaryGbp != null && c.annualGrossSalaryGbp > 0) {
+        return sum + calcPayeBreakdown(c.annualGrossSalaryGbp).totalCostMonthly;
+      }
+      // Backward compat: old format stored monthly salary directly
+      if (c.salaryGbp != null && c.salaryGbp > 0) return sum + c.salaryGbp;
+      return sum;
+    }, 0));
+  } catch { return 0; }
+}
+
 // ─── Legacy fixed cost fallback ───────────────────────────────────────────────
 // Sums the hardcoded individual fields from financialsTable.
 // Use ONLY when no dynamic fixed_cost_items exist for this project.

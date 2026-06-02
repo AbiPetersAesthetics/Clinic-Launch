@@ -1,0 +1,35 @@
+Here's the complete prompt:
+
+Remove the Life Design section from the Assumptions tab entirely, including the following fields:
+
+Desired Income (£/mo)
+Min Household Need (£/mo)
+School Fees, Travel, Other Household
+
+Keep only these two fields from Life Design but move them to a new section at the very top of the Assumptions tab called Capital & Runway, placed above all other sections:
+Business Capital (£) — what is currently in the business bank account, manually entered
+Then add three new calculated fields that pull from existing model data:
+Secured Investment (£) — pulls the Total Capital Raised figure from the Investment tab automatically. This updates in real time as loan and equity instruments are added to the Investment tab.
+Projected Bedhampton Net Income to Opening (£) — calculates automatically based on months remaining to 1 November 2026 multiplied by the Bedhampton estimated monthly net from the Bedhampton section. Currently showing £37,000 across 5 months at £7,400/month net. This should update dynamically as the opening date or Bedhampton figures change.
+Project Costs (£) — pulls the Total Selected Cost figure from the Project Plan tab automatically. Currently £83,444.
+Then display two summary output figures:
+Total Money Available at Opening (£) — calculated as:
+Business Capital + Secured Investment + Projected Bedhampton Net Income
+Target Runway at Opening (£) — calculated as:
+Total Money Available at Opening minus Project Costs
+Display Target Runway in green if positive, amber if below £10,000, red if negative.
+These two summary figures should also be visible as a banner or summary card on the main dashboard so David can see the opening cash position at a glance without navigating to Assumptions.
+Keep the following two fields and move them into the Capital & Runway section:
+Lease signed (months before opening) — currently set to 2. Rent and rates are charged against business capital from this point even before Winchester opens.
+Rent-free months (agreed with landlord) — currently set to 3. Only business rates apply during this period, rent is £0.
+These two fields feed directly into the pre-opening cash burn calculation and must remain active. Make sure they continue to influence the Projected Bedhampton Net Income to Opening and Target Runway at Opening calculations correctly — specifically that pre-opening rent and rates liability is deducted from available capital during the rent-free and pre-opening periods as appropriate.
+Ensure that all AI-powered features across the app that currently reference capital, runway, funding or risk — including the Dashboard risk intelligence panel, the AI Funding Adviser on the Investment tab, the Cost Optimisation risk flags, and any other AI assessment components — are updated to pull from the new Capital & Runway section as their single source of truth for:
+
+Available business capital
+Secured investment
+Projected Bedhampton income to opening
+Project costs
+Total money available at opening
+Target runway at opening
+
+No AI feature should reference the old Life Design fields or hardcoded capital figures after this change. All risk assessments, funding recommendations and dashboard alerts should dynamically reflect the live Capital & Runway figures so that as Business Capital, Secured Investment or Project Costs change, all AI intelligence updates automatically without requiring a manual re-run.

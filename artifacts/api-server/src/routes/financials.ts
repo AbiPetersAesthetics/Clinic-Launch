@@ -9,6 +9,8 @@ import {
   findSelfFundingMonth,
   calcCombined,
   calcOwner,
+  calcPayeBreakdown,
+  calcCliniciansMonthlyCost,
 } from "../lib/financialEngine";
 import { fetchBedhamptonLive } from "./bedhampton";
 
@@ -293,8 +295,10 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
 
   // All fixed cost items go into Winchester's fixed cost base.
   // Dual items count once — they don't get added to Bedhampton separately.
-  const dynamicFixedCosts = fixedCostItems.length > 0
-    ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
+  const fixedItemsTotal = fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0);
+  const clinicianMonthlyCost = calcCliniciansMonthlyCost((model as any).additionalCliniciansJson);
+  const dynamicFixedCosts = fixedCostItems.length > 0 || clinicianMonthlyCost > 0
+    ? fixedItemsTotal + clinicianMonthlyCost
     : undefined; // undefined = fall back to legacy hardcoded fields
 
   // Issue 2: Apply treatment mix if plannedPricingJson contains valid entries.
@@ -616,7 +620,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   // Parse additional clinicians from financial model
-  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; salaryGbp?: number; }
+  interface ExtraClinician { id?: string; name?: string; isPrimary?: boolean; startDate?: string | null; annualGrossSalaryGbp?: number; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; salaryGbp?: number; }
   let additionalClinicians: ExtraClinician[] = [];
   try {
     const raw = (model as any).additionalCliniciansJson;
@@ -647,20 +651,40 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let occupancyPercent = 0;
     let effectiveFixed = 0; // hoisted so display uses same value as net calculation
     let additionalClinicianRevenue = 0;
-    let additionalClinicianSalary = 0;
+    let clinicianTotalCost = 0;
 
     if (!isPreOpening) {
       const wincMonth = i - openingMonthIndex; // 0-based months since opening
       occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
       const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
       wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
-      // Additional clinicians: each ramps independently from their start date
+      // Clinicians: isPrimary (e.g. Abi) cost from opening; secondary from their startDate.
+      // Cost = total employer cost to business via PAYE (gross + employer NI + pension).
       for (const clin of additionalClinicians) {
-        if (!clin.startDate) continue;
-        const clinStart = new Date(clin.startDate);
-        const clinStartIdx = (clinStart.getFullYear() - calendarStart.getFullYear()) * 12
-          + (clinStart.getMonth() - calendarStart.getMonth());
-        if (i >= clinStartIdx) {
+        const isPrimary = clin.isPrimary === true;
+        let isActive = false;
+        let clinStartIdx = openingMonthIndex;
+
+        if (isPrimary || !clin.startDate) {
+          isActive = true; // already inside !isPreOpening block
+        } else {
+          const clinStart = new Date(clin.startDate);
+          clinStartIdx = (clinStart.getFullYear() - calendarStart.getFullYear()) * 12
+            + (clinStart.getMonth() - calendarStart.getMonth());
+          isActive = i >= clinStartIdx;
+        }
+
+        if (!isActive) continue;
+
+        // Employer cost to business via PAYE; fall back to legacy monthly salary
+        if (clin.annualGrossSalaryGbp != null && clin.annualGrossSalaryGbp > 0) {
+          clinicianTotalCost += calcPayeBreakdown(clin.annualGrossSalaryGbp).totalCostMonthly;
+        } else if (clin.salaryGbp != null && clin.salaryGbp > 0) {
+          clinicianTotalCost += clin.salaryGbp;
+        }
+
+        // Non-primary clinicians also generate revenue from their startDate
+        if (!isPrimary && clin.startDate) {
           const clinMonth = i - clinStartIdx;
           const clinHours = clin.hoursPerDay ?? ((model as any).practitionerHoursPerDay ?? 7);
           const clinDays = clin.daysPerMonth ?? ((model as any).workingDaysPerMonth ?? 17);
@@ -670,12 +694,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
           const clinRevenue = clinSlots * (clinOcc / 100) * acv;
           additionalClinicianRevenue += clinRevenue;
           wincRevenue += clinRevenue;
-          additionalClinicianSalary += (clin.salaryGbp ?? 0);
         }
       }
       const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
       // Free rent is a pre-opening (lease period) benefit — post-opening always pays full fixed costs
-      effectiveFixed = wincFixedCosts;
+      effectiveFixed = wincFixedCosts + clinicianTotalCost;
       wincCosts = effectiveFixed + variableCosts;
     }
 
@@ -740,7 +763,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
     // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
     const wincFixedCostsMonth = !isPreOpening ? effectiveFixed : 0;
-    wincCosts += wincVat + additionalClinicianSalary;
+    wincCosts += wincVat;
     wincNet = wincRevenue - wincCosts;
 
     // Self-funding check after VAT applied
@@ -791,7 +814,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       wincCosts: Math.round(wincCosts),
       wincNet: Math.round(wincNet),
       additionalClinicianRevenue: Math.round(additionalClinicianRevenue),
-      additionalClinicianSalary: Math.round(additionalClinicianSalary),
+      additionalClinicianSalary: Math.round(clinicianTotalCost),
       bedhRevenue: Math.round(bedhRevenue),
       bedhDualCosts: Math.round(bedhDualCosts),
       bedhCosts: Math.round(bedhCosts),

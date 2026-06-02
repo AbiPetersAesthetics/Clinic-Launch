@@ -1,0 +1,63 @@
+Here's the Replit prompt:
+
+Payout Analysis — Financial Year Alignment
+Update the Payout Analysis section on the Investment tab as follows:
+Align all P&L and distributable profit calculations to the company financial year running August to July. This is the legal accounting year for Abi Peters Aesthetics Ltd and the point at which dividends will be formally declared and distributed.
+Display three financial years clearly:
+FY26/27 (Aug '26 – Jul '27)
+Winchester opens November 2026 so this FY contains 9 trading months. Calculate distributable profit for these 9 months only. Show full working as currently displayed. Label clearly as 9 trading months.
+FY27/28 (Aug '27 – Jul '28)
+First full 12-month trading year. Show full working. Label as first full financial year.
+FY28/29 (Aug '28 – Jul '29)
+Second full 12-month trading year including second clinician from November 2027. Show full working. Label accordingly.
+For each financial year show the full P&L breakdown:
+
+Gross revenue
+Less variable costs (with gross margin %)
+Gross profit
+Less fixed costs
+Operating profit
+Less director salary (pulled from Clinic Staff Schedule — total cost to business not gross salary)
+Less loan repayments (pulled from Investment tab — total annual repayments across all active loan instruments)
+Net before buffer
+Less 20% cash buffer retained
+Distributable profit
+Net margin %
+
+Then show Per-Shareholder Payout for each FY pulled from the Ownership Register — each shareholder's equity % applied to the distributable profit figure. Include James Gibbons once his equity kicker is added as an instrument.
+
+Business Valuation — update as follows:
+The valuation section currently uses a blended pre-money approach. Update it to:
+
+Pull loan instruments from the Investment tab including any equity kicker attached to a loan. The equity kicker must be treated as equity given up and reflected in the Ownership Register and valuation calculations automatically when a loan with equity kicker is added.
+Show an implied valuation at the end of each financial year based on the distributable profit for that year multiplied by the selected earnings multiple. Label these clearly:
+
+
+Implied valuation at FY26/27 year end
+Implied valuation at FY27/28 year end
+Implied valuation at FY28/29 year end
+
+These are not external valuations — label them clearly as implied internal valuations based on modelled earnings only. They show how the business value trajectory looks year on year based on your own projections.
+
+When a loan with equity kicker is added, automatically update:
+
+
+The Ownership Register to reflect the equity kicker percentage assigned to that investor
+The pre-money valuation calculation to use the implied valuation at the point of investment
+The post-money valuation to show pre-money plus total capital raised
+The per-shareholder payout to include the new equity holder from the date their instrument is added
+
+
+Show a clean valuation summary card at the top of the Investment tab displaying:
+
+
+Pre-money valuation (blended, at point of investment)
+Total capital raised
+Post-money valuation
+Equity given up (total across all instruments)
+Founder equity retained (%)
+Implied valuation FY26/27
+Implied valuation FY27/28
+Implied valuation FY28/29
+
+All figures should update dynamically as instruments are added, removed or edited. No hardcoded values.

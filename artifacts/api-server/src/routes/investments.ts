@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable, projectsTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
+import { calcCliniciansMonthlyCost } from "../lib/financialEngine";
 
 const router = Router();
 
@@ -256,12 +257,13 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   } catch {}
 
   // ── Fixed costs — prefer dynamic items table over legacy fields ─────────────
-  const fixedMonthly = fixedCostItems.length > 0
+  const clinicianCostInv = calcCliniciansMonthlyCost((fin as any).additionalCliniciansJson);
+  const fixedMonthly = (fixedCostItems.length > 0
     ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : ((fin as any).rentGbp ?? 0) + ((fin as any).ratesGbp ?? 0) + ((fin as any).utilitiesGbp ?? 0) +
       ((fin as any).internetGbp ?? 0) + ((fin as any).insuranceGbp ?? 0) + ((fin as any).accountantGbp ?? 0) +
       ((fin as any).softwareGbp ?? 0) + ((fin as any).wasteContractGbp ?? 0) + ((fin as any).cleanerGbp ?? 0) +
-      ((fin as any).subscriptionsGbp ?? 0) + ((fin as any).financeRepaymentsGbp ?? 0);
+      ((fin as any).subscriptionsGbp ?? 0) + ((fin as any).financeRepaymentsGbp ?? 0)) + clinicianCostInv;
 
   // Variable costs: percentage of revenue + fixed monthly overhead items
   const variableRatio = (((fin as any).stockPercent ?? 0) + ((fin as any).commissionsPercent ?? 0)) / 100;
