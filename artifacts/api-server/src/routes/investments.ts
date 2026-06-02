@@ -585,7 +585,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     founderEquityPercent:       Math.max(0, 100 - totalEquityGivenUpPercent),
     totalLoanRepaymentsYear1:   Math.round(totalLoanRepaymentsYear1),
     distributableProfit12m,
-    cashflowNote:               `Winchester P&L aligned to financial year (Aug–Jul). ${y1.fyLabel} includes ${y1.tradingMonths} trading months. Variable costs and director salary are dynamic; fixed costs are constant. 20% cash buffer retained before dividends.`,
+    cashflowNote:               `Winchester P&L aligned to financial year (Aug–Jul). ${y1.fyLabel} includes ${y1.tradingMonths} trading months. Variable costs and director salary are dynamic; fixed costs are constant. £3,000/mo floor retained before dividends.`,
     totalSharesPercent,
     payouts,
     annualSummary:              { y1: y1WithPayouts, y2: y2WithPayouts, y3: y3WithPayouts },

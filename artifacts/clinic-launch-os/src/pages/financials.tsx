@@ -3514,7 +3514,7 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 2",
                     title: "After Bedhampton closes",
-                    subtitle: `${clinicLabel} self-funding (≥${cr.winc.selfFundingBufferPercent}% margin). Solo clinic.`,
+                    subtitle: `${clinicLabel} running solo at scenario occupancy. Bedhampton income removed.`,
                     income: cr.owner.phase2Income,
                     shortfall: cr.owner.phase2Shortfall,
                     safe: cr.owner.phase2IsSafe,
@@ -3526,7 +3526,7 @@ export default function FinancialsPage() {
                   {
                     phase: "Phase 3",
                     title: `${clinicLabel} at full target`,
-                    subtitle: `${clinicLabel} alone covers desired income. Full financial independence.`,
+                    subtitle: `${clinicLabel} alone at scenario occupancy. Does Winchester cover your full drawings target?`,
                     income: cr.owner.phase3Income,
                     shortfall: Math.max(cr.owner.targetDrawings - cr.owner.phase3Income, 0),
                     safe: cr.owner.phase3IsSafe,
@@ -3844,6 +3844,12 @@ export default function FinancialsPage() {
       {/* ═══ TAB: CUSTOM MODEL ════════════════════════════════════════════════ */}
       {tab === "custom" && (
         <div className="space-y-6">
+          <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 px-4 py-3 flex items-start gap-3">
+            <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <p className="text-xs text-amber-800 dark:text-amber-300">
+              <span className="font-semibold">Standalone calculator only.</span> This Custom Model tab is a private what-if tool — it does not affect the preset scenarios (Conservative, Realistic, Delayed Ramp, etc.) shown at the top of the page. Changing the slider here will never alter those models. To change a preset, edit your assumptions in the Assumptions tab.
+            </p>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
 
             {/* ── LEFT: Inputs ───────────────────────────────────────────────── */}
@@ -4390,7 +4396,7 @@ export default function FinancialsPage() {
                   <CardTitle className="text-sm">3-Year Performance Outlook</CardTitle>
                 </div>
                 <CardDescription className="text-xs mt-1">
-                  Winchester clinic P&L aligned to your August–July financial year. Pre-opening months within FY1 contribute zero revenue. Each clinician ramps independently from their start date. 20% cash buffer retained before dividends.
+                  Winchester clinic P&L aligned to your August–July financial year. Pre-opening months within FY1 contribute zero revenue. Each clinician ramps independently from their start date. £3,000/mo floor retained before dividends.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -4420,7 +4426,7 @@ export default function FinancialsPage() {
                         { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
                         { label: "Net pre-Salary", key: "netPreSalary", isBold: true, divider: true },
                         { label: "Abi's Salary (conditional)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
-                        { label: "20% Cash Buffer (retained)", key: "bufferRetained", isDeduction: true, color: "text-muted-foreground" },
+                        { label: "£3k Floor (retained)", key: "bufferRetained", isDeduction: true, color: "text-muted-foreground" },
                         { label: "Distributable to Shareholders", key: "distributable", isBold: true, isHighlight: true, pctKey: "netMarginPct", divider: true },
                       ] as { label: string; key: string; isDeduction?: boolean; color?: string; isBold?: boolean; pctKey?: string; divider?: boolean; isHighlight?: boolean }[]).map((row) => {
                         const years = [investmentSummary.annualSummary.y1, investmentSummary.annualSummary.y2, investmentSummary.annualSummary.y3];
@@ -4826,8 +4832,8 @@ export default function FinancialsPage() {
                             { label: "Operating profit", value: yr.operatingProfit, isBold: true },
                             { label: "Less: loan repayments (all active instruments)", value: -yr.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
                             { label: "Net pre-salary", value: yr.netPreSalary, isBold: true },
-                            { label: "Less: 20% cash buffer retained (profitable months only)", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
-                            { label: "Less: Abi's salary (drawn only when monthly net > 0)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
+                            { label: "Less: £3,000/mo floor retained (profitable months only)", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
+                            { label: "Less: Abi's salary (drawn only when net > £3,000/mo)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
                             { label: "Distributable profit", value: yr.distributable, isBold: true, isHighlight: true, suffix: `net margin ${yr.netMarginPct}%` },
                           ];
                           return (
@@ -4911,8 +4917,8 @@ export default function FinancialsPage() {
                       <div>
                         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Salary &amp; Dividend Distribution Timeline</div>
                         <div className="text-[10px] text-muted-foreground mb-2">
-                          Month-by-month: Abi's salary is only drawn when monthly net cash (after loan repayments) is positive.
-                          Dividends are distributable from the remaining 80% after that condition is met.
+                          Month-by-month: Abi's salary is only drawn when monthly net (after loan repayments) exceeds £3,000/mo.
+                          The business retains at least £3,000 first — salary comes from the surplus above that floor.
                         </div>
                         <div className="rounded-md border overflow-hidden">
                           <div className="overflow-x-auto">

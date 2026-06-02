@@ -1,0 +1,217 @@
+Investment & Ownership
+Model your capital structure, loan repayments, and 12-month shareholder payout at the point of investment.
+
+Refresh
+Business Valuation
+Pre-money estimate
+Blended pre-money valuation weighted 5:1 toward Year 1. Year 1 (Nov '26 – Oct '27) carries most of the weight — reflecting reality at the point of investment. Year 2 (FY27/28) anchors the stable trajectory.
+Earnings multiple:
+5× Conservative
+7× Base case
+10× Growth
+Pre-money — blended valuation
+£118,580
+£16,940 blended distributable (5:1 Y1 weighted) × 7×
+Year 1 — Nov '26 – Oct '27
+£5,299
+£757 distributable × 7× (ramp-up)
+Year 2 — FY27/28 (stable)
+£684,985
+£97,855 distributable × 7× (full FY)
+Revenue cross-check (Year 2 stable, FY27/28)
+£394,048
+Methodology: 5:1 weighted blend of two distributable profit figures: Year 1 (Nov '26 – Oct '27, first 12 months from opening) receives 5 parts weight; Year 2 (FY27/28, first full stable FY) receives 1 part. This heavy Year 1 bias reflects the reality that at the point of investment the business is unproven — Year 2 anchors the upside trajectory without inflating the headline figure. Formula: (5 × Y1 + Y2) ÷ 6. Conservative (5×) suits an unproven clinic; base case (7×) reflects UK aesthetics practice comparables; growth (10×) prices in expansion potential. Any external fundraise should be supported by a formal valuation.
+Investment Need
+Launch cash state and what it takes to open safely.
+Business capital (available at start)
++£42,500
+Project costs (base plan fit-out)
+−£81,786
+Bedhampton net income (5 mo pre-opening)
++£22,110
+Working capital at open (May '27)
+−£33,484
+Monthly fixed overheads
+£13,551
+Working capital buffer (2 months)
++£27,102
+Minimum to launch safely
+£60,586
+Low
+£60,586
+Deficit + 2 months working capital
+The minimum viable raise — covers the pre-opening cash deficit and two months of fixed overheads. No margin for error; assumes Bedhampton income and project timelines land exactly as modelled.
+
+★ Recommended
+Medium
+£75,733
+Low + 25% contingency
+Adds a 25% contingency buffer above the minimum — covers minor fit-out overruns, permit delays, or a slower ramp without running dry. The recommended raise for a first-time clinic launch.
+
+High
+£98,453
+Medium + 30% safety margin
+Full resilience against significant overruns, regulatory delays, or a prolonged trading ramp. Appropriate if you want to avoid any further fundraising rounds before self-sufficiency.
+
+3-Year Performance Outlook
+Winchester clinic P&L aligned to your August–July financial year. Pre-opening months within FY1 contribute zero revenue. Each clinician ramps independently from their start date. 20% cash buffer retained before dividends.
+Line	
+FY26/27
+Aug '26 – Jul '27 · 9mo trading
+FY27/28
+Aug '27 – Jul '28 · 12mo trading
+FY28/29
+Aug '28 – Jul '29 · 12mo trading
+Revenue	+£106,260	+£394,048	+£585,316
+Variable Costs	(£26,884)	(£99,694)	(£148,085)
+Gross Profit	+£79,37675%	+£294,35375%	+£437,23175%
+Fixed Costs	(£84,465)	(£112,620)	(£112,620)
+Operating Profit	-£5,089	+£181,733	+£324,611
+Loan Repayments	—	—	—
+Net pre-Salary	-£5,089	+£181,733	+£324,611
+Abi's Salary (conditional)	(£1,358)	(£47,879)	(£50,004)
+20% Cash Buffer (retained)	(£8,507)	(£36,000)	(£36,000)
+Distributable to Shareholders	—	+£97,85534%	+£238,60747%
+Total Capital Raised
+£0
+0 instruments
+Equity Given Up
+0.0%
+Founder retains 100.0%
+Loan Repayments — Year 1
+£0
+Total across all loans
+Est. Distributable — 12m
+£757
+Profit available to distribute
+Investment Instruments
+Add Loan
+Add Equity Investment
+Loan — borrowed capital with scheduled repayments; optionally gives up equity.  Equity investment — lump-sum capital in exchange for a share of the business.
+No investment instruments added yet. Use the buttons above to add a loan or equity investment.
+
+Ownership Register
+Add Shareholder
+List all shareholders and their equity %. Include the founder, any investors who received equity, and any other equity holders. Equity percentages should sum to 100%.
+Name	Role	Equity %	Notes	
+David Savin	Founder	
+50%
+—	
+
+
+Abi Peters	Founder	
+50%
+—	
+
+
+Total	
+100.0%
+✓ Fully allocated
+Payout Analysis
+Full P&L waterfall for each financial year — revenue to distributable profit, plus per-shareholder payout. FY26/27 includes only the trading months after Winchester opens. FY27/28 and FY28/29 are full 12-month years.
+FY26/27
+Aug '26 – Jul '27
+9 trading months — Winchester opens November 2026
++£0
+Gross revenue (9 trading months)
++£106,260
+Less: variable costs
+(£26,884)gross margin 75%
+Gross profit
++£79,376
+Less: fixed costs (employer NI/pension, rent, overheads)
+(£84,465)
+Operating profit
+(£5,089)
+Less: loan repayments (all active instruments)
+—
+Net pre-salary
+(£5,089)
+Less: 20% cash buffer retained (profitable months only)
+(£8,507)kept as working capital
+Less: Abi's salary (drawn only when monthly net > 0)
+(£1,358)
+Distributable profit
+—net margin -6%
+Per-Shareholder Payout — FY26/27
+Shareholder	Role	Equity %	Payout
+Abi Peters	Founder	50%	+£0
+David Savin	Founder	50%	+£0
+FY27/28
+Aug '27 – Jul '28
+First full financial year — 12 trading months
++£97,855
+Gross revenue (12 trading months)
++£394,048
+Less: variable costs
+(£99,694)gross margin 75%
+Gross profit
++£294,353
+Less: fixed costs (employer NI/pension, rent, overheads)
+(£112,620)
+Operating profit
++£181,733
+Less: loan repayments (all active instruments)
+—
+Net pre-salary
++£181,733
+Less: 20% cash buffer retained (profitable months only)
+(£36,000)kept as working capital
+Less: Abi's salary (drawn only when monthly net > 0)
+(£47,879)
+Distributable profit
++£97,855net margin 34%
+Per-Shareholder Payout — FY27/28
+Shareholder	Role	Equity %	Payout
+Abi Peters	Founder	50%	+£48,928
+David Savin	Founder	50%	+£48,928
+FY28/29
+Aug '28 – Jul '29
+Second full year — second clinician joins from November 2027
++£238,607
+Gross revenue (12 trading months)
++£585,316
+Less: variable costs
+(£148,085)gross margin 75%
+Gross profit
++£437,231
+Less: fixed costs (employer NI/pension, rent, overheads)
+(£112,620)
+Operating profit
++£324,611
+Less: loan repayments (all active instruments)
+—
+Net pre-salary
++£324,611
+Less: 20% cash buffer retained (profitable months only)
+(£36,000)kept as working capital
+Less: Abi's salary (drawn only when monthly net > 0)
+(£50,004)
+Distributable profit
++£238,607net margin 47%
+Per-Shareholder Payout — FY28/29
+Shareholder	Role	Equity %	Payout
+Abi Peters	Founder	50%	+£119,304
+David Savin	Founder	50%	+£119,304
+Salary & Dividend Distribution Timeline
+Month-by-month: Abi's salary is only drawn when monthly net cash (after loan repayments) is positive. Dividends are distributable from the remaining 80% after that condition is met.
+FY26/27
+Month	Nov 26	Dec 26	Jan 27	Feb 27	Mar 27	Apr 27	May 27	Jun 27	Jul 27
+Abi salary drawn	—	—	—	—	—	—	—	+£73	+£1,285
+Distributable	—	—	—	—	—	—	—	—	—
+FY27/28
+Month	Aug 27	Sept 27	Oct 27	Nov 27	Dec 27	Jan 28	Feb 28	Mar 28	Apr 28	May 28	Jun 28	Jul 28
+Abi salary drawn	+£2,498	+£3,711	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167
+Distributable	—	—	+£756	+£5,938	+£7,151	+£8,363	+£9,576	+£10,789	+£12,001	+£13,214	+£14,427	+£15,639
+FY28/29
+Month	Aug 28	Sept 28	Oct 28	Nov 28	Dec 28	Jan 29	Feb 29	Mar 29	Apr 29	May 29	Jun 29	Jul 29
+Abi salary drawn	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167	+£4,167
+Distributable	+£16,852	+£18,065	+£19,278	+£20,490	+£20,490	+£20,490	+£20,490	+£20,490	+£20,490	+£20,490	+£20,490	+£20,490
+Winchester P&L aligned to financial year (Aug–Jul). FY26/27 includes 9 trading months. Variable costs and director salary are dynamic; fixed costs are constant. 20% cash buffer retained before dividends.
+AI Funding Adviser
+❓
+· 3h ago
+Re-run
+AI assessment of loan vs equity vs self-funding for the Winchester clinic fit-out, based on your 3-year projections and capital requirement.
+Update context & re-run
+e.g. I've received a £40k loan offer at 7.9%…

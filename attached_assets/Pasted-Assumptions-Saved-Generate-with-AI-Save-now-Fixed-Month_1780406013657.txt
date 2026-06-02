@@ -1,0 +1,279 @@
+Assumptions
+Saved
+Generate with AI
+Save now
+Fixed Monthly Costs
+Tag each cost as Unique (Winchester only) or Dual (shared across both clinics — counts once, never double-charged).
+
+9 dual costs (£978/mo) deducted from Bedhampton pre-opening, then transferred to Winchester on day one.
+VAT on Rent
+
+Landlord charges 20% VAT on top of rent
+
+
+
+No
+Rent / Lease
+£
+2708
+Unique
+
+Business Rates
+£
+1300
+Unique
+
+Utilities - Electricity
+£
+180
+Unique
+
+Utilities - Water and Sewerage
+£
+30
+Unique
+
+Utilities - Internet
+£
+40
+Unique
+
+Insurance - Hamilton Fraser (Clinical, Premises & Liability)
+£
+158
+Unique
+
+Insurance - Employers Liability
+£
+40
+Unique
+
+Software - ANS
+£
+72
+Dual
+
+Software - Web Hosting
+£
+7
+Dual
+
+Software - QuickBooks
+£
+10
+Dual
+
+Admin - Accountant
+£
+120
+Dual
+
+Admin - Banking
+£
+10
+Dual
+
+Cleaning - Clinical Waste
+£
+47
+Dual
+
+Marketing - Ads
+£
+600
+Dual
+
+Software - GoHighLevel
+£
+82
+Dual
+
+Banking - Card Terminal
+£
+30
+Dual
+
+NMC Registration
+£
+10
+Unique
+
+RCN Registration
+£
+15
+Unique
+
+ACE Registraton
+£
+20
+Unique
+
+JCCP/BCAM Registration
+£
+40
+Unique
+
+e.g. ANS software, card terminal...
+£
+0
+Unique
+
+Unique = Winchester only
+Dual = shared, counted once
+Total fixed
+£5,519
+Winchester — Stock Cost
+Live Bedhampton margin: 75.3% → 24.7% stock
+Apply live margin
+Stock (% of revenue)
+25.3
+Winchester — Revenue & Self-Funding
+Avg Client Value (£)
+230
+Clinic Staff Schedule
+
+
++
+Add clinician
+Costs shown as total employer cost to business (gross + employer NI 13.8% above £9,100 + pension 3% on qualifying earnings). Max 4 clinicians.
+
+Abi Peters
+Primary
+Opens with clinic
+Annual gross salary
+£
+50000
+/yr
+Employee NI (12% to £50,270 / 2% above)
+£4,492 /yr
+Employer NI (13.8% above £9,100)
+£5,644 /yr
+Employer pension (3% qualifying earnings)
+£1,313 /yr
+Total cost to business
+£56,957 /yr · £4,746 /mo
+Employee net take-home (est.)
+£3,169 /mo
+Second Clinician
+Secondary
+
+November 2027
+×
+Annual gross salary
+£
+35000
+/yr
+Employee NI (12% to £50,270 / 2% above)
+£2,692 /yr
+Employer NI (13.8% above £9,100)
+£3,574 /yr
+Employer pension (3% qualifying earnings)
+£863 /yr
+Total cost to business
+£39,437 /yr · £3,286 /mo
+Employee net take-home (est.)
+£2,319 /mo
+Clinician name
+Secondary
+
+--------- ----
+×
+Annual gross salary
+£
+0
+/yr
+Total monthly clinician cost to business
+£8,032/mo
+Winchester Membership (£/mo)
+0
+Conservative Occ %
+30
+Realistic Occ %
+70
+Aggressive Occ %
+80
+Hours/Day/Room
+
+6.75
+Life Design
+Working Days/Mo
+
+21.5
+Life Design
+Self-Funding Buffer (%)
+20
+Bedhampton closes when Winchester's net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
+
+Treatment Mix — Revenue Engine
+Add Treatment
+Optional. Enter your treatment mix to calculate revenue per productive minute and throughput ceiling. Mix % should total 100. If left empty, the model uses the Avg Client Value above.
+No treatments added — using Avg Client Value fallback.
+
+Capital & Runway
+Your complete opening cash position. Secured Investment and Project Costs update automatically from the Investment tab and Project Plan.
+Business Capital (£)
+42500
+Current business bank balance
+
+Lease signed (months before opening)
+2
+Rent-free months (landlord agreed)
+3
+Lease signed months before opening: rent + rates charged against business capital from that point. Rent-free months: only business rates apply — rent is £0 during this period.
+
+Business Capital
+£42,500
+Secured Investment
+auto
+visit Investment tab
+Projected Bedhampton Net Income to Opening
+auto
+visit Investment tab
+Project Costs
+auto
+visit Investment tab
+Visit the Investment tab once to auto-load Secured Investment and Project Costs.
+
+Bedhampton — Revenue
+Sync from live data
+Separate patient base. Supports the business during the Winchester ramp. Closes when Winchester hits the self-funding target.
+Live — Last month: £15,446
+·
+Projected this month: £4,485
+·
+3-mo avg: £12,129
+·
+Gross margin: 75.3%
+Gross Monthly Revenue (£)
+10000
+Membership Revenue (£/mo)
+0
+Product / Stock Cost (%)
+26
+Joint capacity ceiling (£/mo)
+0
+Joint capacity ceiling: total revenue (Bedhampton + Winchester) Abi can generate. As Winchester grows, Bedhampton slots reduce proportionally.
+
+Bedhampton — Monthly Running Costs
+Location-specific costs only. Shared costs (software, insurance, staffing) should be added as Dual items in Fixed Monthly Costs above — they count once across both clinics.
+Rent / Premises (£)
+0
+Marketing (£)
+0
+Other (£)
+0
+Total running costs
+£0
+Product costs (26% of rev)
+£2,600
+Est. monthly net
+£7,400
+VAT Planning
+£90k threshold
+Current rolling 12-month turnover (all clinics, £)
+81000
+£9,000 remaining before VAT registration required
+
+VAT registration required within 1–2 months of Winchester opening
+
+Based on current rolling Bedhampton turnover, Winchester revenue will push the business above the £90k VAT threshold very quickly after opening. Accountant consultation is required before lease signing — not after. Confirm VAT strategy (standard, cash accounting, or flat rate) before committing to lease terms.
