@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "8M6R-C2S3lvSHhlCvGU0l"
+uri = "file://.agents/outputs/production_db_export.csv"
+type = "table"
+title = "Production DB Export — Clinic Launch OS"
