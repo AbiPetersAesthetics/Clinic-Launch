@@ -42,6 +42,8 @@ import {
   Pause,
   RefreshCw,
   TrendingUp,
+  Brain,
+  ExternalLink,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -224,6 +226,21 @@ export default function DashboardPage() {
   const [goNoGoError, setGoNoGoError] = useState<string | null>(null);
   const [goNoGoStale, setGoNoGoStale] = useState(false);
   const [goNoGoCachedAt, setGoNoGoCachedAt] = useState<string | null>(null);
+
+  // ── Risk Intelligence summary ─────────────────────────────────────────────
+  const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const [riskIntel, setRiskIntel] = useState<{ parts: Record<string, string>; generatedAt: string } | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/projects/1/risk-intelligence/latest`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.data?.parts && Object.keys(d.data.parts).length > 0) {
+          setRiskIntel({ parts: d.data.parts, generatedAt: d.data.generatedAt ?? "" });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // ── Funding Analysis widget ───────────────────────────────────────────────
   const [fundingAnalysis, setFundingAnalysis] = useState<any>(null);
@@ -1133,6 +1150,65 @@ export default function DashboardPage() {
           </Card>
         );
       })()}
+
+      {/* Risk Intelligence summary card */}
+      <Card className="border-border/60 shadow-sm overflow-hidden">
+        <CardContent className="p-0">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/40 bg-muted/20">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
+                <Brain className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <div className="text-sm font-semibold">Risk Intelligence</div>
+                <div className="text-xs text-muted-foreground">Hostile due diligence — specific to your numbers</div>
+              </div>
+            </div>
+            <Link href="/risk-intelligence">
+              <Button variant="outline" size="sm" className="gap-1.5 text-xs h-8">
+                {riskIntel ? "View Full Briefing" : "Generate Briefing"}
+                <ExternalLink className="w-3 h-3" />
+              </Button>
+            </Link>
+          </div>
+
+          {!riskIntel ? (
+            <div className="px-5 py-6 text-center">
+              <p className="text-sm text-muted-foreground">No briefing generated yet.</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Go to Risk Intelligence to run the full 8-part analysis.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/30">
+              {/* Part 1 preview */}
+              {riskIntel.parts["1"] && (
+                <div className="px-5 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-destructive/80 mb-2">Part 1 — Blind Spots</div>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
+                    {riskIntel.parts["1"].replace(/\*\*/g, "").split("\n\n")[0]}
+                  </p>
+                </div>
+              )}
+              {/* Part 4 preview — The One Thing */}
+              {riskIntel.parts["4"] && (
+                <div className="px-5 py-4">
+                  <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-2">Part 4 — The One Thing</div>
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">
+                    {riskIntel.parts["4"].replace(/\*\*/g, "").split("\n\n")[0]}
+                  </p>
+                </div>
+              )}
+              {/* Footer */}
+              <div className="px-5 py-3 bg-muted/20 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+                  <Clock className="w-3 h-3" />
+                  {riskIntel.generatedAt ? `Generated ${new Date(riskIntel.generatedAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric" })}` : "Briefing available"}
+                </div>
+                <span className="text-[10px] text-muted-foreground/50">8 parts · Regenerate after model changes</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* 1. Executive Health Panel */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
