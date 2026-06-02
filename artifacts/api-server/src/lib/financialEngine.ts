@@ -48,10 +48,9 @@ export function calcWincAtOccupancy(
 
   const fixedCosts = injectedFixedCosts !== undefined ? injectedFixedCosts : calcLegacyFixed(model);
 
-  // Variable costs: stock + commissions as % of revenue, plus fixed-amount variable items
+  // Variable costs: stock as % of revenue only
   const variableCosts =
-    grossRevenue * (((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100) +
-    (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
+    grossRevenue * ((model.stockPercent || 0) / 100);
 
   // VAT is a business-level liability on gross revenue
   const vatLiability = grossRevenue * vatRate;
@@ -73,27 +72,25 @@ export function calcWinchester(
   const base = calcWincAtOccupancy(model, targetOcc, acvMultiplier, vatRate, injectedFixedCosts);
   const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, vatLiability, totalCosts, netProfit, grossMarginPercent } = base;
 
-  const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
-  // fixedVarItems = marketing + staffing + consumables (fixed monthly amounts, not % of revenue)
-  const fixedVarItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
+  const variableRatio = (model.stockPercent || 0) / 100;
 
   // Break-even: revenue at which netProfit = 0
-  // Derivation: revenue × (1 − variableRatio − vatRate) = fixedCosts + fixedVarItems
-  // Therefore: breakEvenRevenue = (fixedCosts + fixedVarItems) / (1 − variableRatio − vatRate)
+  // Derivation: revenue × (1 − variableRatio − vatRate) = fixedCosts
+  // Therefore: breakEvenRevenue = fixedCosts / (1 − variableRatio − vatRate)
   const effectiveMargin = 1 - variableRatio - vatRate;
   const breakEvenRevenue = effectiveMargin > 0.001
-    ? (fixedCosts + fixedVarItems) / effectiveMargin
-    : (fixedCosts + fixedVarItems) * 3; // fallback if margin near-zero
+    ? fixedCosts / effectiveMargin
+    : fixedCosts * 3; // fallback if margin near-zero
   const breakEvenSlots = (breakEvenRevenue - (model.membershipRevenueGbp || 0)) / Math.max(acv, 1);
   const breakEvenOccupancy = slotsPerMonth > 0 ? (breakEvenSlots / slotsPerMonth) * 100 : 0;
   const treatmentsPerWeek = breakEvenSlots / Math.max((model.workingDaysPerMonth || 22) / 4.33, 1);
 
   // Self-funding: netProfit ≥ bufferPct × grossRevenue
-  // Derivation: revenue × (1 − variableRatio − vatRate − bufferPct) = fixedCosts + fixedVarItems
+  // Derivation: revenue × (1 − variableRatio − vatRate − bufferPct) = fixedCosts
   const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
   const sfDenominator = 1 - variableRatio - vatRate - bufferPct;
   const sfRevenueTarget = sfDenominator > 0.001
-    ? (fixedCosts + fixedVarItems) / sfDenominator
+    ? fixedCosts / sfDenominator
     : Infinity;
   const sfNetProfitTarget = isFinite(sfRevenueTarget) ? Math.round(sfRevenueTarget * bufferPct) : 9999999;
   const sfSlots = isFinite(sfRevenueTarget)

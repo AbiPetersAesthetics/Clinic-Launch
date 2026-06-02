@@ -890,21 +890,17 @@ export default function FinancialsPage() {
   const cp_hpd    = Number(watchAll.practitionerHoursPerDay) || 7;
   const cp_dpm    = Number(watchAll.workingDaysPerMonth) || 17;
   const cp_stock  = Number(watchAll.stockPercent) || 0;
-  const cp_comm   = Number(watchAll.commissionsPercent) || 0;
-  const cp_mkt    = Number(watchAll.marketingGbp) || 0;
-  const cp_staff  = Number(watchAll.staffingGbp) || 0;
-  const cp_cons   = Number(watchAll.consumablesGbp) || 0;
   const cp_memb   = Number(watchAll.membershipRevenueGbp) || 0;
   const cp_slots  = cp_rooms * cp_hpd * cp_dpm;
   const cp_booked = cp_slots * (customOcc / 100);
   const cp_rev    = cp_booked * cp_acv + cp_memb;
-  const cp_varRatio = (cp_stock + cp_comm) / 100;
-  const cp_varCost  = cp_rev * cp_varRatio + cp_mkt + cp_staff + cp_cons;
+  const cp_varRatio = cp_stock / 100;
+  const cp_varCost  = cp_rev * cp_varRatio;
   const cp_fixCost  = totalDynamicFixedCosts;
   const cp_net      = cp_rev - cp_varCost - cp_fixCost;
   const cp_margin   = cp_rev > 0 ? ((cp_rev - cp_varCost) / cp_rev) * 100 : 0;
   const cp_denom    = cp_acv * cp_slots * (1 - cp_varRatio);
-  const cp_beOcc    = cp_denom > 0 ? Math.min(Math.round(((cp_fixCost + cp_mkt + cp_staff + cp_cons) / cp_denom) * 100), 999) : 0;
+  const cp_beOcc    = cp_denom > 0 ? Math.min(Math.round((cp_fixCost / cp_denom) * 100), 999) : 0;
   const customPnl = {
     slotsPerMonth: cp_slots, bookedSlots: cp_booked, grossRevenue: cp_rev,
     variableCosts: cp_varCost, fixedCosts: cp_fixCost, netProfit: cp_net,
@@ -2814,19 +2810,18 @@ export default function FinancialsPage() {
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm">{clinicLabel} — Variable Costs</CardTitle>
+                      <CardTitle className="text-sm">{clinicLabel} — Stock Cost</CardTitle>
                       {bLive && bLive.summary.avgGrossMarginPct > 0 && (
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                             Live Bedhampton margin: <strong>{bLive.summary.avgGrossMarginPct}%</strong>
-                            {" "}→ {(100 - bLive.summary.avgGrossMarginPct).toFixed(1)}% variable cost
+                            {" "}→ {(100 - bLive.summary.avgGrossMarginPct).toFixed(1)}% stock
                           </span>
                           <button
                             type="button"
                             onClick={() => {
                               const variablePct = Math.round((100 - bLive.summary.avgGrossMarginPct) * 10) / 10;
                               form.setValue("stockPercent", variablePct);
-                              form.setValue("commissionsPercent", 0);
                             }}
                             className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors font-semibold"
                           >
@@ -2837,16 +2832,12 @@ export default function FinancialsPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        ["stockPercent","Stock (% of rev)"],["commissionsPercent","Commissions (% of rev)"],
-                        ["marketingGbp","Marketing (£/mo)"],["staffingGbp","Staffing (£/mo)"],["consumablesGbp","Consumables (£/mo)"],
-                      ].map(([name, label]) => (
-                        <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
-                        )} />
-                      ))}
-                    </div>
+                    <FormField control={form.control} name="stockPercent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Stock (% of revenue)</FormLabel>
+                        <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                      </FormItem>
+                    )} />
                   </CardContent>
                 </Card>
 
@@ -3770,7 +3761,7 @@ export default function FinancialsPage() {
               <Card className="shadow-sm">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-sm">Cost Structure</CardTitle>
+                    <CardTitle className="text-sm">Stock Cost</CardTitle>
                     {bLive && bLive.summary.avgGrossMarginPct > 0 && (
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
@@ -3781,7 +3772,6 @@ export default function FinancialsPage() {
                           onClick={() => {
                             const variablePct = Math.round((100 - bLive.summary.avgGrossMarginPct) * 10) / 10;
                             form.setValue("stockPercent", variablePct);
-                            form.setValue("commissionsPercent", 0);
                           }}
                           className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700 hover:bg-emerald-200 dark:hover:bg-emerald-800 transition-colors font-semibold"
                         >
@@ -3792,28 +3782,17 @@ export default function FinancialsPage() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-3">
-                    {([
-                      ["stockPercent",       "Stock (% of rev)",     "", "%"],
-                      ["commissionsPercent", "Commission (% of rev)", "", "%"],
-                      ["marketingGbp",       "Marketing",            "£", "/mo"],
-                      ["staffingGbp",        "Staffing",             "£", "/mo"],
-                      ["consumablesGbp",     "Consumables",          "£", "/mo"],
-                    ] as [string, string, string, string][]).map(([key, label, pre, post]) => (
-                      <div key={key} className="space-y-1">
-                        <label className="text-xs font-medium text-foreground/80">{label}</label>
-                        <div className="relative">
-                          {pre && <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{pre}</span>}
-                          <input
-                            type="number"
-                            value={Number((watchAll as any)[key]) || 0}
-                            onChange={(e) => form.setValue(key as any, Number(e.target.value))}
-                            className={`h-8 w-full rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary ${pre ? "pl-5" : "pl-3"} ${post ? "pr-10" : "pr-3"}`}
-                          />
-                          {post && <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">{post}</span>}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground/80">Stock (% of rev)</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={Number(watchAll.stockPercent) || 0}
+                        onChange={(e) => form.setValue("stockPercent", Number(e.target.value))}
+                        className="h-8 w-full rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-1 focus:ring-primary pl-3 pr-10"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">%</span>
+                    </div>
                   </div>
                   <div className="mt-3 flex justify-between items-center border-t pt-2">
                     <span className="text-xs text-muted-foreground">Fixed costs total (from Assumptions)</span>
