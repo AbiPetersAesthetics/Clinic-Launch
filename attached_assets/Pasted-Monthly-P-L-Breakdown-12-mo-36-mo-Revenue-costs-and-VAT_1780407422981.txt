@@ -1,0 +1,58 @@
+Monthly P&L Breakdown
+12 mo
+36 mo
+Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+Winchester opens
+Bedhampton closes
+VAT registered
+Month	Occ %	Winc Rev	Variable	Gross	Fixed (Winc)	Winc VAT (20.0%)	Winc ±	Bedh Net	Proj costs	Drawings	Net after Drawings	Capital
+Jun '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,422	(£9,504)	—	£4,422	£37,418
+Jul '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,422	(£6,060)	—	£4,422	£35,780
+Aug '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£3,122	(£1,188)	—	£3,122	£37,714
+Sep '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£3,122	(£36,986)	—	£3,122	£3,850
+Oct '26
+VAT
+HIGH RISK
+pre-open
+Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.
+—	—	—	—	—	—	—	£3,122	(£31,080)	—	£3,122	-£24,108
+Nov '26
+OPEN
+15%	£6,452	(£1,632)	+£4,820	(£10,265)	(£1,290)	-£6,736	£5,156	—	ramping	-£1,580	-£25,688
+Dec '26
+VAT
+19.6%	£8,430	(£2,133)	+£6,297	(£10,265)	(£1,686)	-£5,654	£4,088	—	ramping	-£1,566	-£27,254
+Jan '27
+VAT
+24.2%	£10,408	(£2,633)	+£7,775	(£10,265)	(£2,082)	-£4,572	£3,019	—	ramping	-£1,553	-£28,806
+Feb '27
+VAT
+28.8%	£12,387	(£3,134)	+£9,253	(£10,265)	(£2,477)	-£3,489	£1,951	—	ramping	-£1,538	-£30,344
+Mar '27
+VAT
+33.3%	£14,322	(£3,624)	+£10,698	(£10,265)	(£2,864)	-£2,431	£906	—	ramping	-£1,525	-£31,869
+Apr '27
+VAT
+37.9%	£16,301	(£4,124)	+£12,177	(£10,265)	(£3,260)	-£1,348	—	—	ramping	-£1,348	-£33,217
+May '27
+VAT
+42.5%	£18,279	(£4,625)	+£13,654	(£10,265)	(£3,656)	-£266	—	—	ramping	-£266	-£33,484
+Variable = Winchester stock %, commissions %, marketing, staffing, consumables. Fixed (Winc) = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).
+
+Bedh Net = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. Winc VAT = Winchester VAT only. Net after Drawings = Winc Net + Bedh Net − Owner's Drawings — what stays in the business each month.
+
+Proj costs = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £84,818.
+
+Drawings = Owner's drawings taken from the business once Winchester is self-funding. Capped so at least £3,000/month is always retained in the business. Set your target in Assumptions → Personal & Runway.

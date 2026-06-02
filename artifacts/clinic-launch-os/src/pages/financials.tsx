@@ -1767,7 +1767,7 @@ export default function FinancialsPage() {
                                     </div>
                                   )}
                                   {!d.drawingsActive && !d.isPreOpening && (
-                                    <p className="text-muted-foreground text-[10px]">No drawings yet — waiting for self-funding threshold</p>
+                                    <p className="text-muted-foreground text-[10px]">No drawings yet — combined net below £3,000/mo floor</p>
                                   )}
                                   <div className="flex justify-between gap-4 border-t pt-1 mt-1">
                                     <span className="font-medium">{d.actualDrawings > 0 ? "To business capital" : "Monthly net"}</span>
@@ -1908,7 +1908,7 @@ export default function FinancialsPage() {
                           <span title="Project plan task costs charged this month (from Project Plan cost tiers). Undated tasks are spread across pre-opening months, weighted toward opening.">Proj costs</span>
                         </th>
                         <th className="text-right px-3 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
-                          <span title="Owner's drawings taken from the business this month. Only active once Winchester is self-funding. Capped so at least £3,000/month is retained in the business.">Drawings</span>
+                          <span title="Owner's drawings taken from the business this month. Paid from the combined Winchester + Bedhampton surplus above a £3,000/mo floor — never from the first £3,000.">Drawings</span>
                         </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="Combined net profit after owner's drawings have been taken. This is what accumulates in the business each month.">Net after Drawings</span>
@@ -2258,7 +2258,7 @@ export default function FinancialsPage() {
                   <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
                   <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. <strong>Winc VAT</strong> = Winchester VAT only. <strong>Net after Drawings</strong> = Winc Net + Bedh Net − Owner's Drawings — what stays in the business each month.</p>
                   <p><strong>Proj costs</strong> = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £{Math.round((pnlData ?? cashflow ?? []).reduce((s, m) => s + (m.projectCostBurn ?? 0), 0)).toLocaleString()}.</p>
-                  <p><strong>Drawings</strong> = Owner's drawings taken from the business once Winchester is self-funding. Capped so at least £3,000/month is always retained in the business. Set your target in Assumptions → Personal &amp; Runway.</p>
+                  <p><strong>Drawings</strong> = Owner's drawings paid from the combined monthly surplus (Winchester net + Bedhampton net) above a £3,000/mo floor. The business always retains at least £3,000 first — Abi draws from whatever is left above that, up to her target. Set your target in Assumptions → Personal &amp; Runway.</p>
                 </div>
               </CardContent>
             </Card>
