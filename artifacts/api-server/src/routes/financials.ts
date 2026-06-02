@@ -614,8 +614,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     rawW.forEach((w, i) => { monthCostMap[i] += (w / wSum) * undatedTaskCost; });
   }
 
-  // Lease signing index: rent + rates apply this many months before opening
-  const propStartIndex = Math.max(0, openingMonthIndex - preOpenPropMonths);
+  // Lease signing index: rent + rates apply this many months before opening.
+  // The window must be at least as wide as freeRentMonths — you can't have 3 rent-free
+  // months if the lease only starts 2 months before opening.
+  const effectiveLeaseLead = Math.max(preOpenPropMonths, cfFreeRentMonths);
+  const propStartIndex = Math.max(0, openingMonthIndex - effectiveLeaseLead);
 
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -726,7 +729,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
 
     // Pre-opening property costs: rent + rates from lease signing date.
     // Free rent runs from day 1 of the lease (pre-opening), NOT from opening day.
-    // e.g. freeRentMonths=1 → Sep pays rates only (via Bedhampton); Oct pays full rent+rates.
+    // e.g. freeRentMonths=3, preOpenPropMonths=2 → lease window extends to 3 months so all 3 show FREE RENT.
     //
     // During free-rent months Winchester is not open yet — Bedhampton bears the rates.
     // Those rates are deducted from bedhNet below, NOT from preOpenPropertyCost,
