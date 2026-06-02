@@ -486,15 +486,18 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       }, 0);
 
       // ── Director salary drawn from combined net ──────────────────────────────
+      // The £3k floor is retained profit (not a cost) — board decides at year end
+      // whether to distribute it or keep it as working capital. It is included in
+      // the distributable figure. Abi can only draw salary from the surplus above
+      // the floor, but the floor itself still belongs to the investors.
       const netPre = combinedNet - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
-      if (netPre > MIN_SALARY_FLOOR) {
-        const surplus = netPre - MIN_SALARY_FLOOR;
-        drawings = Math.round(Math.min(targetDrawings, surplus));
-        distrib  = Math.max(surplus - drawings, 0);
-        buffer   = MIN_SALARY_FLOOR;
-      } else if (netPre > 0) {
-        buffer = Math.round(netPre);
+      if (netPre > 0) {
+        drawings = netPre > MIN_SALARY_FLOOR
+          ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
+          : 0;
+        buffer   = Math.round(Math.min(netPre, MIN_SALARY_FLOOR)); // informational
+        distrib  = Math.round(Math.max(netPre - drawings, 0));      // includes buffer
       }
 
       totWincRevenue   += wincRevenue;
@@ -661,13 +664,12 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
 
       const netPre = combinedNet - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
-      if (netPre > MIN_SALARY_FLOOR) {
-        const surplus = netPre - MIN_SALARY_FLOOR;
-        drawings = Math.round(Math.min(targetDrawings, surplus));
-        distrib  = Math.max(surplus - drawings, 0);
-        buffer   = MIN_SALARY_FLOOR;
-      } else if (netPre > 0) {
-        buffer = Math.round(netPre);
+      if (netPre > 0) {
+        drawings = netPre > MIN_SALARY_FLOOR
+          ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
+          : 0;
+        buffer   = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
+        distrib  = Math.round(Math.max(netPre - drawings, 0));
       }
 
       totWincRevenue   += wincRevenue;

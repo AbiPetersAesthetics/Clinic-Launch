@@ -2006,8 +2006,8 @@ export default function DashboardPage() {
           { label: "Winchester Op. Profit",    key: "operatingProfit",    bold: true },
           { label: "Bedhampton Net",           key: "bedhNet",            color: "text-violet-600 dark:text-violet-400" },
           { label: "Combined Op. Profit",      key: "combinedOperating",  bold: true, divider: true },
-          { label: "Director Salary",          key: "directorSalary",     fmt: v => `(${formatGBP(v)})` },
-          { label: "Distributable",            key: "distributable",      bold: true, color: "text-emerald-600 dark:text-emerald-400" },
+          { label: "Abi's Salary",              key: "directorSalary",     fmt: v => `(${formatGBP(v)})` },
+          { label: "Distributable Profit",     key: "distributable",      bold: true, color: "text-emerald-600 dark:text-emerald-400" },
         ];
         return (
           <Card className="shadow-sm border-border/60">
