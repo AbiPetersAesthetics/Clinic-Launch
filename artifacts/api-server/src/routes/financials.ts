@@ -634,9 +634,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   }
 
   // Lease signing index: rent + rates apply this many months before opening.
-  // The window must be at least as wide as freeRentMonths — you can't have 3 rent-free
-  // months if the lease only starts 2 months before opening.
-  const effectiveLeaseLead = Math.max(preOpenPropMonths, cfFreeRentMonths);
+  // Lease start is determined by preOpenPropMonths (when keys are received).
+  // Free rent months cannot push the start earlier — they are capped by the actual lease period.
+  const effectiveLeaseLead = preOpenPropMonths;
   const propStartIndex = Math.max(0, openingMonthIndex - effectiveLeaseLead);
 
   const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
