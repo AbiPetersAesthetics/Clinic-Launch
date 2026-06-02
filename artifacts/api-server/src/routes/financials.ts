@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable, propertyTaskOverridesTable } from "@workspace/db";
+import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable, propertyTaskOverridesTable, investmentsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import {
   calcWincAtOccupancy,
@@ -482,10 +482,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   });
 
   // Load dynamic fixed cost items
-  const fixedCostItems = await db
-    .select()
-    .from(fixedCostItemsTable)
-    .where(eq(fixedCostItemsTable.projectId, projectId));
+  const [fixedCostItems, loanInstruments] = await Promise.all([
+    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
+  ]);
 
   // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
   const reqMonths = parseInt((req.query.months as string) || "12");
@@ -559,6 +559,20 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
   const startingCash = model.runwaySavingsGbp || 0;
   const targetDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
+
+  // Pre-compute monthly payment for each loan instrument
+  interface LoanSchedule { id: number; amountGbp: number; monthlyPayment: number; repaymentTermMonths: number; depositDate: string | null; firstPaymentDate: string | null; repaymentStartMonth: number; }
+  const loanSchedules: LoanSchedule[] = loanInstruments
+    .filter(inv => inv.type === "loan" && inv.repaymentTermMonths > 0)
+    .map(inv => {
+      const principal = inv.amountGbp;
+      const r = (inv.interestRatePercent || 0) / 100 / 12;
+      const n = inv.repaymentTermMonths;
+      const monthlyPayment = r > 0
+        ? principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+        : principal / n;
+      return { id: inv.id, amountGbp: principal, monthlyPayment, repaymentTermMonths: n, depositDate: (inv as any).depositDate ?? null, firstPaymentDate: (inv as any).firstPaymentDate ?? null, repaymentStartMonth: inv.repaymentStartMonth };
+    });
 
   // VAT — UK statutory threshold £90,000/year across the whole business (all clinics)
   // Start tracking from the user's current rolling 12-month turnover position
@@ -780,22 +794,47 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isSelfFundingMonth = selfFundingMonthIndex === i;
     const isBedhamptonCloseMonth = isSelfFundingMonth;
 
+    // ── Loan repayments & capital inflows ────────────────────────────────────
+    let loanRepayments = 0;
+    let loanInflow = 0;
+    for (const loan of loanSchedules) {
+      // Capital inflow: when the deposit date falls in this calendar month
+      if (loan.depositDate) {
+        const dep = new Date(loan.depositDate);
+        if (monthDate.getFullYear() === dep.getFullYear() && monthDate.getMonth() === dep.getMonth()) {
+          loanInflow += loan.amountGbp;
+        }
+      }
+      // Repayments: from firstPaymentDate (if set) or fall back to opening-relative repaymentStartMonth
+      let repStartIdx: number;
+      if (loan.firstPaymentDate) {
+        const fp = new Date(loan.firstPaymentDate);
+        repStartIdx = (fp.getFullYear() - calendarStart.getFullYear()) * 12 + (fp.getMonth() - calendarStart.getMonth());
+      } else {
+        repStartIdx = openingMonthIndex + (loan.repaymentStartMonth - 1);
+      }
+      const monthsElapsed = i - repStartIdx;
+      if (monthsElapsed >= 0 && monthsElapsed < loan.repaymentTermMonths) {
+        loanRepayments += loan.monthlyPayment;
+      }
+    }
+
     // Dynamic drawings:
     // - Pre-opening: no drawings (no Winchester revenue yet)
     // - Post-opening (including while Bedhampton is still supporting): drawings taken from surplus
     // - Always retain at least £3,000/month; any surplus above drawings accrues as business capital
     const drawingsActive = !isPreOpening;
     // Salary is based on operating net (Winchester + Bedhampton) only.
-    // Project costs and pre-opening property costs are capital/setup spend tracked
-    // separately in the cash balance — they do not reduce the salary floor.
-    // Rule: retain at least £3,000 of operating net; Abi draws any surplus above that,
-    // up to her target. e.g. combined net £3,100 → salary £100.
+    // Loan repayments reduce available net before the salary floor applies —
+    // the business must service the loan before Abi can draw salary.
+    // Rule: retain at least £3,000 of (operatingNet − loanRepayments); Abi draws surplus above that.
     const operatingNet = wincNet + bedhNet;
     const MIN_RETAINED = 3000;
-    const actualDrawings = drawingsActive ? Math.min(Math.max(0, operatingNet - MIN_RETAINED), targetDrawings) : 0;
+    const netForDrawings = operatingNet - loanRepayments;
+    const actualDrawings = drawingsActive ? Math.min(Math.max(0, netForDrawings - MIN_RETAINED), targetDrawings) : 0;
     const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
 
-    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost;
+    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost - loanRepayments + loanInflow;
     cashBalance += monthlyCashflow;
 
     return {
@@ -836,6 +875,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       bedhClosed,
       bedhSupport: Math.round(Math.max(bedhNet, 0)),
       combinedNet: Math.round(wincNet + bedhNet),
+      loanRepayments: Math.round(loanRepayments),
+      loanInflow: Math.round(loanInflow),
     };
   });
 

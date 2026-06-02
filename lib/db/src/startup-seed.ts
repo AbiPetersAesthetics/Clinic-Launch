@@ -411,6 +411,10 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`UPDATE financial_models SET additional_clinicians_json = '[]' WHERE additional_clinicians_json IS NULL OR additional_clinicians_json = '0' OR additional_clinicians_json = ''`);
         // V8 migration: archive old phases, create 12 new active phases with 111 tasks
         await runV8Migration(projectId);
+        // V9 migration: add date fields to investments table
+        await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS deposit_date TEXT`);
+        await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS agreement_start_date TEXT`);
+        await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS first_payment_date TEXT`);
         return;
       }
 

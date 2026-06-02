@@ -46,7 +46,7 @@ router.get("/projects/:projectId/investments", async (req, res) => {
 
 router.post("/projects/:projectId/investments", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
-  const { name, type, amountGbp, equityPercent, interestRatePercent, repaymentTermMonths, repaymentStartMonth, notes } = req.body;
+  const { name, type, amountGbp, equityPercent, interestRatePercent, repaymentTermMonths, repaymentStartMonth, depositDate, agreementStartDate, firstPaymentDate, notes } = req.body;
   if (!name || !type) return res.status(400).json({ error: "name and type are required" });
   if (!["loan", "equity"].includes(type)) return res.status(400).json({ error: "type must be loan or equity" });
 
@@ -59,6 +59,9 @@ router.post("/projects/:projectId/investments", async (req, res) => {
     interestRatePercent: interestRatePercent ?? 0,
     repaymentTermMonths: repaymentTermMonths ?? 0,
     repaymentStartMonth: repaymentStartMonth ?? 1,
+    depositDate: depositDate ?? null,
+    agreementStartDate: agreementStartDate ?? null,
+    firstPaymentDate: firstPaymentDate ?? null,
     notes: notes ?? "",
   }).returning();
   return res.status(201).json(row);
@@ -66,10 +69,14 @@ router.post("/projects/:projectId/investments", async (req, res) => {
 
 router.put("/investments/:id", async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, type, amountGbp, equityPercent, interestRatePercent, repaymentTermMonths, repaymentStartMonth, notes } = req.body;
+  const { name, type, amountGbp, equityPercent, interestRatePercent, repaymentTermMonths, repaymentStartMonth, depositDate, agreementStartDate, firstPaymentDate, notes } = req.body;
   const [row] = await db.update(investmentsTable).set({
     name, type, amountGbp, equityPercent, interestRatePercent,
-    repaymentTermMonths, repaymentStartMonth, notes,
+    repaymentTermMonths, repaymentStartMonth,
+    depositDate: depositDate ?? null,
+    agreementStartDate: agreementStartDate ?? null,
+    firstPaymentDate: firstPaymentDate ?? null,
+    notes,
     updatedAt: new Date(),
   }).where(eq(investmentsTable.id, id)).returning();
   if (!row) return res.status(404).json({ error: "Investment not found" });

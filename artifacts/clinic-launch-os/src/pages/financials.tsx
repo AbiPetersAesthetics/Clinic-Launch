@@ -463,7 +463,7 @@ export default function FinancialsPage() {
   const [selectedInvTier, setSelectedInvTier] = useState<"low" | "medium" | "high" | null>(null);
   const [editingInv, setEditingInv] = useState<any | null>(null);
   const [editingSh, setEditingSh] = useState<any | null>(null);
-  const [newInv, setNewInv] = useState({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
+  const [newInv, setNewInv] = useState({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", depositDate: "", agreementStartDate: "", firstPaymentDate: "", notes: "" });
   const [newSh, setNewSh] = useState({ name: "", role: "", equityPercent: "", notes: "" });
 
   // ── AI Funding Adviser state ───────────────────────────────────────────────
@@ -522,9 +522,9 @@ export default function FinancialsPage() {
 
   const addInvestment = async () => {
     const type = addingInvType ?? "loan";
-    const payload = { name: newInv.name, type, amountGbp: parseFloat(newInv.amountGbp) || 0, equityPercent: parseFloat(newInv.equityPercent) || 0, interestRatePercent: parseFloat(newInv.interestRatePercent) || 0, repaymentTermMonths: parseInt(newInv.repaymentTermMonths) || 0, repaymentStartMonth: parseInt(newInv.repaymentStartMonth) || 1, notes: newInv.notes };
+    const payload = { name: newInv.name, type, amountGbp: parseFloat(newInv.amountGbp) || 0, equityPercent: parseFloat(newInv.equityPercent) || 0, interestRatePercent: parseFloat(newInv.interestRatePercent) || 0, repaymentTermMonths: parseInt(newInv.repaymentTermMonths) || 0, depositDate: newInv.depositDate || null, agreementStartDate: newInv.agreementStartDate || null, firstPaymentDate: newInv.firstPaymentDate || null, notes: newInv.notes };
     await fetch(`/api/projects/${PROJECT_ID}/investments`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-    setNewInv({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", repaymentStartMonth: "1", notes: "" });
+    setNewInv({ name: "", amountGbp: "", equityPercent: "", interestRatePercent: "", repaymentTermMonths: "", depositDate: "", agreementStartDate: "", firstPaymentDate: "", notes: "" });
     setAddingInvType(null);
     await loadInvestmentData();
   };
@@ -1907,6 +1907,11 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-blue-600 dark:text-blue-400 min-w-[80px]">
                           <span title="Bedhampton net profit after stock, running costs and VAT">Bedh Net</span>
                         </th>
+                        {(pnlData ?? cashflow ?? []).some((m: any) => (m.loanRepayments ?? 0) > 0 || (m.loanInflow ?? 0) > 0) && (
+                          <th className="text-right px-2 py-2 font-semibold text-rose-600 dark:text-rose-400 min-w-[80px]">
+                            <span title="Monthly loan repayments deducted from net profit. Reduces the amount available for Abi's salary and business retention.">Loan Repay</span>
+                          </th>
+                        )}
                         <th className="text-right px-2 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
                           <span title="Project plan task costs charged this month (from Project Plan cost tiers). Undated tasks are spread across pre-opening months, weighted toward opening.">Proj costs</span>
                         </th>
@@ -1920,7 +1925,9 @@ export default function FinancialsPage() {
                       {(pnlData ?? cashflow ?? []).map((m) => {
                         const isOpen = m.isOpeningMonth;
                         const isClose = m.isSelfFundingMonth;
-                        const netProfitRow = m.wincNet + m.bedhNet - (m.actualDrawings ?? 0);
+                        const loanRepRow = m.loanRepayments ?? 0;
+                        const loanInflowRow = m.loanInflow ?? 0;
+                        const netProfitRow = m.wincNet + m.bedhNet - (m.actualDrawings ?? 0) - loanRepRow;
                         const grossProfitRow = m.wincRevenue - m.wincVariableCosts;
 
                         // ── Bedhampton cost breakdown ──────────────────────
@@ -2465,6 +2472,39 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
+                            {/* Loan Repayments — only rendered when any month has loan activity */}
+                            {(pnlData ?? cashflow ?? []).some((m: any) => (m.loanRepayments ?? 0) > 0 || (m.loanInflow ?? 0) > 0) && (
+                              <td className="text-right px-2 py-1.5 tabular-nums">
+                                {loanInflowRow > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help underline decoration-dotted decoration-emerald-400/60 underline-offset-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                                        +{formatGBP(loanInflowRow)}
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs max-w-[220px]">
+                                      <p className="font-semibold">Loan deposit received</p>
+                                      <p className="text-muted-foreground">{formatGBP(loanInflowRow)} capital inflow this month</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : loanRepRow > 0 ? (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-help underline decoration-dotted decoration-rose-400/60 underline-offset-2 text-rose-600 dark:text-rose-400">
+                                        ({formatGBP(loanRepRow)})
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="text-xs max-w-[220px]">
+                                      <p className="font-semibold">Loan repayment</p>
+                                      <p className="text-muted-foreground">{formatGBP(loanRepRow)}/mo deducted before salary calculation</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ) : (
+                                  <span className="text-muted-foreground/30">—</span>
+                                )}
+                              </td>
+                            )}
+
                             {/* Project task cost burn this month */}
                             <td className="text-right px-2 py-1.5 tabular-nums">
                               {(m.projectCostBurn ?? 0) > 0 ? (
@@ -2522,6 +2562,12 @@ export default function FinancialsPage() {
                                       <div className="flex justify-between items-center">
                                         <span className="text-gray-600">Abi's salary</span>
                                         <span className="tabular-nums text-purple-600">({formatGBP(m.actualDrawings ?? 0)})</span>
+                                      </div>
+                                    )}
+                                    {loanRepRow > 0 && (
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Loan repayment</span>
+                                        <span className="tabular-nums text-rose-600">({formatGBP(loanRepRow)})</span>
                                       </div>
                                     )}
                                     <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
@@ -4850,8 +4896,16 @@ export default function FinancialsPage() {
                         <Input className="h-8 mt-1 text-sm" type="number" placeholder="60" value={newInv.repaymentTermMonths} onChange={e => setNewInv(p => ({ ...p, repaymentTermMonths: e.target.value }))} />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Repayments Start (month)</label>
-                        <Input className="h-8 mt-1 text-sm" type="number" placeholder="1" value={newInv.repaymentStartMonth} onChange={e => setNewInv(p => ({ ...p, repaymentStartMonth: e.target.value }))} />
+                        <label className="text-xs text-muted-foreground">Agreement Start Date</label>
+                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.agreementStartDate} onChange={e => setNewInv(p => ({ ...p, agreementStartDate: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">Deposit Date <span className="text-primary font-semibold">(money received)</span></label>
+                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.depositDate} onChange={e => setNewInv(p => ({ ...p, depositDate: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">First Repayment Date</label>
+                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.firstPaymentDate} onChange={e => setNewInv(p => ({ ...p, firstPaymentDate: e.target.value }))} />
                       </div>
                     </>)}
                     <div className="col-span-2 sm:col-span-3">
@@ -4896,9 +4950,11 @@ export default function FinancialsPage() {
                                     <Input className="h-7 text-xs" value={editingInv.name} onChange={e => setEditingInv((p: any) => ({ ...p, name: e.target.value }))} placeholder="Name" />
                                     <Input className="h-7 text-xs" type="number" value={editingInv.amountGbp} onChange={e => setEditingInv((p: any) => ({ ...p, amountGbp: parseFloat(e.target.value) || 0 }))} placeholder="Amount £" />
                                     <Input className="h-7 text-xs" type="number" value={editingInv.equityPercent} onChange={e => setEditingInv((p: any) => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} placeholder="Equity %" />
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.interestRatePercent} onChange={e => setEditingInv((p: any) => ({ ...p, interestRatePercent: parseFloat(e.target.value) || 0 }))} placeholder="Rate %" />}
+                                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.interestRatePercent} onChange={e => setEditingInv((p: any) => ({ ...p, interestRatePercent: parseFloat(e.target.value) || 0 }))} placeholder="Rate %" />}
                                     {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.repaymentTermMonths} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentTermMonths: parseInt(e.target.value) || 0 }))} placeholder="Term mo." />}
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.repaymentStartMonth} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentStartMonth: parseInt(e.target.value) || 1 }))} placeholder="Start mo." />}
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.agreementStartDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, agreementStartDate: e.target.value || null }))} placeholder="Agreement start" title="Agreement Start Date" />}
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.depositDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, depositDate: e.target.value || null }))} placeholder="Deposit date" title="Deposit Date (money received)" />}
+                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.firstPaymentDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, firstPaymentDate: e.target.value || null }))} placeholder="First payment" title="First Repayment Date" />}
                                     <Input className="h-7 text-xs col-span-2" value={editingInv.notes} onChange={e => setEditingInv((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Notes" />
                                   </div>
                                   <div className="flex gap-2 mt-2">
