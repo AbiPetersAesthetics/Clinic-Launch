@@ -310,17 +310,27 @@ router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 
+  // Disable all timeouts — this stream can run 90–120 seconds
+  req.socket.setTimeout(0);
+  req.socket.setKeepAlive(true, 10000);
+  res.setTimeout(0);
+
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
+
+  // Send a keepalive comment every 15s so the proxy never sees an idle connection
+  const keepalive = setInterval(() => {
+    try { res.write(": keepalive\n\n"); } catch (_) {}
+  }, 15000);
 
   let fullText = "";
 
   try {
     const stream = anthropic.messages.stream({
       model: "claude-sonnet-4-6",
-      max_tokens: 8192,
+      max_tokens: 16000,
       system: RISK_SYSTEM_PROMPT,
       messages: [
         {
@@ -336,6 +346,8 @@ router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
         res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
       }
     }
+
+    clearInterval(keepalive);
 
     // Persist to DB
     try {
@@ -358,6 +370,7 @@ router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err: any) {
+    clearInterval(keepalive);
     res.write(`data: ${JSON.stringify({ error: err.message ?? "API error" })}\n\n`);
     res.end();
   }
