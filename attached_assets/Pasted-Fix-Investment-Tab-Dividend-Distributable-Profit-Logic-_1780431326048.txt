@@ -1,0 +1,138 @@
+Fix Investment Tab Dividend / Distributable Profit Logic
+
+The Monthly P&L Breakdown is now the source of truth for profit and cashflow.
+
+Please update the Investment / 3-Year Performance Outlook tab so that the “Distributable Profit” line is calculated directly from the Monthly P&L Breakdown, rather than using a separate formula based on Winchester operating profit minus VAT.
+
+Current issue
+
+The Investment tab is currently calculating distributable profit using this logic:
+
+combinedNet = (Winchester operating profit − Winchester VAT) + Bedhampton net profit
+netPre = combinedNet − monthly loan repayment
+distrib = netPre > 0 ? netPre : 0
+
+This is incorrect for the Investment tab because the Monthly P&L already calculates VAT, variable costs, fixed costs, salary, Bedhampton net, loan repayments, and project costs month by month.
+
+The current Investment tab appears to understate FY27/28 distributable profit by deducting VAT again or by using a different profit definition from the Monthly P&L.
+
+Required change
+
+Please update the Investment tab so that the annual dividend/distributable figure is based on the Monthly P&L column:
+
+Net after Salary
+
+This column should be treated as the best current proxy for:
+
+Indicative maximum dividend capacity before corporation tax and board/accountant adjustments
+New calculation
+
+For each financial year, calculate:
+
+indicativeDividendCapacity = sum(month.netAfterSalary for all months in that financial year where month.netAfterSalary > 0)
+
+Use the August–July financial year:
+
+FY26/27 = Aug 2026 to Jul 2027
+FY27/28 = Aug 2027 to Jul 2028
+FY28/29 = Aug 2028 to Jul 2029
+Important labelling change
+
+Do not label this line simply as “Distributable Profit”, because that implies a legally confirmed dividend figure.
+
+Please rename the line to:
+
+Indicative Max Dividend Capacity
+
+or:
+
+Indicative Pre-Tax Dividend Capacity
+
+Then add a small note underneath the table:
+
+Indicative Max Dividend Capacity is calculated from the Monthly P&L “Net after Salary” line and represents the maximum theoretical amount available before corporation tax, retained earnings checks, working capital decisions, and board/accountant approval. Actual lawful dividends must be confirmed later from statutory accounts and available distributable reserves.
+Expected FY27/28 output
+
+For FY27/28, using the Monthly P&L figures from Aug ’27 to Jul ’28:
+
+Aug 27: £3,000
+Sep 27: £3,510
+Oct 27: £4,592
+Nov 27: £5,917
+Dec 27: £6,996
+Jan 28: £8,074
+Feb 28: £9,152
+Mar 28: £10,231
+Apr 28: £11,309
+May 28: £12,387
+Jun 28: £13,466
+Jul 28: £14,544
+
+Total:
+
+£103,178
+
+So FY27/28 should show:
+
+Indicative Max Dividend Capacity: £103,178
+
+This is different from the pure Winchester operating profit figure, because the Monthly P&L already factors in VAT, fixed costs, salary, loan repayment, and the £3,000/month floor logic.
+
+Also show true operating profit separately
+
+Please keep or add a separate line for operating/net profit so investors can see both:
+
+Net Profit / Operating Profit
+Indicative Max Dividend Capacity
+
+For FY27/28, the Monthly P&L Winchester profit line totals:
+
+£165,929
+
+But the “Net after Salary” dividend-capacity line totals:
+
+£103,178
+
+These should not be confused.
+
+Table structure requested
+
+In the 3-Year Performance Outlook, use something like:
+
+Line                                  FY26/27        FY27/28        FY28/29
+Winchester Revenue                    ...
+Variable Costs                        ...
+Gross Profit                          ...
+Fixed Costs                           ...
+Salary                                ...
+VAT                                   ...
+Winchester Net Profit                 ...
+Bedhampton Net Profit                 ...
+Loan Repayments                       ...
+Project Costs                         ...
+Net After Salary / Cash Addition      ...
+Indicative Max Dividend Capacity      ...
+Closing Capital                       ...
+Logic rules
+
+Please ensure:
+
+The Investment tab pulls directly from the same monthly objects/data array used by the Monthly P&L Breakdown.
+No separate hidden VAT deduction is applied inside the Investment tab.
+VAT should only be deducted once, inside the Monthly P&L calculation.
+Loan repayments should not be deducted twice.
+The “Capital” column should continue to work as the running cash/capital balance.
+The “Indicative Max Dividend Capacity” should be calculated from the Monthly P&L “Net after Salary” values, not from gross revenue or operating profit.
+The label should make clear this is not a legally confirmed distributable reserve figure.
+Add a tooltip or footnote explaining that true distributable reserves will later need corporation tax/accountant/statutory accounts treatment.
+Validation check
+
+Please add a debug or validation check showing the FY27/28 monthly values used to calculate Indicative Max Dividend Capacity:
+
+[3000, 3510, 4592, 5917, 6996, 8074, 9152, 10231, 11309, 12387, 13466, 14544]
+
+Expected total:
+
+103178
+
+If the Investment tab does not show approximately £103,178 for FY27/28, the calculation is still not aligned with the Monthly P&L source of truth.

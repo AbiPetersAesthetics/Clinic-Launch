@@ -4501,8 +4501,8 @@ export default function FinancialsPage() {
           {(() => {
             const r12   = investmentSummary?.rolling12m;
             const y2    = investmentSummary?.annualSummary?.y2;
-            const r12d  = r12?.distributable ?? 0;
-            const y2d   = y2?.distributable ?? 0;
+            const r12d  = r12?.indicativeDividendCapacity ?? r12?.distributable ?? 0;
+            const y2d   = y2?.indicativeDividendCapacity ?? y2?.distributable ?? 0;
             const y2r   = y2?.revenue ?? 0;
             const blendD = Math.round((5 * r12d + y2d) / 6);
             const ready = !!r12;
@@ -4699,7 +4699,7 @@ export default function FinancialsPage() {
                   </div>
                   {selectedInvTier && (() => {
                     const tier = tiers.find(t => t.key === selectedInvTier)!;
-                    const y1d = (is as any)?.annualSummary?.y1?.distributable ?? 0;
+                    const y1d = (is as any)?.annualSummary?.y1?.indicativeDividendCapacity ?? (is as any)?.annualSummary?.y1?.distributable ?? 0;
                     const preMoney = Math.round(y1d * valuationMultiple);
                     const postMoney = preMoney + tier.amount;
                     const equityPct = preMoney > 0 ? (tier.amount / postMoney) * 100 : 0;
@@ -4783,10 +4783,12 @@ export default function FinancialsPage() {
                         { label: "Gross Profit", key: "grossProfit", pctKey: "grossMarginPct", isBold: true, divider: true },
                         { label: "Fixed Costs", key: "fixedCosts", isDeduction: true, color: "text-muted-foreground" },
                         { label: "Winchester Operating Profit", key: "operatingProfit", isBold: true, divider: true },
+                        { label: "VAT Liability", key: "wincVat", isDeduction: true, color: "text-muted-foreground" },
                         { label: "Bedhampton Net Profit", key: "bedhNet", color: "text-violet-600 dark:text-violet-400" },
-                        { label: "Combined Operating Profit", key: "combinedOperating", isBold: true, divider: true },
+                        { label: "Combined Net (post-VAT)", key: "combinedOperating", isBold: true, divider: true },
                         { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
-                        { label: "Distributable Profit", key: "distributable", isBold: true, isHighlight: true, pctKey: "netMarginPct", divider: true },
+                        { label: "Director Salary", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
+                        { label: "Indicative Max Dividend Capacity", key: "indicativeDividendCapacity", isBold: true, isHighlight: true, divider: true },
                       ] as { label: string; key: string; isDeduction?: boolean; color?: string; isBold?: boolean; pctKey?: string; divider?: boolean; isHighlight?: boolean }[]).map((row) => {
                         const years = [investmentSummary.annualSummary.y1, investmentSummary.annualSummary.y2, investmentSummary.annualSummary.y3];
                         return (
@@ -4811,6 +4813,9 @@ export default function FinancialsPage() {
                     </tbody>
                   </table>
                 </div>
+                <div className="px-4 py-3 text-[10px] text-muted-foreground italic border-t border-border/30 bg-muted/10">
+                  <span className="font-semibold not-italic text-foreground">Indicative Max Dividend Capacity</span> is calculated from the Monthly P&amp;L "Net after Salary" line and represents the maximum theoretical amount available before corporation tax, retained earnings checks, working capital decisions, and board/accountant approval. Actual lawful dividends must be confirmed from statutory accounts and available distributable reserves. Combined Operating Profit shown is pre-VAT operating result; VAT is deducted separately as a cash liability.
+                </div>
               </CardContent>
             </Card>
           )}
@@ -4822,7 +4827,7 @@ export default function FinancialsPage() {
                 { label: "Total Capital Raised", value: formatGBP(investmentSummary.totalCapitalGbp), icon: <Banknote className="w-4 h-4 text-emerald-600" />, sub: `${investments.length} instrument${investments.length !== 1 ? "s" : ""}`, color: "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" },
                 { label: "Equity Given Up", value: `${investmentSummary.totalEquityGivenUpPercent.toFixed(1)}%`, icon: <PieChart className="w-4 h-4 text-amber-600" />, sub: `Founder retains ${investmentSummary.founderEquityPercent.toFixed(1)}%`, color: investmentSummary.totalEquityGivenUpPercent > 49 ? "border-red-200 bg-red-50/50 dark:bg-red-950/20" : "border-amber-200 bg-amber-50/50 dark:bg-amber-950/20" },
                 { label: "Loan Repayments — Year 1", value: formatGBP(investmentSummary.totalLoanRepaymentsYear1), icon: <TrendingDown className="w-4 h-4 text-blue-600" />, sub: "Total across all loans", color: "border-blue-200 bg-blue-50/50 dark:bg-blue-950/20" },
-                { label: "Est. Distributable — 12m", value: formatGBP(investmentSummary.distributableProfit12m), icon: <TrendingUp className="w-4 h-4 text-primary" />, sub: investmentSummary.distributableProfit12m >= 0 ? "Profit available to distribute" : "Business in loss at 12m", color: investmentSummary.distributableProfit12m >= 0 ? "border-primary/30 bg-primary/5" : "border-red-200 bg-red-50/50 dark:bg-red-950/20" },
+                { label: "Indicative Dividend Cap. — 12m", value: formatGBP(investmentSummary.distributableProfit12m), icon: <TrendingUp className="w-4 h-4 text-primary" />, sub: investmentSummary.distributableProfit12m >= 0 ? "Net after salary · pre-corp tax" : "Business in loss at 12m", color: investmentSummary.distributableProfit12m >= 0 ? "border-primary/30 bg-primary/5" : "border-red-200 bg-red-50/50 dark:bg-red-950/20" },
               ].map(k => (
                 <div key={k.label} className={`rounded-lg border p-3 ${k.color}`}>
                   <div className="flex items-center gap-1.5 mb-1">{k.icon}<span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{k.label}</span></div>
@@ -5232,18 +5237,20 @@ export default function FinancialsPage() {
                     return (
                       <div className="space-y-5">
                         {[y1, y2, y3].map((yr: any) => {
-                          const positive = yr.distributable >= 0;
+                          const positive = (yr.indicativeDividendCapacity ?? yr.distributable) >= 0;
+                          const idc = yr.indicativeDividendCapacity ?? yr.distributable;
                           const waterfallRows: { label: string; value: number; suffix?: string; isBold?: boolean; isHighlight?: boolean; indent?: boolean; color?: string }[] = [
                             { label: `Gross revenue (${yr.tradingMonths} trading months)`, value: yr.revenue },
                             { label: "Less: variable costs", value: -yr.variableCosts, suffix: `gross margin ${yr.grossMarginPct}%`, indent: true, color: "text-muted-foreground" },
                             { label: "Gross profit", value: yr.grossProfit, isBold: true },
-                            { label: "Less: fixed costs (employer NI/pension, rent, overheads)", value: -yr.fixedCosts, indent: true, color: "text-muted-foreground" },
-                            { label: "Operating profit", value: yr.operatingProfit, isBold: true },
-                            { label: "Less: loan repayments (all active instruments)", value: -yr.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
-                            { label: "Net pre-salary", value: yr.netPreSalary, isBold: true },
-                            { label: "Less: £3,000/mo floor retained (profitable months only)", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
-                            { label: "Less: Abi's salary (drawn only when net > £3,000/mo)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
-                            { label: "Distributable profit", value: yr.distributable, isBold: true, isHighlight: true, suffix: `net margin ${yr.netMarginPct}%` },
+                            { label: "Less: fixed costs (rent, overheads, employer NI/pension)", value: -yr.fixedCosts, indent: true, color: "text-muted-foreground" },
+                            { label: "Winchester operating profit (pre-VAT)", value: yr.operatingProfit, isBold: true },
+                            { label: "Less: VAT liability", value: -(yr.wincVat ?? 0), indent: true, color: "text-muted-foreground" },
+                            { label: "Plus: Bedhampton net profit", value: yr.bedhNet, indent: true, color: "text-violet-600 dark:text-violet-400" },
+                            { label: "Combined net (post-VAT)", value: yr.combinedOperating, isBold: true },
+                            { label: "Less: loan repayments", value: -yr.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
+                            { label: "Less: director salary (drawn when net > £3k/mo floor)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
+                            { label: "Indicative Max Dividend Capacity", value: idc, isBold: true, isHighlight: true, suffix: "pre-corp tax · sum of positive months" },
                           ];
                           return (
                             <div key={yr.fyLabel} className={`rounded-lg border ${positive ? "border-emerald-200 dark:border-emerald-800" : "border-red-200 dark:border-red-800"}`}>
@@ -5255,7 +5262,7 @@ export default function FinancialsPage() {
                                   <div className="text-[10px] text-muted-foreground/70 italic">{fyNotes[yr.fyLabel]}</div>
                                 </div>
                                 <div className={`text-2xl font-bold tabular-nums ${positive ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
-                                  {positive ? "+" : ""}{formatGBP(yr.distributable)}
+                                  {positive ? "+" : ""}{formatGBP(idc)}
                                 </div>
                               </div>
                               {/* P&L waterfall */}
@@ -5353,7 +5360,7 @@ export default function FinancialsPage() {
                                       ))}
                                     </tr>
                                     <tr className="bg-emerald-50/20 dark:bg-emerald-950/10">
-                                      <td className="px-3 py-1.5 text-muted-foreground">Distributable</td>
+                                      <td className="px-3 py-1.5 text-muted-foreground">Div. Capacity</td>
                                       {(fy.months as any[]).map((m: any) => (
                                         <td key={m.tradingMonthIdx} className={`px-2 py-1.5 text-center tabular-nums whitespace-nowrap ${m.distributable > 0 ? "text-emerald-700 dark:text-emerald-400 font-semibold" : "text-muted-foreground/40"}`}>
                                           {m.distributable > 0 ? `+${formatGBP(m.distributable)}` : "—"}

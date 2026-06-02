@@ -388,11 +388,12 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       monthLabel: string; tradingMonthIdx: number; isPreOpening: boolean;
       wincRevenue: number; wincNet: number;
       bedhRevenue: number; bedhNet: number;
+      wincVat: number;
       combinedNet: number; loanRepayment: number; netPreSalary: number;
       buffer: number; directorDrawing: number; distributable: number; canDraw: boolean;
     }
     let totWincRevenue = 0, totWincVariable = 0, totWincGross = 0, totWincFixed = 0;
-    let totWincOperating = 0;
+    let totWincOperating = 0, totWincVat = 0;
     let totBedhRevenue = 0, totBedhNet = 0;
     let totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
     let wincTradingMonthsCount = 0;
@@ -495,7 +496,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
           ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
           : 0;
         buffer  = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
-        distrib = Math.round(netPre); // = full company net profit
+        distrib = Math.round(netPre - drawings); // = net after salary (indicative dividend capacity)
       }
 
       totWincRevenue   += wincRevenue;
@@ -503,6 +504,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       totWincGross     += wincGross;
       totWincFixed     += wincFixed;
       totWincOperating += wincOperating;
+      totWincVat       += wincVat;
       totBedhRevenue   += bedhMonthRevenue;
       totBedhNet       += bedhMonthNet;
       totLoans         += monthLoan;
@@ -516,6 +518,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         isPreOpening,
         wincRevenue:     Math.round(wincRevenue),
         wincNet:         Math.round(wincNet),
+        wincVat:         Math.round(wincVat),
         bedhRevenue:     Math.round(bedhMonthRevenue),
         bedhNet:         Math.round(bedhMonthNet),
         combinedNet:     Math.round(combinedNet),
@@ -552,12 +555,14 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       // Combined
       combinedRevenue:   Math.round(combinedRevenue),
       combinedOperating: Math.round(combinedOperating),
+      wincVat:           Math.round(totWincVat),
       loanRepayments:    Math.round(totLoans),
       netPreSalary:      Math.round(netPreSalary),
       bufferRetained:    Math.round(totBuffer),
       directorSalary:    Math.round(totDirector),
       netAfterDirector:  Math.round(netAfterDirector),
       netMarginPct:      combinedRevenue > 0 ? Math.round((netAfterDirector / combinedRevenue) * 100) : 0,
+      indicativeDividendCapacity: Math.round(totDistributable),
       distributable:     Math.round(totDistributable),
       monthlyBreakdown,
     };
@@ -591,7 +596,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     let r12BedhClosed    = false;
 
     let totWincRevenue = 0, totWincVariable = 0, totWincGross = 0, totWincFixed = 0;
-    let totWincOperating = 0, totBedhRevenue = 0, totBedhNet = 0;
+    let totWincOperating = 0, totWincVat = 0, totBedhRevenue = 0, totBedhNet = 0;
     let totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
 
     for (let tradingMonthIdx = 0; tradingMonthIdx < 12; tradingMonthIdx++) {
@@ -667,7 +672,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
           ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
           : 0;
         buffer  = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
-        distrib = Math.round(netPre);
+        distrib = Math.round(netPre - drawings); // = net after salary (indicative dividend capacity)
       }
 
       totWincRevenue   += wincRevenue;
@@ -675,6 +680,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       totWincGross     += wincGross;
       totWincFixed     += fixedMonthly;
       totWincOperating += wincOp;
+      totWincVat       += wincVat;
       totBedhRevenue   += bedhMonthRevenue;
       totBedhNet       += bedhMonthNet;
       totLoans         += monthLoan;
@@ -704,19 +710,21 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       operatingProfit:  Math.round(totWincOperating),
       bedhNet:          Math.round(totBedhNet),
       combinedOperating: Math.round(combinedOperating),
+      wincVat:          Math.round(totWincVat),
       loanRepayments:   Math.round(totLoans),
       netPreSalary:     Math.round(netPreSalary),
       bufferRetained:   Math.round(totBuffer),
       directorSalary:   Math.round(totDirector),
       netAfterDirector: Math.round(netAfterDirector),
       netMarginPct:     combinedRevenue > 0 ? Math.round((netAfterDirector / combinedRevenue) * 100) : 0,
+      indicativeDividendCapacity: Math.round(totDistributable),
       distributable:    Math.round(totDistributable),
     };
   }
 
   const rolling12m = calcRolling12m();
 
-  const distributableProfit12m = rolling12m.distributable;
+  const distributableProfit12m = rolling12m.indicativeDividendCapacity;
   const totalLoanRepaymentsYear1 = y1.loanRepayments;
 
   const totalSharesPercent = shareholders.reduce((s, sh) => s + sh.equityPercent, 0);
