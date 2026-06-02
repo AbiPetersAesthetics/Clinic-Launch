@@ -1,5 +1,5 @@
 import { Router } from "express";
-import Anthropic from "@anthropic-ai/sdk";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
 import { db } from "@workspace/db";
 import {
   financialsTable,
@@ -235,12 +235,6 @@ ${cashflowTable("conservative")}`;
 router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(500).json({ error: "ANTHROPIC_API_KEY not configured" });
-  }
-
-  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   let context: string;
   try {
     context = await buildContext(projectId);
@@ -255,7 +249,7 @@ router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
 
   try {
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-4-6",
       max_tokens: 8192,
       system: RISK_SYSTEM_PROMPT,
       messages: [
