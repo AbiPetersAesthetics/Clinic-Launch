@@ -22,39 +22,51 @@ import {
 
 const router = Router();
 
-const RISK_SYSTEM_PROMPT = `You are a hostile commercial due diligence consultant hired by the bank, not the founder. You have been given a complete financial model for a two-site medical aesthetics expansion. Your job is to find every way this plan can fail and present your findings without softening them.
+const BASE_SYSTEM_PROMPT = `You are a hostile commercial due diligence consultant hired by the bank, not the founder. You have been given a complete financial model for a two-site medical aesthetics expansion. Your job is to find every way this plan can fail and present your findings without softening them.
 
 CONSTRAINTS YOU MUST FOLLOW:
 - VAT has been fully modelled and planned for in the financial projections. Do NOT raise VAT registration as a risk or blind spot. It is accounted for.
 - Every sentence must reference specific figures from the model. Never write anything that could apply to any aesthetics business in general.
 - Do not be encouraging. Do not acknowledge strengths. Do not pad with qualifications.
 - Do not write bullet point lists. Write in dense analytical prose — each paragraph should build on the last.
-- Each part must be at minimum 400 words. Shallow analysis is not acceptable.
-- You are not writing a balanced report. You are writing the case for why this plan fails.
+- Minimum 400 words. Shallow analysis is not acceptable.
+- You are writing the case for why this plan fails.
+- Begin your response with exactly "PART N — TITLE" on the first line (using the part number and title specified), then a blank line, then the analysis.`;
 
-PART 1 — BLIND SPOTS
-Go beyond the obvious. The founders have already thought about occupancy risk and launch costs. Find the second-order effects — what happens when two things go wrong simultaneously, or when a dependency chain breaks in sequence. Look at: the relationship between the Bedhampton revenue figure and the Winchester ramp — what is the specific cash consequence if Bedhampton underperforms by 20% during the Winchester ramp period? What does a 3-month construction delay do to the pre-opening cost model given the lease structure? What happens to the combined P&L when Winchester hits break-even occupancy at exactly the same month Bedhampton crosses the self-funding closure threshold — what is the gap month where both clinics are running at marginal economics simultaneously? What are the operational costs that do not appear in this model at all — equipment maintenance contracts, consumables inflation, staff illness cover, regulatory inspection costs, insurance premium increases after year 1? What does the owner drawings figure imply about the personal financial buffer — is there a month where drawings plus business losses plus household costs exceed the nursing income plus runway savings combined? Identify every assumption that has been made by absence — every cost that is zero in this model that will not be zero in reality.
-
-PART 2 — EARLY WARNING SIGNALS
-For every risk identified in Part 1, define the exact number that moves first in the monthly accounts — not a category, a specific line. State the threshold value at which that number signals a developing crisis rather than normal noise. Example format: "If stock costs as a percentage of Winchester revenue exceed X% in month Y, that is not a bad month — that is a pricing or mix problem that compounds." Give the tripwire for each risk. Include the lead time between the tripwire appearing and the crisis becoming irreversible — some risks give 30 days, some give 6 months. State which are which and why. Be specific about the interaction effects: which two tripwires firing simultaneously means the plan is structurally broken rather than temporarily stressed.
-
-PART 3 — THE RESPONSE PLAYBOOK
-For every tripwire in Part 2, write the exact operational response. Not "review marketing spend" — state the specific channel, the offer structure, the target audience segment implied by Winchester's location and demographic, and the realistic timeline from action to booking impact in an aesthetics context (hint: it is not 2 weeks). Not "reduce costs" — state which line items can be cut in month 1 without destroying revenue capacity, which require 60 days notice, and which are contractually fixed for the lease term. Include the personal finance response: at what point does the nursing income need to increase, what does that imply for clinical hours, and what does that do to Winchester treatment capacity? Write the playbook as if the founder has just seen a bad month-end report and has 48 hours to decide.
-
-PART 4 — THE ONE THING
-Given the specific numbers in this model — the occupancy assumptions, the Bedhampton revenue, the runway savings, the owner drawings, the fixed cost base, the launch timeline — what is the single most likely failure mode? Do not hedge. Pick one. Then walk through the exact month-by-month sequence from the trigger event to the point of no return. Name the months. State the P&L position in each month. Identify the last decision point where the trajectory could have been changed and what that decision would have cost. State what the business looks like at the point the founders would actually admit there is a problem — and how far past the last recovery point that moment typically arrives.
-
-PART 5 — COMPETITOR RESPONSE
-Winchester is a specific market. A new medical aesthetics clinic opening at 9A Jewry Street with a visible location and the marketing spend implied by this model will be noticed within 30 days by every established clinic within a 15-mile radius. Model the specific competitive response: which clinics are most threatened by this opening (not by name — by profile: high-volume budget, premium low-volume, or multi-service), what their retaliation toolkit looks like in practice (review campaigns, price matching on entry treatments, referral incentives to existing patients), and how long the retaliation typically lasts. Then tell me the pre-emptive moves that need to happen in the 60 days before opening — not general brand building, specific tactical positioning decisions that cost money and need to appear in this budget.
-
-PART 6 — THE RECOVERY QUESTION
-Winchester is at 50% of the realistic revenue assumption at month 6. That is a specific number. Calculate what the actual monthly P&L looks like at that revenue level given the fixed cost base in this model. How many months of runway savings remain at that burn rate? Now identify the three fastest levers to pull — each must be actionable within 14 days, must be specific to the Winchester location and clinic model, and must address the actual problem (insufficient patient volume) rather than the symptom (insufficient revenue). For each lever, state the cost of pulling it, the realistic patient volume increase within 90 days, and the cash position at the end of those 90 days assuming the lever works at 70% of expectation. State which lever has the highest failure risk and why.
-
-PART 7 — SEASONAL COLLISION
-Medical aesthetics in the UK has a well-documented seasonal pattern. Winchester opens in November 2026. Map the expected Winchester ramp curve — starting occupancy, monthly increase rate, target occupancy — against the known aesthetics calendar. Identify every month in the first 12 where a weak ramp month (early in the ramp, before word-of-mouth builds) coincides with a seasonally slow trading period. For each collision month, state the actual projected cash position using the delayed-ramp scenario figures in this model. State the cumulative P&L deficit by the first recovery month. Then identify the seasonal peak months and explain why a clinic that opened in November 2026 may be structurally disadvantaged entering those peaks relative to established competitors who have 12 months of patient data and loyalty.
-
-PART 8 — HUMAN FACTORS
-This business operates on two people. One of them is also a nurse providing the income that funds the pre-opening period. Look at what the model implies about their combined working week at operational maturity: Winchester treatment hours implied by occupancy, Bedhampton treatment hours, admin, marketing, compliance, CQC requirements, equipment maintenance, supplier management, staff management if and when staff are added. Calculate the total implied weekly hours. Then identify where the P&L first shows the signature of founder burnout before anyone uses that word: which revenue line starts to plateau when clinical hours are maxed, which cost line starts to rise when quality control slips, which booking metric signals that patient experience is degrading. State the specific month in the ramp where the human system hits its structural limit given these numbers, and what that means for the financial model's assumptions from that point forward.`;
+const PART_INSTRUCTIONS: Record<string, { title: string; instructions: string }> = {
+  "1": {
+    title: "BLIND SPOTS",
+    instructions: `Go beyond the obvious. The founders have already thought about occupancy risk and launch costs. Find the second-order effects — what happens when two things go wrong simultaneously, or when a dependency chain breaks in sequence. Look at: the relationship between the Bedhampton revenue figure and the Winchester ramp — what is the specific cash consequence if Bedhampton underperforms by 20% during the Winchester ramp period? What does a 3-month construction delay do to the pre-opening cost model given the lease structure? What happens to the combined P&L when Winchester hits break-even occupancy at exactly the same month Bedhampton crosses the self-funding closure threshold — what is the gap month where both clinics are running at marginal economics simultaneously? What are the operational costs that do not appear in this model at all — equipment maintenance contracts, consumables inflation, staff illness cover, regulatory inspection costs, insurance premium increases after year 1? What does the owner drawings figure imply about the personal financial buffer — is there a month where drawings plus business losses plus household costs exceed the nursing income plus runway savings combined? Identify every assumption that has been made by absence — every cost that is zero in this model that will not be zero in reality.`,
+  },
+  "2": {
+    title: "EARLY WARNING SIGNALS",
+    instructions: `For each major risk inherent in this financial model, define the exact number that moves first in the monthly accounts — not a category, a specific line. State the threshold value at which that number signals a developing crisis rather than normal noise. Example format: "If stock costs as a percentage of Winchester revenue exceed X% in month Y, that is not a bad month — that is a pricing or mix problem that compounds." Give the tripwire for each risk. Include the lead time between the tripwire appearing and the crisis becoming irreversible — some risks give 30 days, some give 6 months. State which are which and why. Be specific about the interaction effects: which two tripwires firing simultaneously means the plan is structurally broken rather than temporarily stressed.`,
+  },
+  "3": {
+    title: "THE RESPONSE PLAYBOOK",
+    instructions: `For each major risk in this financial model, write the exact operational response the founder must execute. Not "review marketing spend" — state the specific channel, the offer structure, the target audience segment implied by Winchester's location and demographic, and the realistic timeline from action to booking impact in an aesthetics context (hint: it is not 2 weeks). Not "reduce costs" — state which line items can be cut in month 1 without destroying revenue capacity, which require 60 days notice, and which are contractually fixed for the lease term. Include the personal finance response: at what point does the nursing income need to increase, what does that imply for clinical hours, and what does that do to Winchester treatment capacity? Write the playbook as if the founder has just seen a bad month-end report and has 48 hours to decide.`,
+  },
+  "4": {
+    title: "THE ONE THING",
+    instructions: `Given the specific numbers in this model — the occupancy assumptions, the Bedhampton revenue, the runway savings, the owner drawings, the fixed cost base, the launch timeline — what is the single most likely failure mode? Do not hedge. Pick one. Then walk through the exact month-by-month sequence from the trigger event to the point of no return. Name the months. State the P&L position in each month. Identify the last decision point where the trajectory could have been changed and what that decision would have cost. State what the business looks like at the point the founders would actually admit there is a problem — and how far past the last recovery point that moment typically arrives.`,
+  },
+  "5": {
+    title: "COMPETITOR RESPONSE",
+    instructions: `Winchester is a specific market. A new medical aesthetics clinic opening at 9A Jewry Street with a visible location and the marketing spend implied by this model will be noticed within 30 days by every established clinic within a 15-mile radius. Model the specific competitive response: which clinics are most threatened by this opening (not by name — by profile: high-volume budget, premium low-volume, or multi-service), what their retaliation toolkit looks like in practice (review campaigns, price matching on entry treatments, referral incentives to existing patients), and how long the retaliation typically lasts. Then tell me the pre-emptive moves that need to happen in the 60 days before opening — not general brand building, specific tactical positioning decisions that cost money and need to appear in this budget.`,
+  },
+  "6": {
+    title: "THE RECOVERY QUESTION",
+    instructions: `Winchester is at 50% of the realistic revenue assumption at month 6. That is a specific number. Calculate what the actual monthly P&L looks like at that revenue level given the fixed cost base in this model. How many months of runway savings remain at that burn rate? Now identify the three fastest levers to pull — each must be actionable within 14 days, must be specific to the Winchester location and clinic model, and must address the actual problem (insufficient patient volume) rather than the symptom (insufficient revenue). For each lever, state the cost of pulling it, the realistic patient volume increase within 90 days, and the cash position at the end of those 90 days assuming the lever works at 70% of expectation. State which lever has the highest failure risk and why.`,
+  },
+  "7": {
+    title: "SEASONAL COLLISION",
+    instructions: `Medical aesthetics in the UK has a well-documented seasonal pattern. Winchester opens in November 2026. Map the expected Winchester ramp curve — starting occupancy, monthly increase rate, target occupancy — against the known aesthetics calendar. Identify every month in the first 12 where a weak ramp month (early in the ramp, before word-of-mouth builds) coincides with a seasonally slow trading period. For each collision month, state the actual projected cash position using the delayed-ramp scenario figures in this model. State the cumulative P&L deficit by the first recovery month. Then identify the seasonal peak months and explain why a clinic that opened in November 2026 may be structurally disadvantaged entering those peaks relative to established competitors who have 12 months of patient data and loyalty.`,
+  },
+  "8": {
+    title: "HUMAN FACTORS",
+    instructions: `This business operates on two people. One of them is also a nurse providing the income that funds the pre-opening period. Look at what the model implies about their combined working week at operational maturity: Winchester treatment hours implied by occupancy, Bedhampton treatment hours, admin, marketing, compliance, CQC requirements, equipment maintenance, supplier management, staff management if and when staff are added. Calculate the total implied weekly hours. Then identify where the P&L first shows the signature of founder burnout before anyone uses that word: which revenue line starts to plateau when clinical hours are maxed, which cost line starts to rise when quality control slips, which booking metric signals that patient experience is degrading. State the specific month in the ramp where the human system hits its structural limit given these numbers, and what that means for the financial model's assumptions from that point forward.`,
+  },
+};
 
 function splitIntoParts(text: string): Record<string, string> {
   const result: Record<string, string> = {};
@@ -135,9 +147,6 @@ async function buildContext(projectId: number): Promise<string> {
       const sim = calcWincAtOccupancy(model, Math.round(occ * 10) / 10, 1.0, 0.20, dynamicFixedCosts);
       const bedhNet = calcBedhampton(model).netProfit;
       const combinedNet = sim.netProfit + bedhNet;
-      const cumulative = results[name]?.cashflow
-        ? results[name].cashflow.slice(0, month - 1).reduce((s: number, m: any) => s + m.combinedNet, 0) + combinedNet
-        : combinedNet;
       return {
         month,
         occ: Math.round(occ * 10) / 10,
@@ -150,7 +159,6 @@ async function buildContext(projectId: number): Promise<string> {
       };
     });
 
-    // Compute running cumulative
     let cum = 0;
     for (const m of cashflow) {
       cum += m.combinedNet;
@@ -192,13 +200,11 @@ async function buildContext(projectId: number): Promise<string> {
     ).join("\n");
   };
 
-  // Calculate occupancy at break-even
   const treatmentSlotsPerMonth = Math.round(model.workingDaysPerMonth * model.practitionerHoursPerDay);
   const realisticSlotsUsed = Math.round(treatmentSlotsPerMonth * (model.realisticOccupancyPercent / 100));
   const conservativeSlotsUsed = Math.round(treatmentSlotsPerMonth * (model.conservativeOccupancyPercent / 100));
   const breakEvenSlotsUsed = Math.round(treatmentSlotsPerMonth * ((r.winc.breakEvenOccupancy ?? 0) / 100));
 
-  // Personal finance analysis
   const totalPersonalNeeds = (model.ownerDrawingsGbp || 0) + (model.schoolFeesGbp || 0) + (model.travelGbp || 0) + (model.otherHouseholdGbp || 0);
   const personalIncome = model.nursingIncomeGbp || 0;
   const personalGap = totalPersonalNeeds - personalIncome;
@@ -303,8 +309,22 @@ ${cashflowTable("conservative")}
 ${cashflowTable("delayed_ramp")}`;
 }
 
-router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
+function setupSse(res: any) {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+}
+
+// Generate a single part — called 8 times by the frontend in sequence
+router.post("/projects/:projectId/risk-intelligence/generate-part", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
+  const { partId } = req.body as { partId: string };
+
+  const partDef = PART_INSTRUCTIONS[partId];
+  if (!partDef) {
+    return res.status(400).json({ error: `Unknown partId: ${partId}` });
+  }
 
   let context: string;
   try {
@@ -313,69 +333,65 @@ router.post("/projects/:projectId/risk-intelligence", async (req, res) => {
     return res.status(500).json({ error: err.message });
   }
 
-  // Disable all timeouts — this stream can run 90–120 seconds
   req.socket.setTimeout(0);
   req.socket.setKeepAlive(true, 10000);
   res.setTimeout(0);
 
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
+  setupSse(res);
 
-  // Send a keepalive comment every 15s so the proxy never sees an idle connection
   const keepalive = setInterval(() => {
     try { res.write(": keepalive\n\n"); } catch (_) {}
-  }, 15000);
-
-  let fullText = "";
+  }, 10000);
 
   try {
     const stream = anthropic.messages.stream({
-      model: "claude-sonnet-4-6",
-      max_tokens: 16000,
-      system: RISK_SYSTEM_PROMPT,
+      model: "claude-opus-4-5",
+      max_tokens: 4000,
+      system: BASE_SYSTEM_PROMPT,
       messages: [
         {
           role: "user",
-          content: `Produce the full 8-part risk briefing for this financial model. Be specific to every figure. Do not hold back.\n\n${context}`,
+          content: `Generate PART ${partId} — ${partDef.title} of the risk briefing.\n\nInstructions for this part:\n${partDef.instructions}\n\nFinancial model context:\n\n${context}`,
         },
       ],
     });
 
     for await (const event of stream) {
       if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        fullText += event.delta.text;
         res.write(`data: ${JSON.stringify({ content: event.delta.text })}\n\n`);
       }
     }
 
     clearInterval(keepalive);
-
-    // Persist to DB
-    try {
-      const parts = splitIntoParts(fullText);
-      await db.delete(projectAiAnalysesTable)
-        .where(and(
-          eq(projectAiAnalysesTable.projectId, projectId),
-          eq(projectAiAnalysesTable.analysisType, "risk_intelligence")
-        ));
-      await db.insert(projectAiAnalysesTable).values({
-        projectId,
-        analysisType: "risk_intelligence",
-        contextNote: `Generated ${new Date().toISOString()}`,
-        resultJson: { fullText, parts, generatedAt: new Date().toISOString() },
-      });
-    } catch (_) {
-      // Non-fatal — streaming already succeeded
-    }
-
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
   } catch (err: any) {
     clearInterval(keepalive);
     res.write(`data: ${JSON.stringify({ error: err.message ?? "API error" })}\n\n`);
     res.end();
+  }
+});
+
+// Save assembled parts to DB after all 8 are complete
+router.post("/projects/:projectId/risk-intelligence/save", async (req, res) => {
+  const projectId = parseInt(req.params.projectId);
+  const { parts } = req.body as { parts: Record<string, string> };
+
+  try {
+    await db.delete(projectAiAnalysesTable)
+      .where(and(
+        eq(projectAiAnalysesTable.projectId, projectId),
+        eq(projectAiAnalysesTable.analysisType, "risk_intelligence")
+      ));
+    await db.insert(projectAiAnalysesTable).values({
+      projectId,
+      analysisType: "risk_intelligence",
+      contextNote: `Generated ${new Date().toISOString()}`,
+      resultJson: { parts, generatedAt: new Date().toISOString() },
+    });
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
   }
 });
 

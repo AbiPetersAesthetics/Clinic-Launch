@@ -24,24 +24,6 @@ const PARTS = [
   { id: "8", label: "Human Factors", subtitle: "Where the human system breaks before the financial model does" },
 ];
 
-function splitIntoParts(text: string): Record<string, string> {
-  const result: Record<string, string> = {};
-  const partRegex = /PART\s+(\d+)\s*[—–-]+\s*[^\n]*/gi;
-  const matches: { index: number; id: string }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = partRegex.exec(text)) !== null) {
-    matches.push({ index: m.index, id: m[1] });
-  }
-  for (let i = 0; i < matches.length; i++) {
-    const start = matches[i].index;
-    const end = i + 1 < matches.length ? matches[i + 1].index : text.length;
-    const content = text.slice(start, end).trim();
-    const body = content.replace(/^PART\s+\d+\s*[—–-]+\s*[^\n]*\n?/i, "").trim();
-    result[matches[i].id] = body;
-  }
-  return result;
-}
-
 function MarkdownText({ text }: { text: string }) {
   if (!text) return null;
   const paragraphs = text.split(/\n\n+/);
@@ -50,12 +32,10 @@ function MarkdownText({ text }: { text: string }) {
       {paragraphs.map((para, i) => {
         const trimmed = para.trim();
         if (!trimmed) return null;
-        // Bold section header (standalone bold line)
         if (/^\*\*[^*]+\*\*$/.test(trimmed) || /^#+\s/.test(trimmed)) {
           const cleaned = trimmed.replace(/^#+\s+/, "").replace(/\*\*/g, "");
           return <p key={i} className="font-semibold text-foreground mt-4 mb-1">{cleaned}</p>;
         }
-        // Bullet list
         if (/^[-•]\s/.test(trimmed)) {
           const items = trimmed.split("\n").filter(l => l.trim());
           return (
@@ -69,7 +49,6 @@ function MarkdownText({ text }: { text: string }) {
             </ul>
           );
         }
-        // Numbered list
         if (/^\d+\.\s/.test(trimmed)) {
           const items = trimmed.split("\n").filter(l => l.trim());
           return (
@@ -86,7 +65,6 @@ function MarkdownText({ text }: { text: string }) {
             </ol>
           );
         }
-        // Normal paragraph (may contain inline bold)
         return <p key={i} className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: formatInline(trimmed.replace(/\n/g, " ")) }} />;
       })}
     </div>
@@ -101,17 +79,64 @@ function formatInline(text: string): string {
     .replace(/(\d+(?:\.\d+)?%)/g, '<span class="font-semibold text-foreground">$1</span>');
 }
 
+async function streamPart(
+  partId: string,
+  signal: AbortSignal,
+  onChunk: (text: string) => void
+): Promise<void> {
+  const response = await fetch(
+    `${BASE_URL}/api/projects/${PROJECT_ID}/risk-intelligence/generate-part`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ partId }),
+      signal,
+    }
+  );
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error ?? `HTTP ${response.status}`);
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) throw new Error("No response stream");
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data: ")) continue;
+      const json = line.slice(6).trim();
+      if (!json) continue;
+      try {
+        const parsed = JSON.parse(json);
+        if (parsed.error) throw new Error(parsed.error);
+        if (parsed.done) break;
+        if (parsed.content) onChunk(parsed.content);
+      } catch (e: any) {
+        if (e.message !== "Unexpected end of JSON input") throw e;
+      }
+    }
+  }
+}
+
 export default function RiskIntelligencePage() {
   const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [parts, setParts] = useState<Record<string, string>>({});
+  const [currentPartId, setCurrentPartId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openItems, setOpenItems] = useState<string[]>([]);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
-  const fullTextRef = useRef("");
 
-  // Load last saved briefing on mount
   useEffect(() => {
     fetch(`${BASE_URL}/api/projects/${PROJECT_ID}/risk-intelligence/latest`)
       .then(r => r.json())
@@ -121,7 +146,6 @@ export default function RiskIntelligencePage() {
           setStatus("done");
           setIsStale(true);
           setOpenItems(Object.keys(data.parts));
-          // Extract date from contextNote
           if (generatedAt) {
             const match = generatedAt.match(/Generated (.+)/);
             if (match) {
@@ -139,67 +163,50 @@ export default function RiskIntelligencePage() {
   const generate = useCallback(async () => {
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
+    const signal = abortRef.current.signal;
 
     setStatus("loading");
     setError(null);
     setParts({});
     setIsStale(false);
     setSavedAt(null);
-    fullTextRef.current = "";
+    setCurrentPartId(null);
     setOpenItems([]);
 
+    const assembled: Record<string, string> = {};
+
     try {
-      const response = await fetch(
-        `${BASE_URL}/api/projects/${PROJECT_ID}/risk-intelligence`,
+      for (const part of PARTS) {
+        setCurrentPartId(part.id);
+        let partRaw = "";
+
+        await streamPart(part.id, signal, (chunk) => {
+          partRaw += chunk;
+          // Strip the "PART N — TITLE\n\n" header the model starts with
+          const body = partRaw.replace(/^PART\s+\d+\s*[—–-]+\s*[^\n]*\n?\n?/i, "");
+          assembled[part.id] = body;
+          setParts({ ...assembled });
+        });
+
+        // Finalise this part and open it
+        const finalBody = partRaw.replace(/^PART\s+\d+\s*[—–-]+\s*[^\n]*\n?\n?/i, "");
+        assembled[part.id] = finalBody.trim();
+        setParts({ ...assembled });
+        setOpenItems(prev => prev.includes(part.id) ? prev : [...prev, part.id]);
+      }
+
+      // Persist to DB
+      await fetch(
+        `${BASE_URL}/api/projects/${PROJECT_ID}/risk-intelligence/save`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          signal: abortRef.current.signal,
+          body: JSON.stringify({ parts: assembled }),
+          signal,
         }
       );
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body.error ?? `HTTP ${response.status}`);
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("No response stream");
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const json = line.slice(6).trim();
-          if (!json) continue;
-          try {
-            const parsed = JSON.parse(json);
-            if (parsed.error) throw new Error(parsed.error);
-            if (parsed.done) break;
-            if (parsed.content) {
-              fullTextRef.current += parsed.content;
-              const newParts = splitIntoParts(fullTextRef.current);
-              setParts(newParts);
-              setOpenItems(prev => {
-                const keys = Object.keys(newParts);
-                const lastKey = keys[keys.length - 1];
-                if (lastKey && !prev.includes(lastKey)) return [...prev, lastKey];
-                return prev;
-              });
-            }
-          } catch (e: any) {
-            if (e.message !== "Unexpected end of JSON input") throw e;
-          }
-        }
-      }
-
+      setCurrentPartId(null);
       setStatus("done");
       setSavedAt(new Date().toLocaleString("en-GB", {
         day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
@@ -207,6 +214,7 @@ export default function RiskIntelligencePage() {
       setOpenItems(PARTS.map(p => p.id));
     } catch (e: any) {
       if (e.name === "AbortError") return;
+      setCurrentPartId(null);
       setError(e.message ?? "Unknown error");
       setStatus("error");
     }
@@ -221,7 +229,6 @@ export default function RiskIntelligencePage() {
         description="A hostile due diligence assessment of your financial model — specific to your numbers, not generic startup advice. Regenerate any time the model changes."
       />
 
-      {/* Controls bar */}
       <div className="flex items-center gap-4 flex-wrap">
         <Button
           onClick={generate}
@@ -237,9 +244,10 @@ export default function RiskIntelligencePage() {
             <><Brain className="w-4 h-4" />Generate Risk Briefing</>
           )}
         </Button>
-        {status === "loading" && (
+        {status === "loading" && currentPartId && (
           <p className="text-sm text-muted-foreground animate-pulse">
-            Reading your full financial model — this takes 30–60 seconds…
+            Writing Part {currentPartId} of {PARTS.length}
+            {" — "}{PARTS.find(p => p.id === currentPartId)?.label}…
           </p>
         )}
         {status === "done" && savedAt && (
@@ -250,7 +258,6 @@ export default function RiskIntelligencePage() {
         )}
       </div>
 
-      {/* Error */}
       {status === "error" && error && (
         <Card className="border-destructive/40 bg-destructive/5">
           <CardContent className="p-4 flex gap-3 items-start">
@@ -263,7 +270,6 @@ export default function RiskIntelligencePage() {
         </Card>
       )}
 
-      {/* Idle — locked placeholders */}
       {status === "idle" && (
         <div className="space-y-2">
           {PARTS.map((part) => (
@@ -283,14 +289,12 @@ export default function RiskIntelligencePage() {
         </div>
       )}
 
-      {/* Stale notice */}
       {isStale && status === "done" && (
         <div className="text-xs text-muted-foreground/70 bg-muted/40 border border-border/40 rounded-lg px-3 py-2">
           Showing saved briefing from {savedAt}. Hit Regenerate after any model change to refresh the analysis.
         </div>
       )}
 
-      {/* Sections */}
       {(status === "loading" || status === "done") && (
         <Accordion
           type="multiple"
@@ -300,12 +304,9 @@ export default function RiskIntelligencePage() {
         >
           {PARTS.map((part) => {
             const content = parts[part.id];
-            const activeParts = Object.keys(parts);
-            const isActivelyStreaming = status === "loading" &&
-              activeParts.length > 0 &&
-              part.id === activeParts[activeParts.length - 1];
+            const isActivelyStreaming = status === "loading" && currentPartId === part.id;
             const hasData = !!content;
-            const isPending = !hasData;
+            const isPending = !hasData && status === "loading";
 
             return (
               <AccordionItem
@@ -314,7 +315,7 @@ export default function RiskIntelligencePage() {
                 className={`border rounded-lg overflow-hidden transition-all duration-300 ${
                   hasData
                     ? "border-border bg-card shadow-sm"
-                    : isPending && status === "loading"
+                    : isPending
                     ? "border-border/25 bg-muted/10 opacity-35"
                     : "border-border/25 bg-muted/10 opacity-35"
                 }`}
