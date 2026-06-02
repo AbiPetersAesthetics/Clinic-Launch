@@ -797,7 +797,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     wincNet = wincRevenue - wincCosts;
 
     // Input VAT reclaim — reclaimable from HMRC when VAT registered.
-    // Pre-opening: fit-out (100% VAT-bearing) + rent if landlord charges VAT.
+    // Pre-opening: fit-out (100% VAT-bearing) + Bedhampton running costs + rent if landlord charges VAT.
     // Post-opening: operating costs (fixed + variable + Bedhampton) at user-configured ratio.
     // All costs assumed VAT-inclusive → reclaimable VAT = cost × 1/6  (i.e. 20% / 120%).
     let vatInputReclaim = 0;
@@ -808,7 +808,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       if (isInLeasePeriod && (model as any).vatOnRent) {
         vatInputReclaim += monthlyRent / 6;
       }
-      // Operating costs when open: fixed premises, variable costs, Bedhampton
+      // Pre-opening: Bedhampton is still trading — its stock purchases and running costs
+      // are VAT-bearing and generate reclaimable input VAT even before Winchester opens.
+      if (isPreOpening && !bedhClosed && !bedhDeFactoClosed && bedhCosts > 0) {
+        vatInputReclaim += bedhCosts * vatReclaimRatio / 6;
+      }
+      // Post-opening: full operating costs (Winchester fixed + variable + Bedhampton)
       if (!isPreOpening) {
         const operatingCosts = wincFixedCostsMonth + wincVariableCosts + bedhCosts;
         vatInputReclaim += operatingCosts * vatReclaimRatio / 6;
