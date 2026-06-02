@@ -62,6 +62,10 @@ import type {
   LaunchTask,
   ListDecisionsParams,
   ManualCompetitor,
+  MarketingAiCompleteBody,
+  MarketingAiCompleteResponse,
+  MarketingItem,
+  MarketingResponse,
   OptimisationAnalysis,
   PhaseWithTasks,
   Project,
@@ -86,6 +90,8 @@ import type {
   UpdateCqcMilestoneBody,
   UpdateDecisionBody,
   UpdateFixedCostItemBody,
+  UpdateMarketingItemBody,
+  UpdateMarketingWaitlist200,
   UpdatePhaseBody,
   UpdateProjectBody,
   UpdatePropertyBody,
@@ -93,6 +99,7 @@ import type {
   UpdateScenarioConfigBody,
   UpdateSupplierBody,
   UpdateTaskBody,
+  UpdateWaitlistBody,
   UploadPropertyDocumentBody,
   UpsertFinancialModelBody,
 } from "./api.schemas";
@@ -7911,4 +7918,360 @@ export const useDeleteQuote = <
   TContext
 > => {
   return useMutation(getDeleteQuoteMutationOptions(options));
+};
+
+/**
+ * @summary Get all marketing items and waitlist count for a project (auto-seeds if empty)
+ */
+export const getGetProjectMarketingUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/marketing`;
+};
+
+export const getProjectMarketing = async (
+  projectId: number,
+  options?: RequestInit,
+): Promise<MarketingResponse> => {
+  return customFetch<MarketingResponse>(getGetProjectMarketingUrl(projectId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetProjectMarketingQueryKey = (projectId: number) => {
+  return [`/api/projects/${projectId}/marketing`] as const;
+};
+
+export const getGetProjectMarketingQueryOptions = <
+  TData = Awaited<ReturnType<typeof getProjectMarketing>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectMarketing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetProjectMarketingQueryKey(projectId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getProjectMarketing>>
+  > = ({ signal }) =>
+    getProjectMarketing(projectId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!projectId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getProjectMarketing>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetProjectMarketingQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getProjectMarketing>>
+>;
+export type GetProjectMarketingQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all marketing items and waitlist count for a project (auto-seeds if empty)
+ */
+
+export function useGetProjectMarketing<
+  TData = Awaited<ReturnType<typeof getProjectMarketing>>,
+  TError = ErrorType<unknown>,
+>(
+  projectId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getProjectMarketing>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetProjectMarketingQueryOptions(projectId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a marketing item's status and notes
+ */
+export const getUpdateMarketingItemUrl = (id: number) => {
+  return `/api/marketing/${id}`;
+};
+
+export const updateMarketingItem = async (
+  id: number,
+  updateMarketingItemBody: UpdateMarketingItemBody,
+  options?: RequestInit,
+): Promise<MarketingItem> => {
+  return customFetch<MarketingItem>(getUpdateMarketingItemUrl(id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMarketingItemBody),
+  });
+};
+
+export const getUpdateMarketingItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMarketingItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateMarketingItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMarketingItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateMarketingItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMarketingItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMarketingItem>>,
+    { id: number; data: BodyType<UpdateMarketingItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateMarketingItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMarketingItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMarketingItem>>
+>;
+export type UpdateMarketingItemMutationBody = BodyType<UpdateMarketingItemBody>;
+export type UpdateMarketingItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a marketing item's status and notes
+ */
+export const useUpdateMarketingItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMarketingItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateMarketingItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMarketingItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateMarketingItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMarketingItemMutationOptions(options));
+};
+
+/**
+ * @summary AI-generate tailored notes for a marketing category
+ */
+export const getAiCompleteMarketingUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/marketing/ai-complete`;
+};
+
+export const aiCompleteMarketing = async (
+  projectId: number,
+  marketingAiCompleteBody: MarketingAiCompleteBody,
+  options?: RequestInit,
+): Promise<MarketingAiCompleteResponse> => {
+  return customFetch<MarketingAiCompleteResponse>(
+    getAiCompleteMarketingUrl(projectId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(marketingAiCompleteBody),
+    },
+  );
+};
+
+export const getAiCompleteMarketingMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiCompleteMarketing>>,
+    TError,
+    { projectId: number; data: BodyType<MarketingAiCompleteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof aiCompleteMarketing>>,
+  TError,
+  { projectId: number; data: BodyType<MarketingAiCompleteBody> },
+  TContext
+> => {
+  const mutationKey = ["aiCompleteMarketing"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof aiCompleteMarketing>>,
+    { projectId: number; data: BodyType<MarketingAiCompleteBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return aiCompleteMarketing(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AiCompleteMarketingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof aiCompleteMarketing>>
+>;
+export type AiCompleteMarketingMutationBody = BodyType<MarketingAiCompleteBody>;
+export type AiCompleteMarketingMutationError = ErrorType<unknown>;
+
+/**
+ * @summary AI-generate tailored notes for a marketing category
+ */
+export const useAiCompleteMarketing = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof aiCompleteMarketing>>,
+    TError,
+    { projectId: number; data: BodyType<MarketingAiCompleteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof aiCompleteMarketing>>,
+  TError,
+  { projectId: number; data: BodyType<MarketingAiCompleteBody> },
+  TContext
+> => {
+  return useMutation(getAiCompleteMarketingMutationOptions(options));
+};
+
+/**
+ * @summary Update the waitlist count for a project
+ */
+export const getUpdateMarketingWaitlistUrl = (projectId: number) => {
+  return `/api/projects/${projectId}/marketing/waitlist`;
+};
+
+export const updateMarketingWaitlist = async (
+  projectId: number,
+  updateWaitlistBody: UpdateWaitlistBody,
+  options?: RequestInit,
+): Promise<UpdateMarketingWaitlist200> => {
+  return customFetch<UpdateMarketingWaitlist200>(
+    getUpdateMarketingWaitlistUrl(projectId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateWaitlistBody),
+    },
+  );
+};
+
+export const getUpdateMarketingWaitlistMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMarketingWaitlist>>,
+    TError,
+    { projectId: number; data: BodyType<UpdateWaitlistBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMarketingWaitlist>>,
+  TError,
+  { projectId: number; data: BodyType<UpdateWaitlistBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMarketingWaitlist"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMarketingWaitlist>>,
+    { projectId: number; data: BodyType<UpdateWaitlistBody> }
+  > = (props) => {
+    const { projectId, data } = props ?? {};
+
+    return updateMarketingWaitlist(projectId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMarketingWaitlistMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMarketingWaitlist>>
+>;
+export type UpdateMarketingWaitlistMutationBody = BodyType<UpdateWaitlistBody>;
+export type UpdateMarketingWaitlistMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update the waitlist count for a project
+ */
+export const useUpdateMarketingWaitlist = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMarketingWaitlist>>,
+    TError,
+    { projectId: number; data: BodyType<UpdateWaitlistBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMarketingWaitlist>>,
+  TError,
+  { projectId: number; data: BodyType<UpdateWaitlistBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMarketingWaitlistMutationOptions(options));
 };

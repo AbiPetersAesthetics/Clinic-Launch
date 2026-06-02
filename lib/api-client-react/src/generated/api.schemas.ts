@@ -508,7 +508,6 @@ export interface UpdateTaskBody {
   costLow?: number;
   costMid?: number;
   costHigh?: number;
-  startDate?: string | null;
   dueDate?: string | null;
   durationDays?: number | null;
   dependencies?: number[] | null;
@@ -517,7 +516,6 @@ export interface UpdateTaskBody {
   isNonNegotiable?: boolean;
   isCriticalRisk?: boolean;
   sortOrder?: number;
-  phaseId?: number;
 }
 
 export interface FinancialModel {
@@ -661,6 +659,8 @@ export interface DashboardSummary {
   phaseProgress: PhaseProgress[];
   complianceReadinessPercent?: number | null;
   cqcNotStarted?: boolean | null;
+  marketingReadinessPct: number;
+  waitlistCount: number;
 }
 
 export interface PhaseWithTasks {
@@ -1832,6 +1832,87 @@ export interface UpdateQuoteBody {
   taskId?: number | null;
 }
 
+export type MarketingItemCategory =
+  (typeof MarketingItemCategory)[keyof typeof MarketingItemCategory];
+
+export const MarketingItemCategory = {
+  brand: "brand",
+  platform: "platform",
+  content: "content",
+  launch: "launch",
+} as const;
+
+export type MarketingItemStatus =
+  (typeof MarketingItemStatus)[keyof typeof MarketingItemStatus];
+
+export const MarketingItemStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  done: "done",
+  na: "na",
+} as const;
+
+export interface MarketingItem {
+  id: number;
+  projectId: number;
+  category: MarketingItemCategory;
+  title: string;
+  status: MarketingItemStatus;
+  dueWeeksBeforeOpen?: number | null;
+  notes: string;
+  sortOrder: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+}
+
+export interface MarketingResponse {
+  items: MarketingItem[];
+  waitlistCount: number;
+}
+
+export type UpdateMarketingItemBodyStatus =
+  (typeof UpdateMarketingItemBodyStatus)[keyof typeof UpdateMarketingItemBodyStatus];
+
+export const UpdateMarketingItemBodyStatus = {
+  not_started: "not_started",
+  in_progress: "in_progress",
+  done: "done",
+  na: "na",
+} as const;
+
+export interface UpdateMarketingItemBody {
+  status?: UpdateMarketingItemBodyStatus;
+  notes?: string;
+}
+
+export type MarketingAiCompleteBodyCategory =
+  (typeof MarketingAiCompleteBodyCategory)[keyof typeof MarketingAiCompleteBodyCategory];
+
+export const MarketingAiCompleteBodyCategory = {
+  brand: "brand",
+  platform: "platform",
+  content: "content",
+  launch: "launch",
+} as const;
+
+export interface MarketingAiCompleteBody {
+  category: MarketingAiCompleteBodyCategory;
+}
+
+export type MarketingAiCompleteResponseUpdatesItem = {
+  id: number;
+  notes: string;
+  status?: string;
+};
+
+export interface MarketingAiCompleteResponse {
+  updates: MarketingAiCompleteResponseUpdatesItem[];
+}
+
+export interface UpdateWaitlistBody {
+  count: number;
+}
+
 export type SuppliersSummaryByCategory = {
   [key: string]: {
     count: number;
@@ -1924,4 +2005,8 @@ export type DeleteSupplier200 = {
 
 export type DeleteQuote200 = {
   success: boolean;
+};
+
+export type UpdateMarketingWaitlist200 = {
+  waitlistCount: number;
 };

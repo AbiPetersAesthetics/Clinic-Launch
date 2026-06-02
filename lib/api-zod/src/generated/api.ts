@@ -1207,6 +1207,8 @@ export const GetProjectDashboardResponse = zod.object({
   ),
   complianceReadinessPercent: zod.number().nullish(),
   cqcNotStarted: zod.boolean().nullish(),
+  marketingReadinessPct: zod.number(),
+  waitlistCount: zod.number(),
 });
 
 /**
@@ -3304,4 +3306,90 @@ export const DeleteQuoteParams = zod.object({
 
 export const DeleteQuoteResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Get all marketing items and waitlist count for a project (auto-seeds if empty)
+ */
+export const GetProjectMarketingParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const GetProjectMarketingResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.number(),
+      projectId: zod.number(),
+      category: zod.enum(["brand", "platform", "content", "launch"]),
+      title: zod.string(),
+      status: zod.enum(["not_started", "in_progress", "done", "na"]),
+      dueWeeksBeforeOpen: zod.number().nullish(),
+      notes: zod.string(),
+      sortOrder: zod.number(),
+      createdAt: zod.string().nullish(),
+      updatedAt: zod.string().nullish(),
+    }),
+  ),
+  waitlistCount: zod.number(),
+});
+
+/**
+ * @summary Update a marketing item's status and notes
+ */
+export const UpdateMarketingItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMarketingItemBody = zod.object({
+  status: zod.enum(["not_started", "in_progress", "done", "na"]).optional(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateMarketingItemResponse = zod.object({
+  id: zod.number(),
+  projectId: zod.number(),
+  category: zod.enum(["brand", "platform", "content", "launch"]),
+  title: zod.string(),
+  status: zod.enum(["not_started", "in_progress", "done", "na"]),
+  dueWeeksBeforeOpen: zod.number().nullish(),
+  notes: zod.string(),
+  sortOrder: zod.number(),
+  createdAt: zod.string().nullish(),
+  updatedAt: zod.string().nullish(),
+});
+
+/**
+ * @summary AI-generate tailored notes for a marketing category
+ */
+export const AiCompleteMarketingParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const AiCompleteMarketingBody = zod.object({
+  category: zod.enum(["brand", "platform", "content", "launch"]),
+});
+
+export const AiCompleteMarketingResponse = zod.object({
+  updates: zod.array(
+    zod.object({
+      id: zod.number(),
+      notes: zod.string(),
+      status: zod.string().optional(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update the waitlist count for a project
+ */
+export const UpdateMarketingWaitlistParams = zod.object({
+  projectId: zod.coerce.number(),
+});
+
+export const UpdateMarketingWaitlistBody = zod.object({
+  count: zod.number(),
+});
+
+export const UpdateMarketingWaitlistResponse = zod.object({
+  waitlistCount: zod.number(),
 });

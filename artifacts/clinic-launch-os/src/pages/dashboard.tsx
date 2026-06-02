@@ -44,6 +44,8 @@ import {
   TrendingUp,
   Brain,
   ExternalLink,
+  Megaphone,
+  Users,
 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { ResetPageButton } from "@/components/reset-page-button";
@@ -1211,7 +1213,7 @@ export default function DashboardPage() {
       </Card>
 
       {/* 1. Executive Health Panel */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Launch Readiness */}
         {(() => {
           const r = ragColors(readinessStatus);
@@ -1301,6 +1303,43 @@ export default function DashboardPage() {
                 Log decision <ArrowRight className="w-3 h-3" />
               </a>
             </div>
+          );
+        })()}
+
+        {/* Marketing Readiness */}
+        {(() => {
+          const pct = (dashboard as any).marketingReadinessPct ?? 0;
+          const wl = (dashboard as any).waitlistCount ?? 0;
+          const WAITLIST_TARGET = 30;
+          const marketingStatus: RAGStatus = pct >= 70 ? "green" : pct >= 30 ? "amber" : "red";
+          const r = ragColors(marketingStatus);
+          return (
+            <a href="/marketing" className={`rounded-xl border p-4 ${r.bg} ${r.border} hover:shadow-md transition-shadow cursor-pointer block`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <Megaphone className="w-3 h-3" />
+                  Marketing
+                </span>
+                <span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+              </div>
+              <div className={`text-2xl font-bold mb-1 ${r.text}`}>{pct}%</div>
+              <p className="text-xs text-muted-foreground leading-snug">pre-launch readiness</p>
+              <div className="mt-2 flex items-center gap-1.5">
+                <Users className="w-3 h-3 text-muted-foreground shrink-0" />
+                <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${wl >= WAITLIST_TARGET ? "bg-emerald-500" : "bg-primary"}`}
+                    style={{ width: `${Math.min(100, Math.round((wl / WAITLIST_TARGET) * 100))}%` }}
+                  />
+                </div>
+                <span className={`text-[10px] font-semibold tabular-nums ${wl >= WAITLIST_TARGET ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                  {wl}/{WAITLIST_TARGET}
+                </span>
+              </div>
+              <span className={`mt-2 text-xs font-medium flex items-center gap-1 ${r.text} hover:underline`}>
+                Plan marketing <ArrowRight className="w-3 h-3" />
+              </span>
+            </a>
           );
         })()}
       </div>
@@ -1681,6 +1720,52 @@ export default function DashboardPage() {
                 );
               })()}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Marketing & Waitlist */}
+        <Card className="shadow-sm border-border/60 cursor-pointer hover:shadow-md transition-shadow" onClick={() => window.location.href = "/marketing"}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Megaphone className="w-3.5 h-3.5" />
+              Marketing & Waitlist
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {(() => {
+              const pct = (dashboard as any).marketingReadinessPct ?? 0;
+              const wl = (dashboard as any).waitlistCount ?? 0;
+              const WAITLIST_TARGET = 30;
+              const color = pct >= 70 ? "text-emerald-600 dark:text-emerald-400" : pct >= 30 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400";
+              const barColor = pct >= 70 ? "bg-emerald-500" : pct >= 30 ? "bg-amber-500" : "bg-red-400";
+              return (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <span className="text-sm text-muted-foreground">Pre-launch readiness</span>
+                    <span className={`text-2xl font-bold ${color}`}>{pct}%</span>
+                  </div>
+                  <div className="h-2 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-700 ${barColor}`} style={{ width: `${pct}%` }} />
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-muted-foreground flex items-center gap-1">
+                      <Users className="w-3 h-3" /> Waitlist
+                    </span>
+                    <span className={`font-semibold tabular-nums ${wl >= WAITLIST_TARGET ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                      {wl} / {WAITLIST_TARGET}
+                      {wl >= WAITLIST_TARGET && " 🎉"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${wl >= WAITLIST_TARGET ? "bg-emerald-500" : "bg-primary"}`}
+                      style={{ width: `${Math.min(100, Math.round((wl / WAITLIST_TARGET) * 100))}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/70">Click to open marketing planner →</p>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       </div>

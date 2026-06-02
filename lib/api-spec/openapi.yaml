@@ -36,6 +36,8 @@ tags:
     description: CQC registration and clinical compliance tracker
   - name: suppliers
     description: Supplier and procurement quote management
+  - name: marketing
+    description: Pre-launch marketing sequence and brand planner
 
 paths:
   /healthz:
@@ -1946,6 +1948,105 @@ paths:
                     type: boolean
                 required: [success]
 
+  # Marketing
+  /projects/{projectId}/marketing:
+    get:
+      operationId: getProjectMarketing
+      tags: [marketing]
+      summary: Get all marketing items and waitlist count for a project (auto-seeds if empty)
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Marketing items and waitlist count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingResponse"
+
+  /marketing/{id}:
+    put:
+      operationId: updateMarketingItem
+      tags: [marketing]
+      summary: Update a marketing item's status and notes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMarketingItemBody"
+      responses:
+        "200":
+          description: Updated marketing item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingItem"
+
+  /projects/{projectId}/marketing/ai-complete:
+    post:
+      operationId: aiCompleteMarketing
+      tags: [marketing]
+      summary: AI-generate tailored notes for a marketing category
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketingAiCompleteBody"
+      responses:
+        "200":
+          description: AI-generated updates for the category items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketingAiCompleteResponse"
+
+  /projects/{projectId}/marketing/waitlist:
+    patch:
+      operationId: updateMarketingWaitlist
+      tags: [marketing]
+      summary: Update the waitlist count for a project
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateWaitlistBody"
+      responses:
+        "200":
+          description: Updated waitlist count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  waitlistCount:
+                    type: integer
+                required: [waitlistCount]
+
 components:
   schemas:
     HealthStatus:
@@ -2864,6 +2965,10 @@ components:
         cqcNotStarted:
           type: boolean
           nullable: true
+        marketingReadinessPct:
+          type: integer
+        waitlistCount:
+          type: integer
       required:
         - projectId
         - projectName
@@ -2880,6 +2985,8 @@ components:
         - currentSelectedCost
         - projectConfidenceScore
         - phaseProgress
+        - marketingReadinessPct
+        - waitlistCount
 
     PhaseProgress:
       type: object
@@ -4895,6 +5002,104 @@ components:
         taskId:
           type: integer
           nullable: true
+
+    # ── Marketing ──────────────────────────────────────────────────────────────
+
+    MarketingItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        projectId:
+          type: integer
+        category:
+          type: string
+          enum: [brand, platform, content, launch]
+        title:
+          type: string
+        status:
+          type: string
+          enum: [not_started, in_progress, done, na]
+        dueWeeksBeforeOpen:
+          type: integer
+          nullable: true
+        notes:
+          type: string
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          nullable: true
+        updatedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - projectId
+        - category
+        - title
+        - status
+        - notes
+        - sortOrder
+
+    MarketingResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MarketingItem"
+        waitlistCount:
+          type: integer
+      required:
+        - items
+        - waitlistCount
+
+    UpdateMarketingItemBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [not_started, in_progress, done, na]
+        notes:
+          type: string
+
+    MarketingAiCompleteBody:
+      type: object
+      properties:
+        category:
+          type: string
+          enum: [brand, platform, content, launch]
+      required:
+        - category
+
+    MarketingAiCompleteResponse:
+      type: object
+      properties:
+        updates:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              notes:
+                type: string
+              status:
+                type: string
+            required:
+              - id
+              - notes
+      required:
+        - updates
+
+    UpdateWaitlistBody:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
 
     SuppliersSummary:
       type: object

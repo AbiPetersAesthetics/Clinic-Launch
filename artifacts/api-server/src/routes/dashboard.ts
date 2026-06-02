@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable } from "@workspace/db";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
 
 const router = Router();
@@ -37,17 +37,19 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     daysToOpening = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // Financial + property + fixed cost items — fetched in parallel
+  // Financial + property + fixed cost items + marketing — fetched in parallel
   const [
     [financial],
     allProperties,
     fixedCostItems,
     allCompetitors,
+    allMarketingItems,
   ] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId)),
+    db.select().from(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId)),
   ]);
 
   const activeProperty = allProperties.find(p => p.isActiveForProject) ?? allProperties[0] ?? null;
@@ -202,6 +204,21 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     };
   }
 
+  // Marketing readiness + waitlist
+  let marketingReadinessPct = 0;
+  let waitlistCount = 0;
+  if (allMarketingItems.length > 0) {
+    const applicable = allMarketingItems.filter(i => i.status !== "na" && !i.title.startsWith("⚠"));
+    if (applicable.length > 0) {
+      const score = applicable.reduce(
+        (acc, i) => acc + (i.status === "done" ? 1 : i.status === "in_progress" ? 0.5 : 0),
+        0,
+      );
+      marketingReadinessPct = Math.round((score / applicable.length) * 100);
+    }
+  }
+  waitlistCount = (project as any).waitlistCount ?? 0;
+
   // Confidence score (0-100)
   const completionScore = launchReadinessPercent * 0.4;
   const riskPenalty = Math.min(highRiskTaskCount * 3, 20);
@@ -271,6 +288,8 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     vatHeadroomGbp,
     vatMonthsToThreshold,
     competitionSummary,
+    marketingReadinessPct,
+    waitlistCount,
   });
 });
 
