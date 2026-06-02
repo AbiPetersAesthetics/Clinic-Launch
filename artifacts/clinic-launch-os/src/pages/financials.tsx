@@ -4896,16 +4896,19 @@ export default function FinancialsPage() {
                         <Input className="h-8 mt-1 text-sm" type="number" placeholder="60" value={newInv.repaymentTermMonths} onChange={e => setNewInv(p => ({ ...p, repaymentTermMonths: e.target.value }))} />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Agreement Start Date</label>
-                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.agreementStartDate} onChange={e => setNewInv(p => ({ ...p, agreementStartDate: e.target.value }))} />
+                        <label className="text-xs font-medium text-foreground">Agreement signed</label>
+                        <p className="text-[10px] text-muted-foreground mb-1">Date the loan agreement was signed</p>
+                        <Input className="h-8 text-sm" type="date" value={newInv.agreementStartDate} onChange={e => setNewInv(p => ({ ...p, agreementStartDate: e.target.value }))} />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">Deposit Date <span className="text-primary font-semibold">(money received)</span></label>
-                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.depositDate} onChange={e => setNewInv(p => ({ ...p, depositDate: e.target.value }))} />
+                        <label className="text-xs font-medium text-foreground">Money received</label>
+                        <p className="text-[10px] text-muted-foreground mb-1">When the funds land in your account — shown as a cash inflow in the P&L</p>
+                        <Input className="h-8 text-sm" type="date" value={newInv.depositDate} onChange={e => setNewInv(p => ({ ...p, depositDate: e.target.value }))} />
                       </div>
                       <div>
-                        <label className="text-xs text-muted-foreground">First Repayment Date</label>
-                        <Input className="h-8 mt-1 text-sm" type="date" value={newInv.firstPaymentDate} onChange={e => setNewInv(p => ({ ...p, firstPaymentDate: e.target.value }))} />
+                        <label className="text-xs font-medium text-foreground">First repayment</label>
+                        <p className="text-[10px] text-muted-foreground mb-1">Date of your first monthly repayment — deducted from net profit each month</p>
+                        <Input className="h-8 text-sm" type="date" value={newInv.firstPaymentDate} onChange={e => setNewInv(p => ({ ...p, firstPaymentDate: e.target.value }))} />
                       </div>
                     </>)}
                     <div className="col-span-2 sm:col-span-3">
@@ -4947,15 +4950,52 @@ export default function FinancialsPage() {
                               <>
                                 <td className="px-2 py-1.5" colSpan={8}>
                                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    <Input className="h-7 text-xs" value={editingInv.name} onChange={e => setEditingInv((p: any) => ({ ...p, name: e.target.value }))} placeholder="Name" />
-                                    <Input className="h-7 text-xs" type="number" value={editingInv.amountGbp} onChange={e => setEditingInv((p: any) => ({ ...p, amountGbp: parseFloat(e.target.value) || 0 }))} placeholder="Amount £" />
-                                    <Input className="h-7 text-xs" type="number" value={editingInv.equityPercent} onChange={e => setEditingInv((p: any) => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} placeholder="Equity %" />
-                                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.interestRatePercent} onChange={e => setEditingInv((p: any) => ({ ...p, interestRatePercent: parseFloat(e.target.value) || 0 }))} placeholder="Rate %" />}
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="number" value={editingInv.repaymentTermMonths} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentTermMonths: parseInt(e.target.value) || 0 }))} placeholder="Term mo." />}
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.agreementStartDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, agreementStartDate: e.target.value || null }))} placeholder="Agreement start" title="Agreement Start Date" />}
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.depositDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, depositDate: e.target.value || null }))} placeholder="Deposit date" title="Deposit Date (money received)" />}
-                                    {inv.type === "loan" && <Input className="h-7 text-xs" type="date" value={editingInv.firstPaymentDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, firstPaymentDate: e.target.value || null }))} placeholder="First payment" title="First Repayment Date" />}
-                                    <Input className="h-7 text-xs col-span-2" value={editingInv.notes} onChange={e => setEditingInv((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Notes" />
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-[10px] text-muted-foreground leading-none">Name</span>
+                                      <Input className="h-7 text-xs" value={editingInv.name} onChange={e => setEditingInv((p: any) => ({ ...p, name: e.target.value }))} placeholder="Name" />
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-[10px] text-muted-foreground leading-none">Amount £</span>
+                                      <Input className="h-7 text-xs" type="number" value={editingInv.amountGbp} onChange={e => setEditingInv((p: any) => ({ ...p, amountGbp: parseFloat(e.target.value) || 0 }))} placeholder="Amount £" />
+                                    </div>
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="text-[10px] text-muted-foreground leading-none">Equity %</span>
+                                      <Input className="h-7 text-xs" type="number" value={editingInv.equityPercent} onChange={e => setEditingInv((p: any) => ({ ...p, equityPercent: parseFloat(e.target.value) || 0 }))} placeholder="Equity %" />
+                                    </div>
+                                    {inv.type === "loan" && (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-muted-foreground leading-none">Interest rate %</span>
+                                        <Input className="h-7 text-xs" type="number" value={editingInv.interestRatePercent} onChange={e => setEditingInv((p: any) => ({ ...p, interestRatePercent: parseFloat(e.target.value) || 0 }))} placeholder="e.g. 6.5" />
+                                      </div>
+                                    )}
+                                    {inv.type === "loan" && (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-muted-foreground leading-none">Term (months)</span>
+                                        <Input className="h-7 text-xs" type="number" value={editingInv.repaymentTermMonths} onChange={e => setEditingInv((p: any) => ({ ...p, repaymentTermMonths: parseInt(e.target.value) || 0 }))} placeholder="e.g. 36" />
+                                      </div>
+                                    )}
+                                    {inv.type === "loan" && (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-muted-foreground leading-none">Agreement signed</span>
+                                        <Input className="h-7 text-xs" type="date" value={editingInv.agreementStartDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, agreementStartDate: e.target.value || null }))} />
+                                      </div>
+                                    )}
+                                    {inv.type === "loan" && (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-muted-foreground leading-none">Money received</span>
+                                        <Input className="h-7 text-xs" type="date" value={editingInv.depositDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, depositDate: e.target.value || null }))} />
+                                      </div>
+                                    )}
+                                    {inv.type === "loan" && (
+                                      <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] text-muted-foreground leading-none">First repayment</span>
+                                        <Input className="h-7 text-xs" type="date" value={editingInv.firstPaymentDate ?? ""} onChange={e => setEditingInv((p: any) => ({ ...p, firstPaymentDate: e.target.value || null }))} />
+                                      </div>
+                                    )}
+                                    <div className="flex flex-col gap-0.5 col-span-2">
+                                      <span className="text-[10px] text-muted-foreground leading-none">Notes</span>
+                                      <Input className="h-7 text-xs" value={editingInv.notes} onChange={e => setEditingInv((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Optional notes" />
+                                    </div>
                                   </div>
                                   <div className="flex gap-2 mt-2">
                                     <Button size="sm" className="h-6 text-xs" onClick={saveEditInv}>Save</Button>
