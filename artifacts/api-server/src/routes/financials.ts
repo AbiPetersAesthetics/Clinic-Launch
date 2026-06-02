@@ -782,14 +782,17 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     // - Post-opening (including while Bedhampton is still supporting): drawings taken from surplus
     // - Always retain at least £3,000/month; any surplus above drawings accrues as business capital
     const drawingsActive = !isPreOpening;
-    // Pre-opening property cost (rent + rates from lease signing) included in gross surplus drain
-    const grossSurplus = wincNet + bedhNet - projectCostBurn - preOpenPropertyCost;
-    // Always retain at least £3,000/month in the business after drawings
+    // Salary is based on operating net (Winchester + Bedhampton) only.
+    // Project costs and pre-opening property costs are capital/setup spend tracked
+    // separately in the cash balance — they do not reduce the salary floor.
+    // Rule: retain at least £3,000 of operating net; Abi draws any surplus above that,
+    // up to her target. e.g. combined net £3,100 → salary £100.
+    const operatingNet = wincNet + bedhNet;
     const MIN_RETAINED = 3000;
-    const actualDrawings = drawingsActive ? Math.min(Math.max(0, grossSurplus - MIN_RETAINED), targetDrawings) : 0;
+    const actualDrawings = drawingsActive ? Math.min(Math.max(0, operatingNet - MIN_RETAINED), targetDrawings) : 0;
     const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
 
-    const monthlyCashflow = grossSurplus - actualDrawings;
+    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost;
     cashBalance += monthlyCashflow;
 
     return {
