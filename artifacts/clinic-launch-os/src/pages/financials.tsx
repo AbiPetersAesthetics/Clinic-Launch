@@ -3625,7 +3625,7 @@ export default function FinancialsPage() {
       )}
 
       {/* ═══ TAB: DOMESTICS ══════════════════════════════════════════════════ */}
-      {tab === "domestics" && (
+      {(false as boolean) && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left: input form */}
@@ -4762,7 +4762,7 @@ export default function FinancialsPage() {
                 <CardTitle className="text-sm">Payout Analysis</CardTitle>
               </div>
               <CardDescription className="text-xs mt-1">
-                Estimated distribution to each shareholder at the 12-month mark after investment, based on the realistic scenario cashflow with standard ramp curve.
+                Full P&amp;L waterfall for each financial year — revenue to distributable profit, plus per-shareholder payout. FY26/27 includes only the trading months after Winchester opens. FY27/28 and FY28/29 are full 12-month years.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -4806,91 +4806,102 @@ export default function FinancialsPage() {
                     </div>
                   )}
 
-                  {/* Distributable profit — waterfall breakdown */}
-                  <div className={`rounded-lg border p-4 ${investmentSummary.distributableProfit12m >= 0 ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50/50 dark:bg-red-950/20"}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <div className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Year 1 — Distributable Profit Breakdown</div>
-                        <div className={`text-3xl font-bold mt-1 ${investmentSummary.distributableProfit12m >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                          {investmentSummary.distributableProfit12m >= 0 ? "+" : ""}{formatGBP(investmentSummary.distributableProfit12m)}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">Available to distribute as dividends after director salary and cash buffer retention</div>
-                      </div>
-                      {investmentSummary.distributableProfit12m < 0 && (
-                        <div className="shrink-0 ml-4"><AlertTriangle className="w-8 h-8 text-red-500" /></div>
-                      )}
-                    </div>
-                    {investmentSummary.breakdown12m && (() => {
-                      const b = investmentSummary.breakdown12m;
-                      const waterfallRows: { label: string; value: number; suffix?: string; isBold?: boolean; isHighlight?: boolean; indent?: boolean; color?: string }[] = [
-                        { label: "Gross revenue (12 months)", value: b.revenue },
-                        { label: "Less: variable costs", value: -b.variableCosts, suffix: `gross margin ${b.grossMarginPct}%`, indent: true, color: "text-muted-foreground" },
-                        { label: "Gross profit", value: b.grossProfit, isBold: true },
-                        { label: "Less: fixed costs", value: -b.fixedCosts, indent: true, color: "text-muted-foreground" },
-                        { label: "Operating profit", value: b.operatingProfit, isBold: true },
-                        { label: "Less: director salary (Abi Peters)", value: -b.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
-                        { label: "Less: loan repayments", value: -b.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
-                        { label: "Net before buffer", value: b.netAfterDirector, isBold: true, suffix: `net margin ${b.netMarginPct}%` },
-                        { label: "Less: 20% cash buffer retained", value: -b.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
-                        { label: "Distributable profit", value: b.distributable, isBold: true, isHighlight: true },
-                      ];
-                      return (
-                        <div className="rounded-md border overflow-hidden">
-                          {waterfallRows.map((row, i) => (
-                            <div key={i} className={`flex justify-between items-center text-xs border-b border-border/30 last:border-0 px-3 py-1.5
-                              ${row.isHighlight ? "bg-emerald-50 dark:bg-emerald-950/40" : i % 2 === 0 ? "bg-muted/10" : ""}
-                              ${row.indent ? "pl-6" : ""}`}>
-                              <span className={`${row.isBold ? "font-semibold" : "text-muted-foreground"} ${row.color ?? ""}`}>{row.label}</span>
-                              <span className={`tabular-nums ${row.isHighlight ? "text-emerald-700 font-bold" : row.isBold ? "font-semibold" : "text-muted-foreground"}`}>
-                                {row.value > 0 ? `+${formatGBP(row.value)}` : row.value < 0 ? `(${formatGBP(Math.abs(row.value))})` : "—"}
-                                {row.suffix && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">{row.suffix}</span>}
-                              </span>
+                  {/* ── 3 FY P&L Waterfall Breakdowns ──────────────────────── */}
+                  {investmentSummary.annualSummary && (() => {
+                    const { y1, y2, y3 } = investmentSummary.annualSummary;
+                    const fyNotes: Record<string, string> = {
+                      [y1.fyLabel]: `${y1.tradingMonths} trading months — Winchester opens November 2026`,
+                      [y2.fyLabel]: "First full financial year — 12 trading months",
+                      [y3.fyLabel]: "Second full year — second clinician joins from November 2027",
+                    };
+                    return (
+                      <div className="space-y-5">
+                        {[y1, y2, y3].map((yr: any) => {
+                          const netBeforeBuffer = yr.netAfterDirector - yr.loanRepayments;
+                          const positive = yr.distributable >= 0;
+                          const waterfallRows: { label: string; value: number; suffix?: string; isBold?: boolean; isHighlight?: boolean; indent?: boolean; color?: string }[] = [
+                            { label: `Gross revenue (${yr.tradingMonths} trading months)`, value: yr.revenue },
+                            { label: "Less: variable costs", value: -yr.variableCosts, suffix: `gross margin ${yr.grossMarginPct}%`, indent: true, color: "text-muted-foreground" },
+                            { label: "Gross profit", value: yr.grossProfit, isBold: true },
+                            { label: "Less: fixed costs", value: -yr.fixedCosts, indent: true, color: "text-muted-foreground" },
+                            { label: "Operating profit", value: yr.operatingProfit, isBold: true },
+                            { label: "Less: director salary (Abi Peters — total cost to business)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
+                            { label: "Less: loan repayments (all active instruments)", value: -yr.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
+                            { label: "Net before buffer", value: netBeforeBuffer, isBold: true, suffix: `net margin ${yr.netMarginPct}%` },
+                            { label: "Less: 20% cash buffer retained", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
+                            { label: "Distributable profit", value: yr.distributable, isBold: true, isHighlight: true },
+                          ];
+                          return (
+                            <div key={yr.fyLabel} className={`rounded-lg border ${positive ? "border-emerald-200 dark:border-emerald-800" : "border-red-200 dark:border-red-800"}`}>
+                              {/* FY header */}
+                              <div className={`flex items-center justify-between px-4 pt-3 pb-2 border-b ${positive ? "border-emerald-100 dark:border-emerald-900 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-100 dark:border-red-900 bg-red-50/30 dark:bg-red-950/10"}`}>
+                                <div>
+                                  <div className="text-xs font-bold uppercase tracking-wide">{yr.fyLabel}</div>
+                                  <div className="text-[10px] text-muted-foreground">{yr.fyDesc}</div>
+                                  <div className="text-[10px] text-muted-foreground/70 italic">{fyNotes[yr.fyLabel]}</div>
+                                </div>
+                                <div className={`text-2xl font-bold tabular-nums ${positive ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+                                  {positive ? "+" : ""}{formatGBP(yr.distributable)}
+                                </div>
+                              </div>
+                              {/* P&L waterfall */}
+                              <div className="p-3 space-y-2">
+                                <div className="rounded-md border overflow-hidden">
+                                  {waterfallRows.map((row, i) => (
+                                    <div key={i} className={`flex justify-between items-center text-xs border-b border-border/30 last:border-0 px-3 py-1.5
+                                      ${row.isHighlight ? (positive ? "bg-emerald-50 dark:bg-emerald-950/40" : "bg-red-50 dark:bg-red-950/30") : i % 2 === 0 ? "bg-muted/10" : ""}
+                                      ${row.indent ? "pl-6" : ""}`}>
+                                      <span className={`${row.isBold ? "font-semibold" : "text-muted-foreground"} ${row.color ?? ""}`}>{row.label}</span>
+                                      <span className={`tabular-nums ${row.isHighlight ? (positive ? "text-emerald-700 dark:text-emerald-400 font-bold" : "text-red-700 dark:text-red-400 font-bold") : row.isBold ? "font-semibold" : "text-muted-foreground"}`}>
+                                        {row.value > 0 ? `+${formatGBP(row.value)}` : row.value < 0 ? `(${formatGBP(Math.abs(row.value))})` : "—"}
+                                        {row.suffix && <span className="ml-1.5 text-[10px] text-muted-foreground font-normal">{row.suffix}</span>}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                                {/* Per-shareholder payouts for this FY */}
+                                {yr.payouts?.length > 0 ? (
+                                  <div>
+                                    <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Per-Shareholder Payout — {yr.fyLabel}</div>
+                                    <div className="rounded-md border overflow-hidden">
+                                      <table className="w-full text-xs">
+                                        <thead className="bg-muted/50 border-b">
+                                          <tr>
+                                            {["Shareholder", "Role", "Equity %", "Payout"].map(h => (
+                                              <th key={h} className="text-left px-3 py-1.5 font-semibold text-muted-foreground text-[10px]">{h}</th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {yr.payouts.map((p: any) => (
+                                            <tr key={p.id} className="border-b border-border/50 last:border-0">
+                                              <td className="px-3 py-1.5 font-medium">{p.name}</td>
+                                              <td className="px-3 py-1.5 text-muted-foreground">{p.role || "—"}</td>
+                                              <td className="px-3 py-1.5">{p.payoutPercent}%</td>
+                                              <td className={`px-3 py-1.5 font-bold ${p.payoutGbp >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
+                                                {p.payoutGbp >= 0 ? "+" : ""}{formatGBP(p.payoutGbp)}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-2 text-[10px] text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                                    Add shareholders to the Ownership Register to see per-shareholder payout figures.
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          ))}
-                        </div>
-                      );
-                    })()}
-                    {investmentSummary.cashflowNote && (
-                      <div className="mt-2 text-[10px] text-muted-foreground italic border-t border-border/30 pt-2">{investmentSummary.cashflowNote}</div>
-                    )}
-                  </div>
-
-                  {/* Per-shareholder payout */}
-                  {investmentSummary.payouts?.length > 0 ? (
-                    <div>
-                      <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Per-Shareholder Payout at 12 Months</div>
-                      <div className="rounded-md border overflow-hidden">
-                        <table className="w-full text-xs">
-                          <thead className="bg-muted/50 border-b">
-                            <tr>
-                              {["Shareholder", "Role", "Equity %", "Payout (Year 1 Dividend)", "Note"].map(h => (
-                                <th key={h} className="text-left px-3 py-2 font-semibold text-muted-foreground whitespace-nowrap">{h}</th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {investmentSummary.payouts.map((p: any) => (
-                              <tr key={p.id} className="border-b border-border/50 last:border-0">
-                                <td className="px-3 py-2 font-medium">{p.name}</td>
-                                <td className="px-3 py-2 text-muted-foreground">{p.role || "—"}</td>
-                                <td className="px-3 py-2">{p.payoutPercent}%</td>
-                                <td className={`px-3 py-2 font-bold text-base ${p.payoutGbp >= 0 ? "text-emerald-700" : "text-red-700"}`}>
-                                  {p.payoutGbp >= 0 ? "+" : ""}{formatGBP(p.payoutGbp)}
-                                </td>
-                                <td className="px-3 py-2 text-muted-foreground text-[10px]">
-                                  {investmentSummary.distributableProfit12m <= 0 ? "Business in loss — no distribution" : p.payoutPercent === 0 ? "No equity held" : "Dividend on distributable profit"}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                          );
+                        })}
                       </div>
-                    </div>
-                  ) : (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50/50 dark:bg-amber-950/20 p-3 text-xs text-amber-800">
-                      <AlertTriangle className="w-3.5 h-3.5 inline mr-1.5" />
-                      Add shareholders to the Ownership Register above to see per-shareholder payout figures.
-                    </div>
+                    );
+                  })()}
+                  {investmentSummary.cashflowNote && (
+                    <div className="text-[10px] text-muted-foreground italic border border-border/30 rounded p-2">{investmentSummary.cashflowNote}</div>
                   )}
 
                   {/* Return on investment summary */}

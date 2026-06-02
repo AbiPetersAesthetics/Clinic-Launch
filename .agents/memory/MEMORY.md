@@ -1,1 +1,2 @@
 - [V6 migration pattern](v6-migration.md) — DB migrations use runV6Migration() gated by phase-name check; phases table is `launch_phases` not `phases`
+- [Screenshot tool 404 behaviour](screenshot-spa-404.md) — clinic-launch-os screenshot always shows 404; server returns 200 and API fires correctly; it's a pre-existing SPA hydration timing issue, not a real error
