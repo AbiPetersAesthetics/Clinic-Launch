@@ -1895,6 +1895,9 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-muted-foreground min-w-[80px]">
                           <span title="All fixed cost items from Assumptions (rent, rates, insurance, dual costs — counted once)">Fixed (Winc)</span>
                         </th>
+                        <th className="text-right px-2 py-2 font-semibold text-purple-600 dark:text-purple-400 min-w-[80px]">
+                          <span title="Abi's salary drawn from the business this month. Only paid when the combined monthly surplus (Winchester + Bedhampton) exceeds the £3,000/mo floor. Hover a month with drawings to see the estimated take-home after tax.">Salary</span>
+                        </th>
                         <th className="text-right px-2 py-2 font-semibold text-amber-600 dark:text-amber-400 min-w-[72px]">
                           <span title="Winchester VAT liability only. Bedhampton VAT is already deducted from Bedh Net.">Winc VAT ({activeVat.pct})</span>
                         </th>
@@ -1907,11 +1910,8 @@ export default function FinancialsPage() {
                         <th className="text-right px-2 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
                           <span title="Project plan task costs charged this month (from Project Plan cost tiers). Undated tasks are spread across pre-opening months, weighted toward opening.">Proj costs</span>
                         </th>
-                        <th className="text-right px-3 py-2 font-semibold text-orange-600 dark:text-orange-400 min-w-[80px]">
-                          <span title="Owner's drawings taken from the business this month. Paid from the combined Winchester + Bedhampton surplus above a £3,000/mo floor — never from the first £3,000.">Drawings</span>
-                        </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">
-                          <span title="Combined net profit after owner's drawings have been taken. This is what accumulates in the business each month.">Net after Drawings</span>
+                          <span title="Combined net profit after Abi's salary has been taken. This is what accumulates in the business each month.">Net after Salary</span>
                         </th>
                         <th className="text-right px-3 py-2 font-semibold text-muted-foreground min-w-[80px]">Capital</th>
                       </tr>
@@ -2019,6 +2019,61 @@ export default function FinancialsPage() {
                                 ) : (
                                   <span className="text-red-500/70">({formatGBP(m.wincFixedCosts + (m.preOpenPropertyCost ?? 0))})</span>
                                 )
+                              ) : (
+                                <span className="text-muted-foreground/30">—</span>
+                              )}
+                            </td>
+
+                            {/* Abi's Salary — positioned right after Fixed (Winc) */}
+                            <td className="text-right px-2 py-1.5 tabular-nums">
+                              {m.isPreOpening ? (
+                                <span className="text-muted-foreground/30">—</span>
+                              ) : m.drawingsActive && (m.actualDrawings ?? 0) > 0 ? (() => {
+                                const gross = m.actualDrawings ?? 0;
+                                const salaryPart = Math.min(gross, 1047);
+                                const dividendPart = Math.max(0, gross - 1047);
+                                const taxableDivs = Math.max(0, dividendPart - 42);
+                                const estTax = Math.round(taxableDivs * 0.0875);
+                                const estTakeHome = gross - estTax;
+                                return (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-purple-600 dark:text-purple-400 font-medium cursor-help underline decoration-dotted decoration-purple-400/60 underline-offset-2">
+                                        ({formatGBP(gross)})
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                        <p className="text-[11px] font-bold text-gray-900">Abi's salary — {m.calendarLabel}</p>
+                                        <p className="text-[10px] text-gray-500">Gross drawn from business</p>
+                                      </div>
+                                      <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Business pays out</span>
+                                          <span className="tabular-nums font-semibold text-gray-900">{formatGBP(gross)}</span>
+                                        </div>
+                                        <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pt-1">Estimated tax split</div>
+                                        <div className="flex justify-between items-center pl-1">
+                                          <span className="text-gray-500">Salary (within allowance)</span>
+                                          <span className="tabular-nums text-gray-700">{formatGBP(salaryPart)}</span>
+                                        </div>
+                                        {dividendPart > 0 && (
+                                          <div className="flex justify-between items-center pl-1">
+                                            <span className="text-gray-500">Dividends at 8.75%</span>
+                                            <span className="tabular-nums text-amber-600">−{formatGBP(estTax)} tax</span>
+                                          </div>
+                                        )}
+                                        <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1.5">
+                                          <span className="font-bold text-gray-900">Est. take-home</span>
+                                          <span className="tabular-nums font-bold text-purple-700">{formatGBP(estTakeHome)}</span>
+                                        </div>
+                                        <p className="text-[9px] text-gray-400 pt-0.5">Estimate only — assumes salary up to personal allowance (£12,570/yr), balance as dividends. Confirm split with your accountant.</p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                );
+                              })() : m.drawingsActive ? (
+                                <span className="text-muted-foreground/50 text-[10px]">ramping</span>
                               ) : (
                                 <span className="text-muted-foreground/30">—</span>
                               )}
@@ -2228,17 +2283,6 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
-                            {/* Owner's Drawings */}
-                            <td className="text-right px-3 py-1.5 tabular-nums">
-                              {m.drawingsActive && m.actualDrawings > 0 ? (
-                                <span className="text-orange-500 font-medium">({formatGBP(m.actualDrawings)})</span>
-                              ) : m.drawingsActive ? (
-                                <span className="text-muted-foreground/50 text-[10px]">ramping</span>
-                              ) : (
-                                <span className="text-muted-foreground/30">—</span>
-                              )}
-                            </td>
-
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
                               {formatGBP(netProfitRow)}
@@ -2256,9 +2300,9 @@ export default function FinancialsPage() {
                 </div>
                 <div className="px-4 py-2 border-t bg-muted/20 text-[10px] text-muted-foreground space-y-0.5">
                   <p><strong>Variable</strong> = Winchester stock %, commissions %, marketing, staffing, consumables. <strong>Fixed (Winc)</strong> = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).</p>
-                  <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. <strong>Winc VAT</strong> = Winchester VAT only. <strong>Net after Drawings</strong> = Winc Net + Bedh Net − Owner's Drawings — what stays in the business each month.</p>
+                  <p><strong>Bedh Net</strong> = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. <strong>Winc VAT</strong> = Winchester VAT only. <strong>Net after Salary</strong> = Winc Net + Bedh Net − Abi's Salary — what stays in the business each month.</p>
                   <p><strong>Proj costs</strong> = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £{Math.round((pnlData ?? cashflow ?? []).reduce((s, m) => s + (m.projectCostBurn ?? 0), 0)).toLocaleString()}.</p>
-                  <p><strong>Drawings</strong> = Owner's drawings paid from the combined monthly surplus (Winchester net + Bedhampton net) above a £3,000/mo floor. The business always retains at least £3,000 first — Abi draws from whatever is left above that, up to her target. Set your target in Assumptions → Personal &amp; Runway.</p>
+                  <p><strong>Salary</strong> = Abi's salary drawn from the business once the combined monthly surplus (Winchester net + Bedhampton net) exceeds £3,000. The business retains at least £3,000/mo first — Abi draws from whatever is left above that floor, up to her target. Hover any salary figure to see estimated take-home after tax (salary up to personal allowance + balance as dividends at 8.75%). Set your target in Assumptions → Personal &amp; Runway.</p>
                 </div>
               </CardContent>
             </Card>
