@@ -485,19 +485,17 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
       }, 0);
 
-      // ── Director salary drawn from combined net ──────────────────────────────
-      // The £3k floor is retained profit (not a cost) — board decides at year end
-      // whether to distribute it or keep it as working capital. It is included in
-      // the distributable figure. Abi can only draw salary from the surplus above
-      // the floor, but the floor itself still belongs to the investors.
+      // ── Distributable profit = company net profit (pre-owner decisions) ────────
+      // Salary, dividends, and retained buffer are board decisions made at year end.
+      // The investor P&L shows the raw net profit available — not net of Abi's draw.
       const netPre = combinedNet - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
       if (netPre > 0) {
         drawings = netPre > MIN_SALARY_FLOOR
           ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
           : 0;
-        buffer   = Math.round(Math.min(netPre, MIN_SALARY_FLOOR)); // informational
-        distrib  = Math.round(Math.max(netPre - drawings, 0));      // includes buffer
+        buffer  = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
+        distrib = Math.round(netPre); // = full company net profit
       }
 
       totWincRevenue   += wincRevenue;
@@ -668,8 +666,8 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         drawings = netPre > MIN_SALARY_FLOOR
           ? Math.round(Math.min(targetDrawings, netPre - MIN_SALARY_FLOOR))
           : 0;
-        buffer   = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
-        distrib  = Math.round(Math.max(netPre - drawings, 0));
+        buffer  = Math.round(Math.min(netPre, MIN_SALARY_FLOOR));
+        distrib = Math.round(netPre);
       }
 
       totWincRevenue   += wincRevenue;

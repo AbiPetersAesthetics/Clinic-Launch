@@ -4786,9 +4786,7 @@ export default function FinancialsPage() {
                         { label: "Bedhampton Net Profit", key: "bedhNet", color: "text-violet-600 dark:text-violet-400" },
                         { label: "Combined Operating Profit", key: "combinedOperating", isBold: true, divider: true },
                         { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
-                        { label: "Net pre-Salary", key: "netPreSalary", isBold: true, divider: true },
-                        { label: "Abi's Salary (conditional)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
-                        { label: "Distributable to Shareholders", key: "distributable", isBold: true, isHighlight: true, pctKey: "netMarginPct", divider: true },
+                        { label: "Distributable Profit", key: "distributable", isBold: true, isHighlight: true, pctKey: "netMarginPct", divider: true },
                       ] as { label: string; key: string; isDeduction?: boolean; color?: string; isBold?: boolean; pctKey?: string; divider?: boolean; isHighlight?: boolean }[]).map((row) => {
                         const years = [investmentSummary.annualSummary.y1, investmentSummary.annualSummary.y2, investmentSummary.annualSummary.y3];
                         return (
