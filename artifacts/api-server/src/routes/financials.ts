@@ -582,8 +582,6 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
   let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue
   let vatRegistered = false; // flips true once threshold is crossed
-  // What % of operating costs are VAT-bearing (reclaimable input VAT). Default 60%.
-  const vatReclaimRatio = ((model as any).vatInputCostRatioPercent ?? 60) / 100;
   // Optional hard override: if set, VAT is active from this month regardless of threshold
   const vatRegDateRaw: string | null = (model as any).vatRegistrationDate ?? null;
   const vatRegPinned: { year: number; month: number } | null = vatRegDateRaw
@@ -796,31 +794,10 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     wincCosts += wincVat;
     wincNet = wincRevenue - wincCosts;
 
-    // Input VAT reclaim — reclaimable from HMRC when VAT registered.
-    // Pre-opening: fit-out (100% VAT-bearing) + Bedhampton running costs + rent if landlord charges VAT.
-    // Post-opening: operating costs (fixed + variable + Bedhampton) at user-configured ratio.
-    // All costs assumed VAT-inclusive → reclaimable VAT = cost × 1/6  (i.e. 20% / 120%).
-    let vatInputReclaim = 0;
-    if (isVatRegistered) {
-      // Fit-out / capex: always 100% VAT-bearing
-      vatInputReclaim += projectCostBurn / 6;
-      // Pre-opening property rent (only if landlord opts to charge VAT on rent)
-      if (isInLeasePeriod && (model as any).vatOnRent) {
-        vatInputReclaim += monthlyRent / 6;
-      }
-      // Pre-opening: Bedhampton is still trading — its stock purchases and running costs
-      // are VAT-bearing and generate reclaimable input VAT even before Winchester opens.
-      if (isPreOpening && !bedhClosed && !bedhDeFactoClosed && bedhCosts > 0) {
-        vatInputReclaim += bedhCosts * vatReclaimRatio / 6;
-      }
-      // Post-opening: full operating costs (Winchester fixed + variable + Bedhampton)
-      if (!isPreOpening) {
-        const operatingCosts = wincFixedCostsMonth + wincVariableCosts + bedhCosts;
-        vatInputReclaim += operatingCosts * vatReclaimRatio / 6;
-      }
-    }
-    // Net VAT position: negative = HMRC owes you (reclaim quarter); positive = you owe HMRC
-    const netVatPosition = vatLiability - vatInputReclaim;
+    // VAT cost = revenue × effective VAT rate (set via the VAT offset selector).
+    // Starts from the registration date the user sets. No input reclaim modelling.
+    const vatInputReclaim = 0;
+    const netVatPosition = vatLiability;
 
     // Self-funding check after VAT applied
     if (!isPreOpening && selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
@@ -870,8 +847,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const actualDrawings = drawingsActive ? Math.min(Math.max(0, netForDrawings - MIN_RETAINED), targetDrawings) : 0;
     const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
 
-    // vatInputReclaim is a real cash inflow (HMRC refund) that offsets the gross-price costs
-    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost - loanRepayments + loanInflow + vatInputReclaim;
+    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost - loanRepayments + loanInflow;
     cashBalance += monthlyCashflow;
 
     return {
