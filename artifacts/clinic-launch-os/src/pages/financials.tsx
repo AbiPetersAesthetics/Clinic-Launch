@@ -681,12 +681,13 @@ export default function FinancialsPage() {
   const pendingValuesRef = useRef<Record<string, any> | null>(null);
 
   const processValues = (values: Record<string, any>) => {
-    const { vatOnRent: vatOnRentVal, additionalCliniciansJson: cliniciansRaw, ...rest } = values;
+    const { vatOnRent: vatOnRentVal, additionalCliniciansJson: cliniciansRaw, vatRegistrationDate: vatRegDate, ...rest } = values;
     return {
       ...Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, Number(v) || 0])),
       vatOnRent: Boolean(vatOnRentVal),
       // Preserve as-is — must not be coerced to a number
       additionalCliniciansJson: typeof cliniciansRaw === "string" ? cliniciansRaw : JSON.stringify(cliniciansRaw ?? []),
+      vatRegistrationDate: vatRegDate ?? "",
       // These map to integer DB columns — must be whole numbers
       workingDaysPerMonth: Math.round(Number(values.workingDaysPerMonth) || 17),
       practitionerHoursPerDay: Math.round(Number(values.practitionerHoursPerDay) || 7),
@@ -1777,6 +1778,8 @@ export default function FinancialsPage() {
                                   {!d.drawingsActive && !d.isPreOpening && (
                                     <p className="text-muted-foreground text-[10px]">No drawings yet — combined net below £3,000/mo floor</p>
                                   )}
+                                  {(d.loanInflow ?? 0) > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Loan received</span><span className="text-emerald-600">+{formatGBP(d.loanInflow)}</span></div>}
+                                  {(d.loanRepayments ?? 0) > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Loan repayment</span><span className="text-rose-500">−{formatGBP(d.loanRepayments)}</span></div>}
                                   <div className="flex justify-between gap-4 border-t pt-1 mt-1">
                                     <span className="font-medium">{d.actualDrawings > 0 ? "To business capital" : "Monthly net"}</span>
                                     <span className={d.monthlyCashflow >= 0 ? "text-emerald-600 font-bold" : "text-destructive font-bold"}>{formatGBP(d.monthlyCashflow)}</span>
