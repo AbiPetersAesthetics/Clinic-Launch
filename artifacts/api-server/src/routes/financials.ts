@@ -582,6 +582,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
   let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue
   let vatRegistered = false; // flips true once threshold is crossed
+  // Optional hard override: if set, VAT is active from this month regardless of threshold
+  const vatRegDateRaw: string | null = (model as any).vatRegistrationDate ?? null;
+  const vatRegPinned: { year: number; month: number } | null = vatRegDateRaw
+    ? (() => { const [y, m] = vatRegDateRaw.split("-").map(Number); return isNaN(y) || isNaN(m) ? null : { year: y, month: m - 1 }; })()
+    : null;
 
   // Determine calendar anchor — always start from the earlier of project startDate or today
   const today = new Date();
@@ -763,11 +768,14 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     // Rates Bedhampton absorbs during free-rent months (Winchester not yet open to pay them)
     const bedhFreeRentRates = preOpenIsFreeRent ? monthlyRates : 0;
 
-    // VAT — registration triggered by combined rolling turnover (both clinics), but the P&L
-    // liability is charged to Winchester only. Bedhampton net is shown post-stock and
-    // post-dual-costs only; its VAT liability is not deducted in this model.
+    // VAT — registration triggered either by a pinned date override or by crossing the £90k threshold.
+    // The P&L liability is charged to Winchester only; Bedhampton's VAT is already in bedhNet.
     const monthTotalRevenue = bedhRevenue + wincRevenue;
-    if (!vatRegistered) {
+    if (vatRegPinned) {
+      // Hard override: VAT active from the user-specified month onwards
+      vatRegistered = (monthDate.getFullYear() > vatRegPinned.year) ||
+        (monthDate.getFullYear() === vatRegPinned.year && monthDate.getMonth() >= vatRegPinned.month);
+    } else if (!vatRegistered) {
       vatCumulativeTurnover += monthTotalRevenue;
       if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
     }

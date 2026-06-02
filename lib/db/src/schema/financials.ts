@@ -65,6 +65,9 @@ export const financialsTable = pgTable("financial_models", {
   // VAT planning — current rolling 12-month business turnover (all clinics combined)
   // Used to calculate exactly when the £90k threshold will be crossed
   vatCurrentTurnoverGbp: real("vat_current_turnover_gbp").notNull().default(75000),
+  // Optional hard override: if set, VAT kicks in from this calendar month regardless of threshold
+  // Format: YYYY-MM (e.g. "2026-11"). When blank, automatic threshold crossing is used instead.
+  vatRegistrationDate: text("vat_registration_date"),
   // VAT on rent — synced from active property; whether landlord charges VAT on rent
   vatOnRent: boolean("vat_on_rent").notNull().default(false),
   // Pre-opening property costs: months before opening where rent + rates apply (lease signed early)

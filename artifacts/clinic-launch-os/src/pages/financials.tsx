@@ -665,7 +665,7 @@ export default function FinancialsPage() {
       aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35, bedhCapacityCeilGbp: 16000,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0, bedhMembershipRevenueGbp: 0,
+      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0, vatRegistrationDate: "", bedhMembershipRevenueGbp: 0,
       preOpeningPropertyMonths: 2,
       freeRentMonths: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
@@ -770,6 +770,7 @@ export default function FinancialsPage() {
         bedhMarketingGbp: m.bedhMarketingGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 0,
         ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0, bedhMembershipRevenueGbp: (m as any).bedhMembershipRevenueGbp ?? 0,
         vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
+        vatRegistrationDate: (m as any).vatRegistrationDate ?? "",
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
         preOpeningPropertyMonths: m.preOpeningPropertyMonths ?? 2,
         freeRentMonths: m.freeRentMonths ?? 0,
@@ -3723,6 +3724,19 @@ export default function FinancialsPage() {
                         <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
                         <p className="text-[10px] text-muted-foreground mt-1">
                           £{Math.max(0, 90000 - (Number(form.watch("vatCurrentTurnoverGbp")) || 0)).toLocaleString()} remaining before VAT registration required
+                        </p>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name={"vatRegistrationDate" as any} render={({ field }) => (
+                      <FormItem className="mt-3">
+                        <FormLabel className="text-xs">VAT registered from <span className="text-muted-foreground font-normal">(optional override)</span></FormLabel>
+                        <FormControl>
+                          <Input type="month" {...field} value={field.value ?? ""} className="h-8 text-sm" />
+                        </FormControl>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          {field.value
+                            ? `VAT will apply from ${new Date(field.value + "-01").toLocaleString("en-GB", { month: "long", year: "numeric" })} regardless of turnover. Clear this to use automatic threshold detection.`
+                            : "Leave blank to let the model calculate when your combined turnover crosses £90k. Set a date once you know your registration month."}
                         </p>
                       </FormItem>
                     )} />
