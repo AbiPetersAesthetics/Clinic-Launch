@@ -1939,6 +1939,14 @@ export default function FinancialsPage() {
                         const _wincMarketing = (model as any)?.marketingGbp ?? 0;
                         const _wincStaffing  = (model as any)?.staffingGbp ?? 0;
                         const _wincConsumables = (model as any)?.consumablesGbp ?? 0;
+                        const _acv = (model as any)?.wincAcvGbp || 155;
+                        const _totalSlots = Math.round(
+                          ((model as any)?.treatmentRoomsCount || 1) *
+                          ((model as any)?.practitionerHoursPerDay || 8) *
+                          ((model as any)?.workingDaysPerMonth || 18)
+                        );
+                        const _appts = !m.isPreOpening && m.wincRevenue > 0 ? Math.round(m.wincRevenue / (_acv || 155)) : 0;
+                        const _bookedSlots = Math.round(_totalSlots * (m.occupancyPercent || 0) / 100);
                         const rowBg = isClose
                           ? "bg-emerald-50 dark:bg-emerald-950/30"
                           : isOpen
@@ -1966,29 +1974,161 @@ export default function FinancialsPage() {
                             <td className="text-right px-2 py-1.5 tabular-nums">
                               {m.isPreOpening
                                 ? <span className="text-muted-foreground/30">—</span>
-                                : <span className={`font-medium ${m.occupancyPercent >= 60 ? "text-emerald-600 dark:text-emerald-400" : m.occupancyPercent >= 35 ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{m.occupancyPercent}%</span>
+                                : (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className={`font-medium cursor-help underline decoration-dotted underline-offset-2 ${m.occupancyPercent >= 60 ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-400/60" : m.occupancyPercent >= 35 ? "text-amber-600 dark:text-amber-400 decoration-amber-400/60" : "text-muted-foreground decoration-muted-foreground/40"}`}>
+                                        {m.occupancyPercent}%
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-56">
+                                      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                        <p className="text-[11px] font-bold text-gray-900">Occupancy — {m.calendarLabel}</p>
+                                        <p className="text-[10px] text-gray-500">{m.occupancyPercent}% of available appointment slots filled</p>
+                                      </div>
+                                      <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Appointments booked</span>
+                                          <span className="tabular-nums font-semibold text-gray-900">{_bookedSlots}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Total slots available</span>
+                                          <span className="tabular-nums text-gray-600">{_totalSlots}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center border-t border-gray-100 pt-1.5 mt-0.5">
+                                          <span className="text-gray-600">Revenue at £{_acv} ACV</span>
+                                          <span className="tabular-nums font-semibold text-gray-900">{formatGBP(m.wincRevenue)}</span>
+                                        </div>
+                                        <p className="text-[9px] text-gray-400 pt-0.5">{m.occupancyPercent < 35 ? "Below 35% — ramp phase, costs exceed revenue." : m.occupancyPercent < 60 ? "Growing — approaching break-even territory." : "Strong occupancy — above 60% target."}</p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )
                               }
                             </td>
 
                             {/* Winchester Revenue */}
                             <td className="text-right px-2 py-1.5 tabular-nums">
-                              {m.wincRevenue > 0 ? formatGBP(m.wincRevenue) : <span className="text-muted-foreground/40">—</span>}
+                              {m.wincRevenue > 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted decoration-gray-400/50 underline-offset-2 font-medium">
+                                      {formatGBP(m.wincRevenue)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-56">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Winchester revenue — {m.calendarLabel}</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Appointments</span>
+                                        <span className="tabular-nums font-semibold text-gray-900">{_appts}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Avg. client value</span>
+                                        <span className="tabular-nums text-gray-600">{formatGBP(_acv)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center border-t border-gray-100 pt-1.5 mt-0.5">
+                                        <span className="font-bold text-gray-900">Total revenue</span>
+                                        <span className="tabular-nums font-bold text-gray-900">{formatGBP(m.wincRevenue)}</span>
+                                      </div>
+                                      <p className="text-[9px] text-gray-400 pt-0.5">Based on {m.occupancyPercent}% occupancy at {_totalSlots} slots/mo. Update ACV in Assumptions.</p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : <span className="text-muted-foreground/40">—</span>}
                             </td>
 
                             {/* Winchester Variable (stock + commissions + mktg + staffing + consumables) */}
                             <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
-                              {m.wincVariableCosts > 0
-                                ? <span className="text-red-500/70">({formatGBP(m.wincVariableCosts)})</span>
-                                : <span className="text-muted-foreground/30">—</span>}
+                              {m.wincVariableCosts > 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="text-red-500/70 cursor-help underline decoration-dotted decoration-red-400/50 underline-offset-2">
+                                      ({formatGBP(m.wincVariableCosts)})
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-60">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Variable costs — {m.calendarLabel}</p>
+                                      <p className="text-[10px] text-gray-500">Costs that scale with revenue</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      {_wincStock > 0 && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Stock / products ({_wincStockPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincStock)})</span>
+                                        </div>
+                                      )}
+                                      {_wincComm > 0 && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Commissions ({_wincCommPct}%)</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincComm)})</span>
+                                        </div>
+                                      )}
+                                      {_wincMarketing > 0 && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Marketing budget</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincMarketing)})</span>
+                                        </div>
+                                      )}
+                                      {_wincStaffing > 0 && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Staffing</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincStaffing)})</span>
+                                        </div>
+                                      )}
+                                      {_wincConsumables > 0 && (
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-gray-600">Consumables</span>
+                                          <span className="tabular-nums text-red-600">({formatGBP(_wincConsumables)})</span>
+                                        </div>
+                                      )}
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1">
+                                        <span className="font-bold text-gray-900">Total variable</span>
+                                        <span className="tabular-nums font-bold text-red-600">({formatGBP(m.wincVariableCosts)})</span>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
                             {/* Gross Profit = Revenue − Variable */}
                             <td className="text-right px-2 py-1.5 tabular-nums">
-                              {m.wincRevenue > 0
-                                ? <span title={`Revenue ${formatGBP(m.wincRevenue)} − Variable ${formatGBP(m.wincVariableCosts)} = Gross ${formatGBP(grossProfitRow)}`} className={`font-medium ${grossProfitRow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
-                                    {grossProfitRow >= 0 ? "+" : ""}{formatGBP(grossProfitRow)}
-                                  </span>
-                                : <span className="text-muted-foreground/30">—</span>}
+                              {m.wincRevenue > 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className={`font-medium cursor-help underline decoration-dotted underline-offset-2 ${grossProfitRow >= 0 ? "text-emerald-600 dark:text-emerald-400 decoration-emerald-400/60" : "text-destructive decoration-destructive/50"}`}>
+                                      {grossProfitRow >= 0 ? "+" : ""}{formatGBP(grossProfitRow)}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="right" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-56">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Gross profit — {m.calendarLabel}</p>
+                                      <p className="text-[10px] text-gray-500">Revenue minus variable costs only</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Revenue</span>
+                                        <span className="tabular-nums text-gray-900">{formatGBP(m.wincRevenue)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Variable costs</span>
+                                        <span className="tabular-nums text-red-600">({formatGBP(m.wincVariableCosts)})</span>
+                                      </div>
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
+                                        <span className="font-bold text-gray-900">Gross profit</span>
+                                        <span className={`tabular-nums font-bold ${grossProfitRow >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                                          {grossProfitRow >= 0 ? "+" : ""}{formatGBP(grossProfitRow)}
+                                        </span>
+                                      </div>
+                                      <p className="text-[9px] text-gray-400 pt-0.5">Before fixed costs, VAT, and salary. Fixed costs are deducted in the Winchester ± column.</p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : <span className="text-muted-foreground/30">—</span>}
                             </td>
 
                             {/* Winchester Fixed — pre-opening shows lease property cost (rent+rates or rates-only if free-rent).
@@ -2017,7 +2157,49 @@ export default function FinancialsPage() {
                                     </TooltipContent>
                                   </Tooltip>
                                 ) : (
-                                  <span className="text-red-500/70">({formatGBP(m.wincFixedCosts + (m.preOpenPropertyCost ?? 0))})</span>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-red-500/70 cursor-help underline decoration-dotted decoration-red-400/50 underline-offset-2">
+                                        ({formatGBP(m.wincFixedCosts + (m.preOpenPropertyCost ?? 0))})
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                      <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                        <p className="text-[11px] font-bold text-gray-900">Fixed costs — {m.calendarLabel}</p>
+                                        <p className="text-[10px] text-gray-500">Monthly fixed overheads for Winchester</p>
+                                      </div>
+                                      <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                        {fixedCostItems.length > 0
+                                          ? fixedCostItems.map((item) => (
+                                              <div key={item.id} className="flex justify-between items-center">
+                                                <span className="text-gray-600 truncate max-w-[55%]">
+                                                  {item.name}
+                                                  {item.costType === "dual" && <span className="ml-1 text-[9px] text-blue-500">(shared)</span>}
+                                                </span>
+                                                <span className="tabular-nums text-red-600">({formatGBP(item.amountGbp || 0)})</span>
+                                              </div>
+                                            ))
+                                          : (
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-gray-600">Total fixed</span>
+                                              <span className="tabular-nums text-red-600">({formatGBP(m.wincFixedCosts)})</span>
+                                            </div>
+                                          )
+                                        }
+                                        {(m.additionalClinicianSalary ?? 0) > 0 && (
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-gray-600">Clinician salary</span>
+                                            <span className="tabular-nums text-red-600">({formatGBP(m.additionalClinicianSalary ?? 0)})</span>
+                                          </div>
+                                        )}
+                                        <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-1">
+                                          <span className="font-bold text-gray-900">Total</span>
+                                          <span className="tabular-nums font-bold text-red-600">({formatGBP(m.wincFixedCosts)})</span>
+                                        </div>
+                                        <p className="text-[9px] text-gray-400 pt-0.5">Shared (dual) costs counted once here — not double-charged to Bedhampton.</p>
+                                      </div>
+                                    </TooltipContent>
+                                  </Tooltip>
                                 )
                               ) : (
                                 <span className="text-muted-foreground/30">—</span>
@@ -2081,7 +2263,36 @@ export default function FinancialsPage() {
 
                             {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
                             <td className={`text-right px-2 py-1.5 tabular-nums ${m.wincVat > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
-                              {m.wincVat > 0 ? <span>({formatGBP(m.wincVat)})</span> : "—"}
+                              {m.wincVat > 0 ? (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-help underline decoration-dotted decoration-amber-400/60 underline-offset-2">
+                                      ({formatGBP(m.wincVat)})
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-60">
+                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                      <p className="text-[11px] font-bold text-gray-900">Winchester VAT — {m.calendarLabel}</p>
+                                      <p className="text-[10px] text-gray-500">VAT collected from clients, payable to HMRC quarterly</p>
+                                    </div>
+                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Winchester revenue</span>
+                                        <span className="tabular-nums text-gray-900">{formatGBP(m.wincRevenue)}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">VAT rate (standard)</span>
+                                        <span className="tabular-nums text-gray-600">20%</span>
+                                      </div>
+                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
+                                        <span className="font-bold text-gray-900">VAT liability</span>
+                                        <span className="tabular-nums font-bold text-amber-600">({formatGBP(m.wincVat)})</span>
+                                      </div>
+                                      <p className="text-[9px] text-gray-400 pt-0.5">You collect this from clients and pay it to HMRC quarterly. Bedhampton VAT is already deducted inside Bedh Net.</p>
+                                    </div>
+                                  </TooltipContent>
+                                </Tooltip>
+                              ) : "—"}
                             </td>
 
                             {/* Winchester ± — rich hover showing full Winchester P&L */}
@@ -2285,12 +2496,76 @@ export default function FinancialsPage() {
 
                             {/* Combined Net Profit */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-semibold ${netProfitRow > 0 ? "text-emerald-600 dark:text-emerald-400" : netProfitRow < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                              {formatGBP(netProfitRow)}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/50">
+                                    {formatGBP(netProfitRow)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                  <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                    <p className="text-[11px] font-bold text-gray-900">Net after Salary — {m.calendarLabel}</p>
+                                    <p className="text-[10px] text-gray-500">What stays in the business after all costs and Abi's salary</p>
+                                  </div>
+                                  <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-600">Winchester net</span>
+                                      <span className={`tabular-nums ${m.wincNet >= 0 ? "text-emerald-600" : "text-red-600"}`}>{m.wincNet >= 0 ? "+" : ""}{formatGBP(m.wincNet)}</span>
+                                    </div>
+                                    {!m.bedhClosed && m.bedhNet !== 0 && (
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Bedhampton net</span>
+                                        <span className={`tabular-nums ${m.bedhNet >= 0 ? "text-blue-600" : "text-red-600"}`}>{m.bedhNet >= 0 ? "+" : ""}{formatGBP(m.bedhNet)}</span>
+                                      </div>
+                                    )}
+                                    {(m.actualDrawings ?? 0) > 0 && (
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Abi's salary</span>
+                                        <span className="tabular-nums text-purple-600">({formatGBP(m.actualDrawings ?? 0)})</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
+                                      <span className="font-bold text-gray-900">Retained in business</span>
+                                      <span className={`tabular-nums font-bold ${netProfitRow > 0 ? "text-emerald-600" : "text-red-600"}`}>{netProfitRow >= 0 ? "+" : ""}{formatGBP(netProfitRow)}</span>
+                                    </div>
+                                    <p className="text-[9px] text-gray-400 pt-0.5">This accumulates each month and is reflected in the Capital column.</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             </td>
 
                             {/* Running cash balance */}
                             <td className={`text-right px-3 py-1.5 tabular-nums font-medium ${m.cashBalance >= 0 ? "" : "text-destructive"}`}>
-                              {formatGBP(m.cashBalance)}
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help underline decoration-dotted underline-offset-2 decoration-gray-400/50">
+                                    {formatGBP(m.cashBalance)}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                  <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
+                                    <p className="text-[11px] font-bold text-gray-900">Capital balance — {m.calendarLabel}</p>
+                                    <p className="text-[10px] text-gray-500">Running cash balance across both clinics</p>
+                                  </div>
+                                  <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                    <div className="flex justify-between items-center">
+                                      <span className="text-gray-600">Net this month</span>
+                                      <span className={`tabular-nums ${netProfitRow >= 0 ? "text-emerald-600" : "text-red-600"}`}>{netProfitRow >= 0 ? "+" : ""}{formatGBP(netProfitRow)}</span>
+                                    </div>
+                                    {(m.projectCostBurn ?? 0) > 0 && (
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-gray-600">Project costs</span>
+                                        <span className="tabular-nums text-orange-600">({formatGBP(m.projectCostBurn ?? 0)})</span>
+                                      </div>
+                                    )}
+                                    <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
+                                      <span className="font-bold text-gray-900">Closing balance</span>
+                                      <span className={`tabular-nums font-bold ${m.cashBalance >= 0 ? "text-gray-900" : "text-red-600"}`}>{formatGBP(m.cashBalance)}</span>
+                                    </div>
+                                    <p className="text-[9px] text-gray-400 pt-0.5">Starts from your runway savings and investment. Goes negative if cumulative losses exceed your starting capital — set runway savings in Assumptions.</p>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
                             </td>
                           </tr>
                         );
