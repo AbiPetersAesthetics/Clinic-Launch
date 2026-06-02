@@ -1966,7 +1966,7 @@ export default function FinancialsPage() {
                           ? "bg-emerald-50 dark:bg-emerald-950/30"
                           : isOpen
                           ? "bg-primary/5"
-                          : m.isVatRegistered
+                          : (m.wincVat ?? 0) > 0
                           ? "bg-amber-50/40 dark:bg-amber-950/10"
                           : "";
                         return (
@@ -2276,9 +2276,9 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
-                            {/* VAT cost: revenue × selected VAT rate, from registration date */}
-                            <td className={`text-right px-2 py-1.5 tabular-nums ${!m.isVatRegistered ? "text-muted-foreground/30" : "text-amber-600 dark:text-amber-400 font-medium"}`}>
-                              {!m.isVatRegistered ? "—" : `(${formatGBP(m.vatLiability)})`}
+                            {/* VAT cost: Winchester revenue × selected VAT rate, from registration date. Zero pre-opening (no Winc revenue). */}
+                            <td className={`text-right px-2 py-1.5 tabular-nums ${(m.wincVat ?? 0) === 0 ? "text-muted-foreground/30" : "text-amber-600 dark:text-amber-400 font-medium"}`}>
+                              {(m.wincVat ?? 0) === 0 ? "—" : `(${formatGBP(m.wincVat)})`}
                             </td>
 
                             {/* Winchester ± — rich hover showing full Winchester P&L */}
