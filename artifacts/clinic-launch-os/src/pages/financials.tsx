@@ -62,7 +62,7 @@ const VAT_PRESETS: { key: VatPresetKey; label: string; rate: number; pct: string
   { key: "significant", label: "Significant", rate: 0.12,  pct: "12.0%", note: "Majority of arguable treatments claimed as exempt, full input recovery on remainder. Requires robust documentation." },
   { key: "maximum",     label: "Maximum",     rate: 0.09,  pct: "9.0%",  note: "Specialist adviser engaged, maximum legitimate recovery applied. Upper end — achievable where high proportion of treatments have clear medical indication." },
 ];
-type TabKey = "overview" | "model" | "owner" | "domestics" | "risks" | "custom" | "investment";
+type TabKey = "overview" | "model" | "owner" | "risks" | "custom" | "investment";
 
 type WincMetrics = {
   grossRevenue: number; fixedCosts: number; variableCosts: number;
@@ -440,13 +440,13 @@ export default function FinancialsPage() {
   const [tab, setTab] = useState<TabKey>(() => {
     const p = new URLSearchParams(search);
     const t = p.get("tab") as TabKey | null;
-    const VALID: TabKey[] = ["overview", "model", "owner", "domestics", "risks", "custom", "investment"];
+    const VALID: TabKey[] = ["overview", "model", "owner", "risks", "custom", "investment"];
     return (t && VALID.includes(t)) ? t : "overview";
   });
   useEffect(() => {
     const params = new URLSearchParams(search);
     const t = params.get("tab") as TabKey | null;
-    const VALID: TabKey[] = ["overview", "model", "owner", "domestics", "risks", "custom", "investment"];
+    const VALID: TabKey[] = ["overview", "model", "owner", "risks", "custom", "investment"];
     if (t && VALID.includes(t)) setTab(t);
   }, [search]);
   const [calcResults, setCalcResults] = useState<ExtendedCalcResult | null>(null);
@@ -659,7 +659,7 @@ export default function FinancialsPage() {
       aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35, bedhCapacityCeilGbp: 16000,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0,
+      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0, bedhMembershipRevenueGbp: 0,
       preOpeningPropertyMonths: 2,
       freeRentMonths: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
@@ -762,7 +762,7 @@ export default function FinancialsPage() {
         bedhRentGbp: m.bedhRentGbp ?? 0, bedhSoftwareGbp: m.bedhSoftwareGbp ?? 0,
         bedhStaffingGbp: m.bedhStaffingGbp ?? 0, bedhInsuranceGbp: m.bedhInsuranceGbp ?? 0,
         bedhMarketingGbp: m.bedhMarketingGbp ?? 0, bedhamptonCostsGbp: m.bedhamptonCostsGbp ?? 0,
-        ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0,
+        ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0, bedhMembershipRevenueGbp: (m as any).bedhMembershipRevenueGbp ?? 0,
         vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
         preOpeningPropertyMonths: m.preOpeningPropertyMonths ?? 2,
@@ -1490,12 +1490,12 @@ export default function FinancialsPage() {
 
       {/* ─── Tabs ────────────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-muted p-1 rounded-lg overflow-x-auto scrollbar-none">
-        {(["overview", "model", "owner", "domestics", "risks", "custom", "investment"] as TabKey[]).map((t) => (
+        {(["overview", "model", "owner", "risks", "custom", "investment"] as TabKey[]).map((t) => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 sm:px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors whitespace-nowrap ${
               tab === t ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
             }`}>
-            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "domestics" ? "Domestics" : t === "risks" ? "Risks" : t === "investment" ? "Investment" : "Custom Model"}
+            {t === "overview" ? "Overview" : t === "model" ? "Assumptions" : t === "owner" ? "Owner" : t === "risks" ? "Risks" : t === "investment" ? "Investment" : "Custom Model"}
           </button>
         ))}
       </div>
@@ -2880,12 +2880,149 @@ export default function FinancialsPage() {
                 <Card className="shadow-sm">
                   <CardHeader className="pb-2"><CardTitle className="text-sm">{clinicLabel} — Revenue & Self-Funding</CardTitle></CardHeader>
                   <CardContent>
+                    {/* Avg Client Value */}
                     <div className="grid grid-cols-2 gap-3">
+                      <FormField control={form.control} name={"wincAcvGbp" as any} render={({ field }) => (
+                        <FormItem><FormLabel className="text-xs">Avg Client Value (£)</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
+                      )} />
+                    </div>
+
+                    {/* ── Clinic Staff Schedule ──────────────────────────── */}
+                    <div className="mt-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs font-semibold text-foreground/80">Clinic Staff Schedule</p>
+                        {additionalClinicians.length < 4 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newClin: Clinician = { id: crypto.randomUUID(), name: "", isPrimary: false, startDate: "", annualGrossSalaryGbp: 0 };
+                              const updated = [...additionalClinicians, newClin];
+                              setAdditionalClinicians(updated);
+                              form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                            }}
+                            className="h-6 px-2 rounded text-[10px] border border-dashed border-input text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex items-center gap-1"
+                          >
+                            <span className="text-sm leading-none">+</span> Add clinician
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Costs shown as total employer cost to business (gross + employer NI 13.8% above £9,100 + pension 3% on qualifying earnings). Max 4 clinicians.</p>
+
+                      {additionalClinicians.map((clin, idx) => {
+                        const isPrimary = clin.isPrimary === true;
+                        const annualSalary = clin.annualGrossSalaryGbp ?? 0;
+                        const paye = annualSalary > 0 ? calcPayeBreakdown(annualSalary) : null;
+                        const updateClin = (patch: Partial<Clinician>) => {
+                          const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, ...patch } : c);
+                          setAdditionalClinicians(updated);
+                          form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                        };
+                        return (
+                          <div key={clin.id} className={`p-2.5 rounded-md border space-y-2 ${isPrimary ? "border-primary/30 bg-primary/5" : "border-border/60 bg-muted/20"}`}>
+                            {/* Identity row */}
+                            <div className="flex items-center gap-2">
+                              {isPrimary ? (
+                                <>
+                                  <span className="flex-1 text-xs font-semibold">{clin.name || "Abi Peters"}</span>
+                                  <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-semibold">Primary</span>
+                                  <span className="text-[10px] text-muted-foreground shrink-0">Opens with clinic</span>
+                                </>
+                              ) : (
+                                <>
+                                  <input
+                                    type="text"
+                                    value={clin.name}
+                                    onChange={(e) => updateClin({ name: e.target.value })}
+                                    placeholder="Clinician name"
+                                    className="flex-1 h-7 rounded-md border border-input bg-background text-xs px-2.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => updateClin({ isPrimary: !clin.isPrimary })}
+                                    className={`shrink-0 text-[10px] px-2 py-0.5 rounded-full font-semibold border transition-colors ${clin.isPrimary ? "bg-primary/15 text-primary border-primary/30" : "bg-muted text-muted-foreground border-border hover:border-primary hover:text-primary"}`}
+                                  >
+                                    {clin.isPrimary ? "Primary" : "Secondary"}
+                                  </button>
+                                  {!clin.isPrimary && (
+                                    <input
+                                      type="month"
+                                      value={clin.startDate ? clin.startDate.slice(0, 7) : ""}
+                                      onChange={(e) => updateClin({ startDate: e.target.value ? e.target.value + "-01" : "" })}
+                                      className="h-7 w-32 rounded-md border border-input bg-background text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
+                                    />
+                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const updated = additionalClinicians.filter((_, i) => i !== idx);
+                                      setAdditionalClinicians(updated);
+                                      form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
+                                    }}
+                                    className="h-6 w-6 shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-base leading-none"
+                                  >×</button>
+                                </>
+                              )}
+                            </div>
+                            {/* Annual salary */}
+                            <div className="flex items-center gap-2">
+                              <label className="text-[10px] text-muted-foreground w-28 shrink-0">Annual gross salary</label>
+                              <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">£</span>
+                                <input
+                                  type="number"
+                                  value={annualSalary || ""}
+                                  onChange={(e) => updateClin({ annualGrossSalaryGbp: e.target.value ? Number(e.target.value) : 0 })}
+                                  placeholder="0"
+                                  className="h-7 w-full rounded-md border border-input bg-background text-xs pl-5 pr-3 focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground shrink-0">/yr</span>
+                            </div>
+                            {/* PAYE breakdown */}
+                            {paye && (
+                              <div className="rounded-md bg-muted/50 px-2.5 py-2 text-[10px] space-y-0.5">
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Employee NI (12% to £50,270 / 2% above)</span>
+                                  <span className="font-medium text-foreground/70">£{paye.employeeNI.toLocaleString()} /yr</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Employer NI (13.8% above £9,100)</span>
+                                  <span className="font-medium text-foreground/70">£{paye.employerNI.toLocaleString()} /yr</span>
+                                </div>
+                                <div className="flex justify-between text-muted-foreground">
+                                  <span>Employer pension (3% qualifying earnings)</span>
+                                  <span className="font-medium text-foreground/70">£{paye.employerPension.toLocaleString()} /yr</span>
+                                </div>
+                                <div className="flex justify-between font-semibold text-foreground/80 border-t border-border/40 pt-1 mt-0.5">
+                                  <span>Total cost to business</span>
+                                  <span>£{paye.totalCostAnnual.toLocaleString()} /yr · £{paye.totalCostMonthly.toLocaleString()} /mo</span>
+                                </div>
+                                <div className="flex justify-between text-emerald-600 dark:text-emerald-400 font-medium">
+                                  <span>Employee net take-home (est.)</span>
+                                  <span>£{paye.netMonthlyTakeHome.toLocaleString()} /mo</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {additionalClinicians.some(c => (c.annualGrossSalaryGbp ?? 0) > 0) && (
+                        <div className="flex items-center justify-between text-xs font-semibold border-t border-border/60 pt-2 mt-1">
+                          <span className="text-muted-foreground">Total monthly clinician cost to business</span>
+                          <span className="text-foreground">
+                            £{additionalClinicians.reduce((sum, c) => sum + ((c.annualGrossSalaryGbp ?? 0) > 0 ? calcPayeBreakdown(c.annualGrossSalaryGbp!).totalCostMonthly : 0), 0).toLocaleString()}/mo
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Occupancy & revenue drivers */}
+                    <div className="grid grid-cols-2 gap-3 mt-4">
                       {[
-                        ["wincAcvGbp","Avg Client Value (£)"],
-                        ["treatmentRoomsCount","Clinicians (Abi)"],
-                        ["membershipRevenueGbp","Membership Rev (£/mo)"],
-                        ["conservativeOccupancyPercent","Conservative Occ %"],["realisticOccupancyPercent","Realistic Occ %"],
+                        ["membershipRevenueGbp","Winchester Membership (£/mo)"],
+                        ["conservativeOccupancyPercent","Conservative Occ %"],
+                        ["realisticOccupancyPercent","Realistic Occ %"],
                         ["aggressiveOccupancyPercent","Aggressive Occ %"],
                       ].map(([name, label]) => (
                         <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
@@ -2936,89 +3073,6 @@ export default function FinancialsPage() {
                     <p className="text-[10px] text-muted-foreground mt-2">
                       Bedhampton closes when {clinicLabel}'s net profit is at least this % of its gross revenue — a self-sufficiency margin. Default: 20%. The effective £ threshold is computed automatically from your cost structure.
                     </p>
-                  </CardContent>
-                </Card>
-
-                {/* ── Clinic Staff Schedule ──────────────────────────────── */}
-                <Card className="shadow-sm">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">Clinic Staff Schedule</CardTitle>
-                    <CardDescription className="text-xs">Each clinician ramps revenue independently from their start date using the same occupancy model.</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 py-1.5 px-3 rounded-md bg-muted/40 border border-border/60">
-                        <span className="flex-1 text-xs font-medium">Abi Peters</span>
-                        <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">Primary</span>
-                        <span className="text-[10px] text-muted-foreground">Opens with clinic</span>
-                      </div>
-                      {additionalClinicians.map((clin, idx) => (
-                        <div key={clin.id} className="space-y-1.5 p-2 rounded-md border border-border/60 bg-muted/20">
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              value={clin.name}
-                              onChange={(e) => {
-                                const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, name: e.target.value } : c);
-                                setAdditionalClinicians(updated);
-                                form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                              }}
-                              placeholder="Clinician name"
-                              className="flex-1 h-8 rounded-md border border-input bg-background text-xs px-3 focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                            <input
-                              type="month"
-                              value={clin.startDate ? clin.startDate.slice(0, 7) : ""}
-                              onChange={(e) => {
-                                const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, startDate: e.target.value ? e.target.value + "-01" : "" } : c);
-                                setAdditionalClinicians(updated);
-                                form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                              }}
-                              className="h-8 w-34 rounded-md border border-input bg-background text-xs px-2 focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = additionalClinicians.filter((_, i) => i !== idx);
-                                setAdditionalClinicians(updated);
-                                form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                              }}
-                              className="h-7 w-7 flex-shrink-0 flex items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors text-base leading-none"
-                            >×</button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-[10px] text-muted-foreground w-20 shrink-0">Monthly salary</label>
-                            <div className="relative flex-1">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">£</span>
-                              <input
-                                type="number"
-                                value={clin.salaryGbp ?? ""}
-                                onChange={(e) => {
-                                  const updated = additionalClinicians.map((c, i) => i === idx ? { ...c, salaryGbp: e.target.value ? Number(e.target.value) : undefined } : c);
-                                  setAdditionalClinicians(updated);
-                                  form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                                }}
-                                placeholder="0"
-                                className="h-7 w-full rounded-md border border-input bg-background text-xs pl-5 pr-3 focus:outline-none focus:ring-1 focus:ring-primary"
-                              />
-                            </div>
-                            <span className="text-[10px] text-muted-foreground shrink-0">/mo deducted from clinic net</span>
-                          </div>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newClin = { id: crypto.randomUUID(), name: "", startDate: "" };
-                          const updated = [...additionalClinicians, newClin];
-                          setAdditionalClinicians(updated);
-                          form.setValue("additionalCliniciansJson" as any, JSON.stringify(updated));
-                        }}
-                        className="w-full h-8 rounded-md border border-dashed border-input text-xs text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex items-center justify-center gap-1"
-                      >
-                        <span className="text-base leading-none">+</span> Add clinician
-                      </button>
-                    </div>
                   </CardContent>
                 </Card>
 
@@ -3082,6 +3136,97 @@ export default function FinancialsPage() {
                   </CardContent>
                 </Card>
 
+                {/* ── Capital & Runway ──────────────────────────────────── */}
+                <Card className="shadow-sm border-emerald-200 dark:border-emerald-800">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Capital & Runway</CardTitle>
+                    <CardDescription className="text-xs">
+                      Your complete opening cash position. Secured Investment and Project Costs update automatically from the Investment tab and Project Plan.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <FormField control={form.control} name={"runwaySavingsGbp" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Business Capital (£)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">Current business bank balance</p>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={"preOpeningPropertyMonths" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Lease signed (months before opening)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name={"freeRentMonths" as any} render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">Rent-free months (landlord agreed)</FormLabel>
+                          <FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl>
+                        </FormItem>
+                      )} />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Lease signed months before opening: rent + rates charged against business capital from that point. Rent-free months: only business rates apply — rent is £0 during this period.</p>
+                    {/* Live capital summary */}
+                    {(() => {
+                      const businessCap = Number(form.watch("runwaySavingsGbp" as any)) || 0;
+                      const securedInv = investmentSummary?.totalCapitalGbp ?? null;
+                      const preOpenBedh = investmentSummary?.preOpenBedhNetGbp ?? null;
+                      const projectCosts = investmentSummary?.capitalSelectedGbp ?? null;
+                      const canCalc = securedInv !== null && preOpenBedh !== null && projectCosts !== null;
+                      const totalAvail = canCalc ? businessCap + (securedInv ?? 0) + (preOpenBedh ?? 0) : null;
+                      const runway = canCalc ? (totalAvail ?? 0) - (projectCosts ?? 0) : null;
+                      const runwayColor = runway === null ? "" : runway >= 10000 ? "text-emerald-600 dark:text-emerald-400" : runway >= 0 ? "text-amber-600 dark:text-amber-400" : "text-destructive";
+                      return (
+                        <div className="rounded-md bg-muted/30 border border-border/60 p-3 space-y-1.5">
+                          {[
+                            { label: "Business Capital", value: businessCap, auto: false },
+                            { label: "Secured Investment", value: securedInv, auto: true, note: "Investment tab" },
+                            { label: "Projected Bedhampton Net Income to Opening", value: preOpenBedh, auto: true, note: "months remaining × Bedh net" },
+                          ].map((r, i) => (
+                            <div key={r.label} className="flex justify-between items-center text-xs">
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                {r.label}
+                                {r.auto && <span className="text-[9px] bg-muted px-1 rounded text-muted-foreground/50">auto</span>}
+                              </span>
+                              <span className="font-medium tabular-nums">
+                                {r.value !== null ? formatGBP(r.value) : <span className="text-muted-foreground/40 text-[10px]">visit Investment tab</span>}
+                              </span>
+                            </div>
+                          ))}
+                          <div className="flex justify-between items-center text-xs border-t border-border/60 pt-1.5">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              Project Costs
+                              <span className="text-[9px] bg-muted px-1 rounded text-muted-foreground/50">auto</span>
+                            </span>
+                            <span className="font-medium tabular-nums text-destructive/70">
+                              {projectCosts !== null ? `(${formatGBP(projectCosts)})` : <span className="text-muted-foreground/40 text-[10px]">visit Investment tab</span>}
+                            </span>
+                          </div>
+                          {canCalc && (
+                            <>
+                              <div className="flex justify-between items-center text-sm font-semibold border-t-2 border-border pt-1.5 mt-0.5">
+                                <span>Total Money Available at Opening</span>
+                                <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">{formatGBP(totalAvail!)}</span>
+                              </div>
+                              <div className={`flex justify-between items-center text-sm font-bold rounded-md px-2 py-1.5 ${runway! >= 10000 ? "bg-emerald-50 dark:bg-emerald-950/30" : runway! >= 0 ? "bg-amber-50 dark:bg-amber-950/30" : "bg-red-50 dark:bg-red-950/30"}`}>
+                                <span className={runwayColor}>Target Runway at Opening</span>
+                                <span className={`tabular-nums ${runwayColor}`}>{runway! >= 0 ? "+" : ""}{formatGBP(runway!)}</span>
+                              </div>
+                            </>
+                          )}
+                          {!investmentSummary && (
+                            <p className="text-[10px] text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-1">
+                              <AlertTriangle className="w-3 h-3 shrink-0" />
+                              Visit the Investment tab once to auto-load Secured Investment and Project Costs.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </CardContent>
+                </Card>
+
                 <Card className="shadow-sm border-blue-200 dark:border-blue-900">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center justify-between">
@@ -3129,6 +3274,7 @@ export default function FinancialsPage() {
                     <div className="grid grid-cols-2 gap-3">
                       {[
                         ["existingClinicRevenueGbp","Gross Monthly Revenue (£)"],
+                        ["bedhMembershipRevenueGbp","Membership Revenue (£/mo)"],
                         ["bedhStockPercent","Product / Stock Cost (%)"],
                         ["bedhCapacityCeilGbp","Joint capacity ceiling (£/mo)"],
                       ].map(([name, label]) => (
@@ -3191,25 +3337,6 @@ export default function FinancialsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="shadow-sm">
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Personal & Runway</CardTitle></CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        ["targetDrawingsGbp","Desired Income (£/mo)"],
-                        ["runwaySavingsGbp","Business Capital (£)"],
-                        ["personalSalaryNeedsGbp","Min Household Need (£/mo)"],
-                        ["preOpeningPropertyMonths","Lease signed (months before opening)"],
-                        ["freeRentMonths","Rent-free months (agreed with landlord)"],
-                      ].map(([name, label]) => (
-                        <FormField key={name} control={form.control} name={name as any} render={({ field }) => (
-                          <FormItem><FormLabel className="text-xs">{label}</FormLabel><FormControl><Input type="number" {...field} className="h-8 text-sm" /></FormControl></FormItem>
-                        )} />
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground mt-1.5">Lease signed months before opening: rent + rates are charged against business capital from that point, even before Winchester opens. Rent-free months: only business rates apply during this period — rent is £0.</p>
-                  </CardContent>
-                </Card>
 
                 <Card className="shadow-sm border-amber-200 dark:border-amber-800">
                   <CardHeader className="pb-2">
@@ -3770,7 +3897,6 @@ export default function FinancialsPage() {
                   <div className="grid grid-cols-2 gap-3">
                     {([
                       ["wincAcvGbp",             "Avg Client Value",  "£", ""],
-                      ["treatmentRoomsCount",     "Clinicians (Abi)",  "",  ""],
                       ["practitionerHoursPerDay", "Hours / Day",       "",  "hr"],
                       ["workingDaysPerMonth",      "Working Days / Mo", "",  "d"],
                       ["membershipRevenueGbp",     "Membership Rev",    "£", "/mo"],
@@ -4641,31 +4767,6 @@ export default function FinancialsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
 
-              {/* ── Year-end distributable profit — Y1 / Y2 / Y3 ───────────── */}
-              {investmentSummary?.annualSummary && (() => {
-                const { y1, y2, y3 } = investmentSummary.annualSummary;
-                return (
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { yr: y1, label: "Year-end distributable profit" },
-                      { yr: y2, label: "Year-end distributable profit" },
-                      { yr: y3, label: "Year-end distributable profit" },
-                    ].map(({ yr, label }, i) => {
-                      const positive = yr.distributable >= 0;
-                      return (
-                        <div key={i} className={`rounded-lg border p-3 ${positive ? "border-emerald-200 bg-emerald-50/50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50/50 dark:bg-red-950/20"}`}>
-                          <div className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground mb-1">{yr.fyLabel}</div>
-                          <div className={`text-xl font-bold tabular-nums ${positive ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
-                            {positive ? "+" : ""}{formatGBP(yr.distributable)}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">{label}</div>
-                          <div className="text-[10px] text-muted-foreground/70 mt-0.5">{yr.tradingMonths} trading months</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
 
               {investmentSummary && (
                 <>

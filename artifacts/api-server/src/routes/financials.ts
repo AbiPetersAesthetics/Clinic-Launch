@@ -317,7 +317,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   // If the business is already close enough that Winchester will open after registration,
   // include VAT in all Winchester projections and break-even figures.
   const vatCurrentTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
-  const bedhMonthlyRev = model.existingClinicRevenueGbp || 0;
+  const bedhMonthlyRev = (model.existingClinicRevenueGbp || 0) + ((model as any).bedhMembershipRevenueGbp || 0);
   // Project 12 months of Bedhampton forward — will they cross the threshold?
   const vatWillApplyAtOpening = vatCurrentTurnover >= 90000 ||
     (vatCurrentTurnover + bedhMonthlyRev * 12 >= 90000);
@@ -532,7 +532,7 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   //   - fixedVariableItems = month-on-month variable spend (marketing budget, staffing, consumables)
   const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
 
-  const bedhMonthlyRevenue = model.existingClinicRevenueGbp || 0;
+  const bedhMonthlyRevenue = (model.existingClinicRevenueGbp || 0) + ((model as any).bedhMembershipRevenueGbp || 0);
   const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
   // Bedhampton running costs: location-specific only (rent, marketing, other catch-all).
   // Dual shared costs are handled separately — deducted from Bedh during pre-opening only.

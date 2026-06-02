@@ -378,6 +378,18 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const y2 = calcFyMetrics(fy1StartYear + 1, fy2Loans);
   const y3 = calcFyMetrics(fy1StartYear + 2, fy3Loans);
 
+  // ── Per-FY shareholder payouts ────────────────────────────────────────────
+  function fyPayouts(fy: { distributable: number }) {
+    return shareholders.map(sh => ({
+      ...sh,
+      payoutGbp: Math.round(fy.distributable * (sh.equityPercent / 100)),
+      payoutPercent: sh.equityPercent,
+    }));
+  }
+  const y1WithPayouts = { ...y1, payouts: fyPayouts(y1) };
+  const y2WithPayouts = { ...y2, payouts: fyPayouts(y2) };
+  const y3WithPayouts = { ...y3, payouts: fyPayouts(y3) };
+
   // ── Rolling 12-month P&L from clinic opening (trading months 0–11) ──────────
   // This crosses FY boundaries (e.g. Nov '26 – Oct '27) and is the fairest
   // basis for an investor valuation of a new business.
@@ -478,7 +490,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     cashflowNote:               `Winchester P&L aligned to financial year (Aug–Jul). ${y1.fyLabel} includes ${y1.tradingMonths} trading months. Variable costs and director salary are dynamic; fixed costs are constant. 20% cash buffer retained before dividends.`,
     totalSharesPercent,
     payouts,
-    annualSummary:              { y1, y2, y3 },
+    annualSummary:              { y1: y1WithPayouts, y2: y2WithPayouts, y3: y3WithPayouts },
     rolling12m,
     breakdown12m:               y1,
     capitalSelectedGbp,
