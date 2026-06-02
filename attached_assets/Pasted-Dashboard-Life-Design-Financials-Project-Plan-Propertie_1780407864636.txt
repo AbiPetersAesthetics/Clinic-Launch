@@ -1,0 +1,228 @@
+Dashboard
+Life Design
+Financials
+Project Plan
+Properties
+Lease Strategy
+Suppliers
+Compliance
+0%
+Risk Register
+Risk Intelligence
+Competition Intel
+Marketing
+Operational Model
+Decisions
+Optimisation
+Franchise Model
+Export Full Report PDF
+Winchester · 9A Jewry Street
+
+Property
+
+9a Jewry StreetSO23 8RZ
+
+Break-even
+
+£18,141/mo
+
+Net (delayed_ramp)
+
+-£5,613/mo
+
+VAT Horizon
+
+Threshold reached
+
+Days to Launch
+
+153
+
+Readiness
+
+2%
+
+Confidence
+
+11/100
+
+CQC & Compliance
+
+0%
+
+13 Critical Risks
+
+13 Critical Risks
+Non-negotiable task on LOW cost tier — this creates unacceptable risk. Upgrade to MID or HIGH immediately.
+Expansion Modelling
+Winchester ramps to self-sufficiency, supported by Bedhampton income. Bedhampton closes when Winchester hits the target.
+
+Clear data
+Delayed Ramp: Realistic target but 12-month ramp — marketing underperforms at launch (opens at 15% occ, 12-mo ramp)
+Conservative30% occ, 8-mo ramp
+Realistic70% occ, 6-mo ramp
+Strong Launch80% occ, 4-mo ramp
+Delayed Ramp★ Base70% occ, 12-mo ramp
+Economic Downturn24% occ, −15% spend
+Stress Test20% occ, worst-case
+Planning note: Recommended base case for lease and financial planning decisions.
+Growth rate:
+Below Average
+Average
+Above Average
+VAT offset:
+No Offset — 20.0%current
+Minimal — 17.5%
+Partial — 15.0%
+Significant — 12.0%
+Maximum — 9.0%
+Current assumption — worst case
+
+At this scenario's revenue, switching to Partial (★ typical) could save approximately £686/month; Maximum could save £1,509/month. These savings flow directly to net profit.
+
+UK aesthetics VAT is complex — HMRC distinguishes between medical treatments (potentially exempt) and cosmetic treatments (standard-rated). Confirm your actual position with a healthcare VAT specialist before selecting below Partial.
+
+Warning: Self-funding target (20% net margin) requires 91% occupancy — above this scenario's target. Bedhampton may not close within 12 months.
+Warning: Break-even occupancy is close to target — little margin for underperformance.
+Winchester Net
+£2,918
+70% occ · 187 slots/mo
+Bedhampton Support
+£7,400/mo
+Closes at 20% margin · ~£7,810/mo net
+Bedhampton Closes
+Jan '28
+Abi full-time at Winchester from Jan '28
+Rent-Free Period Active
+Pre-opening · 3 months
+Pre-opening lease cost
+£10,843/mo
+rates only — rent waived
+Winchester break-even
+46% occ
+once rent starts: 58% occ
+Total rent saved
+£8,124
+£2,708/mo × 3 months pre-opening
+Post-Opening Safety
+Secure
+Winchester net vs £4,166/mo target
+Full Drawings
+Dec '27
+Full £4,166/mo from Dec '27
+Break-even
+£24,773
+58% occupancy · 21.2 appts/wk
+Overview
+Assumptions
+Owner
+Risks
+Custom Model
+Investment
+Live Bedhampton Performance
+LIVE
+
+Real-time data from your Bedhampton clinic — the financial foundation for the Winchester launch.
+This Month
+£4,485
+-71% vs last month
+Avg Client Spend
+£215
+24 appts this month
+Repeat Rate
+61.2%
+client retention
+Gross Margin
+LIVE
+75.3%
+£3,375 net this month
+Revenue trend (last 8 months)
+Nov
+Dec
+Jan
+Feb
+Mar
+Apr
+May
+Top treatment: Three Areas - Anti Wrinkle Injections
+Total revenue to date: £169,661
+12-Month Cash Position
+Business capital burns through project setup costs, partially offset by Bedhampton net income. Winchester opens Nov '26 and starts recovering the position. Set your Business Capital in the Assumptions → Personal & Runway section to see the burndown from your actual starting point.
+Jun '26
+Aug '26
+Oct '26
+Dec '26
+Feb '27
+Apr '27
+£-40k
+£-15k
+£10k
+£45k
+Pre-opening
+Business capital £43k
+Winchester opens
+Monthly net → business capital (after drawings)Additional clinician revenueBusiness capital (running balance)
+Starting capital
+£42,500
+Lowest cash point
+-£33,484
+Cash at month 12
+-£33,484
+Monthly P&L Breakdown
+12 mo
+36 mo
+Revenue, costs and VAT month by month. VAT turns on once rolling 12-month turnover crosses £90k.
+Winchester opens
+Bedhampton closes
+VAT registered
+Month	Occ %	Winc Rev	Variable	Gross	Fixed (Winc)	Winc VAT (20.0%)	Winc ±	Bedh Net	Proj costs	Drawings	Net after Drawings	Capital
+Jun '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,422	(£9,504)	—	£4,422	£37,418
+Jul '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£4,422	(£6,060)	—	£4,422	£35,780
+Aug '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£3,122	(£1,188)	—	£3,122	£37,714
+Sep '26
+VAT
+pre-open
+—	—	—	—	—	—	—	£3,122	(£36,986)	—	£3,122	£3,850
+Oct '26
+VAT
+HIGH RISK
+pre-open
+Highest risk month — pre-opening costs peak, zero Winchester revenue. Monitor cash closely.
+—	—	—	—	—	—	—	£3,122	(£31,080)	—	£3,122	-£24,108
+Nov '26
+OPEN
+15%	£6,452	(£1,632)	+£4,820	(£10,265)	(£1,290)	-£6,736	£5,156	—	ramping	-£1,580	-£25,688
+Dec '26
+VAT
+19.6%	£8,430	(£2,133)	+£6,297	(£10,265)	(£1,686)	-£5,654	£4,088	—	ramping	-£1,566	-£27,254
+Jan '27
+VAT
+24.2%	£10,408	(£2,633)	+£7,775	(£10,265)	(£2,082)	-£4,572	£3,019	—	ramping	-£1,553	-£28,806
+Feb '27
+VAT
+28.8%	£12,387	(£3,134)	+£9,253	(£10,265)	(£2,477)	-£3,489	£1,951	—	ramping	-£1,538	-£30,344
+Mar '27
+VAT
+33.3%	£14,322	(£3,624)	+£10,698	(£10,265)	(£2,864)	-£2,431	£906	—	ramping	-£1,525	-£31,869
+Apr '27
+VAT
+37.9%	£16,301	(£4,124)	+£12,177	(£10,265)	(£3,260)	-£1,348	—	—	ramping	-£1,348	-£33,217
+May '27
+VAT
+42.5%	£18,279	(£4,625)	+£13,654	(£10,265)	(£3,656)	-£266	—	—	ramping	-£266	-£33,484
+Variable = Winchester stock %, commissions %, marketing, staffing, consumables. Fixed (Winc) = all items from your fixed cost list including dual costs (counted once, not double-charged to Bedhampton).
+
+Bedh Net = Bedhampton gross revenue minus stock, running costs, dual costs, and VAT. Winc VAT = Winchester VAT only. Net after Drawings = Winc Net + Bedh Net − Owner's Drawings — what stays in the business each month.
+
+Proj costs = Project Plan task costs (mid-tier by default) charged this month. Hover to see which tasks. Tasks without due dates are spread across pre-opening months, weighted toward opening. Total across all months = £84,818.
+
+Drawings = Owner's drawings paid from the combined monthly surplus (Winchester net + Bedhampton net) above a £3,000/mo floor. The business always retains at least £3,000 first — Abi draws from whatever is left above that, up to
