@@ -1997,46 +1997,47 @@ export default function DashboardPage() {
         const { y1, y2, y3 } = invSummary.annualSummary;
         if (!y1 || !y2 || !y3) return null;
         const years = [y1, y2, y3];
-        const rows: { label: string; key: string; fmt?: (v: number) => string; bold?: boolean; pctKey?: string }[] = [
-          { label: "Revenue",           key: "revenue" },
-          { label: "Variable Costs",    key: "variableCosts",   fmt: v => `(${formatGBP(v)})` },
-          { label: "Gross Profit",      key: "grossProfit",     bold: true, pctKey: "grossMarginPct" },
-          { label: "Fixed Costs",       key: "fixedCosts",      fmt: v => `(${formatGBP(v)})` },
-          { label: "Operating Profit",  key: "operatingProfit", bold: true },
-          { label: "Director Salary",   key: "directorSalary",  fmt: v => `(${formatGBP(v)})` },
-          { label: "Distributable",     key: "distributable",   bold: true },
+        type Row = { label: string; key: string; fmt?: (v: number) => string; bold?: boolean; pctKey?: string; color?: string; divider?: boolean };
+        const rows: Row[] = [
+          { label: "Winchester Revenue",       key: "revenue" },
+          { label: "Variable Costs",           key: "variableCosts",      fmt: v => `(${formatGBP(v)})` },
+          { label: "Gross Profit",             key: "grossProfit",        bold: true, pctKey: "grossMarginPct" },
+          { label: "Fixed Costs",              key: "fixedCosts",         fmt: v => `(${formatGBP(v)})` },
+          { label: "Winchester Op. Profit",    key: "operatingProfit",    bold: true },
+          { label: "Bedhampton Net",           key: "bedhNet",            color: "text-violet-600 dark:text-violet-400" },
+          { label: "Combined Op. Profit",      key: "combinedOperating",  bold: true, divider: true },
+          { label: "Director Salary",          key: "directorSalary",     fmt: v => `(${formatGBP(v)})` },
+          { label: "Distributable",            key: "distributable",      bold: true, color: "text-emerald-600 dark:text-emerald-400" },
         ];
         return (
           <Card className="shadow-sm border-border/60">
             <CardHeader className="pb-2">
               <CardTitle className="text-lg">3-Year Financial Forecast</CardTitle>
-              <p className="text-sm text-muted-foreground mt-0.5">Annual P&L summary — base planning scenario (delayed ramp / average)</p>
+              <p className="text-sm text-muted-foreground mt-0.5">Combined company P&L (Winchester + Bedhampton) — base planning scenario (delayed ramp / average)</p>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b bg-muted/40">
-                      <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground w-40">Metric</th>
+                      <th className="text-left px-4 py-2.5 font-semibold text-muted-foreground w-44">Metric</th>
                       {years.map(y => (
                         <th key={y.fyLabel} className="text-right px-4 py-2.5 font-semibold">
                           <div>{y.fyLabel}</div>
-                          <div className="text-[10px] font-normal text-muted-foreground">{y.fyDesc}</div>
+                          <div className="text-[10px] font-normal text-muted-foreground">{y.fyDesc} · {y.tradingMonths}mo</div>
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {rows.map(({ label, key, fmt, bold, pctKey }) => (
-                      <tr key={label} className="hover:bg-muted/20">
-                        <td className="px-4 py-2 text-muted-foreground">{label}</td>
+                    {rows.map(({ label, key, fmt, bold, pctKey, color, divider }) => (
+                      <tr key={label} className={`hover:bg-muted/20 ${divider ? "border-t-2 border-border bg-muted/20" : ""}`}>
+                        <td className={`px-4 py-2 ${bold ? "font-semibold" : "text-muted-foreground"}`}>{label}</td>
                         {years.map(y => {
                           const v: number = (y as any)[key] ?? 0;
                           const pct: number | undefined = pctKey ? (y as any)[pctKey] : undefined;
-                          const isDistributable = key === "distributable";
-                          const isOpProfit = key === "operatingProfit";
                           return (
-                            <td key={y.fyLabel} className={`text-right px-4 py-2 tabular-nums ${bold ? "font-semibold" : ""} ${isDistributable ? "text-emerald-600 dark:text-emerald-400" : isOpProfit && v > 0 ? "text-emerald-700 dark:text-emerald-400" : ""}`}>
+                            <td key={y.fyLabel} className={`text-right px-4 py-2 tabular-nums ${bold ? "font-semibold" : ""} ${color ?? ""}`}>
                               {fmt ? fmt(v) : formatGBP(v)}
                               {pct !== undefined && <span className="text-muted-foreground text-[10px] ml-1">({pct}%)</span>}
                             </td>
@@ -2044,12 +2045,6 @@ export default function DashboardPage() {
                         })}
                       </tr>
                     ))}
-                    <tr className="bg-muted/30 border-t-2 border-border">
-                      <td className="px-4 py-2 text-xs text-muted-foreground">Trading months</td>
-                      {years.map(y => (
-                        <td key={y.fyLabel} className="text-right px-4 py-2 text-xs text-muted-foreground tabular-nums">{y.tradingMonths} mo</td>
-                      ))}
-                    </tr>
                   </tbody>
                 </table>
               </div>
