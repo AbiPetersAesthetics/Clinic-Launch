@@ -417,6 +417,8 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS first_payment_date TEXT`);
         // V10 migration: add vat_registration_date to financial_models
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS vat_registration_date TEXT`);
+        // V11 migration: add vat_input_cost_ratio_percent to financial_models
+        await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS vat_input_cost_ratio_percent INTEGER DEFAULT 60`);
         return;
       }
 

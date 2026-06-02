@@ -113,7 +113,7 @@ type CashflowMonth = {
   wincCosts: number; wincNet: number;
   bedhRevenue: number; bedhCosts: number; bedhNet: number; bedhDualCosts: number;
   projectCostBurn: number; preOpenPropertyCost: number; taskLabels: string[];
-  vatLiability: number; isVatRegistered: boolean;
+  vatLiability: number; vatInputReclaim: number; netVatPosition: number; isVatRegistered: boolean;
   actualDrawings: number; targetDrawings: number; drawingsShortfall: number; drawingsActive: boolean;
   monthlyCashflow: number; cashBalance: number;
   occupancyPercent: number;
@@ -665,7 +665,7 @@ export default function FinancialsPage() {
       aggressiveOccupancyPercent: 0, repeatBookingRatePercent: 60, membershipRevenueGbp: 0,
       existingClinicRevenueGbp: 0, bedhStockPercent: 35, bedhCapacityCeilGbp: 16000,
       bedhRentGbp: 0, bedhSoftwareGbp: 0, bedhStaffingGbp: 0, bedhInsuranceGbp: 0, bedhMarketingGbp: 0, bedhamptonCostsGbp: 0,
-      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0, vatRegistrationDate: "", bedhMembershipRevenueGbp: 0,
+      ownerDrawingsGbp: 0, runwaySavingsGbp: 0, personalSalaryNeedsGbp: 0, vatCurrentTurnoverGbp: 0, vatRegistrationDate: "", vatInputCostRatioPercent: 60, bedhMembershipRevenueGbp: 0,
       preOpeningPropertyMonths: 2,
       freeRentMonths: 0,
       nursingIncomeGbp: 4500, targetDrawingsGbp: 4000,
@@ -771,6 +771,7 @@ export default function FinancialsPage() {
         ownerDrawingsGbp: m.ownerDrawingsGbp ?? 0, runwaySavingsGbp: m.runwaySavingsGbp ?? 0, bedhMembershipRevenueGbp: (m as any).bedhMembershipRevenueGbp ?? 0,
         vatCurrentTurnoverGbp: m.vatCurrentTurnoverGbp ?? 0,
         vatRegistrationDate: (m as any).vatRegistrationDate ?? "",
+        vatInputCostRatioPercent: (m as any).vatInputCostRatioPercent ?? 60,
         personalSalaryNeedsGbp: m.personalSalaryNeedsGbp ?? 0,
         preOpeningPropertyMonths: m.preOpeningPropertyMonths ?? 2,
         freeRentMonths: m.freeRentMonths ?? 0,
@@ -2275,39 +2276,48 @@ export default function FinancialsPage() {
                               )}
                             </td>
 
-                            {/* Winchester VAT only (Bedhampton VAT already in Bedh Net) */}
-                            <td className={`text-right px-2 py-1.5 tabular-nums ${m.wincVat > 0 ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground/40"}`}>
-                              {m.wincVat > 0 ? (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <span className="cursor-help underline decoration-dotted decoration-amber-400/60 underline-offset-2">
-                                      ({formatGBP(m.wincVat)})
-                                    </span>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-60">
-                                    <div className="px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-md">
-                                      <p className="text-[11px] font-bold text-gray-900">Winchester VAT — {m.calendarLabel}</p>
-                                      <p className="text-[10px] text-gray-500">VAT collected from clients, payable to HMRC quarterly</p>
-                                    </div>
-                                    <div className="px-3 py-2.5 space-y-1 text-[11px]">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600">Winchester revenue</span>
-                                        <span className="tabular-nums text-gray-900">{formatGBP(m.wincRevenue)}</span>
-                                      </div>
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600">VAT rate (standard)</span>
-                                        <span className="tabular-nums text-gray-600">20%</span>
-                                      </div>
-                                      <div className="flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5">
-                                        <span className="font-bold text-gray-900">VAT liability</span>
-                                        <span className="tabular-nums font-bold text-amber-600">({formatGBP(m.wincVat)})</span>
-                                      </div>
-                                      <p className="text-[9px] text-gray-400 pt-0.5">You collect this from clients and pay it to HMRC quarterly. Bedhampton VAT is already deducted inside Bedh Net.</p>
-                                    </div>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ) : "—"}
-                            </td>
+                            {/* Net VAT position: reclaim (green) when input VAT > output VAT */}
+                            {(() => {
+                              const netVat = m.netVatPosition ?? (m.wincVat + (m.bedhVat ?? 0));
+                              const isReclaim = netVat < 0;
+                              const isZero = netVat === 0 && !m.isVatRegistered;
+                              return (
+                                <td className={`text-right px-2 py-1.5 tabular-nums ${isZero ? "text-muted-foreground/40" : isReclaim ? "text-teal-600 dark:text-teal-400 font-medium" : "text-amber-600 dark:text-amber-400 font-medium"}`}>
+                                  {isZero ? "—" : (
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className={`cursor-help underline decoration-dotted underline-offset-2 ${isReclaim ? "decoration-teal-400/60" : "decoration-amber-400/60"}`}>
+                                          {isReclaim ? `+${formatGBP(Math.abs(netVat))}` : `(${formatGBP(netVat)})`}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left" className="!bg-white !text-gray-900 border border-gray-200 shadow-xl p-0 w-64">
+                                        <div className={`px-3 py-2 border-b border-gray-200 rounded-t-md ${isReclaim ? "bg-teal-50" : "bg-amber-50"}`}>
+                                          <p className="text-[11px] font-bold text-gray-900">Net VAT position — {m.calendarLabel}</p>
+                                          <p className={`text-[10px] font-medium ${isReclaim ? "text-teal-700" : "text-amber-700"}`}>{isReclaim ? "VAT reclaim — HMRC owes you this quarter" : "VAT liability — payable to HMRC quarterly"}</p>
+                                        </div>
+                                        <div className="px-3 py-2.5 space-y-1 text-[11px]">
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-gray-500">Output VAT (on revenue)</span>
+                                            <span className="tabular-nums text-amber-600">{m.vatLiability > 0 ? `(${formatGBP(m.vatLiability)})` : "—"}</span>
+                                          </div>
+                                          <div className="flex justify-between items-center">
+                                            <span className="text-gray-500">Input VAT reclaim (on costs)</span>
+                                            <span className="tabular-nums text-teal-600">{(m.vatInputReclaim ?? 0) > 0 ? `+${formatGBP(m.vatInputReclaim ?? 0)}` : "—"}</span>
+                                          </div>
+                                          <div className={`flex justify-between items-center border-t border-gray-200 pt-1.5 mt-0.5`}>
+                                            <span className="font-bold text-gray-900">Net position</span>
+                                            <span className={`tabular-nums font-bold ${isReclaim ? "text-teal-600" : "text-amber-600"}`}>
+                                              {isReclaim ? `+${formatGBP(Math.abs(netVat))} reclaim` : `(${formatGBP(netVat)}) payable`}
+                                            </span>
+                                          </div>
+                                          <p className="text-[9px] text-gray-400 pt-0.5">{isReclaim ? "Fit-out and cost VAT exceeds output VAT — HMRC will refund you this quarter." : "Output VAT exceeds input VAT reclaim. Bedhampton output VAT is included in Bedh Net."}</p>
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )}
+                                </td>
+                              );
+                            })()}
 
                             {/* Winchester ± — rich hover showing full Winchester P&L */}
                             <td className={`text-right px-2 py-1.5 tabular-nums font-medium ${m.wincRevenue === 0 ? "text-muted-foreground/30" : m.wincNet > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
@@ -3737,6 +3747,17 @@ export default function FinancialsPage() {
                           {field.value
                             ? `VAT will apply from ${new Date(field.value + "-01").toLocaleString("en-GB", { month: "long", year: "numeric" })} regardless of turnover. Clear this to use automatic threshold detection.`
                             : "Leave blank to let the model calculate when your combined turnover crosses £90k. Set a date once you know your registration month."}
+                        </p>
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name={"vatInputCostRatioPercent" as any} render={({ field }) => (
+                      <FormItem className="mt-3">
+                        <FormLabel className="text-xs">VAT-bearing cost ratio (%)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} max={100} {...field} className="h-8 text-sm" />
+                        </FormControl>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Approx. {field.value ?? 60}% of your monthly running costs include input VAT you can reclaim (stock, software, marketing, consumables). Excludes rates, insurance, wages &amp; loan repayments. Default 60%.
                         </p>
                       </FormItem>
                     )} />

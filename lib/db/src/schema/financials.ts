@@ -68,6 +68,9 @@ export const financialsTable = pgTable("financial_models", {
   // Optional hard override: if set, VAT kicks in from this calendar month regardless of threshold
   // Format: YYYY-MM (e.g. "2026-11"). When blank, automatic threshold crossing is used instead.
   vatRegistrationDate: text("vat_registration_date"),
+  // What fraction of total monthly operating costs are VAT-bearing (can reclaim input VAT).
+  // Default 60%: stock, software, marketing, consumables YES; rates, insurance, wages, loan NO.
+  vatInputCostRatioPercent: integer("vat_input_cost_ratio_percent").notNull().default(60),
   // VAT on rent — synced from active property; whether landlord charges VAT on rent
   vatOnRent: boolean("vat_on_rent").notNull().default(false),
   // Pre-opening property costs: months before opening where rent + rates apply (lease signed early)
