@@ -350,62 +350,143 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     + (openingFirst.getMonth() - FY_START_MONTH);
   const fy1TradingMonths = 12 - preOpenMonthsInFY1; // e.g. 9 for Nov opening
 
-  // ── Per-FY P&L calculator ─────────────────────────────────────────────────
-  // Director salary (Abi's gross salary) is drawn conditionally each month:
-  // only when (operating − monthly loan repayment) > 0, capped so 20% buffer
-  // is always retained. Fixed costs exclude Abi's gross salary (employer NI +
-  // pension stay fixed; gross salary is the conditional director draw).
+  // ── Bedhampton parameters (mirroring financials.ts cashflow logic) ───────────
+  const bedhRevGbp      = ((fin as any).existingClinicRevenueGbp || 0) + ((fin as any).bedhMembershipRevenueGbp || 0);
+  const bedhStockRatio  = ((fin as any).bedhStockPercent ?? 35) / 100;
+  const bedhRunCosts    = ((fin as any).bedhRentGbp || 0) + ((fin as any).bedhMarketingGbp || 0) +
+                          ((fin as any).bedhamptonCostsGbp || 0) + ((fin as any).bedhSoftwareGbp || 0) +
+                          ((fin as any).bedhStaffingGbp || 0) + ((fin as any).bedhInsuranceGbp || 0);
+  const dualCostsMonthly = fixedCostItems
+    .filter(item => (item as any).costType === "dual")
+    .reduce((s, item) => s + (item.amountGbp || 0), 0);
+  const bedhCapacityCeil = ((fin as any).bedhCapacityCeilGbp || 16000);
+  const selfFundingBufPct = ((fin as any).selfFundingBufferPercent ?? 20) / 100;
+
+  // VAT state is shared across the full cashflow — initialise once from model
+  const INV_VAT_THRESHOLD = 90000;
+  const INV_VAT_RATE      = 0.20;
+  let   invVatCumulative  = ((fin as any).vatCurrentTurnoverGbp ?? 0);
+  let   invVatRegistered  = invVatCumulative >= INV_VAT_THRESHOLD;
+  // Check for pinned VAT registration date
+  const vatRegDateStr: string | null = (fin as any).vatRegistrationDate ?? null;
+  let   vatRegPinnedInv: { year: number; month: number } | null = null;
+  if (vatRegDateStr) {
+    const parts = vatRegDateStr.split("-");
+    if (parts.length >= 2) {
+      vatRegPinnedInv = { year: parseInt(parts[0]), month: parseInt(parts[1]) - 1 };
+    }
+  }
+
+  // Track Bedhampton closure across all FY calculations (state shared across years)
+  let bedhClosedFromMonth: number | null = null; // calendar month index where closure triggered
+
+  // ── Per-FY P&L calculator — includes both Winchester AND Bedhampton ─────────
+  // Director salary drawn conditionally from combined company net.
+  // All pre-opening months (Aug–Oct in FY1) now correctly include Bedhampton net.
   function calcFyMetrics(fyStartYear: number) {
     interface MonthBrk {
-      monthLabel: string; tradingMonthIdx: number;
-      operating: number; loanRepayment: number; netPreSalary: number;
+      monthLabel: string; tradingMonthIdx: number; isPreOpening: boolean;
+      wincRevenue: number; wincNet: number;
+      bedhRevenue: number; bedhNet: number;
+      combinedNet: number; loanRepayment: number; netPreSalary: number;
       buffer: number; directorDrawing: number; distributable: number; canDraw: boolean;
     }
-    let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
-    let totOperating = 0, totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
-    let tradingMonthsCount = 0;
+    let totWincRevenue = 0, totWincVariable = 0, totWincGross = 0, totWincFixed = 0;
+    let totWincOperating = 0;
+    let totBedhRevenue = 0, totBedhNet = 0;
+    let totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
+    let wincTradingMonthsCount = 0;
     const monthlyBreakdown: MonthBrk[] = [];
 
     for (let m = 0; m < 12; m++) {
       const monthDate = new Date(fyStartYear, FY_START_MONTH + m, 1);
-      if (monthDate < openingFirst) continue;
+      const isPreOpening = monthDate < openingFirst;
 
-      tradingMonthsCount++;
-      const tradingMonthIdx = (monthDate.getFullYear() - openingFirst.getFullYear()) * 12
-        + (monthDate.getMonth() - openingFirst.getMonth());
+      // ── Winchester revenue ───────────────────────────────────────────────────
+      let wincRevenue = 0;
+      let wincVariable = 0, wincGross = 0, wincFixed = 0, wincOperating = 0;
+      let tradingMonthIdx = 0;
 
-      const f = getRampFactor(tradingMonthIdx);
-      let monthRevenue = ssRevenue * f;
+      if (!isPreOpening) {
+        wincTradingMonthsCount++;
+        tradingMonthIdx = (monthDate.getFullYear() - openingFirst.getFullYear()) * 12
+          + (monthDate.getMonth() - openingFirst.getMonth());
 
-      for (const clin of additionalClinicians) {
-        if (clin.isPrimary || !clin.startDate) continue;
-        const clinStart = new Date(clin.startDate);
-        const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
-        if (monthDate < clinFirst) continue;
-        const clinTradingIdx = (monthDate.getFullYear() - clinFirst.getFullYear()) * 12
-          + (monthDate.getMonth() - clinFirst.getMonth());
-        const cf = getRampFactor(clinTradingIdx);
-        const clinRooms = clin.rooms ?? 1;
-        const clinHours = clin.hoursPerDay ?? hours;
-        const clinDays = clin.daysPerMonth ?? days;
-        monthRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+        const f = getRampFactor(tradingMonthIdx);
+        wincRevenue = ssRevenue * f;
+
+        for (const clin of additionalClinicians) {
+          if (clin.isPrimary || !clin.startDate) continue;
+          const clinStart = new Date(clin.startDate);
+          const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
+          if (monthDate < clinFirst) continue;
+          const clinTradingIdx = (monthDate.getFullYear() - clinFirst.getFullYear()) * 12
+            + (monthDate.getMonth() - clinFirst.getMonth());
+          const cf = getRampFactor(clinTradingIdx);
+          const clinRooms = clin.rooms ?? 1;
+          const clinHours = clin.hoursPerDay ?? hours;
+          const clinDays = clin.daysPerMonth ?? days;
+          wincRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+        }
+
+        wincVariable  = wincRevenue * variableRatio + variableOverheads * f;
+        wincGross     = wincRevenue - wincVariable;
+        wincFixed     = fixedMonthly;
+        wincOperating = wincGross - wincFixed;
       }
 
-      const varCost = monthRevenue * variableRatio + variableOverheads * f;
-      const gross = monthRevenue - varCost;
-      const operating = gross - fixedMonthly;
+      // ── VAT registration check ───────────────────────────────────────────────
+      const combinedRevForVat = wincRevenue + (bedhClosedFromMonth === null ? bedhRevGbp : 0);
+      if (vatRegPinnedInv) {
+        invVatRegistered = (monthDate.getFullYear() > vatRegPinnedInv.year) ||
+          (monthDate.getFullYear() === vatRegPinnedInv.year && monthDate.getMonth() >= vatRegPinnedInv.month);
+      } else if (!invVatRegistered) {
+        invVatCumulative += combinedRevForVat;
+        if (invVatCumulative >= INV_VAT_THRESHOLD) invVatRegistered = true;
+      }
 
-      // Monthly loan repayment for this specific trading month (1-based)
-      const tm1 = tradingMonthIdx + 1;
-      const monthLoan = loanInstruments.reduce((s, l) => {
+      // ── Winchester VAT ───────────────────────────────────────────────────────
+      const wincVat = (!isPreOpening && wincRevenue > 0 && invVatRegistered) ? wincRevenue * INV_VAT_RATE : 0;
+      const wincNet = wincOperating - wincVat;
+
+      // Self-funding check: has Winchester reached self-funding threshold?
+      if (!isPreOpening && bedhClosedFromMonth === null && wincRevenue > 0 && wincNet >= wincRevenue * selfFundingBufPct) {
+        bedhClosedFromMonth = m + fyStartYear * 12; // encode as unique key
+      }
+      const bedhClosed = bedhClosedFromMonth !== null && (m + fyStartYear * 12) >= bedhClosedFromMonth;
+
+      // ── Bedhampton revenue & net ─────────────────────────────────────────────
+      let bedhMonthRevenue = 0;
+      let bedhMonthNet = 0;
+
+      if (!bedhClosed) {
+        // Capacity ceiling: as Winchester fills slots, Bedhampton tapers
+        const bedhRevCapped = Math.max(0, Math.min(bedhRevGbp, Math.max(0, bedhCapacityCeil - wincRevenue)));
+        // De-facto closure: can't cover fixed running costs
+        const bedhDefactoClosed = bedhRevGbp > 0 && bedhRevCapped < bedhRunCosts;
+        bedhMonthRevenue = bedhDefactoClosed ? 0 : bedhRevCapped;
+
+        const bedhProductCosts = bedhMonthRevenue * bedhStockRatio;
+        // Dual costs: Bedhampton bears them pre-opening; Winchester takes them post-opening
+        const bedhDual = isPreOpening ? dualCostsMonthly : 0;
+        const bedhCosts = bedhDefactoClosed ? 0 : bedhProductCosts + bedhRunCosts + bedhDual;
+        const bedhVat = (bedhMonthRevenue > 0 && invVatRegistered) ? bedhMonthRevenue * INV_VAT_RATE : 0;
+        bedhMonthNet = bedhMonthRevenue - bedhCosts - bedhVat;
+      }
+
+      // ── Combined company net (Winchester + Bedhampton) ───────────────────────
+      const combinedNet = wincNet + bedhMonthNet;
+
+      // ── Loan repayment (trading month index basis) ───────────────────────────
+      const tm1 = isPreOpening ? 0 : tradingMonthIdx + 1;
+      const monthLoan = isPreOpening ? 0 : loanInstruments.reduce((s, l) => {
         const startM = Math.max(1, l.repaymentStartMonth);
         const endM = startM + l.repaymentTermMonths - 1;
         return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
       }, 0);
 
-      // Director salary: only drawn when monthly net (after loans) exceeds the £3,000 floor.
-      // The business always retains at least £3,000; Abi draws from the surplus above that.
-      const netPre = operating - monthLoan;
+      // ── Director salary drawn from combined net ──────────────────────────────
+      const netPre = combinedNet - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
       if (netPre > MIN_SALARY_FLOOR) {
         const surplus = netPre - MIN_SALARY_FLOOR;
@@ -413,23 +494,30 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         distrib  = Math.max(surplus - drawings, 0);
         buffer   = MIN_SALARY_FLOOR;
       } else if (netPre > 0) {
-        buffer = Math.round(netPre); // below floor — all retained, nothing drawn
+        buffer = Math.round(netPre);
       }
 
-      totRevenue      += monthRevenue;
-      totVariable     += varCost;
-      totGross        += gross;
-      totFixed        += fixedMonthly;
-      totOperating    += operating;
-      totLoans        += monthLoan;
-      totBuffer       += buffer;
-      totDirector     += drawings;
+      totWincRevenue   += wincRevenue;
+      totWincVariable  += wincVariable;
+      totWincGross     += wincGross;
+      totWincFixed     += wincFixed;
+      totWincOperating += wincOperating;
+      totBedhRevenue   += bedhMonthRevenue;
+      totBedhNet       += bedhMonthNet;
+      totLoans         += monthLoan;
+      totBuffer        += buffer;
+      totDirector      += drawings;
       totDistributable += distrib;
 
       monthlyBreakdown.push({
         monthLabel:      monthDate.toLocaleString("en-GB", { month: "short", year: "2-digit" }),
-        tradingMonthIdx,
-        operating:       Math.round(operating),
+        tradingMonthIdx: isPreOpening ? -1 : tradingMonthIdx,
+        isPreOpening,
+        wincRevenue:     Math.round(wincRevenue),
+        wincNet:         Math.round(wincNet),
+        bedhRevenue:     Math.round(bedhMonthRevenue),
+        bedhNet:         Math.round(bedhMonthNet),
+        combinedNet:     Math.round(combinedNet),
         loanRepayment:   Math.round(monthLoan),
         netPreSalary:    Math.round(netPre),
         buffer:          Math.round(buffer),
@@ -441,25 +529,34 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
 
     const shortY1 = String(fyStartYear).slice(2);
     const shortY2 = String(fyStartYear + 1).slice(2);
-    const netPreSalary   = totOperating - totLoans;
-    const netAfterDirector = netPreSalary - totDirector;
+    const combinedRevenue   = totWincRevenue + totBedhRevenue;
+    const combinedOperating = totWincOperating + totBedhNet;
+    const netPreSalary      = combinedOperating - totLoans;
+    const netAfterDirector  = netPreSalary - totDirector;
 
     return {
       fyLabel:           `FY${shortY1}/${shortY2}`,
       fyDesc:            `Aug '${shortY1} – Jul '${shortY2}`,
-      tradingMonths:     tradingMonthsCount,
-      revenue:           Math.round(totRevenue),
-      variableCosts:     Math.round(totVariable),
-      grossProfit:       Math.round(totGross),
-      grossMarginPct:    totRevenue > 0 ? Math.round((totGross / totRevenue) * 100) : 0,
-      fixedCosts:        Math.round(totFixed),
-      operatingProfit:   Math.round(totOperating),
+      tradingMonths:     wincTradingMonthsCount,
+      // Winchester
+      revenue:           Math.round(totWincRevenue),
+      variableCosts:     Math.round(totWincVariable),
+      grossProfit:       Math.round(totWincGross),
+      grossMarginPct:    totWincRevenue > 0 ? Math.round((totWincGross / totWincRevenue) * 100) : 0,
+      fixedCosts:        Math.round(totWincFixed),
+      operatingProfit:   Math.round(totWincOperating),
+      // Bedhampton
+      bedhRevenue:       Math.round(totBedhRevenue),
+      bedhNet:           Math.round(totBedhNet),
+      // Combined
+      combinedRevenue:   Math.round(combinedRevenue),
+      combinedOperating: Math.round(combinedOperating),
       loanRepayments:    Math.round(totLoans),
       netPreSalary:      Math.round(netPreSalary),
       bufferRetained:    Math.round(totBuffer),
       directorSalary:    Math.round(totDirector),
       netAfterDirector:  Math.round(netAfterDirector),
-      netMarginPct:      totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
+      netMarginPct:      combinedRevenue > 0 ? Math.round((netAfterDirector / combinedRevenue) * 100) : 0,
       distributable:     Math.round(totDistributable),
       monthlyBreakdown,
     };
@@ -481,12 +578,20 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const y2WithPayouts = { ...y2, payouts: fyPayouts(y2) };
   const y3WithPayouts = { ...y3, payouts: fyPayouts(y3) };
 
-  // ── Rolling 12-month P&L from clinic opening (trading months 0–11) ──────────
-  // Crosses FY boundaries (e.g. Nov '26 – Oct '27); fairest investor basis.
-  // Same conditional-salary logic as calcFyMetrics.
+  // ── Rolling 12-month P&L from clinic opening — COMBINED company (Winchester + Bedhampton)
+  // Covers the first 12 Winchester trading months. Bedhampton runs in parallel until it closes.
+  // Used for the valuation blended figure and the 12m KPI card.
   function calcRolling12m() {
-    let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
-    let totOperating = 0, totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
+    // VAT state for rolling window — snapshot current invVatRegistered/invVatCumulative
+    // We can't re-use the shared mutable state here because calcFyMetrics may already have
+    // advanced it. Re-initialise from model for an independent calculation.
+    let r12VatCumulative = ((fin as any).vatCurrentTurnoverGbp ?? 0);
+    let r12VatRegistered = r12VatCumulative >= INV_VAT_THRESHOLD;
+    let r12BedhClosed    = false;
+
+    let totWincRevenue = 0, totWincVariable = 0, totWincGross = 0, totWincFixed = 0;
+    let totWincOperating = 0, totBedhRevenue = 0, totBedhNet = 0;
+    let totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
 
     for (let tradingMonthIdx = 0; tradingMonthIdx < 12; tradingMonthIdx++) {
       const monthDate = new Date(
@@ -495,9 +600,9 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         1,
       );
 
+      // Winchester
       const f = getRampFactor(tradingMonthIdx);
-      let monthRevenue = ssRevenue * f;
-
+      let wincRevenue = ssRevenue * f;
       for (const clin of additionalClinicians) {
         if (clin.isPrimary || !clin.startDate) continue;
         const clinStart = new Date(clin.startDate);
@@ -509,12 +614,43 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         const clinRooms = clin.rooms ?? 1;
         const clinHours = clin.hoursPerDay ?? hours;
         const clinDays = clin.daysPerMonth ?? days;
-        monthRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+        wincRevenue += clinRooms * clinHours * clinDays * occupancyPct * acv * cf;
+      }
+      const varCost   = wincRevenue * variableRatio + variableOverheads * f;
+      const wincGross = wincRevenue - varCost;
+      const wincOp    = wincGross - fixedMonthly;
+
+      // VAT
+      const combinedRevForVat = wincRevenue + (r12BedhClosed ? 0 : bedhRevGbp);
+      if (vatRegPinnedInv) {
+        r12VatRegistered = (monthDate.getFullYear() > vatRegPinnedInv.year) ||
+          (monthDate.getFullYear() === vatRegPinnedInv.year && monthDate.getMonth() >= vatRegPinnedInv.month);
+      } else if (!r12VatRegistered) {
+        r12VatCumulative += combinedRevForVat;
+        if (r12VatCumulative >= INV_VAT_THRESHOLD) r12VatRegistered = true;
+      }
+      const wincVat = (wincRevenue > 0 && r12VatRegistered) ? wincRevenue * INV_VAT_RATE : 0;
+      const wincNet = wincOp - wincVat;
+
+      // Self-funding → Bedhampton closure
+      if (!r12BedhClosed && wincRevenue > 0 && wincNet >= wincRevenue * selfFundingBufPct) {
+        r12BedhClosed = true;
       }
 
-      const varCost = monthRevenue * variableRatio + variableOverheads * f;
-      const gross = monthRevenue - varCost;
-      const operating = gross - fixedMonthly;
+      // Bedhampton
+      let bedhMonthRevenue = 0, bedhMonthNet = 0;
+      if (!r12BedhClosed) {
+        const bedhRevCapped = Math.max(0, Math.min(bedhRevGbp, Math.max(0, bedhCapacityCeil - wincRevenue)));
+        const bedhDefactoClosed = bedhRevGbp > 0 && bedhRevCapped < bedhRunCosts;
+        bedhMonthRevenue = bedhDefactoClosed ? 0 : bedhRevCapped;
+        const bedhProductCosts = bedhMonthRevenue * bedhStockRatio;
+        // Post-opening: dual costs in Winchester fixed, not double-counted here
+        const bedhCostsTotal = bedhDefactoClosed ? 0 : bedhProductCosts + bedhRunCosts;
+        const bedhVat = (bedhMonthRevenue > 0 && r12VatRegistered) ? bedhMonthRevenue * INV_VAT_RATE : 0;
+        bedhMonthNet = bedhMonthRevenue - bedhCostsTotal - bedhVat;
+      }
+
+      const combinedNet = wincNet + bedhMonthNet;
 
       const tm1 = tradingMonthIdx + 1;
       const monthLoan = loanInstruments.reduce((s, l) => {
@@ -523,7 +659,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
       }, 0);
 
-      const netPre = operating - monthLoan;
+      const netPre = combinedNet - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
       if (netPre > MIN_SALARY_FLOOR) {
         const surplus = netPre - MIN_SALARY_FLOOR;
@@ -534,19 +670,23 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         buffer = Math.round(netPre);
       }
 
-      totRevenue      += monthRevenue;
-      totVariable     += varCost;
-      totGross        += gross;
-      totFixed        += fixedMonthly;
-      totOperating    += operating;
-      totLoans        += monthLoan;
-      totBuffer       += buffer;
-      totDirector     += drawings;
+      totWincRevenue   += wincRevenue;
+      totWincVariable  += varCost;
+      totWincGross     += wincGross;
+      totWincFixed     += fixedMonthly;
+      totWincOperating += wincOp;
+      totBedhRevenue   += bedhMonthRevenue;
+      totBedhNet       += bedhMonthNet;
+      totLoans         += monthLoan;
+      totBuffer        += buffer;
+      totDirector      += drawings;
       totDistributable += distrib;
     }
 
-    const netPreSalary    = totOperating - totLoans;
-    const netAfterDirector = netPreSalary - totDirector;
+    const combinedOperating = totWincOperating + totBedhNet;
+    const netPreSalary      = combinedOperating - totLoans;
+    const netAfterDirector  = netPreSalary - totDirector;
+    const combinedRevenue   = totWincRevenue + totBedhRevenue;
     const endDate = new Date(openingFirst.getFullYear(), openingFirst.getMonth() + 11, 1);
     const fmt = (d: Date) =>
       `${d.toLocaleString("en-GB", { month: "short" })} '${String(d.getFullYear()).slice(2)}`;
@@ -554,18 +694,22 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     return {
       label:            `${fmt(openingFirst)} – ${fmt(endDate)}`,
       tradingMonths:    12,
-      revenue:          Math.round(totRevenue),
-      variableCosts:    Math.round(totVariable),
-      grossProfit:      Math.round(totGross),
-      grossMarginPct:   totRevenue > 0 ? Math.round((totGross / totRevenue) * 100) : 0,
-      fixedCosts:       Math.round(totFixed),
-      operatingProfit:  Math.round(totOperating),
+      revenue:          Math.round(totWincRevenue),
+      bedhRevenue:      Math.round(totBedhRevenue),
+      combinedRevenue:  Math.round(combinedRevenue),
+      variableCosts:    Math.round(totWincVariable),
+      grossProfit:      Math.round(totWincGross),
+      grossMarginPct:   totWincRevenue > 0 ? Math.round((totWincGross / totWincRevenue) * 100) : 0,
+      fixedCosts:       Math.round(totWincFixed),
+      operatingProfit:  Math.round(totWincOperating),
+      bedhNet:          Math.round(totBedhNet),
+      combinedOperating: Math.round(combinedOperating),
       loanRepayments:   Math.round(totLoans),
       netPreSalary:     Math.round(netPreSalary),
       bufferRetained:   Math.round(totBuffer),
       directorSalary:   Math.round(totDirector),
       netAfterDirector: Math.round(netAfterDirector),
-      netMarginPct:     totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
+      netMarginPct:     combinedRevenue > 0 ? Math.round((netAfterDirector / combinedRevenue) * 100) : 0,
       distributable:    Math.round(totDistributable),
     };
   }

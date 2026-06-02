@@ -4756,7 +4756,7 @@ export default function FinancialsPage() {
                   <CardTitle className="text-sm">3-Year Performance Outlook</CardTitle>
                 </div>
                 <CardDescription className="text-xs mt-1">
-                  Winchester clinic P&L aligned to your August–July financial year. Pre-opening months within FY1 contribute zero revenue. Each clinician ramps independently from their start date. £3,000/mo floor retained before dividends.
+                  Combined company P&L (Winchester + Bedhampton) aligned to your August–July financial year. FY1 pre-opening months include Bedhampton net. Each clinician ramps independently from their start date. £3,000/mo floor retained before dividends.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -4778,11 +4778,13 @@ export default function FinancialsPage() {
                     </thead>
                     <tbody>
                       {([
-                        { label: "Revenue", key: "revenue" },
+                        { label: "Winchester Revenue", key: "revenue" },
                         { label: "Variable Costs", key: "variableCosts", isDeduction: true, color: "text-muted-foreground" },
                         { label: "Gross Profit", key: "grossProfit", pctKey: "grossMarginPct", isBold: true, divider: true },
                         { label: "Fixed Costs", key: "fixedCosts", isDeduction: true, color: "text-muted-foreground" },
-                        { label: "Operating Profit", key: "operatingProfit", isBold: true, divider: true },
+                        { label: "Winchester Operating Profit", key: "operatingProfit", isBold: true, divider: true },
+                        { label: "Bedhampton Net Profit", key: "bedhNet", color: "text-violet-600 dark:text-violet-400" },
+                        { label: "Combined Operating Profit", key: "combinedOperating", isBold: true, divider: true },
                         { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
                         { label: "Net pre-Salary", key: "netPreSalary", isBold: true, divider: true },
                         { label: "Abi's Salary (conditional)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
