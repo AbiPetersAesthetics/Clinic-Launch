@@ -4417,11 +4417,11 @@ export default function FinancialsPage() {
                         { label: "Gross Profit", key: "grossProfit", pctKey: "grossMarginPct", isBold: true, divider: true },
                         { label: "Fixed Costs", key: "fixedCosts", isDeduction: true, color: "text-muted-foreground" },
                         { label: "Operating Profit", key: "operatingProfit", isBold: true, divider: true },
-                        { label: "Director Salary (Abi Peters)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
                         { label: "Loan Repayments", key: "loanRepayments", isDeduction: true, color: "text-blue-600 dark:text-blue-400" },
-                        { label: "Net before Buffer", key: "netAfterDirector", isBold: true, pctKey: "netMarginPct", divider: true },
+                        { label: "Net pre-Salary", key: "netPreSalary", isBold: true, divider: true },
+                        { label: "Abi's Salary (conditional)", key: "directorSalary", isDeduction: true, color: "text-orange-600 dark:text-orange-400" },
                         { label: "20% Cash Buffer (retained)", key: "bufferRetained", isDeduction: true, color: "text-muted-foreground" },
-                        { label: "Distributable to Shareholders", key: "distributable", isBold: true, isHighlight: true, divider: true },
+                        { label: "Distributable to Shareholders", key: "distributable", isBold: true, isHighlight: true, pctKey: "netMarginPct", divider: true },
                       ] as { label: string; key: string; isDeduction?: boolean; color?: string; isBold?: boolean; pctKey?: string; divider?: boolean; isHighlight?: boolean }[]).map((row) => {
                         const years = [investmentSummary.annualSummary.y1, investmentSummary.annualSummary.y2, investmentSummary.annualSummary.y3];
                         return (
@@ -4817,19 +4817,18 @@ export default function FinancialsPage() {
                     return (
                       <div className="space-y-5">
                         {[y1, y2, y3].map((yr: any) => {
-                          const netBeforeBuffer = yr.netAfterDirector - yr.loanRepayments;
                           const positive = yr.distributable >= 0;
                           const waterfallRows: { label: string; value: number; suffix?: string; isBold?: boolean; isHighlight?: boolean; indent?: boolean; color?: string }[] = [
                             { label: `Gross revenue (${yr.tradingMonths} trading months)`, value: yr.revenue },
                             { label: "Less: variable costs", value: -yr.variableCosts, suffix: `gross margin ${yr.grossMarginPct}%`, indent: true, color: "text-muted-foreground" },
                             { label: "Gross profit", value: yr.grossProfit, isBold: true },
-                            { label: "Less: fixed costs", value: -yr.fixedCosts, indent: true, color: "text-muted-foreground" },
+                            { label: "Less: fixed costs (employer NI/pension, rent, overheads)", value: -yr.fixedCosts, indent: true, color: "text-muted-foreground" },
                             { label: "Operating profit", value: yr.operatingProfit, isBold: true },
-                            { label: "Less: director salary (Abi Peters — total cost to business)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
                             { label: "Less: loan repayments (all active instruments)", value: -yr.loanRepayments, indent: true, color: "text-blue-600 dark:text-blue-400" },
-                            { label: "Net before buffer", value: netBeforeBuffer, isBold: true, suffix: `net margin ${yr.netMarginPct}%` },
-                            { label: "Less: 20% cash buffer retained", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
-                            { label: "Distributable profit", value: yr.distributable, isBold: true, isHighlight: true },
+                            { label: "Net pre-salary", value: yr.netPreSalary, isBold: true },
+                            { label: "Less: 20% cash buffer retained (profitable months only)", value: -yr.bufferRetained, indent: true, suffix: "kept as working capital", color: "text-muted-foreground" },
+                            { label: "Less: Abi's salary (drawn only when monthly net > 0)", value: -yr.directorSalary, indent: true, color: "text-orange-600 dark:text-orange-400" },
+                            { label: "Distributable profit", value: yr.distributable, isBold: true, isHighlight: true, suffix: `net margin ${yr.netMarginPct}%` },
                           ];
                           return (
                             <div key={yr.fyLabel} className={`rounded-lg border ${positive ? "border-emerald-200 dark:border-emerald-800" : "border-red-200 dark:border-red-800"}`}>
@@ -4900,6 +4899,62 @@ export default function FinancialsPage() {
                       </div>
                     );
                   })()}
+                  {/* ── Salary & Dividend Distribution Timeline ────────────────── */}
+                  {(() => {
+                    const fys = [
+                      { label: investmentSummary.annualSummary.y1.fyLabel, months: investmentSummary.annualSummary.y1.monthlyBreakdown },
+                      { label: investmentSummary.annualSummary.y2.fyLabel, months: investmentSummary.annualSummary.y2.monthlyBreakdown },
+                      { label: investmentSummary.annualSummary.y3.fyLabel, months: investmentSummary.annualSummary.y3.monthlyBreakdown },
+                    ].filter(fy => fy.months?.length > 0);
+                    if (!fys.length) return null;
+                    return (
+                      <div>
+                        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Salary &amp; Dividend Distribution Timeline</div>
+                        <div className="text-[10px] text-muted-foreground mb-2">
+                          Month-by-month: Abi's salary is only drawn when monthly net cash (after loan repayments) is positive.
+                          Dividends are distributable from the remaining 80% after that condition is met.
+                        </div>
+                        <div className="rounded-md border overflow-hidden">
+                          <div className="overflow-x-auto">
+                            {fys.map(fy => (
+                              <div key={fy.label} className="border-b last:border-0">
+                                <div className="px-3 py-1.5 bg-muted/30 text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">{fy.label}</div>
+                                <table className="w-full text-[10px]">
+                                  <thead>
+                                    <tr className="border-b border-border/30">
+                                      <td className="px-3 py-1 text-muted-foreground font-semibold w-28 shrink-0">Month</td>
+                                      {(fy.months as any[]).map((m: any) => (
+                                        <td key={m.tradingMonthIdx} className="px-2 py-1 text-center text-muted-foreground font-medium whitespace-nowrap min-w-[60px]">{m.monthLabel}</td>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr className="border-b border-border/20 bg-orange-50/30 dark:bg-orange-950/10">
+                                      <td className="px-3 py-1.5 text-muted-foreground">Abi salary drawn</td>
+                                      {(fy.months as any[]).map((m: any) => (
+                                        <td key={m.tradingMonthIdx} className={`px-2 py-1.5 text-center tabular-nums whitespace-nowrap ${m.canDraw ? "text-orange-700 dark:text-orange-400 font-semibold" : "text-muted-foreground/40"}`}>
+                                          {m.canDraw ? `+${formatGBP(m.directorDrawing)}` : "—"}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                    <tr className="bg-emerald-50/20 dark:bg-emerald-950/10">
+                                      <td className="px-3 py-1.5 text-muted-foreground">Distributable</td>
+                                      {(fy.months as any[]).map((m: any) => (
+                                        <td key={m.tradingMonthIdx} className={`px-2 py-1.5 text-center tabular-nums whitespace-nowrap ${m.distributable > 0 ? "text-emerald-700 dark:text-emerald-400 font-semibold" : "text-muted-foreground/40"}`}>
+                                          {m.distributable > 0 ? `+${formatGBP(m.distributable)}` : "—"}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {investmentSummary.cashflowNote && (
                     <div className="text-[10px] text-muted-foreground italic border border-border/30 rounded p-2">{investmentSummary.cashflowNote}</div>
                   )}

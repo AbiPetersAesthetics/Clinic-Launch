@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable, projectsTable } from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
-import { calcCliniciansMonthlyCost } from "../lib/financialEngine";
+import { calcCliniciansMonthlyCost, calcPayeBreakdown } from "../lib/financialEngine";
 
 const router = Router();
 
@@ -246,7 +246,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const ssRevenue = slotsPerMonth * occupancyPct * acv + ((fin as any).membershipRevenueGbp ?? 0);
 
   // ── Additional clinicians ─────────────────────────────────────────────────
-  interface ExtraClinician { id?: string; name?: string; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; }
+  interface ExtraClinician { id?: string; name?: string; isPrimary?: boolean; annualGrossSalaryGbp?: number; startDate?: string; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; }
   let additionalClinicians: ExtraClinician[] = [];
   try {
     const raw = (fin as any).additionalCliniciansJson;
@@ -257,23 +257,47 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   } catch {}
 
   // ── Fixed costs — prefer dynamic items table over legacy fields ─────────────
-  const clinicianCostInv = calcCliniciansMonthlyCost((fin as any).additionalCliniciansJson);
+  // Clinician costs split: primary (Abi) only pays employer NI + pension from fixed — her
+  // gross salary is drawn conditionally from profit. Secondary clinicians: full employer cost.
+  const clinicianFixedCost = (() => {
+    const raw = (fin as any).additionalCliniciansJson;
+    if (!raw) return 0;
+    try {
+      const parsed = JSON.parse(String(raw));
+      if (!Array.isArray(parsed)) return 0;
+      return Math.round(parsed.reduce((sum: number, c: any) => {
+        const g = (c.annualGrossSalaryGbp ?? 0);
+        if (g <= 0) return (c.salaryGbp ?? 0) > 0 ? sum + c.salaryGbp : sum;
+        if (c.isPrimary) {
+          const p = calcPayeBreakdown(g);
+          return sum + (p.employerNI + p.employerPension) / 12;
+        }
+        return sum + calcPayeBreakdown(g).totalCostMonthly;
+      }, 0));
+    } catch { return 0; }
+  })();
   const fixedMonthly = (fixedCostItems.length > 0
     ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
     : ((fin as any).rentGbp ?? 0) + ((fin as any).ratesGbp ?? 0) + ((fin as any).utilitiesGbp ?? 0) +
       ((fin as any).internetGbp ?? 0) + ((fin as any).insuranceGbp ?? 0) + ((fin as any).accountantGbp ?? 0) +
       ((fin as any).softwareGbp ?? 0) + ((fin as any).wasteContractGbp ?? 0) + ((fin as any).cleanerGbp ?? 0) +
-      ((fin as any).subscriptionsGbp ?? 0) + ((fin as any).financeRepaymentsGbp ?? 0)) + clinicianCostInv;
+      ((fin as any).subscriptionsGbp ?? 0) + ((fin as any).financeRepaymentsGbp ?? 0)) + clinicianFixedCost;
 
   // Variable costs: percentage of revenue + fixed monthly overhead items
   const variableRatio = (((fin as any).stockPercent ?? 0) + ((fin as any).commissionsPercent ?? 0)) / 100;
   const variableOverheads = ((fin as any).marketingGbp ?? 0) + ((fin as any).staffingGbp ?? 0) + ((fin as any).consumablesGbp ?? 0);
 
-  // Director salary/drawings
-  const targetDrawings = (fin as any).ownerDrawingsGbp || (fin as any).targetDrawingsGbp || 0;
+  // Primary clinician (Abi) monthly gross salary — drawn conditionally from profit.
+  // Falls back to legacy targetDrawingsGbp / ownerDrawingsGbp until the staff schedule is saved.
+  const primaryClin = additionalClinicians.find(c => c.isPrimary === true);
+  const primaryMonthlyGross = primaryClin && ((primaryClin as any).annualGrossSalaryGbp || 0) > 0
+    ? Math.round(((primaryClin as any).annualGrossSalaryGbp || 0) / 12)
+    : 0;
+  const targetDrawings = primaryMonthlyGross > 0
+    ? primaryMonthlyGross
+    : Math.round(((fin as any).targetDrawingsGbp || (fin as any).ownerDrawingsGbp || 0));
 
   const CASH_RESERVE_PCT = 0.20;
-  const MIN_RETAINED = 3000;
 
   // ── Financial Year alignment (Aug 1 – Jul 31) ─────────────────────────────
   const FY_START_MONTH = 7; // 0-indexed: August
@@ -294,32 +318,35 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     + (openingFirst.getMonth() - FY_START_MONTH);
   const fy1TradingMonths = 12 - preOpenMonthsInFY1; // e.g. 9 for Nov opening
 
-  // Loan repayments mapped to FY trading-month windows
-  const fy1Loans = loanRepaymentsInWindow(1, fy1TradingMonths);
-  const fy2Loans = loanRepaymentsInWindow(fy1TradingMonths + 1, fy1TradingMonths + 12);
-  const fy3Loans = loanRepaymentsInWindow(fy1TradingMonths + 13, fy1TradingMonths + 24);
-
   // ── Per-FY P&L calculator ─────────────────────────────────────────────────
-  function calcFyMetrics(fyStartYear: number, loanRepayments: number) {
+  // Director salary (Abi's gross salary) is drawn conditionally each month:
+  // only when (operating − monthly loan repayment) > 0, capped so 20% buffer
+  // is always retained. Fixed costs exclude Abi's gross salary (employer NI +
+  // pension stay fixed; gross salary is the conditional director draw).
+  function calcFyMetrics(fyStartYear: number) {
+    interface MonthBrk {
+      monthLabel: string; tradingMonthIdx: number;
+      operating: number; loanRepayment: number; netPreSalary: number;
+      buffer: number; directorDrawing: number; distributable: number; canDraw: boolean;
+    }
     let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
-    let totOperating = 0, totDirector = 0;
+    let totOperating = 0, totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
     let tradingMonthsCount = 0;
+    const monthlyBreakdown: MonthBrk[] = [];
 
     for (let m = 0; m < 12; m++) {
       const monthDate = new Date(fyStartYear, FY_START_MONTH + m, 1);
-      if (monthDate < openingFirst) continue; // skip pre-opening months
+      if (monthDate < openingFirst) continue;
 
       tradingMonthsCount++;
       const tradingMonthIdx = (monthDate.getFullYear() - openingFirst.getFullYear()) * 12
         + (monthDate.getMonth() - openingFirst.getMonth());
 
-      // Abi's revenue ramped from her trading month 0 using scenario ramp curve
       const f = getRampFactor(tradingMonthIdx);
       let monthRevenue = ssRevenue * f;
 
-      // Additional clinicians: each ramps independently from their own start date
       for (const clin of additionalClinicians) {
-        if (!clin.startDate) continue;
+        if (clin.isPrimary || !clin.startDate) continue;
         const clinStart = new Date(clin.startDate);
         const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
         if (monthDate < clinFirst) continue;
@@ -335,25 +362,52 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       const varCost = monthRevenue * variableRatio + variableOverheads * f;
       const gross = monthRevenue - varCost;
       const operating = gross - fixedMonthly;
-      const drawings = operating > MIN_RETAINED
-        ? Math.min(operating - MIN_RETAINED, targetDrawings)
-        : 0;
 
-      totRevenue  += monthRevenue;
-      totVariable += varCost;
-      totGross    += gross;
-      totFixed    += fixedMonthly;
-      totOperating += operating;
-      totDirector  += drawings;
+      // Monthly loan repayment for this specific trading month (1-based)
+      const tm1 = tradingMonthIdx + 1;
+      const monthLoan = loanInstruments.reduce((s, l) => {
+        const startM = Math.max(1, l.repaymentStartMonth);
+        const endM = startM + l.repaymentTermMonths - 1;
+        return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
+      }, 0);
+
+      // Director salary: only drawn when monthly net (after mandatory loan repayments) is positive
+      const netPre = operating - monthLoan;
+      let buffer = 0, drawings = 0, distrib = 0;
+      if (netPre > 0) {
+        buffer = Math.round(netPre * CASH_RESERVE_PCT);
+        const available = Math.max(netPre - buffer, 0);
+        drawings = Math.round(Math.min(targetDrawings, available));
+        distrib = Math.max(available - drawings, 0);
+      }
+
+      totRevenue      += monthRevenue;
+      totVariable     += varCost;
+      totGross        += gross;
+      totFixed        += fixedMonthly;
+      totOperating    += operating;
+      totLoans        += monthLoan;
+      totBuffer       += buffer;
+      totDirector     += drawings;
+      totDistributable += distrib;
+
+      monthlyBreakdown.push({
+        monthLabel:      monthDate.toLocaleString("en-GB", { month: "short", year: "2-digit" }),
+        tradingMonthIdx,
+        operating:       Math.round(operating),
+        loanRepayment:   Math.round(monthLoan),
+        netPreSalary:    Math.round(netPre),
+        buffer:          Math.round(buffer),
+        directorDrawing: Math.round(drawings),
+        distributable:   Math.round(distrib),
+        canDraw:         drawings > 0,
+      });
     }
-
-    const netAfterDirector = totOperating - totDirector;
-    const netAfterLoans = netAfterDirector - loanRepayments;
-    const bufferRetained = netAfterLoans > 0 ? Math.round(netAfterLoans * CASH_RESERVE_PCT) : 0;
-    const distributable  = Math.max(0, Math.round(netAfterLoans - bufferRetained));
 
     const shortY1 = String(fyStartYear).slice(2);
     const shortY2 = String(fyStartYear + 1).slice(2);
+    const netPreSalary   = totOperating - totLoans;
+    const netAfterDirector = netPreSalary - totDirector;
 
     return {
       fyLabel:           `FY${shortY1}/${shortY2}`,
@@ -362,21 +416,23 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       revenue:           Math.round(totRevenue),
       variableCosts:     Math.round(totVariable),
       grossProfit:       Math.round(totGross),
-      grossMarginPct:    totRevenue > 0 ? Math.round((totGross    / totRevenue) * 100) : 0,
+      grossMarginPct:    totRevenue > 0 ? Math.round((totGross / totRevenue) * 100) : 0,
       fixedCosts:        Math.round(totFixed),
       operatingProfit:   Math.round(totOperating),
+      loanRepayments:    Math.round(totLoans),
+      netPreSalary:      Math.round(netPreSalary),
+      bufferRetained:    Math.round(totBuffer),
       directorSalary:    Math.round(totDirector),
       netAfterDirector:  Math.round(netAfterDirector),
       netMarginPct:      totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
-      loanRepayments:    Math.round(loanRepayments),
-      bufferRetained,
-      distributable,
+      distributable:     Math.round(totDistributable),
+      monthlyBreakdown,
     };
   }
 
-  const y1 = calcFyMetrics(fy1StartYear, fy1Loans);
-  const y2 = calcFyMetrics(fy1StartYear + 1, fy2Loans);
-  const y3 = calcFyMetrics(fy1StartYear + 2, fy3Loans);
+  const y1 = calcFyMetrics(fy1StartYear);
+  const y2 = calcFyMetrics(fy1StartYear + 1);
+  const y3 = calcFyMetrics(fy1StartYear + 2);
 
   // ── Per-FY shareholder payouts ────────────────────────────────────────────
   function fyPayouts(fy: { distributable: number }) {
@@ -391,12 +447,11 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const y3WithPayouts = { ...y3, payouts: fyPayouts(y3) };
 
   // ── Rolling 12-month P&L from clinic opening (trading months 0–11) ──────────
-  // This crosses FY boundaries (e.g. Nov '26 – Oct '27) and is the fairest
-  // basis for an investor valuation of a new business.
+  // Crosses FY boundaries (e.g. Nov '26 – Oct '27); fairest investor basis.
+  // Same conditional-salary logic as calcFyMetrics.
   function calcRolling12m() {
     let totRevenue = 0, totVariable = 0, totGross = 0, totFixed = 0;
-    let totOperating = 0, totDirector = 0;
-    const rolling12mLoans = loanRepaymentsInWindow(1, 12);
+    let totOperating = 0, totLoans = 0, totBuffer = 0, totDirector = 0, totDistributable = 0;
 
     for (let tradingMonthIdx = 0; tradingMonthIdx < 12; tradingMonthIdx++) {
       const monthDate = new Date(
@@ -409,7 +464,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       let monthRevenue = ssRevenue * f;
 
       for (const clin of additionalClinicians) {
-        if (!clin.startDate) continue;
+        if (clin.isPrimary || !clin.startDate) continue;
         const clinStart = new Date(clin.startDate);
         const clinFirst = new Date(clinStart.getFullYear(), clinStart.getMonth(), 1);
         if (monthDate < clinFirst) continue;
@@ -425,50 +480,63 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       const varCost = monthRevenue * variableRatio + variableOverheads * f;
       const gross = monthRevenue - varCost;
       const operating = gross - fixedMonthly;
-      const drawings = operating > MIN_RETAINED
-        ? Math.min(operating - MIN_RETAINED, targetDrawings)
-        : 0;
 
-      totRevenue   += monthRevenue;
-      totVariable  += varCost;
-      totGross     += gross;
-      totFixed     += fixedMonthly;
-      totOperating += operating;
-      totDirector  += drawings;
+      const tm1 = tradingMonthIdx + 1;
+      const monthLoan = loanInstruments.reduce((s, l) => {
+        const startM = Math.max(1, l.repaymentStartMonth);
+        const endM = startM + l.repaymentTermMonths - 1;
+        return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
+      }, 0);
+
+      const netPre = operating - monthLoan;
+      let buffer = 0, drawings = 0, distrib = 0;
+      if (netPre > 0) {
+        buffer = Math.round(netPre * CASH_RESERVE_PCT);
+        const available = Math.max(netPre - buffer, 0);
+        drawings = Math.round(Math.min(targetDrawings, available));
+        distrib = Math.max(available - drawings, 0);
+      }
+
+      totRevenue      += monthRevenue;
+      totVariable     += varCost;
+      totGross        += gross;
+      totFixed        += fixedMonthly;
+      totOperating    += operating;
+      totLoans        += monthLoan;
+      totBuffer       += buffer;
+      totDirector     += drawings;
+      totDistributable += distrib;
     }
 
-    const netAfterDirector = totOperating - totDirector;
-    const netAfterLoans    = netAfterDirector - rolling12mLoans;
-    const bufferRetained   = netAfterLoans > 0 ? Math.round(netAfterLoans * CASH_RESERVE_PCT) : 0;
-    const distributable    = Math.max(0, Math.round(netAfterLoans - bufferRetained));
-
-    // Label: e.g. "Nov '26 – Oct '27"
+    const netPreSalary    = totOperating - totLoans;
+    const netAfterDirector = netPreSalary - totDirector;
     const endDate = new Date(openingFirst.getFullYear(), openingFirst.getMonth() + 11, 1);
     const fmt = (d: Date) =>
       `${d.toLocaleString("en-GB", { month: "short" })} '${String(d.getFullYear()).slice(2)}`;
 
     return {
-      label:           `${fmt(openingFirst)} – ${fmt(endDate)}`,
-      tradingMonths:   12,
-      revenue:         Math.round(totRevenue),
-      variableCosts:   Math.round(totVariable),
-      grossProfit:     Math.round(totGross),
-      grossMarginPct:  totRevenue > 0 ? Math.round((totGross     / totRevenue) * 100) : 0,
-      fixedCosts:      Math.round(totFixed),
-      operatingProfit: Math.round(totOperating),
-      directorSalary:  Math.round(totDirector),
+      label:            `${fmt(openingFirst)} – ${fmt(endDate)}`,
+      tradingMonths:    12,
+      revenue:          Math.round(totRevenue),
+      variableCosts:    Math.round(totVariable),
+      grossProfit:      Math.round(totGross),
+      grossMarginPct:   totRevenue > 0 ? Math.round((totGross / totRevenue) * 100) : 0,
+      fixedCosts:       Math.round(totFixed),
+      operatingProfit:  Math.round(totOperating),
+      loanRepayments:   Math.round(totLoans),
+      netPreSalary:     Math.round(netPreSalary),
+      bufferRetained:   Math.round(totBuffer),
+      directorSalary:   Math.round(totDirector),
       netAfterDirector: Math.round(netAfterDirector),
-      netMarginPct:    totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
-      loanRepayments:  Math.round(rolling12mLoans),
-      bufferRetained,
-      distributable,
+      netMarginPct:     totRevenue > 0 ? Math.round((netAfterDirector / totRevenue) * 100) : 0,
+      distributable:    Math.round(totDistributable),
     };
   }
 
   const rolling12m = calcRolling12m();
 
   const distributableProfit12m = rolling12m.distributable;
-  const totalLoanRepaymentsYear1 = fy1Loans;
+  const totalLoanRepaymentsYear1 = y1.loanRepayments;
 
   const totalSharesPercent = shareholders.reduce((s, sh) => s + sh.equityPercent, 0);
   const payouts = shareholders.map(sh => ({
