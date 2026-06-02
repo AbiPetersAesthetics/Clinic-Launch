@@ -1748,7 +1748,7 @@ export default function FinancialsPage() {
                                       )}
                                     </div>
                                   )}
-                                  {d.vatLiability > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">VAT liability (20%)</span><span className="text-amber-600">−{formatGBP(d.vatLiability)}</span></div>}
+                                  {(d.wincVat ?? 0) > 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">Winc VAT ({activeVat.pct})</span><span className="text-amber-600">−{formatGBP(d.wincVat)}</span></div>}
                                   {d.wincNet !== 0 && <div className="flex justify-between gap-4"><span className="text-muted-foreground">{clinicLabel} net</span><span className={d.wincNet >= 0 ? "text-emerald-600" : "text-destructive"}>{formatGBP(d.wincNet)}</span></div>}
                                   {d.projectCostBurn > 0 && (
                                     <div>
