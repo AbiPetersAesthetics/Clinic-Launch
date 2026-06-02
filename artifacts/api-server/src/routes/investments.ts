@@ -169,13 +169,38 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     ((fin as any)?.bedhMarketingGbp || 0) + ((fin as any)?.bedhamptonCostsGbp || 0) +
     ((fin as any)?.bedhSoftwareGbp || 0) + ((fin as any)?.bedhStaffingGbp || 0) +
     ((fin as any)?.bedhInsuranceGbp || 0);
-  const bedhNetMonthly       = Math.max(0, bedhMonthlyRevenue * (1 - bedhStockPct / 100) - bedhRunningCosts);
+  // Shared overhead costs Bedhampton bears pre-opening (dual items — split cost when Winchester opens)
+  const bedhDualCostsMonthly = fixedCostItems
+    .filter(item => (item as any).costType === "dual")
+    .reduce((s, item) => s + (item.amountGbp || 0), 0);
+
   const targetOpenDate       = project?.targetOpeningDate ? new Date(project.targetOpeningDate) : null;
   const nowDate              = new Date();
   const preOpenMonths        = targetOpenDate
     ? Math.max(0, (targetOpenDate.getFullYear() - nowDate.getFullYear()) * 12 + (targetOpenDate.getMonth() - nowDate.getMonth()))
     : 0;
-  const preOpenBedhNetGbp    = Math.round(bedhNetMonthly * preOpenMonths);
+
+  // Compute pre-opening Bedhampton net month-by-month to correctly account for:
+  //  1. Dual shared overhead costs (Bedhampton bears these pre-opening)
+  //  2. VAT registration: once rolling 12-month turnover crosses £90k, 20% VAT is deducted
+  const VAT_THRESHOLD_INV = 90000;
+  const VAT_RATE_INV = 0.20;
+  let vatCumulativeInv = (fin as any)?.vatCurrentTurnoverGbp ?? 0;
+  let vatRegisteredInv = vatCumulativeInv >= VAT_THRESHOLD_INV;
+  let preOpenBedhNetGbp = 0;
+  for (let m = 0; m < preOpenMonths; m++) {
+    if (!vatRegisteredInv) {
+      vatCumulativeInv += bedhMonthlyRevenue;
+      if (vatCumulativeInv >= VAT_THRESHOLD_INV) vatRegisteredInv = true;
+    }
+    const monthVat = vatRegisteredInv ? bedhMonthlyRevenue * VAT_RATE_INV : 0;
+    const monthNet = Math.max(0,
+      bedhMonthlyRevenue * (1 - bedhStockPct / 100) - bedhRunningCosts - bedhDualCostsMonthly - monthVat
+    );
+    preOpenBedhNetGbp += monthNet;
+  }
+  preOpenBedhNetGbp = Math.round(preOpenBedhNetGbp);
+
   const totalSelfFundableGbp = businessCapitalGbp + preOpenBedhNetGbp;
   const realFundingNeedGbp     = Math.max(0, capitalSelectedGbp   - totalSelfFundableGbp);
   const realFundingNeedHighGbp = Math.max(0, capitalHighRiskGbp   - totalSelfFundableGbp);
