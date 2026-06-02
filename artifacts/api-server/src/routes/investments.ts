@@ -322,7 +322,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     ? primaryMonthlyGross
     : Math.round(((fin as any).targetDrawingsGbp || (fin as any).ownerDrawingsGbp || 0));
 
-  const CASH_RESERVE_PCT = 0.20;
+  const MIN_SALARY_FLOOR = 3000; // Business always retains at least £3,000/mo before Abi draws salary
 
   // ── Financial Year alignment (Aug 1 – Jul 31) ─────────────────────────────
   const FY_START_MONTH = 7; // 0-indexed: August
@@ -396,14 +396,17 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
         return (tm1 >= startM && tm1 <= endM) ? s + l.monthlyPayment : s;
       }, 0);
 
-      // Director salary: only drawn when monthly net (after mandatory loan repayments) is positive
+      // Director salary: only drawn when monthly net (after loans) exceeds the £3,000 floor.
+      // The business always retains at least £3,000; Abi draws from the surplus above that.
       const netPre = operating - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
-      if (netPre > 0) {
-        buffer = Math.round(netPre * CASH_RESERVE_PCT);
-        const available = Math.max(netPre - buffer, 0);
-        drawings = Math.round(Math.min(targetDrawings, available));
-        distrib = Math.max(available - drawings, 0);
+      if (netPre > MIN_SALARY_FLOOR) {
+        const surplus = netPre - MIN_SALARY_FLOOR;
+        drawings = Math.round(Math.min(targetDrawings, surplus));
+        distrib  = Math.max(surplus - drawings, 0);
+        buffer   = MIN_SALARY_FLOOR;
+      } else if (netPre > 0) {
+        buffer = Math.round(netPre); // below floor — all retained, nothing drawn
       }
 
       totRevenue      += monthRevenue;
@@ -515,11 +518,13 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
 
       const netPre = operating - monthLoan;
       let buffer = 0, drawings = 0, distrib = 0;
-      if (netPre > 0) {
-        buffer = Math.round(netPre * CASH_RESERVE_PCT);
-        const available = Math.max(netPre - buffer, 0);
-        drawings = Math.round(Math.min(targetDrawings, available));
-        distrib = Math.max(available - drawings, 0);
+      if (netPre > MIN_SALARY_FLOOR) {
+        const surplus = netPre - MIN_SALARY_FLOOR;
+        drawings = Math.round(Math.min(targetDrawings, surplus));
+        distrib  = Math.max(surplus - drawings, 0);
+        buffer   = MIN_SALARY_FLOOR;
+      } else if (netPre > 0) {
+        buffer = Math.round(netPre);
       }
 
       totRevenue      += monthRevenue;
