@@ -164,7 +164,9 @@ router.put("/properties/:id/set-active", async (req, res) => {
       const n = normName(item.name);
       let newAmount: number | null = null;
       if (n.includes("rent") || n.includes("lease")) newAmount = monthlyRent;
-      else if (n.includes("rate") && !n.includes("stock") && !n.includes("booking") && !n.includes("commission")) newAmount = monthlyRates;
+      else if (n.includes("rate") && !n.includes("stock") && !n.includes("booking") && !n.includes("commission")) {
+        if (monthlyRates > 0) newAmount = monthlyRates;
+      }
       else if (n.includes("service") && (n.includes("charge") || n.includes("estate"))) newAmount = monthlyServiceCharge;
       if (newAmount !== null) {
         await db.update(fixedCostItemsTable)

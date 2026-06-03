@@ -144,7 +144,7 @@ Recent monthly revenue (last 6 completed months, sorted chronologically):
 ${trendLines}
 
 Use this data when assessing financial viability, rent affordability, cash runway, or launch readiness. Bedhampton income is the financial safety net for the Winchester launch period.
-The ${summary.avgGrossMarginPct}% gross margin is real, live data from the existing clinic and should be used as the assumed margin for both Bedhampton and Winchester financial projections.
+The ${summary.avgGrossMarginPct}% gross margin is real, live data from the existing Bedhampton clinic only. Do NOT apply this margin to Winchester — Winchester has its own independently modelled stock percentage and variable cost structure.
 ---`.trim();
   } catch {
     return `Note: Live Bedhampton clinic data is temporarily unavailable. Base financial analysis on the Winchester project assumptions provided in the question.`;

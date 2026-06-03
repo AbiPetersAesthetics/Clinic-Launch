@@ -760,18 +760,8 @@ Winchester ACV: £${wincAcv}${financial.wincAcvGbp === 0 ? ` ⚠ FALLBACK — wi
 Max monthly treatment slots (capacity ceiling): ${maxMonthlySlots} slots/month (${financial.treatmentRoomsCount} room × ${financial.practitionerHoursPerDay}hrs/day × ${financial.workingDaysPerMonth} clinic days)
 Revenue ceiling at 100% occupancy: £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
 
-⚠ CAPACITY MODEL CORRECTION (17 clinic days, not 22):
-The model now uses 17 realistic clinic days/month (accounts for weekends, admin, training, holidays).
-The previous 22-day assumption overstated capacity by 29%.
-  Old revenue ceiling (22 days): £${Math.round(financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv).toLocaleString()}/month
-  New revenue ceiling (17 days): £${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/month
-  Reduction: £${Math.round((financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 - maxMonthlySlots) * wincAcv).toLocaleString()}/month less ceiling revenue
-
 Break-even monthly revenue: £${breakEvenRevenue.toLocaleString()}
-Break-even occupancy needed (17-day model): ~${beOcc}% of capacity
-  (Old 22-day break-even occupancy was ~${financial.treatmentRoomsCount > 0 && wincAcv > 0 ? Math.round((breakEvenRevenue / (financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv)) * 100) : 0}% — now ${beOcc}% under corrected model)
-
-MANDATORY: The executiveSummary must state the revenue ceiling under 17 days (£${Math.round(maxMonthlySlots * wincAcv).toLocaleString()}/mo at 100% occ), the break-even occupancy now required (${beOcc}%), and compare to the old 22-day ceiling (£${Math.round(financial.treatmentRoomsCount * financial.practitionerHoursPerDay * 22 * wincAcv).toLocaleString()}/mo). This context is material to the go/no-go decision.
+Break-even occupancy needed: ~${beOcc}% of capacity
 
 FORMULA for each month's net P&L (VAT-adjusted):
   netProfitLoss = projectedRevenue - totalMonthlyCost - (projectedRevenue × variableCostRate) - (projectedRevenue × vatRate)
@@ -1247,7 +1237,7 @@ Return ONLY valid JSON (no markdown fences). Schema:
     { "clause": "Use class — clinical aesthetics", "status": "must-confirm", "yourPosition": "Class E confirmed for medical aesthetics / clinical use", "landlordPosition": "<may need consent for clinical use>", "financialImpact": "Deal-breaker if refused — cannot trade", "importance": "critical" },
     { "clause": "Fit-out contribution", "status": "negotiate", "yourPosition": "<ask amount>", "landlordPosition": "<not standard but negotiable>", "financialImpact": "${fitOutCostEstimate > 0 ? `£${fitOutCostEstimate.toLocaleString()} estimated total fit-out` : "Significant fit-out investment required"}", "importance": "high" },
     { "clause": "Subletting / assignment", "status": "negotiate", "yourPosition": "<flexibility to assign or sublet>", "landlordPosition": "<landlord consent required>", "financialImpact": "<exit option value>", "importance": "medium" },
-    { "clause": "Rent deposit", "status": "negotiate", "yourPosition": "3 months or personal guarantee", "landlordPosition": "3–6 months upfront", "financialImpact": "${monthlyRent * 3}–${monthlyRent * 6} cash tied up", "importance": "high" },
+    { "clause": "Rent deposit", "status": "negotiate", "yourPosition": "2 months (agreed in heads of terms)", "landlordPosition": "3–6 months upfront", "financialImpact": "${monthlyRent * 2} cash tied up at exchange", "importance": "high" },
     { "clause": "Insurance obligations", "status": "must-confirm", "yourPosition": "<clinical liability + contents>", "landlordPosition": "<building insurance landlord; contents/liability tenant>", "financialImpact": "Clinical liability essential pre-trade", "importance": "medium" },
     { "clause": "Signage / fascia rights", "status": "must-confirm", "yourPosition": "Premium fascia signage essential for brand", "landlordPosition": "<landlord consent required>", "financialImpact": "Brand visibility directly impacts marketing CAC", "importance": "medium" },
     { "clause": "Planning consent for clinical use", "status": "must-confirm", "yourPosition": "Confirmed before exchange", "landlordPosition": "<Class E may need specific clinical consent>", "financialImpact": "Deal-breaker if retrospective — cannot open", "importance": "critical" }

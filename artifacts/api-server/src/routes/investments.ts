@@ -272,7 +272,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const acv = ((fin as any).wincAcvGbp || (fin as any).averageClientValueGbp || 155) * baseProfile.acvMultiplier;
   const rooms = (fin as any).treatmentRoomsCount ?? 1;
   const hours = (fin as any).practitionerHoursPerDay ?? 7;
-  const days = (fin as any).workingDaysPerMonth ?? 17;
+  const days = (fin as any).workingDaysPerMonth ?? 22;
   const slotsPerMonth = rooms * hours * days;
   const occupancyPct = targetOccPct / 100;
   const ssRevenue = slotsPerMonth * occupancyPct * acv + ((fin as any).membershipRevenueGbp ?? 0);
@@ -353,9 +353,6 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   // ── Bedhampton parameters (mirroring financials.ts cashflow logic) ───────────
   const bedhRevGbp      = ((fin as any).existingClinicRevenueGbp || 0) + ((fin as any).bedhMembershipRevenueGbp || 0);
   const bedhStockRatio  = ((fin as any).bedhStockPercent ?? 35) / 100;
-  const bedhRunCosts    = ((fin as any).bedhRentGbp || 0) + ((fin as any).bedhMarketingGbp || 0) +
-                          ((fin as any).bedhamptonCostsGbp || 0) + ((fin as any).bedhSoftwareGbp || 0) +
-                          ((fin as any).bedhStaffingGbp || 0) + ((fin as any).bedhInsuranceGbp || 0);
   const dualCostsMonthly = fixedCostItems
     .filter(item => (item as any).costType === "dual")
     .reduce((s, item) => s + (item.amountGbp || 0), 0);

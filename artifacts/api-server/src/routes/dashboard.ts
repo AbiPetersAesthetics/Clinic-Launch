@@ -111,7 +111,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     const scenarioMap: Record<string, { rev: number; net: number }> = {
       conservative, realistic, aggressive,
       // stress tests fall back to conservative figures
-      delayed_ramp: conservative, economic_downturn: conservative, stress_test: conservative,
+      delayed_ramp: realistic, economic_downturn: conservative, stress_test: conservative,
     };
     const sel = scenarioMap[selectedScenario] ?? realistic;
     selectedNetProfit = sel.net;
@@ -148,7 +148,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     const projectedAnnualWinc = realistic.rev * 12;
     const vatCurrentTurnover = financial.vatCurrentTurnoverGbp || 0;
     const combinedTurnover = vatCurrentTurnover + projectedAnnualWinc;
-    vatRisk = combinedTurnover > 85000;
+    vatRisk = combinedTurnover > 90000;
     vatHeadroomGbp = Math.max(0, 90000 - combinedTurnover);
     vatMonthsToThreshold = realistic.rev > 0
       ? Math.max(0, Math.ceil((90000 - vatCurrentTurnover) / realistic.rev))

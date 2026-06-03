@@ -15,14 +15,14 @@
 export const VAT_THRESHOLD = 90000;
 export const VAT_RATE = 0.20;
 
-// ─── UK PAYE / employer cost calculator (2024/25 rates) ──────────────────────
+// ─── UK PAYE / employer cost calculator (2025/26 rates) ──────────────────────
 // Spec: employee NI 12% above £12,570 to £50,270 / 2% above; employer NI 13.8%
 // above £9,100; employer pension 3% on qualifying earnings £6,240–£50,270.
 export function calcPayeBreakdown(annualGross: number) {
   const g = Math.max(0, annualGross);
   const PRIMARY_THRESHOLD = 12570;
   const UPPER_EARNINGS = 50270;
-  const EMPLOYER_NI_THRESHOLD = 9100;
+  const EMPLOYER_NI_THRESHOLD = 5000;
   const PENSION_LOWER = 6240;
   const PENSION_UPPER = 50270;
   const PERSONAL_ALLOWANCE = 12570;
@@ -35,7 +35,7 @@ export function calcPayeBreakdown(annualGross: number) {
   }
 
   // Employer NI: 13.8% on earnings above £9,100
-  const employerNI = g > EMPLOYER_NI_THRESHOLD ? (g - EMPLOYER_NI_THRESHOLD) * 0.138 : 0;
+  const employerNI = g > EMPLOYER_NI_THRESHOLD ? (g - EMPLOYER_NI_THRESHOLD) * 0.15 : 0;
 
   // Employer pension: 3% on qualifying earnings between £6,240 and £50,270
   const pensionEarnings = Math.max(0, Math.min(g, PENSION_UPPER) - PENSION_LOWER);

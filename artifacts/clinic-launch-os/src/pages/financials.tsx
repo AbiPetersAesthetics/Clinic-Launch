@@ -191,7 +191,7 @@ function calcPayeBreakdown(annualGross: number) {
   const employeeNI = g > 12570
     ? (Math.min(g, 50270) - 12570) * 0.12 + (g > 50270 ? (g - 50270) * 0.02 : 0)
     : 0;
-  const employerNI = g > 9100 ? (g - 9100) * 0.138 : 0;
+  const employerNI = g > 5000 ? (g - 5000) * 0.15 : 0;
   const employerPension = Math.max(0, Math.min(g, 50270) - 6240) * 0.03;
   const totalCostAnnual = g + employerNI + employerPension;
   const incomeTax = g > 12570
@@ -3253,7 +3253,7 @@ export default function FinancialsPage() {
                           </button>
                         )}
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Costs shown as total employer cost to business (gross + employer NI 13.8% above £9,100 + pension 3% on qualifying earnings). Max 4 clinicians.</p>
+                      <p className="text-[10px] text-muted-foreground">Costs shown as total employer cost to business (gross + employer NI 15% above £5,000 + pension 3% on qualifying earnings). Max 4 clinicians.</p>
 
                       {additionalClinicians.map((clin, idx) => {
                         const isPrimary = clin.isPrimary === true;
@@ -3333,7 +3333,7 @@ export default function FinancialsPage() {
                                   <span className="font-medium text-foreground/70">£{paye.employeeNI.toLocaleString()} /yr</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">
-                                  <span>Employer NI (13.8% above £9,100)</span>
+                                  <span>Employer NI (15% above £5,000)</span>
                                   <span className="font-medium text-foreground/70">£{paye.employerNI.toLocaleString()} /yr</span>
                                 </div>
                                 <div className="flex justify-between text-muted-foreground">

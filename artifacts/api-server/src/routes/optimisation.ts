@@ -348,7 +348,8 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
       : calcLegacyFixed(fin);
     const monthlyVariableCosts =
       fin.marketingGbp + fin.staffingGbp + fin.consumablesGbp;
-    const monthlyPersonalNeeds = fin.personalSalaryNeedsGbp + fin.ownerDrawingsGbp;
+    const effectiveDrawings = fin.ownerDrawingsGbp || fin.targetDrawingsGbp || 0;
+    const monthlyPersonalNeeds = fin.personalSalaryNeedsGbp + effectiveDrawings;
     const monthlyIncome = fin.existingClinicRevenueGbp;
     const monthlyBurn = monthlyFixedCosts + monthlyVariableCosts + monthlyPersonalNeeds - monthlyIncome;
 
