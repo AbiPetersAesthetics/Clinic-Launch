@@ -2124,6 +2124,46 @@ export default function ProjectPage() {
                     </div>
                   )}
 
+                  {/* Monthly spend breakdown table */}
+                  {pc.monthlySpend?.length > 0 && (() => {
+                    const nonZero = (pc.monthlySpend as any[]).filter((m: any) => m.planned > 0 || m.actual > 0 || m.committed > 0);
+                    if (nonZero.length === 0) return null;
+                    return (
+                      <div className="rounded-lg border overflow-hidden text-xs">
+                        <div className="bg-muted/50 px-3 py-1.5 border-b flex items-center justify-between">
+                          <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Monthly Spend Breakdown</span>
+                          <span className="text-muted-foreground text-[10px]">By invoice / start date</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="border-b bg-muted/30">
+                                <th className="text-left px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Month</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Planned</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Actual</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Committed</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Cum. Planned</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Cum. Actual</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/50">
+                              {(pc.monthlySpend as any[]).filter((m: any) => m.planned > 0 || m.actual > 0 || m.committed > 0).map((m: any, i: number) => (
+                                <tr key={i} className={i % 2 !== 0 ? "bg-muted/15" : ""}>
+                                  <td className="px-3 py-1.5 font-medium">{m.month}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.planned > 0 ? formatGBP(m.planned) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">{m.actual > 0 ? formatGBP(m.actual) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-blue-700 dark:text-blue-400">{m.committed > 0 ? formatGBP(m.committed) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.cumPlanned > 0 ? formatGBP(m.cumPlanned) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums">{m.cumActual > 0 ? formatGBP(m.cumActual) : "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Recorded spend table */}
                   {pc.taskActuals?.length > 0 && (
                     <div className="rounded-lg border overflow-hidden text-xs">
@@ -2383,7 +2423,7 @@ export default function ProjectPage() {
             <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-4 py-3">
               <span className="text-muted-foreground text-sm shrink-0">ℹ</span>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                David's target launch cap is <strong>£60,000 inc VAT</strong>. The full clean tracker includes all known legal, build, FF&amp;E, compliance, stock, marketing and contingency lines. If all core lines are included, the true cash requirement may sit closer to <strong>£65k–£70k</strong>. Anything above £70k is unapproved. Use the deferred/stretch toggles to protect the £60k working cap.
+                David's approved launch cap is <strong>{formatGBP((projectControls as any)?.davidApprovedCapGbp ?? 80000)} inc VAT</strong>. The full tracker covers legal, build, FF&amp;E, compliance, stock, marketing and contingency. The stretch / risk zone runs to <strong>{formatGBP(Math.round(((projectControls as any)?.davidApprovedCapGbp ?? 80000) * 7 / 6))}</strong> — anything above that is unapproved. Use the deferred/stretch toggles to control the selected total.
               </p>
             </div>
 
