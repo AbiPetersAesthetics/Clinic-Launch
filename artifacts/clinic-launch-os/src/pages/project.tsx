@@ -1286,6 +1286,7 @@ export default function ProjectPage() {
     actualCost: "",
     committedCost: "",
     paidStatus: "paid",
+    vatInclusive: "inc",
     invoiceRef: "",
     invoiceDate: "",
     varianceNote: "",
@@ -3166,6 +3167,21 @@ export default function ProjectPage() {
             </div>
 
             <div className="space-y-1.5">
+              <label className="text-sm font-medium">VAT</label>
+              <Select
+                value={recordSpendData.vatInclusive}
+                onValueChange={(v) => setRecordSpendData(d => ({ ...d, vatInclusive: v }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inc">Inc VAT — amount already includes VAT</SelectItem>
+                  <SelectItem value="exc">Ex VAT — VAT not included in this figure</SelectItem>
+                  <SelectItem value="exempt">VAT exempt / not applicable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
               <label className="text-sm font-medium">Payment status</label>
               <Select
                 value={recordSpendData.paidStatus}
@@ -3227,6 +3243,7 @@ export default function ProjectPage() {
                 };
                 if (recordSpendData.actualCost) patch.actualCost = parseFloat(recordSpendData.actualCost);
                 if (recordSpendData.committedCost) patch.committedCost = parseFloat(recordSpendData.committedCost);
+                patch.vatInclusive = recordSpendData.vatInclusive === "inc";
                 if (recordSpendData.invoiceRef) patch.invoiceRef = recordSpendData.invoiceRef;
                 if (recordSpendData.invoiceDate) patch.invoiceDate = recordSpendData.invoiceDate;
                 if (recordSpendData.varianceNote) patch.varianceNote = recordSpendData.varianceNote;
@@ -3237,7 +3254,7 @@ export default function ProjectPage() {
                     onSuccess: () => {
                       invalidateAfterTaskChange();
                       setShowRecordSpend(false);
-                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", invoiceRef: "", invoiceDate: "", varianceNote: "" });
+                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "" });
                     },
                   }
                 );
