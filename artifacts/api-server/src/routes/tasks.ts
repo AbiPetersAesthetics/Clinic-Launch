@@ -377,6 +377,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
           paidStatus: paid,
           invoiceRef: t.invoiceRef,
           invoiceDate: t.invoiceDate,
+          invoiceVatStatus: t.invoiceVatStatus,
           paymentDate: t.paymentDate,
           varianceNote: t.varianceNote,
           supplier: t.supplier,

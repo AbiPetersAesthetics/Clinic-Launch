@@ -1295,6 +1295,13 @@ export default function ProjectPage() {
     uploading: false,
   });
 
+  const [editingActualId, setEditingActualId] = useState<number | null>(null);
+  const [editActualData, setEditActualData] = useState<{
+    actualCost: string; committedCost: string; paidStatus: string;
+    vatInclusive: string; invoiceRef: string; invoiceDate: string; varianceNote: string;
+  }>({ actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "" });
+  const [savingActualId, setSavingActualId] = useState<number | null>(null);
+
   const highlightedTaskId = (() => {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get("taskId");
@@ -2140,26 +2147,168 @@ export default function ProjectPage() {
                         <span className="text-muted-foreground text-[10px]">{pc.taskActuals.length} task{pc.taskActuals.length !== 1 ? "s" : ""}</span>
                       </div>
                       <div className="divide-y">
-                        {(pc.taskActuals as any[]).slice(0, 12).map((ta: any) => {
+                        {(pc.taskActuals as any[]).slice(0, 20).map((ta: any) => {
                           const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost : ta.committedCost;
+                          const isExpanded = editingActualId === ta.taskId;
                           return (
-                            <div key={ta.taskId} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 items-center">
-                              <div className="min-w-0">
-                                <p className="font-medium truncate">{ta.taskTitle}</p>
-                                {ta.invoiceRef && <p className="text-muted-foreground/70 text-[10px]">{ta.invoiceRef}{ta.invoiceDate ? ` · ${ta.invoiceDate}` : ""}</p>}
-                              </div>
-                              <span className="tabular-nums text-muted-foreground text-right">{formatGBP(ta.plannedCost)}</span>
-                              <span className={`tabular-nums font-medium text-right ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
-                                {formatGBP(effectiveCost)}
-                                {ta.varianceGbp !== 0 && <span className="text-[10px] ml-1 opacity-70">({ta.varianceGbp > 0 ? "+" : ""}{formatGBP(ta.varianceGbp)})</span>}
-                              </span>
-                              <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
-                                ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
-                                : ta.paidStatus === "committed" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700"
-                                : "text-muted-foreground"
-                              }`}>
-                                {ta.paidStatus === "paid" ? "Paid" : ta.paidStatus === "committed" ? "Committed" : "Unpaid"}
-                              </Badge>
+                            <div key={ta.taskId} className="divide-y">
+                              {/* Summary row — click to expand */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (isExpanded) { setEditingActualId(null); return; }
+                                  setEditingActualId(ta.taskId);
+                                  setEditActualData({
+                                    actualCost: ta.actualCost > 0 ? String(ta.actualCost) : "",
+                                    committedCost: ta.committedCost > 0 ? String(ta.committedCost) : "",
+                                    paidStatus: ta.paidStatus ?? "paid",
+                                    vatInclusive: (ta.invoiceVatStatus ?? "inc"),
+                                    invoiceRef: ta.invoiceRef ?? "",
+                                    invoiceDate: ta.invoiceDate ?? "",
+                                    varianceNote: ta.varianceNote ?? "",
+                                  });
+                                }}
+                                className="w-full grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-2 items-center hover:bg-muted/30 transition-colors text-left"
+                              >
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{ta.taskTitle}</p>
+                                  {ta.invoiceRef && <p className="text-muted-foreground/70 text-[10px]">{ta.invoiceRef}{ta.invoiceDate ? ` · ${ta.invoiceDate}` : ""}</p>}
+                                </div>
+                                <span className="tabular-nums text-muted-foreground text-right">{formatGBP(ta.plannedCost)}</span>
+                                <span className={`tabular-nums font-medium text-right ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                                  {formatGBP(effectiveCost)}
+                                  {ta.varianceGbp !== 0 && <span className="text-[10px] ml-1 opacity-70">({ta.varianceGbp > 0 ? "+" : ""}{formatGBP(ta.varianceGbp)})</span>}
+                                </span>
+                                <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
+                                  ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
+                                  : ta.paidStatus === "committed" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700"
+                                  : "text-muted-foreground"
+                                }`}>
+                                  {ta.paidStatus === "paid" ? "Paid" : ta.paidStatus === "committed" ? "Committed" : "Unpaid"}
+                                </Badge>
+                                <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                              </button>
+
+                              {/* Inline edit panel */}
+                              {isExpanded && (
+                                <div className="bg-muted/20 border-t px-3 py-3 space-y-3">
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">Edit spend record</p>
+                                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Actual paid (£)</label>
+                                      <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={editActualData.actualCost}
+                                        onChange={e => setEditActualData(d => ({ ...d, actualCost: e.target.value }))}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Committed (£)</label>
+                                      <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={editActualData.committedCost}
+                                        onChange={e => setEditActualData(d => ({ ...d, committedCost: e.target.value }))}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Status</label>
+                                      <Select value={editActualData.paidStatus} onValueChange={v => setEditActualData(d => ({ ...d, paidStatus: v }))}>
+                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="paid">Paid</SelectItem>
+                                          <SelectItem value="committed">Committed</SelectItem>
+                                          <SelectItem value="unpaid">Unpaid</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">VAT</label>
+                                      <Select value={editActualData.vatInclusive} onValueChange={v => setEditActualData(d => ({ ...d, vatInclusive: v }))}>
+                                        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="inc">Inc VAT</SelectItem>
+                                          <SelectItem value="exc">Ex VAT</SelectItem>
+                                          <SelectItem value="exempt">Exempt</SelectItem>
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Invoice ref</label>
+                                      <Input
+                                        placeholder="INV-001"
+                                        value={editActualData.invoiceRef}
+                                        onChange={e => setEditActualData(d => ({ ...d, invoiceRef: e.target.value }))}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Invoice date</label>
+                                      <Input
+                                        type="date"
+                                        value={editActualData.invoiceDate}
+                                        onChange={e => setEditActualData(d => ({ ...d, invoiceDate: e.target.value }))}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="space-y-1 sm:col-span-1">
+                                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Variance note</label>
+                                      <Input
+                                        placeholder="Why different from plan?"
+                                        value={editActualData.varianceNote}
+                                        onChange={e => setEditActualData(d => ({ ...d, varianceNote: e.target.value }))}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 pt-1">
+                                    <Button
+                                      size="sm"
+                                      className="h-7 text-xs px-3"
+                                      disabled={savingActualId === ta.taskId}
+                                      onClick={async () => {
+                                        setSavingActualId(ta.taskId);
+                                        try {
+                                          const patch: Record<string, unknown> = {
+                                            paidStatus: editActualData.paidStatus,
+                                            invoiceVatStatus: editActualData.vatInclusive,
+                                            invoiceRef: editActualData.invoiceRef || null,
+                                            invoiceDate: editActualData.invoiceDate || null,
+                                            varianceNote: editActualData.varianceNote || null,
+                                          };
+                                          if (editActualData.actualCost) patch.actualCost = parseFloat(editActualData.actualCost);
+                                          if (editActualData.committedCost) patch.committedCost = parseFloat(editActualData.committedCost);
+                                          if (activePropertyId) patch.propertyId = activePropertyId;
+                                          await fetch(`/api/tasks/${ta.taskId}`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify(patch),
+                                          });
+                                          queryClient.invalidateQueries({ queryKey: ["projectControls"] });
+                                          setEditingActualId(null);
+                                        } finally {
+                                          setSavingActualId(null);
+                                        }
+                                      }}
+                                    >
+                                      {savingActualId === ta.taskId ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Saving…</> : <><Check className="w-3 h-3 mr-1" />Save changes</>}
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs px-3"
+                                      onClick={() => setEditingActualId(null)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
