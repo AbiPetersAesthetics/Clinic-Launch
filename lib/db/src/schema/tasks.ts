@@ -54,6 +54,7 @@ export const tasksTable = pgTable("launch_tasks", {
   invoiceRef: text("invoice_ref"),
   invoiceDate: text("invoice_date"),
   varianceNote: text("variance_note"),
+  invoiceVatStatus: text("invoice_vat_status"), // 'inc' | 'exc' | 'exempt'
   invoiceFileUrl: text("invoice_file_url"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

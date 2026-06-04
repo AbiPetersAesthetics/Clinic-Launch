@@ -103,7 +103,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
       "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes",
       "costVatStatus", "supplyScope", "procurementStatus",
-      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceFileUrl"] as const;
+      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceVatStatus", "invoiceFileUrl"] as const;
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];
@@ -262,6 +262,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         invoiceRef: (o.invoiceRef ?? (t as any).invoiceRef) as string | null,
         invoiceDate: (o.invoiceDate ?? (t as any).invoiceDate) as string | null,
         varianceNote: (o.varianceNote ?? (t as any).varianceNote) as string | null,
+        invoiceVatStatus: (o.invoiceVatStatus ?? (t as any).invoiceVatStatus) as string | null,
+        invoiceFileUrl: (o.invoiceFileUrl ?? (t as any).invoiceFileUrl) as string | null,
       } as Record<string, unknown>;
     });
 
@@ -273,21 +275,30 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     let actualSpend = 0;
     let committedCosts = 0;
     let forecastFinalCost = 0;
+    let reclaimableVat = 0;
 
     for (const task of allTasks) {
       const planned = (task.selectedCost as number) ?? 0;
       const actual = (task.actualCost as number) ?? 0;
       const committed = (task.committedCost as number) ?? 0;
       const paid = task.paidStatus as string | null;
+      const vatStatus = task.invoiceVatStatus as string | null;
 
       plannedBudget += planned;
 
       if (paid === "paid" && actual > 0) {
         actualSpend += actual;
         forecastFinalCost += actual;
+        // Reclaimable VAT at standard 20% rate
+        if (vatStatus === "inc") reclaimableVat += actual / 6;       // 20/120 of gross
+        else if (vatStatus === "exc") reclaimableVat += actual * 0.20; // 20% on top
+        // "exempt" or null → 0
       } else if (committed > 0) {
         committedCosts += committed;
         forecastFinalCost += committed;
+        // Include expected reclaimable on committed costs
+        if (vatStatus === "inc") reclaimableVat += committed / 6;
+        else if (vatStatus === "exc") reclaimableVat += committed * 0.20;
       } else {
         forecastFinalCost += planned;
       }
@@ -295,6 +306,9 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
 
     const varianceGbp = forecastFinalCost - plannedBudget;
     const variancePct = plannedBudget > 0 ? (varianceGbp / plannedBudget) * 100 : 0;
+    const uncommittedBudget = plannedBudget - actualSpend - committedCosts;
+    const capHeadroomGbp = davidApprovedCapGbp - forecastFinalCost;
+    const outerLimitGbp = davidApprovedCapGbp * (70000 / 60000); // outer limit scales with cap
 
     const hasSomeActuals = actualSpend > 0 || committedCosts > 0;
     let budgetStatus = "no_actuals";
@@ -440,6 +454,10 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       variancePct: Math.round(variancePct * 10) / 10,
       budgetStatus,
       davidApprovedCapGbp,
+      reclaimableVat: Math.round(reclaimableVat),
+      uncommittedBudget: Math.round(uncommittedBudget),
+      capHeadroomGbp: Math.round(capHeadroomGbp),
+      outerLimitGbp: Math.round(outerLimitGbp),
       taskCompletionPct,
       spendCompletionPct,
       weightedCompletionPct,

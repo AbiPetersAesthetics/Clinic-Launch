@@ -2026,6 +2026,63 @@ export default function ProjectPage() {
                     ))}
                   </div>
 
+                  {/* Secondary KPI row — VAT reclaim, headroom, uncommitted */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Reclaimable VAT */}
+                    <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
+                      <div className="rounded-md bg-emerald-100 dark:bg-emerald-950/50 p-2 shrink-0">
+                        <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Reclaimable VAT</p>
+                        <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatGBP(pc.reclaimableVat ?? 0)}</p>
+                        <p className="text-[10px] text-muted-foreground">from paid &amp; committed spend · 20% std rate</p>
+                      </div>
+                    </div>
+
+                    {/* Headroom to David's cap */}
+                    {(() => {
+                      const headroom = pc.capHeadroomGbp ?? (davidCap - pc.forecastFinalCost);
+                      const isOver = headroom < 0;
+                      const isTight = !isOver && headroom < 5000;
+                      const hCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
+                      const bgCls = isOver ? "bg-red-100 dark:bg-red-950/50" : isTight ? "bg-amber-100 dark:bg-amber-950/50" : "bg-emerald-100 dark:bg-emerald-950/50";
+                      const iconCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
+                          <div className={`rounded-md ${bgCls} p-2 shrink-0`}>
+                            <TrendingDown className={`w-4 h-4 ${iconCls}`} />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Cap Headroom</p>
+                            <p className={`text-base font-bold tabular-nums ${hCls}`}>
+                              {isOver ? "−" : "+"}{formatGBP(Math.abs(headroom))}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground">forecast vs {formatGBP(davidCap)} approved cap</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Uncommitted budget */}
+                    {(() => {
+                      const uncommitted = pc.uncommittedBudget ?? 0;
+                      const uCls = uncommitted < 0 ? "text-destructive" : "text-foreground";
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
+                          <div className="rounded-md bg-muted/60 p-2 shrink-0">
+                            <Minus className="w-4 h-4 text-muted-foreground" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Uncommitted</p>
+                            <p className={`text-base font-bold tabular-nums ${uCls}`}>{formatGBP(uncommitted)}</p>
+                            <p className="text-[10px] text-muted-foreground">planned not yet spent or ordered</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   {/* Budget health badge */}
                   <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${cfg.border}`}>
                     <span className={`font-bold shrink-0 ${cfg.head}`}>{cfg.icon}</span>
@@ -3306,7 +3363,7 @@ export default function ProjectPage() {
                 };
                 if (recordSpendData.actualCost) patch.actualCost = parseFloat(recordSpendData.actualCost);
                 if (recordSpendData.committedCost) patch.committedCost = parseFloat(recordSpendData.committedCost);
-                patch.vatInclusive = recordSpendData.vatInclusive === "inc";
+                patch.invoiceVatStatus = recordSpendData.vatInclusive; // "inc" | "exc" | "exempt"
                 if (recordSpendData.invoiceRef) patch.invoiceRef = recordSpendData.invoiceRef;
                 if (recordSpendData.invoiceDate) patch.invoiceDate = recordSpendData.invoiceDate;
                 if (recordSpendData.varianceNote) patch.varianceNote = recordSpendData.varianceNote;
