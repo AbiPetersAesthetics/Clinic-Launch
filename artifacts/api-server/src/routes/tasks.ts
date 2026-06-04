@@ -147,12 +147,16 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
       .where(eq(tasksTable.id, id))
       .returning();
 
-    // Return the merged task: base (with global updates) + property override
+    // Return the merged task: base (with global updates) + property override.
+    // IMPORTANT: preserve the base task's `id` — overrideRow has its own PK which
+    // must not overwrite the task id or React Query will cache against the wrong key.
+    const baseRecord = updatedBase ?? existing;
     const mergedTask = {
-      ...(updatedBase ?? existing),
+      ...baseRecord,
       ...overrideRow,
-      dependencies: (updatedBase ?? existing).dependencies
-        ? JSON.parse((updatedBase ?? existing).dependencies as string)
+      id: baseRecord.id,          // always the task's real id, never the override PK
+      dependencies: baseRecord.dependencies
+        ? JSON.parse(baseRecord.dependencies as string)
         : [],
       _hasOverride: true,
     };

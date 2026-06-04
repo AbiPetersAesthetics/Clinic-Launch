@@ -100,6 +100,16 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         costVatStatus: o.costVatStatus !== undefined ? o.costVatStatus : t.costVatStatus,
         supplyScope: o.supplyScope !== undefined ? o.supplyScope : t.supplyScope,
         procurementStatus: o.procurementStatus !== undefined ? o.procurementStatus : t.procurementStatus,
+        // Actuals fields — always take override value (null means "not recorded yet")
+        actualCost: o.actualCost !== undefined ? o.actualCost : (t as any).actualCost,
+        committedCost: o.committedCost !== undefined ? o.committedCost : (t as any).committedCost,
+        paidStatus: o.paidStatus !== undefined ? o.paidStatus : (t as any).paidStatus,
+        paymentDate: o.paymentDate !== undefined ? o.paymentDate : (t as any).paymentDate,
+        invoiceRef: o.invoiceRef !== undefined ? o.invoiceRef : (t as any).invoiceRef,
+        invoiceDate: o.invoiceDate !== undefined ? o.invoiceDate : (t as any).invoiceDate,
+        varianceNote: o.varianceNote !== undefined ? o.varianceNote : (t as any).varianceNote,
+        invoiceVatStatus: o.invoiceVatStatus !== undefined ? o.invoiceVatStatus : (t as any).invoiceVatStatus,
+        invoiceFileUrl: o.invoiceFileUrl !== undefined ? o.invoiceFileUrl : (t as any).invoiceFileUrl,
         _hasOverride: true,
       } : { ...t, _hasOverride: false };
       return {
