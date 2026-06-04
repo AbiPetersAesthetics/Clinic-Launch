@@ -2309,13 +2309,15 @@ export default function ProjectPage() {
                                           if (editActualData.actualCost) patch.actualCost = parseFloat(editActualData.actualCost);
                                           if (editActualData.committedCost) patch.committedCost = parseFloat(editActualData.committedCost);
                                           if (activePropertyId) patch.propertyId = activePropertyId;
-                                          await fetch(`/api/tasks/${ta.taskId}`, {
+                                          const res = await fetch(`/api/tasks/${ta.taskId}`, {
                                             method: "PATCH",
                                             headers: { "Content-Type": "application/json" },
                                             body: JSON.stringify(patch),
                                           });
-                                          queryClient.invalidateQueries({ queryKey: ["projectControls"] });
-                                          setEditingActualId(null);
+                                          if (res.ok) {
+                                            invalidateAfterTaskChange();
+                                            setEditingActualId(null);
+                                          }
                                         } finally {
                                           setSavingActualId(null);
                                         }
