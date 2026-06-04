@@ -2321,21 +2321,33 @@ export default function ProjectPage() {
 
             {/* Category breakdown — with variance columns when actuals exist */}
             {(() => {
-              const ph = (id: number) => phases?.find(p => p.id === id);
-              const catCtrl = (ids: number[]) => ids.reduce((s, id) => {
-                const c = (projectControls as any)?.categoryBreakdown?.find((x: any) => x.phaseId === id);
-                return { actual: s.actual + (c?.actualSpend ?? 0), committed: s.committed + (c?.committed ?? 0), forecast: s.forecast + (c?.forecastFinal ?? 0) };
+              // Lookup by name — immune to phase ID changes across environments
+              const phByName = (name: string) => phases?.find(p => p.name === name);
+              const selFor = (names: string[]) => names.reduce((s, n) => s + (phByName(n)?.selectedCostTotal ?? 0), 0);
+              const highFor = (names: string[]) => names.reduce((s, n) => s + (phByName(n)?.totalCostHigh ?? 0), 0);
+              const ctrlFor = (names: string[]) => names.reduce((acc, name) => {
+                const phase = phByName(name);
+                if (!phase) return acc;
+                const c = (projectControls as any)?.categoryBreakdown?.find((x: any) => x.phaseId === phase.id);
+                if (!c) return acc;
+                return { actual: acc.actual + (c.actualSpend ?? 0), committed: acc.committed + (c.committed ?? 0), forecast: acc.forecast + (c.forecastFinal ?? 0) };
               }, { actual: 0, committed: 0, forecast: 0 });
               const hasActuals = ((projectControls as any)?.actualSpend ?? 0) > 0 || ((projectControls as any)?.committedCosts ?? 0) > 0;
-              const cats = [
-                { label: "Design / statutory / building works", note: "Phases 3–4", phaseIds: [21, 22], selected: (ph(21)?.selectedCostTotal ?? 0) + (ph(22)?.selectedCostTotal ?? 0), high: (ph(21)?.totalCostHigh ?? 0) + (ph(22)?.totalCostHigh ?? 0) },
-                { label: "Legal / lease / RICS / deposit", note: "Phase 2", phaseIds: [20], selected: ph(20)?.selectedCostTotal ?? 0, high: ph(20)?.totalCostHigh ?? 0 },
-                { label: "FF&E / equipment / styling", note: "Phase 5", phaseIds: [23], selected: ph(23)?.selectedCostTotal ?? 0, high: ph(23)?.totalCostHigh ?? 0 },
-                { label: "Clinical / compliance / stock", note: "Phases 6–7", phaseIds: [24, 25], selected: (ph(24)?.selectedCostTotal ?? 0) + (ph(25)?.selectedCostTotal ?? 0), high: (ph(24)?.totalCostHigh ?? 0) + (ph(25)?.totalCostHigh ?? 0) },
-                { label: "Finance / insurance / admin", note: "Phase 8", phaseIds: [26], selected: ph(26)?.selectedCostTotal ?? 0, high: ph(26)?.totalCostHigh ?? 0 },
-                { label: "Marketing / launch / handover", note: "Phases 9–10", phaseIds: [27, 28], selected: (ph(27)?.selectedCostTotal ?? 0) + (ph(28)?.selectedCostTotal ?? 0), high: (ph(27)?.totalCostHigh ?? 0) + (ph(28)?.totalCostHigh ?? 0) },
-                { label: "Contingency reserve", note: "Phase 12", phaseIds: [30], selected: ph(30)?.selectedCostTotal ?? 0, high: ph(30)?.totalCostHigh ?? 0 },
-              ].map(c => ({ ...c, ...catCtrl(c.phaseIds) }));
+              const CATS: { label: string; note: string; names: string[] }[] = [
+                { label: "Design / statutory / building works", note: "Design & Build", names: ["Design, Approvals & Procurement", "Managed Building Works"] },
+                { label: "Legal / lease / RICS / deposit", note: "Legal & Lease", names: ["Legal, Lease & Handover"] },
+                { label: "FF&E / equipment / styling", note: "FF&E", names: ["FF&E, Equipment & Clinic Styling"] },
+                { label: "Clinical / compliance / stock", note: "Clinical", names: ["Clinical Governance & Compliance", "Stock, Suppliers & Clinical Setup"] },
+                { label: "Finance / insurance / admin", note: "Finance", names: ["Finance, Insurance & Admin"] },
+                { label: "Marketing / launch / handover", note: "Marketing", names: ["Marketing & Launch", "Handover, Snagging & Opening"] },
+                { label: "Contingency reserve", note: "Contingency", names: ["Project Contingency"] },
+              ];
+              const cats = CATS.map(c => ({
+                ...c,
+                selected: selFor(c.names),
+                high: highFor(c.names),
+                ...ctrlFor(c.names),
+              }));
               const grandHigh = cats.reduce((s, c) => s + c.high, 0);
               const colCls = hasActuals ? "grid-cols-[1fr_auto_auto_auto_auto]" : "grid-cols-[1fr_auto_auto]";
               return (
@@ -2372,8 +2384,7 @@ export default function ProjectPage() {
 
             {/* Deferred / stretch row */}
             {(() => {
-              const ph = (id: number) => phases?.find(p => p.id === id);
-              const deferredHigh = ph(29)?.totalCostHigh ?? 0;
+              const deferredHigh = phases?.find(p => p.name === "Deferred / Stretch Items")?.totalCostHigh ?? 0;
               if (deferredHigh === 0) return null;
               return (
                 <div className="flex items-center justify-between text-xs px-1 text-muted-foreground">
