@@ -440,6 +440,8 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_file_url TEXT`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS invoice_vat_status TEXT`);
         await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_vat_status TEXT`);
+        // V14 migration: update David's approved cap to £80,000
+        await db.execute(sql`UPDATE financial_models SET david_approved_cap_gbp = 80000 WHERE project_id = ${projectId} AND david_approved_cap_gbp = 60000`);
         return;
       }
 

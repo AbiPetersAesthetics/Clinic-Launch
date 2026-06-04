@@ -1911,34 +1911,19 @@ export default function ProjectPage() {
             </div>
           </div>
 
-          {/* Timeline health */}
-          {availableDays !== null && totalProjectDays > 0 && (
-            <div className="pt-2 border-t border-border/50 space-y-2">
+          {/* Timeline window */}
+          {availableDays !== null && (
+            <div className="pt-2 border-t border-border/50 space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Critical path: <span className="font-semibold text-foreground">~{Math.round(totalProjectDays / 7)} wks</span>
-                  <span className="text-xs"> (Phases 1–3 sequential · Phases 4–7 run from Day 1)</span>
-                </span>
-                <span className="text-muted-foreground">
-                  Available: <span className={`font-semibold ${availableDays < totalProjectDays ? "text-destructive" : "text-primary"}`}>
-                    {Math.round(availableDays / 7)} wks
-                  </span>
-                  {" "}({availableDays} days)
+                <span className="text-muted-foreground">Time to open date</span>
+                <span className={`font-semibold tabular-nums ${availableDays < 60 ? "text-destructive" : availableDays < 120 ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
+                  {availableDays} days ({Math.round(availableDays / 7)} wks)
                 </span>
               </div>
               <Progress
-                value={Math.min(100, (availableDays / totalProjectDays) * 100)}
-                className={`h-2 ${availableDays < totalProjectDays ? "[&>div]:bg-destructive" : "[&>div]:bg-primary"}`}
+                value={Math.min(100, Math.max(5, (availableDays / 210) * 100))}
+                className={`h-1.5 ${availableDays < 60 ? "[&>div]:bg-destructive" : availableDays < 120 ? "[&>div]:bg-amber-500" : "[&>div]:bg-primary"}`}
               />
-              {availableDays < totalProjectDays ? (
-                <p className="text-xs text-destructive font-medium">
-                  ⚠ Timeline is {Math.round((totalProjectDays - availableDays) / 7)} weeks short — review task durations or move the open date.
-                </p>
-              ) : (
-                <p className="text-xs text-primary font-medium">
-                  ✓ Enough time to complete all phases before the open date.
-                </p>
-              )}
             </div>
           )}
 

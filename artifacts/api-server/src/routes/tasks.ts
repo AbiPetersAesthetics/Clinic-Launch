@@ -308,12 +308,12 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     const variancePct = plannedBudget > 0 ? (varianceGbp / plannedBudget) * 100 : 0;
     const uncommittedBudget = plannedBudget - actualSpend - committedCosts;
     const capHeadroomGbp = davidApprovedCapGbp - forecastFinalCost;
-    const outerLimitGbp = davidApprovedCapGbp * (70000 / 60000); // outer limit scales with cap
+    const outerLimitGbp = davidApprovedCapGbp * (7 / 6); // stretch zone = +1/6 above cap (e.g. £80k → £93.3k)
 
     const hasSomeActuals = actualSpend > 0 || committedCosts > 0;
     let budgetStatus = "no_actuals";
     if (hasSomeActuals) {
-      if (forecastFinalCost > davidApprovedCapGbp * 1.167) budgetStatus = "over_approved_cap"; // >70k when cap is 60k
+      if (forecastFinalCost > davidApprovedCapGbp * (7 / 6)) budgetStatus = "over_approved_cap";
       else if (forecastFinalCost > davidApprovedCapGbp) budgetStatus = "stretch";
       else if (variancePct > 5) budgetStatus = "slight_overspend";
       else budgetStatus = "on_track";

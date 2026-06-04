@@ -1,21 +1,12 @@
 ---
-name: V6 migration pattern
-description: How DB migrations work in startup-seed.ts; critical table name quirk
+name: DB migration pattern
+description: How DB migrations work in this project — phase table naming, migration gating
 ---
 
-## Rule
-All DB schema migrations go in `runV6Migration(projectId)` (or a future vN equivalent) in `lib/db/src/startup-seed.ts`, guarded by checking whether the new data already exists (e.g. check a unique phase name). This function is called from `runStartupSeed()` inside the "V5 data already present" branch, so it runs on every server boot but exits immediately if already applied.
+Migrations live in `lib/db/src/startup-seed.ts` as inline `ALTER TABLE IF NOT EXISTS` (and UPDATE) statements. They are gated by checking the phase count in the `launch_phases` table (NOT `phases` — that table name was renamed).
 
-**Why:** drizzle-kit push is blocked by interactive prompts in this environment. All schema changes must be applied directly via `executeSql` (ALTER TABLE) before the Drizzle schema files are updated.
+Current migration version: V14 (adds invoice_file_url, invoice_vat_status, and UPDATEs david_approved_cap_gbp from 60000 → 80000).
 
-## Critical quirk: table names
-The phases table Drizzle ORM name is `phasesTable` but the actual PostgreSQL table name is **`launch_phases`**, not `phases`. The tasks table is **`launch_tasks`**. Using bare `phases` or `tasks` in raw SQL will throw `relation does not exist`.
+**Why:** drizzle-kit push is not used for schema changes in production — only startup-seed.ts migrations run on deploy.
 
-**How to apply:** Any raw `sql\`...\`` fragment referencing these tables must use `launch_phases` and `launch_tasks`. Always use Drizzle ORM query builder when possible to avoid this.
-
-## New fields added in V6
-- `cost_vat_status` TEXT (inc_vat / ex_vat / vat_na / vat_unknown / mixed) — default 'vat_unknown'
-- `supply_scope` TEXT (included / excluded / client_supplied / contractor_supplied / to_confirm) — default 'to_confirm'  
-- `procurement_status` TEXT (not_required / to_specify / to_quote / quote_received / approved / ordered / delivered / installed / included_in_contractor / excluded_client_direct) — default 'to_specify'
-
-These are on both `launch_tasks` (NOT NULL with defaults) and `property_task_overrides` (nullable).
+**How to apply:** Add new statements at the bottom of the existing migration block (inside the "V5 data already present" branch), then increment the version comment.
