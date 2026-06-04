@@ -1,9 +1,21 @@
 import { Router } from "express";
+import multer from "multer";
+import fs from "fs";
+import path from "path";
 import { db } from "@workspace/db";
 import { tasksTable, propertyTaskOverridesTable, phasesTable, propertiesTable, financialsTable } from "@workspace/db";
 import { eq, and, sql, inArray } from "drizzle-orm";
 
 const router = Router();
+
+const invoiceUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.mimetype);
+    cb(ok ? null : new Error("Accepted: PDF, JPG, PNG, WebP"), ok);
+  },
+});
 
 function getSelectedCost(costTier: string, costLow: number, costMid: number, costHigh: number, currentSelectedCost = 0): number {
   if (costTier === "quoted") return currentSelectedCost; // preserve quote-applied amount
@@ -91,7 +103,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
       "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes",
       "costVatStatus", "supplyScope", "procurementStatus",
-      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote"] as const;
+      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceFileUrl"] as const;
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];
@@ -182,6 +194,27 @@ router.delete("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(tasksTable).where(eq(tasksTable.id, id));
   res.status(204).send();
+});
+
+// ── POST /tasks/:id/upload-invoice ─────────────────────────────────────────
+router.post("/tasks/:id/upload-invoice", invoiceUpload.single("file"), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (!req.file) return res.status(400).json({ error: "No file provided" });
+
+    const dir = path.join(process.cwd(), "uploads", "invoices", String(id));
+    fs.mkdirSync(dir, { recursive: true });
+
+    const ext = path.extname(req.file.originalname) || ".pdf";
+    const filename = `invoice_${Date.now()}${ext}`;
+    fs.writeFileSync(path.join(dir, filename), req.file.buffer);
+
+    const fileUrl = `/uploads/invoices/${id}/${filename}`;
+    return res.json({ invoiceFileUrl: fileUrl });
+  } catch (err) {
+    console.error("[upload-invoice]", err);
+    return res.status(500).json({ error: "Upload failed" });
+  }
 });
 
 // ─── GET /projects/:projectId/project-controls ────────────────────────────────

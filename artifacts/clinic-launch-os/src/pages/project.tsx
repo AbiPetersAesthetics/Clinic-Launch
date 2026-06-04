@@ -1290,6 +1290,9 @@ export default function ProjectPage() {
     invoiceRef: "",
     invoiceDate: "",
     varianceNote: "",
+    invoiceFile: null as File | null,
+    invoiceFileUrl: "",
+    uploading: false,
   });
 
   const highlightedTaskId = (() => {
@@ -3217,6 +3220,40 @@ export default function ProjectPage() {
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
+                Invoice file <span className="text-muted-foreground font-normal text-xs">(PDF, JPG, PNG — optional)</span>
+              </label>
+              {recordSpendData.invoiceFileUrl ? (
+                <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                  <Receipt className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="truncate flex-1 text-emerald-700 dark:text-emerald-400">
+                    {recordSpendData.invoiceFile?.name ?? "Invoice uploaded"}
+                  </span>
+                  <button
+                    className="text-muted-foreground hover:text-destructive text-xs shrink-0"
+                    onClick={() => setRecordSpendData(d => ({ ...d, invoiceFile: null, invoiceFileUrl: "" }))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center gap-2 rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:border-foreground/40 hover:text-foreground transition-colors">
+                  <Receipt className="w-4 h-4 shrink-0" />
+                  <span>{recordSpendData.invoiceFile ? recordSpendData.invoiceFile.name : "Click to attach invoice…"}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setRecordSpendData(d => ({ ...d, invoiceFile: file, invoiceFileUrl: "" }));
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
                 Variance note <span className="text-muted-foreground font-normal text-xs">(optional)</span>
               </label>
               <Input
@@ -3235,9 +3272,35 @@ export default function ProjectPage() {
               Cancel
             </Button>
             <Button
-              disabled={!recordSpendData.taskId || updateTask.isPending}
-              onClick={() => {
+              disabled={!recordSpendData.taskId || updateTask.isPending || recordSpendData.uploading}
+              onClick={async () => {
                 if (!recordSpendData.taskId) return;
+
+                let fileUrl = recordSpendData.invoiceFileUrl;
+
+                // Upload file first if one is selected and not yet uploaded
+                if (recordSpendData.invoiceFile && !fileUrl) {
+                  setRecordSpendData(d => ({ ...d, uploading: true }));
+                  try {
+                    const form = new FormData();
+                    form.append("file", recordSpendData.invoiceFile);
+                    const apiBase = (import.meta as any).env?.VITE_API_URL ?? "/api";
+                    const res = await fetch(`${apiBase}/tasks/${recordSpendData.taskId}/upload-invoice`, {
+                      method: "POST",
+                      body: form,
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      fileUrl = data.invoiceFileUrl;
+                      setRecordSpendData(d => ({ ...d, invoiceFileUrl: fileUrl ?? "", uploading: false }));
+                    } else {
+                      setRecordSpendData(d => ({ ...d, uploading: false }));
+                    }
+                  } catch {
+                    setRecordSpendData(d => ({ ...d, uploading: false }));
+                  }
+                }
+
                 const patch: Record<string, unknown> = {
                   paidStatus: recordSpendData.paidStatus,
                 };
@@ -3247,6 +3310,7 @@ export default function ProjectPage() {
                 if (recordSpendData.invoiceRef) patch.invoiceRef = recordSpendData.invoiceRef;
                 if (recordSpendData.invoiceDate) patch.invoiceDate = recordSpendData.invoiceDate;
                 if (recordSpendData.varianceNote) patch.varianceNote = recordSpendData.varianceNote;
+                if (fileUrl) patch.invoiceFileUrl = fileUrl;
                 if (activePropertyId) patch.propertyId = activePropertyId;
                 updateTask.mutate(
                   { id: recordSpendData.taskId, data: patch as any },
@@ -3254,13 +3318,13 @@ export default function ProjectPage() {
                     onSuccess: () => {
                       invalidateAfterTaskChange();
                       setShowRecordSpend(false);
-                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "" });
+                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "", invoiceFile: null, invoiceFileUrl: "", uploading: false });
                     },
                   }
                 );
               }}
             >
-              {updateTask.isPending ? "Saving…" : "Record Spend"}
+              {recordSpendData.uploading ? "Uploading…" : updateTask.isPending ? "Saving…" : "Record Spend"}
             </Button>
           </DialogFooter>
         </DialogContent>

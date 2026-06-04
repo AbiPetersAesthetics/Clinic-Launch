@@ -435,6 +435,9 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_date TEXT`);
         await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS variance_note TEXT`);
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS david_approved_cap_gbp REAL DEFAULT 60000`);
+        // V13 migration: invoice file upload URL
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS invoice_file_url TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_file_url TEXT`);
         return;
       }
 

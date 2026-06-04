@@ -31,6 +31,7 @@ export const propertyTaskOverridesTable = pgTable("property_task_overrides", {
   invoiceRef: text("invoice_ref"),
   invoiceDate: text("invoice_date"),
   varianceNote: text("variance_note"),
+  invoiceFileUrl: text("invoice_file_url"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
