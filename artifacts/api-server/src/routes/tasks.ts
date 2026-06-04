@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { tasksTable, propertyTaskOverridesTable } from "@workspace/db";
-import { eq, and, sql } from "drizzle-orm";
+import { tasksTable, propertyTaskOverridesTable, phasesTable, propertiesTable, financialsTable } from "@workspace/db";
+import { eq, and, sql, inArray } from "drizzle-orm";
 
 const router = Router();
 
@@ -90,7 +90,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     // `o.field !== undefined ? o.field : t.field`, so a stored null would wipe the base task value.
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
       "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes",
-      "costVatStatus", "supplyScope", "procurementStatus"] as const;
+      "costVatStatus", "supplyScope", "procurementStatus",
+      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote"] as const;
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];
@@ -181,6 +182,242 @@ router.delete("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   await db.delete(tasksTable).where(eq(tasksTable.id, id));
   res.status(204).send();
+});
+
+// ─── GET /projects/:projectId/project-controls ────────────────────────────────
+// Returns planned vs actual vs committed vs forecast, variance, category
+// breakdown (by phase), monthly spend array, and task-level actuals list.
+
+router.get("/projects/:projectId/project-controls", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+
+    // Load phases, tasks, overrides, and financial model in parallel
+    const [phases, activePropertyRows, modelRows] = await Promise.all([
+      db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId)).orderBy(phasesTable.sortOrder),
+      db.select().from(propertiesTable).where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true))),
+      db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
+    ]);
+
+    const activePhases = phases.filter(p => p.status === "active");
+    const phaseIds = activePhases.map(p => p.id);
+    const baseTasks = phaseIds.length > 0
+      ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
+      : [];
+
+    const activeProperty = activePropertyRows[0];
+    const overrideMap = new Map<number, Record<string, unknown>>();
+    if (activeProperty) {
+      const overrides = await db.select().from(propertyTaskOverridesTable)
+        .where(eq(propertyTaskOverridesTable.propertyId, activeProperty.id));
+      for (const o of overrides) overrideMap.set(o.taskId, o as Record<string, unknown>);
+    }
+
+    // Merge overrides onto base tasks, preferring override values
+    const allTasks = baseTasks.map(t => {
+      const o = overrideMap.get(t.id);
+      if (!o) return t as Record<string, unknown>;
+      return {
+        ...t,
+        selectedCost: (o.selectedCost ?? t.selectedCost) as number,
+        startDate: o.startDate !== undefined ? o.startDate : (t as any).startDate,
+        dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
+        actualCost: (o.actualCost ?? (t as any).actualCost) as number | null,
+        committedCost: (o.committedCost ?? (t as any).committedCost) as number | null,
+        paidStatus: (o.paidStatus ?? (t as any).paidStatus) as string | null,
+        paymentDate: (o.paymentDate ?? (t as any).paymentDate) as string | null,
+        invoiceRef: (o.invoiceRef ?? (t as any).invoiceRef) as string | null,
+        invoiceDate: (o.invoiceDate ?? (t as any).invoiceDate) as string | null,
+        varianceNote: (o.varianceNote ?? (t as any).varianceNote) as string | null,
+      } as Record<string, unknown>;
+    });
+
+    const model = modelRows[0];
+    const davidApprovedCapGbp = (model as any)?.davidApprovedCapGbp ?? 60000;
+
+    // ── Headline totals ────────────────────────────────────────────────────────
+    let plannedBudget = 0;
+    let actualSpend = 0;
+    let committedCosts = 0;
+    let forecastFinalCost = 0;
+
+    for (const task of allTasks) {
+      const planned = (task.selectedCost as number) ?? 0;
+      const actual = (task.actualCost as number) ?? 0;
+      const committed = (task.committedCost as number) ?? 0;
+      const paid = task.paidStatus as string | null;
+
+      plannedBudget += planned;
+
+      if (paid === "paid" && actual > 0) {
+        actualSpend += actual;
+        forecastFinalCost += actual;
+      } else if (committed > 0) {
+        committedCosts += committed;
+        forecastFinalCost += committed;
+      } else {
+        forecastFinalCost += planned;
+      }
+    }
+
+    const varianceGbp = forecastFinalCost - plannedBudget;
+    const variancePct = plannedBudget > 0 ? (varianceGbp / plannedBudget) * 100 : 0;
+
+    const hasSomeActuals = actualSpend > 0 || committedCosts > 0;
+    let budgetStatus = "no_actuals";
+    if (hasSomeActuals) {
+      if (forecastFinalCost > davidApprovedCapGbp * 1.167) budgetStatus = "over_approved_cap"; // >70k when cap is 60k
+      else if (forecastFinalCost > davidApprovedCapGbp) budgetStatus = "stretch";
+      else if (variancePct > 5) budgetStatus = "slight_overspend";
+      else budgetStatus = "on_track";
+    }
+
+    // ── Completion metrics ─────────────────────────────────────────────────────
+    const totalTasks = allTasks.length;
+    const completedTasks = allTasks.filter(t => t.status === "complete").length;
+    const taskCompletionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    const spendCompletionPct = forecastFinalCost > 0 ? Math.round((actualSpend / forecastFinalCost) * 100) : 0;
+    const weightedCompletionPct = plannedBudget > 0
+      ? Math.round(allTasks.filter(t => t.status === "complete").reduce((s, t) => s + ((t.selectedCost as number) ?? 0), 0) / plannedBudget * 100)
+      : 0;
+
+    // ── Category breakdown by phase ────────────────────────────────────────────
+    const categoryBreakdown = activePhases.map(phase => {
+      const phaseTasks = allTasks.filter(t => t.phaseId === phase.id);
+      let pPlanned = 0, pActual = 0, pCommitted = 0, pForecast = 0;
+      for (const task of phaseTasks) {
+        const planned = (task.selectedCost as number) ?? 0;
+        const actual = (task.actualCost as number) ?? 0;
+        const committed = (task.committedCost as number) ?? 0;
+        const paid = task.paidStatus as string | null;
+        pPlanned += planned;
+        if (paid === "paid" && actual > 0) { pActual += actual; pForecast += actual; }
+        else if (committed > 0) { pCommitted += committed; pForecast += committed; }
+        else { pForecast += planned; }
+      }
+      const pVarianceGbp = pForecast - pPlanned;
+      const pVariancePct = pPlanned > 0 ? (pVarianceGbp / pPlanned) * 100 : 0;
+      return {
+        phaseId: phase.id,
+        phaseName: phase.name,
+        planned: Math.round(pPlanned),
+        actualSpend: Math.round(pActual),
+        committed: Math.round(pCommitted),
+        forecastFinal: Math.round(pForecast),
+        varianceGbp: Math.round(pVarianceGbp),
+        variancePct: Math.round(pVariancePct * 10) / 10,
+        taskCount: phaseTasks.length,
+        completedCount: phaseTasks.filter(t => t.status === "complete").length,
+      };
+    });
+
+    // ── Task actuals (only tasks with recorded spend) ──────────────────────────
+    const taskActuals = allTasks
+      .filter(t => ((t.actualCost as number) ?? 0) > 0 || ((t.committedCost as number) ?? 0) > 0)
+      .map(t => {
+        const planned = (t.selectedCost as number) ?? 0;
+        const actual = (t.actualCost as number) ?? 0;
+        const committed = (t.committedCost as number) ?? 0;
+        const paid = t.paidStatus as string | null;
+        const effective = paid === "paid" && actual > 0 ? actual : committed > 0 ? committed : planned;
+        return {
+          taskId: t.id,
+          taskTitle: t.title,
+          phaseId: t.phaseId,
+          plannedCost: Math.round(planned),
+          actualCost: Math.round(actual),
+          committedCost: Math.round(committed),
+          paidStatus: paid,
+          invoiceRef: t.invoiceRef,
+          invoiceDate: t.invoiceDate,
+          paymentDate: t.paymentDate,
+          varianceNote: t.varianceNote,
+          supplier: t.supplier,
+          varianceGbp: Math.round(effective - planned),
+          variancePct: planned > 0 ? Math.round(((effective - planned) / planned) * 1000) / 10 : 0,
+        };
+      });
+
+    // ── Monthly spend breakdown (16-month window: 2 past + 14 future) ─────────
+    const today = new Date();
+    const monthlySpend: Array<{
+      month: string; planned: number; actual: number; committed: number;
+      cumPlanned: number; cumActual: number; cumForecast: number;
+    }> = [];
+    let cumPlanned = 0, cumActual = 0, cumForecast = 0;
+
+    for (let i = -2; i < 14; i++) {
+      const mDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      const monthLabel = mDate.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
+      let mPlanned = 0, mActual = 0, mCommitted = 0;
+
+      for (const task of allTasks) {
+        const planned = (task.selectedCost as number) ?? 0;
+        const actual = (task.actualCost as number) ?? 0;
+        const committed = (task.committedCost as number) ?? 0;
+        const paid = task.paidStatus as string | null;
+        const invDate = task.invoiceDate as string | null;
+        const schedDate = ((task.startDate as string | null) || (task.dueDate as string | null));
+
+        // Paid actuals → schedule to invoice date
+        if (paid === "paid" && actual > 0 && invDate) {
+          const d = new Date(invDate);
+          if (d.getFullYear() === mDate.getFullYear() && d.getMonth() === mDate.getMonth()) mActual += actual;
+        }
+
+        // Committed → schedule to invoice date if set, else startDate
+        if (committed > 0) {
+          const cDate = invDate || schedDate;
+          if (cDate) {
+            const d = new Date(cDate);
+            if (d.getFullYear() === mDate.getFullYear() && d.getMonth() === mDate.getMonth()) mCommitted += committed;
+          }
+        }
+
+        // Planned → schedule to startDate / dueDate
+        if (planned > 0 && schedDate) {
+          const d = new Date(schedDate);
+          if (d.getFullYear() === mDate.getFullYear() && d.getMonth() === mDate.getMonth()) mPlanned += planned;
+        }
+      }
+
+      // Forecast = actual paid + committed + unrecorded planned (subtract planned for tasks with a committed/actual)
+      const mForecast = mActual + mCommitted;
+      cumPlanned += mPlanned;
+      cumActual += mActual;
+      cumForecast += mForecast + (mPlanned > mActual + mCommitted ? mPlanned - mActual - mCommitted : 0);
+
+      monthlySpend.push({
+        month: monthLabel,
+        planned: Math.round(mPlanned),
+        actual: Math.round(mActual),
+        committed: Math.round(mCommitted),
+        cumPlanned: Math.round(cumPlanned),
+        cumActual: Math.round(cumActual),
+        cumForecast: Math.round(cumForecast),
+      });
+    }
+
+    return res.json({
+      plannedBudget: Math.round(plannedBudget),
+      actualSpend: Math.round(actualSpend),
+      committedCosts: Math.round(committedCosts),
+      forecastFinalCost: Math.round(forecastFinalCost),
+      varianceGbp: Math.round(varianceGbp),
+      variancePct: Math.round(variancePct * 10) / 10,
+      budgetStatus,
+      davidApprovedCapGbp,
+      taskCompletionPct,
+      spendCompletionPct,
+      weightedCompletionPct,
+      categoryBreakdown,
+      taskActuals,
+      monthlySpend,
+    });
+  } catch (err) {
+    console.error("[project-controls]", err);
+    return res.status(500).json({ error: "Failed to compute project controls" });
+  }
 });
 
 export default router;

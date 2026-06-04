@@ -86,6 +86,8 @@ export const financialsTable = pgTable("financial_models", {
   selectedScenario: text("selected_scenario").notNull().default("realistic"),
   // Additional clinicians with independent start dates and revenue ramps (JSON array)
   additionalCliniciansJson: text("additional_clinicians_json").default("[]"),
+  // Project controls: David's approved spend cap (default £60k)
+  davidApprovedCapGbp: real("david_approved_cap_gbp").notNull().default(60000),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

@@ -23,6 +23,14 @@ export const propertyTaskOverridesTable = pgTable("property_task_overrides", {
   costVatStatus: text("cost_vat_status"),
   supplyScope: text("supply_scope"),
   procurementStatus: text("procurement_status"),
+  // ── Project controls: actuals tracking ─────────────────────────────────────
+  actualCost: real("actual_cost"),
+  committedCost: real("committed_cost"),
+  paidStatus: text("paid_status"),
+  paymentDate: text("payment_date"),
+  invoiceRef: text("invoice_ref"),
+  invoiceDate: text("invoice_date"),
+  varianceNote: text("variance_note"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 

@@ -1,0 +1,414 @@
+I need to upgrade the Clinic Launch OS project plan and financial model so it tracks ACTUALS vs PLANNED spend.
+
+Context:
+The app currently shows a selected/planned project cost, for example £84,789. This is useful for forecasting, but I am now starting to spend real money on the project, so I need the model to track actual spend, committed spend, forecast final cost, and variance against plan.
+
+The system should become a proper project controls dashboard, not just a planning estimate.
+
+Please implement the following:
+
+1. TASK-LEVEL ACTUALS
+
+For every project task, add the following fields:
+
+- Planned Cost
+- Committed Cost
+- Actual Cost
+- Supplier
+- Invoice Reference
+- Invoice Date
+- Paid Status
+- Payment Date
+- Notes
+
+Definitions:
+
+Planned Cost = the existing selected cost for the task.
+Committed Cost = signed quote, invoice received, or cost committed but not yet paid.
+Actual Cost = money actually paid.
+
+Example:
+Task: Architectural drawings / Parkers Design
+Planned Cost: £2,903
+Committed Cost: £2,903
+Actual Cost: £2,903
+Supplier: Parkers Design
+Invoice Ref: 1593
+Invoice Date: 04/06/2026
+Paid Status: Paid
+
+2. VARIANCE CALCULATIONS
+
+For each task, calculate:
+
+Variance £ = Actual Cost - Planned Cost
+
+Variance % = ((Actual Cost - Planned Cost) / Planned Cost) x 100
+
+If Actual Cost is £0 but Committed Cost exists, calculate committed variance as:
+
+Committed Variance £ = Committed Cost - Planned Cost
+
+Committed Variance % = ((Committed Cost - Planned Cost) / Planned Cost) x 100
+
+Display both where useful.
+
+Use traffic-light logic:
+
+- Blue = under budget
+- Green = on budget or within +5%
+- Amber = +5% to +10% over planned
+- Red = more than +10% over planned
+- Grey = no actual or committed cost entered yet
+
+3. PROJECT TOTAL SUMMARY
+
+On the Project Plan page, replace or expand the current “Total Project Selected Cost” section.
+
+Show:
+
+- Planned Budget
+- Actual Spend
+- Committed Costs
+- Remaining Budget
+- Forecast Final Cost
+- Variance to Plan £
+- Variance to Plan %
+- Budget Status
+
+Example layout:
+
+Planned Budget: £84,789
+Actual Spend: £2,903
+Committed Costs: £6,000
+Remaining Planned Spend: £75,886
+Forecast Final Cost: £84,789
+Variance to Plan: £0 / 0%
+Status: On Track
+
+Important:
+The current £84,789 should become “Planned Budget”, not the only headline number.
+
+Below it, show “Actual Spend” and “Forecast Final Cost”.
+
+4. FORECAST FINAL COST LOGIC
+
+Forecast Final Cost should be calculated as:
+
+Actual paid costs
++
+Committed unpaid costs
++
+Remaining planned costs for tasks not yet committed or paid
+
+Do not simply add variance onto the whole budget.
+
+For each task:
+- If Actual Cost exists and Paid Status = Paid, use Actual Cost.
+- Else if Committed Cost exists, use Committed Cost.
+- Else use Planned Cost.
+
+Then sum all tasks.
+
+5. CATEGORY-LEVEL ACTUALS
+
+Add a category summary table.
+
+Categories should include:
+
+- Legal / lease / RICS / deposit
+- Design / statutory / Building Regulations
+- Building works / fit-out
+- Electrical / M&E / plumbing / HVAC
+- Signage / frontage
+- FF&E / equipment / styling
+- Clinical / compliance / stock
+- Finance / insurance / admin
+- Marketing / launch / handover
+- Contingency
+
+For each category show:
+
+- Planned Budget
+- Actual Spend
+- Committed Cost
+- Forecast Final Cost
+- Variance £
+- Variance %
+- Status
+
+This should make it clear where overspend is happening.
+
+6. COST PERFORMANCE GRAPH
+
+Add a graph called:
+
+Project Cost Performance
+
+It should show:
+
+- Planned cumulative spend curve
+- Actual cumulative spend curve
+- Forecast final cost line
+
+X-axis:
+Project months or dates
+
+Y-axis:
+£
+
+The purpose is to show whether we are spending faster or slower than planned.
+
+Example:
+If planned spend by June is £2,000 but actual spend is £2,903, the graph should show actuals above planned.
+
+7. BUDGET HEALTH WIDGET
+
+Add a card called:
+
+Budget Health
+
+Show:
+
+- On Track
+- Slight Overspend
+- High Risk
+- Over Approved Cap
+
+Rules:
+
+Green / On Track:
+Forecast Final Cost <= Planned Budget
+
+Amber / Slight Overspend:
+Forecast Final Cost is 0–5% above Planned Budget
+
+Red / High Risk:
+Forecast Final Cost is more than 5% above Planned Budget
+
+Critical:
+Forecast Final Cost exceeds David’s Approved Cap
+
+8. DAVID’S APPROVED BUDGET CAP
+
+Add a setting:
+
+David’s Approved Budget Cap
+
+Default:
+£60,000
+
+Also allow:
+- £70,000 stretch cap
+- £85,000 full project exposure cap
+
+Show a visual comparison:
+
+Planned Budget vs Forecast Final Cost vs Approved Cap
+
+This is important because the selected project cost may show £84,789, but David’s working approval cap may be lower.
+
+9. PROJECT COMPLETION %
+
+Add a better project completion calculation.
+
+Show:
+
+- Task completion %
+- Spend completion %
+- Weighted completion %
+
+Definitions:
+
+Task completion % = completed tasks / total tasks.
+Spend completion % = actual spend / forecast final cost.
+Weighted completion % = completed task planned value / total planned value.
+
+This avoids the dashboard showing misleading readiness while spend has already started.
+
+10. QUICK “RECORD SPEND” BUTTON
+
+Add a button on the Project Plan page:
+
+Record Spend
+
+Fields:
+
+- Task
+- Supplier
+- Amount
+- Invoice Date
+- Invoice Reference
+- Paid / Unpaid
+- Payment Date
+- Notes
+- Attach invoice link/file reference if possible
+
+When saved, it should update:
+
+- Actual Cost if paid
+- Committed Cost if unpaid
+- Supplier
+- Invoice fields
+- Project totals
+- Cashflow model
+- Variance tables
+- Graphs
+
+11. INTEGRATE ACTUALS INTO FINANCIALS
+
+Actual spend should feed into the Financials / Expansion Modelling page.
+
+Currently project costs appear as forecast assumptions.
+
+Update this so:
+
+- Paid actuals reduce cash immediately in the correct month.
+- Committed unpaid costs appear in forecast cashflow.
+- Forecast final project cost updates the 12-month cash position.
+- Lowest cash point recalculates.
+- Month 12 cash recalculates.
+- Investment requirement recalculates.
+- Bedhampton support requirement recalculates.
+
+12. MONTHLY PROJECT SPEND TABLE
+
+Add a monthly project spend breakdown.
+
+Columns:
+
+- Month
+- Planned Project Spend
+- Actual Project Spend
+- Committed Project Spend
+- Variance
+- Cumulative Planned
+- Cumulative Actual
+- Cumulative Forecast
+
+This should sit near the existing monthly P&L breakdown.
+
+13. VARIANCE EXPLANATION
+
+For each over-budget task, allow a simple variance note.
+
+Examples:
+
+- “Invoice includes DWG add-on”
+- “Higher quote selected for compliance”
+- “Scope increased”
+- “VAT included”
+- “Timing variance only”
+
+Show these notes in the budget variance view.
+
+14. VAT HANDLING
+
+For every actual and committed cost, allow:
+
+- VAT inclusive
+- VAT exclusive
+- VAT rate
+- Recoverable VAT yes/no
+- Net cost
+- VAT amount
+- Gross cost
+
+Because the business is VAT registered / approaching VAT registration, I need to understand:
+
+- Gross cash paid
+- Net final cost after VAT reclaim
+- VAT reclaim timing
+
+Show both cash impact and net cost impact.
+
+15. PROJECT CONTROLS SUMMARY
+
+Add an executive summary card called:
+
+Project Controls
+
+It should answer instantly:
+
+- Are we over budget?
+- By how much?
+- What have we actually spent?
+- What have we committed?
+- What is the forecast final cost?
+- What is the variance to plan?
+- What category is causing the largest variance?
+- What is our lowest projected cash point?
+- Are we still within David’s approved cap?
+- Do we need investor funding or additional capital?
+
+16. EXAMPLE FIRST ACTUAL ENTRY
+
+Seed or support entering the first actual:
+
+Supplier:
+Parkers Design (Southern) Limited
+
+Invoice:
+1593
+
+Task:
+Architectural drawings / planning services / Building Regulations package
+
+Invoice Date:
+04/06/2026
+
+Amount:
+£2,902.80 gross
+
+Net:
+£2,419.00
+
+VAT:
+£483.80
+
+Status:
+Committed initially, then Actual once paid
+
+Payment Due:
+04/06/2026
+
+17. UI REQUIREMENTS
+
+Keep the UI clean and consistent with the current design.
+
+Use:
+- cards for headline figures
+- compact task table columns
+- coloured badges for variance
+- expandable task rows for invoice/actual details
+- one clear graph for cost performance
+- one clear category variance table
+
+Avoid making the project plan page too cluttered.
+
+18. SUCCESS CRITERIA
+
+After implementation, the app must clearly show:
+
+Planned Budget:
+£84,789
+
+Actual Spend:
+£2,902.80
+
+Committed Costs:
+£0 or £2,902.80 depending on paid status
+
+Forecast Final Cost:
+Calculated from actual + committed + remaining planned
+
+Variance:
+Actual/forecast versus planned
+
+Budget Status:
+On track / amber / red
+
+Cashflow Impact:
+Updated in the financial model
+
+The goal is that every time I receive an invoice or quote, I can record it and immediately see whether the project is still financially on track.

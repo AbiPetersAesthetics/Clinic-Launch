@@ -46,6 +46,14 @@ export const tasksTable = pgTable("launch_tasks", {
   includeInLaunchBudget: boolean("include_in_launch_budget").notNull().default(false),
   includeInRiskView: boolean("include_in_risk_view").notNull().default(true),
   sortOrder: integer("sort_order").notNull().default(0),
+  // ── Project controls: actuals tracking ─────────────────────────────────────
+  actualCost: real("actual_cost"),
+  committedCost: real("committed_cost"),
+  paidStatus: text("paid_status"), // 'unpaid' | 'committed' | 'paid'
+  paymentDate: text("payment_date"),
+  invoiceRef: text("invoice_ref"),
+  invoiceDate: text("invoice_date"),
+  varianceNote: text("variance_note"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

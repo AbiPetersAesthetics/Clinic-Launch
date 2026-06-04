@@ -57,7 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +78,8 @@ import { Slider } from "@/components/ui/slider";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -87,6 +89,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 
 const PROJECT_ID = 1;
 
@@ -1277,6 +1280,16 @@ export default function ProjectPage() {
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
   const [viewMasterPlan, setViewMasterPlan] = useState(false);
+  const [showRecordSpend, setShowRecordSpend] = useState(false);
+  const [recordSpendData, setRecordSpendData] = useState({
+    taskId: null as number | null,
+    actualCost: "",
+    committedCost: "",
+    paidStatus: "paid",
+    invoiceRef: "",
+    invoiceDate: "",
+    varianceNote: "",
+  });
 
   const highlightedTaskId = (() => {
     const params = new URLSearchParams(window.location.search);
@@ -1349,6 +1362,13 @@ export default function ProjectPage() {
     },
   });
 
+  const pcUrl = `/api/projects/${PROJECT_ID}/project-controls`;
+  const { data: projectControls } = useQuery({
+    queryKey: [pcUrl],
+    queryFn: async () => { const r = await fetch(pcUrl); if (!r.ok) throw new Error("project-controls failed"); return r.json(); },
+    staleTime: 30000,
+  });
+
   const { data: risks } = useGetRiskFlags(PROJECT_ID, {
     query: { queryKey: getGetRiskFlagsQueryKey(PROJECT_ID), enabled: true },
   });
@@ -1377,6 +1397,7 @@ export default function ProjectPage() {
     queryClient.removeQueries({ queryKey: [`/api/projects/${PROJECT_ID}/phases-with-tasks`] });
     queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+    queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}/project-controls`] });
   };
 
   const handleCostTierChange = (task: LaunchTask, newTier: "low" | "mid" | "high") => {
@@ -1918,13 +1939,21 @@ export default function ProjectPage() {
                 <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
                 <p className="text-[11px] text-muted-foreground/70 mt-0.5">Active tasks only · inc VAT planning allowances · deferred &amp; superseded excluded</p>
               </div>
-              <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
+              <div className="flex items-center gap-3">
+                <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
+                <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print" onClick={() => setShowRecordSpend(true)}>
+                  <Receipt className="w-3.5 h-3.5" />
+                  Record Spend
+                </Button>
+              </div>
             </div>
 
-            {/* Traffic-light budget cap */}
+            {/* Traffic-light budget cap — threshold from project-controls (davidApprovedCapGbp) */}
             {(() => {
-              const isGreen = totalSelectedCost <= 60000;
-              const isAmber = !isGreen && totalSelectedCost <= 70000;
+              const davidCap = (projectControls as any)?.davidApprovedCapGbp ?? 60000;
+              const outerLimit = Math.round(davidCap * 7 / 6);
+              const isGreen = totalSelectedCost <= davidCap;
+              const isAmber = !isGreen && totalSelectedCost <= outerLimit;
               const borderCls = isGreen
                 ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700"
                 : isAmber
@@ -1940,90 +1969,190 @@ export default function ProjectPage() {
                 : "text-red-700 dark:text-red-400";
               const icon = isGreen ? "✓" : isAmber ? "⚠" : "✕";
               const headline = isGreen
-                ? "Within £60k approved launch cap"
+                ? `Within ${formatGBP(davidCap)} approved launch cap`
                 : isAmber
-                ? "STRETCH / RISK — above £60k target, within £70k outer limit"
-                : "RED FLAG — above £70k. Not approved without David's sign-off.";
+                ? `STRETCH / RISK — above ${formatGBP(davidCap)} target, within ${formatGBP(outerLimit)} outer limit`
+                : `RED FLAG — above ${formatGBP(outerLimit)}. Not approved without David's sign-off.`;
               return (
                 <div className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${borderCls}`}>
                   <span className={`text-base shrink-0 font-bold ${headCls}`}>{icon}</span>
                   <div>
                     <p className={`text-sm font-semibold ${headCls}`}>{headline}</p>
                     <p className={`text-xs mt-0.5 ${bodyCls}`}>
-                      David's approved launch cap is <strong>£60,000 inc VAT</strong>. Stretch / risk range: £60k–£70k. Anything above £70k is unapproved — use deferrals to control the selected total.
+                      David's approved launch cap is <strong>{formatGBP(davidCap)} inc VAT</strong>. Stretch / risk range: {formatGBP(davidCap)}–{formatGBP(outerLimit)}. Anything above {formatGBP(outerLimit)} is unapproved — use deferrals to control the selected total.
                     </p>
                   </div>
                 </div>
               );
             })()}
 
-            {/* Category breakdown */}
+            {/* ── Actuals KPI strip — visible once spend is recorded ─────────── */}
+            {projectControls && ((projectControls as any).actualSpend > 0 || (projectControls as any).committedCosts > 0) && (() => {
+              const pc = projectControls as any;
+              const davidCap = pc.davidApprovedCapGbp ?? 60000;
+              const statusMap: Record<string, { border: string; head: string; icon: string; msg: string }> = {
+                on_track: { border: "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700", head: "text-emerald-800 dark:text-emerald-300", icon: "✓", msg: "On track — spend is within approved budget" },
+                stretch: { border: "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700", head: "text-amber-800 dark:text-amber-300", icon: "⚠", msg: `Stretch — forecast exceeds ${formatGBP(davidCap)} approved cap` },
+                slight_overspend: { border: "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700", head: "text-amber-800 dark:text-amber-300", icon: "⚠", msg: "Slight overspend — forecast is above plan" },
+                over_approved_cap: { border: "border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700", head: "text-red-800 dark:text-red-300", icon: "✕", msg: "RED FLAG — forecast exceeds outer limit. David's approval required." },
+                no_actuals: { border: "border-muted bg-muted/30", head: "text-muted-foreground", icon: "—", msg: "No actuals recorded yet" },
+              };
+              const cfg = statusMap[pc.budgetStatus] ?? statusMap.no_actuals;
+              const allTasksFlat = phases?.flatMap(p => p.tasks ?? []) ?? [];
+              return (
+                <div className="space-y-3">
+                  {/* 5-card KPI strip */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {([
+                      { label: "Planned Budget", value: pc.plannedBudget, cls: "text-foreground", sub: "selected total", isVariance: false },
+                      { label: "Actual Paid", value: pc.actualSpend, cls: "text-emerald-600 dark:text-emerald-400", sub: "invoices paid", isVariance: false },
+                      { label: "Committed", value: pc.committedCosts, cls: "text-blue-600 dark:text-blue-400", sub: "orders placed", isVariance: false },
+                      { label: "Forecast Final", value: pc.forecastFinalCost, cls: pc.forecastFinalCost > davidCap * 1.167 ? "text-destructive" : pc.forecastFinalCost > davidCap ? "text-amber-600 dark:text-amber-400" : "text-foreground", sub: "best estimate", isVariance: false },
+                      { label: "Variance", value: pc.varianceGbp, cls: pc.varianceGbp > 0 ? "text-destructive" : pc.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground", sub: `${pc.variancePct >= 0 ? "+" : ""}${pc.variancePct.toFixed(1)}% vs plan`, isVariance: true },
+                    ] as { label: string; value: number; cls: string; sub: string; isVariance: boolean }[]).map(c => (
+                      <div key={c.label} className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">{c.label}</p>
+                        <p className={`text-base font-bold tabular-nums ${c.cls}`}>
+                          {c.isVariance
+                            ? (pc.varianceGbp >= 0 ? "+" : "") + formatGBP(Math.abs(c.value))
+                            : formatGBP(c.value)}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{c.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Budget health badge */}
+                  <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${cfg.border}`}>
+                    <span className={`font-bold shrink-0 ${cfg.head}`}>{cfg.icon}</span>
+                    <span className={`text-sm font-semibold ${cfg.head}`}>Budget health: </span>
+                    <span className={`text-sm ${cfg.head}`}>{cfg.msg}</span>
+                  </div>
+
+                  {/* Completion metrics */}
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { label: "Tasks complete", value: pc.taskCompletionPct, sub: `${allTasksFlat.filter((t: any) => t.status === "complete").length} of ${allTasksFlat.length}` },
+                      { label: "Spend recorded", value: pc.spendCompletionPct, sub: formatGBP(pc.actualSpend) + " paid" },
+                      { label: "Budget earned", value: pc.weightedCompletionPct, sub: "cost-weighted %" },
+                    ] as { label: string; value: number; sub: string }[]).map(m => (
+                      <div key={m.label} className="rounded-md border bg-muted/30 px-3 py-2 text-center">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
+                        <p className="text-xl font-bold">{m.value}%</p>
+                        <Progress value={m.value} className="h-1 mt-1.5 mb-1" />
+                        <p className="text-[10px] text-muted-foreground">{m.sub}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Cost Performance chart — cumulative planned vs actual vs forecast */}
+                  {pc.monthlySpend?.length > 0 && (
+                    <div className="rounded-lg border overflow-hidden">
+                      <div className="px-3 py-2 bg-muted/40 border-b flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Performance — Cumulative</span>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                          <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 bg-violet-600 rounded" />Planned</span>
+                          <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 bg-emerald-600 rounded" />Actual</span>
+                          <span className="flex items-center gap-1.5"><span className="inline-block w-5 border-t-2 border-dashed border-blue-600" />Forecast</span>
+                        </div>
+                      </div>
+                      <div className="p-2 bg-background">
+                        <ResponsiveContainer width="100%" height={140}>
+                          <AreaChart data={pc.monthlySpend} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                            <XAxis dataKey="month" tick={{ fontSize: 9 }} />
+                            <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => v === 0 ? "£0" : `£${Math.round(v / 1000)}k`} width={36} />
+                            <Area type="monotone" dataKey="cumPlanned" stroke="#7c3aed" fill="#f5f3ff" strokeWidth={2} dot={false} name="Planned" />
+                            <Area type="monotone" dataKey="cumActual" stroke="#059669" fill="#ecfdf5" strokeWidth={2} dot={false} name="Actual" />
+                            <Area type="monotone" dataKey="cumForecast" stroke="#1d4ed8" fill="none" strokeWidth={1.5} strokeDasharray="4 2" dot={false} name="Forecast" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recorded spend table */}
+                  {pc.taskActuals?.length > 0 && (
+                    <div className="rounded-lg border overflow-hidden text-xs">
+                      <div className="bg-muted/50 px-3 py-1.5 border-b flex items-center justify-between">
+                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Recorded Spend</span>
+                        <span className="text-muted-foreground text-[10px]">{pc.taskActuals.length} task{pc.taskActuals.length !== 1 ? "s" : ""}</span>
+                      </div>
+                      <div className="divide-y">
+                        {(pc.taskActuals as any[]).slice(0, 12).map((ta: any) => {
+                          const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost : ta.committedCost;
+                          return (
+                            <div key={ta.taskId} className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-2 items-center">
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">{ta.taskTitle}</p>
+                                {ta.invoiceRef && <p className="text-muted-foreground/70 text-[10px]">{ta.invoiceRef}{ta.invoiceDate ? ` · ${ta.invoiceDate}` : ""}</p>}
+                              </div>
+                              <span className="tabular-nums text-muted-foreground text-right">{formatGBP(ta.plannedCost)}</span>
+                              <span className={`tabular-nums font-medium text-right ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                                {formatGBP(effectiveCost)}
+                                {ta.varianceGbp !== 0 && <span className="text-[10px] ml-1 opacity-70">({ta.varianceGbp > 0 ? "+" : ""}{formatGBP(ta.varianceGbp)})</span>}
+                              </span>
+                              <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
+                                ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
+                                : ta.paidStatus === "committed" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700"
+                                : "text-muted-foreground"
+                              }`}>
+                                {ta.paidStatus === "paid" ? "Paid" : ta.paidStatus === "committed" ? "Committed" : "Unpaid"}
+                              </Badge>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Category breakdown — with variance columns when actuals exist */}
             {(() => {
               const ph = (id: number) => phases?.find(p => p.id === id);
+              const catCtrl = (ids: number[]) => ids.reduce((s, id) => {
+                const c = (projectControls as any)?.categoryBreakdown?.find((x: any) => x.phaseId === id);
+                return { actual: s.actual + (c?.actualSpend ?? 0), committed: s.committed + (c?.committed ?? 0), forecast: s.forecast + (c?.forecastFinal ?? 0) };
+              }, { actual: 0, committed: 0, forecast: 0 });
+              const hasActuals = ((projectControls as any)?.actualSpend ?? 0) > 0 || ((projectControls as any)?.committedCosts ?? 0) > 0;
               const cats = [
-                {
-                  label: "Design / statutory / building works",
-                  note: "Phases 3–4",
-                  selected: (ph(21)?.selectedCostTotal ?? 0) + (ph(22)?.selectedCostTotal ?? 0),
-                  high: (ph(21)?.totalCostHigh ?? 0) + (ph(22)?.totalCostHigh ?? 0),
-                },
-                {
-                  label: "Legal / lease / RICS / deposit",
-                  note: "Phase 2",
-                  selected: ph(20)?.selectedCostTotal ?? 0,
-                  high: ph(20)?.totalCostHigh ?? 0,
-                },
-                {
-                  label: "FF&E / equipment / styling",
-                  note: "Phase 5",
-                  selected: ph(23)?.selectedCostTotal ?? 0,
-                  high: ph(23)?.totalCostHigh ?? 0,
-                },
-                {
-                  label: "Clinical / compliance / stock",
-                  note: "Phases 6–7",
-                  selected: (ph(24)?.selectedCostTotal ?? 0) + (ph(25)?.selectedCostTotal ?? 0),
-                  high: (ph(24)?.totalCostHigh ?? 0) + (ph(25)?.totalCostHigh ?? 0),
-                },
-                {
-                  label: "Finance / insurance / admin",
-                  note: "Phase 8",
-                  selected: ph(26)?.selectedCostTotal ?? 0,
-                  high: ph(26)?.totalCostHigh ?? 0,
-                },
-                {
-                  label: "Marketing / launch / handover",
-                  note: "Phases 9–10",
-                  selected: (ph(27)?.selectedCostTotal ?? 0) + (ph(28)?.selectedCostTotal ?? 0),
-                  high: (ph(27)?.totalCostHigh ?? 0) + (ph(28)?.totalCostHigh ?? 0),
-                },
-                {
-                  label: "Contingency reserve",
-                  note: "Phase 12",
-                  selected: ph(30)?.selectedCostTotal ?? 0,
-                  high: ph(30)?.totalCostHigh ?? 0,
-                },
-              ];
+                { label: "Design / statutory / building works", note: "Phases 3–4", phaseIds: [21, 22], selected: (ph(21)?.selectedCostTotal ?? 0) + (ph(22)?.selectedCostTotal ?? 0), high: (ph(21)?.totalCostHigh ?? 0) + (ph(22)?.totalCostHigh ?? 0) },
+                { label: "Legal / lease / RICS / deposit", note: "Phase 2", phaseIds: [20], selected: ph(20)?.selectedCostTotal ?? 0, high: ph(20)?.totalCostHigh ?? 0 },
+                { label: "FF&E / equipment / styling", note: "Phase 5", phaseIds: [23], selected: ph(23)?.selectedCostTotal ?? 0, high: ph(23)?.totalCostHigh ?? 0 },
+                { label: "Clinical / compliance / stock", note: "Phases 6–7", phaseIds: [24, 25], selected: (ph(24)?.selectedCostTotal ?? 0) + (ph(25)?.selectedCostTotal ?? 0), high: (ph(24)?.totalCostHigh ?? 0) + (ph(25)?.totalCostHigh ?? 0) },
+                { label: "Finance / insurance / admin", note: "Phase 8", phaseIds: [26], selected: ph(26)?.selectedCostTotal ?? 0, high: ph(26)?.totalCostHigh ?? 0 },
+                { label: "Marketing / launch / handover", note: "Phases 9–10", phaseIds: [27, 28], selected: (ph(27)?.selectedCostTotal ?? 0) + (ph(28)?.selectedCostTotal ?? 0), high: (ph(27)?.totalCostHigh ?? 0) + (ph(28)?.totalCostHigh ?? 0) },
+                { label: "Contingency reserve", note: "Phase 12", phaseIds: [30], selected: ph(30)?.selectedCostTotal ?? 0, high: ph(30)?.totalCostHigh ?? 0 },
+              ].map(c => ({ ...c, ...catCtrl(c.phaseIds) }));
               const grandHigh = cats.reduce((s, c) => s + c.high, 0);
+              const colCls = hasActuals ? "grid-cols-[1fr_auto_auto_auto_auto]" : "grid-cols-[1fr_auto_auto]";
               return (
                 <div className="rounded-lg border border-border/60 overflow-hidden text-xs">
-                  <div className="bg-muted/50 px-3 py-1.5 grid grid-cols-[1fr_auto_auto] gap-4">
+                  <div className={`bg-muted/50 px-3 py-1.5 grid ${colCls} gap-4`}>
                     <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Category</span>
+                    {hasActuals && <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">Actual</span>}
+                    {hasActuals && <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">Forecast</span>}
                     <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">Selected</span>
                     <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-20 text-right">High risk</span>
                   </div>
                   {cats.map((c, i) => (
-                    <div key={i} className={`grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2 ${i % 2 !== 0 ? "bg-muted/20" : ""}`}>
+                    <div key={i} className={`grid ${colCls} gap-4 px-3 py-2 ${i % 2 !== 0 ? "bg-muted/20" : ""}`}>
                       <div>
                         <span className="text-foreground">{c.label}</span>
                         <span className="text-muted-foreground/60 ml-1.5">{c.note}</span>
                       </div>
+                      {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{(c.actual + c.committed) > 0 ? formatGBP(c.actual + c.committed) : "—"}</span>}
+                      {hasActuals && <span className={`w-20 text-right tabular-nums font-medium ${c.forecast > c.selected ? "text-destructive" : "text-foreground"}`}>{c.forecast > 0 ? formatGBP(c.forecast) : "—"}</span>}
                       <span className="font-semibold w-20 text-right tabular-nums">{formatGBP(c.selected)}</span>
                       <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(c.high)}</span>
                     </div>
                   ))}
-                  <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-3 py-2 border-t bg-muted/40 font-bold">
+                  <div className={`grid ${colCls} gap-4 px-3 py-2 border-t bg-muted/40 font-bold`}>
                     <span>Grand total</span>
+                    {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP((projectControls as any)?.actualSpend ?? 0)}</span>}
+                    {hasActuals && <span className={`w-20 text-right tabular-nums ${((projectControls as any)?.forecastFinalCost ?? 0) > totalSelectedCost ? "text-destructive" : ""}`}>{formatGBP((projectControls as any)?.forecastFinalCost ?? 0)}</span>}
                     <span className={`w-20 text-right tabular-nums ${totalSelectedCost > 70000 ? "text-destructive" : totalSelectedCost > 60000 ? "text-amber-600 dark:text-amber-400" : ""}`}>{formatGBP(totalSelectedCost)}</span>
                     <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(grandHigh)}</span>
                   </div>
@@ -2385,6 +2514,7 @@ export default function ProjectPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Cost Tier</TableHead>
+                    <TableHead>Actuals</TableHead>
                     <TableHead>
                       <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => setListSortBy(s => s === "startDate" ? "dueDate" : "startDate")}>
                         {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
@@ -2458,6 +2588,19 @@ export default function ProjectPage() {
                             </div>
                           )}
                         </TableCell>
+                        <TableCell className="text-xs">
+                          {(() => {
+                            const ac = (task as any).actualCost;
+                            const cc = (task as any).committedCost;
+                            if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
+                            return (
+                              <div className="flex flex-col gap-0.5">
+                                {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
+                                {cc > 0 && !ac && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700 w-max">{formatGBP(cc)}</Badge>}
+                              </div>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {task.startDate ? (
                             <div className="flex flex-col gap-0.5">
@@ -2482,7 +2625,7 @@ export default function ProjectPage() {
                     );
                   })}
                   {allTasks.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="text-center py-6 text-muted-foreground">No tasks found.</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={9} className="text-center py-6 text-muted-foreground">No tasks found.</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -2569,6 +2712,7 @@ export default function ProjectPage() {
                         <TableHead>Status</TableHead>
                         <TableHead>Priority</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
+                        <TableHead>Actuals</TableHead>
                         <TableHead>
                           <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); setListSortBy(s => s === "startDate" ? "dueDate" : "startDate"); }}>
                             {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
@@ -2691,6 +2835,19 @@ export default function ProjectPage() {
                               </div>
                             )}
                           </TableCell>
+                          <TableCell className="text-xs">
+                            {(() => {
+                              const ac = (task as any).actualCost;
+                              const cc = (task as any).committedCost;
+                              if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
+                              return (
+                                <div className="flex flex-col gap-0.5">
+                                  {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
+                                  {cc > 0 && !ac && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700 w-max">{formatGBP(cc)}</Badge>}
+                                </div>
+                              );
+                            })()}
+                          </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {task.startDate ? (
                               <div className="flex flex-col gap-0.5">
@@ -2774,7 +2931,7 @@ export default function ProjectPage() {
                       ))}
                       {(!phase.tasks || phase.tasks.length === 0) && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center py-6 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center py-6 text-muted-foreground">
                             No tasks in this phase yet.
                           </TableCell>
                         </TableRow>
@@ -2944,6 +3101,153 @@ export default function ProjectPage() {
           onClick={() => setConfirmDeleteId(null)}
         />
       )}
+
+      {/* ── Record Spend Dialog ────────────────────────────────────────────── */}
+      <Dialog open={showRecordSpend} onOpenChange={setShowRecordSpend}>
+        <DialogContent className="sm:max-w-[460px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-4 h-4" />
+              Record Spend
+            </DialogTitle>
+            <DialogDescription>
+              Record actual or committed spend against a task. Updates the project controls tracker.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Task</label>
+              <Select
+                value={recordSpendData.taskId ? String(recordSpendData.taskId) : ""}
+                onValueChange={(v) => setRecordSpendData(d => ({ ...d, taskId: parseInt(v) }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue placeholder="Select a task…" /></SelectTrigger>
+                <SelectContent>
+                  {phases?.flatMap(p =>
+                    (p.tasks ?? []).map(t => ({
+                      id: t.id,
+                      title: t.title,
+                      phaseName: p.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || p.name,
+                    }))
+                  ).map(t => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      <span className="text-[10px] text-muted-foreground mr-1.5">{t.phaseName}</span>
+                      {t.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Actual cost paid <span className="text-muted-foreground font-normal">£</span></label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={recordSpendData.actualCost}
+                  onChange={(e) => setRecordSpendData(d => ({ ...d, actualCost: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Committed cost <span className="text-muted-foreground font-normal">£</span></label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={recordSpendData.committedCost}
+                  onChange={(e) => setRecordSpendData(d => ({ ...d, committedCost: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">Payment status</label>
+              <Select
+                value={recordSpendData.paidStatus}
+                onValueChange={(v) => setRecordSpendData(d => ({ ...d, paidStatus: v }))}
+              >
+                <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="paid">✓ Paid — invoice settled</SelectItem>
+                  <SelectItem value="committed">Committed — order placed</SelectItem>
+                  <SelectItem value="unpaid">Unpaid / accrued</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Invoice ref</label>
+                <Input
+                  placeholder="INV-001"
+                  value={recordSpendData.invoiceRef}
+                  onChange={(e) => setRecordSpendData(d => ({ ...d, invoiceRef: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Invoice date</label>
+                <Input
+                  type="date"
+                  value={recordSpendData.invoiceDate}
+                  onChange={(e) => setRecordSpendData(d => ({ ...d, invoiceDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium">
+                Variance note <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+              </label>
+              <Input
+                placeholder="Reason if cost differs from plan…"
+                value={recordSpendData.varianceNote}
+                onChange={(e) => setRecordSpendData(d => ({ ...d, varianceNote: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRecordSpend(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!recordSpendData.taskId || updateTask.isPending}
+              onClick={() => {
+                if (!recordSpendData.taskId) return;
+                const patch: Record<string, unknown> = {
+                  paidStatus: recordSpendData.paidStatus,
+                };
+                if (recordSpendData.actualCost) patch.actualCost = parseFloat(recordSpendData.actualCost);
+                if (recordSpendData.committedCost) patch.committedCost = parseFloat(recordSpendData.committedCost);
+                if (recordSpendData.invoiceRef) patch.invoiceRef = recordSpendData.invoiceRef;
+                if (recordSpendData.invoiceDate) patch.invoiceDate = recordSpendData.invoiceDate;
+                if (recordSpendData.varianceNote) patch.varianceNote = recordSpendData.varianceNote;
+                if (activePropertyId) patch.propertyId = activePropertyId;
+                updateTask.mutate(
+                  { id: recordSpendData.taskId, data: patch as any },
+                  {
+                    onSuccess: () => {
+                      invalidateAfterTaskChange();
+                      setShowRecordSpend(false);
+                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", invoiceRef: "", invoiceDate: "", varianceNote: "" });
+                    },
+                  }
+                );
+              }}
+            >
+              {updateTask.isPending ? "Saving…" : "Record Spend"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

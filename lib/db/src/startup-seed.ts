@@ -419,6 +419,22 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS vat_registration_date TEXT`);
         // V11 migration: add vat_input_cost_ratio_percent to financial_models
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS vat_input_cost_ratio_percent INTEGER DEFAULT 60`);
+        // V12 migration: project controls — actuals tracking on tasks + David's approved cap
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS actual_cost REAL`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS committed_cost REAL`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS paid_status TEXT`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS payment_date TEXT`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS invoice_ref TEXT`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS invoice_date TEXT`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS variance_note TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS actual_cost REAL`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS committed_cost REAL`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS paid_status TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS payment_date TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_ref TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS invoice_date TEXT`);
+        await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS variance_note TEXT`);
+        await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS david_approved_cap_gbp REAL DEFAULT 60000`);
         return;
       }
 

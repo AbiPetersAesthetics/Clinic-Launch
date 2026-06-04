@@ -478,6 +478,11 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
       selectedCost: o.selectedCost ?? t.selectedCost,
       startDate: o.startDate !== undefined ? o.startDate : (t as any).startDate,
       dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
+      // Actuals — pull from override first, fall back to base task
+      actualCost: (o as any).actualCost ?? (t as any).actualCost ?? null,
+      committedCost: (o as any).committedCost ?? (t as any).committedCost ?? null,
+      paidStatus: (o as any).paidStatus ?? (t as any).paidStatus ?? null,
+      invoiceDate: (o as any).invoiceDate ?? (t as any).invoiceDate ?? null,
     };
   });
 
@@ -604,16 +609,33 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   }
 
   // ── Build month-by-month project cost map from task start dates ─────────────
-  // Use startDate as the scheduling anchor (when spend begins); fall back to dueDate.
+  // Priority: paid actual (by invoice_date) > committed (by invoice_date or startDate) > selected (by startDate).
   const monthCostMap: number[] = Array(TOTAL_MONTHS_CF).fill(0);
   const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS_CF }, () => []);
   let undatedTaskCost = 0;
 
   for (const task of allTasks) {
-    const cost = task.selectedCost || 0;
+    const actual = (task as any).actualCost ?? 0;
+    const committed = (task as any).committedCost ?? 0;
+    const paidStatus = (task as any).paidStatus as string | null;
+    const invDate = (task as any).invoiceDate as string | null;
+
+    let cost: number;
+    let schedDate: string | null | undefined;
+
+    if (paidStatus === "paid" && actual > 0) {
+      cost = actual;
+      schedDate = invDate || (task as any).startDate || task.dueDate;
+    } else if (committed > 0) {
+      cost = committed;
+      schedDate = invDate || (task as any).startDate || task.dueDate;
+    } else {
+      cost = task.selectedCost || 0;
+      schedDate = (task as any).startDate || task.dueDate;
+    }
+
     if (!cost) continue;
 
-    const schedDate = (task as any).startDate || task.dueDate;
     if (schedDate) {
       const d = new Date(schedDate);
       const idx = (d.getFullYear() - calendarStart.getFullYear()) * 12
