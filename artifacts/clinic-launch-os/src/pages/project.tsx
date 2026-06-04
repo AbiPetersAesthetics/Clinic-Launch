@@ -3123,7 +3123,7 @@ export default function ProjectPage() {
                 onValueChange={(v) => setRecordSpendData(d => ({ ...d, taskId: parseInt(v) }))}
               >
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select a task…" /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-64 overflow-y-auto">
                   {phases?.flatMap(p =>
                     (p.tasks ?? []).map(t => ({
                       id: t.id,
