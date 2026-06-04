@@ -221,12 +221,48 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   }
   waitlistCount = (project as any).waitlistCount ?? 0;
 
-  // Confidence score (0-100)
-  const completionScore = launchReadinessPercent * 0.4;
-  const riskPenalty = Math.min(highRiskTaskCount * 3, 20);
-  const criticalPenalty = Math.min(criticalRiskFlagCount * 5, 20);
-  const financialBonus = financial ? 10 : 0;
-  const projectConfidenceScore = Math.max(0, Math.round(40 + completionScore - riskPenalty - criticalPenalty + financialBonus));
+  // Confidence score — 5 earned pillars, nothing given for free (0-100)
+  const fmt = (n: number) => "£" + Math.round(n).toLocaleString("en-GB");
+  const davidCap = (financial as any)?.davidApprovedCapGbp ?? 80000;
+  const outerLimitCalc = davidCap * (7 / 6);
+
+  // Pillar 1: Progress (0–20) — task completion rate
+  const cpProgress = Math.round(Math.min(launchReadinessPercent * 0.2, 20));
+
+  // Pillar 2: Budget health (0–20) — selected cost vs approved cap
+  const cpBudget = currentSelectedCost <= davidCap ? 20
+    : currentSelectedCost <= outerLimitCalc ? 12
+    : 4;
+
+  // Pillar 3: Financial viability (0–20) — projected monthly net profit at opening
+  const cpFinancial = selectedNetProfit == null ? 0
+    : selectedNetProfit >= 6000 ? 20
+    : selectedNetProfit >= 3000 ? 16
+    : selectedNetProfit >= 1000 ? 10
+    : selectedNetProfit >= 0 ? 5
+    : 0;
+
+  // Pillar 4: Risk posture (0–20) — open critical-risk items (each costs 1.5pts, cap 20)
+  const cpRisk = Math.max(0, Math.round(20 - Math.min(criticalRiskFlagCount * 1.5, 20)));
+
+  // Pillar 5: Compliance + timeline headroom (0–20)
+  const cpCompPart = Math.round(Math.min(complianceReadinessPercent * 0.1, 10));
+  const cpTimePart = daysToOpening == null ? 5
+    : daysToOpening >= 120 ? 10
+    : daysToOpening >= 60 ? 6
+    : daysToOpening >= 30 ? 3
+    : 1;
+  const cpCompliance = cpCompPart + cpTimePart;
+
+  const projectConfidenceScore = cpProgress + cpBudget + cpFinancial + cpRisk + cpCompliance;
+
+  const confidenceBreakdown = {
+    progress:   { score: cpProgress,  max: 20, detail: `${completedTaskCount} of ${totalTaskCount} tasks complete` },
+    budget:     { score: cpBudget,    max: 20, detail: currentSelectedCost <= davidCap ? `Within ${fmt(davidCap)} approved cap` : currentSelectedCost <= outerLimitCalc ? `Stretch — ${fmt(currentSelectedCost)} vs ${fmt(davidCap)} cap` : `Over outer limit (${fmt(outerLimitCalc)}) — review deferrals` },
+    financial:  { score: cpFinancial, max: 20, detail: selectedNetProfit != null ? `${selectedNetProfit >= 0 ? "+" : ""}${fmt(selectedNetProfit)}/mo net at ${selectedScenario}` : "Financial model not configured" },
+    risk:       { score: cpRisk,      max: 20, detail: criticalRiskFlagCount === 0 ? "No open critical risks" : `${criticalRiskFlagCount} critical-risk item${criticalRiskFlagCount !== 1 ? "s" : ""} still open` },
+    compliance: { score: cpCompliance, max: 20, detail: `${complianceReadinessPercent}% compliance complete · ${daysToOpening ?? "?"} days to launch` },
+  };
 
   // Phase progress
   const phaseProgress = await Promise.all(phases.map(async (phase) => {
