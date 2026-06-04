@@ -390,16 +390,18 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         };
       });
 
-    // ── Monthly spend breakdown (16-month window: 2 past + 14 future) ─────────
+    // ── Monthly spend breakdown (Apr this year → Dec this year) ──────────────
     const today = new Date();
+    const yearEnd = new Date(today.getFullYear(), 11, 1); // December of current year
     const monthlySpend: Array<{
       month: string; planned: number; actual: number; committed: number;
       cumPlanned: number; cumActual: number; cumForecast: number;
     }> = [];
     let cumPlanned = 0, cumActual = 0, cumForecast = 0;
 
-    for (let i = -2; i < 14; i++) {
+    for (let i = -2; ; i++) {
       const mDate = new Date(today.getFullYear(), today.getMonth() + i, 1);
+      if (mDate > yearEnd) break;
       const monthLabel = mDate.toLocaleDateString("en-GB", { month: "short", year: "2-digit" });
       let mPlanned = 0, mActual = 0, mCommitted = 0;
 
