@@ -306,9 +306,48 @@ function ExpandedRow({ risk, allRisks, onPatch, onReview }: {
           </div>
         </div>
 
-        {/* Residual scoring */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Residual Risk — after mitigation</p>
+        {/* Inherent + Residual scoring */}
+        <div className="space-y-3">
+          {/* Inherent score */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Inherent Score — before mitigation</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-xs text-muted-foreground">Likelihood (1–5)</label>
+                <Input
+                  type="number" min={1} max={5}
+                  defaultValue={risk.likelihood}
+                  onBlur={e => {
+                    const v = Math.min(5, Math.max(1, parseInt(e.target.value) || 1));
+                    onPatch(risk.riskId, { likelihood: v });
+                  }}
+                  className="mt-1 h-8 text-xs"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Impact (1–5)</label>
+                <Input
+                  type="number" min={1} max={5}
+                  defaultValue={risk.impact}
+                  onBlur={e => {
+                    const v = Math.min(5, Math.max(1, parseInt(e.target.value) || 1));
+                    onPatch(risk.riskId, { impact: v });
+                  }}
+                  className="mt-1 h-8 text-xs"
+                />
+              </div>
+              <div className="col-span-2 flex items-center gap-3">
+                <ScoreBadge l={risk.likelihood} i={risk.impact} size="lg" />
+                <span className="text-xs text-muted-foreground">Inherent score = {s} (saved to history on change)</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-border/50" />
+
+          {/* Residual score */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Residual Score — after mitigation</p>
           {risk.treatment === "Terminate" ? (
             <div className="rounded bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700 font-medium">
               ✓ Risk eliminated — activity abandoned. Residual score: 0.
@@ -341,6 +380,7 @@ function ExpandedRow({ risk, allRisks, onPatch, onReview }: {
               </div>
             </div>
           )}
+          </div>
           {escalate && (
             <div className="flex items-center gap-2 rounded bg-red-50 border border-red-200 px-3 py-2">
               <Flame className="w-4 h-4 text-red-600 shrink-0" />
