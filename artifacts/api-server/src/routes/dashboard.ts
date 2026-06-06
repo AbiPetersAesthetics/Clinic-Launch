@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable } from "@workspace/db";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable, risksTable } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
 import { calcCliniciansMonthlyCost } from "../lib/financialEngine";
 
@@ -21,7 +21,6 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   const completedTaskCount = allTasks.filter(t => t.status === "complete").length;
   const blockedTaskCount = allTasks.filter(t => t.status === "blocked").length;
   const highRiskTaskCount = allTasks.filter(t => t.riskLevel === "high" || t.riskLevel === "critical").length;
-  const criticalRiskFlagCount = allTasks.filter(t => t.isCriticalRisk).length;
 
   const totalProjectCostLow = allTasks.reduce((sum, t) => sum + t.costLow, 0);
   const totalProjectCostMid = allTasks.reduce((sum, t) => sum + t.costMid, 0);
@@ -38,20 +37,28 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     daysToOpening = Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }
 
-  // Financial + property + fixed cost items + marketing — fetched in parallel
+  // Financial + property + fixed cost items + marketing + risks — fetched in parallel
   const [
     [financial],
     allProperties,
     fixedCostItems,
     allCompetitors,
     allMarketingItems,
+    allRisks,
   ] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId)),
     db.select().from(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId)),
+    db.select().from(risksTable).where(eq(risksTable.projectId, projectId)),
   ]);
+
+  // Risk Register scoring — only risks from the Register contribute to risk posture
+  const openRisks = allRisks.filter(r => r.status !== "Closed" && r.status !== "Mitigated");
+  const criticalRegisterRisks = openRisks.filter(r => r.likelihood * r.impact >= 15);
+  const highRegisterRisks    = openRisks.filter(r => r.likelihood * r.impact >= 12 && r.likelihood * r.impact < 15);
+  const criticalRiskFlagCount = openRisks.filter(r => r.likelihood * r.impact >= 12).length;
 
   const activeProperty = allProperties.find(p => p.isActiveForProject) ?? allProperties[0] ?? null;
 
@@ -265,8 +272,9 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     : selectedNetProfit >= 0 ? 5
     : 0;
 
-  // Pillar 4: Risk posture (0–20) — open critical-risk items (each costs 1.5 pts, cap 20)
-  const cpRisk = Math.max(0, Math.round(20 - Math.min(criticalRiskFlagCount * 1.5, 20)));
+  // Pillar 4: Risk posture (0–20) — scored from Risk Register only
+  // Critical (score ≥15): -2 pts each; High (score 12–14): -1 pt each
+  const cpRisk = Math.max(0, Math.round(20 - (criticalRegisterRisks.length * 2) - (highRegisterRisks.length * 1)));
 
   // Pillar 5: Compliance + timeline headroom (0–20)
   const cpCompPart = Math.round(Math.min(complianceReadinessPercent * 0.1, 10));
@@ -283,7 +291,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     progress:   { score: cpProgress,   max: 20, detail: `${completedTaskCount} of ${totalTaskCount} tasks complete` },
     budget:     { score: cpBudget,     max: 20, detail: currentSelectedCost <= davidCap ? `Within ${fmt(davidCap)} approved cap` : currentSelectedCost <= outerLimitCalc ? `Stretch — ${fmt(currentSelectedCost)} vs ${fmt(davidCap)} cap` : `Over outer limit (${fmt(outerLimitCalc)}) — review deferrals` },
     financial:  { score: cpFinancial,  max: 20, detail: selectedNetProfit != null ? `${selectedNetProfit >= 0 ? "+" : ""}${fmt(selectedNetProfit)}/mo net at ${selectedScenario}` : "Financial model not configured" },
-    risk:       { score: cpRisk,       max: 20, detail: criticalRiskFlagCount === 0 ? "No open critical risks" : `${criticalRiskFlagCount} critical-risk item${criticalRiskFlagCount !== 1 ? "s" : ""} still open` },
+    risk:       { score: cpRisk,       max: 20, detail: criticalRiskFlagCount === 0 ? "No high/critical risks open" : `${criticalRegisterRisks.length} critical · ${highRegisterRisks.length} high risk${criticalRiskFlagCount !== 1 ? "s" : ""} open in Register` },
     compliance: { score: cpCompliance, max: 20, detail: `${complianceReadinessPercent}% compliance complete · ${daysToOpening ?? "?"} days to launch` },
   };
 
@@ -334,50 +342,77 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
 
 router.get("/projects/:projectId/risk-flags", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
-  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
+
+  // Load Risk Register and tasks in parallel
+  const [risks, phases] = await Promise.all([
+    db.select().from(risksTable).where(eq(risksTable.projectId, projectId)),
+    db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"))),
+  ]);
   const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
-  const flags: Array<{ level: string; category: string; message: string; taskId?: number; taskTitle?: string }> = [];
+  const flags: Array<{ level: string; category: string; message: string; riskId?: string; riskTitle?: string }> = [];
 
-  // Check critical risk tasks
-  allTasks.filter(t => t.isCriticalRisk && t.status !== "complete").forEach(t => {
-    flags.push({
-      level: "critical",
-      category: "compliance",
-      message: `Critical task incomplete: "${t.title}"`,
-      taskId: t.id,
-      taskTitle: t.title,
+  // ── Risk Register flags — the sole source of risk information ─────────────
+  const openRisks = risks.filter(r => r.status !== "Closed" && r.status !== "Mitigated");
+
+  // Critical risks (score ≥ 15) → critical flags
+  openRisks
+    .filter(r => r.likelihood * r.impact >= 15)
+    .sort((a, b) => (b.likelihood * b.impact) - (a.likelihood * a.impact))
+    .forEach(r => {
+      flags.push({
+        level: "critical",
+        category: r.category?.toLowerCase() ?? "risk",
+        message: r.title,
+        riskId: r.riskId,
+        riskTitle: r.title,
+      });
     });
-  });
 
-  // Check for dangerous LOW tier selections on non-negotiable tasks
-  allTasks.filter(t => t.isNonNegotiable && t.costTier === "low" && t.status !== "complete").forEach(t => {
-    flags.push({
-      level: "critical",
-      category: "cost",
-      message: `Non-negotiable task "${t.title}" is set to LOW cost tier — this may create unacceptable risk.`,
-      taskId: t.id,
-      taskTitle: t.title,
+  // High risks (score 12–14) → critical flags
+  openRisks
+    .filter(r => r.likelihood * r.impact >= 12 && r.likelihood * r.impact < 15)
+    .sort((a, b) => (b.likelihood * b.impact) - (a.likelihood * a.impact))
+    .forEach(r => {
+      flags.push({
+        level: "critical",
+        category: r.category?.toLowerCase() ?? "risk",
+        message: r.title,
+        riskId: r.riskId,
+        riskTitle: r.title,
+      });
     });
-  });
 
-  // Check for high proportion of HIGH cost selections
-  const highTierCount = allTasks.filter(t => t.costTier === "high").length;
-  if (allTasks.length > 0 && highTierCount / allTasks.length > 0.5) {
-    flags.push({
-      level: "warning",
-      category: "budget",
-      message: `Over 50% of tasks are on HIGH cost tier — total project cost is likely to exceed budget. Review cost selections.`,
+  // Medium risks (score 6–11) → warnings
+  openRisks
+    .filter(r => r.likelihood * r.impact >= 6 && r.likelihood * r.impact < 12)
+    .sort((a, b) => (b.likelihood * b.impact) - (a.likelihood * a.impact))
+    .forEach(r => {
+      flags.push({
+        level: "warning",
+        category: r.category?.toLowerCase() ?? "risk",
+        message: r.title,
+        riskId: r.riskId,
+        riskTitle: r.title,
+      });
     });
-  }
 
-  // Check for blocked tasks
+  // ── Operational project checks (budget / schedule — not risk score driven) ─
   const blockedTasks = allTasks.filter(t => t.status === "blocked");
   if (blockedTasks.length > 3) {
     flags.push({
       level: "warning",
       category: "schedule",
       message: `${blockedTasks.length} tasks are currently blocked — this may delay your opening date.`,
+    });
+  }
+
+  const highTierCount = allTasks.filter(t => t.costTier === "high").length;
+  if (allTasks.length > 0 && highTierCount / allTasks.length > 0.5) {
+    flags.push({
+      level: "warning",
+      category: "budget",
+      message: `Over 50% of tasks are on HIGH cost tier — total project cost is likely to exceed budget.`,
     });
   }
 
