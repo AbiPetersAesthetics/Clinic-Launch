@@ -1,0 +1,37 @@
+In the Clinic Launch OS app, I need you to make the following changes to the budget dashboard.
+1. Relabel and lock the existing Forecast Final
+Relabel "Forecast Final" as "Original Baseline" — this is the planned cost at project start. It should be frozen at its current value and never update when actuals or commitments change. Add a small lock icon and tooltip: "Locked at project start — does not update."
+2. Add a new Live Forecast Final metric
+For each project task in the database, apply the following logic in order to determine that line's forecast cost:
+
+If the task has a paid actual invoice recorded — use the actual paid amount
+If the task has a committed amount recorded (order placed, not yet paid) — use the committed amount
+If neither — use the existing selected cost (planned figure)
+
+Sum all lines using this logic to produce the Live Forecast Final total.
+Display this as a prominent metric card in the budget summary box showing:
+
+Live Forecast Final: £[total]
+Variance vs Original Baseline: £[difference] and [percentage] — green if under, amber if within 5% over, red if more than 5% over
+Variance vs £80,000 approved cap: £[difference] — same colour logic
+Label underneath: "Updates automatically as actuals and commitments are recorded"
+
+3. Add Net Cost After VAT Reclaim metric
+Add a new metric card showing the estimated net project cost after reclaimable VAT is recovered. Logic:
+
+Take the Live Forecast Final total
+Subtract the total reclaimable VAT amount (already calculated in the app as the Reclaimable VAT field — 20% standard rate on paid and committed spend where VAT status is confirmed as standard rated)
+Project forward: as more lines become paid or committed with confirmed VAT status, the reclaimable VAT figure should grow and the net cost should reduce accordingly
+Display as: Net Cost After VAT Reclaim: £[total]
+Sub-label: "Live forecast minus projected VAT reclaim on standard-rated spend"
+Note: only include VAT as reclaimable where the task's VAT status is confirmed as standard rate — exclude exempt, zero rated and unknown VAT status lines from the reclaim calculation
+Flag: if any tasks have unknown VAT status, show a warning: "[X] tasks have unconfirmed VAT status — net cost may be understated"
+
+4. Add variance flagging to the Recorded Spend panel
+In the existing Recorded Spend table, where a committed or actual amount is higher than the planned/selected cost for that line, flag the row with a red upward arrow and show the overage amount in red. Where it is lower, show a green downward arrow and the saving in green.
+5. Add a Savings Captured metric
+Add a small metric card showing the total savings captured so far versus plan — i.e. the sum of all lines where committed or actual is lower than selected. This gives David a running view of procurement savings being made. Label: "Savings Captured vs Plan: £[total]"
+6. Update all existing charts and tables
+The monthly spend breakdown table, cost performance chart, category breakdown and recorded spend panel should all reference the Live Forecast Final figure rather than the old Forecast Final where relevant. The cumulative forecast line on the cost performance chart should update dynamically as actuals and commitments are recorded.
+7. General
+All existing functionality must continue to work as before. No data should be lost. Changes are additive only — do not remove any existing metrics or fields. The layout should remain clean — group the new metrics logically alongside existing ones rather than scattering them.

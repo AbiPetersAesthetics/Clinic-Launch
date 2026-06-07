@@ -57,7 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus, Lock, ArrowUp, ArrowDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1999,23 +1999,54 @@ export default function ProjectPage() {
                 <div className="space-y-3">
                   {/* 5-card KPI strip */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {([
-                      { label: "Planned Budget", value: pc.plannedBudget, cls: "text-foreground", sub: "selected total", isVariance: false },
-                      { label: "Actual Paid", value: pc.actualSpend, cls: "text-emerald-600 dark:text-emerald-400", sub: "invoices paid", isVariance: false },
-                      { label: "Committed", value: pc.committedCosts, cls: "text-blue-600 dark:text-blue-400", sub: "orders placed", isVariance: false },
-                      { label: "Forecast Final", value: pc.forecastFinalCost, cls: pc.forecastFinalCost > davidCap * 1.167 ? "text-destructive" : pc.forecastFinalCost > davidCap ? "text-amber-600 dark:text-amber-400" : "text-foreground", sub: "best estimate", isVariance: false },
-                      { label: "Variance", value: pc.varianceGbp, cls: pc.varianceGbp > 0 ? "text-destructive" : pc.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground", sub: `${pc.variancePct >= 0 ? "+" : ""}${pc.variancePct.toFixed(1)}% vs plan`, isVariance: true },
-                    ] as { label: string; value: number; cls: string; sub: string; isVariance: boolean }[]).map(c => (
-                      <div key={c.label} className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">{c.label}</p>
-                        <p className={`text-base font-bold tabular-nums ${c.cls}`}>
-                          {c.isVariance
-                            ? (pc.varianceGbp >= 0 ? "+" : "") + formatGBP(Math.abs(c.value))
-                            : formatGBP(c.value)}
-                        </p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">{c.sub}</p>
+                    {/* Original Baseline — locked, never changes with actuals */}
+                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Original Baseline</p>
+                        <Lock className="w-2.5 h-2.5 text-muted-foreground/60" title="Locked at project start — does not update when actuals or commitments change" />
                       </div>
-                    ))}
+                      <p className="text-base font-bold tabular-nums text-foreground">{formatGBP(pc.originalBaselineCost ?? pc.plannedBudget)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">locked at project start</p>
+                    </div>
+                    {/* Actual Paid */}
+                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Actual Paid</p>
+                      <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(pc.actualSpend)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">invoices paid</p>
+                    </div>
+                    {/* Committed */}
+                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Committed</p>
+                      <p className="text-base font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatGBP(pc.committedCosts)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">orders placed</p>
+                    </div>
+                    {/* Live Forecast Final */}
+                    {(() => {
+                      const lff = pc.liveForecastFinal ?? pc.forecastFinalCost;
+                      const lffCls = lff > davidCap * 1.167 ? "text-destructive" : lff > davidCap ? "text-amber-600 dark:text-amber-400" : "text-foreground";
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Live Forecast Final</p>
+                          <p className={`text-base font-bold tabular-nums ${lffCls}`}>{formatGBP(lff)}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">updates with actuals</p>
+                        </div>
+                      );
+                    })()}
+                    {/* Variance vs Baseline */}
+                    {(() => {
+                      const vGbp = pc.varianceGbp;
+                      const vPct = pc.variancePct;
+                      const vCls = vGbp > 0 ? "text-destructive" : vGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground";
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Variance vs Baseline</p>
+                          <p className={`text-base font-bold tabular-nums ${vCls}`}>
+                            {vGbp >= 0 ? "+" : ""}{formatGBP(Math.abs(vGbp))}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{vPct >= 0 ? "+" : ""}{vPct.toFixed(1)}% vs original plan</p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Secondary KPI row — VAT reclaim, headroom, uncommitted */}
@@ -2069,6 +2100,75 @@ export default function ProjectPage() {
                             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Uncommitted</p>
                             <p className={`text-base font-bold tabular-nums ${uCls}`}>{formatGBP(uncommitted)}</p>
                             <p className="text-[10px] text-muted-foreground">planned not yet spent or ordered</p>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Live Forecast detail strip — variance vs baseline + cap, net cost, savings */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {/* Live Forecast vs Cap */}
+                    {(() => {
+                      const lff = pc.liveForecastFinal ?? pc.forecastFinalCost;
+                      const vsCapGbp = pc.liveForecastVsCapGbp ?? (lff - davidCap);
+                      const vsBasePct = pc.variancePct ?? 0;
+                      const isOver = vsCapGbp > 0;
+                      const isTight = !isOver && vsCapGbp > -5000;
+                      const vsCapCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 space-y-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live Forecast Variance</p>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground">vs Baseline</span>
+                            <span className={`text-sm font-bold tabular-nums ${pc.varianceGbp > 0 ? "text-destructive" : pc.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                              {pc.varianceGbp >= 0 ? "+" : ""}{formatGBP(Math.abs(pc.varianceGbp))}
+                              <span className="text-[10px] font-normal ml-1">({vsBasePct >= 0 ? "+" : ""}{vsBasePct.toFixed(1)}%)</span>
+                            </span>
+                          </div>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-[11px] text-muted-foreground">vs {formatGBP(davidCap)} cap</span>
+                            <span className={`text-sm font-bold tabular-nums ${vsCapCls}`}>
+                              {vsCapGbp >= 0 ? "+" : ""}{vsCapGbp >= 0 ? "" : "−"}{formatGBP(Math.abs(vsCapGbp))}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground italic">Updates as actuals &amp; commitments are recorded</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Net Cost After VAT Reclaim */}
+                    {(() => {
+                      const net = pc.netCostAfterVat ?? 0;
+                      const vat = pc.reclaimableVat ?? 0;
+                      const unknown = pc.unknownVatTaskCount ?? 0;
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 space-y-1">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Net Cost After VAT Reclaim</p>
+                          <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(net)}</p>
+                          <p className="text-[10px] text-muted-foreground">Live forecast minus {formatGBP(vat)} VAT reclaim (std rate only)</p>
+                          {unknown > 0 && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{unknown} task{unknown !== 1 ? "s" : ""} with unconfirmed VAT — net cost may be understated</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Savings Captured */}
+                    {(() => {
+                      const savings = pc.savingsCaptured ?? 0;
+                      return (
+                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
+                          <div className="rounded-md bg-emerald-100 dark:bg-emerald-950/50 p-2 shrink-0">
+                            <ArrowDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Savings Captured vs Plan</p>
+                            <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{savings > 0 ? formatGBP(savings) : "—"}</p>
+                            <p className="text-[10px] text-muted-foreground">procurement savings vs selected cost</p>
                           </div>
                         </div>
                       );
@@ -2142,6 +2242,7 @@ export default function ProjectPage() {
                                 <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Planned</th>
                                 <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Actual</th>
                                 <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Committed</th>
+                                <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Live Forecast</th>
                                 <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Cum. Planned</th>
                                 <th className="text-right px-3 py-1.5 font-semibold text-muted-foreground uppercase tracking-wider text-[10px]">Cum. Actual</th>
                               </tr>
@@ -2153,6 +2254,7 @@ export default function ProjectPage() {
                                   <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.planned > 0 ? formatGBP(m.planned) : "—"}</td>
                                   <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">{m.actual > 0 ? formatGBP(m.actual) : "—"}</td>
                                   <td className="px-3 py-1.5 text-right tabular-nums text-blue-700 dark:text-blue-400">{m.committed > 0 ? formatGBP(m.committed) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-violet-700 dark:text-violet-400 font-medium">{m.forecast > 0 ? formatGBP(m.forecast) : "—"}</td>
                                   <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.cumPlanned > 0 ? formatGBP(m.cumPlanned) : "—"}</td>
                                   <td className="px-3 py-1.5 text-right tabular-nums">{m.cumActual > 0 ? formatGBP(m.cumActual) : "—"}</td>
                                 </tr>
@@ -2200,9 +2302,11 @@ export default function ProjectPage() {
                                   {ta.invoiceRef && <p className="text-muted-foreground/70 text-[10px]">{ta.invoiceRef}{ta.invoiceDate ? ` · ${ta.invoiceDate}` : ""}</p>}
                                 </div>
                                 <span className="tabular-nums text-muted-foreground text-right">{formatGBP(ta.plannedCost)}</span>
-                                <span className={`tabular-nums font-medium text-right ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                                <span className={`tabular-nums font-medium text-right flex items-center gap-1 justify-end ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                                  {ta.varianceGbp > 0 && <ArrowUp className="w-3 h-3 text-destructive shrink-0" />}
+                                  {ta.varianceGbp < 0 && <ArrowDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />}
                                   {formatGBP(effectiveCost)}
-                                  {ta.varianceGbp !== 0 && <span className="text-[10px] ml-1 opacity-70">({ta.varianceGbp > 0 ? "+" : ""}{formatGBP(ta.varianceGbp)})</span>}
+                                  {ta.varianceGbp !== 0 && <span className="text-[10px] ml-0.5 opacity-80">({ta.varianceGbp > 0 ? "+" : "−"}{formatGBP(Math.abs(ta.varianceGbp))})</span>}
                                 </span>
                                 <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
                                   ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"

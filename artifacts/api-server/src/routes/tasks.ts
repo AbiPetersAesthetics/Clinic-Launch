@@ -280,6 +280,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     let committedCosts = 0;
     let forecastFinalCost = 0;
     let reclaimableVat = 0;
+    let savingsCaptured = 0;
+    let unknownVatTaskCount = 0;
 
     for (const task of allTasks) {
       const planned = (task.selectedCost as number) ?? 0;
@@ -290,28 +292,37 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
 
       plannedBudget += planned;
 
+      const hasSpend = (paid === "paid" && actual > 0) || committed > 0;
+
       if (paid === "paid" && actual > 0) {
         actualSpend += actual;
         forecastFinalCost += actual;
-        // Reclaimable VAT at standard 20% rate
-        if (vatStatus === "inc") reclaimableVat += actual / 6;       // 20/120 of gross
+        // Reclaimable VAT — only standard-rated (inc/exc) lines qualify
+        if (vatStatus === "inc") reclaimableVat += actual / 6;         // 20/120 of gross
         else if (vatStatus === "exc") reclaimableVat += actual * 0.20; // 20% on top
-        // "exempt" or null → 0
+        // "exempt", "zero", null → 0
+        if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
+        if (actual < planned) savingsCaptured += planned - actual;
       } else if (committed > 0) {
         committedCosts += committed;
         forecastFinalCost += committed;
         // Include expected reclaimable on committed costs
         if (vatStatus === "inc") reclaimableVat += committed / 6;
         else if (vatStatus === "exc") reclaimableVat += committed * 0.20;
+        if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
+        if (committed < planned) savingsCaptured += planned - committed;
       } else {
         forecastFinalCost += planned;
       }
+      void hasSpend;
     }
 
     const varianceGbp = forecastFinalCost - plannedBudget;
     const variancePct = plannedBudget > 0 ? (varianceGbp / plannedBudget) * 100 : 0;
     const uncommittedBudget = plannedBudget - actualSpend - committedCosts;
     const capHeadroomGbp = davidApprovedCapGbp - forecastFinalCost;
+    const netCostAfterVat = forecastFinalCost - reclaimableVat;
+    const liveForecastVsCapGbp = forecastFinalCost - davidApprovedCapGbp;
     const outerLimitGbp = davidApprovedCapGbp * (7 / 6); // stretch zone = +1/6 above cap (e.g. £80k → £93.3k)
 
     const hasSomeActuals = actualSpend > 0 || committedCosts > 0;
@@ -394,7 +405,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     const today = new Date();
     const yearEnd = new Date(today.getFullYear(), 11, 1); // December of current year
     const monthlySpend: Array<{
-      month: string; planned: number; actual: number; committed: number;
+      month: string; planned: number; actual: number; committed: number; forecast: number;
       cumPlanned: number; cumActual: number; cumForecast: number;
     }> = [];
     let cumPlanned = 0, cumActual = 0, cumForecast = 0;
@@ -435,17 +446,19 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         }
       }
 
-      // Forecast = actual paid + committed + unrecorded planned (subtract planned for tasks with a committed/actual)
-      const mForecast = mActual + mCommitted;
+      // Live forecast for this month = max(planned, actual + committed)
+      // i.e. tasks with spend use their spend figure; tasks without use planned
+      const mForecastLive = Math.max(mPlanned, mActual + mCommitted);
       cumPlanned += mPlanned;
       cumActual += mActual;
-      cumForecast += mForecast + (mPlanned > mActual + mCommitted ? mPlanned - mActual - mCommitted : 0);
+      cumForecast += mForecastLive;
 
       monthlySpend.push({
         month: monthLabel,
         planned: Math.round(mPlanned),
         actual: Math.round(mActual),
         committed: Math.round(mCommitted),
+        forecast: Math.round(mForecastLive),
         cumPlanned: Math.round(cumPlanned),
         cumActual: Math.round(cumActual),
         cumForecast: Math.round(cumForecast),
@@ -453,18 +466,26 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     }
 
     return res.json({
-      plannedBudget: Math.round(plannedBudget),
+      // Original baseline (frozen — sum of selectedCost, never affected by actuals)
+      originalBaselineCost: Math.round(plannedBudget),
+      plannedBudget: Math.round(plannedBudget),        // kept for backward compat
       actualSpend: Math.round(actualSpend),
       committedCosts: Math.round(committedCosts),
-      forecastFinalCost: Math.round(forecastFinalCost),
+      // Live Forecast Final — updates as actuals/committed are recorded
+      forecastFinalCost: Math.round(forecastFinalCost), // kept for backward compat
+      liveForecastFinal: Math.round(forecastFinalCost),
       varianceGbp: Math.round(varianceGbp),
       variancePct: Math.round(variancePct * 10) / 10,
+      liveForecastVsCapGbp: Math.round(liveForecastVsCapGbp),
       budgetStatus,
       davidApprovedCapGbp,
       reclaimableVat: Math.round(reclaimableVat),
+      netCostAfterVat: Math.round(netCostAfterVat),
       uncommittedBudget: Math.round(uncommittedBudget),
       capHeadroomGbp: Math.round(capHeadroomGbp),
       outerLimitGbp: Math.round(outerLimitGbp),
+      savingsCaptured: Math.round(savingsCaptured),
+      unknownVatTaskCount,
       taskCompletionPct,
       spendCompletionPct,
       weightedCompletionPct,
