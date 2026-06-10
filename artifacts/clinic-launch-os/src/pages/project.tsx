@@ -57,7 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus, Lock, ArrowUp, ArrowDown } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus, Lock, ArrowUp, ArrowDown, Printer, UserCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -1276,6 +1276,7 @@ export default function ProjectPage() {
   const [viewMode, setViewMode] = useState<"list" | "gantt" | "vat" | "timeline">("list");
   const [listGrouped, setListGrouped] = useState(true);
   const [listSortBy, setListSortBy] = useState<"startDate" | "dueDate">("startDate");
+  const [listOwnerFilter, setListOwnerFilter] = useState("");
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
@@ -1763,6 +1764,17 @@ export default function ProjectPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* Print-only header — hidden on screen, shown at top of PDF */}
+      <div className="hidden print:block mb-4 pb-3 border-b border-gray-300">
+        <p className="text-lg font-bold text-gray-900">Clinic Launch OS — Project Plan</p>
+        {activeProperty && (
+          <p className="text-sm text-gray-600">{activeProperty.address}{activeProperty.postcode ? `, ${activeProperty.postcode}` : ""}</p>
+        )}
+        {listOwnerFilter && (
+          <p className="text-sm font-medium text-gray-800 mt-1">Owner filter: <span className="font-bold">{listOwnerFilter}</span></p>
+        )}
+        <p className="text-xs text-gray-500 mt-0.5">Exported {new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</p>
+      </div>
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3">
           <PageHeader
@@ -2803,32 +2815,73 @@ export default function ProjectPage() {
         <TimelineView projectId={PROJECT_ID} />
       )}
 
-      {viewMode === "list" && (
-        <div className="no-print flex items-center gap-3 flex-wrap">
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sort by</span>
-          <div className="flex items-center gap-1 border rounded-md overflow-hidden text-xs">
+      {viewMode === "list" && (() => {
+        const allOwnerNames = [...new Set(
+          (phases ?? []).flatMap(p => p.tasks ?? [])
+            .map(t => t.owner ?? "")
+            .filter(Boolean)
+            .flatMap(o => o.split(/\s*[+\/]\s*/))
+            .map(n => n.trim())
+            .filter(Boolean)
+        )].sort();
+        const filteredTaskCount = (phases ?? []).flatMap(p => p.tasks ?? [])
+          .filter(t => !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase())).length;
+        return (
+          <div className="no-print flex items-center gap-3 flex-wrap">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sort by</span>
+            <div className="flex items-center gap-1 border rounded-md overflow-hidden text-xs">
+              <button
+                onClick={() => setListSortBy("startDate")}
+                className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "startDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              >
+                Start date
+              </button>
+              <button
+                onClick={() => setListSortBy("dueDate")}
+                className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "dueDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              >
+                Due date
+              </button>
+            </div>
+            <div className="h-4 w-px bg-border" />
             <button
-              onClick={() => setListSortBy("startDate")}
-              className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "startDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              onClick={() => setListGrouped(v => !v)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${listGrouped ? "text-muted-foreground hover:text-foreground hover:bg-muted" : "bg-primary/10 text-primary border-primary/30"}`}
             >
-              Start date
+              {listGrouped ? "Flat list" : "Group by phase"}
             </button>
+            <div className="h-4 w-px bg-border" />
+            <div className="flex items-center gap-1.5">
+              <UserCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                value={listOwnerFilter}
+                onChange={e => setListOwnerFilter(e.target.value)}
+                className={`text-xs border rounded-md px-2 py-1.5 bg-background font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-primary ${listOwnerFilter ? "border-primary/50 text-primary bg-primary/5" : "text-muted-foreground"}`}
+              >
+                <option value="">All owners</option>
+                {allOwnerNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              {listOwnerFilter && (
+                <span className="text-xs text-muted-foreground">{filteredTaskCount} tasks</span>
+              )}
+            </div>
+            <div className="h-4 w-px bg-border" />
             <button
-              onClick={() => setListSortBy("dueDate")}
-              className={`px-3 py-1.5 font-medium transition-colors ${listSortBy === "dueDate" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+              onClick={() => {
+                setListGrouped(true);
+                setTimeout(() => window.print(), 150);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              title={listOwnerFilter ? `Export PDF — ${listOwnerFilter}'s tasks` : "Export PDF — all tasks"}
             >
-              Due date
+              <Printer className="h-3.5 w-3.5" />
+              {listOwnerFilter ? `Export ${listOwnerFilter}'s tasks` : "Export PDF"}
             </button>
           </div>
-          <div className="h-4 w-px bg-border" />
-          <button
-            onClick={() => setListGrouped(v => !v)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${listGrouped ? "text-muted-foreground hover:text-foreground hover:bg-muted" : "bg-primary/10 text-primary border-primary/30"}`}
-          >
-            {listGrouped ? "Flat list" : "Group by phase"}
-          </button>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Flat list view */}
       {viewMode === "list" && !listGrouped && (() => {
@@ -2842,13 +2895,13 @@ export default function ProjectPage() {
           .flatMap((ph, phIdx) =>
             (ph.tasks ?? []).map((t, taskIdx) => ({ task: t, phase: ph, phIdx, taskIdx }))
           )
+          .filter(({ task }) => !listOwnerFilter || (task.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))
           .sort((a, b) => {
             const aDate = getDate(a.task);
             const bDate = getDate(b.task);
             if (aDate && bDate) return aDate.localeCompare(bDate);
-            if (aDate && !bDate) return -1;   // dated before undated
-            if (!aDate && bDate) return 1;    // undated after dated
-            // both undated: preserve original phase/task order
+            if (aDate && !bDate) return -1;
+            if (!aDate && bDate) return 1;
             if (a.phIdx !== b.phIdx) return a.phIdx - b.phIdx;
             return a.taskIdx - b.taskIdx;
           });
@@ -3006,14 +3059,17 @@ export default function ProjectPage() {
               ? (ta.startDate || t.dueDate || null)
               : (t.dueDate || ta.startDate || null);
           };
-          const sortedTasks = [...(phase.tasks ?? [])].sort((a, b) => {
-            const aDate = getTaskDate(a);
-            const bDate = getTaskDate(b);
-            if (aDate && bDate) return aDate.localeCompare(bDate);
-            if (aDate && !bDate) return -1;
-            if (!aDate && bDate) return 1;
-            return 0; // both undated: keep original order
-          });
+          const sortedTasks = [...(phase.tasks ?? [])]
+            .filter(t => !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))
+            .sort((a, b) => {
+              const aDate = getTaskDate(a);
+              const bDate = getTaskDate(b);
+              if (aDate && bDate) return aDate.localeCompare(bDate);
+              if (aDate && !bDate) return -1;
+              if (!aDate && bDate) return 1;
+              return 0;
+            });
+          if (sortedTasks.length === 0) return null;
 
           return (
             <AccordionItem
