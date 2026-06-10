@@ -1,0 +1,1752 @@
+Project Plan
+Set your key dates, then manage phases and tasks.
+
+
+Export
+
+Import
+
+List
+
+Gantt
+
+VAT Reclaim
+
+Timeline
+Viewing plan for 9a Jewry Street, Winchester, SO23 8RZ — task updates are saved for this property only.
+Master plan
+Critical Risks Detected
+There are 9 critical risk flags that require immediate attention.
+
+Project Timeline
+
+Available From
+01/09/2026
+When work can begin (lease start, today, etc.)
+
+Target Open Date (hard right)
+02/11/2026
+CQC floats independently — not tied to this date.
+
+Save Dates
+Time to open date
+62 days (9 wks)
+Total Project Selected Cost
+
+Active tasks only · inc VAT planning allowances · deferred & superseded excluded
+
+£84,989
+
+Record Spend
+⚠
+STRETCH / RISK — above £80,000 target, within £93,333 outer limit
+
+David's approved launch cap is £80,000 inc VAT. Stretch / risk range: £80,000–£93,333. Anything above £93,333 is unapproved — use deferrals to control the selected total.
+
+Original Baseline
+
+£85,018
+
+locked at project start
+
+Actual Paid
+
+£3,883
+
+invoices paid
+
+Committed
+
+£3,468
+
+orders placed
+
+Live Forecast Final
+
+£84,761
+
+updates with actuals
+
+Variance vs Baseline
+
+£257
+
+-0.3% vs original plan
+
+Reclaimable VAT
+
+£1,062
+
+from paid & committed spend · 20% std rate
+
+Cap Headroom
+
+−£4,761
+
+forecast vs £80,000 approved cap
+
+Uncommitted
+
+£77,667
+
+planned not yet spent or ordered
+
+Live Forecast Variance
+
+vs Baseline
+£257(-0.3%)
+vs £80,000 cap
++£4,761
+Updates as actuals & commitments are recorded
+
+Net Cost After VAT Reclaim
+
+£83,699
+
+Live forecast minus £1,062 VAT reclaim (std rate only)
+
+Savings Captured vs Plan
+
+£1,180
+
+procurement savings vs selected cost
+
+⚠
+Budget health:
+Stretch — forecast exceeds £80,000 approved cap
+Tasks complete
+
+2%
+
+10 of 113
+
+Spend recorded
+
+5%
+
+£3,883 paid
+
+Budget earned
+
+0%
+
+cost-weighted %
+
+Cost Performance — Cumulative
+Planned
+Actual
+Forecast
+Apr 26
+May 26
+Jun 26
+Jul 26
+Aug 26
+Sept 26
+Oct 26
+Nov 26
+Dec 26
+£0
+£25k
+£50k
+£75k
+£100k
+Monthly Spend Breakdown
+By invoice / start date
+Month	Planned	Actual	Committed	Live Forecast	Cum. Planned	Cum. Actual
+Jun 26	£8,688	£3,883	£4,448	£8,688	£8,688	£3,883
+Jul 26	£5,628	—	—	£5,628	£14,316	£3,883
+Aug 26	£540	—	—	£540	£14,856	£3,883
+Sept 26	£36,122	—	—	£36,122	£50,978	£3,883
+Oct 26	£30,800	—	—	£30,800	£81,778	£3,883
+Recorded Spend
+4 tasks
+
+Commercial Property Solicitor — Lease Negotiation
+
+£3,600
+£2,568
+(−£1,032)
+Committed
+
+RICS Schedule of Condition
+
+INV-2633 · 2026-06-04
+
+£1,128
+£980
+(−£148)
+Paid
+
+Appoint Design / Building Regulations Lead
+
+INV-1593 · 2026-06-04
+
+£2,880
+£2,903
+(+£23)
+Paid
+
+Licence for Alterations
+
+£0
+£900
+(+£900)
+Committed
+Category
+Actual
+Forecast
+Selected
+High risk
+Design / statutory / building worksDesign & Build
+£3,803
+£48,257
+£47,334
+£93,174
+Legal / lease / RICS / depositLegal & Lease
+£3,548
+£8,964
+£10,144
+£19,224
+FF&E / equipment / stylingFF&E
+—
+£7,620
+£7,620
+£23,000
+Clinical / compliance / stockClinical
+—
+£10,474
+£10,474
+£25,188
+Finance / insurance / adminFinance
+—
+£2,696
+£2,667
+£4,178
+Marketing / launch / handoverMarketing
+—
+£3,330
+£3,330
+£10,294
+Contingency reserveContingency
+—
+£3,000
+£3,000
+£10,000
+Grand total
+£3,883
+£84,761
+£84,989
+£185,058
+ℹ
+David's approved launch cap is £80,000 inc VAT. The full tracker covers legal, build, FF&E, compliance, stock, marketing and contingency. The stretch / risk zone runs to £93,333 — anything above that is unapproved. Use the deferred/stretch toggles to control the selected total.
+
+⚠
+2 tasks with unknown VAT status
+
+The selected total above may be understated if some costs are ex-VAT. Open each task and confirm VAT status before finalising the budget.
+
+Sort by
+Start date
+Due date
+Group by phase
+Task	Phase	Owner	Status	Priority	Cost Tier	Actuals	Start date ↑
+Search WCC Public Access — s.106, conditions, Article 4 Directions
+Must Do
+Pre-Lease Due Diligence	David	
+Complete
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start11 May
+Due12 May
+
+
+Confirm Use Class E(e) — clinic use position
+Must Do
+⚠ Risk
+Pre-Lease Due Diligence	David	
+Complete
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start11 May
+Due12 May
+
+
+Negotiate Heads of Terms with Agent/Landlord
+Must Do
+⚠ Risk
+Pre-Lease Due Diligence	David	
+In Progress
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start18 May
+Due12 Jun
+
+
+Listed Building / Conservation Context Check
+Must Do
+⚠ Risk
+Pre-Lease Due Diligence	David / Design Lead / Solicitor	
+Complete
+medium	
+L: £0
+M: £0
+H: £0
+—	
+Start23 May
+Due5 Jun
+
+
+Check Rateable Value and Business Rates Position
+Must Do
+Pre-Lease Due Diligence	David	
+Complete
+medium	
+L: £0
+M: £0
+H: £0
+—	
+Start27 May
+Due10 Jun
+
+
+Appoint Design / Building Regulations Lead
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	David	
+Complete
+critical	
+L: £960
+M: £2,880
+H: £4,800
+✓ £2,903
+Start1 Jun
+Due8 Aug
+
+
+Check Local Authority Licensing — Health and Care Act 2022
+Must Do
+⚠ Risk
+Pre-Lease Due Diligence	David	
+Complete
+critical	
+L: £0
+M: £0
+H: £240
+—	
+Start3 Jun
+Due6 Jun
+
+
+Commercial Property Solicitor — Lease Negotiation
+Must Do
+⚠ Risk
+Legal, Lease & Handover	David / Solicitor	
+In Progress
+critical	
+L: £3,600
+M: £4,200
+H: £6,600
+✓ £2,568
+Start8 Jun
+Due31 Jul
+
+
+Solicitor Scope Clarification
+Must Do
+Legal, Lease & Handover	David / Solicitor	
+Complete
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start8 Jun
+Due15 Jun
+
+
+RICS Schedule of Condition
+Must Do
+⚠ Risk
+Legal, Lease & Handover	RICS Surveyor	
+Complete
+critical	
+L: £1,128
+M: £1,800
+H: £3,000
+✓ £980
+Start8 Jun
+Due10 Jul
+
+
+Confirm Planning / Conservation / Advertisement Consent Position
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	Design Lead + David	
+Complete
+critical	
+L: £0
+M: £600
+H: £3,000
+—	
+Start8 Jun
+Due3 Jul
+
+
+Winchester SEO — Treatment Landing Pages
+Must Do
+Marketing & Launch	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start8 Jun
+Due19 Jun
+
+
+Lease Repairing Obligation Review
+Must Do
+⚠ Risk
+Legal, Lease & Handover	Solicitor	
+Not Started
+high	
+L: £0
+M: £0
+H: £900
+—	
+Start15 Jun
+Due3 Jul
+
+
+Landlord Alterations Rights Review
+Must Do
+⚠ Risk
+Legal, Lease & Handover	Solicitor	
+Not Started
+high	
+L: £0
+M: £0
+H: £600
+—	
+Start15 Jun
+Due3 Jul
+
+
+Licence for Alterations
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	Solicitor + David + Design Lead / Contractor	
+In Progress
+critical	
+L: £0
+M: £1,140
+H: £4,200
+£900
+Start22 Jun
+Due24 Jul
+
+
+Accounting Software — Xero or QuickBooks
+Must Do
+Finance, Insurance & Admin	David	
+Complete
+medium	
+L: £0
+M: £0
+H: £0
+—	
+Start22 Jun
+Due24 Jul
+
+
+Building Control Submission / Initial Notice
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	Design Lead / Building Control / Approved Inspector	
+In Progress
+critical	
+L: £480
+M: £1,080
+H: £3,000
+—	
+Start30 Jun
+Due17 Jul
+
+
+Rent-Free / Fit-Out Period Cashflow Planning — 3 Months
+Must Do
+Legal, Lease & Handover	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start1 Jul
+Due31 Jul
+
+
+Produce Employer's Requirements / Contractor Fit-Out Brief
+Must Do
+Design, Approvals & Procurement	David + Design Lead	
+In Progress
+high	
+L: £0
+M: £0
+H: £600
+—	
+Start1 Jul
+Due7 Aug
+
+
+DBS Check
+Must Do
+Clinical Governance & Compliance	Abi	
+In Progress
+high	
+L: £0
+M: £38
+H: £80
+—	
+Start1 Jul
+Due10 Jul
+
+
+Joinery / Reception Desk / Clinical Cabinetry — Decision
+Must Do
+⚠ Risk
+Managed Building Works	David + Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start20 Jul
+Due31 Jul
+
+
+Advertisement Consent — Shopfront / Signage
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	David / Signage Supplier / Design Lead	
+Not Started
+critical	
+L: £174
+M: £174
+H: £174
+—	
+Start28 Jul
+Due5 Oct
+
+
+Exchange and Complete Lease
+Must Do
+⚠ Risk
+Legal, Lease & Handover	Solicitor	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start30 Jul
+Due31 Jul
+
+
+Rent Deposit / Lease Cash Requirement
+Must Do
+⚠ Risk
+Legal, Lease & Handover	David	
+Not Started
+critical	
+L: £2,708
+M: £5,416
+H: £8,124
+—	
+Start30 Jul
+Due31 Jul
+
+
+Asbestos R&D Survey
+Must Do
+⚠ Risk
+Pre-Lease Due Diligence	David	
+In Progress
+critical	
+L: £300
+M: £420
+H: £600
+—	
+Start3 Aug
+Due9 Aug
+
+
+Tender / Quote Managed Fit-Out Package
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start10 Aug
+Due14 Aug
+
+
+Contractor Site Survey and Buildability Review
+Must Do
+Design, Approvals & Procurement	Main Contractor / Project Manager	
+Not Started
+high	
+L: £0
+M: £0
+H: £600
+—	
+Start11 Aug
+Due14 Aug
+
+
+Instagram Pre-Launch Campaign
+Must Do
+Marketing & Launch	David + Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start17 Aug
+Due2 Nov
+
+
+Final Scope Lock and Fixed Cost Agreement
+Must Do
+⚠ Risk
+Design, Approvals & Procurement	David + Main Contractor	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start18 Aug
+Due21 Aug
+
+
+Register for Business Rates
+Must Do
+Finance, Insurance & Admin	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start24 Aug
+Due4 Sept
+
+
+Notify Utilities — Electricity, Water, Broadband
+Must Do
+Finance, Insurance & Admin	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start24 Aug
+Due4 Sept
+
+
+Broadband Availability / Setup
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	David	
+Not Started
+high	
+L: £0
+M: £120
+H: £360
+—	
+Start24 Aug
+Due4 Sept
+
+
+Before & After Content Bank Creation
+Must Do
+Marketing & Launch	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start31 Aug
+Due20 Sept
+
+
+Contractor Pre-Start Meeting and Programme Confirmation
+Must Do
+Managed Building Works	Main Contractor / David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start1 Sept
+Due2 Sept
+
+
+Main Contractor Fit-Out Package — Internal Works
+Must Do
+⚠ Risk
+Managed Building Works	Contractor	
+Not Started
+critical	
+L: £21,600
+M: £24,000
+H: £36,000
+—	
+Start1 Sept
+Due9 Oct
+
+
+Electrical Works
+Must Do
+⚠ Risk
+Managed Building Works	Contractor / Qualified Electrician	
+Not Started
+critical	
+L: £4,200
+M: £4,500
+H: £7,800
+—	
+Start1 Sept
+Due30 Sept
+
+
+Plumbing / Clinical Basin Works
+Must Do
+⚠ Risk
+Managed Building Works	Contractor / Qualified Plumber	
+Not Started
+critical	
+L: £2,400
+M: £5,040
+H: £7,200
+—	
+Start1 Sept
+Due30 Sept
+
+
+CPD Documentation Log
+Must Do
+Clinical Governance & Compliance	Abi	
+Not Started
+medium	
+L: £20
+M: £30
+H: £40
+—	
+Start1 Sept
+Due30 Oct
+
+
+ACE Membership — Confirm Winchester Cover
+Must Do
+Clinical Governance & Compliance	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start1 Sept
+Due12 Sept
+
+
+BLS Certification — Confirm Current
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start1 Sept
+Due8 Sept
+
+
+Save Face Registration
+Must Do
+Clinical Governance & Compliance	Abi	
+Not Started
+high	
+L: £600
+M: £840
+H: £1,080
+—	
+Start1 Sept
+Due25 Sept
+
+
+Retail / Skincare Opening Stock
+Stock, Suppliers & Clinical Setup	Abi	
+Not Started
+low	
+L: £1,200
+M: £2,400
+H: £9,600
+—	
+Start1 Sept
+Due8 Sept
+
+
+Card Payment Terminal for Winchester
+Finance, Insurance & Admin	David	
+Deferred
+medium	
+L: £29
+M: £29
+H: £29
+—	
+Start1 Sept
+Due4 Sept
+
+
+Klarna — Set Up Winchester
+Finance, Insurance & Admin	David	
+Not Started
+low	
+L: £0
+M: £0
+H: £0
+—	
+Start1 Sept
+Due4 Sept
+
+
+Website — Winchester Page, Photos, Privacy Notice
+Must Do
+⚠ Risk
+Marketing & Launch	David	
+Not Started
+critical	
+L: £0
+M: £180
+H: £600
+—	
+Start1 Sept
+Due20 Sept
+
+
+Adverse Event Protocol
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £67
+M: £96
+H: £114
+—	
+Start14 Sept
+Due30 Sept
+
+
+Allergan Direct — Register 9A Delivery Address
+Must Do
+⚠ Risk
+Stock, Suppliers & Clinical Setup	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start14 Sept
+Due18 Sept
+
+
+Galderma / Azzalure — Register Jewry Street Delivery Address
+Must Do
+⚠ Risk
+Stock, Suppliers & Clinical Setup	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start14 Sept
+Due18 Sept
+
+
+Derma Focus / Polynucleotides — Register Jewry Street
+Must Do
+Stock, Suppliers & Clinical Setup	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start14 Sept
+Due18 Sept
+
+
+Clinic Management Software — Check ANS Plan
+Must Do
+Finance, Insurance & Admin	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start14 Sept
+Due18 Sept
+
+
+ICO Data Protection Fee
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	David	
+Not Started
+critical	
+L: £33
+M: £47
+H: £70
+—	
+Start14 Sept
+Due18 Sept
+
+
+Winchester BID Registration
+Marketing & Launch	David	
+Not Started
+low	
+L: £0
+M: £0
+H: £0
+—	
+Start14 Sept
+Due21 Sept
+
+
+NMC Face-to-Face Prescribing SOP
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Complaints and Incident Log
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Batch Number and Traceability Log
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Sharps Safety Policy
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+IPC Policy
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+COSHH Risk Assessments
+Must Do
+Clinical Governance & Compliance	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Consent Forms and Questionnaires — Winchester Setup
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Delegation and Supervision Policy
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start21 Sept
+Due25 Sept
+
+
+Allergan Practitioner Pathway — Notify Winchester
+Must Do
+Stock, Suppliers & Clinical Setup	Abi	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start28 Sept
+Due2 Oct
+
+
+Hamilton Fraser / Indemnity / Premises Insurance
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	Abi	
+Not Started
+critical	
+L: £1,330
+M: £1,900
+H: £2,850
+—	
+Start28 Sept
+Due2 Oct
+
+
+Google Tag Manager / Conversion Tracking
+Must Do
+Marketing & Launch	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £0
+—	
+Start28 Sept
+Due4 Oct
+
+
+Google Review Acquisition System
+Must Do
+⚠ Risk
+Marketing & Launch	David	
+Not Started
+high	
+L: £0
+M: £0
+H: £100
+—	
+Start28 Sept
+Due4 Oct
+
+
+JCCP Practitioner Register
+Clinical Governance & Compliance	Abi	
+Not Started
+medium	
+L: £600
+M: £840
+H: £1,080
+—	
+Start1 Oct
+Due22 Oct
+
+
+Clinical Waste Contract
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi + David	
+Not Started
+critical	
+L: £479
+M: £684
+H: £1,026
+—	
+Start1 Oct
+Due31 Oct
+
+
+Baseline Photography Protocol
+Must Do
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £25
+M: £36
+H: £54
+—	
+Start1 Oct
+Due16 Oct
+
+
+IGS Uniforms & Clinical Footwear — Abi and David
+VAT?
+Stock, Suppliers & Clinical Setup	Abi	
+In Progress
+low	
+L: £200
+M: £500
+H: £800
+—	
+Start1 Oct
+Due1 Nov
+
+
+Clinical Flooring Package
+Must Do
+⚠ Risk
+Managed Building Works	Contractor / Specialist Flooring Installer	
+Not Started
+critical	
+L: £1,800
+M: £3,840
+H: £5,400
+—	
+Start5 Oct
+Due16 Oct
+
+
+Product Display / Retail Shelving / LED Setup
+FF&E, Equipment & Clinic Styling	Abi + David / Joinery Supplier	
+Not Started
+low	
+L: £300
+M: £900
+H: £3,000
+—	
+Start5 Oct
+Due23 Oct
+
+
+Google Business Profile — Winchester Location
+Must Do
+⚠ Risk
+Marketing & Launch	David	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start5 Oct
+Due11 Oct
+
+
+Winchester Local Partnerships Outreach
+Marketing & Launch	Abi	
+Not Started
+low	
+L: £0
+M: £0
+H: £0
+—	
+Start5 Oct
+Due25 Oct
+
+
+Existing Client Migration Campaign
+Must Do
+⚠ Risk
+Marketing & Launch	—	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start5 Oct
+Due11 Oct
+
+
+Referral Programme Setup
+Must Do
+Marketing & Launch	David	
+Not Started
+medium	
+L: £0
+M: £300
+H: £300
+—	
+Start5 Oct
+Due11 Oct
+
+
+Email Campaign to 600 Existing Bedhampton Clients
+Must Do
+⚠ Risk
+Marketing & Launch	David	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start5 Oct
+Due11 Oct
+
+
+Local PR / Founder Story Campaign
+Marketing & Launch	David / Abi	
+Not Started
+medium	
+L: £0
+M: £300
+H: £300
+—	
+Start5 Oct
+Due18 Oct
+
+
+Internal Decoration and Finishing
+Must Do
+⚠ Risk
+Managed Building Works	Contractor	
+Not Started
+high	
+L: £1,200
+M: £2,160
+H: £3,600
+—	
+Start12 Oct
+Due21 Oct
+
+
+Joinery / Reception Desk / Clinical Cabinetry — Installation
+Must Do
+⚠ Risk
+Managed Building Works	Abi's father (skilled tradesperson)	
+Not Started
+critical	
+L: £1,800
+M: £3,600
+H: £7,200
+—	
+Start12 Oct
+Due30 Oct
+
+
+Door Furniture, Room Labels and Black Ironmongery
+Must Do
+Managed Building Works	Contractor / Signage Supplier	
+Not Started
+medium	
+L: £0
+M: £600
+H: £1,500
+—	
+Start12 Oct
+Due23 Oct
+
+
+Shopfront Repaint
+Must Do
+⚠ Risk
+Managed Building Works	External Decorator / Contractor	
+Not Started
+high	
+L: £1,200
+M: £1,440
+H: £3,000
+—	
+Start12 Oct
+Due23 Oct
+
+
+Treatment Couch x1
+Must Do
+⚠ Risk
+FF&E, Equipment & Clinic Styling	Abi	
+Not Started
+critical	
+L: £900
+M: £1,200
+H: £2,000
+—	
+Start12 Oct
+Due16 Oct
+
+
+Air Conditioning Inspection / Service
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	David	
+Not Started
+critical	
+L: £230
+M: £330
+H: £494
+—	
+Start12 Oct
+Due16 Oct
+
+
+Meta Ads — Winchester Launch
+Must Do
+Marketing & Launch	David	
+Not Started
+high	
+L: £600
+M: £1,000
+H: £3,500
+—	
+Start12 Oct
+Due15 Nov
+
+
+Google Ads — Winchester Launch
+Must Do
+Marketing & Launch	David	
+Not Started
+high	
+L: £300
+M: £500
+H: £2,400
+—	
+Start12 Oct
+Due15 Nov
+
+
+Wall Panelling / Decorative Moulding Feature Finish
+Managed Building Works	Abi's father / Contractor / Joinery Supplier	
+Not Started
+low	
+L: £600
+M: £1,000
+H: £1,500
+—	
+Start19 Oct
+Due30 Oct
+
+
+External Signage Package
+Must Do
+⚠ Risk
+Managed Building Works	Signage Supplier	
+Not Started
+high	
+L: £1,080
+M: £2,160
+H: £3,600
+—	
+Start19 Oct
+Due23 Oct
+
+
+Internal Signage and Branding Package
+Must Do
+FF&E, Equipment & Clinic Styling	David + Signage Supplier	
+Not Started
+medium	
+L: £600
+M: £1,080
+H: £3,000
+—	
+Start19 Oct
+Due30 Oct
+
+
+Reception Furniture and Styling Package
+Must Do
+FF&E, Equipment & Clinic Styling	Abi + David	
+Not Started
+high	
+L: £960
+M: £1,440
+H: £3,600
+—	
+Start19 Oct
+Due23 Oct
+
+
+Consultation Room Furniture and Styling Package
+Must Do
+FF&E, Equipment & Clinic Styling	Abi + David	
+Not Started
+high	
+L: £600
+M: £1,080
+H: £2,400
+—	
+Start19 Oct
+Due30 Oct
+
+
+Treatment Room Furniture, Equipment and Styling Package
+Must Do
+⚠ Risk
+FF&E, Equipment & Clinic Styling	Abi + David	
+Not Started
+critical	
+L: £1,800
+M: £3,840
+H: £7,200
+—	
+Start19 Oct
+Due30 Oct
+
+
+Wall Art, Certificates and Picture Lighting
+FF&E, Equipment & Clinic Styling	Abi + David	
+Not Started
+low	
+L: £300
+M: £600
+H: £1,800
+—	
+Start19 Oct
+Due30 Oct
+
+
+Fire Risk Assessment — Post Fit-Out
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Fire Assessor / Abi	
+Not Started
+critical	
+L: £398
+M: £570
+H: £854
+—	
+Start19 Oct
+Due23 Oct
+
+
+Final Clinical Readiness Check
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi + David	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start19 Oct
+Due30 Oct
+
+
+Legionella Risk Assessment
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	David	
+Not Started
+critical	
+L: £146
+M: £210
+H: £314
+—	
+Start19 Oct
+Due23 Oct
+
+
+PAT Testing Setup
+Must Do
+Finance, Insurance & Admin	David	
+Not Started
+high	
+L: £42
+M: £60
+H: £90
+—	
+Start19 Oct
+Due23 Oct
+
+
+Furniture / Equipment Installation and Room Dressing
+Must Do
+FF&E, Equipment & Clinic Styling	Abi + David	
+Not Started
+low	
+L: £0
+M: £0
+H: £0
+—	
+Start26 Oct
+Due30 Oct
+
+
+Opening Injectable Stock
+Must Do
+⚠ Risk
+Stock, Suppliers & Clinical Setup	—	
+Not Started
+critical	
+L: £3,000
+M: £4,250
+H: £6,500
+—	
+Start26 Oct
+Due30 Oct
+
+
+Clinical Smallwares and Consumables
+Must Do
+⚠ Risk
+Stock, Suppliers & Clinical Setup	—	
+Not Started
+critical	
+L: £900
+M: £1,200
+H: £3,600
+—	
+Start26 Oct
+Due30 Oct
+
+
+Contractor Handover Pack
+Must Do
+⚠ Risk
+Handover, Snagging & Opening	Contractor	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start26 Oct
+Due31 Oct
+
+
+Building Regulations Completion Certificate
+Must Do
+⚠ Risk
+Handover, Snagging & Opening	Building Control / Approved Inspector	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start26 Oct
+Due31 Oct
+
+
+Soft Launch Readiness
+Must Do
+⚠ Risk
+Handover, Snagging & Opening	Abi + David	
+Not Started
+critical	
+L: £0
+M: £0
+H: £0
+—	
+Start26 Oct
+Due28 Oct
+
+
+Professional Photography of Completed Clinic
+Must Do
+⚠ Risk
+Marketing & Launch	David	
+Not Started
+high	
+L: £0
+M: £600
+H: £1,034
+—	
+Start29 Oct
+Due30 Oct
+
+
+Snagging Inspection and Defects Close-Out
+Must Do
+⚠ Risk
+Handover, Snagging & Opening	David + Abi + Contractor	
+Not Started
+high	
+L: £0
+M: £0
+H: £600
+—	
+Start29 Oct
+Due30 Oct
+
+
+Professional Deep Clean Before Clinical Setup
+Must Do
+Handover, Snagging & Opening	Specialist Cleaner / Abi	
+Not Started
+critical	
+L: £300
+M: £300
+H: £960
+—	
+Start29 Oct
+Due30 Oct
+
+
+Soft Launch Event
+Marketing & Launch	David / Abi	
+Not Started
+medium	
+L: £0
+M: £150
+H: £500
+—	
+Start30 Oct
+Due31 Oct
+
+
+Emergency Drugs and Equipment Kit
+Must Do
+⚠ Risk
+Clinical Governance & Compliance	Abi	
+Not Started
+critical	
+L: £168
+M: £240
+H: £360
+—	—	
+
+
+VAT Registration Monitoring
+Must Do
+⚠ Risk
+Finance, Insurance & Admin	Accountant + David	
+Not Started
+low	
+L: £0
+M: £0
+H: £0
+—	—	
+
+
+Healthcare Specialist Accountant
+Deferred / Stretch Items	David	
+Deferred
+low	
+L: £0
+M: £0
+H: £2,400
+—	—	
+
+
+Business Continuity Plan — Paid Support
+Deferred / Stretch Items	David	
+Deferred
+low	
+L: £0
+M: £0
+H: £600
+—	—	
+
+
+Additional Retail / Skincare Stock Upgrade
+Deferred / Stretch Items	Abi	
+Deferred
+low	
+L: £0
+M: £0
+H: £7,000
+—	—	
+
+
+FF&E / Styling Upgrade Reserve
+Deferred / Stretch Items	Abi + David	
+Deferred
+low	
+L: £0
+M: £0
+H: £7,000
+—	—	
+
+
+Marketing Spend Upgrade
+Deferred / Stretch Items	David	
+Deferred
+low	
+L: £0
+M: £0
+H: £4,000
+—	—	
+
+
+Contingency Reserve — Controlled by David
+Must Do
+⚠ Risk
+Project Contingency	David	
+Not Started
+low	
+L: £3,000
+M: £5,000
+H: £10,000
+—	—	
+
+

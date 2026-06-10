@@ -256,6 +256,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       if (!o) return t as Record<string, unknown>;
       return {
         ...t,
+        status:       (o.status       ?? t.status)       as string,
         selectedCost: (o.selectedCost ?? t.selectedCost) as number,
         startDate: o.startDate !== undefined ? o.startDate : (t as any).startDate,
         dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
