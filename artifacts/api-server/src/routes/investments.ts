@@ -358,6 +358,10 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
     .reduce((s, item) => s + (item.amountGbp || 0), 0);
   const bedhCapacityCeil = ((fin as any).bedhCapacityCeilGbp || 16000);
   const selfFundingBufPct = ((fin as any).selfFundingBufferPercent ?? 20) / 100;
+  // Bedhampton fixed monthly running costs (mirrors calcBedhampton in financialEngine)
+  const bedhRunCosts = ((fin as any).bedhRentGbp ?? 0) + ((fin as any).bedhSoftwareGbp ?? 0) +
+    ((fin as any).bedhStaffingGbp ?? 0) + ((fin as any).bedhInsuranceGbp ?? 0) +
+    ((fin as any).bedhMarketingGbp ?? 0) + ((fin as any).bedhamptonCostsGbp ?? 0);
 
   // VAT state is shared across the full cashflow — initialise once from model
   const INV_VAT_THRESHOLD = 90000;

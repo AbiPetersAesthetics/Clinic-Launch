@@ -1601,6 +1601,166 @@ export default function ProjectPage() {
     win.print();
   };
 
+  const handleExportPDF = () => {
+    const ownerMatch = (t: LaunchTask) =>
+      !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase());
+
+    const getDate = (t: LaunchTask) => {
+      const ta = t as any;
+      return listSortBy === "startDate"
+        ? (ta.startDate || t.dueDate || null)
+        : (t.dueDate || ta.startDate || null);
+    };
+
+    interface PrintRow { task: LaunchTask; phase: PhaseWithTasks; num: number; }
+    const rows: PrintRow[] = [];
+    let counter = 1;
+
+    if (listGrouped) {
+      for (const phase of phases ?? []) {
+        const phaseTasks = [...(phase.tasks ?? [])]
+          .filter(ownerMatch)
+          .sort((a, b) => {
+            const ad = getDate(a), bd = getDate(b);
+            if (ad && bd) return ad.localeCompare(bd);
+            return ad ? -1 : bd ? 1 : 0;
+          });
+        for (const t of phaseTasks) rows.push({ task: t, phase, num: counter++ });
+      }
+    } else {
+      (phases ?? [])
+        .flatMap((ph, pi) => (ph.tasks ?? []).map((t, ti) => ({ task: t, phase: ph, pi, ti })))
+        .filter(({ task }) => ownerMatch(task))
+        .sort((a, b) => {
+          const ad = getDate(a.task), bd = getDate(b.task);
+          if (ad && bd) return ad.localeCompare(bd);
+          if (ad && !bd) return -1;
+          if (!ad && bd) return 1;
+          if (a.pi !== b.pi) return a.pi - b.pi;
+          return a.ti - b.ti;
+        })
+        .forEach(({ task, phase }) => rows.push({ task, phase, num: counter++ }));
+    }
+
+    const fmtD = (d: string | null | undefined) =>
+      d ? new Date(d + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—";
+    const fmtCost = (n: number | null | undefined) =>
+      n && n > 0 ? "£" + Math.round(n).toLocaleString("en-GB") : "—";
+
+    const priorityStyle: Record<string, string> = {
+      critical: "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
+      high:     "background:#fef3c7;color:#92400e;border:1px solid #fcd34d",
+      medium:   "background:#dbeafe;color:#1e40af;border:1px solid #93c5fd",
+      low:      "background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db",
+    };
+    const statusStyle: Record<string, string> = {
+      complete:    "background:#d1fae5;color:#065f46;border:1px solid #6ee7b7",
+      in_progress: "background:#dbeafe;color:#1e40af;border:1px solid #93c5fd",
+      not_started: "background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db",
+      blocked:     "background:#fee2e2;color:#991b1b;border:1px solid #fca5a5",
+      deferred:    "background:#f3e8ff;color:#6b21a8;border:1px solid #c4b5fd",
+      superseded:  "background:#f3f4f6;color:#9ca3af;border:1px solid #e5e7eb",
+    };
+    const badge = (text: string, style: string) =>
+      `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;${style}">${text}</span>`;
+
+    const propertyName = activeProperty
+      ? `${activeProperty.address}${activeProperty.postcode ? ", " + activeProperty.postcode : ""}`
+      : "Clinic Launch OS";
+    const exportDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+    let prevPhaseId = -1;
+    const tableRows = rows.map(({ task, phase, num }) => {
+      const ta = task as any;
+      const isNewPhase = listGrouped && phase.id !== prevPhaseId;
+      if (listGrouped) prevPhaseId = phase.id;
+
+      const phaseRow = isNewPhase
+        ? `<tr style="background:#f1f5f9;page-break-inside:avoid;">
+            <td colspan="8" style="padding:9px 14px;font-weight:700;font-size:10.5px;color:#334155;letter-spacing:0.06em;text-transform:uppercase;border-top:2px solid #cbd5e1;border-bottom:1px solid #e2e8f0;">${phase.name}</td>
+           </tr>`
+        : "";
+
+      const flags = [
+        task.isNonNegotiable ? `<span style="font-size:9px;color:#6b7280;font-weight:500">Must Do</span>` : null,
+        task.isCriticalRisk  ? `<span style="font-size:9px;color:#dc2626;font-weight:600">⚠ Risk</span>` : null,
+      ].filter(Boolean).join(" &nbsp;");
+
+      const actualCost = ta.actualCost ?? ta.committedCost;
+      const costHtml = (task.selectedCost ?? 0) > 0
+        ? `<div style="font-weight:600;color:#111827">${fmtCost(task.selectedCost)}</div>${actualCost ? `<div style="font-size:9px;color:#6b7280;margin-top:1px">actual: ${fmtCost(actualCost)}</div>` : ""}`
+        : `<span style="color:#9ca3af">—</span>`;
+
+      const statusLabel = (task.status ?? "not_started").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+      const priorityLabel = (task.riskLevel ?? "low").replace(/\b\w/g, c => c.toUpperCase());
+      const phaseLabel = !listGrouped
+        ? `<div style="margin-top:3px;font-size:10px;color:#6b7280">${phase.name.replace(/^Phase \d+[\s:–\-]*/i, "").trim() || phase.name}</div>`
+        : "";
+
+      return `${phaseRow}
+        <tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid;">
+          <td style="padding:11px 8px 11px 10px;color:#9ca3af;font-size:10px;vertical-align:top;white-space:nowrap">${num}</td>
+          <td style="padding:11px 14px 11px 10px;vertical-align:top;">
+            <div style="font-weight:600;font-size:12px;color:#111827;line-height:1.45">${task.title}</div>
+            ${flags ? `<div style="margin-top:3px">${flags}</div>` : ""}
+            ${phaseLabel}
+          </td>
+          <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;line-height:1.4">${(task.owner ?? "—").replace(/\s*[+\/]\s*/g, "<br>")}</td>
+          <td style="padding:11px 8px;vertical-align:top;">${badge(statusLabel, statusStyle[task.status ?? "not_started"] ?? statusStyle.not_started)}</td>
+          <td style="padding:11px 8px;vertical-align:top;">${badge(priorityLabel, priorityStyle[task.riskLevel ?? "low"] ?? priorityStyle.low)}</td>
+          <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;white-space:nowrap">${fmtD(ta.startDate)}</td>
+          <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;white-space:nowrap">${fmtD(task.dueDate ?? ta.dueDate)}</td>
+          <td style="padding:11px 10px 11px 8px;vertical-align:top;text-align:right;">${costHtml}</td>
+        </tr>`;
+    }).join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "Project Tasks"} — ${propertyName}</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm 14mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 11px; color: #111827; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: #f8fafc; padding: 8px 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; border-top: 2px solid #e2e8f0; border-bottom: 2px solid #e2e8f0; }
+  thead th:last-child { text-align: right; padding-right: 10px; }
+  tbody tr:hover { background: #fafafa; }
+  @media print { .no-print { display: none !important; } }
+</style>
+</head>
+<body>
+  <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <h1 style="font-size:17px;font-weight:700;color:#0f172a">${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "All Project Tasks"}</h1>
+      <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${rows.length} task${rows.length !== 1 ? "s" : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
+    </div>
+    <div style="font-size:10px;color:#94a3b8;text-align:right">Clinic Launch OS<br>Exported ${exportDate}</div>
+  </div>
+  <table>
+    <thead><tr>
+      <th style="width:30px">#</th>
+      <th style="min-width:200px">Task</th>
+      <th style="width:130px">Owner</th>
+      <th style="width:105px">Status</th>
+      <th style="width:80px">Priority</th>
+      <th style="width:78px">Start</th>
+      <th style="width:78px">Due</th>
+      <th style="width:90px">Cost</th>
+    </tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+  <div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;">
+    <span>Abi Peters Aesthetics Ltd — Clinic Launch OS</span>
+    <span>Page <span class="no-print">—</span></span>
+  </div>
+<script>window.onload = () => window.print();</script>
+</body></html>`;
+
+    const win = window.open("", "_blank");
+    if (win) { win.document.write(html); win.document.close(); }
+  };
+
   const parseClaudeResponse = () => {
     setImportError("");
     setImportDiffs(null);
@@ -2869,19 +3029,7 @@ export default function ProjectPage() {
             </div>
             <div className="h-4 w-px bg-border" />
             <button
-              onClick={() => {
-                if (listGrouped) {
-                  const prev = openPhases;
-                  const allIds = (phases ?? []).map(p => `phase-${p.id}`);
-                  setOpenPhases(allIds);
-                  setTimeout(() => {
-                    window.print();
-                    setOpenPhases(prev);
-                  }, 200);
-                } else {
-                  window.print();
-                }
-              }}
+              onClick={handleExportPDF}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               title={listOwnerFilter ? `Export PDF — ${listOwnerFilter}'s tasks` : "Export PDF — all tasks"}
             >
