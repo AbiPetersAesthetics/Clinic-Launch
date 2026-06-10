@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable, risksTable } from "@workspace/db";
+import { projectsTable, phasesTable, tasksTable, financialsTable, complianceItemsTable, cqcMilestonesTable, propertiesTable, propertyTaskOverridesTable, fixedCostItemsTable, competitorsTable, marketingItemsTable, risksTable } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
 import { calcCliniciansMonthlyCost } from "../lib/financialEngine";
 
@@ -15,19 +15,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   if (!project) return res.status(404).json({ error: "Not found" });
 
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
-  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
-
-  const totalTaskCount = allTasks.length;
-  const completedTaskCount = allTasks.filter(t => t.status === "complete").length;
-  const blockedTaskCount = allTasks.filter(t => t.status === "blocked").length;
-  const highRiskTaskCount = allTasks.filter(t => t.riskLevel === "high" || t.riskLevel === "critical").length;
-
-  const totalProjectCostLow = allTasks.reduce((sum, t) => sum + t.costLow, 0);
-  const totalProjectCostMid = allTasks.reduce((sum, t) => sum + t.costMid, 0);
-  const totalProjectCostHigh = allTasks.reduce((sum, t) => sum + t.costHigh, 0);
-  const currentSelectedCost = allTasks.reduce((sum, t) => sum + t.selectedCost, 0);
-
-  const launchReadinessPercent = totalTaskCount > 0 ? Math.round((completedTaskCount / totalTaskCount) * 100) : 0;
+  const baseTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
 
   // Days to opening
   let daysToOpening: number | null = null;
@@ -61,6 +49,39 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   const criticalRiskFlagCount = openRisks.filter(r => r.likelihood * r.impact >= 12).length;
 
   const activeProperty = allProperties.find(p => p.isActiveForProject) ?? allProperties[0] ?? null;
+
+  // Merge property overrides onto base tasks (same pattern as phases-with-tasks)
+  const overrideMap = new Map<number, Record<string, unknown>>();
+  if (activeProperty) {
+    const overrides = await db.select().from(propertyTaskOverridesTable)
+      .where(eq(propertyTaskOverridesTable.propertyId, activeProperty.id));
+    for (const o of overrides) overrideMap.set(o.taskId, o as Record<string, unknown>);
+  }
+
+  const allTasks = baseTasks.map(t => {
+    const o = overrideMap.get(t.id);
+    if (!o) return t;
+    return {
+      ...t,
+      status:       ((o.status       ?? t.status)       as string),
+      selectedCost: ((o.selectedCost ?? t.selectedCost) as number),
+      costTier:     ((o.costTier     ?? t.costTier)     as string),
+    };
+  });
+
+  const totalTaskCount     = allTasks.length;
+  const completedTaskCount = allTasks.filter(t => t.status === "complete").length;
+  const blockedTaskCount   = allTasks.filter(t => t.status === "blocked").length;
+  const highRiskTaskCount  = allTasks.filter(t => t.riskLevel === "high" || t.riskLevel === "critical").length;
+
+  const totalProjectCostLow  = baseTasks.reduce((sum, t) => sum + t.costLow,  0);
+  const totalProjectCostMid  = baseTasks.reduce((sum, t) => sum + t.costMid,  0);
+  const totalProjectCostHigh = baseTasks.reduce((sum, t) => sum + t.costHigh, 0);
+  const currentSelectedCost  = allTasks.reduce((sum, t) => sum + (t.selectedCost ?? 0), 0);
+
+  const launchReadinessPercent = totalTaskCount > 0
+    ? Math.round((completedTaskCount / totalTaskCount) * 100)
+    : 0;
 
   // Short display name: first segment before a comma (e.g. "9a Jewry Street")
   const activePropertyAddress = activeProperty?.address ?? null;
@@ -256,8 +277,10 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   const davidCap = (financial as any)?.davidApprovedCapGbp ?? 80000;
   const outerLimitCalc = davidCap * (7 / 6);
 
-  // Pillar 1: Progress (0–20) — task completion rate
-  const cpProgress = Math.round(Math.min(launchReadinessPercent * 0.2, 20));
+  // Pillar 1: Progress (0–20) — task completion rate; floor of 1 so any completions register
+  const cpProgress = completedTaskCount === 0
+    ? 0
+    : Math.max(1, Math.round(Math.min(launchReadinessPercent * 0.2, 20)));
 
   // Pillar 2: Budget health (0–20) — selected cost vs approved cap
   const cpBudget = currentSelectedCost <= davidCap ? 20
