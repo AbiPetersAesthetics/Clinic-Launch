@@ -2870,8 +2870,17 @@ export default function ProjectPage() {
             <div className="h-4 w-px bg-border" />
             <button
               onClick={() => {
-                setListGrouped(true);
-                setTimeout(() => window.print(), 150);
+                if (listGrouped) {
+                  const prev = openPhases;
+                  const allIds = (phases ?? []).map(p => `phase-${p.id}`);
+                  setOpenPhases(allIds);
+                  setTimeout(() => {
+                    window.print();
+                    setOpenPhases(prev);
+                  }, 200);
+                } else {
+                  window.print();
+                }
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
               title={listOwnerFilter ? `Export PDF — ${listOwnerFilter}'s tasks` : "Export PDF — all tasks"}
