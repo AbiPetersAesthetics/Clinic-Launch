@@ -2695,7 +2695,7 @@ export default function ProjectPage() {
                   ))}
                   <div className={`grid ${colCls} gap-4 px-3 py-2 border-t bg-muted/40 font-bold`}>
                     <span>Grand total</span>
-                    {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP((projectControls as any)?.actualSpend ?? 0)}</span>}
+                    {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(((projectControls as any)?.actualSpend ?? 0) + ((projectControls as any)?.committedCosts ?? 0))}</span>}
                     {hasActuals && <span className={`w-20 text-right tabular-nums ${((projectControls as any)?.forecastFinalCost ?? 0) > totalSelectedCost ? "text-destructive" : ""}`}>{formatGBP((projectControls as any)?.forecastFinalCost ?? 0)}</span>}
                     <span className={`w-20 text-right tabular-nums ${totalSelectedCost > 70000 ? "text-destructive" : totalSelectedCost > 60000 ? "text-amber-600 dark:text-amber-400" : ""}`}>{formatGBP(totalSelectedCost)}</span>
                     <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(grandHigh)}</span>
