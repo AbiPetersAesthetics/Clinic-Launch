@@ -2102,20 +2102,69 @@ export default function ProjectPage() {
 
           {/* Budget Summary */}
           <div className="pt-2 border-t border-border/50 space-y-3">
-            {/* Grand total */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Total Project Selected Cost</p>
-                <p className="text-[11px] text-muted-foreground/70 mt-0.5">Active tasks only · inc VAT planning allowances · deferred &amp; superseded excluded</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <p className="text-2xl font-bold">{formatGBP(totalSelectedCost)}</p>
-                <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print" onClick={() => setShowRecordSpend(true)}>
-                  <Receipt className="w-3.5 h-3.5" />
-                  Record Spend
-                </Button>
-              </div>
-            </div>
+            {/* Two-number header: Project cost + Live/Actual with RAG */}
+            {(() => {
+              const pc = projectControls as any;
+              const lff = pc?.liveForecastFinal ?? pc?.forecastFinalCost ?? totalSelectedCost;
+              const davidCap = pc?.davidApprovedCapGbp ?? 80000;
+              const outerLimit = Math.round(davidCap * 7 / 6);
+              const hasActuals = pc && (pc.actualSpend > 0 || pc.committedCosts > 0);
+              // RAG: compare live forecast against project baseline AND cap
+              const ragStatus = !hasActuals ? "none"
+                : lff > outerLimit ? "red"
+                : lff > davidCap ? "amber"
+                : lff > totalSelectedCost * 1.02 ? "amber"
+                : "green";
+              const ragDot: Record<string, string> = {
+                green: "bg-emerald-500",
+                amber: "bg-amber-400",
+                red: "bg-red-500",
+                none: "bg-muted-foreground/30",
+              };
+              const ragLabel: Record<string, string> = {
+                green: "On track",
+                amber: lff > davidCap ? `Above ${formatGBP(davidCap)} cap` : "Slight overspend",
+                red: "Over outer limit",
+                none: "No actuals yet",
+              };
+              const lffColor = ragStatus === "red" ? "text-destructive"
+                : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400"
+                : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400"
+                : "text-foreground";
+              return (
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-start gap-6 sm:gap-10">
+                    {/* Project cost */}
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
+                      <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
+                    </div>
+                    {/* Divider */}
+                    <div className="self-stretch w-px bg-border/60 hidden sm:block" />
+                    {/* Live / Actual */}
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live / Actual</p>
+                        <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${ragDot[ragStatus]}`} title={ragLabel[ragStatus]} />
+                        <span className={`text-[10px] font-medium ${
+                          ragStatus === "red" ? "text-destructive"
+                          : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400"
+                          : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-muted-foreground/60"
+                        }`}>{ragLabel[ragStatus]}</span>
+                      </div>
+                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">actuals + committed + remaining planned</p>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print mt-1" onClick={() => setShowRecordSpend(true)}>
+                    <Receipt className="w-3.5 h-3.5" />
+                    Record Spend
+                  </Button>
+                </div>
+              );
+            })()}
 
             {/* Traffic-light budget cap — threshold from project-controls (davidApprovedCapGbp) */}
             {(() => {
