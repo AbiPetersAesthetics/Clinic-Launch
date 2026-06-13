@@ -103,7 +103,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     const mutableKeys = ["status", "notes", "owner", "contractor", "supplier",
       "costTier", "costLow", "costMid", "costHigh", "startDate", "dueDate", "durationDays", "files", "quotes",
       "costVatStatus", "supplyScope", "procurementStatus",
-      "actualCost", "committedCost", "paidStatus", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceVatStatus", "invoiceFileUrl"] as const;
+      "actualCost", "committedCost", "paidStatus", "amountPaidGbp", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceVatStatus", "invoiceFileUrl"] as const;
     const patch: Record<string, unknown> = { updatedAt: new Date() };
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];

@@ -49,7 +49,8 @@ export const tasksTable = pgTable("launch_tasks", {
   // ── Project controls: actuals tracking ─────────────────────────────────────
   actualCost: real("actual_cost"),
   committedCost: real("committed_cost"),
-  paidStatus: text("paid_status"), // 'unpaid' | 'committed' | 'paid'
+  paidStatus: text("paid_status"), // 'unpaid' | 'committed' | 'part-paid' | 'paid'
+  amountPaidGbp: real("amount_paid_gbp"), // partial payment amount (for part-paid)
   paymentDate: text("payment_date"),
   invoiceRef: text("invoice_ref"),
   invoiceDate: text("invoice_date"),

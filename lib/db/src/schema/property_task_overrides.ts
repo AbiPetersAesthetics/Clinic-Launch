@@ -26,7 +26,8 @@ export const propertyTaskOverridesTable = pgTable("property_task_overrides", {
   // ── Project controls: actuals tracking ─────────────────────────────────────
   actualCost: real("actual_cost"),
   committedCost: real("committed_cost"),
-  paidStatus: text("paid_status"),
+  paidStatus: text("paid_status"), // 'unpaid' | 'committed' | 'part-paid' | 'paid'
+  amountPaidGbp: real("amount_paid_gbp"),
   paymentDate: text("payment_date"),
   invoiceRef: text("invoice_ref"),
   invoiceDate: text("invoice_date"),

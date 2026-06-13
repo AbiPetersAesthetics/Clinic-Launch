@@ -1286,6 +1286,7 @@ export default function ProjectPage() {
     taskId: null as number | null,
     actualCost: "",
     committedCost: "",
+    amountPaidGbp: "",
     paidStatus: "paid",
     vatInclusive: "inc",
     invoiceRef: "",
@@ -1298,9 +1299,9 @@ export default function ProjectPage() {
 
   const [editingActualId, setEditingActualId] = useState<number | null>(null);
   const [editActualData, setEditActualData] = useState<{
-    actualCost: string; committedCost: string; paidStatus: string;
+    actualCost: string; committedCost: string; amountPaidGbp: string; paidStatus: string;
     vatInclusive: string; invoiceRef: string; invoiceDate: string; varianceNote: string;
-  }>({ actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "" });
+  }>({ actualCost: "", committedCost: "", amountPaidGbp: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "" });
   const [savingActualId, setSavingActualId] = useState<number | null>(null);
 
   const highlightedTaskId = (() => {
@@ -2447,7 +2448,9 @@ export default function ProjectPage() {
                       </div>
                       <div className="divide-y">
                         {(pc.taskActuals as any[]).slice(0, 20).map((ta: any) => {
-                          const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost : ta.committedCost;
+                          const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
+                          : ta.paidStatus === "part-paid" ? (ta.amountPaidGbp ?? ta.actualCost)
+                          : ta.committedCost;
                           const isExpanded = editingActualId === ta.taskId;
                           return (
                             <div key={ta.taskId} className="divide-y">
@@ -2460,6 +2463,7 @@ export default function ProjectPage() {
                                   setEditActualData({
                                     actualCost: ta.actualCost > 0 ? String(ta.actualCost) : "",
                                     committedCost: ta.committedCost > 0 ? String(ta.committedCost) : "",
+                                    amountPaidGbp: ta.amountPaidGbp > 0 ? String(ta.amountPaidGbp) : "",
                                     paidStatus: ta.paidStatus ?? "paid",
                                     vatInclusive: (ta.invoiceVatStatus ?? "inc"),
                                     invoiceRef: ta.invoiceRef ?? "",
@@ -2482,10 +2486,11 @@ export default function ProjectPage() {
                                 </span>
                                 <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
                                   ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
+                                  : ta.paidStatus === "part-paid" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700"
                                   : ta.paidStatus === "committed" ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700"
                                   : "text-muted-foreground"
                                 }`}>
-                                  {ta.paidStatus === "paid" ? "Paid" : ta.paidStatus === "committed" ? "Committed" : "Unpaid"}
+                                  {ta.paidStatus === "paid" ? "Paid" : ta.paidStatus === "part-paid" ? "Part Paid" : ta.paidStatus === "committed" ? "Committed" : "Unpaid"}
                                 </Badge>
                                 <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
                               </button>
@@ -2521,11 +2526,24 @@ export default function ProjectPage() {
                                         <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                           <SelectItem value="paid">Paid</SelectItem>
+                                          <SelectItem value="part-paid">Part Paid</SelectItem>
                                           <SelectItem value="committed">Committed</SelectItem>
                                           <SelectItem value="unpaid">Unpaid</SelectItem>
                                         </SelectContent>
                                       </Select>
                                     </div>
+                                    {editActualData.paidStatus === "part-paid" && (
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Paid so far (£)</label>
+                                        <Input
+                                          type="number"
+                                          placeholder="0.00"
+                                          value={editActualData.amountPaidGbp}
+                                          onChange={e => setEditActualData(d => ({ ...d, amountPaidGbp: e.target.value }))}
+                                          className="h-7 text-xs"
+                                        />
+                                      </div>
+                                    )}
                                     <div className="space-y-1">
                                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground">VAT</label>
                                       <Select value={editActualData.vatInclusive} onValueChange={v => setEditActualData(d => ({ ...d, vatInclusive: v }))}>
@@ -2584,6 +2602,7 @@ export default function ProjectPage() {
                                           };
                                           if (editActualData.actualCost) patch.actualCost = parseFloat(editActualData.actualCost);
                                           if (editActualData.committedCost) patch.committedCost = parseFloat(editActualData.committedCost);
+                                          if (editActualData.amountPaidGbp) patch.amountPaidGbp = parseFloat(editActualData.amountPaidGbp);
                                           if (activePropertyId) patch.propertyId = activePropertyId;
                                           const res = await fetch(`/api/tasks/${ta.taskId}`, {
                                             method: "PATCH",
@@ -3754,11 +3773,29 @@ export default function ProjectPage() {
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="paid">✓ Paid — invoice settled</SelectItem>
+                  <SelectItem value="part-paid">½ Part Paid — deposit or staged payment</SelectItem>
                   <SelectItem value="committed">Committed — order placed</SelectItem>
                   <SelectItem value="unpaid">Unpaid / accrued</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {recordSpendData.paidStatus === "part-paid" && (
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">
+                  Amount paid so far <span className="text-muted-foreground font-normal">£</span>
+                  <span className="text-muted-foreground font-normal text-xs ml-2">e.g. 50% deposit</span>
+                </label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={recordSpendData.amountPaidGbp}
+                  onChange={(e) => setRecordSpendData(d => ({ ...d, amountPaidGbp: e.target.value }))}
+                />
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -3867,6 +3904,7 @@ export default function ProjectPage() {
                 };
                 if (recordSpendData.actualCost) patch.actualCost = parseFloat(recordSpendData.actualCost);
                 if (recordSpendData.committedCost) patch.committedCost = parseFloat(recordSpendData.committedCost);
+                if (recordSpendData.amountPaidGbp) patch.amountPaidGbp = parseFloat(recordSpendData.amountPaidGbp);
                 patch.invoiceVatStatus = recordSpendData.vatInclusive; // "inc" | "exc" | "exempt"
                 if (recordSpendData.invoiceRef) patch.invoiceRef = recordSpendData.invoiceRef;
                 if (recordSpendData.invoiceDate) patch.invoiceDate = recordSpendData.invoiceDate;
@@ -3879,7 +3917,7 @@ export default function ProjectPage() {
                     onSuccess: () => {
                       invalidateAfterTaskChange();
                       setShowRecordSpend(false);
-                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "", invoiceFile: null, invoiceFileUrl: "", uploading: false });
+                      setRecordSpendData({ taskId: null, actualCost: "", committedCost: "", amountPaidGbp: "", paidStatus: "paid", vatInclusive: "inc", invoiceRef: "", invoiceDate: "", varianceNote: "", invoiceFile: null, invoiceFileUrl: "", uploading: false });
                     },
                   }
                 );

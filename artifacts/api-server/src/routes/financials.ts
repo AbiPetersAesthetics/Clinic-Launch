@@ -623,8 +623,12 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     let cost: number;
     let schedDate: string | null | undefined;
 
+    const amountPaid = (task as any).amountPaidGbp ?? 0;
     if (paidStatus === "paid" && actual > 0) {
       cost = actual;
+      schedDate = invDate || (task as any).startDate || task.dueDate;
+    } else if (paidStatus === "part-paid" && (amountPaid > 0 || actual > 0)) {
+      cost = amountPaid > 0 ? amountPaid : actual;
       schedDate = invDate || (task as any).startDate || task.dueDate;
     } else if (committed > 0) {
       cost = committed;
