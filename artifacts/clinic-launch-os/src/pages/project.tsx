@@ -2628,6 +2628,32 @@ export default function ProjectPage() {
                                     >
                                       Cancel
                                     </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs px-3 text-destructive hover:text-destructive hover:bg-destructive/10 ml-auto"
+                                      disabled={savingActualId === ta.taskId}
+                                      onClick={async () => {
+                                        if (!confirm("Clear all spend data for this task?")) return;
+                                        setSavingActualId(ta.taskId);
+                                        try {
+                                          const patch: Record<string, unknown> = {
+                                            actualCost: null, committedCost: null, amountPaidGbp: null,
+                                            paidStatus: null, invoiceVatStatus: null, invoiceRef: null,
+                                            invoiceDate: null, varianceNote: null, paymentDate: null,
+                                          };
+                                          if (activePropertyId) patch.propertyId = activePropertyId;
+                                          const res = await fetch(`/api/tasks/${ta.taskId}`, {
+                                            method: "PATCH",
+                                            headers: { "Content-Type": "application/json" },
+                                            body: JSON.stringify(patch),
+                                          });
+                                          if (res.ok) { invalidateAfterTaskChange(); setEditingActualId(null); }
+                                        } finally { setSavingActualId(null); }
+                                      }}
+                                    >
+                                      <Trash2 className="w-3 h-3 mr-1" />Clear spend
+                                    </Button>
                                   </div>
                                 </div>
                               )}

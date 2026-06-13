@@ -262,6 +262,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
         actualCost: (o.actualCost ?? (t as any).actualCost) as number | null,
         committedCost: (o.committedCost ?? (t as any).committedCost) as number | null,
+        amountPaidGbp: (o.amountPaidGbp ?? (t as any).amountPaidGbp) as number | null,
         paidStatus: (o.paidStatus ?? (t as any).paidStatus) as string | null,
         paymentDate: (o.paymentDate ?? (t as any).paymentDate) as string | null,
         invoiceRef: (o.invoiceRef ?? (t as any).invoiceRef) as string | null,
@@ -382,7 +383,10 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         const actual = (t.actualCost as number) ?? 0;
         const committed = (t.committedCost as number) ?? 0;
         const paid = t.paidStatus as string | null;
-        const effective = paid === "paid" && actual > 0 ? actual : committed > 0 ? committed : planned;
+        const amountPaid = (t.amountPaidGbp as number) ?? 0;
+        const effective = paid === "paid" && actual > 0 ? actual
+          : paid === "part-paid" && (amountPaid > 0 || actual > 0) ? (amountPaid > 0 ? amountPaid : actual)
+          : committed > 0 ? committed : planned;
         return {
           taskId: t.id,
           taskTitle: t.title,
@@ -390,6 +394,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
           plannedCost: Math.round(planned),
           actualCost: Math.round(actual),
           committedCost: Math.round(committed),
+          amountPaidGbp: amountPaid > 0 ? Math.round(amountPaid) : null,
           paidStatus: paid,
           invoiceRef: t.invoiceRef,
           invoiceDate: t.invoiceDate,
