@@ -2497,8 +2497,9 @@ export default function ProjectPage() {
                       </div>
                       <div className="divide-y">
                         {(pc.taskActuals as any[]).slice(0, 20).map((ta: any) => {
-                          const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
-                          : ta.paidStatus === "part-paid" ? (ta.amountPaidGbp ?? ta.actualCost)
+                          // part-paid: full invoice drives project cost; amountPaidGbp is just cash-out-so-far
+                        const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
+                          : ta.paidStatus === "part-paid" ? ta.actualCost
                           : ta.committedCost;
                           const isExpanded = editingActualId === ta.taskId;
                           return (
