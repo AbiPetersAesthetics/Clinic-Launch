@@ -2157,6 +2157,29 @@ export default function ProjectPage() {
                       <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">actuals + committed + remaining planned</p>
                     </div>
+                    {/* Divider */}
+                    <div className="self-stretch w-px bg-border/60 hidden sm:block" />
+                    {/* Remaining to pay */}
+                    {hasActuals && (() => {
+                      const remaining = lff - (pc?.actualSpend ?? 0);
+                      return (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining</p>
+                          <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(Math.max(0, remaining))}</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">still to pay</p>
+                        </div>
+                      );
+                    })()}
+                    {/* Divider */}
+                    {hasActuals && (pc?.reclaimableVat ?? 0) > 0 && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
+                    {/* VAT Reclaimable */}
+                    {hasActuals && (pc?.reclaimableVat ?? 0) > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
+                        <p className="text-2xl font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">{formatGBP(Math.round(pc.reclaimableVat))}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
+                      </div>
+                    )}
                   </div>
                   <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print mt-1" onClick={() => setShowRecordSpend(true)}>
                     <Receipt className="w-3.5 h-3.5" />
