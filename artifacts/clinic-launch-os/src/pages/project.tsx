@@ -57,7 +57,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus, Lock, ArrowUp, ArrowDown, Printer, UserCheck } from "lucide-react";
+import { AlertTriangle, Pencil, AlertCircle, Plus, X, Trash2, CalendarDays, Save, List, GanttChartSquare, ChevronRight, ChevronDown, RotateCcw, Loader2, ZoomIn, ZoomOut, FileText, Copy, Check, Sparkles, Send, Building2, Phone, Mail, Receipt, PoundSterling, Search, CheckCircle2, Clock, Tag, ArrowRightLeft, Calendar, Flag, TrendingUp, TrendingDown, Minus, Lock, ArrowUp, ArrowDown, Printer, UserCheck, ExternalLink } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -3975,7 +3975,59 @@ function TaskEditSheet({
   const [aiLoading, setAiLoading] = useState(false);
   const aiResultRef = useRef<HTMLDivElement>(null);
 
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemCost, setNewItemCost] = useState("");
+  const [newItemUrl, setNewItemUrl] = useState("");
+  const [addingItem, setAddingItem] = useState(false);
+  const [savingItem, setSavingItem] = useState(false);
+
   const { data: allSuppliers = [] } = useListSuppliers(PROJECT_ID);
+
+  const lineItemsKey = [`/api/projects/${PROJECT_ID}/tasks/${task?.id}/line-items`, activePropertyId];
+  const { data: lineItems = [], refetch: refetchLineItems } = useQuery<any[]>({
+    queryKey: lineItemsKey,
+    queryFn: async () => {
+      const url = `/api/projects/${PROJECT_ID}/tasks/${task!.id}/line-items${activePropertyId ? `?propertyId=${activePropertyId}` : ""}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch line items");
+      return res.json();
+    },
+    enabled: !!task?.id,
+  });
+
+  const handleAddLineItem = async () => {
+    if (!task || !newItemName.trim() || savingItem) return;
+    setSavingItem(true);
+    try {
+      const body: Record<string, unknown> = {
+        name: newItemName.trim(),
+        costGbp: Number(newItemCost) || 0,
+        url: newItemUrl.trim() || null,
+        ...(activePropertyId ? { propertyId: activePropertyId } : {}),
+      };
+      const res = await fetch(`/api/projects/${PROJECT_ID}/tasks/${task.id}/line-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setNewItemName("");
+      setNewItemCost("");
+      setNewItemUrl("");
+      setAddingItem(false);
+      refetchLineItems();
+    } catch {
+    } finally {
+      setSavingItem(false);
+    }
+  };
+
+  const handleDeleteLineItem = async (itemId: number) => {
+    if (!task) return;
+    await fetch(`/api/projects/${PROJECT_ID}/tasks/${task.id}/line-items/${itemId}`, { method: "DELETE" });
+    refetchLineItems();
+  };
+
   const { data: taskSupplierQuotes = [] } = useListTaskSupplierQuotes(
     PROJECT_ID,
     task?.id ?? 0,
@@ -4423,6 +4475,147 @@ function TaskEditSheet({
                   </div>
                 </div>
               </div>
+
+              {/* ── Package / Build-out Items ──────────────────────────────── */}
+              {(() => {
+                const budget = task?.selectedCost ?? 0;
+                const allocated = lineItems.reduce((s: number, it: any) => s + (it.costGbp ?? 0), 0);
+                const pct = budget > 0 ? Math.min(100, (allocated / budget) * 100) : 0;
+                const over = allocated > budget && budget > 0;
+                const near = !over && pct >= 80;
+                return (
+                  <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Package items</p>
+                      {!addingItem && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs gap-1"
+                          onClick={() => setAddingItem(true)}
+                        >
+                          <Plus className="w-3 h-3" />
+                          Add item
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Running total bar */}
+                    {budget > 0 && (
+                      <div className="space-y-1">
+                        <div className="h-1.5 w-full rounded-full bg-border overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all ${over ? "bg-destructive" : near ? "bg-amber-500" : "bg-emerald-500"}`}
+                            style={{ width: `${Math.min(100, pct)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span>
+                            <span className={`font-semibold ${over ? "text-destructive" : "text-foreground"}`}>{formatGBP(allocated)}</span>
+                            {" "}allocated of {formatGBP(budget)} budget
+                          </span>
+                          {over
+                            ? <span className="font-semibold text-destructive">+{formatGBP(allocated - budget)} over</span>
+                            : <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatGBP(budget - allocated)} remaining</span>
+                          }
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Item list */}
+                    {lineItems.length > 0 && (
+                      <div className="space-y-1 mt-1">
+                        {lineItems.map((item: any) => (
+                          <div key={item.id} className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-background border border-border/40 group">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {item.url && (
+                                  <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:text-primary/80 shrink-0"
+                                    onClick={e => e.stopPropagation()}
+                                  >
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                )}
+                                <span className="text-sm truncate">{item.name}</span>
+                              </div>
+                            </div>
+                            <span className="text-sm font-semibold tabular-nums shrink-0">{formatGBP(item.costGbp ?? 0)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLineItem(item.id)}
+                              className="text-muted-foreground/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {lineItems.length === 0 && !addingItem && (
+                      <p className="text-xs text-muted-foreground/60 italic">No items yet — add individual pieces to build out this package.</p>
+                    )}
+
+                    {/* Add item form */}
+                    {addingItem && (
+                      <div className="space-y-2 pt-1">
+                        <Input
+                          placeholder="Item name (e.g. Reception chair × 2)"
+                          value={newItemName}
+                          onChange={e => setNewItemName(e.target.value)}
+                          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); handleAddLineItem(); } }}
+                          className="h-8 text-sm"
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <div className="relative w-28 shrink-0">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                            <Input
+                              type="number"
+                              placeholder="0"
+                              value={newItemCost}
+                              onChange={e => setNewItemCost(e.target.value)}
+                              className="pl-6 h-8 text-sm"
+                              min={0}
+                            />
+                          </div>
+                          <Input
+                            placeholder="URL / link (optional)"
+                            value={newItemUrl}
+                            onChange={e => setNewItemUrl(e.target.value)}
+                            className="flex-1 h-8 text-sm"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-7 text-xs flex-1"
+                            onClick={handleAddLineItem}
+                            disabled={!newItemName.trim() || savingItem}
+                          >
+                            {savingItem ? "Adding…" : "Add"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => { setAddingItem(false); setNewItemName(""); setNewItemCost(""); setNewItemUrl(""); }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>

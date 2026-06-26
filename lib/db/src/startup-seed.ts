@@ -445,6 +445,21 @@ export async function runStartupSeed(): Promise<void> {
         // V15 migration: part-paid support — track how much has been paid so far
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS amount_paid_gbp REAL`);
         await db.execute(sql`ALTER TABLE property_task_overrides ADD COLUMN IF NOT EXISTS amount_paid_gbp REAL`);
+        // V16 migration: task line items — sub-items for FF&E / package breakdowns
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS task_line_items (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            task_id INTEGER NOT NULL,
+            property_id INTEGER,
+            name TEXT NOT NULL,
+            url TEXT,
+            cost_gbp REAL NOT NULL DEFAULT 0,
+            notes TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
         return;
       }
 

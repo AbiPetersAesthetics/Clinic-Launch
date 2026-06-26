@@ -3,8 +3,8 @@ import multer from "multer";
 import fs from "fs";
 import path from "path";
 import { db } from "@workspace/db";
-import { tasksTable, propertyTaskOverridesTable, phasesTable, propertiesTable, financialsTable } from "@workspace/db";
-import { eq, and, sql, inArray } from "drizzle-orm";
+import { tasksTable, propertyTaskOverridesTable, phasesTable, propertiesTable, financialsTable, taskLineItemsTable } from "@workspace/db";
+import { eq, and, sql, inArray, isNull } from "drizzle-orm";
 
 const router = Router();
 
@@ -218,6 +218,73 @@ router.post("/tasks/:id/upload-invoice", invoiceUpload.single("file"), async (re
   } catch (err) {
     console.error("[upload-invoice]", err);
     return res.status(500).json({ error: "Upload failed" });
+  }
+});
+
+// ─── Task Line Items CRUD ──────────────────────────────────────────────────────
+
+router.get("/projects/:projectId/tasks/:taskId/line-items", async (req, res) => {
+  try {
+    const taskId = parseInt(req.params.taskId);
+    const propertyId = req.query.propertyId ? parseInt(req.query.propertyId as string) : null;
+    const where = propertyId
+      ? and(eq(taskLineItemsTable.taskId, taskId), eq(taskLineItemsTable.propertyId, propertyId))
+      : and(eq(taskLineItemsTable.taskId, taskId), isNull(taskLineItemsTable.propertyId));
+    const items = await db.select().from(taskLineItemsTable).where(where).orderBy(taskLineItemsTable.createdAt);
+    return res.json(items);
+  } catch (err) {
+    console.error("[line-items GET]", err);
+    return res.status(500).json({ error: "Failed to fetch line items" });
+  }
+});
+
+router.post("/projects/:projectId/tasks/:taskId/line-items", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const taskId = parseInt(req.params.taskId);
+    const { name, costGbp, url, notes, propertyId } = req.body;
+    if (!name?.trim()) return res.status(400).json({ error: "name is required" });
+    const [item] = await db.insert(taskLineItemsTable).values({
+      projectId,
+      taskId,
+      propertyId: propertyId ? parseInt(propertyId) : null,
+      name: name.trim(),
+      costGbp: Number(costGbp) || 0,
+      url: url?.trim() || null,
+      notes: notes?.trim() || null,
+    }).returning();
+    return res.json(item);
+  } catch (err) {
+    console.error("[line-items POST]", err);
+    return res.status(500).json({ error: "Failed to create line item" });
+  }
+});
+
+router.patch("/projects/:projectId/tasks/:taskId/line-items/:itemId", async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.itemId);
+    const { name, costGbp, url, notes } = req.body;
+    const updates: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updates.name = name.trim();
+    if (costGbp !== undefined) updates.costGbp = Number(costGbp);
+    if (url !== undefined) updates.url = url?.trim() || null;
+    if (notes !== undefined) updates.notes = notes?.trim() || null;
+    const [item] = await db.update(taskLineItemsTable).set(updates).where(eq(taskLineItemsTable.id, itemId)).returning();
+    return res.json(item);
+  } catch (err) {
+    console.error("[line-items PATCH]", err);
+    return res.status(500).json({ error: "Failed to update line item" });
+  }
+});
+
+router.delete("/projects/:projectId/tasks/:taskId/line-items/:itemId", async (req, res) => {
+  try {
+    const itemId = parseInt(req.params.itemId);
+    await db.delete(taskLineItemsTable).where(eq(taskLineItemsTable.id, itemId));
+    return res.status(204).send();
+  } catch (err) {
+    console.error("[line-items DELETE]", err);
+    return res.status(500).json({ error: "Failed to delete line item" });
   }
 });
 

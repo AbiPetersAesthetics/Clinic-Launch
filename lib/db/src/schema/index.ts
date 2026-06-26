@@ -19,3 +19,4 @@ export * from "./risks";
 export * from "./suppliers";
 export * from "./investments";
 export * from "./project_ai_analyses";
+export * from "./task_line_items";
