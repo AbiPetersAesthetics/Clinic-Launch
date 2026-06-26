@@ -1,0 +1,372 @@
+Project Plan
+Set your key dates, then manage phases and tasks.
+
+
+Export
+
+Import
+
+List
+
+Gantt
+
+VAT Reclaim
+
+Timeline
+Viewing plan for 9a Jewry Street, Winchester, SO23 8RZ — task updates are saved for this property only.
+Master plan
+Critical Risks Detected
+There are 9 critical risk flags that require immediate attention.
+
+Project Timeline
+
+Available From
+01/09/2026
+When work can begin (lease start, today, etc.)
+
+Target Open Date (hard right)
+02/11/2026
+CQC floats independently — not tied to this date.
+
+Save Dates
+Time to open date
+62 days (9 wks)
+Project cost
+
+£90,489
+
+planned selected total
+
+Live / Actual
+
+Above £80,000 cap
+£88,426
+
+actuals + committed + remaining planned
+
+Record Spend
+⚠
+STRETCH / RISK — above £80,000 target, within £93,333 outer limit
+
+David's approved launch cap is £80,000 inc VAT. Stretch / risk range: £80,000–£93,333. Anything above £93,333 is unapproved — use deferrals to control the selected total.
+
+Original Baseline
+
+£90,518
+
+locked at project start
+
+Actual Paid
+
+£4,128
+
+invoices paid
+
+Committed
+
+£3,308
+
+orders placed
+
+Live Forecast Final
+
+£88,426
+
+updates with actuals
+
+Variance vs Baseline
+
+£2,092
+
+-2.3% vs original plan
+
+Reclaimable VAT
+
+£912
+
+from paid & committed spend · 20% std rate
+
+Cap Headroom
+
+−£8,426
+
+forecast vs £80,000 approved cap
+
+Uncommitted
+
+£83,082
+
+planned not yet spent or ordered
+
+Live Forecast Variance
+
+vs Baseline
+£2,092(-2.3%)
+vs £80,000 cap
++£8,426
+Updates as actuals & commitments are recorded
+
+Net Cost After VAT Reclaim
+
+£87,514
+
+Live forecast minus £912 VAT reclaim (std rate only)
+
+Savings Captured vs Plan
+
+£2,435
+
+procurement savings vs selected cost
+
+⚠
+Budget health:
+Stretch — forecast exceeds £80,000 approved cap
+Tasks complete
+
+9%
+
+10 of 117
+
+Spend recorded
+
+5%
+
+£4,128 paid
+
+Budget earned
+
+4%
+
+cost-weighted %
+
+Cost Performance — Cumulative
+Planned
+Actual
+Forecast
+Apr 26
+May 26
+Jun 26
+Jul 26
+Aug 26
+Sept 26
+Oct 26
+Nov 26
+Dec 26
+£0
+£25k
+£50k
+£75k
+£100k
+Monthly Spend Breakdown
+By invoice / start date
+Month	Planned	Actual	Committed	Live Forecast	Cum. Planned	Cum. Actual
+Jun 26	£10,188	£3,883	£4,038	£10,188	£10,188	£3,883
+Jul 26	£5,628	—	—	£5,628	£15,816	£3,883
+Aug 26	£4,540	—	£495	£4,540	£20,356	£3,883
+Sept 26	£36,122	—	—	£36,122	£56,478	£3,883
+Oct 26	£30,800	—	—	£30,800	£87,278	£3,883
+Recorded Spend
+5 tasks
+
+Commercial Property Solicitor — Lease Negotiation
+
+£3,600
+£2,568
+(−£1,032)
+Committed
+
+RICS Schedule of Condition
+
+INV-2633 · 2026-06-04
+
+£1,128
+£980
+(−£148)
+Paid
+
+Asbestos R&D Survey
+
+£420
+£495
+(+£75)
+Committed
+
+Appoint Design / Building Regulations Lead
+
+INV-1593 · 2026-06-04
+
+£2,880
+£2,903
+(+£23)
+Paid
+
+Brand Identity & Visual Asset Development
+
+£1,500
+£245
+(−£1,010)
+Part Paid
+Category
+Actual
+Forecast
+Selected
+High risk
+Design / statutory / building worksDesign & Build
+£3,393
+£48,747
+£49,734
+£99,174
+Legal / lease / RICS / depositLegal & Lease
+£3,548
+£8,964
+£10,144
+£19,224
+FF&E / equipment / stylingFF&E
+—
+£10,720
+£10,720
+£40,000
+Clinical / compliance / stockClinical
+—
+£10,474
+£10,474
+£25,188
+Finance / insurance / adminFinance
+—
+£2,696
+£2,667
+£4,178
+Marketing / launch / handoverMarketing
+—
+£3,330
+£3,330
+£10,294
+Contingency reserveContingency
+—
+£3,000
+£3,000
+£10,000
+Grand total
+£7,436
+£88,426
+£90,489
+£208,058
+ℹ
+David's approved launch cap is £80,000 inc VAT. The full tracker covers legal, build, FF&E, compliance, stock, marketing and contingency. The stretch / risk zone runs to £93,333 — anything above that is unapproved. Use the deferred/stretch toggles to control the selected total.
+
+⚠
+4 tasks with unknown VAT status
+
+The selected total above may be understated if some costs are ex-VAT. Open each task and confirm VAT status before finalising the budget.
+
+Sort by
+Start date
+Due date
+Flat list
+
+All owners
+Export PDF
+
+Pre-Lease Due Diligence
+active
+Complete by 3 Jul 2026 · 25d
+Tasks: 5 / 7
+Selected Cost
+
+£420
+
+
+Legal, Lease & Handover
+active
+Complete by 25 Aug 2026 · 53d
+Tasks: 2 / 8
+Selected Cost
+
+£10,144
+
+
+Design, Approvals & Procurement
+active
+Complete by 2 Nov 2026 · 69d
+Tasks: 2 / 10
+Selected Cost
+
+£5,634
+
+
+Managed Building Works
+active
+Complete by 2 Nov 2026 · 38d
+Tasks: 0 / 13
+Selected Cost
+
+£44,100
+
+
+FF&E, Equipment & Clinic Styling
+active
+Complete by 2 Nov 2026 · 21d
+Tasks: 0 / 9
+Selected Cost
+
+£10,720
+
+
+Clinical Governance & Compliance
+active
+Complete by 2 Nov 2026 · 91d
+Tasks: 0 / 21
+Selected Cost
+
+£3,374
+
+
+Stock, Suppliers & Clinical Setup
+active
+Complete by 2 Nov 2026 · 31d
+Tasks: 0 / 8
+Selected Cost
+
+£7,100
+
+
+Finance, Insurance & Admin
+active
+Complete by 2 Nov 2026 · 32d
+Tasks: 1 / 13
+Selected Cost
+
+£2,667
+
+
+Marketing & Launch
+active
+Complete by 2 Nov 2026 · 77d
+Tasks: 0 / 17
+Selected Cost
+
+£3,030
+
+
+Handover, Snagging & Opening
+active
+Complete by 2 Nov 2026 · 5d
+Tasks: 0 / 5
+Selected Cost
+
+£300
+
+
+Deferred / Stretch Items
+active
+Complete by 2 Nov 2026
+Tasks: 0 / 5
+Selected Cost
+
+£0
+
+
+Project Contingency
+active
+Complete by 2 Nov 2026
+Tasks: 0 / 1
