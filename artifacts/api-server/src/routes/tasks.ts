@@ -304,13 +304,13 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         else if (vatStatus === "exc") reclaimableVat += actual * 0.20;
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
-      } else if (paid === "part-paid" && actual > 0) {
-        // Cash paid so far goes to actualSpend; remainder is still committed; full invoice drives forecast
-        const cashPaid = amountPaid > 0 ? amountPaid : 0;
-        const stillOwed = actual - cashPaid;
+      } else if (paid === "part-paid" && committed > 0) {
+        // committedCost = full invoice; actualCost = cash paid so far; remainder is still owed
+        const cashPaid = actual > 0 ? actual : (amountPaid > 0 ? amountPaid : 0);
+        const stillOwed = committed - cashPaid;
         actualSpend += cashPaid;
         if (stillOwed > 0) committedCosts += stillOwed;
-        forecastFinalCost += actual;
+        forecastFinalCost += committed;
         if (vatStatus === "inc") reclaimableVat += actual / 6;
         else if (vatStatus === "exc") reclaimableVat += actual * 0.20;
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
@@ -366,11 +366,11 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         const amtPaid = (task.amountPaidGbp as number) ?? 0;
         pPlanned += planned;
         if (paid === "paid" && actual > 0) { pActual += actual; pForecast += actual; }
-        else if (paid === "part-paid" && actual > 0) {
-          const cashPaid = amtPaid > 0 ? amtPaid : 0;
+        else if (paid === "part-paid" && committed > 0) {
+          const cashPaid = actual > 0 ? actual : (amtPaid > 0 ? amtPaid : 0);
           pActual += cashPaid;
-          pCommitted += actual - cashPaid;
-          pForecast += actual;
+          pCommitted += committed - cashPaid;
+          pForecast += committed;
         }
         else if (committed > 0) { pCommitted += committed; pForecast += committed; }
         else { pForecast += planned; }
@@ -400,9 +400,9 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         const committed = (t.committedCost as number) ?? 0;
         const paid = t.paidStatus as string | null;
         const amountPaid = (t.amountPaidGbp as number) ?? 0;
-        // For project cost/variance, part-paid uses the full invoice (actualCost), not just what's been paid
+        // For project cost/variance, part-paid uses the full invoice (committedCost), not just what's been paid
         const effective = paid === "paid" && actual > 0 ? actual
-          : paid === "part-paid" && actual > 0 ? actual
+          : paid === "part-paid" && committed > 0 ? committed
           : committed > 0 ? committed : planned;
         return {
           taskId: t.id,

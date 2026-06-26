@@ -627,9 +627,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     if (paidStatus === "paid" && actual > 0) {
       cost = actual;
       schedDate = invDate || (task as any).startDate || task.dueDate;
-    } else if (paidStatus === "part-paid" && actual > 0) {
-      // Full invoice value drives project forecast; cash timing uses invoice date
-      cost = actual;
+    } else if (paidStatus === "part-paid" && committed > 0) {
+      // committedCost = full invoice; drives project forecast
+      cost = committed;
       schedDate = invDate || (task as any).startDate || task.dueDate;
     } else if (committed > 0) {
       cost = committed;

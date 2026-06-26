@@ -2497,9 +2497,9 @@ export default function ProjectPage() {
                       </div>
                       <div className="divide-y">
                         {(pc.taskActuals as any[]).slice(0, 20).map((ta: any) => {
-                          // part-paid: full invoice drives project cost; amountPaidGbp is just cash-out-so-far
+                          // part-paid: committedCost = full invoice; actualCost = cash paid so far
                         const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
-                          : ta.paidStatus === "part-paid" ? ta.actualCost
+                          : ta.paidStatus === "part-paid" ? ta.committedCost
                           : ta.committedCost;
                           const isExpanded = editingActualId === ta.taskId;
                           return (
@@ -3249,7 +3249,14 @@ export default function ProjectPage() {
                           {(() => {
                             const ac = (task as any).actualCost;
                             const cc = (task as any).committedCost;
+                            const ps = (task as any).paidStatus;
                             if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
+                            if (ps === "part-paid" && cc > 0) return (
+                              <div className="flex flex-col gap-0.5">
+                                <Badge variant="outline" className="text-[10px] h-4 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700 w-max">{formatGBP(cc)}</Badge>
+                                {ac > 0 && <span className="text-[9px] text-muted-foreground">£{ac.toLocaleString()} paid</span>}
+                              </div>
+                            );
                             return (
                               <div className="flex flex-col gap-0.5">
                                 {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
@@ -3499,7 +3506,14 @@ export default function ProjectPage() {
                             {(() => {
                               const ac = (task as any).actualCost;
                               const cc = (task as any).committedCost;
+                              const ps = (task as any).paidStatus;
                               if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
+                              if (ps === "part-paid" && cc > 0) return (
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="outline" className="text-[10px] h-4 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700 w-max">{formatGBP(cc)}</Badge>
+                                  {ac > 0 && <span className="text-[9px] text-muted-foreground">£{ac.toLocaleString()} paid</span>}
+                                </div>
+                              );
                               return (
                                 <div className="flex flex-col gap-0.5">
                                   {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
