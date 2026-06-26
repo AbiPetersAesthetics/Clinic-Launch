@@ -16,24 +16,20 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-// Run startup seed before accepting traffic — fixes production DB on every deploy
-runStartupSeed()
-  .then(() => {
-    app.listen(port, (err) => {
-      if (err) {
-        logger.error({ err }, "Error listening on port");
-        process.exit(1);
-      }
-      logger.info({ port }, "Server listening");
+// Start listening immediately so the deployment healthcheck can pass,
+// then run migrations/seed in the background.
+app.listen(port, (err) => {
+  if (err) {
+    logger.error({ err }, "Error listening on port");
+    process.exit(1);
+  }
+  logger.info({ port }, "Server listening");
+
+  runStartupSeed()
+    .then(() => {
+      logger.info("Startup seed completed");
+    })
+    .catch((err) => {
+      logger.error({ err }, "Startup seed failed — continuing");
     });
-  })
-  .catch((err) => {
-    logger.error({ err }, "Startup seed failed — starting server anyway");
-    app.listen(port, (err) => {
-      if (err) {
-        logger.error({ err }, "Error listening on port");
-        process.exit(1);
-      }
-      logger.info({ port }, "Server listening");
-    });
-  });
+});

@@ -33,6 +33,11 @@ app.use(express.urlencoded({ extended: true }));
 // Serve uploaded property documents
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
+// Health endpoint — must respond immediately for deployment healthchecks
+app.get("/api", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use("/api", router);
 
 export default app;
