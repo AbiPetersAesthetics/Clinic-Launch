@@ -2138,9 +2138,9 @@ export default function ProjectPage() {
                   {/* 4-number grid — always 2 cols on mobile, 4 on sm+ */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 border-t pt-3">
                     <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Concept forecast</p>
                       <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">project cost at concept stage</p>
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
