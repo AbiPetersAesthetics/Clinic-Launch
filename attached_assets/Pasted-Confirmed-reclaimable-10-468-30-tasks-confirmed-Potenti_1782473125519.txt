@@ -1,0 +1,170 @@
+Confirmed reclaimable
+£10,468
+30 tasks confirmed
+Potential additional
++£3,077
+If 19 unknown tasks are taxable
+Best-case total
+£13,545
+Confirmed + all unknowns taxable
+Needs clarifying
+19
+tasks with unknown VAT status
+Likely VAT reclaim: £10,468 — up to £13,545 if all unknowns are VAT-bearing
+
+Figures are based on the selected cost for each task and the VAT status you have recorded. Inc. VAT costs: the VAT element is 1/6th of the total. Ex. VAT costs: 20% is added on top. Open any task to update its VAT status — it will recalculate here immediately. A valid HMRC VAT invoice is required for every line claimed.
+
+VAT Reclaim by Task
+Click any task to update its VAT status
+Task	Selected cost	VAT status	VAT element	Claimable
+Pre-Lease Due Diligence
+· 1 item
+£0
+Asbestos R&D Survey
+£420	No VAT	—	—
+Legal, Lease & Handover
+· 3 items
+£788
+Commercial Property Solicitor — Lease Negotiation
+£3,600	Inc. VAT	£600	£600
+RICS Schedule of Condition
+£1,128	Inc. VAT	£188	£188
+Rent Deposit / Lease Cash Requirement
+£5,416	No VAT	—	—
+Design, Approvals & Procurement
+· 6 items
+£760
+Brand Identity & Visual Asset Development
+£1,500	No VAT	—	—
+Appoint Design / Building Regulations Lead
+£2,880	Inc. VAT	£480	£480
+Confirm Planning / Conservation / Advertisement Consent Position
+£600	Inc. VAT	£100	£100
+Licence for Alterations
+£1,140	No VAT	—	—
+Building Control Submission / Initial Notice
+£1,080	Inc. VAT	£180	£180
+Advertisement Consent — Shopfront / Signage
+£174	No VAT	—	—
+Managed Building Works
+· 11 items
+£7,350
+Main Contractor Fit-Out Package — Internal Works
+£24,000	Inc. VAT	£4,000	£4,000
+Electrical Works
+£4,200	Inc. VAT	£700	£700
+Plumbing / Clinical Basin Works
+£2,400	Inc. VAT	£400	£400
+Clinical Flooring Package
+£3,840	Inc. VAT	£640	£640
+Internal Decoration and Finishing
+£2,160	Inc. VAT	£360	£360
+Product Display / Retail Shelving / LED Setup
+£900	Inc. VAT	£150	£150
+Joinery / Reception Desk / Clinical Cabinetry — Installation
+£1,800	Inc. VAT	£300	£300
+Wall Panelling / Decorative Moulding Feature Finish
+£600	Inc. VAT	£100	£100
+Door Furniture, Room Labels and Black Ironmongery
+£600	Inc. VAT	£100	£100
+Shopfront Repaint
+£1,440	Inc. VAT	£240	£240
+External Signage Package
+£2,160	Inc. VAT	£360	£360
+FF&E, Equipment & Clinic Styling
+· 7 items
+£1,120 + ?
+Skin Analysis Platform Procurement & Training
+£4,000	Unknown	?	unclear
+Treatment Couch x1
+£1,200	Inc. VAT	£200	£200
+Internal Signage and Branding Package
+£600	Inc. VAT	£100	£100
+Reception Furniture and Styling Package
+£1,440	Inc. VAT	£240	£240
+Consultation Room Furniture and Styling Package
+£1,080	Inc. VAT	£180	£180
+Treatment Room Furniture, Equipment and Styling Package
+£1,800	Inc. VAT	£300	£300
+Wall Art, Certificates and Picture Lighting
+£600	Inc. VAT	£100	£100
+Clinical Governance & Compliance
+· 9 items
+£145 + ?
+CPD Documentation Log
+£30	Inc. VAT	£5	£5
+DBS Check
+£38	Unknown	?	unclear
+Adverse Event Protocol
+£96	Unknown	?	unclear
+JCCP Practitioner Register
+£840	No VAT	—	—
+Save Face Registration
+£840	Inc. VAT	£140	£140
+Clinical Waste Contract
+£684	Unknown	?	unclear
+Fire Risk Assessment — Post Fit-Out
+£570	Unknown	?	unclear
+Emergency Drugs and Equipment Kit
+£240	Unknown	?	unclear
+Baseline Photography Protocol
+£36	Unknown	?	unclear
+Stock, Suppliers & Clinical Setup
+· 4 items
+£0 + ?
+IGS Uniforms & Clinical Footwear — Abi and David
+£800	Unknown	?	unclear
+Opening Injectable Stock
+£3,000	Unknown	?	unclear
+Clinical Smallwares and Consumables
+£900	Unknown	?	unclear
+Retail / Skincare Opening Stock
+£2,400	Unknown	?	unclear
+Finance, Insurance & Admin
+· 7 items
+£0 + ?
+ICO Data Protection Fee
+£47	Unknown	?	unclear
+Hamilton Fraser / Indemnity / Premises Insurance
+£1,900	Unknown	?	unclear
+Broadband Availability / Setup
+£120	Unknown	?	unclear
+Air Conditioning Inspection / Service
+£330	Unknown	?	unclear
+Legionella Risk Assessment
+£210	Unknown	?	unclear
+PAT Testing Setup
+£60	Unknown	?	unclear
+Card Payment Terminal for Winchester
+£29	Unknown	?	unclear
+Marketing & Launch
+· 7 items
+£255
+Website — Winchester Page, Photos, Privacy Notice
+£180	Inc. VAT	£30	£30
+Meta Ads — Winchester Launch
+£1,000	No VAT	—	—
+Google Ads — Winchester Launch
+£500	No VAT	—	—
+Referral Programme Setup
+£300	Inc. VAT	£50	£50
+Local PR / Founder Story Campaign
+£300	Inc. VAT	£50	£50
+Soft Launch Event
+£150	Inc. VAT	£25	£25
+Professional Photography of Completed Clinic
+£600	Inc. VAT	£100	£100
+Handover, Snagging & Opening
+· 1 item
+£50
+Professional Deep Clean Before Clinical Setup
+£300	Inc. VAT	£50	£50
+Project Contingency
+· 1 item
+£0 + ?
+Contingency Reserve — Controlled by David
+£3,000	Mixed / partial	?	unclear
+Total	£92,258		£10,468	
+£10,468
++£3,077 potential
+HMRC Input Tax Recovery — Key Rules

@@ -2613,7 +2613,7 @@ export default function ProjectPage() {
           (ph.tasks ?? [])
             .filter((t) => (t.selectedCost ?? 0) > 0 || (t.costMid ?? 0) > 0)
             .map((task) => {
-              const cost = task.selectedCost > 0 ? task.selectedCost : (task.costMid ?? 0);
+              const cost = (task as any).committedCost > 0 ? (task as any).committedCost : task.selectedCost > 0 ? task.selectedCost : (task.costMid ?? 0);
               const status: string = (task as any).costVatStatus || "vat_unknown";
               let vatElement: number | null = null;
               let claimable: number | null = null;
