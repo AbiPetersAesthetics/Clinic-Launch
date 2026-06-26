@@ -2128,45 +2128,39 @@ export default function ProjectPage() {
               const isAmber = !isGreen && totalSelectedCost <= outerLimit;
               return (
                 <div className="space-y-2.5">
-                  {/* 4-number strip */}
-                  <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-3">
-                    <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
-                        <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
-                      </div>
-                      <div className="self-stretch w-px bg-border/60 hidden sm:block" />
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live / Actual</p>
-                          <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${ragDot[ragStatus]}`} />
-                          <span className={`text-[10px] font-medium ${ragStatus === "red" ? "text-destructive" : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400" : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{ragLabel[ragStatus]}</span>
-                        </div>
-                        <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">forecast with actuals</p>
-                      </div>
-                      {hasActuals && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
-                      {hasActuals && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining</p>
-                          <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(remaining)}</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">still to pay</p>
-                        </div>
-                      )}
-                      {hasActuals && vatReclaimable > 0 && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
-                      {hasActuals && vatReclaimable > 0 && (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
-                          <p className="text-2xl font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">{formatGBP(vatReclaimable)}</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
-                        </div>
-                      )}
-                    </div>
-                    <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print" onClick={() => setShowRecordSpend(true)}>
+                  {/* Record Spend button — top right */}
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" className="gap-1.5 no-print" onClick={() => setShowRecordSpend(true)}>
                       <Receipt className="w-3.5 h-3.5" />
                       Record Spend
                     </Button>
+                  </div>
+                  {/* 4-number grid — always 2 cols on mobile, 4 on sm+ */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 border-t pt-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
+                      <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live / Actual</p>
+                        <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${ragDot[ragStatus]}`} />
+                        <span className={`text-[10px] font-medium ${ragStatus === "red" ? "text-destructive" : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400" : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{ragLabel[ragStatus]}</span>
+                      </div>
+                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">forecast with actuals</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining to pay</p>
+                      <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(remaining)}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">live actual minus paid</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
+                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${vatReclaimable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{vatReclaimable > 0 ? formatGBP(vatReclaimable) : "—"}</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
+                    </div>
                   </div>
                   {/* Compact budget alert — amber/red only */}
                   {!isGreen && (
