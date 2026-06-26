@@ -2102,127 +2102,95 @@ export default function ProjectPage() {
 
           {/* Budget Summary */}
           <div className="pt-2 border-t border-border/50 space-y-3">
-            {/* Two-number header: Project cost + Live/Actual with RAG */}
+            {/* Hero: 4 key numbers + Record Spend */}
             {(() => {
               const pc = projectControls as any;
               const lff = pc?.liveForecastFinal ?? pc?.forecastFinalCost ?? totalSelectedCost;
               const davidCap = pc?.davidApprovedCapGbp ?? 80000;
               const outerLimit = Math.round(davidCap * 7 / 6);
               const hasActuals = pc && (pc.actualSpend > 0 || pc.committedCosts > 0);
-              // RAG: compare live forecast against project baseline AND cap
               const ragStatus = !hasActuals ? "none"
                 : lff > outerLimit ? "red"
                 : lff > davidCap ? "amber"
                 : lff > totalSelectedCost * 1.02 ? "amber"
                 : "green";
-              const ragDot: Record<string, string> = {
-                green: "bg-emerald-500",
-                amber: "bg-amber-400",
-                red: "bg-red-500",
-                none: "bg-muted-foreground/30",
-              };
+              const ragDot: Record<string, string> = { green: "bg-emerald-500", amber: "bg-amber-400", red: "bg-red-500", none: "bg-muted-foreground/30" };
               const ragLabel: Record<string, string> = {
                 green: "On track",
                 amber: lff > davidCap ? `Above ${formatGBP(davidCap)} cap` : "Slight overspend",
                 red: "Over outer limit",
                 none: "No actuals yet",
               };
-              const lffColor = ragStatus === "red" ? "text-destructive"
-                : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400"
-                : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400"
-                : "text-foreground";
-              return (
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-6 sm:gap-10">
-                    {/* Project cost */}
-                    <div>
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
-                      <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
-                    </div>
-                    {/* Divider */}
-                    <div className="self-stretch w-px bg-border/60 hidden sm:block" />
-                    {/* Live / Actual */}
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live / Actual</p>
-                        <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${ragDot[ragStatus]}`} title={ragLabel[ragStatus]} />
-                        <span className={`text-[10px] font-medium ${
-                          ragStatus === "red" ? "text-destructive"
-                          : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400"
-                          : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-muted-foreground/60"
-                        }`}>{ragLabel[ragStatus]}</span>
-                      </div>
-                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">actuals + committed + remaining planned</p>
-                    </div>
-                    {/* Divider */}
-                    <div className="self-stretch w-px bg-border/60 hidden sm:block" />
-                    {/* Remaining to pay */}
-                    {hasActuals && (() => {
-                      const remaining = lff - (pc?.actualSpend ?? 0);
-                      return (
-                        <div>
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining</p>
-                          <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(Math.max(0, remaining))}</p>
-                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">still to pay</p>
-                        </div>
-                      );
-                    })()}
-                    {/* Divider */}
-                    {hasActuals && (pc?.reclaimableVat ?? 0) > 0 && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
-                    {/* VAT Reclaimable */}
-                    {hasActuals && (pc?.reclaimableVat ?? 0) > 0 && (
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
-                        <p className="text-2xl font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">{formatGBP(Math.round(pc.reclaimableVat))}</p>
-                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
-                      </div>
-                    )}
-                  </div>
-                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print mt-1" onClick={() => setShowRecordSpend(true)}>
-                    <Receipt className="w-3.5 h-3.5" />
-                    Record Spend
-                  </Button>
-                </div>
-              );
-            })()}
-
-            {/* Traffic-light budget cap — threshold from project-controls (davidApprovedCapGbp) */}
-            {(() => {
-              const davidCap = (projectControls as any)?.davidApprovedCapGbp ?? 60000;
-              const outerLimit = Math.round(davidCap * 7 / 6);
+              const lffColor = ragStatus === "red" ? "text-destructive" : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400" : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground";
+              const remaining = Math.max(0, lff - (pc?.actualSpend ?? 0));
+              const vatReclaimable = Math.round(pc?.reclaimableVat ?? 0);
               const isGreen = totalSelectedCost <= davidCap;
               const isAmber = !isGreen && totalSelectedCost <= outerLimit;
-              const borderCls = isGreen
-                ? "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700"
-                : isAmber
-                ? "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700"
-                : "border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700";
-              const headCls = isGreen
-                ? "text-emerald-800 dark:text-emerald-300"
-                : isAmber ? "text-amber-800 dark:text-amber-300"
-                : "text-red-800 dark:text-red-300";
-              const bodyCls = isGreen
-                ? "text-emerald-700 dark:text-emerald-400"
-                : isAmber ? "text-amber-700 dark:text-amber-400"
-                : "text-red-700 dark:text-red-400";
-              const icon = isGreen ? "✓" : isAmber ? "⚠" : "✕";
-              const headline = isGreen
-                ? `Within ${formatGBP(davidCap)} approved launch cap`
-                : isAmber
-                ? `STRETCH / RISK — above ${formatGBP(davidCap)} target, within ${formatGBP(outerLimit)} outer limit`
-                : `RED FLAG — above ${formatGBP(outerLimit)}. Not approved without David's sign-off.`;
               return (
-                <div className={`flex items-start gap-2.5 rounded-lg border px-4 py-3 ${borderCls}`}>
-                  <span className={`text-base shrink-0 font-bold ${headCls}`}>{icon}</span>
-                  <div>
-                    <p className={`text-sm font-semibold ${headCls}`}>{headline}</p>
-                    <p className={`text-xs mt-0.5 ${bodyCls}`}>
-                      David's approved launch cap is <strong>{formatGBP(davidCap)} inc VAT</strong>. Stretch / risk range: {formatGBP(davidCap)}–{formatGBP(outerLimit)}. Anything above {formatGBP(outerLimit)} is unapproved — use deferrals to control the selected total.
-                    </p>
+                <div className="space-y-2.5">
+                  {/* 4-number strip */}
+                  <div className="flex flex-wrap items-end justify-between gap-x-2 gap-y-3">
+                    <div className="flex flex-wrap items-start gap-x-8 gap-y-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Project cost</p>
+                        <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(totalSelectedCost)}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">planned selected total</p>
+                      </div>
+                      <div className="self-stretch w-px bg-border/60 hidden sm:block" />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live / Actual</p>
+                          <span className={`inline-block w-2 h-2 rounded-full shrink-0 ${ragDot[ragStatus]}`} />
+                          <span className={`text-[10px] font-medium ${ragStatus === "red" ? "text-destructive" : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400" : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{ragLabel[ragStatus]}</span>
+                        </div>
+                        <p className={`text-2xl font-bold tabular-nums mt-0.5 ${lffColor}`}>{formatGBP(lff)}</p>
+                        <p className="text-[10px] text-muted-foreground/60 mt-0.5">forecast with actuals</p>
+                      </div>
+                      {hasActuals && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
+                      {hasActuals && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining</p>
+                          <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(remaining)}</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">still to pay</p>
+                        </div>
+                      )}
+                      {hasActuals && vatReclaimable > 0 && <div className="self-stretch w-px bg-border/60 hidden sm:block" />}
+                      {hasActuals && vatReclaimable > 0 && (
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
+                          <p className="text-2xl font-bold tabular-nums mt-0.5 text-emerald-600 dark:text-emerald-400">{formatGBP(vatReclaimable)}</p>
+                          <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
+                        </div>
+                      )}
+                    </div>
+                    <Button size="sm" variant="outline" className="gap-1.5 shrink-0 no-print" onClick={() => setShowRecordSpend(true)}>
+                      <Receipt className="w-3.5 h-3.5" />
+                      Record Spend
+                    </Button>
                   </div>
+                  {/* Compact budget alert — amber/red only */}
+                  {!isGreen && (
+                    <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${isAmber ? "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" : "border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800"}`}>
+                      <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${isAmber ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`} />
+                      <p className={`text-xs font-medium ${isAmber ? "text-amber-800 dark:text-amber-300" : "text-red-800 dark:text-red-300"}`}>
+                        {isAmber ? `Stretch — above ${formatGBP(davidCap)} cap, within ${formatGBP(outerLimit)} outer limit` : `Red flag — above ${formatGBP(outerLimit)} outer limit. Needs David's approval.`}
+                      </p>
+                    </div>
+                  )}
+                  {/* Compact secondary strip */}
+                  {hasActuals && (() => {
+                    const vGbp = pc.varianceGbp ?? 0;
+                    const allTasksFlat = phases?.flatMap((p: any) => p.tasks ?? []) ?? [];
+                    const doneCount = allTasksFlat.filter((t: any) => t.status === "complete").length;
+                    return (
+                      <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground pt-1 border-t border-border/40">
+                        <span><span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatGBP(pc.actualSpend)}</span> paid</span>
+                        <span><span className="font-semibold text-blue-600 dark:text-blue-400">{formatGBP(pc.committedCosts)}</span> committed</span>
+                        <span><span className={`font-semibold ${vGbp > 0 ? "text-destructive" : "text-emerald-600 dark:text-emerald-400"}`}>{vGbp >= 0 ? "+" : ""}{formatGBP(Math.abs(vGbp))}</span> vs plan</span>
+                        <span><span className="font-semibold text-foreground">{doneCount}/{allTasksFlat.length}</span> tasks done</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })()}
@@ -2230,219 +2198,8 @@ export default function ProjectPage() {
             {/* ── Actuals KPI strip — visible once spend is recorded ─────────── */}
             {projectControls && ((projectControls as any).actualSpend > 0 || (projectControls as any).committedCosts > 0) && (() => {
               const pc = projectControls as any;
-              const davidCap = pc.davidApprovedCapGbp ?? 60000;
-              const statusMap: Record<string, { border: string; head: string; icon: string; msg: string }> = {
-                on_track: { border: "border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-700", head: "text-emerald-800 dark:text-emerald-300", icon: "✓", msg: "On track — spend is within approved budget" },
-                stretch: { border: "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700", head: "text-amber-800 dark:text-amber-300", icon: "⚠", msg: `Stretch — forecast exceeds ${formatGBP(davidCap)} approved cap` },
-                slight_overspend: { border: "border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700", head: "text-amber-800 dark:text-amber-300", icon: "⚠", msg: "Slight overspend — forecast is above plan" },
-                over_approved_cap: { border: "border-red-300 bg-red-50 dark:bg-red-950/30 dark:border-red-700", head: "text-red-800 dark:text-red-300", icon: "✕", msg: "RED FLAG — forecast exceeds outer limit. David's approval required." },
-                no_actuals: { border: "border-muted bg-muted/30", head: "text-muted-foreground", icon: "—", msg: "No actuals recorded yet" },
-              };
-              const cfg = statusMap[pc.budgetStatus] ?? statusMap.no_actuals;
-              const allTasksFlat = phases?.flatMap(p => p.tasks ?? []) ?? [];
               return (
                 <div className="space-y-3">
-                  {/* 5-card KPI strip */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                    {/* Original Baseline — locked, never changes with actuals */}
-                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                      <div className="flex items-center justify-center gap-1 mb-1">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Original Baseline</p>
-                        <Lock className="w-2.5 h-2.5 text-muted-foreground/60" title="Locked at project start — does not update when actuals or commitments change" />
-                      </div>
-                      <p className="text-base font-bold tabular-nums text-foreground">{formatGBP(pc.originalBaselineCost ?? pc.plannedBudget)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">locked at project start</p>
-                    </div>
-                    {/* Actual Paid */}
-                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Actual Paid</p>
-                      <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(pc.actualSpend)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">invoices paid</p>
-                    </div>
-                    {/* Committed */}
-                    <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Committed</p>
-                      <p className="text-base font-bold tabular-nums text-blue-600 dark:text-blue-400">{formatGBP(pc.committedCosts)}</p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">orders placed</p>
-                    </div>
-                    {/* Live Forecast Final */}
-                    {(() => {
-                      const lff = pc.liveForecastFinal ?? pc.forecastFinalCost;
-                      const lffCls = lff > davidCap * 1.167 ? "text-destructive" : lff > davidCap ? "text-amber-600 dark:text-amber-400" : "text-foreground";
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Live Forecast Final</p>
-                          <p className={`text-base font-bold tabular-nums ${lffCls}`}>{formatGBP(lff)}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">updates with actuals</p>
-                        </div>
-                      );
-                    })()}
-                    {/* Variance vs Baseline */}
-                    {(() => {
-                      const vGbp = pc.varianceGbp;
-                      const vPct = pc.variancePct;
-                      const vCls = vGbp > 0 ? "text-destructive" : vGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground";
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 text-center">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1 font-medium">Variance vs Baseline</p>
-                          <p className={`text-base font-bold tabular-nums ${vCls}`}>
-                            {vGbp >= 0 ? "+" : ""}{formatGBP(Math.abs(vGbp))}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{vPct >= 0 ? "+" : ""}{vPct.toFixed(1)}% vs original plan</p>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Secondary KPI row — VAT reclaim, headroom, uncommitted */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Reclaimable VAT */}
-                    <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
-                      <div className="rounded-md bg-emerald-100 dark:bg-emerald-950/50 p-2 shrink-0">
-                        <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Reclaimable VAT</p>
-                        <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">{formatGBP(pc.reclaimableVat ?? 0)}</p>
-                        <p className="text-[10px] text-muted-foreground">from paid &amp; committed spend · 20% std rate</p>
-                      </div>
-                    </div>
-
-                    {/* Headroom to David's cap */}
-                    {(() => {
-                      const headroom = pc.capHeadroomGbp ?? (davidCap - pc.forecastFinalCost);
-                      const isOver = headroom < 0;
-                      const isTight = !isOver && headroom < 5000;
-                      const hCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
-                      const bgCls = isOver ? "bg-red-100 dark:bg-red-950/50" : isTight ? "bg-amber-100 dark:bg-amber-950/50" : "bg-emerald-100 dark:bg-emerald-950/50";
-                      const iconCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
-                          <div className={`rounded-md ${bgCls} p-2 shrink-0`}>
-                            <TrendingDown className={`w-4 h-4 ${iconCls}`} />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Cap Headroom</p>
-                            <p className={`text-base font-bold tabular-nums ${hCls}`}>
-                              {isOver ? "−" : "+"}{formatGBP(Math.abs(headroom))}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">forecast vs {formatGBP(davidCap)} approved cap</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Uncommitted budget */}
-                    {(() => {
-                      const uncommitted = pc.uncommittedBudget ?? 0;
-                      const uCls = uncommitted < 0 ? "text-destructive" : "text-foreground";
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
-                          <div className="rounded-md bg-muted/60 p-2 shrink-0">
-                            <Minus className="w-4 h-4 text-muted-foreground" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Uncommitted</p>
-                            <p className={`text-base font-bold tabular-nums ${uCls}`}>{formatGBP(uncommitted)}</p>
-                            <p className="text-[10px] text-muted-foreground">planned not yet spent or ordered</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Live Forecast detail strip — variance vs baseline + cap, net cost, savings */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {/* Live Forecast vs Cap */}
-                    {(() => {
-                      const lff = pc.liveForecastFinal ?? pc.forecastFinalCost;
-                      const vsCapGbp = pc.liveForecastVsCapGbp ?? (lff - davidCap);
-                      const vsBasePct = pc.variancePct ?? 0;
-                      const isOver = vsCapGbp > 0;
-                      const isTight = !isOver && vsCapGbp > -5000;
-                      const vsCapCls = isOver ? "text-destructive" : isTight ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 space-y-1">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Live Forecast Variance</p>
-                          <div className="flex items-baseline justify-between gap-2">
-                            <span className="text-[11px] text-muted-foreground">vs Baseline</span>
-                            <span className={`text-sm font-bold tabular-nums ${pc.varianceGbp > 0 ? "text-destructive" : pc.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
-                              {pc.varianceGbp >= 0 ? "+" : ""}{formatGBP(Math.abs(pc.varianceGbp))}
-                              <span className="text-[10px] font-normal ml-1">({vsBasePct >= 0 ? "+" : ""}{vsBasePct.toFixed(1)}%)</span>
-                            </span>
-                          </div>
-                          <div className="flex items-baseline justify-between gap-2">
-                            <span className="text-[11px] text-muted-foreground">vs {formatGBP(davidCap)} cap</span>
-                            <span className={`text-sm font-bold tabular-nums ${vsCapCls}`}>
-                              {vsCapGbp >= 0 ? "+" : ""}{vsCapGbp >= 0 ? "" : "−"}{formatGBP(Math.abs(vsCapGbp))}
-                            </span>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground italic">Updates as actuals &amp; commitments are recorded</p>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Net Cost After VAT Reclaim */}
-                    {(() => {
-                      const net = pc.netCostAfterVat ?? 0;
-                      const vat = pc.reclaimableVat ?? 0;
-                      const unknown = pc.unknownVatTaskCount ?? 0;
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 space-y-1">
-                          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Net Cost After VAT Reclaim</p>
-                          <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(net)}</p>
-                          <p className="text-[10px] text-muted-foreground">Live forecast minus {formatGBP(vat)} VAT reclaim (std rate only)</p>
-                          {unknown > 0 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
-                              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">{unknown} task{unknown !== 1 ? "s" : ""} with unconfirmed VAT — net cost may be understated</p>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Savings Captured */}
-                    {(() => {
-                      const savings = pc.savingsCaptured ?? 0;
-                      return (
-                        <div className="rounded-lg border bg-card px-3 py-2.5 flex items-center gap-3">
-                          <div className="rounded-md bg-emerald-100 dark:bg-emerald-950/50 p-2 shrink-0">
-                            <ArrowDown className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Savings Captured vs Plan</p>
-                            <p className="text-base font-bold tabular-nums text-emerald-600 dark:text-emerald-400">{savings > 0 ? formatGBP(savings) : "—"}</p>
-                            <p className="text-[10px] text-muted-foreground">procurement savings vs selected cost</p>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Budget health badge */}
-                  <div className={`flex items-center gap-2 rounded-lg border px-4 py-2 ${cfg.border}`}>
-                    <span className={`font-bold shrink-0 ${cfg.head}`}>{cfg.icon}</span>
-                    <span className={`text-sm font-semibold ${cfg.head}`}>Budget health: </span>
-                    <span className={`text-sm ${cfg.head}`}>{cfg.msg}</span>
-                  </div>
-
-                  {/* Completion metrics */}
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { label: "Tasks complete", value: pc.taskCompletionPct, sub: `${allTasksFlat.filter((t: any) => t.status === "complete").length} of ${allTasksFlat.length}` },
-                      { label: "Spend recorded", value: pc.spendCompletionPct, sub: formatGBP(pc.actualSpend) + " paid" },
-                      { label: "Budget earned", value: pc.weightedCompletionPct, sub: "cost-weighted %" },
-                    ] as { label: string; value: number; sub: string }[]).map(m => (
-                      <div key={m.label} className="rounded-md border bg-muted/30 px-3 py-2 text-center">
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">{m.label}</p>
-                        <p className="text-xl font-bold">{m.value}%</p>
-                        <Progress value={m.value} className="h-1 mt-1.5 mb-1" />
-                        <p className="text-[10px] text-muted-foreground">{m.sub}</p>
-                      </div>
-                    ))}
-                  </div>
-
                   {/* Cost Performance chart — cumulative planned vs actual vs forecast */}
                   {pc.monthlySpend?.length > 0 && (
                     <div className="rounded-lg border overflow-hidden">
