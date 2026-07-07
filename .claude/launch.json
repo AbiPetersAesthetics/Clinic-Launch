@@ -1,0 +1,22 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "clinic-launch-frontend",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": [
+        "--filter",
+        "@workspace/clinic-launch-os",
+        "exec",
+        "vite",
+        "--config",
+        "vite.config.ts",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8090"
+      ],
+      "port": 8090
+    }
+  ]
+}

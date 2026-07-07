@@ -2,7 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { marketingItemsTable, projectsTable } from "@workspace/db";
 import { eq, asc, and } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 const router = Router();
 
@@ -218,14 +218,13 @@ Respond with a JSON object in this exact shape:
   ]
 }`;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
-    response_format: { type: "json_object" },
+  const completionText = await claudeComplete({
+    jsonOnly: true,
     messages: [{ role: "user", content: prompt }],
-    max_completion_tokens: 4000,
+    maxTokens: 4000,
   });
 
-  const raw = JSON.parse(completion.choices[0]?.message?.content ?? "{}") as {
+  const raw = JSON.parse(completionText || "{}") as {
     updates?: Array<{ id: number; notes: string; status?: string }>;
   };
 

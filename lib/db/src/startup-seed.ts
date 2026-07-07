@@ -7,7 +7,6 @@
 import { db } from "./index";
 import * as schema from "./schema";
 import { eq, and, sql } from "drizzle-orm";
-import { runV8Migration } from "./v8-migration";
 
 async function seedRisks(projectId: number) {
   const SEED_RISKS = [
@@ -403,14 +402,15 @@ export async function runStartupSeed(): Promise<void> {
           await seedRisks(projectId);
           console.log("🛡️ Risk register seeded (22 risks)");
         }
-        // V6 migration: add managed contractor phases + FF&E phase + update treatment couch notes
-        await runV6Migration(projectId);
+        // V6 migration retired 2026-07-07: already applied to the production data.
+        // Its name-based guard broke once archived phases were cleaned out of the
+        // DB, causing it to re-insert old phases on every boot. Do not re-enable.
         // V7 migration: add additional_clinicians_json column (idempotent DDL)
         await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS additional_clinicians_json TEXT DEFAULT '[]'`);
         // V7 data repair: fix rows where the column was initialised to '0' instead of '[]'
         await db.execute(sql`UPDATE financial_models SET additional_clinicians_json = '[]' WHERE additional_clinicians_json IS NULL OR additional_clinicians_json = '0' OR additional_clinicians_json = ''`);
-        // V8 migration: archive old phases, create 12 new active phases with 111 tasks
-        await runV8Migration(projectId);
+        // V8 migration retired 2026-07-07: already applied to the production data
+        // (the 12 active phases exist). Same archived-data guard risk as V6.
         // V9 migration: add date fields to investments table
         await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS deposit_date TEXT`);
         await db.execute(sql`ALTER TABLE investments ADD COLUMN IF NOT EXISTS agreement_start_date TEXT`);
@@ -456,6 +456,39 @@ export async function runStartupSeed(): Promise<void> {
             url TEXT,
             cost_gbp REAL NOT NULL DEFAULT 0,
             notes TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        // V17 migration: tender packs + responses (principal-contractor ITT)
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS tender_packs (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            reference TEXT,
+            title TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'draft',
+            deadline TEXT,
+            sections_json TEXT NOT NULL DEFAULT '[]',
+            documents_json TEXT,
+            evaluation_json TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`ALTER TABLE tender_packs ADD COLUMN IF NOT EXISTS files_json TEXT NOT NULL DEFAULT '[]'`);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS tender_responses (
+            id SERIAL PRIMARY KEY,
+            tender_pack_id INTEGER NOT NULL,
+            project_id INTEGER NOT NULL,
+            contractor_name TEXT NOT NULL,
+            file_url TEXT,
+            file_name TEXT,
+            notes TEXT DEFAULT '',
+            extracted_json TEXT,
+            score_json TEXT,
+            received_at TIMESTAMP DEFAULT NOW(),
             created_at TIMESTAMP DEFAULT NOW(),
             updated_at TIMESTAMP DEFAULT NOW()
           )

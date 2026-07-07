@@ -12,7 +12,10 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const basePath = process.env.BASE_PATH ?? "/";
+// On Windows/Git Bash, MSYS can path-convert a bare "/" into a filesystem path
+// (e.g. "/Program Files/Git/"), corrupting the base. Fall back to "/" if so.
+const rawBasePath = process.env.BASE_PATH ?? "/";
+const basePath = rawBasePath.includes("Program Files") ? "/" : rawBasePath;
 
 export default defineConfig({
   base: basePath,

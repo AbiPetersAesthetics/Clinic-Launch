@@ -112,7 +112,7 @@ export default function LeaseStrategyPage() {
     setLoading(true);
     setError(null);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 95_000);
+    const timer = setTimeout(() => ctrl.abort(), 300_000);
     fetch(`${API_BASE}/projects/${PROJECT_ID}/go-no-go/lease-strategy`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

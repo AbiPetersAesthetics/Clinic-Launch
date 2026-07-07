@@ -281,7 +281,7 @@ export default function DashboardPage() {
     setGoNoGoLoading(true);
     setGoNoGoError(null);
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 115_000);
+    const timer = setTimeout(() => ctrl.abort(), 300_000); // Claude's full analysis takes ~2-3 min
     fetch("/api/projects/1/go-no-go", { method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : r.json().then((e: { error?: string }) => Promise.reject(e.error ?? "Request failed")))
       .then((d: GoNoGoResult) => {

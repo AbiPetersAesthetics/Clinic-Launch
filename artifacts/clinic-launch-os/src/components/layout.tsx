@@ -41,12 +41,12 @@ function AbiPetersLogo() {
     <div className="select-none">
       <div
         className="text-sidebar-foreground leading-none tracking-tight"
-        style={{ fontFamily: "'Cormorant Garamond', Georgia, serif", fontSize: "1.35rem", fontWeight: 500 }}
+        style={{ fontFamily: "var(--app-font-serif)", fontSize: "1.35rem", fontWeight: 500 }}
       >
         Abi Peters
       </div>
       <div className="text-sidebar-foreground/60 tracking-[0.22em] uppercase mt-0.5" style={{ fontSize: "0.6rem", fontWeight: 500 }}>
-        Aesthetics
+        Skin Clinic
       </div>
       <div className="text-sidebar-foreground/35 tracking-[0.18em] uppercase mt-0.5" style={{ fontSize: "0.55rem", fontWeight: 400 }}>
         Launch OS
@@ -65,7 +65,7 @@ function SidebarNav({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex-1 p-4 space-y-0.5">
+    <nav className="px-4 space-y-0.5">
       {navItems.map((item) => {
         const isActive = location === item.href;
         return (
@@ -145,24 +145,37 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const complianceScore = dashboard?.complianceReadinessPercent ?? null;
 
-  const navItems = [
-    { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/lifestyle", label: "Life Design", icon: Leaf },
-    { href: "/financials", label: "Financials", icon: Calculator },
-    { href: "/project", label: "Project Plan", icon: ListTodo },
+  // Execution — what running the project to opening day actually needs
+  const executionItems = [
+    { href: "/", label: "Today", icon: LayoutDashboard },
+    { href: "/project", label: "Plan & Timeline", icon: ListTodo },
+    { href: "/financials", label: "Money", icon: Calculator },
+    { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
+    { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
+    { href: "/risk-register", label: "Risks", icon: AlertTriangle },
+    { href: "/marketing", label: "Marketing", icon: Megaphone },
+  ];
+
+  // Planning Archive — the go/no-go era tools, kept for reference
+  const archiveItems = [
+    { href: "/dashboard", label: "Go/No-Go Dashboard", icon: Gauge },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
-    { href: "/suppliers", label: "Suppliers", icon: ShoppingBag },
-    { href: "/compliance", label: "Compliance", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
-    { href: "/risk-register", label: "Risk Register", icon: AlertTriangle },
-    { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/competition", label: "Competition Intel", icon: Target },
-    { href: "/marketing", label: "Marketing", icon: Megaphone },
+    { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
-    { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
+    { href: "/decisions", label: "Decisions", icon: BookOpen },
+    { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/franchise", label: "Franchise Model", icon: Network },
   ];
+
+  const locationInArchive = archiveItems.some(i => i.href === location);
+  const [archiveOpen, setArchiveOpen] = useState(locationInArchive);
+  // Keep the archive open when navigating into one of its pages
+  useEffect(() => {
+    if (locationInArchive) setArchiveOpen(true);
+  }, [locationInArchive]);
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -197,11 +210,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <SidebarNav
-          navItems={navItems}
-          location={location}
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
+        <div className="flex-1 overflow-y-auto py-4 space-y-4">
+          <SidebarNav
+            navItems={executionItems}
+            location={location}
+            onNavigate={() => setMobileMenuOpen(false)}
+          />
+
+          <div>
+            <button
+              className="w-full flex items-center justify-between px-7 py-1.5 text-sidebar-foreground/40 hover:text-sidebar-foreground/70 transition-colors"
+              onClick={() => setArchiveOpen(o => !o)}
+              aria-expanded={archiveOpen}
+            >
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Planning Archive</span>
+              {archiveOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+            {archiveOpen && (
+              <SidebarNav
+                navItems={archiveItems}
+                location={location}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            )}
+          </div>
+        </div>
 
         {/* Bottom: export + location */}
         <div className="p-4 border-t border-sidebar-border space-y-3">

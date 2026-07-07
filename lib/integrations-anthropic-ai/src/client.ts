@@ -1,23 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-// Lazily initialised so the server can boot without the Anthropic integration
-// configured; the error is raised only when an AI feature is actually used.
+// Lazily initialised so the server can boot without the API key configured;
+// the error is raised only when an AI feature is actually used.
 function createClient(): Anthropic {
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error(
-      "AI_INTEGRATIONS_ANTHROPIC_BASE_URL must be set. Did you forget to provision the Anthropic AI integration?",
-    );
-  }
-
-  if (!process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY) {
-    throw new Error(
-      "AI_INTEGRATIONS_ANTHROPIC_API_KEY must be set. Did you forget to provision the Anthropic AI integration?",
+      "ANTHROPIC_API_KEY must be set to use AI features. Add it to the repo-root .env file.",
     );
   }
 
   return new Anthropic({
-    apiKey: process.env.AI_INTEGRATIONS_ANTHROPIC_API_KEY,
-    baseURL: process.env.AI_INTEGRATIONS_ANTHROPIC_BASE_URL,
+    apiKey: process.env.ANTHROPIC_API_KEY,
   });
 }
 

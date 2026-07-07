@@ -75,61 +75,65 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Abi Peters Aesthetics — clean neutral white body */
-  --background: 220 20% 97%;
-  --foreground: 220 15% 11%;
+  /* Abi Peters Skin Clinic brand — ivory body, deep navy ink
+     (tokens mirror the website: #1F2A44 ink, #F6F3ED ivory, #DFD4C3 sand,
+      #9FBBAF/#587F72 sage, #445B72 slate blue) */
+  --background: 40 33% 95%;
+  --foreground: 222 37% 19%;
 
-  --border: 220 13% 90%;
+  --border: 222 15% 88%;
 
   --card: 0 0% 100%;
-  --card-foreground: 220 15% 11%;
-  --card-border: 220 13% 90%;
+  --card-foreground: 222 37% 19%;
+  --card-border: 222 15% 89%;
 
-  /* Sidebar — dark forest green matching their nav */
-  --sidebar: 163 28% 12%;
-  --sidebar-foreground: 36 20% 94%;
-  --sidebar-border: 163 18% 20%;
-  --sidebar-primary: 161 40% 52%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 163 22% 18%;
-  --sidebar-accent-foreground: 36 20% 94%;
-  --sidebar-accent-border: 163 22% 24%;
-  --sidebar-ring: 161 40% 52%;
+  /* Sidebar — deep navy, the website's ink */
+  --sidebar: 222 37% 19%;
+  --sidebar-foreground: 40 33% 95%;
+  --sidebar-border: 222 30% 27%;
+  --sidebar-primary: 154 17% 68%;
+  --sidebar-primary-foreground: 222 37% 15%;
+  --sidebar-accent: 222 33% 25%;
+  --sidebar-accent-foreground: 40 33% 95%;
+  --sidebar-accent-border: 222 33% 30%;
+  --sidebar-ring: 154 17% 68%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 220 15% 11%;
-  --popover-border: 220 13% 90%;
+  --popover-foreground: 222 37% 19%;
+  --popover-border: 222 15% 88%;
 
-  /* Primary — forest green accent */
-  --primary: 163 35% 33%;
+  /* Primary — deep navy, like the website's buttons */
+  --primary: 222 37% 19%;
   --primary-foreground: 0 0% 100%;
 
-  --secondary: 220 13% 93%;
-  --secondary-foreground: 220 15% 11%;
+  /* Secondary — warm sand wash */
+  --secondary: 36 30% 91%;
+  --secondary-foreground: 222 37% 19%;
 
-  --muted: 220 14% 96%;
-  --muted-foreground: 220 9% 46%;
+  --muted: 40 25% 93%;
+  --muted-foreground: 220 13% 41%;
 
-  --accent: 220 13% 95%;
-  --accent-foreground: 220 15% 11%;
+  /* Accent — quiet sage wash (the website's interaction colour family) */
+  --accent: 154 20% 92%;
+  --accent-foreground: 222 37% 19%;
 
-  --destructive: 0 84% 60%;
+  --destructive: 0 64% 44%;
   --destructive-foreground: 0 0% 100%;
 
-  --input: 220 13% 90%;
-  --ring: 163 35% 33%;
+  --input: 222 15% 86%;
+  --ring: 160 18% 42%;
 
-  --chart-1: 163 35% 33%;
-  --chart-2: 36 40% 68%;
-  --chart-3: 163 15% 48%;
-  --chart-4: 36 22% 58%;
-  --chart-5: 163 35% 22%;
+  --chart-1: 222 37% 30%;
+  --chart-2: 160 18% 42%;
+  --chart-3: 36 35% 62%;
+  --chart-4: 210 25% 45%;
+  --chart-5: 154 17% 55%;
 
-  --app-font-sans: 'Inter', sans-serif;
-  --app-font-serif: 'Cormorant Garamond', Georgia, serif;
+  --app-font-sans: 'avenir-next-lt-pro', 'Avenir Next', 'Inter', 'Segoe UI', sans-serif;
+  --app-font-serif: 'minion-pro', 'Minion Pro', 'Source Serif 4', Georgia, serif;
   --app-font-mono: Menlo, monospace;
 
-  --radius: 0.5rem;
+  --radius: 0.375rem;
 
   --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
   --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.07);
@@ -153,51 +157,51 @@
 }
 
 .dark {
-  --background: 163 22% 8%;
-  --foreground: 36 25% 95%;
+  --background: 222 30% 10%;
+  --foreground: 40 25% 94%;
 
-  --border: 163 14% 20%;
+  --border: 222 20% 22%;
 
-  --card: 163 18% 11%;
-  --card-foreground: 36 25% 95%;
-  --card-border: 163 14% 20%;
+  --card: 222 28% 13%;
+  --card-foreground: 40 25% 94%;
+  --card-border: 222 20% 22%;
 
-  --sidebar: 163 28% 8%;
-  --sidebar-foreground: 36 20% 92%;
-  --sidebar-border: 163 18% 15%;
-  --sidebar-primary: 161 38% 48%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 163 20% 14%;
-  --sidebar-accent-foreground: 36 20% 92%;
-  --sidebar-ring: 161 38% 48%;
+  --sidebar: 222 32% 8%;
+  --sidebar-foreground: 40 20% 92%;
+  --sidebar-border: 222 24% 16%;
+  --sidebar-primary: 154 20% 60%;
+  --sidebar-primary-foreground: 222 37% 12%;
+  --sidebar-accent: 222 26% 16%;
+  --sidebar-accent-foreground: 40 20% 92%;
+  --sidebar-ring: 154 20% 60%;
 
-  --popover: 163 18% 11%;
-  --popover-foreground: 36 25% 95%;
-  --popover-border: 163 14% 20%;
+  --popover: 222 28% 13%;
+  --popover-foreground: 40 25% 94%;
+  --popover-border: 222 20% 22%;
 
-  --primary: 161 38% 48%;
-  --primary-foreground: 0 0% 100%;
+  --primary: 154 20% 60%;
+  --primary-foreground: 222 37% 12%;
 
-  --secondary: 163 18% 18%;
-  --secondary-foreground: 36 25% 95%;
+  --secondary: 222 22% 20%;
+  --secondary-foreground: 40 25% 94%;
 
-  --muted: 163 16% 15%;
-  --muted-foreground: 163 10% 60%;
+  --muted: 222 20% 17%;
+  --muted-foreground: 220 12% 62%;
 
-  --accent: 163 16% 18%;
-  --accent-foreground: 36 25% 95%;
+  --accent: 222 22% 20%;
+  --accent-foreground: 40 25% 94%;
 
-  --destructive: 0 62.8% 30.6%;
-  --destructive-foreground: 36 25% 95%;
+  --destructive: 0 55% 40%;
+  --destructive-foreground: 40 25% 94%;
 
-  --input: 163 14% 20%;
-  --ring: 161 38% 48%;
+  --input: 222 20% 22%;
+  --ring: 154 20% 60%;
 
-  --chart-1: 161 38% 48%;
-  --chart-2: 36 35% 60%;
-  --chart-3: 163 12% 55%;
-  --chart-4: 36 18% 40%;
-  --chart-5: 161 38% 32%;
+  --chart-1: 154 20% 60%;
+  --chart-2: 36 30% 62%;
+  --chart-3: 210 25% 55%;
+  --chart-4: 40 20% 70%;
+  --chart-5: 160 18% 45%;
 }
 
 @layer base {
@@ -206,6 +210,9 @@
   }
   body {
     @apply font-sans antialiased bg-background text-foreground;
+    /* Mobile safety net: wide content must scroll inside its own container,
+       never the page. Tables/Gantt have their own overflow-x containers. */
+    overflow-x: hidden;
   }
 }
 

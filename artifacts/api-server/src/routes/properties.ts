@@ -3,7 +3,7 @@ import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable, financialsTable, decisionsTable, projectsTable, fixedCostItemsTable } from "@workspace/db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ScoringWeights } from "@workspace/db";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 const router = Router();
 
@@ -587,14 +587,10 @@ For each location return a JSON object with these exact fields:
 Return ONLY a JSON array of exactly 6 objects. No markdown, no explanation, just the raw JSON array.`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+    const raw = (await claudeComplete({
       messages: [{ role: "user", content: prompt }],
-      temperature: 0.4,
-      max_tokens: 3000,
-    });
-
-    const raw = completion.choices[0]?.message?.content?.trim() ?? "";
+      maxTokens: 3000,
+    })).trim();
     let results: unknown[];
 
     // Strip markdown fences if present

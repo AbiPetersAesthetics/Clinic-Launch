@@ -1296,6 +1296,49 @@ export default function ProjectPage() {
     invoiceFileUrl: "",
     uploading: false,
   });
+  const [aiExtracting, setAiExtracting] = useState(false);
+  const [aiExtractNote, setAiExtractNote] = useState<string | null>(null);
+
+  const extractInvoiceWithAI = async () => {
+    const file = recordSpendData.invoiceFile;
+    if (!file) return;
+    setAiExtracting(true);
+    setAiExtractNote(null);
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 300_000);
+      const form = new FormData();
+      form.append("file", file);
+      const r = await fetch(`/api/projects/${PROJECT_ID}/invoice-extract`, { method: "POST", body: form, signal: ctrl.signal });
+      clearTimeout(timer);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Extraction failed");
+      const ex = j.extracted as {
+        supplierName?: string | null; invoiceRef?: string | null; invoiceDate?: string | null;
+        totalGbp?: number | null; vatIncluded?: boolean | null; description?: string | null;
+        suggestedTaskId?: number | null; matchReason?: string | null; confidence?: string;
+      };
+      setRecordSpendData(d => ({
+        ...d,
+        taskId: d.taskId ?? ex.suggestedTaskId ?? null,
+        actualCost: d.actualCost || (ex.totalGbp != null ? String(ex.totalGbp) : ""),
+        invoiceRef: d.invoiceRef || (ex.invoiceRef ?? ""),
+        invoiceDate: d.invoiceDate || (ex.invoiceDate ?? ""),
+        vatInclusive: ex.vatIncluded === true ? "inc" : ex.vatIncluded === false ? "exc" : d.vatInclusive,
+      }));
+      const bits = [
+        ex.supplierName && `Supplier: ${ex.supplierName}`,
+        ex.description,
+        ex.suggestedTaskId && `Matched to task — ${ex.matchReason ?? "see selection"}`,
+        ex.confidence && `Confidence: ${ex.confidence}`,
+      ].filter(Boolean);
+      setAiExtractNote(bits.join(" · ") || "Details extracted — please check before saving.");
+    } catch (e) {
+      setAiExtractNote(e instanceof Error ? (e.name === "AbortError" ? "Extraction timed out — try again." : e.message) : "Extraction failed");
+    } finally {
+      setAiExtracting(false);
+    }
+  };
 
   const [editingActualId, setEditingActualId] = useState<number | null>(null);
   const [editActualData, setEditActualData] = useState<{
@@ -3708,9 +3751,29 @@ export default function ProjectPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0] ?? null;
                       setRecordSpendData(d => ({ ...d, invoiceFile: file, invoiceFileUrl: "" }));
+                      setAiExtractNote(null);
                     }}
                   />
                 </label>
+              )}
+              {recordSpendData.invoiceFile && (
+                <div className="pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    disabled={aiExtracting}
+                    onClick={extractInvoiceWithAI}
+                  >
+                    {aiExtracting
+                      ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Reading invoice…</>
+                      : <><Sparkles className="w-3.5 h-3.5" />Fill details from invoice</>}
+                  </Button>
+                  {aiExtractNote && (
+                    <p className="text-xs text-muted-foreground mt-1.5">{aiExtractNote}</p>
+                  )}
+                </div>
               )}
             </div>
 

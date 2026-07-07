@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { claudeComplete, claudeStreamText } from "@workspace/integrations-anthropic-ai";
 import { db } from "@workspace/db";
 import {
   fixedCostItemsTable, propertiesTable, financialsTable,
@@ -79,21 +79,16 @@ router.post("/ai/task-research", async (req, res) => {
     const bedhamptonContext = await getBedhamptonContext();
     const systemWithContext = `${SYSTEM_PROMPT}\n\n${bedhamptonContext}`;
 
-    const stream = await openai.chat.completions.create({
-      model: "gpt-5.1",
-      max_completion_tokens: 4096,
+    const stream = claudeStreamText({
+      maxTokens: 4096,
       messages: [
         { role: "system", content: systemWithContext },
         { role: "user", content: userMessage },
       ],
-      stream: true,
     });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) {
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
+    for await (const content of stream) {
+      res.write(`data: ${JSON.stringify({ content })}\n\n`);
     }
 
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -172,14 +167,13 @@ Respond in this exact JSON format only, no preamble:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 90_000);
-    const completion = await openai.chat.completions.create(
-      { model: "gpt-5.1", messages: [{ role: "user", content: prompt }], max_completion_tokens: 4000 },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const content = await claudeComplete({
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: 4000,
+      signal: abort.signal,
+    });
     clearTimeout(timeout);
-
-    const content = completion.choices[0]?.message?.content ?? "{}";
     const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
     // Attempt to parse; if JSON is truncated, try to recover a partial result
@@ -929,14 +923,13 @@ Return ONLY valid JSON (no markdown, no text outside the JSON object). Schema:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 120_000);
-    const completion = await openai.chat.completions.create(
-      { model: "gpt-5.4", max_completion_tokens: 9000, messages: [{ role: "user", content: masterPrompt }] },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 300_000);
+    const raw = await claudeComplete({
+      messages: [{ role: "user", content: masterPrompt }],
+      maxTokens: 9000,
+      signal: abort.signal,
+    });
     clearTimeout(timeout);
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
     // Strip markdown fences then extract just the JSON object (handles leading/trailing prose)
     let clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const firstBrace = clean.indexOf("{");
@@ -1246,14 +1239,13 @@ Return ONLY valid JSON (no markdown fences). Schema:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 90_000);
-    const completion = await openai.chat.completions.create(
-      { model: "gpt-5.1", max_completion_tokens: 8000, messages: [{ role: "user", content: prompt }] },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const raw = await claudeComplete({
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: 8000,
+      signal: abort.signal,
+    });
     clearTimeout(timeout);
-
-    const raw = completion.choices[0]?.message?.content ?? "{}";
     let clean = raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
     const firstBrace = clean.indexOf("{");
     const lastBrace = clean.lastIndexOf("}");
@@ -1340,14 +1332,13 @@ Rules:
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 90_000);
-    const completion = await openai.chat.completions.create(
-      { model: "gpt-5.1", messages: [{ role: "user", content: prompt }], max_completion_tokens },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const content = await claudeComplete({
+      messages: [{ role: "user", content: prompt }],
+      maxTokens: max_completion_tokens,
+      signal: abort.signal,
+    });
     clearTimeout(timeout);
-
-    const content = completion.choices[0]?.message?.content ?? "{}";
     const clean = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
 
     let parsed: any;
@@ -1461,11 +1452,12 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
   const contextNote: string = (req.body.contextNote ?? "").trim();
 
   // ── 1. Load raw data ───────────────────────────────────────────────────────
-  const [investments, fin, fixedCostItems] = await Promise.all([
+  const [investments, financial, fixedCostItems] = await Promise.all([
     db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).then(r => r[0] ?? null),
     db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
   ]);
+  const fin = financial; // both names are used below
 
   // ── 2. Capital requirement from tasks + overrides ─────────────────────────
   const { sql: sqlTmpl } = await import("drizzle-orm");
@@ -1668,18 +1660,14 @@ Respond with ONLY valid JSON (no markdown, no prose outside JSON) in this exact 
   "dashboardSummary": "string (≤12 words for dashboard widget)"
 }`;
 
-  // ── 5. Call OpenAI ────────────────────────────────────────────────────────
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4.1",
+  // ── 5. Call Claude ────────────────────────────────────────────────────────
+  const raw = await claudeComplete({
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ],
-    temperature: 0.3,
-    max_tokens: 2000,
+    maxTokens: 2000,
   });
-
-  const raw = completion.choices[0]?.message?.content ?? "{}";
   let result: any;
   try {
     result = JSON.parse(raw.replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());

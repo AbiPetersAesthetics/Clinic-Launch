@@ -345,8 +345,9 @@ router.post("/projects/:projectId/risk-intelligence/generate-part", async (req, 
 
   try {
     const stream = anthropic.messages.stream({
-      model: "claude-opus-4-5",
-      max_tokens: 4000,
+      model: "claude-opus-4-8",
+      max_tokens: 12000,
+      thinking: { type: "adaptive" },
       system: BASE_SYSTEM_PROMPT,
       messages: [
         {

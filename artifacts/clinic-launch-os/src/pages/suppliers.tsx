@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { Link } from "wouter";
 import {
   useListSuppliers,
   useGetSuppliersSummary,
@@ -38,7 +39,7 @@ import {
   ShoppingBag, Plus, Search, Star, StarOff, Trash2, ChevronDown,
   ChevronUp, Phone, Mail, Globe, Edit2, PoundSterling, Check, X,
   Building2, Package, Scale, ShieldCheck, Megaphone, Cpu, Palette,
-  Zap, HelpCircle, FileText, AlertTriangle, TrendingUp,
+  Zap, HelpCircle, FileText, AlertTriangle, TrendingUp, Loader2,
 } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -486,6 +487,7 @@ function SupplierCard({
   const { toast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const [addingQuote, setAddingQuote] = useState(false);
+  const [comparing, setComparing] = useState(false);
   const [editingQuote, setEditingQuote] = useState<SupplierQuote | null>(null);
 
   const delMut = useDeleteSupplier({
@@ -599,6 +601,15 @@ function SupplierCard({
               {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
             </button>
           )}
+          {quotes.length >= 2 && (
+            <Button
+              variant="ghost" size="sm"
+              className="h-6 text-xs gap-1 text-slate-500 hover:text-slate-700"
+              onClick={() => setComparing(true)}
+            >
+              <Zap className="w-3 h-3" />Compare
+            </Button>
+          )}
           <Button
             variant="ghost" size="sm"
             className="h-6 text-xs gap-1 text-slate-500 hover:text-slate-700 ml-auto"
@@ -638,7 +649,133 @@ function SupplierCard({
           allTasks={allTasks}
         />
       )}
+      {comparing && (
+        <QuoteCompareDialog
+          supplier={supplier}
+          quotes={quotes}
+          projectId={projectId}
+          onClose={() => setComparing(false)}
+        />
+      )}
     </div>
+  );
+}
+
+// ─── Quote comparison dialog (AI review) ─────────────────────────────────────
+
+type QuoteReview = {
+  summary?: string;
+  perQuote?: { id?: number; label?: string; read?: string; concerns?: string[] }[];
+  outliers?: string[];
+  missingInfo?: string[];
+  questionsToAsk?: string[];
+  negotiationAngles?: string[];
+  suggestedNextStep?: string;
+};
+
+function QuoteCompareDialog({ supplier, quotes, projectId, onClose }: {
+  supplier: Supplier & { quotes?: SupplierQuote[] };
+  quotes: SupplierQuote[];
+  projectId: number;
+  onClose: () => void;
+}) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [review, setReview] = useState<QuoteReview | null>(null);
+
+  const run = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 300_000);
+      const r = await fetch(`/api/projects/${projectId}/suppliers/${supplier.id}/quote-review`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Review failed");
+      setReview(j.review as QuoteReview);
+    } catch (e) {
+      setError(e instanceof Error ? (e.name === "AbortError" ? "Review timed out — please try again." : e.message) : "Review failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const ReviewList = ({ heading, items }: { heading: string; items?: string[] }) =>
+    items?.length ? (
+      <div className="mt-4">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{heading}</h4>
+        <ul className="list-disc pl-5 mt-1.5 space-y-1 text-sm">{items.map((x, i) => <li key={i}>{x}</li>)}</ul>
+      </div>
+    ) : null;
+
+  return (
+    <Dialog open onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Compare quotes — {supplier.name}</DialogTitle>
+        </DialogHeader>
+
+        <div className="border border-border rounded-md divide-y divide-border">
+          {quotes.map(q => (
+            <div key={q.id} className="px-3 py-2 flex items-center gap-3 text-sm">
+              <span className="flex-1 min-w-0 truncate">{q.description}</span>
+              <Badge variant="outline" className="text-[10px] shrink-0">{q.status}</Badge>
+              <span className="font-semibold tabular-nums shrink-0">
+                {q.amountGbp != null ? `£${Number(q.amountGbp).toLocaleString()}` : "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {!review && (
+          <div className="mt-2">
+            {error && <p className="text-sm text-destructive mb-2">{error}</p>}
+            <Button onClick={run} disabled={loading} className="w-full">
+              {loading
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Reviewing quotes… (1–2 minutes)</>
+                : <><Zap className="w-4 h-4 mr-2" />Run AI review</>}
+            </Button>
+          </div>
+        )}
+
+        {review && (
+          <div>
+            {review.summary && <p className="text-sm leading-relaxed">{review.summary}</p>}
+
+            {!!review.perQuote?.length && (
+              <div className="mt-4 space-y-2.5">
+                {review.perQuote.map((pq, i) => (
+                  <div key={i} className="border border-border rounded-md p-3">
+                    <p className="text-sm font-semibold">{pq.label}</p>
+                    {pq.read && <p className="text-sm text-muted-foreground mt-0.5">{pq.read}</p>}
+                    {!!pq.concerns?.length && (
+                      <ul className="list-disc pl-5 mt-1 text-xs text-destructive space-y-0.5">
+                        {pq.concerns.map((c, j) => <li key={j}>{c}</li>)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <ReviewList heading="Outliers" items={review.outliers} />
+            <ReviewList heading="Missing information" items={review.missingInfo} />
+            <ReviewList heading="Questions to ask" items={review.questionsToAsk} />
+            <ReviewList heading="Negotiation angles" items={review.negotiationAngles} />
+
+            {review.suggestedNextStep && (
+              <div className="mt-4 bg-accent rounded-md p-3">
+                <h4 className="text-xs font-semibold uppercase tracking-wider">Suggested next step</h4>
+                <p className="text-sm mt-1">{review.suggestedNextStep}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -717,9 +854,16 @@ export default function SuppliersPage() {
             Track quotes, contractors, and procurement for the clinic launch
           </p>
         </div>
-        <Button onClick={() => setAddingSupplier(true)} className="shrink-0 gap-2">
-          <Plus className="w-4 h-4" />Add Supplier
-        </Button>
+        <div className="shrink-0 flex gap-2">
+          <Link href="/tenders">
+            <Button variant="outline" className="gap-2">
+              <FileText className="w-4 h-4" />Tender Pack
+            </Button>
+          </Link>
+          <Button onClick={() => setAddingSupplier(true)} className="gap-2">
+            <Plus className="w-4 h-4" />Add Supplier
+          </Button>
+        </div>
       </div>
 
       {/* KPI bar */}

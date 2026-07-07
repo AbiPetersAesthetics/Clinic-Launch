@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db, competitorsTable, financialsTable } from "@workspace/db";
 import { eq, and, isNull, or } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 const router = Router();
 
@@ -340,8 +340,9 @@ async function runLookup(url: string): Promise<{ data: Record<string, unknown>; 
     ? `You are a specialist medical aesthetics market intelligence analyst. Extract structured competitor data from multi-source web content. Prioritise JSON-LD structured data, explicit price mentions, and clear factual statements. Do not fabricate. If a field is absent, use the default (empty string, 0, false, or "unknown").`
     : `You are a specialist medical aesthetics market intelligence analyst. The competitor website could not be scraped. Use your training knowledge of UK aesthetics clinics to populate as many fields as possible from the URL/domain provided. Be honest about what you know vs. what you're inferring. Never fabricate specific prices unless you have strong grounds to believe them. Set confidenceLevel to "Unclear" for AI-inferred data.`;
 
-  const completion = await openai.chat.completions.create({
-    model: "gpt-5.4",
+  const raw = await claudeComplete({
+    maxTokens: 8000,
+    jsonOnly: true,
     messages: [
       {
         role: "system",
@@ -398,11 +399,8 @@ Return ONLY valid JSON with these fields (use defaults if absent):
 }`,
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.1,
   });
 
-  const raw = completion.choices[0].message.content || "{}";
   let data: Record<string, unknown> = {};
   try { data = JSON.parse(raw); } catch { data = {}; }
 
@@ -778,17 +776,14 @@ Return ONLY valid JSON:
 }`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+    const raw = await claudeComplete({
+      maxTokens: 4096,
+      jsonOnly: true,
       messages: [
         { role: "system", content: "You are a specialist pricing strategist for UK private aesthetics clinics. Return only valid JSON. Be precise and ground recommendations in the provided competitor data." },
         { role: "user", content: prompt },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.1,
     });
-
-    const raw = completion.choices[0].message.content || "{}";
     let result: Record<string, unknown> = {};
     try { result = JSON.parse(raw); } catch { /* fall through */ }
 
@@ -1013,17 +1008,14 @@ Return this JSON schema exactly (null for genuinely unknown fields):
 ${tabConfig.schema}`;
 
   try {
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4.1",
+    const raw = await claudeComplete({
+      maxTokens: 6000,
+      jsonOnly: true,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
-      response_format: { type: "json_object" },
-      temperature: 0.15,
     });
-
-    const raw = completion.choices[0].message.content || "{}";
     let parsed: Record<string, unknown> = {};
     try { parsed = JSON.parse(raw); } catch { /* fall through */ }
 
@@ -1114,8 +1106,9 @@ router.post("/projects/:id/competitors/ai-search", async (req, res) => {
   const { location = "9A Jewry Street, Winchester, Hampshire, UK", radiusMiles = 5 } = req.body;
 
   try {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-5.4",
+  const raw = await claudeComplete({
+    maxTokens: 9000,
+    jsonOnly: true,
     messages: [
       {
         role: "system",
@@ -1156,11 +1149,8 @@ Return a JSON object:
 Rank by estimatedThreatScore highest first. Include ALL types of competition — chains, dental clinics, well-reviewed local clinics, and home-based injectors are all genuine competition. Do not exclude competitors because they are 'different' in positioning.`,
       },
     ],
-    response_format: { type: "json_object" },
-    temperature: 0.2,
   });
 
-  const raw = completion.choices[0].message.content || "{}";
   let result: { competitors?: unknown[]; marketNote?: string; dataWarning?: string } = {};
   try { result = JSON.parse(raw); } catch { result = {}; }
 

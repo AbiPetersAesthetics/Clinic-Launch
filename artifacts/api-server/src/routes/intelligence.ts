@@ -6,7 +6,7 @@ import { z } from "zod";
 import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable } from "@workspace/db";
 import { eq, desc } from "drizzle-orm";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import { anthropic, claudeComplete, claudeStreamText } from "@workspace/integrations-anthropic-ai";
 import { getBedhamptonContext } from "./bedhampton";
 
 const router = Router();
@@ -27,7 +27,7 @@ const upload = multer({
   },
 });
 
-const AI_MODEL = "gpt-5.1";
+const VISION_MODEL = "claude-opus-4-8";
 const UPLOADS_DIR = path.join(process.cwd(), "uploads", "properties");
 
 // ─── Zod schemas for LLM response validation ─────────────────────────────────
@@ -321,12 +321,10 @@ Return JSON only, no markdown.`;
 
   let extraction: z.infer<typeof ExtractionSchema> = { flags: [] };
   try {
-    const response = await openai.chat.completions.create({
-      model: AI_MODEL,
-      max_completion_tokens: 2048,
+    const raw = await claudeComplete({
+      maxTokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
-    const raw = response.choices[0]?.message?.content ?? "{}";
     const parsed = parseLLMJson(raw);
     const validated = ExtractionSchema.safeParse(parsed);
     extraction = validated.success ? validated.data : { flags: ["AI extraction returned unexpected format — please fill fields manually"] };
@@ -521,12 +519,10 @@ Return JSON only, no markdown.`;
     const ExtractWithNotesSchema = ExtractionSchema.extend({ notes: z.string().nullable().optional() });
     let extraction: z.infer<typeof ExtractWithNotesSchema> = { flags: [] };
     try {
-      const aiResp = await openai.chat.completions.create({
-        model: AI_MODEL,
-        max_completion_tokens: 2048,
+      const raw = await claudeComplete({
+        maxTokens: 2048,
         messages: [{ role: "user", content: pdfPrompt }],
       });
-      const raw = aiResp.choices[0]?.message?.content ?? "{}";
       const parsed = parseLLMJson(raw);
       const validated = ExtractWithNotesSchema.safeParse(parsed);
       extraction = validated.success ? validated.data : { flags: ["AI could not extract data from brochure — please fill fields manually"] };
@@ -627,12 +623,10 @@ Return JSON only, no markdown.`;
   const ExtractWithNotesSchema = ExtractionSchema.extend({ notes: z.string().nullable().optional() });
   let extraction: z.infer<typeof ExtractWithNotesSchema> = { flags: [] };
   try {
-    const response = await openai.chat.completions.create({
-      model: AI_MODEL,
-      max_completion_tokens: 2048,
+    const raw = await claudeComplete({
+      maxTokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });
-    const raw = response.choices[0]?.message?.content ?? "{}";
     const parsed = parseLLMJson(raw);
     const validated = ExtractWithNotesSchema.safeParse(parsed);
     extraction = validated.success ? validated.data : { flags: ["Could not extract property data from this page — please fill fields manually"] };
@@ -888,17 +882,13 @@ Return a JSON object with EXACTLY this structure (no markdown, no code fences, a
   let rawAnalysis: unknown;
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 120_000);
-    const response = await openai.chat.completions.create(
-      {
-        model: AI_MODEL,
-        max_completion_tokens: 8000,
-        messages: [{ role: "user", content: analysisPrompt }],
-      },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 300_000);
+    const content = await claudeComplete({
+      maxTokens: 8000,
+      messages: [{ role: "user", content: analysisPrompt }],
+      signal: abort.signal,
+    });
     clearTimeout(timeout);
-    const content = response.choices[0]?.message?.content ?? "{}";
     rawAnalysis = parseLLMJson(content);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1027,19 +1017,16 @@ ${bedhamptonCtx}`;
   res.setHeader("Connection", "keep-alive");
 
   try {
-    const stream = await openai.chat.completions.create({
-      model: AI_MODEL,
-      max_completion_tokens: 3000,
+    const stream = claudeStreamText({
+      maxTokens: 3000,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      stream: true,
     });
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content;
-      if (content) res.write(`data: ${JSON.stringify({ content })}\n\n`);
+    for await (const content of stream) {
+      res.write(`data: ${JSON.stringify({ content })}\n\n`);
     }
 
     res.write(`data: ${JSON.stringify({ done: true, action, propertyId: id })}\n\n`);
@@ -1123,13 +1110,13 @@ Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
 
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 90_000);
-    const response = await openai.chat.completions.create(
-      { model: AI_MODEL, max_completion_tokens: 3000, messages: [{ role: "user", content: prompt }] },
-      { signal: abort.signal },
-    );
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const raw = (await claudeComplete({
+      maxTokens: 3000,
+      messages: [{ role: "user", content: prompt }],
+      signal: abort.signal,
+    })) || '{"results":[]}';
     clearTimeout(timeout);
-    const raw = response.choices[0]?.message?.content ?? '{"results":[]}';
     const parsed = parseLLMJson(raw);
     const validated = SearchResultAISchema.safeParse(parsed);
     if (!validated.success) {
@@ -1138,8 +1125,8 @@ Return ONLY valid JSON with a "results" array. No markdown, no preamble.`;
     return res.json({ results: validated.data.results, location: body.location, criteria: body });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
-      return res.status(503).json({ error: "AI service is not configured. Please set up the OpenAI integration." });
+    if (msg.includes("ANTHROPIC_API_KEY")) {
+      return res.status(503).json({ error: "AI service is not configured. Add ANTHROPIC_API_KEY to the .env file." });
     }
     if (msg.includes("aborted") || msg.includes("AbortError")) {
       return res.status(504).json({ error: "Search timed out. Please try again." });
@@ -1196,10 +1183,11 @@ router.post("/properties/:id/analyse-brochure", upload.array("images", 5), async
   }
 
   const imageContent = imageFiles.map(f => ({
-    type: "image_url" as const,
-    image_url: {
-      url: `data:${f.mimetype};base64,${f.buffer.toString("base64")}`,
-      detail: "high" as const,
+    type: "image" as const,
+    source: {
+      type: "base64" as const,
+      media_type: f.mimetype as "image/jpeg" | "image/png" | "image/webp" | "image/gif",
+      data: f.buffer.toString("base64"),
     },
   }));
 
@@ -1259,22 +1247,26 @@ Return ONLY valid JSON, no markdown:
   let rawAnalysis: unknown;
   try {
     const abort = new AbortController();
-    const timeout = setTimeout(() => abort.abort(), 90_000);
-    const response = await openai.chat.completions.create(
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const response = await anthropic.messages.create(
       {
-        model: "gpt-4o",
-        max_completion_tokens: 2000,
-        messages: [{ role: "user", content: [{ type: "text", text: visionPrompt }, ...imageContent] }],
+        model: VISION_MODEL,
+        max_tokens: 10000,
+        thinking: { type: "adaptive" },
+        messages: [{ role: "user", content: [...imageContent, { type: "text", text: visionPrompt }] }],
       },
       { signal: abort.signal },
     );
     clearTimeout(timeout);
-    const content = response.choices[0]?.message?.content ?? "{}";
+    const content = response.content
+      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
+      .map(b => b.text)
+      .join("") || "{}";
     rawAnalysis = parseLLMJson(content);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("AI_INTEGRATIONS_OPENAI")) {
-      return res.status(503).json({ error: "AI service is not configured. Please provision the OpenAI integration." });
+    if (msg.includes("ANTHROPIC_API_KEY")) {
+      return res.status(503).json({ error: "AI service is not configured. Add ANTHROPIC_API_KEY to the .env file." });
     }
     if (msg.includes("aborted") || msg.includes("AbortError")) {
       return res.status(504).json({ error: "Visual analysis timed out. Please try again." });
