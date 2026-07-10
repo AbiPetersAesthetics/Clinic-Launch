@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import fs from "fs";
 import path from "path";
+import { UPLOADS_ROOT } from "../lib/uploads";
 import { db } from "@workspace/db";
 import { tasksTable, propertyTaskOverridesTable, phasesTable, propertiesTable, financialsTable, taskLineItemsTable } from "@workspace/db";
 import { eq, and, sql, inArray, isNull } from "drizzle-orm";
@@ -206,7 +207,7 @@ router.post("/tasks/:id/upload-invoice", invoiceUpload.single("file"), async (re
     const id = parseInt(req.params.id);
     if (!req.file) return res.status(400).json({ error: "No file provided" });
 
-    const dir = path.join(process.cwd(), "uploads", "invoices", String(id));
+    const dir = path.join(UPLOADS_ROOT, "invoices", String(id));
     fs.mkdirSync(dir, { recursive: true });
 
     const ext = path.extname(req.file.originalname) || ".pdf";

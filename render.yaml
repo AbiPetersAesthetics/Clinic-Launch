@@ -1,0 +1,31 @@
+# Render Blueprint — Abi Peters Launch OS
+# One always-on web service: Express API + built frontend + persistent uploads disk.
+# In Render: New → Blueprint → connect this repo → set the sync:false secrets.
+services:
+  - type: web
+    name: clinic-launch
+    runtime: node
+    plan: starter            # always-on; required for the persistent disk
+    region: frankfurt        # closest Render region to the UK / eu-west DB
+    buildCommand: corepack enable && corepack prepare pnpm@11.10.0 --activate && pnpm install --frozen-lockfile && pnpm --filter @workspace/clinic-launch-os run build && pnpm --filter @workspace/api-server run build
+    startCommand: node artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api
+    disk:
+      name: uploads
+      mountPath: /var/data/uploads
+      sizeGB: 5
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22.16.0"
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
+      - key: DATABASE_URL
+        sync: false          # paste from the local .env
+      - key: ANTHROPIC_API_KEY
+        sync: false          # paste from the local .env
+      - key: APP_PASSWORD
+        sync: false          # choose the login password
+      - key: SESSION_SECRET
+        generateValue: true

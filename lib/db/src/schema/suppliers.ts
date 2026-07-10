@@ -17,7 +17,7 @@ export const SUPPLIER_CATEGORIES = [
 
 export type SupplierCategory = (typeof SUPPLIER_CATEGORIES)[number];
 
-export const SUPPLIER_STATUSES = ["Researching", "Contacted", "Quoted", "Contracted", "Rejected"] as const;
+export const SUPPLIER_STATUSES = ["Researching", "Contacted", "Quoted", "Tender", "Contracted", "Rejected"] as const;
 export type SupplierStatus = (typeof SUPPLIER_STATUSES)[number];
 
 export const QUOTE_STATUSES = ["Requested", "Received", "Shortlisted", "Accepted", "Rejected"] as const;

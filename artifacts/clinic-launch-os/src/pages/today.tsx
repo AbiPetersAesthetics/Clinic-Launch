@@ -76,6 +76,14 @@ export default function TodayPage() {
   const { data: suppliers } = useGetSuppliersSummary(PROJECT_ID, {
     query: { queryKey: getGetSuppliersSummaryQueryKey(PROJECT_ID) },
   });
+  const { data: hiringTriggers } = useQuery<{ triggers: { roleId: number; name: string; message: string; overdue: boolean }[] }>({
+    queryKey: [`/api/projects/${PROJECT_ID}/workforce/triggers`],
+    queryFn: async () => {
+      const r = await fetch(`/api/projects/${PROJECT_ID}/workforce/triggers`);
+      if (!r.ok) throw new Error("triggers fetch failed");
+      return r.json();
+    },
+  });
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -165,6 +173,27 @@ export default function TodayPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Hiring triggers ── */}
+      {!!hiringTriggers?.triggers?.length && (
+        <Card className="border-amber-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 text-amber-700">
+                <AlertTriangle className="w-3.5 h-3.5" />Time to hire
+              </p>
+              <Link href="/people" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                People plan <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {hiringTriggers.triggers.map(t => (
+                <li key={t.roleId} className={`text-sm ${t.overdue ? "text-destructive font-medium" : ""}`}>{t.message}</li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Needs attention ── */}

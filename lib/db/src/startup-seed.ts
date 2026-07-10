@@ -493,6 +493,46 @@ export async function runStartupSeed(): Promise<void> {
             updated_at TIMESTAMP DEFAULT NOW()
           )
         `);
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS notes_log_json TEXT NOT NULL DEFAULT '[]'`);
+        // V18 migration: workforce & capacity planning (People module)
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS staff_roles (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            role_type TEXT NOT NULL DEFAULT 'clinician',
+            status TEXT NOT NULL DEFAULT 'planned',
+            start_date TEXT,
+            lead_time_weeks INTEGER NOT NULL DEFAULT 12,
+            trigger_json TEXT NOT NULL DEFAULT '{}',
+            allocations_json TEXT NOT NULL DEFAULT '[]',
+            annual_cost_gbp REAL NOT NULL DEFAULT 0,
+            is_owner BOOLEAN NOT NULL DEFAULT false,
+            notes TEXT DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS pay_model TEXT NOT NULL DEFAULT 'employed'`);
+        await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS pay_json TEXT NOT NULL DEFAULT '{}'`);
+        await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS intake_json TEXT NOT NULL DEFAULT '{}'`);
+        await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS readiness_plan TEXT`);
+        await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS package_plan TEXT`);
+        await db.execute(sql`ALTER TABLE workforce_settings ADD COLUMN IF NOT EXISTS pay_benchmark TEXT`);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS workforce_settings (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            chichester_move_month TEXT,
+            winchester_rooms INTEGER NOT NULL DEFAULT 2,
+            bedhampton_days_needed REAL NOT NULL DEFAULT 5,
+            full_site_days_per_week REAL NOT NULL DEFAULT 5,
+            plan_narrative TEXT,
+            created_at TIMESTAMP DEFAULT NOW(),
+            updated_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
         return;
       }
 

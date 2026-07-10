@@ -32,6 +32,9 @@ export const tenderResponsesTable = pgTable("tender_responses", {
   fileUrl: text("file_url"),
   fileName: text("file_name"),
   notes: text("notes").default(""),
+  // Running log of qualitative signals logged over time — even before a
+  // priced bid arrives: [{id,category,note,loggedAt}]
+  notesLogJson: text("notes_log_json").notNull().default("[]"),
   extractedJson: text("extracted_json"),
   scoreJson: text("score_json"),
   receivedAt: timestamp("received_at").notNull().defaultNow(),

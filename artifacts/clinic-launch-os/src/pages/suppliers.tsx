@@ -57,7 +57,7 @@ const SUPPLIER_CATEGORIES = [
   "Other",
 ] as const;
 
-const SUPPLIER_STATUSES = ["Researching", "Contacted", "Quoted", "Contracted", "Rejected"] as const;
+const SUPPLIER_STATUSES = ["Researching", "Contacted", "Quoted", "Tender", "Contracted", "Rejected"] as const;
 const QUOTE_STATUSES = ["Requested", "Received", "Shortlisted", "Accepted", "Rejected"] as const;
 
 const CATEGORY_ICONS: Record<string, React.ElementType> = {
@@ -77,6 +77,7 @@ const STATUS_COLORS: Record<string, string> = {
   Researching: "bg-slate-100 text-slate-700",
   Contacted: "bg-blue-50 text-blue-700",
   Quoted: "bg-amber-50 text-amber-700",
+  Tender: "bg-purple-50 text-purple-700",
   Contracted: "bg-emerald-50 text-emerald-700",
   Rejected: "bg-red-50 text-red-600",
 };

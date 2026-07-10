@@ -26,6 +26,7 @@ import SuppliersPage from "@/pages/suppliers";
 import RiskIntelligencePage from "@/pages/risk-intelligence";
 import TendersPage from "@/pages/tenders";
 import DigestPage from "@/pages/digest";
+import PeoplePage from "@/pages/people";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -160,6 +161,7 @@ function Router() {
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/tenders" component={TendersPage} />
         <Route path="/digest" component={DigestPage} />
+        <Route path="/people" component={PeoplePage} />
         <Route path="/risk-intelligence" component={RiskIntelligencePage} />
         <Route component={NotFound} />
       </Switch>

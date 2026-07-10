@@ -1,6 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
+import { UPLOADS_ROOT } from "../lib/uploads";
 import fs from "fs";
 import { db } from "@workspace/db";
 import {
@@ -40,14 +41,18 @@ const SCOPE_TEMPLATE = [
 ] as const;
 
 const EVALUATION_WEIGHTS = [
-  { key: "price", label: "Price & value", weight: 35 },
+  { key: "price", label: "Price & value", weight: 30 },
   { key: "programme", label: "Programme & availability", weight: 15 },
-  { key: "completeness", label: "Completeness & compliance with the tender", weight: 20 },
-  { key: "experience", label: "Relevant experience & references", weight: 15 },
+  { key: "completeness", label: "Completeness & compliance with the tender", weight: 15 },
+  { key: "experience", label: "Relevant experience & references", weight: 10 },
   { key: "risk", label: "Risk (exclusions, qualifications, provisional sums)", weight: 15 },
+  { key: "engagement", label: "Engagement & reliability (responsiveness, communication, site manner)", weight: 15 },
 ];
 
+const NOTE_CATEGORIES = ["Responsiveness", "Communication", "Site visit", "Professionalism", "Other"] as const;
+
 type Section = { key: string; label: string; included: boolean; questions: { q: string; answer: string }[] };
+type ContractorNote = { id: string; category: string; note: string; loggedAt: string };
 
 async function projectContext(projectId: number) {
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
@@ -122,6 +127,7 @@ router.get("/tender-packs/:id", async (req, res) => {
       ...r,
       extracted: r.extractedJson ? JSON.parse(r.extractedJson) : null,
       score: r.scoreJson ? JSON.parse(r.scoreJson) : null,
+      notesLog: JSON.parse(r.notesLogJson || "[]"),
     })),
   });
 });
@@ -161,7 +167,7 @@ router.post("/tender-packs/:id/files", memUpload.single("file"), async (req, res
   if (!isPdf && !FILE_IMAGE_TYPES.has(req.file.mimetype)) {
     return res.status(400).json({ error: "Accepted types: PDF, JPG, PNG, WebP, GIF." });
   }
-  const dir = path.join(process.cwd(), "uploads", "tenders", String(id), "docs");
+  const dir = path.join(UPLOADS_ROOT, "tenders", String(id), "docs");
   fs.mkdirSync(dir, { recursive: true });
   const ext = path.extname(req.file.originalname) || (isPdf ? ".pdf" : ".png");
   const stored = `doc_${Date.now()}${ext}`;
@@ -190,7 +196,7 @@ router.delete("/tender-packs/:id/files", async (req, res) => {
   const remaining = files.filter(f => f.url !== url);
   const removed = files.find(f => f.url === url);
   if (removed) {
-    try { fs.unlinkSync(path.join(process.cwd(), removed.url.replace(/^\//, ""))); } catch { /* already gone */ }
+    try { fs.unlinkSync(path.join(UPLOADS_ROOT, removed.url.replace(/^\/uploads\//, ""))); } catch { /* already gone */ }
   }
   await db.update(tenderPacksTable)
     .set({ filesJson: JSON.stringify(remaining), updatedAt: new Date() })
@@ -207,7 +213,7 @@ function loadPackFileBlocks(pack: { filesJson: string }): { blocks: unknown[]; u
   const skipped: string[] = [];
   let budget = 22 * 1024 * 1024; // total bytes of raw file data across blocks
   for (const f of files) {
-    const abs = path.join(process.cwd(), f.url.replace(/^\//, ""));
+    const abs = path.join(UPLOADS_ROOT, f.url.replace(/^\/uploads\//, ""));
     if (!fs.existsSync(abs)) { skipped.push(`${f.label} (file missing)`); continue; }
     const buf = fs.readFileSync(abs);
     if (buf.length > budget) { skipped.push(`${f.label} (too large for this request)`); continue; }
@@ -416,39 +422,29 @@ Return ONLY valid JSON with ALL of these documents. Document bodies must be PLAI
 
 // ─── Responses: upload + AI extraction ───────────────────────────────────────
 
-router.post("/tender-packs/:id/responses", memUpload.single("file"), async (req, res) => {
-  const id = parseInt(req.params.id);
-  const [pack] = await db.select().from(tenderPacksTable).where(eq(tenderPacksTable.id, id));
-  if (!pack) return res.status(404).json({ error: "Not found" });
-  const contractorName = (req.body.contractorName as string | undefined)?.trim();
-  const notes = (req.body.notes as string | undefined)?.trim() ?? "";
-  if (!contractorName) return res.status(400).json({ error: "contractorName is required." });
+const RESPONSE_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-  let fileUrl: string | null = null;
-  let fileName: string | null = null;
+// Saves an uploaded bid file to disk and runs AI extraction on it.
+// Shared by "log a response with a file" and "attach a bid to an existing entry".
+async function storeAndExtractBid(packId: number, pack: { reference: string | null }, file: Express.Multer.File) {
+  const isPdf = file.mimetype === "application/pdf";
+  if (!isPdf && !RESPONSE_IMAGE_TYPES.has(file.mimetype)) {
+    throw Object.assign(new Error("Accepted types: PDF, JPG, PNG, WebP, GIF."), { status: 400 });
+  }
+  const dir = path.join(UPLOADS_ROOT, "tenders", String(packId));
+  fs.mkdirSync(dir, { recursive: true });
+  const ext = path.extname(file.originalname) || (isPdf ? ".pdf" : ".png");
+  const stored = `response_${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(dir, stored), file.buffer);
+  const fileUrl = `/uploads/tenders/${packId}/${stored}`;
+
   let extractedJson: string | null = null;
-
-  if (req.file) {
-    const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-    const isPdf = req.file.mimetype === "application/pdf";
-    if (!isPdf && !IMAGE_TYPES.has(req.file.mimetype)) {
-      return res.status(400).json({ error: "Accepted types: PDF, JPG, PNG, WebP, GIF." });
-    }
-    const dir = path.join(process.cwd(), "uploads", "tenders", String(id));
-    fs.mkdirSync(dir, { recursive: true });
-    const ext = path.extname(req.file.originalname) || (isPdf ? ".pdf" : ".png");
-    fileName = req.file.originalname;
-    const stored = `response_${Date.now()}${ext}`;
-    fs.writeFileSync(path.join(dir, stored), req.file.buffer);
-    fileUrl = `/uploads/tenders/${id}/${stored}`;
-
-    // AI extraction of the submission
-    try {
-      const source = { type: "base64" as const, data: req.file.buffer.toString("base64") };
-      const block = isPdf
-        ? { type: "document" as const, source: { ...source, media_type: "application/pdf" as const } }
-        : { type: "image" as const, source: { ...source, media_type: req.file.mimetype as never } };
-      const extractPrompt = `This is a contractor's tender return for a clinic fit-out ITT (reference ${pack.reference}). Extract what is actually stated — use null where absent, never invent.
+  try {
+    const source = { type: "base64" as const, data: file.buffer.toString("base64") };
+    const block = isPdf
+      ? { type: "document" as const, source: { ...source, media_type: "application/pdf" as const } }
+      : { type: "image" as const, source: { ...source, media_type: file.mimetype as never } };
+    const extractPrompt = `This is a contractor's tender return for a clinic fit-out ITT (reference ${pack.reference}). Extract what is actually stated — use null where absent, never invent.
 
 Return ONLY valid JSON:
 {
@@ -467,27 +463,50 @@ Return ONLY valid JSON:
   "redFlags": ["anything concerning"],
   "summary": "3-sentence plain-English summary of this bid"
 }`;
-      const abort = new AbortController();
-      const timeout = setTimeout(() => abort.abort(), 240_000);
-      const response = await anthropic.messages.create(
-        {
-          model: "claude-opus-4-8",
-          max_tokens: 10000,
-          thinking: { type: "adaptive" },
-          messages: [{ role: "user", content: [block as never, { type: "text", text: extractPrompt }] }],
-        },
-        { signal: abort.signal },
-      );
-      clearTimeout(timeout);
-      const text = response.content
-        .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-        .map(b => b.text).join("");
-      const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const s = clean.indexOf("{");
-      const e = clean.lastIndexOf("}");
-      extractedJson = JSON.stringify(JSON.parse(s !== -1 && e > s ? clean.slice(s, e + 1) : clean));
-    } catch {
-      extractedJson = null; // upload still succeeds; extraction can be retried by re-upload
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 240_000);
+    const response = await anthropic.messages.create(
+      {
+        model: "claude-opus-4-8",
+        max_tokens: 10000,
+        thinking: { type: "adaptive" },
+        messages: [{ role: "user", content: [block as never, { type: "text", text: extractPrompt }] }],
+      },
+      { signal: abort.signal },
+    );
+    clearTimeout(timeout);
+    const text = response.content
+      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
+      .map(b => b.text).join("");
+    const clean = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const s = clean.indexOf("{");
+    const e = clean.lastIndexOf("}");
+    extractedJson = JSON.stringify(JSON.parse(s !== -1 && e > s ? clean.slice(s, e + 1) : clean));
+  } catch {
+    extractedJson = null; // upload still succeeds; extraction can be retried by re-attaching
+  }
+
+  return { fileUrl, fileName: file.originalname, extractedJson };
+}
+
+router.post("/tender-packs/:id/responses", memUpload.single("file"), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [pack] = await db.select().from(tenderPacksTable).where(eq(tenderPacksTable.id, id));
+  if (!pack) return res.status(404).json({ error: "Not found" });
+  const contractorName = (req.body.contractorName as string | undefined)?.trim();
+  const notes = (req.body.notes as string | undefined)?.trim() ?? "";
+  if (!contractorName) return res.status(400).json({ error: "contractorName is required." });
+
+  let fileUrl: string | null = null;
+  let fileName: string | null = null;
+  let extractedJson: string | null = null;
+
+  if (req.file) {
+    try {
+      ({ fileUrl, fileName, extractedJson } = await storeAndExtractBid(id, pack, req.file));
+    } catch (err) {
+      const status = (err as { status?: number }).status ?? 500;
+      return res.status(status).json({ error: err instanceof Error ? err.message : "Upload failed" });
     }
   }
 
@@ -500,12 +519,81 @@ Return ONLY valid JSON:
     fileName,
     extractedJson,
   }).returning();
-  res.json({ ...row, extracted: extractedJson ? JSON.parse(extractedJson) : null });
+  res.json({ ...row, extracted: extractedJson ? JSON.parse(extractedJson) : null, notesLog: [] });
+});
+
+// Attach (or replace) the priced bid document on a contractor logged earlier —
+// so early engagement notes and the eventual tender return live on one row.
+router.post("/tender-responses/:id/attach", memUpload.single("file"), async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [existing] = await db.select().from(tenderResponsesTable).where(eq(tenderResponsesTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Not found" });
+  if (!req.file) return res.status(400).json({ error: "No file uploaded." });
+  const [pack] = await db.select().from(tenderPacksTable).where(eq(tenderPacksTable.id, existing.tenderPackId));
+
+  let result;
+  try {
+    result = await storeAndExtractBid(existing.tenderPackId, pack ?? { reference: null }, req.file);
+  } catch (err) {
+    const status = (err as { status?: number }).status ?? 500;
+    return res.status(status).json({ error: err instanceof Error ? err.message : "Upload failed" });
+  }
+
+  const [row] = await db.update(tenderResponsesTable)
+    .set({ fileUrl: result.fileUrl, fileName: result.fileName, extractedJson: result.extractedJson, updatedAt: new Date() })
+    .where(eq(tenderResponsesTable.id, id))
+    .returning();
+  res.json({
+    ...row,
+    extracted: row.extractedJson ? JSON.parse(row.extractedJson) : null,
+    notesLog: JSON.parse(row.notesLogJson || "[]"),
+  });
 });
 
 router.delete("/tender-responses/:id", async (req, res) => {
   await db.delete(tenderResponsesTable).where(eq(tenderResponsesTable.id, parseInt(req.params.id)));
   res.json({ ok: true });
+});
+
+// ─── Engagement notes log (responsiveness, communication, site visit…) ─────
+// These can be added at any time — even before a priced bid ever arrives —
+// so early signals feed the ranking ahead of formal tender returns.
+
+router.get("/tender-note-categories", (_req, res) => {
+  res.json({ categories: NOTE_CATEGORIES });
+});
+
+router.post("/tender-responses/:id/notes", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const { category, note } = req.body as { category?: string; note?: string };
+  if (!note?.trim()) return res.status(400).json({ error: "note is required." });
+  const [existing] = await db.select().from(tenderResponsesTable).where(eq(tenderResponsesTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Not found" });
+
+  const log: ContractorNote[] = JSON.parse(existing.notesLogJson || "[]");
+  log.push({
+    id: `n${Date.now()}`,
+    category: category && (NOTE_CATEGORIES as readonly string[]).includes(category) ? category : "Other",
+    note: note.trim(),
+    loggedAt: new Date().toISOString(),
+  });
+  await db.update(tenderResponsesTable)
+    .set({ notesLogJson: JSON.stringify(log), updatedAt: new Date() })
+    .where(eq(tenderResponsesTable.id, id));
+  res.json({ notesLog: log });
+});
+
+router.delete("/tender-responses/:id/notes/:noteId", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const [existing] = await db.select().from(tenderResponsesTable).where(eq(tenderResponsesTable.id, id));
+  if (!existing) return res.status(404).json({ error: "Not found" });
+  const log: ContractorNote[] = JSON.parse(existing.notesLogJson || "[]").filter(
+    (n: ContractorNote) => n.id !== req.params.noteId,
+  );
+  await db.update(tenderResponsesTable)
+    .set({ notesLogJson: JSON.stringify(log), updatedAt: new Date() })
+    .where(eq(tenderResponsesTable.id, id));
+  res.json({ notesLog: log });
 });
 
 // ─── Evaluation: weighted scoring across all responses ──────────────────────
@@ -522,7 +610,11 @@ router.post("/tender-packs/:id/evaluate", async (req, res) => {
     contractorName: r.contractorName,
     notes: r.notes,
     extracted: r.extractedJson ? JSON.parse(r.extractedJson) : null,
+    hasBidDocument: !!r.extractedJson,
+    engagementNotes: JSON.parse(r.notesLogJson || "[]").map((n: ContractorNote) => `[${n.category}] ${n.note}`),
   }));
+
+  const anyBidsYet = bids.some(b => b.hasBidDocument);
 
   const prompt = `${CLIENT_BLURB}
 You are evaluating principal-contractor tender returns for ITT ${pack.reference} ("${pack.title}"). Clinic must open ${(await projectContext(pack.projectId)).openDate ?? "TBC"}.
@@ -530,19 +622,19 @@ You are evaluating principal-contractor tender returns for ITT ${pack.reference}
 WEIGHTED CRITERIA (score each 0-10 per bid, then weight):
 ${EVALUATION_WEIGHTS.map(w => `- ${w.key}: ${w.label} — ${w.weight}%`).join("\n")}
 
-THE BIDS (AI-extracted from submissions; null = not stated):
+THE CONTRACTORS. "extracted" is AI-read from their submitted bid document (null = no bid document yet). "engagementNotes" is the owner's own logged observations over time — responsiveness, communication style, how they came across at a site visit — this is real signal for the "engagement" criterion even before a priced bid exists.
 ${JSON.stringify(bids, null, 1)}
 
-Rules: be honest and evidence-based. A bid missing key information scores LOW on completeness — do not give benefit of the doubt. Cheapest is not automatically best on price if scope coverage differs. Note where bids are not like-for-like. If only one bid exists, evaluate it on its own merits and say what benchmark is missing.
+Rules: be honest and evidence-based. A bid missing key information scores LOW on completeness — do not give benefit of the doubt. Cheapest is not automatically best on price if scope coverage differs. Note where bids are not like-for-like.${anyBidsYet ? "" : ` No priced bids have been submitted yet — this is a pre-tender "early read" purely on engagement signals. Score price/programme/completeness/experience as 5 (neutral/unknown, not zero) for every contractor and say clearly in each headline that this is pre-tender; the engagement score is the only one with real evidence right now and should drive the ranking.`} Score "engagement" from engagementNotes alone — good responsiveness/professionalism/site manner scores high, red flags (slow replies, unprofessional conduct, missed appointments) score low; if a contractor has no notes yet, score engagement as 5 (neutral, not evidenced either way) and say so.
 
 Return ONLY valid JSON:
 {
-  "matrix": [ { "responseId": <id>, "contractorName": "", "scores": { "price": 0-10, "programme": 0-10, "completeness": 0-10, "experience": 0-10, "risk": 0-10 }, "weightedTotal": 0-100, "headline": "1-sentence verdict", "strengths": ["..."], "concerns": ["..."] } ],
+  "matrix": [ { "responseId": <id>, "contractorName": "", "scores": { "price": 0-10, "programme": 0-10, "completeness": 0-10, "experience": 0-10, "risk": 0-10, "engagement": 0-10 }, "weightedTotal": 0-100, "headline": "1-sentence verdict", "strengths": ["..."], "concerns": ["..."] } ],
   "ranking": [responseId in order, best first],
   "notLikeForLike": ["differences that skew comparison"],
   "clarificationsNeeded": [ { "contractorName": "", "questions": ["..."] } ],
   "recommendation": "3-5 sentence recommendation incl. next step",
-  "weightsUsed": { "price": 35, "programme": 15, "completeness": 20, "experience": 15, "risk": 15 }
+  "weightsUsed": { "price": 30, "programme": 15, "completeness": 15, "experience": 10, "risk": 15, "engagement": 15 }
 }`;
 
   try {

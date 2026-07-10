@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, FileText, Loader2, Printer, Plus, Trash2, Upload,
-  Scale, CheckCircle2, AlertTriangle, RefreshCw,
+  Scale, CheckCircle2, AlertTriangle, RefreshCw, MessageSquare, Paperclip,
 } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -29,9 +29,11 @@ type Extracted = {
 };
 type ScoreRow = {
   responseId: number; contractorName: string;
-  scores: { price: number; programme: number; completeness: number; experience: number; risk: number };
+  scores: { price: number; programme: number; completeness: number; experience: number; risk: number; engagement: number };
   weightedTotal: number; headline: string; strengths?: string[]; concerns?: string[];
 };
+type ContractorNote = { id: string; category: string; note: string; loggedAt: string };
+const NOTE_CATEGORIES = ["Responsiveness", "Communication", "Site visit", "Professionalism", "Other"] as const;
 type Evaluation = {
   matrix?: ScoreRow[]; ranking?: number[]; notLikeForLike?: string[];
   clarificationsNeeded?: { contractorName: string; questions: string[] }[];
@@ -40,6 +42,7 @@ type Evaluation = {
 type PackResponse = {
   id: number; contractorName: string; fileUrl: string | null; fileName: string | null;
   notes: string; extracted: Extracted | null; score: ScoreRow | null; receivedAt: string;
+  notesLog: ContractorNote[];
 };
 type Documents = {
   invitationLetter?: string; instructionsToTenderers?: string; formOfTender?: string;
@@ -589,20 +592,25 @@ function ResponsesView({ pack, busy, run, packId }: {
     <>
       <Card className="no-print">
         <CardContent className="p-5">
-          <h3 className="font-serif text-lg">Log a tender response</h3>
+          <h3 className="font-serif text-lg">Add a contractor</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Log them as soon as you're in touch — you don't need their priced bid yet. Add engagement
+            notes (responsiveness, communication, site visit) as you go, then attach their tender return
+            when it arrives.
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
             <Input placeholder="Contractor name *" value={contractorName} onChange={e => setContractorName(e.target.value)} />
             <label className="flex items-center gap-2 rounded-md border border-dashed border-input px-3 py-2 text-sm text-muted-foreground cursor-pointer hover:border-foreground/40">
               <Upload className="w-4 h-4 shrink-0" />
-              <span className="truncate">{file ? file.name : "Attach their submission (PDF/photo)…"}</span>
+              <span className="truncate">{file ? file.name : "Their tender return, if already in (optional)…"}</span>
               <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only" onChange={e => setFile(e.target.files?.[0] ?? null)} />
             </label>
           </div>
-          <Textarea className="mt-3" rows={2} placeholder="Notes — anything said by phone/email that isn't in the document" value={notes} onChange={e => setNotes(e.target.value)} />
+          <Textarea className="mt-3" rows={2} placeholder="Notes on adding them (optional) — you can log ongoing observations after" value={notes} onChange={e => setNotes(e.target.value)} />
           <Button className="mt-3" disabled={busy != null || !contractorName.trim()} onClick={upload}>
             {busy === "upload"
               ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />{file ? "Uploading & reading the bid… (1–2 min)" : "Saving…"}</>
-              : <><Plus className="w-4 h-4 mr-2" />Add response</>}
+              : <><Plus className="w-4 h-4 mr-2" />Add contractor</>}
           </Button>
         </CardContent>
       </Card>
@@ -611,38 +619,18 @@ function ResponsesView({ pack, busy, run, packId }: {
         <Card>
           <CardContent className="p-5 space-y-3">
             <div className="flex items-center justify-between flex-wrap gap-2">
-              <h3 className="font-serif text-lg">Responses ({pack.responses.length})</h3>
+              <h3 className="font-serif text-lg">Contractors ({pack.responses.length})</h3>
               <Button disabled={busy != null} onClick={() => run("evaluate", () => api(`/api/tender-packs/${packId}/evaluate`, { method: "POST" }))}>
                 {busy === "evaluate"
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scoring bids… (2–3 min)</>
+                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scoring… (2–3 min)</>
                   : <><Scale className="w-4 h-4 mr-2" />{ev ? "Re-evaluate & rank" : "Evaluate & rank"}</>}
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              You can evaluate before any bids arrive — with only engagement notes logged, it gives you an early read on who's proving reliable.
+            </p>
             {pack.responses.map(r => (
-              <div key={r.id} className="border border-border rounded-md p-3.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-semibold flex-1 min-w-0">{r.contractorName}</p>
-                  {r.extracted?.totalPriceGbp != null && (
-                    <Badge variant="secondary">£{Number(r.extracted.totalPriceGbp).toLocaleString()} {r.extracted.vatTreatment === "exc" ? "ex" : r.extracted.vatTreatment === "inc" ? "inc" : ""} VAT</Badge>
-                  )}
-                  {r.extracted?.programmeWeeks != null && <Badge variant="outline">{r.extracted.programmeWeeks} wks</Badge>}
-                  {r.score && <Badge>{Math.round(r.score.weightedTotal)}/100</Badge>}
-                  {r.fileUrl && <a href={r.fileUrl} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground">{r.fileName ?? "file"}</a>}
-                  <button
-                    className="text-muted-foreground hover:text-destructive"
-                    onClick={() => { if (confirm(`Remove ${r.contractorName}'s response?`)) run("del", () => api(`/api/tender-responses/${r.id}`, { method: "DELETE" })); }}
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                {r.extracted?.summary && <p className="text-sm text-muted-foreground mt-1.5">{r.extracted.summary}</p>}
-                {!!r.extracted?.redFlags?.length && (
-                  <ul className="list-disc pl-5 mt-1 text-xs text-destructive space-y-0.5">
-                    {r.extracted.redFlags.map((f, i) => <li key={i}>{f}</li>)}
-                  </ul>
-                )}
-                {r.notes && <p className="text-xs text-muted-foreground mt-1">Notes: {r.notes}</p>}
-              </div>
+              <ContractorCard key={r.id} r={r} busy={busy} run={run} />
             ))}
           </CardContent>
         </Card>
@@ -668,6 +656,7 @@ function ResponsesView({ pack, busy, run, packId }: {
                     <th className="py-1.5 pr-2 text-right">Compl.</th>
                     <th className="py-1.5 pr-2 text-right">Exp.</th>
                     <th className="py-1.5 pr-2 text-right">Risk</th>
+                    <th className="py-1.5 pr-2 text-right">Engage.</th>
                     <th className="py-1.5 text-right font-semibold">Total</th>
                   </tr>
                 </thead>
@@ -681,6 +670,7 @@ function ResponsesView({ pack, busy, run, packId }: {
                       <td className="py-1.5 pr-2 text-right tabular-nums">{m.scores.completeness}</td>
                       <td className="py-1.5 pr-2 text-right tabular-nums">{m.scores.experience}</td>
                       <td className="py-1.5 pr-2 text-right tabular-nums">{m.scores.risk}</td>
+                      <td className="py-1.5 pr-2 text-right tabular-nums">{m.scores.engagement}</td>
                       <td className="py-1.5 text-right font-semibold tabular-nums">{Math.round(m.weightedTotal)}</td>
                     </tr>
                   ))}
@@ -729,5 +719,129 @@ function ResponsesView({ pack, busy, run, packId }: {
         </Card>
       )}
     </>
+  );
+}
+
+// ── One contractor: bid summary, engagement notes log, attach-bid-later ─────
+
+function ContractorCard({ r, busy, run }: {
+  r: PackResponse; busy: string | null;
+  run: (label: string, fn: () => Promise<unknown>) => Promise<void>;
+}) {
+  const [showAddNote, setShowAddNote] = useState(false);
+  const [noteCategory, setNoteCategory] = useState<string>(NOTE_CATEGORIES[0]);
+  const [noteText, setNoteText] = useState("");
+
+  const addNote = () => run(`note-${r.id}`, async () => {
+    await api(`/api/tender-responses/${r.id}/notes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category: noteCategory, note: noteText }),
+    });
+    setNoteText(""); setShowAddNote(false);
+  });
+
+  const attachBid = (file: File) => run(`attach-${r.id}`, async () => {
+    const form = new FormData();
+    form.append("file", file);
+    await api(`/api/tender-responses/${r.id}/attach`, { method: "POST", body: form });
+  });
+
+  return (
+    <div className="border border-border rounded-md p-3.5">
+      <div className="flex items-center gap-2 flex-wrap">
+        <p className="text-sm font-semibold flex-1 min-w-0">{r.contractorName}</p>
+        {r.extracted?.totalPriceGbp != null && (
+          <Badge variant="secondary">£{Number(r.extracted.totalPriceGbp).toLocaleString()} {r.extracted.vatTreatment === "exc" ? "ex" : r.extracted.vatTreatment === "inc" ? "inc" : ""} VAT</Badge>
+        )}
+        {r.extracted?.programmeWeeks != null && <Badge variant="outline">{r.extracted.programmeWeeks} wks</Badge>}
+        {r.score && <Badge>{Math.round(r.score.weightedTotal)}/100</Badge>}
+        {r.fileUrl && <a href={r.fileUrl} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground">{r.fileName ?? "file"}</a>}
+        <button
+          className="text-muted-foreground hover:text-destructive"
+          onClick={() => { if (confirm(`Remove ${r.contractorName}?`)) run("del", () => api(`/api/tender-responses/${r.id}`, { method: "DELETE" })); }}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      {r.extracted?.summary && <p className="text-sm text-muted-foreground mt-1.5">{r.extracted.summary}</p>}
+      {!!r.extracted?.redFlags?.length && (
+        <ul className="list-disc pl-5 mt-1 text-xs text-destructive space-y-0.5">
+          {r.extracted.redFlags.map((f, i) => <li key={i}>{f}</li>)}
+        </ul>
+      )}
+      {r.notes && <p className="text-xs text-muted-foreground mt-1">Notes: {r.notes}</p>}
+
+      {!r.fileUrl && (
+        <label className="mt-2.5 flex items-center gap-2 rounded-md border border-dashed border-input px-3 py-1.5 text-xs text-muted-foreground cursor-pointer hover:border-foreground/40 w-fit">
+          <Paperclip className="w-3.5 h-3.5 shrink-0" />
+          {busy === `attach-${r.id}` ? "Uploading & reading…" : "Attach their tender return once it's in"}
+          <input
+            type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" className="sr-only"
+            onChange={e => { const f = e.target.files?.[0]; if (f) attachBid(f); }}
+          />
+        </label>
+      )}
+
+      {/* Engagement notes log */}
+      <div className="mt-3 pt-3 border-t border-border/60">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <MessageSquare className="w-3.5 h-3.5" />Engagement notes {r.notesLog.length > 0 && `(${r.notesLog.length})`}
+          </p>
+          <button className="text-xs text-primary hover:underline" onClick={() => setShowAddNote(s => !s)}>
+            {showAddNote ? "Cancel" : "+ Add note"}
+          </button>
+        </div>
+
+        {r.notesLog.length > 0 && (
+          <ul className="mt-2 space-y-1.5">
+            {r.notesLog.map(n => (
+              <li key={n.id} className="flex items-start gap-2 text-sm">
+                <Badge variant="outline" className="text-[9px] shrink-0 mt-0.5">{n.category}</Badge>
+                <span className="flex-1">{n.note}</span>
+                <span className="text-[10px] text-muted-foreground shrink-0">{new Date(n.loggedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+                <button
+                  className="text-muted-foreground hover:text-destructive shrink-0"
+                  onClick={() => run(`delnote-${n.id}`, () => api(`/api/tender-responses/${r.id}/notes/${n.id}`, { method: "DELETE" }))}
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {showAddNote && (
+          <div className="mt-2 flex flex-col gap-2">
+            <div className="flex gap-2 flex-wrap">
+              {NOTE_CATEGORIES.map(c => (
+                <button
+                  key={c}
+                  className={`text-xs px-2 py-1 rounded-full border ${noteCategory === c ? "bg-primary text-primary-foreground border-primary" : "border-input text-muted-foreground"}`}
+                  onClick={() => setNoteCategory(c)}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <Textarea
+              rows={2}
+              placeholder={
+                noteCategory === "Site visit" ? "How did they come across on site — punctual, thorough, confident?"
+                : noteCategory === "Responsiveness" ? "How quickly did they reply?"
+                : noteCategory === "Communication" ? "Clear? Professional? Any red flags?"
+                : "What did you notice?"
+              }
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+            />
+            <Button size="sm" className="w-fit" disabled={busy != null || !noteText.trim()} onClick={addNote}>
+              {busy === `note-${r.id}` ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}Save note
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -30,6 +30,7 @@ import {
   Scale,
   ShoppingBag,
   Brain,
+  Users,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -150,6 +151,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/", label: "Today", icon: LayoutDashboard },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
     { href: "/financials", label: "Money", icon: Calculator },
+    { href: "/people", label: "People & Capacity", icon: Users },
     { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
     { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/risk-register", label: "Risks", icon: AlertTriangle },

@@ -19,6 +19,7 @@ type Digest = {
   money: { paidToDate: number; committed: number; plannedTotal: number };
   tenders: { suppliers: number; contracted: number; quotesAwaitingDecision: number };
   compliance: { done: number; total: number };
+  hiring: { name: string; startMonth: string | null; overdue: boolean }[];
   focus: string | null;
 };
 
@@ -88,6 +89,7 @@ export default function DigestPage() {
     L.push("", "MONEY", `Paid to date: ${formatGBP(digest.money.paidToDate)}`, `Committed: ${formatGBP(digest.money.committed)}`, `Planned total: ${formatGBP(digest.money.plannedTotal)}`);
     L.push("", "TENDERS", `${digest.tenders.suppliers} suppliers · ${digest.tenders.contracted} contracted · ${digest.tenders.quotesAwaitingDecision} quotes awaiting a decision`);
     L.push("", "COMPLIANCE", `${digest.compliance.done} of ${digest.compliance.total} items complete`);
+    if (digest.hiring.length) L.push("", "HIRING", ...digest.hiring.map(h => `- ${h.overdue ? "OVERDUE: " : "Start recruiting: "}${h.name} (target start ${h.startMonth ?? "TBC"})`));
     await navigator.clipboard.writeText(L.join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -142,6 +144,19 @@ export default function DigestPage() {
             <TaskList heading="Due in the next 7 days" tasks={digest.dueNext7Days} empty="Nothing dated in the next 7 days." showDue />
             <TaskList heading="In progress" tasks={digest.inProgress} empty="Nothing marked in progress." />
             <TaskList heading="Completed this week" tasks={digest.completedThisWeek} empty="No tasks completed in the last 7 days." />
+
+            {digest.hiring.length > 0 && (
+              <section className="mt-5">
+                <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">Hiring — act now ({digest.hiring.length})</h3>
+                <ul className="mt-1.5 space-y-1">
+                  {digest.hiring.map((h, i) => (
+                    <li key={i} className={`text-sm ${h.overdue ? "text-destructive font-medium" : ""}`}>
+                      {h.overdue ? "Overdue: " : "Start recruiting: "}{h.name}<span className="text-muted-foreground"> · target start {h.startMonth ?? "TBC"}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 pt-5 border-t border-border">
               <div>

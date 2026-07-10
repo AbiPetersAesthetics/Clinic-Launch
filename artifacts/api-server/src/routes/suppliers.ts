@@ -330,7 +330,7 @@ router.get("/projects/:projectId/suppliers/summary", async (req, res) => {
   for (const s of suppliers) {
     if (!byCategory[s.category]) byCategory[s.category] = { count: 0, quotedCount: 0, contractedCount: 0 };
     byCategory[s.category].count++;
-    if (s.status === "Quoted" || s.status === "Contracted") byCategory[s.category].quotedCount++;
+    if (s.status === "Quoted" || s.status === "Tender" || s.status === "Contracted") byCategory[s.category].quotedCount++;
     if (s.status === "Contracted") byCategory[s.category].contractedCount++;
   }
 

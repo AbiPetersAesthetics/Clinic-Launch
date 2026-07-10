@@ -2,6 +2,7 @@ import { Router, type Request } from "express";
 import multer, { type FileFilterCallback } from "multer";
 import fs from "fs";
 import path from "path";
+import { UPLOADS_ROOT } from "../lib/uploads";
 import { z } from "zod";
 import { db } from "@workspace/db";
 import { propertiesTable, propertyAiAnalysesTable } from "@workspace/db";
@@ -28,7 +29,7 @@ const upload = multer({
 });
 
 const VISION_MODEL = "claude-opus-4-8";
-const UPLOADS_DIR = path.join(process.cwd(), "uploads", "properties");
+const UPLOADS_DIR = path.join(UPLOADS_ROOT, "properties");
 
 // ─── Zod schemas for LLM response validation ─────────────────────────────────
 

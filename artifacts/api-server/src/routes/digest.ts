@@ -3,6 +3,7 @@ import { db } from "@workspace/db";
 import {
   projectsTable, phasesTable, tasksTable, propertyTaskOverridesTable,
   propertiesTable, supplierQuotesTable, suppliersTable, complianceItemsTable,
+  staffRolesTable,
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { claudeComplete } from "@workspace/integrations-anthropic-ai";
@@ -92,6 +93,17 @@ router.get("/projects/:projectId/weekly-digest", async (req, res) => {
         .from(complianceItemsTable).where(eq(complianceItemsTable.projectId, projectId));
       const done = items.filter(i => i.status === "complete").length;
       return { done, total: items.length };
+    })(),
+    hiring: await (async () => {
+      const roles = await db.select().from(staffRolesTable).where(eq(staffRolesTable.projectId, projectId));
+      const due: { name: string; startMonth: string | null; overdue: boolean }[] = [];
+      for (const r of roles) {
+        if (!["planned", "recruiting"].includes(r.status) || !r.startDate) continue;
+        const [y, m] = r.startDate.split("-").map(Number);
+        const recruitBy = new Date(y, m - 1 - Math.round(r.leadTimeWeeks / 4.345), 1);
+        if (recruitBy <= now) due.push({ name: r.name, startMonth: r.startDate, overdue: recruitBy < new Date(now.getFullYear(), now.getMonth() - 1, 1) });
+      }
+      return due;
     })(),
   };
 
