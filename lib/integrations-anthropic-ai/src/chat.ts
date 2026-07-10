@@ -18,6 +18,9 @@ export type ClaudeCompleteOptions = {
   /** Replaces OpenAI's response_format json_object: instructs JSON-only output
    *  and strips fences/prose down to the outermost JSON value. */
   jsonOnly?: boolean;
+  /** Enable the server-side web search tool so the model can research live info.
+   *  Number = max searches allowed (default 5 when true). */
+  webSearch?: boolean | number;
 };
 
 function extractJson(text: string): string {
@@ -42,11 +45,14 @@ function splitSystem(messages: ChatMessage[]) {
 }
 
 /** One-shot completion — returns the response text. */
-export async function claudeComplete({ messages, maxTokens = 4096, signal, jsonOnly }: ClaudeCompleteOptions): Promise<string> {
+export async function claudeComplete({ messages, maxTokens = 4096, signal, jsonOnly, webSearch }: ClaudeCompleteOptions): Promise<string> {
   const withFormat: ChatMessage[] = jsonOnly
     ? [...messages, { role: "system", content: "Respond with a single valid JSON value only — no markdown fences, no prose before or after it." }]
     : messages;
   const { system, rest } = splitSystem(withFormat);
+  const tools = webSearch
+    ? [{ type: "web_search_20250305" as const, name: "web_search" as const, max_uses: typeof webSearch === "number" ? webSearch : 5 }]
+    : undefined;
   // Stream internally (required by the SDK for large max_tokens; also avoids
   // HTTP timeouts on long generations) and return the final message.
   const response = await anthropic.messages.stream(
@@ -56,6 +62,7 @@ export async function claudeComplete({ messages, maxTokens = 4096, signal, jsonO
       thinking: { type: "adaptive" },
       system,
       messages: rest,
+      ...(tools ? { tools } : {}),
     },
     { signal },
   ).finalMessage();

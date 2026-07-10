@@ -520,6 +520,12 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS readiness_plan TEXT`);
         await db.execute(sql`ALTER TABLE staff_roles ADD COLUMN IF NOT EXISTS package_plan TEXT`);
         await db.execute(sql`ALTER TABLE workforce_settings ADD COLUMN IF NOT EXISTS pay_benchmark TEXT`);
+        // Suppliers / tender tracking + saved AI credentials review
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS responded BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS visit_date DATE`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS credentials_review TEXT`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS credentials_score INTEGER`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS credentials_reviewed_at TIMESTAMP`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS workforce_settings (
             id SERIAL PRIMARY KEY,

@@ -44,6 +44,21 @@ import {
 
 const PROJECT_ID = 1;
 
+// New tender-tracking + AI-credentials fields (served by the API but not yet in
+// the generated client type, so augmented locally).
+type SupplierExtra = {
+  responded?: boolean | null;
+  visitDate?: string | null;
+  credentialsReview?: string | null;
+  credentialsScore?: number | null;
+  credentialsReviewedAt?: string | null;
+};
+function scoreColor(n: number) {
+  return n >= 75 ? "bg-emerald-100 text-emerald-800"
+    : n >= 50 ? "bg-amber-100 text-amber-800"
+    : "bg-red-100 text-red-700";
+}
+
 const SUPPLIER_CATEGORIES = [
   "Fit-Out & Construction",
   "Medical Equipment",
@@ -490,6 +505,34 @@ function SupplierCard({
   const [addingQuote, setAddingQuote] = useState(false);
   const [comparing, setComparing] = useState(false);
   const [editingQuote, setEditingQuote] = useState<SupplierQuote | null>(null);
+  const sx = supplier as Supplier & SupplierExtra;
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewErr, setReviewErr] = useState<string | null>(null);
+
+  const patchSupplier = async (data: Record<string, unknown>) => {
+    const r = await fetch(`/api/suppliers/${supplier.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+    });
+    if (r.ok) qc.invalidateQueries({ queryKey: getListSuppliersQueryKey(projectId) });
+  };
+  const runCredentials = async (force = false) => {
+    setReviewing(true); setReviewErr(null);
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 300_000);
+      const r = await fetch(`/api/suppliers/${supplier.id}/review-credentials`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ force }), signal: ctrl.signal,
+      });
+      clearTimeout(timer);
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? "Review failed");
+      await qc.invalidateQueries({ queryKey: getListSuppliersQueryKey(projectId) });
+      setReviewOpen(true);
+    } catch (e) {
+      setReviewErr(e instanceof Error ? (e.name === "AbortError" ? "Timed out — try again." : e.message) : "Review failed");
+    } finally { setReviewing(false); }
+  };
 
   const delMut = useDeleteSupplier({
     mutation: {
@@ -619,6 +662,51 @@ function SupplierCard({
             <Plus className="w-3 h-3" />Quote
           </Button>
         </div>
+
+        {/* Tender tracking: responded, visit, AI credentials */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+            <input type="checkbox" className="rounded border-slate-300" checked={!!sx.responded}
+              onChange={e => patchSupplier({ responded: e.target.checked })} />
+            Responded
+          </label>
+          <label className="flex items-center gap-1.5 text-xs text-slate-600">
+            <span>Visit</span>
+            <Input type="date" className="h-7 text-xs w-[9.5rem]" value={sx.visitDate ?? ""}
+              onChange={e => patchSupplier({ visitDate: e.target.value || null })} />
+          </label>
+          <div className="ml-auto flex items-center gap-2">
+            {sx.credentialsScore != null && (
+              <button onClick={() => setReviewOpen(o => !o)}
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${scoreColor(sx.credentialsScore)}`}>
+                Credentials {sx.credentialsScore}/100
+              </button>
+            )}
+            {!sx.credentialsReview ? (
+              <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled={reviewing} onClick={() => runCredentials(false)}>
+                {reviewing ? <><Loader2 className="w-3 h-3 animate-spin" />Researching…</> : <><ShieldCheck className="w-3 h-3" />Review credentials</>}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-slate-500" onClick={() => setReviewOpen(o => !o)}>
+                {reviewOpen ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}Review
+              </Button>
+            )}
+          </div>
+        </div>
+        {reviewErr && <p className="text-xs text-red-600 mt-1">{reviewErr}</p>}
+        {reviewOpen && sx.credentialsReview && (
+          <div className="mt-2 bg-slate-50 border border-slate-200 rounded-md p-3">
+            <div className="flex items-center justify-between mb-1 gap-2">
+              <span className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">
+                AI credentials review{sx.credentialsReviewedAt ? ` · ${new Date(sx.credentialsReviewedAt).toLocaleDateString("en-GB")}` : ""}
+              </span>
+              <button className="text-[11px] text-slate-400 hover:text-slate-600 disabled:opacity-50" disabled={reviewing} onClick={() => runCredentials(true)}>
+                {reviewing ? "…" : "Refresh"}
+              </button>
+            </div>
+            <p className="text-xs text-slate-700 whitespace-pre-wrap leading-relaxed">{sx.credentialsReview}</p>
+          </div>
+        )}
       </div>
 
       {/* Quotes list */}
@@ -789,6 +877,9 @@ export default function SuppliersPage() {
   const [showFavOnly, setShowFavOnly] = useState(false);
   const [addingSupplier, setAddingSupplier] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [bulkReviewing, setBulkReviewing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
+  const qc = useQueryClient();
 
   const { data: suppliers = [], isLoading } = useListSuppliers(PROJECT_ID);
   const { data: summary } = useGetSuppliersSummary(PROJECT_ID);
@@ -842,6 +933,23 @@ export default function SuppliersPage() {
   const committedGbp = summary?.totalCommittedGbp ?? 0;
   const pipelineGbp = summary?.totalPipelineGbp ?? 0;
 
+  const pendingReview = (suppliers as (Supplier & SupplierExtra)[]).filter(s => !s.credentialsReview);
+  const reviewAll = async () => {
+    if (!pendingReview.length) return;
+    setBulkReviewing(true);
+    setBulkProgress({ done: 0, total: pendingReview.length });
+    for (let i = 0; i < pendingReview.length; i++) {
+      try {
+        await fetch(`/api/suppliers/${pendingReview[i].id}/review-credentials`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}),
+        });
+      } catch { /* keep going — each result is saved server-side as it completes */ }
+      setBulkProgress({ done: i + 1, total: pendingReview.length });
+      await qc.invalidateQueries({ queryKey: getListSuppliersQueryKey(PROJECT_ID) });
+    }
+    setBulkReviewing(false);
+  };
+
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
@@ -855,7 +963,14 @@ export default function SuppliersPage() {
             Track quotes, contractors, and procurement for the clinic launch
           </p>
         </div>
-        <div className="shrink-0 flex gap-2">
+        <div className="shrink-0 flex gap-2 flex-wrap justify-end">
+          {pendingReview.length > 0 && (
+            <Button variant="outline" className="gap-2" disabled={bulkReviewing} onClick={reviewAll}>
+              {bulkReviewing
+                ? <><Loader2 className="w-4 h-4 animate-spin" />Reviewing {bulkProgress?.done ?? 0}/{bulkProgress?.total ?? 0}</>
+                : <><ShieldCheck className="w-4 h-4" />AI review all ({pendingReview.length})</>}
+            </Button>
+          )}
           <Link href="/tenders">
             <Button variant="outline" className="gap-2">
               <FileText className="w-4 h-4" />Tender Pack

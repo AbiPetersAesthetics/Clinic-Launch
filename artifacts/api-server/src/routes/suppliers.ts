@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { suppliersTable, supplierQuotesTable, tasksTable, propertiesTable, propertyTaskOverridesTable } from "@workspace/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 // Apply a quoted amount to a task's base row + all existing property overrides,
 // and upsert an override for the active property if none exists yet.
@@ -169,7 +170,7 @@ router.put("/suppliers/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
-  const allowed = ["name", "category", "contactName", "phone", "email", "website", "notes", "status", "isFavourited", "linkedTaskId"];
+  const allowed = ["name", "category", "contactName", "phone", "email", "website", "notes", "status", "isFavourited", "linkedTaskId", "responded", "visitDate"];
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in req.body) patch[key] = req.body[key];
@@ -344,6 +345,75 @@ router.get("/projects/:projectId/suppliers/summary", async (req, res) => {
     totalPipelineGbp: Math.round(totalPipelineGbp),
     byCategory,
   });
+});
+
+// ─── POST /suppliers/:id/review-credentials ──────────────────────────────────
+// AI researches the company on the web and rates how strong they are.
+// Generated ONCE and saved — won't regenerate unless { force: true } is sent.
+router.post("/suppliers/:id/review-credentials", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
+
+  const [supplier] = await db.select().from(suppliersTable).where(eq(suppliersTable.id, id));
+  if (!supplier) return res.status(404).json({ error: "Supplier not found" });
+
+  // Keep what's already there unless the caller explicitly forces a refresh.
+  if (supplier.credentialsReview && !req.body?.force) {
+    return res.json(supplier);
+  }
+
+  const prompt = `You are a procurement due-diligence assistant for a UK medical-aesthetics clinic opening a new site. Research this potential supplier on the web and assess how strong and trustworthy they are to work with.
+
+SUPPLIER
+- Name: ${supplier.name}
+- Category: ${supplier.category}
+- Website: ${supplier.website || "unknown"}
+- Owner's notes: ${supplier.notes || "none"}
+
+Check, using web search: how established they are (years trading; UK Companies House status if applicable), reputation and reviews (Google, Trustpilot, industry sources), the accreditations that matter for THEIR category (e.g. medical equipment → MHRA / UKCA / CE and servicing cover; construction/fit-out → CHAS, Gas Safe, NICEIC, Constructionline; pharmacy/consumables/POMs → GPhC, MHRA wholesale dealer licence; insurance/professional → FCA, PII; IT → data/ISO 27001), whether they serve the aesthetics/clinical sector, and any red flags (unresolved complaints, dissolved/renamed companies, scam reports).
+
+Output PLAIN TEXT in EXACTLY this structure (no markdown, no preamble):
+SCORE: <integer 0-100 — overall strength/confidence to proceed>
+RATING: <Strong | Solid | Mixed | Weak>
+VERDICT: <one-sentence bottom line>
+STRENGTHS:
+- <point>
+WATCH-OUTS:
+- <point>
+CREDENTIALS TO VERIFY WITH THEM:
+- <specific accreditation/registration to confirm before contracting>
+SOURCES:
+- <url or source name>
+
+Be concrete and cite what you actually found. If you can't confidently identify the company, say so, use RATING: Weak and a low SCORE, and note they may be very new or trade under another name.`;
+
+  let text: string;
+  let webUsed = true;
+  try {
+    text = await claudeComplete({ messages: [{ role: "user", content: prompt }], maxTokens: 2500, webSearch: 5 });
+  } catch (err) {
+    // Fall back to model knowledge if the web-search tool isn't available on the account.
+    const msg = err instanceof Error ? err.message : "";
+    if (/tool|web_search|not.*(enabled|support|available)|400/i.test(msg)) {
+      webUsed = false;
+      text = await claudeComplete({ messages: [{ role: "user", content: prompt }], maxTokens: 2500 });
+    } else {
+      return res.status(msg.includes("ANTHROPIC_API_KEY") ? 503 : 500).json({ error: msg || "Credentials review failed" });
+    }
+  }
+
+  if (!webUsed) text = `(Live web search wasn't available — this is from the AI's own knowledge; verify independently.)\n\n${text}`;
+  const scoreMatch = text.match(/SCORE:\s*(\d{1,3})/i);
+  const score = scoreMatch ? Math.min(100, Math.max(0, parseInt(scoreMatch[1]))) : null;
+
+  const [updated] = await db
+    .update(suppliersTable)
+    .set({ credentialsReview: text, credentialsScore: score, credentialsReviewedAt: new Date(), updatedAt: new Date() })
+    .where(eq(suppliersTable.id, id))
+    .returning();
+
+  const quotes = await db.select().from(supplierQuotesTable).where(eq(supplierQuotesTable.supplierId, id)).orderBy(desc(supplierQuotesTable.createdAt));
+  return res.json({ ...updated, quotes });
 });
 
 export default router;

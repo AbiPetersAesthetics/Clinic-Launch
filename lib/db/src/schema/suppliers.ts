@@ -38,6 +38,15 @@ export const suppliersTable = pgTable("suppliers", {
   isFavourited: boolean("is_favourited").notNull().default(false),
   linkedTaskId: integer("linked_task_id"),
 
+  // Tender tracking
+  responded: boolean("responded").notNull().default(false),
+  visitDate: date("visit_date"), // planned or actual site/showroom visit
+
+  // AI credentials review — generated once and kept (never auto-regenerated)
+  credentialsReview: text("credentials_review"),
+  credentialsScore: integer("credentials_score"), // 0–100 strength
+  credentialsReviewedAt: timestamp("credentials_reviewed_at"),
+
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
