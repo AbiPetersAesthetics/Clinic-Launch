@@ -522,6 +522,9 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE workforce_settings ADD COLUMN IF NOT EXISTS pay_benchmark TEXT`);
         // Suppliers / tender tracking + saved AI credentials review
         await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS responded BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS tender_accepted BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS visit_booked BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS visited BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS visit_date DATE`);
         await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS credentials_review TEXT`);
         await db.execute(sql`ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS credentials_score INTEGER`);

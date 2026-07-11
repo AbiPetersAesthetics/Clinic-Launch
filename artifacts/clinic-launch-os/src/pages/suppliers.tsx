@@ -48,6 +48,9 @@ const PROJECT_ID = 1;
 // the generated client type, so augmented locally).
 type SupplierExtra = {
   responded?: boolean | null;
+  tenderAccepted?: boolean | null;
+  visitBooked?: boolean | null;
+  visited?: boolean | null;
   visitDate?: string | null;
   credentialsReview?: string | null;
   credentialsScore?: number | null;
@@ -665,13 +668,20 @@ function SupplierCard({
 
         {/* Tender tracking: responded, visit, AI credentials */}
         <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2">
-          <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
-            <input type="checkbox" className="rounded border-slate-300" checked={!!sx.responded}
-              onChange={e => patchSupplier({ responded: e.target.checked })} />
-            Responded
-          </label>
+          {([
+            ["responded", "Responded"],
+            ["tenderAccepted", "Tender accepted"],
+            ["visitBooked", "Visit booked"],
+            ["visited", "Visited"],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+              <input type="checkbox" className="rounded border-slate-300" checked={!!sx[key]}
+                onChange={e => patchSupplier({ [key]: e.target.checked })} />
+              {label}
+            </label>
+          ))}
           <label className="flex items-center gap-1.5 text-xs text-slate-600">
-            <span>Visit</span>
+            <span>Visit date</span>
             <Input type="date" className="h-7 text-xs w-[9.5rem]" value={sx.visitDate ?? ""}
               onChange={e => patchSupplier({ visitDate: e.target.value || null })} />
           </label>

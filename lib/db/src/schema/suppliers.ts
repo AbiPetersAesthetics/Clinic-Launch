@@ -38,8 +38,11 @@ export const suppliersTable = pgTable("suppliers", {
   isFavourited: boolean("is_favourited").notNull().default(false),
   linkedTaskId: integer("linked_task_id"),
 
-  // Tender tracking
+  // Tender tracking — the enquiry → visit lifecycle
   responded: boolean("responded").notNull().default(false),
+  tenderAccepted: boolean("tender_accepted").notNull().default(false),
+  visitBooked: boolean("visit_booked").notNull().default(false),
+  visited: boolean("visited").notNull().default(false),
   visitDate: date("visit_date"), // planned or actual site/showroom visit
 
   // AI credentials review — generated once and kept (never auto-regenerated)

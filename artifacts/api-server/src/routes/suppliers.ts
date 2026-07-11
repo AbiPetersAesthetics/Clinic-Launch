@@ -170,7 +170,7 @@ router.put("/suppliers/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ error: "Invalid id" });
 
-  const allowed = ["name", "category", "contactName", "phone", "email", "website", "notes", "status", "isFavourited", "linkedTaskId", "responded", "visitDate"];
+  const allowed = ["name", "category", "contactName", "phone", "email", "website", "notes", "status", "isFavourited", "linkedTaskId", "responded", "tenderAccepted", "visitBooked", "visited", "visitDate"];
   const patch: Record<string, unknown> = { updatedAt: new Date() };
   for (const key of allowed) {
     if (key in req.body) patch[key] = req.body[key];
