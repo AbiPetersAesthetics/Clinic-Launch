@@ -593,8 +593,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* ── Page content ── */}
-        <main className="flex-1 overflow-auto p-4 md:p-8">
-          <div className="max-w-6xl mx-auto">
+        {/* overflow-x-hidden: any element wider than the viewport must scroll inside its
+            own overflow-x-auto wrapper — never pan the whole page sideways (mobile wobble). */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8" style={{ overscrollBehaviorX: "none" }}>
+          <div className="max-w-6xl mx-auto min-w-0">
             {children}
           </div>
         </main>

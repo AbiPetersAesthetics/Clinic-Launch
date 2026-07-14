@@ -963,8 +963,8 @@ export default function SuppliersPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
+      <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
             <ShoppingBag className="w-7 h-7 text-slate-600" />
             Suppliers & Procurement
@@ -973,7 +973,7 @@ export default function SuppliersPage() {
             Track quotes, contractors, and procurement for the clinic launch
           </p>
         </div>
-        <div className="shrink-0 flex gap-2 flex-wrap justify-end">
+        <div className="flex gap-2 flex-wrap min-w-0">
           {pendingReview.length > 0 && (
             <Button variant="outline" className="gap-2" disabled={bulkReviewing} onClick={reviewAll}>
               {bulkReviewing

@@ -222,11 +222,11 @@ function PackList({ packs, onOpen, onChanged }: {
             </CardContent></Card>
           : packs.map(p => (
               <Card key={p.id} className="cursor-pointer hover:border-ring transition-colors" onClick={() => onOpen(p.id)}>
-                <CardContent className="p-4 flex items-center gap-4">
+                <CardContent className="p-4 flex items-center gap-x-4 gap-y-2 flex-wrap">
                   <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-[55%]">
                     <p className="text-sm font-semibold truncate">{p.title}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground truncate">
                       {p.reference}{p.deadline ? ` · returns due ${new Date(p.deadline).toLocaleDateString("en-GB")}` : ""}
                     </p>
                   </div>
