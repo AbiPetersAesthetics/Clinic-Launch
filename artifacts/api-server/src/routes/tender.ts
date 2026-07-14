@@ -555,6 +555,25 @@ router.delete("/tender-responses/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Tender progress: withdrawn + site visit tracking ───────────────────────
+// Withdrawn bidders stay on the list (audit trail) but drop out of evaluation.
+router.patch("/tender-responses/:id", async (req, res) => {
+  const id = parseInt(req.params.id);
+  const allowed = ["contractorName", "notes", "withdrawn", "withdrawnReason", "siteVisitBooked", "siteVisitDate", "siteVisited"];
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  for (const key of allowed) {
+    if (key in req.body) patch[key] = req.body[key];
+  }
+  const [row] = await db.update(tenderResponsesTable).set(patch).where(eq(tenderResponsesTable.id, id)).returning();
+  if (!row) return res.status(404).json({ error: "Not found" });
+  res.json({
+    ...row,
+    extracted: row.extractedJson ? JSON.parse(row.extractedJson) : null,
+    score: row.scoreJson ? JSON.parse(row.scoreJson) : null,
+    notesLog: JSON.parse(row.notesLogJson || "[]"),
+  });
+});
+
 // ─── Engagement notes log (responsiveness, communication, site visit…) ─────
 // These can be added at any time — even before a priced bid ever arrives —
 // so early signals feed the ranking ahead of formal tender returns.
@@ -602,8 +621,16 @@ router.post("/tender-packs/:id/evaluate", async (req, res) => {
   const id = parseInt(req.params.id);
   const [pack] = await db.select().from(tenderPacksTable).where(eq(tenderPacksTable.id, id));
   if (!pack) return res.status(404).json({ error: "Not found" });
-  const responses = await db.select().from(tenderResponsesTable).where(eq(tenderResponsesTable.tenderPackId, id));
-  if (responses.length < 1) return res.status(400).json({ error: "Upload at least one tender response first." });
+  const allResponses = await db.select().from(tenderResponsesTable).where(eq(tenderResponsesTable.tenderPackId, id));
+  // Withdrawn bidders are kept for the audit trail but must not be scored or ranked.
+  const responses = allResponses.filter(r => !r.withdrawn);
+  if (responses.length < 1) {
+    return res.status(400).json({
+      error: allResponses.length > 0
+        ? "Every bidder on this pack is marked withdrawn — nothing left to evaluate."
+        : "Upload at least one tender response first.",
+    });
+  }
 
   const bids = responses.map(r => ({
     id: r.id,

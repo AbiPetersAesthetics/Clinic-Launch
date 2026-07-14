@@ -494,6 +494,12 @@ export async function runStartupSeed(): Promise<void> {
           )
         `);
         await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS notes_log_json TEXT NOT NULL DEFAULT '[]'`);
+        // Tender progress tracking: withdrawn bidders + site visits
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS withdrawn BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS withdrawn_reason TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS site_visit_booked BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS site_visit_date DATE`);
+        await db.execute(sql`ALTER TABLE tender_responses ADD COLUMN IF NOT EXISTS site_visited BOOLEAN NOT NULL DEFAULT FALSE`);
         // V18 migration: workforce & capacity planning (People module)
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS staff_roles (

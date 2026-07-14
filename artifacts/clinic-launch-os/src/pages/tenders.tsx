@@ -43,6 +43,8 @@ type PackResponse = {
   id: number; contractorName: string; fileUrl: string | null; fileName: string | null;
   notes: string; extracted: Extracted | null; score: ScoreRow | null; receivedAt: string;
   notesLog: ContractorNote[];
+  withdrawn?: boolean; withdrawnReason?: string | null;
+  siteVisitBooked?: boolean; siteVisitDate?: string | null; siteVisited?: boolean;
 };
 type Documents = {
   invitationLetter?: string; instructionsToTenderers?: string; formOfTender?: string;
@@ -747,23 +749,60 @@ function ContractorCard({ r, busy, run }: {
     await api(`/api/tender-responses/${r.id}/attach`, { method: "POST", body: form });
   });
 
+  const patchResponse = (data: Record<string, unknown>) =>
+    run(`patch-${r.id}`, () => api(`/api/tender-responses/${r.id}`, {
+      method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data),
+    }));
+
   return (
-    <div className="border border-border rounded-md p-3.5">
+    <div className={`border rounded-md p-3.5 ${r.withdrawn ? "border-border/60 bg-muted/40" : "border-border"}`}>
       <div className="flex items-center gap-2 flex-wrap">
-        <p className="text-sm font-semibold flex-1 min-w-0">{r.contractorName}</p>
+        <p className={`text-sm font-semibold flex-1 min-w-0 ${r.withdrawn ? "line-through text-muted-foreground" : ""}`}>{r.contractorName}</p>
+        {r.withdrawn && <Badge variant="outline" className="text-[10px] border-destructive/40 text-destructive">Withdrawn</Badge>}
         {r.extracted?.totalPriceGbp != null && (
           <Badge variant="secondary">£{Number(r.extracted.totalPriceGbp).toLocaleString()} {r.extracted.vatTreatment === "exc" ? "ex" : r.extracted.vatTreatment === "inc" ? "inc" : ""} VAT</Badge>
         )}
         {r.extracted?.programmeWeeks != null && <Badge variant="outline">{r.extracted.programmeWeeks} wks</Badge>}
-        {r.score && <Badge>{Math.round(r.score.weightedTotal)}/100</Badge>}
+        {r.score && !r.withdrawn && <Badge>{Math.round(r.score.weightedTotal)}/100</Badge>}
         {r.fileUrl && <a href={r.fileUrl} target="_blank" rel="noreferrer" className="text-xs underline text-muted-foreground">{r.fileName ?? "file"}</a>}
         <button
-          className="text-muted-foreground hover:text-destructive"
+          className="text-muted-foreground hover:text-destructive shrink-0"
           onClick={() => { if (confirm(`Remove ${r.contractorName}?`)) run("del", () => api(`/api/tender-responses/${r.id}`, { method: "DELETE" })); }}
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* Tender progress: site visit + withdrawn */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <input type="checkbox" className="rounded border-input" checked={!!r.siteVisitBooked}
+            onChange={e => patchResponse({ siteVisitBooked: e.target.checked })} />
+          Site visit booked
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+          <input type="checkbox" className="rounded border-input" checked={!!r.siteVisited}
+            onChange={e => patchResponse({ siteVisited: e.target.checked })} />
+          Visited site
+        </label>
+        <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <span>Visit date</span>
+          <Input type="date" className="h-7 text-xs w-[9.5rem]" value={r.siteVisitDate ?? ""}
+            onChange={e => patchResponse({ siteVisitDate: e.target.value || null })} />
+        </label>
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none ml-auto">
+          <input type="checkbox" className="rounded border-input" checked={!!r.withdrawn}
+            onChange={e => patchResponse({ withdrawn: e.target.checked })} />
+          <span className={r.withdrawn ? "text-destructive font-medium" : "text-muted-foreground"}>Withdrawn from tender</span>
+        </label>
+      </div>
+      {r.withdrawn && (
+        <Input
+          className="h-7 text-xs mt-2" placeholder="Reason they withdrew (optional)"
+          defaultValue={r.withdrawnReason ?? ""}
+          onBlur={e => { if (e.target.value !== (r.withdrawnReason ?? "")) patchResponse({ withdrawnReason: e.target.value }); }}
+        />
+      )}
       {r.extracted?.summary && <p className="text-sm text-muted-foreground mt-1.5">{r.extracted.summary}</p>}
       {!!r.extracted?.redFlags?.length && (
         <ul className="list-disc pl-5 mt-1 text-xs text-destructive space-y-0.5">

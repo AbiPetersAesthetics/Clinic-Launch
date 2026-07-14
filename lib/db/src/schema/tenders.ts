@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, timestamp, boolean, date } from "drizzle-orm/pg-core";
 
 // Principal-contractor tender packs (Invitation to Tender) and the
 // responses received back from bidding contractors.
@@ -32,6 +32,14 @@ export const tenderResponsesTable = pgTable("tender_responses", {
   fileUrl: text("file_url"),
   fileName: text("file_name"),
   notes: text("notes").default(""),
+  // Tender progress tracking
+  // Withdrawn: bidder pulled out — kept on the list for the audit trail, but
+  // excluded from evaluation/comparison.
+  withdrawn: boolean("withdrawn").notNull().default(false),
+  withdrawnReason: text("withdrawn_reason").default(""),
+  siteVisitBooked: boolean("site_visit_booked").notNull().default(false),
+  siteVisitDate: date("site_visit_date"),   // planned or actual site visit
+  siteVisited: boolean("site_visited").notNull().default(false),
   // Running log of qualitative signals logged over time — even before a
   // priced bid arrives: [{id,category,note,loggedAt}]
   notesLogJson: text("notes_log_json").notNull().default("[]"),
