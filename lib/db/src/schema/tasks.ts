@@ -57,6 +57,10 @@ export const tasksTable = pgTable("launch_tasks", {
   varianceNote: text("variance_note"),
   invoiceVatStatus: text("invoice_vat_status"), // 'inc' | 'exc' | 'exempt'
   invoiceFileUrl: text("invoice_file_url"),
+  // ── Tender award: archived estimate lines (superseded by an awarded contract) ──
+  // Archived tasks are kept for audit + recovery but excluded from every cost total.
+  archived: boolean("archived").notNull().default(false),
+  archivedReason: text("archived_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

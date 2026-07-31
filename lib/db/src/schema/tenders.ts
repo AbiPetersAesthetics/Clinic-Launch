@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, timestamp, boolean, date } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, timestamp, boolean, date } from "drizzle-orm/pg-core";
 
 // Principal-contractor tender packs (Invitation to Tender) and the
 // responses received back from bidding contractors.
@@ -50,5 +50,26 @@ export const tenderResponsesTable = pgTable("tender_responses", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+// Awarding a tender: the owner picks the winning response and pushes the AGREED
+// contract sum (a negotiated figure, not the raw bid) into the project plan as a
+// committed build line, archiving the estimate lines it covers. This row captures
+// everything needed to show the awarded state and to fully reverse it (un-award).
+export const tenderAwardsTable = pgTable("tender_awards", {
+  id: serial("id").primaryKey(),
+  projectId: integer("project_id").notNull(),
+  tenderPackId: integer("tender_pack_id").notNull(),
+  tenderResponseId: integer("tender_response_id").notNull(),
+  contractorName: text("contractor_name"),
+  contractSumGbp: real("contract_sum_gbp"),
+  vatTreatment: text("vat_treatment"), // 'inc' | 'exc' | 'exempt'
+  programmeWeeks: integer("programme_weeks"),
+  // The new committed build line created for the contract.
+  awardedTaskId: integer("awarded_task_id"),
+  // JSON array of the task ids that were archived, for reversal.
+  archivedTaskIdsJson: text("archived_task_ids_json"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 export type TenderPack = typeof tenderPacksTable.$inferSelect;
 export type TenderResponse = typeof tenderResponsesTable.$inferSelect;
+export type TenderAward = typeof tenderAwardsTable.$inferSelect;

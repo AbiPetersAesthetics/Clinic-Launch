@@ -548,6 +548,24 @@ export async function runStartupSeed(): Promise<void> {
             updated_at TIMESTAMP DEFAULT NOW()
           )
         `);
+        // V19 migration: tender award flow — archivable estimate lines + award record
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived_reason TEXT`);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS tender_awards (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            tender_pack_id INTEGER NOT NULL,
+            tender_response_id INTEGER NOT NULL,
+            contractor_name TEXT,
+            contract_sum_gbp REAL,
+            vat_treatment TEXT,
+            programme_weeks INTEGER,
+            awarded_task_id INTEGER,
+            archived_task_ids_json TEXT,
+            created_at TIMESTAMP DEFAULT NOW()
+          )
+        `);
         return;
       }
 

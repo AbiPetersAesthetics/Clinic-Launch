@@ -466,7 +466,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     for (const o of overrides) overrideMap.set(o.taskId, o);
   }
 
-  const allTasks = baseTasks.map(t => {
+  // Archived tasks (estimate lines superseded by an awarded tender) must not feed the
+  // month-by-month project cost map / cash burn — filter them out before the merge.
+  const allTasks = baseTasks.filter(t => !(t as any).archived).map(t => {
     const o = overrideMap.get(t.id);
     if (!o) return t;
     return {

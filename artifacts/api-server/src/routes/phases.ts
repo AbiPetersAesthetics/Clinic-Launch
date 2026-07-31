@@ -13,7 +13,9 @@ router.get("/projects/:projectId/phases", async (req, res) => {
 
   // Enrich with task counts and cost totals
   const enriched = await Promise.all(phases.map(async (phase) => {
-    const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id));
+    const allPhaseTasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id));
+    // Archived tasks (superseded by an awarded tender) are excluded from cost totals.
+    const tasks = allPhaseTasks.filter(t => !(t as any).archived);
     const totalCostLow = tasks.reduce((sum, t) => sum + t.costLow, 0);
     const totalCostMid = tasks.reduce((sum, t) => sum + t.costMid, 0);
     const totalCostHigh = tasks.reduce((sum, t) => sum + t.costHigh, 0);
@@ -45,7 +47,9 @@ router.put("/phases/:id", async (req, res) => {
     .where(eq(phasesTable.id, id))
     .returning();
   if (!phase) return res.status(404).json({ error: "Not found" });
-  const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, id));
+  const allPhaseTasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, id));
+  // Archived tasks (superseded by an awarded tender) are excluded from cost totals.
+  const tasks = allPhaseTasks.filter(t => !(t as any).archived);
   const totalCostLow = tasks.reduce((sum, t) => sum + t.costLow, 0);
   const totalCostMid = tasks.reduce((sum, t) => sum + t.costMid, 0);
   const totalCostHigh = tasks.reduce((sum, t) => sum + t.costHigh, 0);
@@ -117,7 +121,9 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         dependencies: t.dependencies ? JSON.parse(t.dependencies) : [],
       };
     });
-    const activeTasks = parsedTasks.filter(t => t.status !== "superseded" && t.status !== "deferred");
+    // Archived tasks (superseded by an awarded tender) are STILL returned above so the
+    // plan UI can show them struck through — but they must be excluded from every total.
+    const activeTasks = parsedTasks.filter(t => t.status !== "superseded" && t.status !== "deferred" && !(t as any).archived);
     const totalCostLow = activeTasks.reduce((sum, t) => sum + (t.costLow ?? 0), 0);
     const totalCostMid = activeTasks.reduce((sum, t) => sum + (t.costMid ?? 0), 0);
     const totalCostHigh = activeTasks.reduce((sum, t) => sum + (t.costHigh ?? 0), 0);

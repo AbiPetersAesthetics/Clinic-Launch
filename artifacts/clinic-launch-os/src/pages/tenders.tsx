@@ -6,10 +6,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { TenderComparison } from "@/components/tender-comparison";
 import {
   ArrowLeft, FileText, Loader2, Printer, Plus, Trash2, Upload,
   Scale, CheckCircle2, AlertTriangle, RefreshCw, MessageSquare, Paperclip,
+  Award, RotateCcw,
 } from "lucide-react";
 
 const PROJECT_ID = 1;
@@ -60,6 +67,21 @@ type PackDetail = {
   id: number; title: string; status: string; reference: string | null; deadline: string | null;
   sections: Section[]; files: PackFile[]; documents: Documents | null; evaluation: Evaluation | null; responses: PackResponse[];
 };
+
+// Award to project ------------------------------------------------------------
+type TenderAward = {
+  id: number; projectId: number; tenderPackId: number; tenderResponseId: number;
+  contractorName: string; contractSumGbp: number; vatTreatment: string;
+  programmeWeeks: number | null; awardedTaskId: number | null;
+  archivedTaskIdsJson: string; archivedTaskIds: number[]; createdAt?: string;
+};
+type PlanTask = { id: number; title: string; selectedCost: number; phaseId: number; archived?: boolean };
+type PlanPhase = { id: number; name: string; selectedCostTotal: number; tasks: PlanTask[] };
+type ProjectControls = {
+  plannedBudget: number; originalBaselineCost: number;
+  davidApprovedCapGbp: number; outerLimitGbp: number;
+};
+const gbp = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
 
 const DOC_ORDER: { key: keyof Documents; title: string }[] = [
   { key: "invitationLetter", title: "1 · Invitation to Tender letter" },
@@ -270,11 +292,27 @@ function PackDetailView({ packId, onBack }: { packId: number; onBack: () => void
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<"comparison" | "detail" | "pack" | "responses">("comparison");
+  const [award, setAward] = useState<TenderAward | null>(null);
+  const [showAward, setShowAward] = useState(false);
 
   const load = () => api<PackDetail>(`/api/tender-packs/${packId}`).then(p => {
     setPack(p);
   }).catch(e => setError(e.message));
-  useEffect(() => { load(); }, [packId]);
+  const loadAward = () =>
+    api<{ award: TenderAward | null }>(`/api/tender-packs/${packId}/award`)
+      .then(r => setAward(r.award)).catch(() => setAward(null));
+  useEffect(() => { load(); loadAward(); }, [packId]);
+
+  const unaward = async () => {
+    setBusy("unaward");
+    setError(null);
+    try {
+      await api(`/api/tender-packs/${packId}/unaward`, { method: "POST" });
+      await Promise.all([load(), loadAward()]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not revert the award");
+    } finally { setBusy(null); }
+  };
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(label);
@@ -306,7 +344,27 @@ function PackDetailView({ packId, onBack }: { packId: number; onBack: () => void
             </button>
           ))}
         </div>
+        {award ? (
+          <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white gap-1"><Award className="w-3.5 h-3.5" />Awarded</Badge>
+        ) : (
+          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => setShowAward(true)}>
+            <Award className="w-3.5 h-3.5 mr-1.5" />Award to project
+          </Button>
+        )}
       </div>
+
+      {award && (
+        <AwardBanner award={award} busy={busy} onUnaward={unaward} />
+      )}
+
+      {showAward && (
+        <AwardDialog
+          packId={packId}
+          responses={pack.responses}
+          onClose={() => setShowAward(false)}
+          onAwarded={async () => { setShowAward(false); await Promise.all([load(), loadAward()]); }}
+        />
+      )}
 
       {error && <p className="text-sm text-destructive no-print">{error}</p>}
 
@@ -893,5 +951,255 @@ function ContractorCard({ r, busy, run }: {
         )}
       </div>
     </div>
+  );
+}
+
+// ── Awarded banner ─────────────────────────────────────────────────────────────
+
+function AwardBanner({ award, busy, onUnaward }: {
+  award: TenderAward; busy: string | null; onUnaward: () => void;
+}) {
+  const [confirm, setConfirm] = useState(false);
+  const vatLabel = award.vatTreatment === "exc" ? "ex VAT" : award.vatTreatment === "inc" ? "inc VAT" : "VAT exempt";
+  return (
+    <Card className="border-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20 dark:border-emerald-800 no-print">
+      <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+        <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+        <div className="flex-1 min-w-[50%]">
+          <p className="text-sm font-semibold">
+            Awarded to {award.contractorName}: {gbp(award.contractSumGbp)} <span className="font-normal text-muted-foreground">({vatLabel})</span> pushed into the plan
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {award.archivedTaskIds.length} estimate line{award.archivedTaskIds.length === 1 ? "" : "s"} archived and replaced by one committed contract line.
+            {award.programmeWeeks ? ` Programme ${award.programmeWeeks} weeks.` : ""} Reversible.
+          </p>
+        </div>
+        {confirm ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Restore all estimate lines?</span>
+            <Button size="sm" variant="destructive" disabled={busy != null} onClick={onUnaward}>
+              {busy === "unaward" ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <RotateCcw className="w-3.5 h-3.5 mr-1.5" />}
+              Confirm revert
+            </Button>
+            <Button size="sm" variant="ghost" disabled={busy != null} onClick={() => setConfirm(false)}>Cancel</Button>
+          </div>
+        ) : (
+          <Button size="sm" variant="outline" onClick={() => setConfirm(true)}>
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5" />Un-award / revert
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Award dialog ───────────────────────────────────────────────────────────────
+
+function AwardDialog({ packId, responses, onClose, onAwarded }: {
+  packId: number; responses: PackResponse[];
+  onClose: () => void; onAwarded: () => void | Promise<void>;
+}) {
+  const [phases, setPhases] = useState<PlanPhase[] | null>(null);
+  const [controls, setControls] = useState<ProjectControls | null>(null);
+  const [loadErr, setLoadErr] = useState<string | null>(null);
+
+  // Default winner: highest-scored non-withdrawn response, else first non-withdrawn, else first.
+  const live = responses.filter(r => !r.withdrawn);
+  const defaultResp =
+    [...live].sort((a, b) => (b.score?.weightedTotal ?? -1) - (a.score?.weightedTotal ?? -1))[0]
+    ?? responses[0];
+
+  const [responseId, setResponseId] = useState<number | null>(defaultResp?.id ?? null);
+  const [contractSum, setContractSum] = useState("77500");
+  const [vat, setVat] = useState<"exc" | "inc" | "exempt">("exc");
+  const [weeks, setWeeks] = useState("");
+  const [ticked, setTicked] = useState<Set<number>>(new Set());
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    Promise.all([
+      api<PlanPhase[]>(`/api/projects/${PROJECT_ID}/phases-with-tasks`),
+      api<ProjectControls>(`/api/projects/${PROJECT_ID}/project-controls`),
+    ]).then(([ph, pc]) => {
+      setPhases(ph);
+      setControls(pc);
+      // Pre-tick every build cost line EXCEPT "External Signage Package".
+      const managed = ph.find(p => /managed building/i.test(p.name));
+      const candidates = (managed ? managed.tasks : ph.flatMap(p => p.tasks))
+        .filter(t => !t.archived && (t.selectedCost ?? 0) > 0);
+      const pre = new Set<number>();
+      for (const t of candidates) {
+        if (!/external signage/i.test(t.title)) pre.add(t.id);
+      }
+      setTicked(pre);
+    }).catch(e => setLoadErr(e instanceof Error ? e.message : "Could not load the plan"));
+  }, [packId]);
+
+  const managed = phases?.find(p => /managed building/i.test(p.name));
+  const lines: PlanTask[] = (phases
+    ? (managed ? managed.tasks : phases.flatMap(p => p.tasks))
+    : []
+  ).filter(t => !t.archived && (t.selectedCost ?? 0) > 0);
+
+  const contractNum = Math.max(0, Number(contractSum.replace(/[^\d.]/g, "")) || 0);
+  const currentTotal = controls?.plannedBudget ?? controls?.originalBaselineCost ?? 0;
+  const archivedSum = lines.filter(l => ticked.has(l.id)).reduce((s, l) => s + (l.selectedCost ?? 0), 0);
+  const afterTotal = currentTotal - archivedSum + contractNum;
+
+  const cap = controls?.davidApprovedCapGbp ?? 80000;
+  const stretch = controls?.outerLimitGbp ?? Math.round(cap * 7 / 6);
+  const overStretch = afterTotal > stretch;
+  const overCap = !overStretch && afterTotal > cap;
+  const afterClass = overStretch ? "text-destructive" : overCap ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400";
+
+  const confirm = async () => {
+    if (responseId == null) { setError("Pick the winning response."); return; }
+    if (!(contractNum > 0)) { setError("Enter the agreed contract sum."); return; }
+    setBusy(true);
+    setError(null);
+    try {
+      await api(`/api/tender-packs/${packId}/award`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          responseId,
+          contractSumGbp: contractNum,
+          vatTreatment: vat,
+          programmeWeeks: weeks.trim() ? Number(weeks) : undefined,
+          archiveTaskIds: [...ticked],
+        }),
+      });
+      await onAwarded();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not award");
+      setBusy(false);
+    }
+  };
+
+  const toggle = (id: number) => setTicked(prev => {
+    const n = new Set(prev);
+    n.has(id) ? n.delete(id) : n.add(id);
+    return n;
+  });
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Award className="w-5 h-5 text-emerald-600" />Award tender to the project</DialogTitle>
+          <DialogDescription>
+            Push the agreed contract sum into the plan as a committed build line and archive the estimate lines it covers. Fully reversible.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loadErr && <p className="text-sm text-destructive">{loadErr}</p>}
+
+        <div className="space-y-4">
+          {/* Winning response */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Winning response</label>
+            <Select value={responseId != null ? String(responseId) : ""} onValueChange={v => setResponseId(Number(v))}>
+              <SelectTrigger className="mt-1.5"><SelectValue placeholder="Select the winner" /></SelectTrigger>
+              <SelectContent>
+                {responses.map(r => (
+                  <SelectItem key={r.id} value={String(r.id)} disabled={r.withdrawn}>
+                    {r.contractorName}
+                    {r.score ? ` · ${Math.round(r.score.weightedTotal)}/100` : ""}
+                    {r.extracted?.totalPriceGbp != null ? ` · bid ${gbp(Number(r.extracted.totalPriceGbp))}` : ""}
+                    {r.withdrawn ? " · withdrawn" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Agreed contract sum + VAT + programme */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3">
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Agreed contract sum</label>
+              <div className="relative mt-1.5">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                <Input className="pl-6" value={contractSum} onChange={e => setContractSum(e.target.value)} inputMode="decimal" />
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">The negotiated figure you agreed, not the raw bid.</p>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">VAT</label>
+              <Select value={vat} onValueChange={v => setVat(v as "exc" | "inc" | "exempt")}>
+                <SelectTrigger className="mt-1.5 w-[110px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="exc">Ex VAT</SelectItem>
+                  <SelectItem value="inc">Inc VAT</SelectItem>
+                  <SelectItem value="exempt">Exempt</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Weeks</label>
+              <Input className="mt-1.5 w-[90px]" value={weeks} onChange={e => setWeeks(e.target.value)} placeholder="opt." inputMode="numeric" />
+            </div>
+          </div>
+
+          {/* Estimate lines to archive */}
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Estimate lines this contract replaces{managed ? ` · ${managed.name}` : ""}
+            </label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 mb-2">
+              Ticked lines are archived (recoverable) and no longer counted. Untick anything the contract does not cover.
+            </p>
+            {phases == null && !loadErr ? (
+              <p className="text-sm text-muted-foreground">Loading plan…</p>
+            ) : lines.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No costed build lines found.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {lines.map(l => (
+                  <label key={l.id} className={`flex items-center gap-2.5 border rounded-md px-3 py-2 cursor-pointer ${ticked.has(l.id) ? "border-ring bg-accent/40" : "border-border"}`}>
+                    <Checkbox checked={ticked.has(l.id)} onCheckedChange={() => toggle(l.id)} />
+                    <span className="text-sm flex-1 min-w-0">{l.title}</span>
+                    <span className="text-sm tabular-nums text-muted-foreground shrink-0">{gbp(l.selectedCost ?? 0)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Live preview */}
+          <div className="rounded-md border border-border bg-muted/40 p-3.5">
+            <div className="flex items-center justify-between text-sm flex-wrap gap-x-4 gap-y-1">
+              <span className="text-muted-foreground">Project total</span>
+              <span className="tabular-nums">
+                {gbp(currentTotal)} <span className="text-muted-foreground mx-1">→</span>
+                <span className={`font-semibold ${afterClass}`}>{gbp(afterTotal)}</span>
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground mt-1.5 flex-wrap gap-x-4">
+              <span>− {gbp(archivedSum)} archived · + {gbp(contractNum)} contract</span>
+              <span>
+                {overStretch ? "Over stretch limit" : overCap ? "Over approved cap" : "Within approved cap"}
+                {` (cap ${gbp(cap)} · stretch ${gbp(stretch)})`}
+              </span>
+            </div>
+            {(overCap || overStretch) && (
+              <p className={`text-xs mt-1.5 flex items-center gap-1.5 ${overStretch ? "text-destructive" : "text-amber-600 dark:text-amber-400"}`}>
+                <AlertTriangle className="w-3.5 h-3.5" />
+                {overStretch ? "This takes the plan above the stretch/risk zone." : "This takes the plan above the approved launch cap."}
+              </p>
+            )}
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={confirm} disabled={busy || phases == null}>
+            {busy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Awarding…</> : <><Award className="w-4 h-4 mr-2" />Award {gbp(contractNum)} to the plan</>}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -498,6 +498,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
       const phaseStart = phaseStartDays[phase.id] ?? 0;
       const color = PHASE_PALETTE[i % PHASE_PALETTE.length];
       for (const task of phase.tasks ?? []) {
+        if ((task as any).archived) continue; // superseded by an awarded tender, off the timeline
         rows.push({ task, phase, phaseIdx: i, phaseStart, color });
       }
     }
@@ -772,7 +773,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                 </div>
 
                 {/* Task rows */}
-                {!isCollapsed && (phase.tasks ?? []).map(task => {
+                {!isCollapsed && (phase.tasks ?? []).filter(task => !(task as any).archived).map(task => {
                   const absStart = getTaskAbsStart(task, phaseStart);
                   const dur = getTaskDuration(task);
                   const barW = Math.max(8, dur * dayWidth);
@@ -1716,6 +1717,7 @@ export default function ProjectPage() {
     let prevPhaseId = -1;
     const tableRows = rows.map(({ task, phase, num }) => {
       const ta = task as any;
+      const isArchived = !!ta.archived;
       const isNewPhase = listGrouped && phase.id !== prevPhaseId;
       if (listGrouped) prevPhaseId = phase.id;
 
@@ -1731,9 +1733,11 @@ export default function ProjectPage() {
       ].filter(Boolean).join(" &nbsp;");
 
       const actualCost = ta.actualCost ?? ta.committedCost;
-      const costHtml = (task.selectedCost ?? 0) > 0
-        ? `<div style="font-weight:600;color:#111827">${fmtCost(task.selectedCost)}</div>${actualCost ? `<div style="font-size:9px;color:#6b7280;margin-top:1px">actual: ${fmtCost(actualCost)}</div>` : ""}`
-        : `<span style="color:#9ca3af">—</span>`;
+      const costHtml = isArchived
+        ? `<span style="color:#9ca3af;text-decoration:line-through">${fmtCost(task.selectedCost)}</span>`
+        : (task.selectedCost ?? 0) > 0
+          ? `<div style="font-weight:600;color:#111827">${fmtCost(task.selectedCost)}</div>${actualCost ? `<div style="font-size:9px;color:#6b7280;margin-top:1px">actual: ${fmtCost(actualCost)}</div>` : ""}`
+          : `<span style="color:#9ca3af">—</span>`;
 
       const statusLabel = (task.status ?? "not_started").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
       const priorityLabel = (task.riskLevel ?? "low").replace(/\b\w/g, c => c.toUpperCase());
@@ -1745,12 +1749,13 @@ export default function ProjectPage() {
         <tr style="border-bottom:1px solid #e5e7eb;page-break-inside:avoid;">
           <td style="padding:11px 8px 11px 10px;color:#9ca3af;font-size:10px;vertical-align:top;white-space:nowrap">${num}</td>
           <td style="padding:11px 14px 11px 10px;vertical-align:top;">
-            <div style="font-weight:600;font-size:12px;color:#111827;line-height:1.45">${task.title}</div>
+            <div style="font-weight:600;font-size:12px;color:${isArchived ? "#9ca3af" : "#111827"};line-height:1.45;${isArchived ? "text-decoration:line-through" : ""}">${task.title}</div>
+            ${isArchived ? `<div style="margin-top:3px;font-size:9px;color:#9ca3af">Superseded by awarded tender</div>` : ""}
             ${flags ? `<div style="margin-top:3px">${flags}</div>` : ""}
             ${phaseLabel}
           </td>
           <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;line-height:1.4">${(task.owner ?? "—").replace(/\s*[+\/]\s*/g, "<br>")}</td>
-          <td style="padding:11px 8px;vertical-align:top;">${badge(statusLabel, statusStyle[task.status ?? "not_started"] ?? statusStyle.not_started)}</td>
+          <td style="padding:11px 8px;vertical-align:top;">${isArchived ? badge("Superseded", statusStyle.superseded) : badge(statusLabel, statusStyle[task.status ?? "not_started"] ?? statusStyle.not_started)}</td>
           <td style="padding:11px 8px;vertical-align:top;">${badge(priorityLabel, priorityStyle[task.riskLevel ?? "low"] ?? priorityStyle.low)}</td>
           <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;white-space:nowrap">${fmtD(ta.startDate)}</td>
           <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;white-space:nowrap">${fmtD(task.dueDate ?? ta.dueDate)}</td>
@@ -2217,7 +2222,7 @@ export default function ProjectPage() {
                   {/* Compact secondary strip */}
                   {hasActuals && (() => {
                     const vGbp = pc.varianceGbp ?? 0;
-                    const allTasksFlat = phases?.flatMap((p: any) => p.tasks ?? []) ?? [];
+                    const allTasksFlat = (phases?.flatMap((p: any) => p.tasks ?? []) ?? []).filter((t: any) => !t.archived);
                     const doneCount = allTasksFlat.filter((t: any) => t.status === "complete").length;
                     return (
                       <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground pt-1 border-t border-border/40">
@@ -2619,7 +2624,7 @@ export default function ProjectPage() {
 
             {/* Warning: tasks with unknown VAT status */}
             {(() => {
-              const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown").length ?? 0;
+              const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).archived && (!(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown")).length ?? 0;
               return vatUnknownCount > 0 ? (
                 <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3">
                   <span className="text-amber-600 dark:text-amber-400 text-base shrink-0">⚠</span>
@@ -2654,7 +2659,7 @@ export default function ProjectPage() {
         // Flatten all tasks that have any cost set
         const allRows = phases.flatMap((ph, phIdx) =>
           (ph.tasks ?? [])
-            .filter((t) => (t.selectedCost ?? 0) > 0 || (t.costMid ?? 0) > 0)
+            .filter((t) => !(t as any).archived && ((t.selectedCost ?? 0) > 0 || (t.costMid ?? 0) > 0))
             .map((task) => {
               const cost = (task as any).committedCost > 0 ? (task as any).committedCost : task.selectedCost > 0 ? task.selectedCost : (task.costMid ?? 0);
               const status: string = (task as any).costVatStatus || "vat_unknown";
@@ -2897,7 +2902,7 @@ export default function ProjectPage() {
             .filter(Boolean)
         )].sort();
         const filteredTaskCount = (phases ?? []).flatMap(p => p.tasks ?? [])
-          .filter(t => !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase())).length;
+          .filter(t => !(t as any).archived && (!listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))).length;
         return (
           <div className="no-print flex items-center gap-3 flex-wrap">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sort by</span>
@@ -3004,14 +3009,15 @@ export default function ProjectPage() {
                       <TableRow
                         key={task.id}
                         id={`task-${task.id}`}
-                        className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
+                        className={`cursor-pointer hover:bg-muted/40 transition-colors ${(task as any).archived ? "opacity-50" : ""} ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
                         onClick={() => setEditingTask(task)}
                       >
                         <TableCell>
                           <TaskDetailTooltip task={task}>
                             <div>
-                              <div className="font-medium text-foreground">{task.title}</div>
+                              <div className={`font-medium text-foreground ${(task as any).archived ? "line-through text-muted-foreground" : ""}`}>{task.title}</div>
                               <div className="flex gap-2 mt-1 flex-wrap">
+                                {(task as any).archived && <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground">Superseded by tender</Badge>}
                                 {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
                                 {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
                                 {((task as any).costVatStatus === "vat_unknown" || !(task as any).costVatStatus) && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30">VAT?</Badge>}
@@ -3210,14 +3216,19 @@ export default function ProjectPage() {
                         <TableRow
                           key={task.id}
                           id={`task-${task.id}`}
-                          className={`cursor-pointer hover:bg-muted/40 transition-colors ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
+                          className={`cursor-pointer hover:bg-muted/40 transition-colors ${(task as any).archived ? "opacity-50" : ""} ${highlightedTaskId === task.id ? "ring-2 ring-primary ring-inset bg-primary/5" : ""}`}
                           onClick={() => setEditingTask(task)}
                         >
                           <TableCell>
                             <TaskDetailTooltip task={task}>
                               <div>
-                                <div className="font-medium text-foreground">{task.title}</div>
+                                <div className={`font-medium text-foreground ${(task as any).archived ? "line-through text-muted-foreground" : ""}`}>{task.title}</div>
                                 <div className="flex gap-2 mt-1.5 flex-wrap">
+                                  {(task as any).archived && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground">
+                                      Superseded by tender
+                                    </Badge>
+                                  )}
                                   {task.isNonNegotiable && (
                                     <Badge variant="outline" className="text-[10px] h-4 py-0">
                                       Must Do

@@ -318,8 +318,10 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       for (const o of overrides) overrideMap.set(o.taskId, o as Record<string, unknown>);
     }
 
-    // Merge overrides onto base tasks, preferring override values
-    const allTasks = baseTasks.map(t => {
+    // Merge overrides onto base tasks, preferring override values.
+    // Archived tasks (estimate lines superseded by an awarded tender) are kept for
+    // audit + recovery but must never feed any total, breakdown, or cap check here.
+    const allTasks = baseTasks.filter(t => !(t as any).archived).map(t => {
       const o = overrideMap.get(t.id);
       if (!o) return t as Record<string, unknown>;
       return {

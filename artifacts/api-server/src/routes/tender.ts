@@ -7,9 +7,9 @@ import { db } from "@workspace/db";
 import {
   phasesTable, tasksTable, propertiesTable, projectsTable,
   suppliersTable, supplierQuotesTable,
-  tenderPacksTable, tenderResponsesTable,
+  tenderPacksTable, tenderResponsesTable, tenderAwardsTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { anthropic, claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 const router = Router();
@@ -682,6 +682,140 @@ Return ONLY valid JSON:
     const msg = err instanceof Error ? err.message : "Evaluation failed";
     res.status(msg.includes("ANTHROPIC_API_KEY") ? 503 : 500).json({ error: msg });
   }
+});
+
+// ─── Award a tender ──────────────────────────────────────────────────────────
+// The owner picks the winning response and confirms the AGREED contract sum (a
+// negotiated figure, NOT the raw bid). That sum is pushed into the project plan as
+// a single committed build line, REPLACING the estimate lines it covers — which are
+// archived (kept for audit + fully recoverable), never deleted. Surgical + reversible.
+
+router.get("/tender-packs/:id/award", async (req, res) => {
+  const packId = parseInt(req.params.id);
+  const [award] = await db.select().from(tenderAwardsTable)
+    .where(eq(tenderAwardsTable.tenderPackId, packId))
+    .orderBy(desc(tenderAwardsTable.id))
+    .limit(1);
+  if (!award) return res.json({ award: null });
+  res.json({ award: { ...award, archivedTaskIds: JSON.parse(award.archivedTaskIdsJson || "[]") } });
+});
+
+router.post("/tender-packs/:id/award", async (req, res) => {
+  const packId = parseInt(req.params.id);
+  const {
+    responseId, contractSumGbp, vatTreatment, programmeWeeks, archiveTaskIds, contractLineTitle,
+  } = req.body as {
+    responseId?: number; contractSumGbp?: number; vatTreatment?: "inc" | "exc" | "exempt";
+    programmeWeeks?: number; archiveTaskIds?: number[]; contractLineTitle?: string;
+  };
+
+  const [pack] = await db.select().from(tenderPacksTable).where(eq(tenderPacksTable.id, packId));
+  if (!pack) return res.status(404).json({ error: "Not found" });
+
+  if (typeof responseId !== "number") return res.status(400).json({ error: "responseId is required." });
+  const [response] = await db.select().from(tenderResponsesTable)
+    .where(and(eq(tenderResponsesTable.id, responseId), eq(tenderResponsesTable.tenderPackId, packId)));
+  if (!response) return res.status(400).json({ error: "That response does not belong to this pack." });
+
+  if (typeof contractSumGbp !== "number" || !(contractSumGbp > 0)) {
+    return res.status(400).json({ error: "contractSumGbp must be a positive number." });
+  }
+  const vat = vatTreatment ?? "exc";
+
+  // Reject an existing live award — un-award first (guards against double-award).
+  const [existingAward] = await db.select().from(tenderAwardsTable)
+    .where(eq(tenderAwardsTable.tenderPackId, packId)).limit(1);
+  if (existingAward) return res.status(409).json({ error: "This pack is already awarded. Un-award it first." });
+
+  // Only archive tasks that actually belong to this project.
+  const projectPhases = await db.select().from(phasesTable).where(eq(phasesTable.projectId, pack.projectId));
+  const projectPhaseIds = new Set(projectPhases.map(p => p.id));
+  const requestedIds = Array.isArray(archiveTaskIds) ? archiveTaskIds.filter(n => Number.isInteger(n)) : [];
+  const requestedTasks = requestedIds.length
+    ? await db.select().from(tasksTable).where(inArray(tasksTable.id, requestedIds))
+    : [];
+  const validTasks = requestedTasks.filter(t => projectPhaseIds.has(t.phaseId));
+  const validIds = validTasks.map(t => t.id);
+
+  const reasonRef = pack.reference ?? `pack #${pack.id}`;
+
+  // (a) Archive the covered estimate lines (recoverable — never hard-deleted).
+  if (validIds.length > 0) {
+    await db.update(tasksTable)
+      .set({ archived: true, archivedReason: `Superseded by awarded tender ${reasonRef}`, updatedAt: new Date() })
+      .where(inArray(tasksTable.id, validIds));
+  }
+
+  // (b) Create ONE committed build line in the same phase as the first archived task
+  //     (the "Managed Building Works" phase). Fall back sensibly if nothing was archived.
+  const phaseIdForLine = validTasks[0]?.phaseId
+    ?? projectPhases.find(p => /managed building/i.test(p.name))?.id
+    ?? projectPhases[0]?.id;
+  if (!phaseIdForLine) return res.status(400).json({ error: "No phase available for the contract line." });
+
+  const title = contractLineTitle?.trim()
+    || `Awarded fit-out contract — ${response.contractorName} (${pack.reference ?? "tender"})`;
+  const [awardedTask] = await db.insert(tasksTable).values({
+    phaseId: phaseIdForLine,
+    title,
+    committedCost: contractSumGbp,
+    costTier: "quoted",
+    selectedCost: contractSumGbp,
+    paidStatus: "committed",
+    invoiceVatStatus: vat,
+    status: "in_progress",
+    archived: false,
+  }).returning();
+
+  // (c) Record the award (captures everything needed to reverse it).
+  const [award] = await db.insert(tenderAwardsTable).values({
+    projectId: pack.projectId,
+    tenderPackId: packId,
+    tenderResponseId: responseId,
+    contractorName: response.contractorName,
+    contractSumGbp,
+    vatTreatment: vat,
+    programmeWeeks: typeof programmeWeeks === "number" ? programmeWeeks : null,
+    awardedTaskId: awardedTask.id,
+    archivedTaskIdsJson: JSON.stringify(validIds),
+  }).returning();
+
+  // (d) Mark the pack awarded.
+  await db.update(tenderPacksTable)
+    .set({ status: "awarded", updatedAt: new Date() })
+    .where(eq(tenderPacksTable.id, packId));
+
+  res.json({ awardId: award.id, awardedTaskId: awardedTask.id, archivedCount: validIds.length, contractSumGbp });
+});
+
+router.post("/tender-packs/:id/unaward", async (req, res) => {
+  const packId = parseInt(req.params.id);
+  const [award] = await db.select().from(tenderAwardsTable)
+    .where(eq(tenderAwardsTable.tenderPackId, packId))
+    .orderBy(desc(tenderAwardsTable.id))
+    .limit(1);
+  if (!award) return res.status(404).json({ error: "No award to reverse for this pack." });
+
+  const archivedIds: number[] = JSON.parse(award.archivedTaskIdsJson || "[]");
+
+  // Delete the committed contract line…
+  if (award.awardedTaskId) {
+    await db.delete(tasksTable).where(eq(tasksTable.id, award.awardedTaskId));
+  }
+  // …restore every archived estimate line (nothing lost)…
+  if (archivedIds.length > 0) {
+    await db.update(tasksTable)
+      .set({ archived: false, archivedReason: null, updatedAt: new Date() })
+      .where(inArray(tasksTable.id, archivedIds));
+  }
+  // …drop the award record…
+  await db.delete(tenderAwardsTable).where(eq(tenderAwardsTable.id, award.id));
+  // …and revert the pack to its evaluated state.
+  await db.update(tenderPacksTable)
+    .set({ status: "evaluated", updatedAt: new Date() })
+    .where(eq(tenderPacksTable.id, packId));
+
+  res.json({ restoredCount: archivedIds.length });
 });
 
 // ─── Quote comparison (per-supplier) ─────────────────────────────────────────
