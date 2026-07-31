@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { TenderComparison } from "@/components/tender-comparison";
 import {
   ArrowLeft, FileText, Loader2, Printer, Plus, Trash2, Upload,
   Scale, CheckCircle2, AlertTriangle, RefreshCw, MessageSquare, Paperclip,
@@ -95,6 +96,15 @@ export default function TendersPage() {
   const loadPacks = () =>
     api<PackSummary[]>(`/api/projects/${PROJECT_ID}/tender-packs`).then(setPacks).catch(() => setPacks([]));
   useEffect(() => { loadPacks(); }, []);
+
+  // Only one pack in play — jump straight into it so responses are one click away.
+  const [autoOpened, setAutoOpened] = useState(false);
+  useEffect(() => {
+    if (!autoOpened && openPackId == null && packs && packs.length === 1) {
+      setOpenPackId(packs[0].id);
+      setAutoOpened(true);
+    }
+  }, [packs, openPackId, autoOpened]);
 
   return (
     <div className="space-y-6">
@@ -259,11 +269,10 @@ function PackDetailView({ packId, onBack }: { packId: number; onBack: () => void
   const [pack, setPack] = useState<PackDetail | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<"detail" | "pack" | "responses">("detail");
+  const [tab, setTab] = useState<"comparison" | "detail" | "pack" | "responses">("comparison");
 
   const load = () => api<PackDetail>(`/api/tender-packs/${packId}`).then(p => {
     setPack(p);
-    if (p.documents) setTab(t => (t === "detail" ? "pack" : t));
   }).catch(e => setError(e.message));
   useEffect(() => { load(); }, [packId]);
 
@@ -286,20 +295,22 @@ function PackDetailView({ packId, onBack }: { packId: number; onBack: () => void
       <div className="flex items-center gap-2 flex-wrap no-print">
         <Button variant="outline" size="sm" onClick={onBack}><ArrowLeft className="w-3.5 h-3.5 mr-1.5" />All packs</Button>
         <p className="text-sm font-semibold flex-1 min-w-0 truncate">{pack.title} <span className="text-muted-foreground font-normal">· {pack.reference}</span></p>
-        <div className="flex gap-1 border border-border rounded-md p-0.5">
-          {(["detail", "pack", "responses"] as const).map(t => (
+        <div className="flex gap-1 border border-border rounded-md p-0.5 flex-wrap">
+          {(["comparison", "detail", "pack", "responses"] as const).map(t => (
             <button
               key={t}
-              className={`px-3 py-1 rounded text-xs font-semibold capitalize ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              className={`px-3 py-1 rounded text-xs font-semibold ${tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
               onClick={() => setTab(t)}
             >
-              {t === "detail" ? "1 · Scope detail" : t === "pack" ? "2 · The pack" : `3 · Responses (${pack.responses.length})`}
+              {t === "comparison" ? "Comparison" : t === "detail" ? "Scope detail" : t === "pack" ? "The pack" : `Responses (${pack.responses.length})`}
             </button>
           ))}
         </div>
       </div>
 
       {error && <p className="text-sm text-destructive no-print">{error}</p>}
+
+      {tab === "comparison" && <TenderComparison />}
 
       {tab === "detail" && (
         <ReferenceDocsCard pack={pack} busy={busy} run={run} packId={packId} hasQuestions={hasQuestions} />
