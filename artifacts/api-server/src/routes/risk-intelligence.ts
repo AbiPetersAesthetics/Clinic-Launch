@@ -115,9 +115,11 @@ async function buildContext(projectId: number): Promise<string> {
 
   const fixedCostItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
   const fixedItemsRI = fixedCostItems.reduce((s, i) => s + (i.amountGbp || 0), 0);
-  const clinicianCostRI = calcCliniciansMonthlyCost(model.additionalCliniciansJson);
-  const dynamicFixedCosts = fixedCostItems.length > 0 || clinicianCostRI > 0
-    ? fixedItemsRI + clinicianCostRI
+  // Fixed base = premises + overheads only (consistent with the financials engine).
+  // The 2nd Winchester clinician is not folded into the single-room fixed base — she is a
+  // later hire whose cost + revenue live in the /cashflow projection.
+  const dynamicFixedCosts = fixedCostItems.length > 0
+    ? fixedItemsRI
     : undefined;
 
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));

@@ -112,8 +112,12 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
     // Use itemised fixed costs when available (more accurate than legacy fields)
     const totalFixedItemsCost = fixedCostItems.reduce((s, c) => s + (c.amountGbp ?? 0), 0);
     const legacyFixed = financial.rentGbp + financial.ratesGbp + financial.utilitiesGbp + financial.internetGbp + financial.insuranceGbp + financial.accountantGbp + financial.softwareGbp + financial.wasteContractGbp + financial.cleanerGbp + financial.subscriptionsGbp + financial.financeRepaymentsGbp;
-    const clinicianCostDash = calcCliniciansMonthlyCost((financial as any).additionalCliniciansJson);
-    const actualFixed = (totalFixedItemsCost > 0 ? totalFixedItemsCost : legacyFixed) + clinicianCostDash;
+    // Fixed base = premises + overheads only. Additional clinicians (e.g. the 2nd
+    // Winchester clinician) are deliberately NOT added here: this is a single-room
+    // snapshot, so charging a second clinician's salary against it — with none of her
+    // revenue — would inflate break-even and understate net profit. Her full cost AND
+    // revenue are modelled from her start date in the /cashflow projection.
+    const actualFixed = (totalFixedItemsCost > 0 ? totalFixedItemsCost : legacyFixed);
 
     const acv = financial.wincAcvGbp || financial.averageClientValueGbp;
     const variableRatio = (financial.stockPercent + financial.commissionsPercent) / 100;
