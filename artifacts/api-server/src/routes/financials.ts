@@ -296,9 +296,14 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   // All fixed cost items go into Winchester's fixed cost base.
   // Dual items count once — they don't get added to Bedhampton separately.
   const fixedItemsTotal = fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0);
-  const clinicianMonthlyCost = calcCliniciansMonthlyCost((model as any).additionalCliniciansJson);
-  const dynamicFixedCosts = fixedCostItems.length > 0 || clinicianMonthlyCost > 0
-    ? fixedItemsTotal + clinicianMonthlyCost
+  // Winchester break-even / net-profit uses PREMISES + OVERHEAD fixed costs only.
+  // Additional clinicians (e.g. the 2nd Winchester clinician) are deliberately NOT folded
+  // in here: this block models a single room's revenue, so charging a second clinician's
+  // salary against it — with none of her revenue — would understate the position and inflate
+  // break-even. The 2nd clinician's full cost AND revenue are modelled from her start date
+  // in the /cashflow projection, which is the true multi-room forward view.
+  const dynamicFixedCosts = fixedCostItems.length > 0
+    ? fixedItemsTotal
     : undefined; // undefined = fall back to legacy hardcoded fields
 
   // Issue 2: Apply treatment mix if plannedPricingJson contains valid entries.
