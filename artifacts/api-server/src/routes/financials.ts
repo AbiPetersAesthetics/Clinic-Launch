@@ -600,10 +600,24 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     ? (() => { const [y, m] = vatRegDateRaw.split("-").map(Number); return isNaN(y) || isNaN(m) ? null : { year: y, month: m - 1 }; })()
     : null;
 
-  // Determine calendar anchor — always start from the earlier of project startDate or today
+  // Determine calendar anchor — start from the earliest of: today, the project start date,
+  // and the earliest date on which real money has actually been spent or committed.
+  // Without the last part, actuals recorded BEFORE today (e.g. a RICS survey paid in June)
+  // get clamped into the first projected month, so June spend wrongly shows in August.
   const today = new Date();
   const rawStart = project?.startDate ? new Date(project.startDate) : today;
-  const effectiveStart = rawStart < today ? rawStart : today;
+  let effectiveStart = rawStart < today ? rawStart : today;
+  // Look back no further than 18 months so a stray old date can't blow the window open.
+  const earliestAllowed = new Date(today.getFullYear(), today.getMonth() - 18, 1);
+  for (const t of allTasks) {
+    const hasRealMoney = ((t as any).actualCost ?? 0) > 0
+      || ((t as any).committedCost ?? 0) > 0
+      || ["paid", "part-paid", "committed"].includes(((t as any).paidStatus as string) ?? "");
+    const raw = (t as any).invoiceDate || (t as any).paymentDate || (t as any).startDate;
+    if (!hasRealMoney || !raw) continue;
+    const d = new Date(raw);
+    if (!isNaN(d.getTime()) && d < effectiveStart && d >= earliestAllowed) effectiveStart = d;
+  }
   const calendarStart = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
 
   // Opening month index (0-based offset from calendarStart)
