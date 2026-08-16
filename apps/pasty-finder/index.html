@@ -4,246 +4,405 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Proper Pasty — Cornwall pasty finder</title>
-<meta name="description" content="Ranks Cornish pasty shops by reviews, opening hours and distance from where you're standing.">
+<meta name="description" content="Ranks Cornish pasty shops by reviews, opening hours and distance — and tells you whether you'll make it before they shut.">
 <meta name="theme-color" content="#1b2a35">
 <style>
-/* ── palette ───────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   TOKENS — full light palette on bare :root, restated for both dark gestures
+   ══════════════════════════════════════════════════════════════════════════ */
 :root{
-  --bg:#f6f1e7; --bg-2:#efe7d8; --surface:#fffdf8; --surface-2:#f4ece0;
-  --ink:#22303a; --ink-2:#54636e; --ink-3:#8a97a1;
-  --line:#e2d7c4; --line-2:#d2c4ad;
-  --gold:#c8862a; --gold-ink:#8a5a12;
-  --sea:#1f6f7a; --sea-ink:#12525b;
-  --open:#2f7d4f; --open-bg:#e4f2e8;
-  --shut:#a83a3a; --shut-bg:#f8e6e4;
-  --soon:#b3701a; --soon-bg:#fbeedb;
-  --shadow:0 1px 2px rgba(34,48,58,.06), 0 6px 18px rgba(34,48,58,.07);
-  --r:14px;
+  --bg:#f7f2e8; --bg-2:#efe6d5; --surface:#fffdf9; --surface-2:#f5ecdd;
+  --ink:#202d36; --ink-2:#55636d; --ink-3:#8b979f;
+  --line:#e6dbc7; --line-2:#d6c7ac;
+
+  --crust:#d59a3c; --crust-deep:#a8701f; --crust-ink:#7c4f10;
+  --sea:#1d6b76; --sea-2:#2a8b96; --sea-ink:#124f58;
+  --slate:#2c3d49;
+
+  --open:#2c7a4c; --open-bg:#e2f1e7;
+  --shut:#a63a37; --shut-bg:#f9e5e2;
+  --soon:#ab6a15; --soon-bg:#fbedd8;
+
+  --sky-1:#ffe6b8; --sky-2:#f6c98a; --land:#2f4a54; --land-2:#243b44;
+
+  --shadow-s:0 1px 2px rgba(32,45,54,.07);
+  --shadow:0 2px 4px rgba(32,45,54,.05), 0 10px 26px rgba(32,45,54,.09);
+  --shadow-l:0 4px 10px rgba(32,45,54,.07), 0 22px 50px rgba(32,45,54,.14);
+  --r:16px; --r-s:11px;
+
+  --display:ui-serif,"Iowan Old Style",Georgia,"Palatino Linotype",Palatino,serif;
+  --ui:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --bg:#151d24; --bg-2:#111820; --surface:#1b262f; --surface-2:#22303a;
-    --ink:#eef3f6; --ink-2:#a8b7c2; --ink-3:#75858f;
-    --line:#2c3a45; --line-2:#3a4b58;
-    --gold:#e0a445; --gold-ink:#f0c37c;
-    --sea:#4fb3bf; --sea-ink:#7fd0d9;
-    --open:#57c07e; --open-bg:#183227;
-    --shut:#e2726d; --shut-bg:#331d1d;
-    --soon:#dda13f; --soon-bg:#332715;
-    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+    --bg:#141c23; --bg-2:#0f161c; --surface:#1a242c; --surface-2:#212e37;
+    --ink:#eef4f7; --ink-2:#a6b5bf; --ink-3:#71828c;
+    --line:#2a3841; --line-2:#3a4c58;
+
+    --crust:#e5a94a; --crust-deep:#c0801f; --crust-ink:#f2c884;
+    --sea:#3fa3b0; --sea-2:#57c0cc; --sea-ink:#7fd4dd;
+    --slate:#0f161c;
+
+    --open:#54bd7b; --open-bg:#16301f;
+    --shut:#e37671; --shut-bg:#331b1b;
+    --soon:#dfa544; --soon-bg:#332612;
+
+    --sky-1:#3a4c5c; --sky-2:#22323e; --land:#0d141a; --land-2:#080e12;
+
+    --shadow-s:0 1px 2px rgba(0,0,0,.35);
+    --shadow:0 2px 4px rgba(0,0,0,.3), 0 10px 26px rgba(0,0,0,.34);
+    --shadow-l:0 4px 10px rgba(0,0,0,.35), 0 22px 50px rgba(0,0,0,.45);
   }
 }
 :root[data-theme="dark"]{
-  --bg:#151d24; --bg-2:#111820; --surface:#1b262f; --surface-2:#22303a;
-  --ink:#eef3f6; --ink-2:#a8b7c2; --ink-3:#75858f;
-  --line:#2c3a45; --line-2:#3a4b58;
-  --gold:#e0a445; --gold-ink:#f0c37c;
-  --sea:#4fb3bf; --sea-ink:#7fd0d9;
-  --open:#57c07e; --open-bg:#183227;
-  --shut:#e2726d; --shut-bg:#331d1d;
-  --soon:#dda13f; --soon-bg:#332715;
-  --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+  --bg:#141c23; --bg-2:#0f161c; --surface:#1a242c; --surface-2:#212e37;
+  --ink:#eef4f7; --ink-2:#a6b5bf; --ink-3:#71828c;
+  --line:#2a3841; --line-2:#3a4c58;
+
+  --crust:#e5a94a; --crust-deep:#c0801f; --crust-ink:#f2c884;
+  --sea:#3fa3b0; --sea-2:#57c0cc; --sea-ink:#7fd4dd;
+  --slate:#0f161c;
+
+  --open:#54bd7b; --open-bg:#16301f;
+  --shut:#e37671; --shut-bg:#331b1b;
+  --soon:#dfa544; --soon-bg:#332612;
+
+  --sky-1:#3a4c5c; --sky-2:#22323e; --land:#0d141a; --land-2:#080e12;
+
+  --shadow-s:0 1px 2px rgba(0,0,0,.35);
+  --shadow:0 2px 4px rgba(0,0,0,.3), 0 10px 26px rgba(0,0,0,.34);
+  --shadow-l:0 4px 10px rgba(0,0,0,.35), 0 22px 50px rgba(0,0,0,.45);
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   BASE
+   ══════════════════════════════════════════════════════════════════════════ */
 *{box-sizing:border-box}
-html,body{margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
 body{
-  background:var(--bg); color:var(--ink);
-  font:400 16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  -webkit-text-size-adjust:100%;
-  padding-bottom:env(safe-area-inset-bottom);
+  margin:0; background:var(--bg); color:var(--ink);
+  font:400 16px/1.55 var(--ui);
+  padding-bottom:calc(24px + env(safe-area-inset-bottom));
+  overflow-x:hidden;
 }
-h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.015em}
-button{font:inherit;color:inherit}
-a{color:var(--sea-ink)}
-.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.02em;line-height:1.15}
+button{font:inherit;color:inherit;border:0;background:none}
+a{color:var(--sea-ink);text-underline-offset:2px}
+img{max-width:100%;display:block}
+.wrap{max-width:780px;margin:0 auto;padding:0 15px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
-/* ── masthead ──────────────────────────────────────────────────────────── */
-header.top{
-  background:linear-gradient(180deg,var(--surface),var(--bg-2));
-  border-bottom:1px solid var(--line);
+/* ══════════════════════════════════════════════════════════════════════════
+   HERO — generated scene, optionally replaced by a Commons photograph
+   ══════════════════════════════════════════════════════════════════════════ */
+.hero{position:relative;isolation:isolate;background:var(--slate);overflow:hidden}
+.hero .art,.hero .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.hero .photo{opacity:0;transition:opacity .6s ease}
+.hero .photo.in{opacity:1}
+.hero::after{
+  content:"";position:absolute;inset:0;z-index:1;
+  background:linear-gradient(180deg,rgba(12,20,26,.30) 0%,rgba(12,20,26,.12) 34%,rgba(12,20,26,.72) 100%);
 }
-.mast{display:flex;align-items:center;gap:12px;padding:16px 0 12px}
-.crest{
-  width:44px;height:44px;flex:none;border-radius:12px;
-  background:radial-gradient(120% 120% at 30% 20%,var(--gold),#8a5a12);
-  display:grid;place-items:center;font-size:23px;box-shadow:var(--shadow);
+/* padding-block only: the shorthand would wipe out .wrap's horizontal padding */
+.hero .inner{position:relative;z-index:2;padding-top:30px;padding-bottom:52px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .mark{width:46px;height:46px;flex:none;filter:drop-shadow(0 3px 8px rgba(0,0,0,.4))}
+.brand h1{
+  font-family:var(--display);font-size:31px;font-weight:600;color:#fff;
+  letter-spacing:-.025em;text-shadow:0 2px 14px rgba(0,0,0,.5);
 }
-.mast h1{font-size:20px}
-.mast p{margin:2px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.35}
+.brand .sub{
+  margin:1px 0 0;font-size:12.5px;color:rgba(255,255,255,.9);
+  letter-spacing:.10em;text-transform:uppercase;font-weight:600;
+}
+.tagline{
+  margin:16px 0 0;max-width:30ch;color:#fff;font-family:var(--display);
+  font-size:19px;line-height:1.35;text-shadow:0 2px 14px rgba(0,0,0,.55);
+}
+.credit{
+  position:absolute;right:12px;bottom:24px;z-index:2;
+  font-size:9.5px;color:rgba(255,255,255,.72);max-width:56%;text-align:right;line-height:1.35;
+}
+.credit a{color:rgba(255,255,255,.85)}
 .themebtn{
-  margin-left:auto;flex:none;background:var(--surface);border:1px solid var(--line);
-  border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px;
+  position:absolute;top:22px;right:15px;z-index:3;
+  width:38px;height:38px;border-radius:11px;cursor:pointer;font-size:15px;
+  background:rgba(255,255,255,.16);color:#fff;backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.26);
+}
+/* the pasty crimp: scalloped bite taken out of the hero's bottom edge */
+.crimp{
+  position:absolute;left:0;right:0;bottom:-1px;height:16px;z-index:2;
+  background:radial-gradient(circle 11px at 11px 16px, transparent 10.4px, var(--bg) 11px) repeat-x;
+  background-size:22px 16px;
 }
 
-/* ── location bar ──────────────────────────────────────────────────────── */
-.locbar{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 14px;align-items:center}
+/* ══════════════════════════════════════════════════════════════════════════
+   LOCATION CARD — floats over the hero's lower edge
+   ══════════════════════════════════════════════════════════════════════════ */
+.locard{
+  position:relative;z-index:4;margin:-16px auto 0;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r);padding:13px;box-shadow:var(--shadow-l);
+}
+.locard .lbl{
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.10em;
+  color:var(--ink-3);font-weight:700;margin-bottom:9px;
+}
+.locrow{display:flex;gap:8px;flex-wrap:wrap}
 .btn{
-  background:var(--surface);border:1px solid var(--line-2);border-radius:11px;
-  padding:9px 13px;cursor:pointer;font-size:14px;font-weight:550;
+  background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-s);
+  padding:10px 14px;cursor:pointer;font-size:14px;font-weight:600;
   display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+  transition:transform .12s ease, border-color .12s ease, background .12s ease;
 }
-.btn:hover{border-color:var(--gold)}
-.btn.primary{background:var(--gold);border-color:var(--gold);color:#fff}
-:root[data-theme="dark"] .btn.primary,
-:root:not([data-theme="light"]) .btn.primary{color:#1b1206}
-@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
-.btn.primary:hover{filter:brightness(1.06)}
-.btn:disabled{opacity:.5;cursor:default}
+.btn:hover{border-color:var(--crust)}
+.btn:active{transform:scale(.97)}
+.btn.primary{
+  background:linear-gradient(180deg,var(--crust),var(--crust-deep));
+  border-color:var(--crust-deep);color:#fff;box-shadow:var(--shadow-s);
+}
+.btn:disabled{opacity:.55;cursor:default}
 select,input[type=text]{
-  background:var(--surface);border:1px solid var(--line-2);border-radius:11px;
-  padding:9px 11px;font:inherit;font-size:14px;color:var(--ink);min-width:0;
+  background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-s);
+  padding:10px 11px;font:inherit;font-size:14px;color:var(--ink);min-width:0;
 }
-input[type=text]{width:118px}
+select{flex:1;min-width:140px}
+input[type=text]{width:112px}
 .locnow{
-  font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:6px;
-  flex-basis:100%;
+  margin-top:10px;font-size:13px;color:var(--ink-2);
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;
 }
-.locnow b{color:var(--ink);font-weight:600}
+.locnow b{color:var(--ink);font-weight:650}
+.pin{color:var(--crust-ink)}
 
-/* ── control strip ─────────────────────────────────────────────────────── */
-.strip{
-  position:sticky;top:0;z-index:20;background:var(--bg-2);
-  border-bottom:1px solid var(--line);
-  padding:9px 0;backdrop-filter:saturate(1.4) blur(8px);
-}
-/* wraps rather than scrolls: an off-screen control on a phone is an invisible one */
-.strip .row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+/* ══════════════════════════════════════════════════════════════════════════
+   FILTER STRIP
+   ══════════════════════════════════════════════════════════════════════════ */
+.strip{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(1.5) blur(10px);border-bottom:1px solid var(--line);margin-top:14px}
+.strip .row{display:flex;flex-wrap:wrap;gap:7px;align-items:center;padding:9px 0}
 .chipbtn{
   background:var(--surface);border:1px solid var(--line-2);border-radius:999px;
-  padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;font-weight:550;
+  padding:7px 13px;font-size:13px;cursor:pointer;white-space:nowrap;font-weight:600;
+  transition:transform .12s ease, background .12s ease, border-color .12s ease;
 }
+.chipbtn:active{transform:scale(.95)}
 .chipbtn[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:#fff}
-.count{margin-left:auto;font-size:12.5px;color:var(--ink-2);white-space:nowrap;padding-left:8px}
+.count{margin-left:auto;font-size:12.5px;color:var(--ink-2);white-space:nowrap;font-variant-numeric:tabular-nums}
 
-/* ── panels ────────────────────────────────────────────────────────────── */
+/* ══════════════════════════════════════════════════════════════════════════
+   PANELS
+   ══════════════════════════════════════════════════════════════════════════ */
 .panel{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
-  padding:14px;margin:12px 0;box-shadow:var(--shadow);
+  padding:15px;margin:13px 0;box-shadow:var(--shadow);
 }
-.panel h3{font-size:14px;margin-bottom:4px}
-.panel p{margin:6px 0 0;font-size:13px;color:var(--ink-2)}
 .panel[hidden]{display:none}
-.weights{display:grid;gap:11px;margin-top:12px}
-.wrow{display:grid;grid-template-columns:96px 1fr 42px;gap:10px;align-items:center;font-size:13.5px}
-.wrow input[type=range]{width:100%;accent-color:var(--gold)}
-.wrow span:last-child{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
-.srcrow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
-.srcrow:first-of-type{border-top:0}
-.srcrow .body{flex:1;min-width:0}
-.srcrow .body b{font-size:13.5px;display:block}
-.srcrow .body small{color:var(--ink-2);font-size:12.5px;display:block;margin-top:2px}
-.keyrow{display:flex;gap:7px;margin-top:8px}
+.panel h3{font-family:var(--display);font-size:17px;font-weight:600}
+.panel > p{margin:7px 0 0;font-size:13.5px;color:var(--ink-2)}
+.weights{display:grid;gap:13px;margin-top:15px}
+.wrow{display:grid;grid-template-columns:88px 1fr 44px;gap:11px;align-items:center;font-size:13.5px;font-weight:550}
+.wrow input[type=range]{width:100%;accent-color:var(--crust)}
+.wrow .v{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums;font-weight:600}
+.srcrow{padding:13px 0;border-top:1px solid var(--line)}
+.srcrow:first-of-type{border-top:0;padding-top:10px}
+.srcrow b{font-size:13.5px;display:flex;align-items:center;gap:7px}
+.srcrow small{color:var(--ink-2);font-size:12.5px;display:block;margin-top:4px;line-height:1.5}
+.dot{width:7px;height:7px;border-radius:99px;background:var(--line-2);flex:none}
+.dot.on{background:var(--open)}
+.keyrow{display:flex;gap:7px;margin-top:9px}
 .keyrow input{flex:1;width:auto}
-details.help{margin-top:8px}
-details.help summary{cursor:pointer;font-size:12.5px;color:var(--sea-ink);font-weight:550}
-details.help ol{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--ink-2);line-height:1.6}
+details.help{margin-top:9px}
+details.help summary{cursor:pointer;font-size:12.5px;color:var(--sea-ink);font-weight:650}
+details.help ol{margin:9px 0 0;padding-left:19px;font-size:12.5px;color:var(--ink-2);line-height:1.65}
 
-/* ── shop cards ────────────────────────────────────────────────────────── */
-ol.list{list-style:none;margin:0;padding:0 0 28px;display:grid;gap:10px}
+/* ══════════════════════════════════════════════════════════════════════════
+   CARDS
+   ══════════════════════════════════════════════════════════════════════════ */
+ol.list{list-style:none;margin:0;padding:14px 0 30px;display:grid;gap:13px}
 .card{
   background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
-  padding:13px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+  box-shadow:var(--shadow);overflow:hidden;position:relative;
+  animation:rise .42s cubic-bezier(.22,1,.36,1) backwards;
 }
-.card::before{
-  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line-2);
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+/* The top pick gets the full treatment: wide art, banner, larger type. */
+.card.champ{border-color:var(--crust);box-shadow:var(--shadow-l)}
+.banner{
+  background:linear-gradient(90deg,var(--crust),var(--crust-deep));color:#fff;
+  font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
+  padding:7px 14px;display:flex;align-items:center;gap:7px;
 }
-.card.s-open::before{background:var(--open)}
-.card.s-soon::before{background:var(--soon)}
-.card.s-shut::before{background:var(--shut)}
-.chead{display:flex;gap:11px;align-items:flex-start}
-.rank{
-  flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
-  background:var(--surface-2);border:1px solid var(--line);
-  font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-2);
+
+.media{position:relative;background:var(--slate);overflow:hidden}
+.card .media{height:0;padding-bottom:0}           /* standard cards: art is inline-left */
+.card.champ .media{height:172px;padding-bottom:0}
+.media .art,.media .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.media .photo{opacity:0;transition:opacity .5s ease}
+.media .photo.in{opacity:1}
+.media .shade{position:absolute;inset:0;background:linear-gradient(180deg,transparent 62%,rgba(10,16,20,.72))}
+.media .cap{position:absolute;left:12px;bottom:9px;right:12px;color:#fff;font-size:11px;
+  text-shadow:0 1px 6px rgba(0,0,0,.7);display:flex;justify-content:space-between;gap:8px}
+
+.body{padding:13px 14px}
+.chead{display:flex;gap:12px;align-items:flex-start}
+.thumb{
+  width:60px;height:60px;flex:none;border-radius:12px;overflow:hidden;position:relative;
+  background:var(--slate);box-shadow:var(--shadow-s);
 }
-.card:nth-child(1) .rank,.card:nth-child(2) .rank,.card:nth-child(3) .rank{
-  background:var(--gold);border-color:var(--gold);color:#fff
+.card.champ .thumb{display:none}
+.thumb .art,.thumb .photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.thumb .photo{opacity:0;transition:opacity .5s ease}
+.thumb .photo.in{opacity:1}
+.thumb .pos{
+  position:absolute;left:0;top:0;background:var(--slate);color:#fff;
+  font-size:10.5px;font-weight:800;padding:2px 6px;border-bottom-right-radius:8px;
+  font-variant-numeric:tabular-nums;
 }
 .ctitle{flex:1;min-width:0}
-.ctitle h2{font-size:16px;line-height:1.25}
-.ctitle .where{font-size:12.5px;color:var(--ink-2);margin-top:2px}
-.score{
-  flex:none;text-align:right;font-variant-numeric:tabular-nums;
-}
-.score b{font-size:19px;color:var(--gold-ink);display:block;line-height:1}
-.score small{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em}
+.ctitle h2{font-family:var(--display);font-size:18px;font-weight:600}
+.card.champ .ctitle h2{font-size:22px}
+.where{font-size:12.5px;color:var(--ink-2);margin-top:3px;display:flex;flex-wrap:wrap;gap:4px 7px;align-items:center}
+.src{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);font-weight:700}
 
-.facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+/* score dial */
+.dial{flex:none;width:52px;height:52px;position:relative}
+.dial svg{transform:rotate(-90deg)}
+.dial .num{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-size:16px;font-weight:750;color:var(--crust-ink);font-variant-numeric:tabular-nums;
+}
+.dial .cap{
+  position:absolute;left:0;right:0;bottom:-13px;text-align:center;
+  font-size:8.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);font-weight:700;
+}
+
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
 .fact{
-  font-size:12.5px;padding:4px 9px;border-radius:8px;background:var(--surface-2);
-  border:1px solid var(--line);display:inline-flex;align-items:center;gap:5px;font-weight:550;
+  font-size:12.5px;padding:5px 10px;border-radius:9px;background:var(--surface-2);
+  border:1px solid var(--line);display:inline-flex;align-items:center;gap:5px;font-weight:600;
 }
 .fact.open{background:var(--open-bg);border-color:transparent;color:var(--open)}
 .fact.soon{background:var(--soon-bg);border-color:transparent;color:var(--soon)}
 .fact.shut{background:var(--shut-bg);border-color:transparent;color:var(--shut)}
-.fact.est{border-style:dashed;color:var(--ink-2)}
-.fact.dist{color:var(--ink)}
-.fact .star{color:var(--gold)}
+.fact.est{border-style:dashed;color:var(--ink-2);background:transparent}
+.fact .star{color:var(--crust)}
 
-.note{margin-top:9px;font-size:12.5px;color:var(--ink-2);line-height:1.45}
-.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+/* arrival verdict — the "will I make it?" line */
+.verdict{
+  margin-top:11px;padding:10px 12px;border-radius:12px;font-size:13px;line-height:1.45;
+  display:flex;gap:9px;align-items:flex-start;font-weight:550;
+}
+.verdict .ic{font-size:15px;line-height:1.2;flex:none}
+.verdict.yes{background:var(--open-bg);color:var(--open)}
+.verdict.tight{background:var(--soon-bg);color:var(--soon)}
+.verdict.no{background:var(--shut-bg);color:var(--shut)}
+.verdict.neutral{background:var(--surface-2);color:var(--ink-2)}
+.verdict b{font-weight:750}
+
+.note{margin:10px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.5;font-style:italic}
+.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
 .act{
-  background:var(--surface-2);border:1px solid var(--line);border-radius:9px;
-  padding:7px 11px;font-size:12.5px;font-weight:600;text-decoration:none;color:var(--ink);
-  display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+  padding:8px 12px;font-size:12.5px;font-weight:650;text-decoration:none;color:var(--ink);
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  transition:transform .12s ease,border-color .12s ease;
 }
-.act:hover{border-color:var(--gold)}
-.act.go{background:var(--sea);border-color:var(--sea);color:#fff}
+.act:hover{border-color:var(--crust)}
+.act:active{transform:scale(.96)}
+.act.go{background:linear-gradient(180deg,var(--sea-2),var(--sea));border-color:var(--sea);color:#fff}
 
-.bars{display:grid;gap:4px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
-.bar{display:grid;grid-template-columns:62px 1fr 34px;gap:8px;align-items:center;font-size:11px;color:var(--ink-2)}
-/* both must be blockified: as inline spans, width/height would be ignored */
-.bar .track{display:block;height:5px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden}
-.bar .fill{display:block;height:100%;border-radius:99px;background:var(--gold);min-width:2px}
-.bar .fill.na{background:var(--line-2);opacity:.65}
-.bar span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.why{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);display:grid;gap:5px}
+.bar{display:grid;grid-template-columns:68px 1fr 30px;gap:9px;align-items:center;font-size:11px;color:var(--ink-2);font-weight:600;white-space:nowrap}
+.bar .track{display:block;height:6px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.bar .fill{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--crust),var(--crust-deep));min-width:2px;
+  animation:grow .6s cubic-bezier(.22,1,.36,1) backwards}
+.bar .fill.na{background:var(--line-2);opacity:.7}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+@keyframes grow{from{transform:scaleX(0);transform-origin:left}to{transform:none}}
 
-.empty{text-align:center;padding:40px 16px;color:var(--ink-2);font-size:14px}
+/* skeletons + empty */
+.skel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;gap:12px}
+.skel .b{background:var(--surface-2);border-radius:9px;animation:pulse 1.3s ease-in-out infinite}
+.skel .b.t{width:60px;height:60px;flex:none;border-radius:12px}
+.skel .b.l{height:13px;margin-bottom:8px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.empty{
+  text-align:center;padding:44px 20px;color:var(--ink-2);font-size:14px;
+  background:var(--surface);border:1px dashed var(--line-2);border-radius:var(--r);
+}
+.empty .big{font-size:34px;margin-bottom:10px}
+
 .toast{
-  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));
-  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13.5px;
-  z-index:60;max-width:90vw;text-align:center;box-shadow:var(--shadow);
+  position:fixed;left:50%;transform:translateX(-50%) translateY(0);
+  bottom:calc(18px + env(safe-area-inset-bottom));
+  background:var(--slate);color:#fff;padding:11px 17px;border-radius:12px;font-size:13.5px;
+  z-index:70;max-width:90vw;text-align:center;box-shadow:var(--shadow-l);font-weight:550;
+  animation:pop .3s cubic-bezier(.22,1,.36,1);
 }
-footer.legal{
-  border-top:1px solid var(--line);margin-top:8px;padding:16px 0 30px;
-  font-size:12px;color:var(--ink-3);line-height:1.6;
-}
-.spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+:root[data-theme="dark"] .toast,
+:root:not([data-theme="light"]) .toast{border:1px solid var(--line-2)}
+@keyframes pop{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%)}}
+
+footer.legal{border-top:1px solid var(--line);padding:18px 0 34px;font-size:11.5px;color:var(--ink-3);line-height:1.65}
+footer.legal b{color:var(--ink-2)}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px}
 @keyframes sp{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion: reduce){.spin{animation:none}}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}
+}
+@media (min-width:620px){
+  .hero .inner{padding:38px 0 58px}
+  .brand h1{font-size:39px}
+  .brand .mark{width:56px;height:56px}
+  .tagline{font-size:22px;max-width:38ch}
+  .card.champ .media{height:220px}
+}
 </style>
 </head>
 <body>
 
-<header class="top">
-  <div class="wrap">
-    <div class="mast">
-      <div class="crest" aria-hidden="true">🥟</div>
+<header class="hero" id="hero">
+  <div class="art" id="heroArt"></div>
+  <img class="photo" id="heroPhoto" alt="" aria-hidden="true">
+  <button class="themebtn" id="theme" title="Light / dark / system">◐</button>
+  <div class="inner wrap">
+    <div class="brand">
+      <div class="mark" id="mark"></div>
       <div>
         <h1>Proper Pasty</h1>
-        <p>Every pasty shop in Cornwall, ranked by reviews, opening hours and how far you'd have to walk.</p>
+        <div class="sub">Cornwall · est. crimped</div>
       </div>
-      <button class="themebtn" id="theme" title="Switch light / dark">◐</button>
     </div>
+    <p class="tagline">Find the best pasty within walking distance — and know if you'll get there before they shut.</p>
+  </div>
+  <div class="credit" id="heroCredit"></div>
+  <div class="crimp"></div>
+</header>
 
-    <div class="locbar">
+<div class="wrap">
+  <section class="locard">
+    <div class="lbl">Where are you?</div>
+    <div class="locrow">
       <button class="btn primary" id="useGps">📍 Use my location</button>
       <select id="place" aria-label="Or pick where you're staying"></select>
       <input type="text" id="postcode" placeholder="Postcode" autocomplete="postal-code" spellcheck="false" aria-label="Or enter a postcode">
       <button class="btn" id="goPostcode">Go</button>
-      <div class="locnow" id="locNow"></div>
     </div>
-  </div>
-</header>
+    <div class="locnow" id="locNow"></div>
+  </section>
+</div>
 
 <div class="strip">
   <div class="wrap row">
     <button class="chipbtn" id="fOpen" aria-pressed="false">Open now</button>
-    <button class="chipbtn" id="fWalk" aria-pressed="false">Walkable (2 km)</button>
+    <button class="chipbtn" id="fMake" aria-pressed="false">I'll make it</button>
+    <button class="chipbtn" id="fWalk" aria-pressed="false">Walkable</button>
     <button class="chipbtn" id="fRated" aria-pressed="false">Has reviews</button>
-    <button class="chipbtn" id="tScan">⟳ Scan</button>
-    <button class="chipbtn" id="tTune">Tune ranking</button>
+    <button class="chipbtn" id="tScan">⟳ Data</button>
+    <button class="chipbtn" id="tTune">Tune</button>
     <span class="count" id="count"></span>
   </div>
 </div>
@@ -251,64 +410,65 @@ footer.legal{
 <main class="wrap">
 
   <section class="panel" id="tunePanel" hidden>
-    <h3>What matters to you</h3>
-    <p>The Pasty Score is a weighted blend of three signals. Drag to suit — chasing a five-star pasty is a different holiday to wanting one in the next ten minutes.</p>
+    <h3>What makes a proper pasty run</h3>
+    <p>The Pasty Score blends three signals. Drag to suit — chasing a five-star pasty is a different holiday from wanting one in the next ten minutes.</p>
     <div class="weights">
-      <label class="wrow"><span>Reviews</span><input type="range" id="wRating" min="0" max="100" step="5"><span id="wRatingV"></span></label>
-      <label class="wrow"><span>Distance</span><input type="range" id="wDist" min="0" max="100" step="5"><span id="wDistV"></span></label>
-      <label class="wrow"><span>Open now</span><input type="range" id="wOpen" min="0" max="100" step="5"><span id="wOpenV"></span></label>
+      <label class="wrow"><span>Reviews</span><input type="range" id="wRating" min="0" max="100" step="5"><span class="v" id="wRatingV"></span></label>
+      <label class="wrow"><span>Distance</span><input type="range" id="wDist" min="0" max="100" step="5"><span class="v" id="wDistV"></span></label>
+      <label class="wrow"><span>Open now</span><input type="range" id="wOpen" min="0" max="100" step="5"><span class="v" id="wOpenV"></span></label>
     </div>
   </section>
 
   <section class="panel" id="scanPanel" hidden>
     <h3>Where the data comes from</h3>
-    <p>This app ships with a built-in list of well-known Cornish makers so it works with no signal. Run a scan to pull live, surveyed data over the top.</p>
+    <p>Built-in list works with no signal. Scans pull live, surveyed data over the top.</p>
 
     <div class="srcrow">
-      <div class="body">
-        <b>Built-in Cornwall list</b>
-        <small id="seedCount"></small>
-        <small>Locations are town-level approximations. Opening hours are <em>indicative patterns</em>, not published hours — always shown with a dashed outline. No star ratings are invented.</small>
-      </div>
+      <b><span class="dot on"></span> Built-in Cornwall list</b>
+      <small id="seedCount"></small>
+      <small>Locations are town-level approximations and opening hours are <em>indicative patterns</em>, not published times — both marked in the UI. No star ratings are invented.</small>
     </div>
 
     <div class="srcrow">
-      <div class="body">
-        <b>OpenStreetMap — free, no key</b>
-        <small>Sweeps every bakery and pasty shop mapped in Cornwall. Brings real coordinates and real published opening hours. Does not carry reviews.</small>
-        <div class="keyrow"><button class="btn" id="scanOsm">⟳ Scan Cornwall</button></div>
-        <small id="osmStatus"></small>
-      </div>
+      <b><span class="dot" id="dotOsm"></span> OpenStreetMap — free, no key</b>
+      <small>Sweeps every bakery and pasty shop mapped in Cornwall. Real coordinates, real published opening hours, phone and website. No reviews.</small>
+      <div class="keyrow"><button class="btn" id="scanOsm">⟳ Scan Cornwall</button></div>
+      <small id="osmStatus"></small>
     </div>
 
     <div class="srcrow">
-      <div class="body">
-        <b>Google Places — needs your own key</b>
-        <small>The only source here that carries star ratings and review counts. Your key stays in this browser and is sent only to Google.</small>
-        <div class="keyrow">
-          <input type="text" id="gKey" placeholder="Paste Google Places API key" autocomplete="off" spellcheck="false">
-          <button class="btn" id="scanG">Fetch</button>
-        </div>
-        <small id="gStatus"></small>
-        <details class="help">
-          <summary>How to get a key (about three minutes, free tier)</summary>
-          <ol>
-            <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and make a project.</li>
-            <li>Enable <b>Places API (New)</b> under APIs &amp; Services.</li>
-            <li>Credentials → Create credentials → API key.</li>
-            <li>Restrict it to the Places API. Google's free monthly allowance covers holiday use comfortably.</li>
-            <li>Paste it above. It's saved in this browser only.</li>
-          </ol>
-        </details>
+      <b><span class="dot" id="dotG"></span> Google Places — your own key</b>
+      <small>The only source with star ratings and review counts — and real photographs of each shop. Your key stays in this browser and is sent only to Google.</small>
+      <div class="keyrow">
+        <input type="text" id="gKey" placeholder="Paste Google Places API key" autocomplete="off" spellcheck="false">
+        <button class="btn" id="scanG">Fetch</button>
       </div>
+      <small id="gStatus"></small>
+      <details class="help">
+        <summary>How to get a key (about three minutes, free tier)</summary>
+        <ol>
+          <li>Open <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and create a project.</li>
+          <li>Enable <b>Places API (New)</b> under APIs &amp; Services.</li>
+          <li>Credentials → Create credentials → API key.</li>
+          <li>Restrict it to the Places API. The free monthly allowance covers holiday use comfortably.</li>
+          <li>Paste it above — stored in this browser only.</li>
+        </ol>
+      </details>
+    </div>
+
+    <div class="srcrow">
+      <b><span class="dot" id="dotC"></span> Wikimedia Commons — photography</b>
+      <small>Freely-licensed pasty photographs for the header, credited to the photographer. Purely decorative — if it can't load, the drawn artwork stays.</small>
+      <div class="keyrow"><button class="btn" id="loadPix">🖼 Load photography</button></div>
+      <small id="cStatus"></small>
     </div>
   </section>
 
   <ol class="list" id="list"></ol>
 
   <footer class="legal">
-    <p><b>Read this before you drive anywhere.</b> Distances are straight-line, not road miles — a shop 3 km away across the Fal is a long way round. Opening hours shown with a dashed outline are indicative patterns for a Cornish bakery, not the shop's published times; ring ahead if it matters. Seasonal hours change constantly and pasty shops sell out.</p>
-    <p>Built-in list © the app. Live map data © OpenStreetMap contributors (ODbL) via the Overpass API. Ratings, where shown, © Google. Nothing here is affiliated with any bakery.</p>
+    <p><b>Before you drive anywhere.</b> Distances are straight-line, not road miles — a shop 3 km away across the Fal is a long way round. Walking and driving times apply a rough detour allowance to that straight line, so treat them as a sense-check, not a route. Hours shown with a dashed outline are indicative patterns for a Cornish bakery, not published times. Seasonal hours shift and pasty shops sell out — ring ahead if it matters.</p>
+    <p>Live map data © OpenStreetMap contributors (ODbL) via Overpass. Shop ratings and photographs, where shown, © Google and their respective photographers. Header photography from Wikimedia Commons under its stated licence, credited on the image. Drawn artwork generated in your browser. Not affiliated with any bakery.</p>
   </footer>
 </main>
 
@@ -319,16 +479,16 @@ footer.legal{
 /* ══════════════════════════════════════════════════════════════════════════
    1. SEED DATA
    Real, long-established Cornish makers so the app is useful with no signal.
-   lat/lon are town-level approximations. `hours` are INDICATIVE patterns, never
+   lat/lon are town-level approximations. `h` are INDICATIVE patterns, never
    published times — the UI marks them estimated. Ratings are absent by design:
    none are invented, they only ever arrive from a live Google lookup.
    ══════════════════════════════════════════════════════════════════════════ */
 
 var PAT = {
-  town:    'Mo-Sa 08:00-16:30; Su 09:00-14:00',   // high-street bakery
-  harbour: 'Mo-Su 09:00-17:00',                    // tourist-trail / harbour shop
-  village: 'Mo-Sa 08:30-16:00; Su off',            // village shop
-  factory: 'Mo-Fr 09:00-16:00; Sa 09:00-13:00; Su off' // production site / factory shop
+  town:    'Mo-Sa 08:00-16:30; Su 09:00-14:00',
+  harbour: 'Mo-Su 09:00-17:00',
+  village: 'Mo-Sa 08:30-16:00; Su off',
+  factory: 'Mo-Fr 09:00-16:00; Sa 09:00-13:00; Su off'
 };
 
 var SEED = [
@@ -390,10 +550,10 @@ var PLACES = [
 
 /* ══════════════════════════════════════════════════════════════════════════
    2. OPENING HOURS — a pragmatic subset of the OSM `opening_hours` grammar
-   Handles the forms that actually appear on bakeries: "Mo-Sa 08:00-16:30; Su off",
+   Handles what actually appears on bakeries: "Mo-Sa 08:00-16:30; Su off",
    "Mo-Su 09:00-17:00", "Tu-Sa 09:00-13:00,14:00-17:00", "24/7".
-   Returns 7 buckets of minute-spans indexed by Date#getDay(), or null if we
-   can't read it — null means "unknown", which the UI reports honestly.
+   Returns 7 buckets of minute-spans indexed by Date#getDay(), or null when it
+   can't read the spec — null means "unknown", reported honestly rather than guessed.
    ══════════════════════════════════════════════════════════════════════════ */
 
 var DAY_IDX = {su:0,mo:1,tu:2,we:3,th:4,fr:5,sa:6};
@@ -474,7 +634,6 @@ function humanGap(mins){
   return r ? h + 'h ' + r + 'm' : h + 'h';
 }
 
-// Current state against a parsed week. `now` is a Date.
 function openState(week, now){
   if(!week) return {state:'unknown'};
   var today = now.getDay(), mins = now.getHours()*60 + now.getMinutes(), i;
@@ -483,20 +642,18 @@ function openState(week, now){
   var yday = (today + 6) % 7;
   for(i=0;i<week[yday].length;i++){
     var ys = week[yday][i];
-    if(ys.e > 1440 && mins < ys.e - 1440) return {state:'open', closesIn: (ys.e - 1440) - mins};
+    if(ys.e > 1440 && mins < ys.e - 1440) return {state:'open', closesIn: (ys.e - 1440) - mins, closesAt: hhmm(ys.e)};
   }
   for(i=0;i<week[today].length;i++){
     var sp = week[today][i];
-    if(mins >= sp.s && mins < sp.e) return {state:'open', closesIn: sp.e - mins};
+    if(mins >= sp.s && mins < sp.e) return {state:'open', closesIn: sp.e - mins, closesAt: hhmm(sp.e)};
   }
-  // Still to open today?
   var next = null;
   for(i=0;i<week[today].length;i++){
     if(week[today][i].s > mins && (next === null || week[today][i].s < next)) next = week[today][i].s;
   }
   if(next !== null) return {state:'later', opensIn: next - mins, opensAt: hhmm(next)};
 
-  // Next day with any hours at all.
   for(var k=1;k<=7;k++){
     var d = (today + k) % 7;
     if(week[d].length){
@@ -508,7 +665,7 @@ function openState(week, now){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   3. GEOMETRY + SCORING
+   3. GEOMETRY, TRAVEL + SCORING
    ══════════════════════════════════════════════════════════════════════════ */
 
 function haversineKm(a, b, c, d){
@@ -517,6 +674,62 @@ function haversineKm(a, b, c, d){
   var s = Math.sin(dLat/2)*Math.sin(dLat/2) +
           Math.cos(a*p)*Math.cos(c*p)*Math.sin(dLon/2)*Math.sin(dLon/2);
   return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+// Straight-line distance always understates the real journey, so apply a rough
+// detour allowance. Cornish lanes are worse than most, hence the generous factors.
+var WALK_KMH = 4.8, WALK_DETOUR = 1.3;
+var DRIVE_KMH = 38, DRIVE_DETOUR = 1.4, PARK_MIN = 4;
+
+function travel(km){
+  if(km == null) return null;
+  return {
+    walk: Math.max(1, Math.round(km * WALK_DETOUR / WALK_KMH * 60)),
+    drive: Math.max(2, Math.round(km * DRIVE_DETOUR / DRIVE_KMH * 60) + PARK_MIN)
+  };
+}
+
+// The question this app really answers: if I set off now, do I get a pasty?
+// Allow a few minutes to queue and choose once you're through the door.
+var QUEUE_MIN = 5;
+
+function arrival(st, km, now){
+  var tv = travel(km);
+  if(!tv || !st || st.state === 'unknown') return null;
+  var mins = now.getHours()*60 + now.getMinutes();
+
+  if(st.state === 'open'){
+    var spare = st.closesIn - tv.walk - QUEUE_MIN;
+    if(spare >= 0){
+      return {
+        kind: spare >= 30 ? 'yes' : 'tight', ic: '🚶',
+        html: '<b>' + tv.walk + ' min walk</b> — arrive ' + hhmm(mins + tv.walk) +
+              ', ' + humanGap(Math.max(0, spare)) + ' before they shut.'
+      };
+    }
+    var dspare = st.closesIn - tv.drive - QUEUE_MIN;
+    if(dspare >= 0){
+      return {
+        kind: dspare >= 20 ? 'yes' : 'tight', ic: '🚗',
+        html: 'Too far to walk in time — <b>drive ' + tv.drive + ' min</b>, arrive ' +
+              hhmm(mins + tv.drive) + ' with ' + humanGap(Math.max(0, dspare)) + ' to spare.'
+      };
+    }
+    return {kind:'no', ic:'⛔',
+      html:'Open now, but it shuts at ' + st.closesAt + ' — <b>you won\'t make it</b> (' +
+           tv.drive + ' min even driving).'};
+  }
+
+  if(st.state === 'later'){
+    var leave = st.opensIn - tv.walk;
+    return {kind:'neutral', ic:'⏳',
+      html: 'Opens ' + st.opensAt + '. It\'s a <b>' + tv.walk + ' min walk</b> — ' +
+            (leave > 0 ? 'leave by ' + hhmm(mins + leave) + '.'
+                       : 'set off now and you\'ll arrive just after opening.')};
+  }
+
+  return {kind:'neutral', ic:'💤',
+    html:'Shut until ' + st.nextDay + ' ' + st.nextAt + ' — ' + tv.walk + ' min walk when it reopens.'};
 }
 
 // Reviews → 0..1. A 4.9 from 12 people is weaker evidence than a 4.6 from 900,
@@ -553,17 +766,128 @@ function openScore(st){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   4. STATE
+   4. GENERATED ARTWORK
+   The always-works image layer: no network, no licensing, sharp at any DPI.
+   Each shop gets a deterministic Cornish scene from its name, so the list looks
+   varied without pretending any of it is a photograph of that shop.
    ══════════════════════════════════════════════════════════════════════════ */
 
-var LS = 'properPasty.v1';
+function hash(str){
+  var h = 2166136261, i;
+  for(i=0;i<str.length;i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+// A pasty silhouette: near-flat fold along the bottom, crimped ridge over the top.
+//
+// Each crimp is an outward arc between two samples of the dome. The arc radius must
+// stay comfortably ABOVE half the chord it spans — at exactly half, an SVG arc is a
+// semicircle, and anything smaller gets clamped up to one, which turns the crimp into
+// a row of balloons. 0.78 of the chord gives the shallow ripple a pasty actually has.
+function pastyPath(cx, cy, w, h, crimps, tight){
+  var rx = w/2, i, pts = [];
+  for(i=0;i<=crimps;i++){
+    var th = Math.PI - (Math.PI * i / crimps);
+    pts.push([cx + rx*Math.cos(th), cy - h*Math.sin(th)]);
+  }
+  var f = function(n){ return n.toFixed(1); };
+  var d = 'M ' + f(pts[0][0]) + ' ' + f(pts[0][1]);
+  for(i=1;i<pts.length;i++){
+    var dx = pts[i][0] - pts[i-1][0], dy = pts[i][1] - pts[i-1][1];
+    var r = Math.sqrt(dx*dx + dy*dy) * (tight || 0.78);
+    d += ' A ' + f(r) + ' ' + f(r) + ' 0 0 1 ' + f(pts[i][0]) + ' ' + f(pts[i][1]);
+  }
+  // bottom fold: almost straight, bowing only slightly
+  d += ' Q ' + f(cx) + ' ' + f(cy + h*0.13) + ' ' + f(pts[0][0]) + ' ' + f(pts[0][1]) + ' Z';
+  return d;
+}
+
+// Five Cornish backdrops, picked deterministically per shop.
+function sceneShapes(kind, w, h){
+  var g = '', y = h;
+  if(kind === 0){        // cliffs over sea
+    g += '<path d="M0 '+(y*0.70)+' L'+(w*0.28)+' '+(y*0.46)+' L'+(w*0.46)+' '+(y*0.62)+' L'+(w*0.72)+' '+(y*0.40)+' L'+w+' '+(y*0.58)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land)"/>';
+    g += '<path d="M0 '+(y*0.80)+' Q'+(w*0.5)+' '+(y*0.72)+' '+w+' '+(y*0.82)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land-2)"/>';
+  } else if(kind === 1){ // harbour with masts
+    g += '<path d="M0 '+(y*0.74)+' L'+w+' '+(y*0.68)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land)"/>';
+    for(var i=0;i<5;i++){
+      var mx = w*(0.16 + i*0.17);
+      g += '<line x1="'+mx+'" y1="'+(y*0.72)+'" x2="'+mx+'" y2="'+(y*0.40)+'" stroke="var(--land-2)" stroke-width="1.6"/>';
+      g += '<circle cx="'+mx+'" cy="'+(y*0.40)+'" r="2.2" fill="var(--land-2)"/>';
+    }
+    g += '<path d="M0 '+(y*0.86)+' L'+w+' '+(y*0.86)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land-2)"/>';
+  } else if(kind === 2){ // moorland
+    g += '<path d="M0 '+(y*0.68)+' Q'+(w*0.3)+' '+(y*0.50)+' '+(w*0.55)+' '+(y*0.66)+' Q'+(w*0.8)+' '+(y*0.80)+' '+w+' '+(y*0.62)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land)"/>';
+    g += '<path d="M0 '+(y*0.84)+' Q'+(w*0.5)+' '+(y*0.74)+' '+w+' '+(y*0.86)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land-2)"/>';
+  } else if(kind === 3){ // town rooftops
+    g += '<path d="M0 '+(y*0.78)+' L'+w+' '+(y*0.78)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land-2)"/>';
+    for(var j=0;j<6;j++){
+      var bx = w*(j*0.175), bw = w*0.15, bh = y*(0.16 + ((j*37)%5)/22);
+      g += '<path d="M'+bx+' '+(y*0.78)+' L'+bx+' '+(y*0.78-bh)+' L'+(bx+bw/2)+' '+(y*0.78-bh-y*0.06)+' L'+(bx+bw)+' '+(y*0.78-bh)+' L'+(bx+bw)+' '+(y*0.78)+' Z" fill="var(--land)"/>';
+    }
+  } else {               // lighthouse
+    g += '<path d="M0 '+(y*0.76)+' L'+w+' '+(y*0.72)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land)"/>';
+    var lx = w*0.78;
+    g += '<path d="M'+(lx-7)+' '+(y*0.74)+' L'+(lx-4.5)+' '+(y*0.36)+' L'+(lx+4.5)+' '+(y*0.36)+' L'+(lx+7)+' '+(y*0.74)+' Z" fill="var(--land-2)"/>';
+    g += '<circle cx="'+lx+'" cy="'+(y*0.335)+'" r="4" fill="var(--crust)"/>';
+    g += '<path d="M0 '+(y*0.88)+' L'+w+' '+(y*0.88)+' L'+w+' '+y+' L0 '+y+' Z" fill="var(--land-2)"/>';
+  }
+  return g;
+}
+
+// Full scene: sky, sun, land, and a pasty in the foreground.
+function sceneSVG(seed, w, h, withPasty){
+  var kind = seed % 5;
+  var sunX = w * (0.18 + ((seed >> 3) % 40) / 100);
+  var id = 'g' + (seed % 100000);
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">';
+  s += '<defs><linearGradient id="sky'+id+'" x1="0" y1="0" x2="0" y2="1">' +
+       '<stop offset="0" stop-color="var(--sky-1)"/><stop offset="1" stop-color="var(--sky-2)"/></linearGradient>' +
+       '<linearGradient id="cr'+id+'" x1="0" y1="0" x2="0.2" y2="1">' +
+       '<stop offset="0" stop-color="#f0c069"/><stop offset="0.55" stop-color="var(--crust)"/>' +
+       '<stop offset="1" stop-color="var(--crust-deep)"/></linearGradient></defs>';
+  s += '<rect width="'+w+'" height="'+h+'" fill="url(#sky'+id+')"/>';
+  s += '<circle cx="'+sunX.toFixed(1)+'" cy="'+(h*0.26).toFixed(1)+'" r="'+(h*0.13).toFixed(1)+'" fill="#fff" opacity="0.32"/>';
+  s += sceneShapes(kind, w, h);
+  if(withPasty){
+    // sits above the lower edge so the caption shade never cuts through it
+    var pw = w*0.50, ph = h*0.24, pcx = w*0.5, pcy = h*0.84;
+    s += '<g opacity="0.97">';
+    s += '<ellipse cx="'+pcx+'" cy="'+(pcy+3)+'" rx="'+(pw*0.50)+'" ry="'+(ph*0.16)+'" fill="rgba(0,0,0,.30)"/>';
+    s += '<path d="'+pastyPath(pcx, pcy, pw, ph, 9)+'" fill="url(#cr'+id+')" stroke="var(--crust-deep)" stroke-width="1.1" stroke-linejoin="round"/>';
+    // the fold line running under the crimped ridge, plus a soft top-light
+    s += '<path d="M'+(pcx-pw*0.40)+' '+(pcy-ph*0.06)+' Q'+pcx+' '+(pcy-ph*0.30)+' '+(pcx+pw*0.40)+' '+(pcy-ph*0.06)+'" stroke="var(--crust-deep)" stroke-width="1" fill="none" opacity=".55"/>';
+    s += '<path d="M'+(pcx-pw*0.24)+' '+(pcy-ph*0.42)+' Q'+pcx+' '+(pcy-ph*0.66)+' '+(pcx+pw*0.18)+' '+(pcy-ph*0.38)+'" stroke="rgba(255,255,255,.40)" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+    s += '</g>';
+  }
+  s += '</svg>';
+  return s;
+}
+
+// The brand mark: a single crimped pasty.
+function markSVG(){
+  var s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 76" width="100%" height="100%">';
+  s += '<defs><linearGradient id="ppMarkGrad" x1="0" y1="0" x2="0.25" y2="1">' +
+       '<stop offset="0" stop-color="#f7d089"/><stop offset="0.5" stop-color="#d59a3c"/>' +
+       '<stop offset="1" stop-color="#a8701f"/></linearGradient></defs>';
+  s += '<path d="'+pastyPath(50, 57, 88, 36, 9)+'" fill="url(#ppMarkGrad)" stroke="#8a5a12" stroke-width="2.6" stroke-linejoin="round"/>';
+  s += '<path d="M13 55 Q50 41 87 55" stroke="#8a5a12" stroke-width="1.8" fill="none" opacity=".55"/>';
+  s += '<path d="M30 44 Q50 33 66 45" stroke="rgba(255,255,255,.5)" stroke-width="3.2" fill="none" stroke-linecap="round"/>';
+  s += '</svg>';
+  return s;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. STATE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var LS = 'properPasty.v2';
 var state = {
-  origin: null,              // {lat, lon, label}
+  origin: null,
   weights: {rating:45, dist:35, open:20},
-  filters: {openOnly:false, walkable:false, ratedOnly:false},
-  gKey: '',
-  theme: null,
-  shops: []                  // merged working set
+  filters: {openOnly:false, makeIt:false, walkable:false, ratedOnly:false},
+  gKey: '', theme: null, wantPix: true,
+  shops: []
 };
 
 function loadPrefs(){
@@ -575,37 +899,35 @@ function loadPrefs(){
     if(p.gKey) state.gKey = p.gKey;
     if(p.theme) state.theme = p.theme;
     if(p.origin) state.origin = p.origin;
+    if(typeof p.wantPix === 'boolean') state.wantPix = p.wantPix;
   }catch(e){ /* corrupt or blocked storage — defaults are fine */ }
 }
 function savePrefs(){
   try{
     localStorage.setItem(LS, JSON.stringify({
-      weights: state.weights, gKey: state.gKey, theme: state.theme, origin: state.origin
+      weights: state.weights, gKey: state.gKey, theme: state.theme,
+      origin: state.origin, wantPix: state.wantPix
     }));
   }catch(e){}
 }
 
-// Build the working set from seed data. Live scans merge into this.
 function resetShops(){
   state.shops = SEED.map(function(s, i){
     return {
-      id: 'seed:' + i,
-      name: s.n,
-      town: s.t,
-      lat: s.lat, lon: s.lon,
+      id: 'seed:' + i, name: s.n, town: s.t, lat: s.lat, lon: s.lon,
       hours: s.h,
       hoursEstimated: true,      // seed hours are indicative patterns, never published
       locApprox: true,
       note: s.note || '',
       rating: null, reviews: null,
-      website: null, phone: null,
+      website: null, phone: null, photo: null, photoCredit: null,
       sources: ['built-in']
     };
   });
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   5. LIVE SCANS
+   6. LIVE SCANS
    ══════════════════════════════════════════════════════════════════════════ */
 
 var OVERPASS = [
@@ -616,26 +938,18 @@ var OVERPASS = [
 // Cornwall unitary authority, ONS GSS code. Falls back to a bounding box if the
 // area lookup fails (the box bleeds a little into west Devon on the eastern edge).
 var OSM_QUERY =
-  '[out:json][timeout:60];' +
-  'area["ref:gss"="E06000052"]->.c;' +
-  '(' +
-    'nwr["shop"="bakery"](area.c);' +
-    'nwr["cuisine"~"pasty",i](area.c);' +
-    'nwr["name"~"pasty",i](area.c);' +
-  ');out center tags;';
-
+  '[out:json][timeout:60];area["ref:gss"="E06000052"]->.c;' +
+  '(nwr["shop"="bakery"](area.c);nwr["cuisine"~"pasty",i](area.c);nwr["name"~"pasty",i](area.c););' +
+  'out center tags;';
 var OSM_QUERY_BBOX =
   '[out:json][timeout:60];' +
-  '(' +
-    'nwr["shop"="bakery"](49.90,-5.80,50.95,-4.20);' +
-    'nwr["cuisine"~"pasty",i](49.90,-5.80,50.95,-4.20);' +
-    'nwr["name"~"pasty",i](49.90,-5.80,50.95,-4.20);' +
-  ');out center tags;';
+  '(nwr["shop"="bakery"](49.90,-5.80,50.95,-4.20);nwr["cuisine"~"pasty",i](49.90,-5.80,50.95,-4.20);' +
+  'nwr["name"~"pasty",i](49.90,-5.80,50.95,-4.20););out center tags;';
 
 function fetchOverpass(query){
   var attempt = 0;
   function tryNext(){
-    if(attempt >= OVERPASS.length) return Promise.reject(new Error('All Overpass mirrors failed'));
+    if(attempt >= OVERPASS.length) return Promise.reject(new Error('all mirrors unreachable'));
     var url = OVERPASS[attempt++];
     return fetch(url, {method:'POST', body:'data=' + encodeURIComponent(query),
                        headers:{'Content-Type':'application/x-www-form-urlencoded'}})
@@ -650,16 +964,12 @@ function scanOSM(){
   var btn = document.getElementById('scanOsm');
   btn.disabled = true;
   el.innerHTML = '<span class="spin"></span> Sweeping Cornwall…';
+  showSkeletons(5);
 
   fetchOverpass(OSM_QUERY)
+    .then(function(j){ return (j && j.elements && j.elements.length) ? j : fetchOverpass(OSM_QUERY_BBOX); })
     .then(function(j){
-      if(j && j.elements && j.elements.length) return j;
-      return fetchOverpass(OSM_QUERY_BBOX);
-    })
-    .then(function(j){
-      var els = (j && j.elements) || [];
-      var added = 0, enriched = 0;
-
+      var els = (j && j.elements) || [], added = 0, enriched = 0;
       for(var i=0;i<els.length;i++){
         var e = els[i], tags = e.tags || {};
         if(!tags.name) continue;
@@ -668,39 +978,34 @@ function scanOSM(){
         if(lat == null || lon == null) continue;
 
         var rec = {
-          id: 'osm:' + e.type + '/' + e.id,
-          name: tags.name,
+          id: 'osm:' + e.type + '/' + e.id, name: tags.name,
           town: tags['addr:city'] || tags['addr:town'] || tags['addr:village'] ||
                 tags['addr:suburb'] || tags['addr:place'] || '',
           lat: lat, lon: lon,
           hours: tags.opening_hours || null,
           hoursEstimated: false,             // surveyed, published hours
-          locApprox: false,
-          note: '',
-          rating: null, reviews: null,
+          locApprox: false, note: '', rating: null, reviews: null,
           website: tags.website || tags['contact:website'] || null,
           phone: tags.phone || tags['contact:phone'] || null,
+          photo: null, photoCredit: null,
           sources: ['OpenStreetMap']
         };
-
         var match = findMatch(rec);
-        if(match){ mergeInto(match, rec); enriched++; }
-        else { state.shops.push(rec); added++; }
+        if(match){ mergeInto(match, rec); enriched++; } else { state.shops.push(rec); added++; }
       }
-
+      document.getElementById('dotOsm').classList.add('on');
       el.textContent = added + ' new shops added, ' + enriched +
         ' existing entries upgraded to surveyed locations and published hours.';
       render();
-      toast('Scan complete — ' + state.shops.length + ' pasty stops in range');
+      toast('Scan complete — ' + state.shops.length + ' pasty stops');
     })
     .catch(function(err){
-      el.textContent = 'Scan failed: ' + err.message +
-        '. You may be offline — the built-in list still works.';
+      el.textContent = 'Scan failed (' + err.message + '). You may be offline — the built-in list still works.';
+      render();
     })
     .then(function(){ btn.disabled = false; });
 }
 
-// Google Places (New) text search. Only source here that carries reviews.
 function scanGoogle(){
   var key = document.getElementById('gKey').value.trim();
   var el = document.getElementById('gStatus');
@@ -721,62 +1026,59 @@ function scanGoogle(){
         'places.id','places.displayName','places.formattedAddress','places.location',
         'places.rating','places.userRatingCount','places.regularOpeningHours',
         'places.currentOpeningHours','places.websiteUri','places.nationalPhoneNumber',
-        'places.googleMapsUri'
+        'places.googleMapsUri','places.photos'
       ].join(',')
     },
     body: JSON.stringify({
       textQuery: 'Cornish pasty shop bakery',
       maxResultCount: 20,
-      locationBias: { circle: { center: {latitude: state.origin.lat, longitude: state.origin.lon},
-                                radius: 30000 } }
+      locationBias: {circle:{center:{latitude:state.origin.lat, longitude:state.origin.lon}, radius:30000}}
     })
   })
-  .then(function(r){
-    return r.json().then(function(j){
+  .then(function(r){ return r.json().then(function(j){
       if(!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
-      return j;
-    });
-  })
+      return j; }); })
   .then(function(j){
-    var places = j.places || [], added = 0, enriched = 0;
+    var places = j.places || [], added = 0, enriched = 0, pics = 0;
     for(var i=0;i<places.length;i++){
       var p = places[i];
+      if(!p.location) continue;
+      var photo = null, credit = null;
+      if(p.photos && p.photos.length){
+        // Places (New) photo media endpoint; the key is already the user's own.
+        photo = 'https://places.googleapis.com/v1/' + p.photos[0].name +
+                '/media?maxWidthPx=640&key=' + encodeURIComponent(key);
+        var att = p.photos[0].authorAttributions;
+        credit = (att && att.length && att[0].displayName) ? att[0].displayName : null;
+        pics++;
+      }
       var rec = {
         id: 'g:' + p.id,
         name: (p.displayName && p.displayName.text) || 'Unnamed',
         town: townFromAddress(p.formattedAddress),
-        lat: p.location && p.location.latitude,
-        lon: p.location && p.location.longitude,
-        hours: googleHours(p),
-        hoursEstimated: false,
-        locApprox: false,
-        note: '',
+        lat: p.location.latitude, lon: p.location.longitude,
+        hours: googleHours(p), hoursEstimated: false, locApprox: false, note: '',
         rating: p.rating != null ? p.rating : null,
         reviews: p.userRatingCount != null ? p.userRatingCount : null,
-        website: p.websiteUri || null,
-        phone: p.nationalPhoneNumber || null,
-        mapUri: p.googleMapsUri || null,
+        website: p.websiteUri || null, phone: p.nationalPhoneNumber || null,
+        mapUri: p.googleMapsUri || null, photo: photo, photoCredit: credit,
         sources: ['Google']
       };
-      if(rec.lat == null || rec.lon == null) continue;
-
       var match = findMatch(rec);
-      if(match){ mergeInto(match, rec); enriched++; }
-      else { state.shops.push(rec); added++; }
+      if(match){ mergeInto(match, rec); enriched++; } else { state.shops.push(rec); added++; }
     }
-    el.textContent = added + ' new places, ' + enriched + ' existing entries now carry real ratings.';
+    document.getElementById('dotG').classList.add('on');
+    el.textContent = added + ' new places, ' + enriched + ' entries now carry real ratings, ' +
+                     pics + ' with photographs.';
     render();
-    toast('Reviews loaded for ' + (added + enriched) + ' shops');
+    toast('Reviews and photos loaded');
   })
-  .catch(function(err){
-    el.textContent = 'Google request failed: ' + err.message;
-  })
+  .catch(function(err){ el.textContent = 'Google request failed: ' + err.message; })
   .then(function(){ btn.disabled = false; });
 }
 
 function townFromAddress(addr){
   if(!addr) return '';
-  // "12 Fore St, St Ives TR26 1AB, UK" → "St Ives"
   var parts = addr.split(',').map(function(s){ return s.trim(); });
   for(var i=parts.length-1;i>=0;i--){
     var p = parts[i].replace(/\b[A-Z]{2}\d{1,2}\s*\d[A-Z]{2}\b/,'').trim();
@@ -799,9 +1101,7 @@ function googleHours(p){
     var day = abbr[m[1]], body = m[2].trim();
     if(/closed/i.test(body)){ rules.push(day + ' off'); continue; }
     if(/open 24 hours/i.test(body)){ rules.push(day + ' 00:00-24:00'); continue; }
-    var spans = [];
-    // "9:00 AM – 5:00 PM" (en dash or hyphen), possibly comma-separated
-    var segs = body.split(',');
+    var spans = [], segs = body.split(',');
     for(var s=0;s<segs.length;s++){
       var t = segs[s].match(/(\d{1,2})(?::(\d{2}))?\s*([AaPp])\.?[Mm]\.?\s*[–—-]\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp])\.?[Mm]\.?/);
       if(!t) continue;
@@ -815,6 +1115,75 @@ function to24(h, m, ap){
   var hh = +h % 12;
   if(/p/i.test(ap)) hh += 12;
   return String(hh).padStart(2,'0') + ':' + (m || '00');
+}
+
+/* ── Wikimedia Commons: freely-licensed header photography ──────────────────
+   Decorative only. Anything less than a clean result leaves the drawn art up. */
+function loadPix(){
+  var el = document.getElementById('cStatus');
+  var btn = document.getElementById('loadPix');
+  if(btn) btn.disabled = true;
+  if(el) el.innerHTML = '<span class="spin"></span> Looking for photography…';
+
+  var url = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search' +
+            '&gsrsearch=' + encodeURIComponent('filetype:bitmap cornish pasty') +
+            '&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata' +
+            '&iiurlwidth=1400&format=json&origin=*';
+
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(j){
+      var pages = j && j.query && j.query.pages;
+      if(!pages) throw new Error('no results');
+      var best = null;
+      for(var k in pages){
+        if(!Object.prototype.hasOwnProperty.call(pages, k)) continue;
+        var pg = pages[k], ii = pg.imageinfo && pg.imageinfo[0];
+        if(!ii || !ii.thumburl) continue;
+        if(!/\.(jpe?g|png)$/i.test(pg.title || '')) continue;
+        best = {
+          src: ii.thumburl,
+          page: ii.descriptionurl || '',
+          title: (pg.title || '').replace(/^File:/,''),
+          licence: pickMeta(ii.extmetadata, 'LicenseShortName'),
+          artist: stripTags(pickMeta(ii.extmetadata, 'Artist'))
+        };
+        break;
+      }
+      if(!best) throw new Error('nothing usable');
+      applyHeroPhoto(best);
+      document.getElementById('dotC').classList.add('on');
+      if(el) el.textContent = 'Loaded “' + best.title + '”.';
+    })
+    .catch(function(err){
+      if(el) el.textContent = 'No photography loaded (' + err.message +
+        '). The drawn artwork stays — nothing else is affected.';
+    })
+    .then(function(){ if(btn) btn.disabled = false; });
+}
+
+function pickMeta(meta, key){
+  return (meta && meta[key] && meta[key].value) ? String(meta[key].value) : '';
+}
+function stripTags(html){
+  var d = document.createElement('div');
+  d.innerHTML = html || '';
+  return (d.textContent || '').trim().slice(0, 80);
+}
+
+function applyHeroPhoto(p){
+  var img = document.getElementById('heroPhoto');
+  var cred = document.getElementById('heroCredit');
+  img.onload = function(){
+    img.classList.add('in');
+    if(cred){
+      cred.innerHTML = 'Photo' + (p.artist ? ' by ' + esc(p.artist) : '') +
+        (p.licence ? ' · ' + esc(p.licence) : '') +
+        (p.page ? ' · <a href="' + esc(p.page) + '" target="_blank" rel="noopener">Wikimedia Commons</a>' : '');
+    }
+  };
+  img.onerror = function(){ img.removeAttribute('src'); };
+  img.src = p.src;
 }
 
 /* ── merging ───────────────────────────────────────────────────────────── */
@@ -834,8 +1203,7 @@ function findMatch(rec){
   for(var i=0;i<state.shops.length;i++){
     var s = state.shops[i];
     if(normName(s.name) !== key) continue;
-    var km = haversineKm(s.lat, s.lon, rec.lat, rec.lon);
-    if(km < 1.2) return s;          // generous: seed coords are town-level
+    if(haversineKm(s.lat, s.lon, rec.lat, rec.lon) < 1.2) return s;   // seed coords are town-level
   }
   return null;
 }
@@ -847,6 +1215,7 @@ function mergeInto(target, rec){
   if(rec.rating != null){ target.rating = rec.rating; target.reviews = rec.reviews; }
   if(rec.website && !target.website) target.website = rec.website;
   if(rec.phone && !target.phone) target.phone = rec.phone;
+  if(rec.photo && !target.photo){ target.photo = rec.photo; target.photoCredit = rec.photoCredit; }
   if(rec.mapUri) target.mapUri = rec.mapUri;
   if(rec.town && !target.town) target.town = rec.town;
   for(var i=0;i<rec.sources.length;i++){
@@ -855,14 +1224,14 @@ function mergeInto(target, rec){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   6. LOCATION
+   7. LOCATION
    ══════════════════════════════════════════════════════════════════════════ */
 
 function setOrigin(lat, lon, label){
   state.origin = {lat:lat, lon:lon, label:label};
   savePrefs();
   document.getElementById('locNow').innerHTML =
-    'Ranking from <b>' + esc(label) + '</b>';
+    '<span class="pin">📍</span> Ranking from <b>' + esc(label) + '</b>';
   render();
 }
 
@@ -906,33 +1275,29 @@ function lookupPostcode(){
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   7. RANKING + RENDER
+   8. RANKING + RENDER
    ══════════════════════════════════════════════════════════════════════════ */
 
 function rank(){
-  var now = new Date();
-  var w = state.weights;
-  var total = w.rating + w.dist + w.open;
-  if(total === 0) total = 1;
+  var now = new Date(), w = state.weights;
+  var total = w.rating + w.dist + w.open || 1;
 
   var rows = state.shops.map(function(s){
     var km = state.origin ? haversineKm(state.origin.lat, state.origin.lon, s.lat, s.lon) : null;
-    var week = parseHours(s.hours);
-    var st = openState(week, now);
-
-    var r = ratingScore(s.rating, s.reviews);
-    var d = distScore(km);
-    var o = openScore(st);
-
-    var score = (r.v * w.rating + d.v * w.dist + o.v * w.open) / total;
-
-    return {shop:s, km:km, st:st, r:r, d:d, o:o, score: Math.round(score * 100)};
+    var st = openState(parseHours(s.hours), now);
+    var r = ratingScore(s.rating, s.reviews), d = distScore(km), o = openScore(st);
+    return {
+      shop:s, km:km, st:st, r:r, d:d, o:o,
+      arr: arrival(st, km, now),
+      score: Math.round(((r.v*w.rating + d.v*w.dist + o.v*w.open) / total) * 100)
+    };
   });
 
   rows = rows.filter(function(x){
     if(state.filters.openOnly && x.st.state !== 'open') return false;
     if(state.filters.walkable && !(x.km != null && x.km <= 2)) return false;
     if(state.filters.ratedOnly && x.shop.rating == null) return false;
+    if(state.filters.makeIt && !(x.arr && (x.arr.kind === 'yes' || x.arr.kind === 'tight'))) return false;
     return true;
   });
 
@@ -958,100 +1323,143 @@ function distLabel(km){
 }
 
 function statusFact(x){
-  var st = x.st, est = x.shop.hoursEstimated;
-  var cls, txt;
+  var st = x.st, est = x.shop.hoursEstimated, cls, txt;
   if(st.state === 'open'){
-    if(st.closesIn <= 45){ cls = 'soon'; txt = 'Closes in ' + humanGap(st.closesIn); }
-    else { cls = 'open'; txt = 'Open · closes ' + humanGap(st.closesIn) + ' from now'; }
+    if(st.closesIn <= 45){ cls = 'soon'; txt = 'Closes ' + st.closesAt + ' — ' + humanGap(st.closesIn); }
+    else { cls = 'open'; txt = 'Open till ' + st.closesAt; }
   } else if(st.state === 'later'){
-    cls = 'shut'; txt = 'Opens ' + st.opensAt + ' (' + humanGap(st.opensIn) + ')';
+    cls = 'shut'; txt = 'Opens ' + st.opensAt;
   } else if(st.state === 'shut'){
     cls = 'shut'; txt = 'Shut · next ' + st.nextDay + ' ' + st.nextAt;
   } else {
     return '<span class="fact est">⏱ Hours unknown — ring ahead</span>';
   }
-  return '<span class="fact ' + cls + (est ? ' est' : '') + '">' +
-         (est ? '≈ ' : '') + esc(txt) + (est ? ' (estimated)' : '') + '</span>';
+  return '<span class="fact ' + cls + (est ? ' est' : '') + '">' + (est ? '≈ ' : '') +
+         esc(txt) + (est ? ' (est.)' : '') + '</span>';
 }
 
-function cardStateClass(x){
-  if(x.st.state === 'open') return x.st.closesIn <= 45 ? 's-soon' : 's-open';
-  if(x.st.state === 'later' || x.st.state === 'shut') return 's-shut';
-  return '';
+function dial(score){
+  var R = 22, C = 2*Math.PI*R, off = C * (1 - score/100);
+  return '<div class="dial"><svg width="52" height="52" viewBox="0 0 52 52">' +
+    '<circle cx="26" cy="26" r="'+R+'" fill="none" stroke="var(--surface-2)" stroke-width="5"/>' +
+    '<circle cx="26" cy="26" r="'+R+'" fill="none" stroke="var(--crust)" stroke-width="5" ' +
+      'stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/>' +
+    '</svg><div class="num">'+score+'</div><div class="cap">score</div></div>';
 }
 
-function bar(label, val, known){
+function bar(label, val, known, delay){
   var pct = Math.round(val * 100);
   return '<div class="bar"><span>' + label + '</span>' +
-    '<span class="track"><span class="fill' + (known ? '' : ' na') + '" style="width:' + pct + '%"></span></span>' +
-    '<span>' + (known ? pct : '—') + '</span></div>';
+    '<span class="track"><span class="fill' + (known ? '' : ' na') +
+      '" style="width:' + pct + '%;animation-delay:' + delay + 'ms"></span></span>' +
+    '<span class="v">' + (known ? pct : '—') + '</span></div>';
+}
+
+// One art element per shop; a photograph, when we have one, layers over the top
+// and simply never appears if it fails to load.
+function mediaHTML(shop, seed, big){
+  var h = '<div class="art">' + sceneSVG(seed, big ? 400 : 120, big ? 200 : 120, true) + '</div>';
+  if(shop.photo){
+    // The top pick's photo is the page's main image, so fetch it straight away;
+    // thumbnails stay lazy to spare a holiday data plan. Either way a photo that
+    // fails simply removes itself and the drawn artwork underneath stands in.
+    h += '<img class="photo" alt="" aria-hidden="true" loading="' + (big ? 'eager' : 'lazy') + '" ' +
+         'src="' + esc(shop.photo) + '" ' +
+         'onload="this.classList.add(\'in\')" onerror="this.remove()">';
+  }
+  return h;
+}
+
+function showSkeletons(n){
+  var list = document.getElementById('list'), h = '';
+  for(var i=0;i<n;i++){
+    h += '<li class="skel"><span class="b t"></span><span style="flex:1">' +
+         '<span class="b l" style="width:55%"></span><span class="b l" style="width:35%"></span>' +
+         '<span class="b l" style="width:80%"></span></span></li>';
+  }
+  list.innerHTML = h;
 }
 
 function render(){
   var rows = rank();
   var list = document.getElementById('list');
-  var cnt = document.getElementById('count');
-
-  cnt.textContent = rows.length + ' of ' + state.shops.length + ' shops';
+  document.getElementById('count').textContent = rows.length + ' of ' + state.shops.length;
 
   if(!rows.length){
-    list.innerHTML = '<div class="empty">Nothing matches those filters. Loosen them, or run a scan to widen the net.</div>';
+    list.innerHTML = '<li class="empty"><div class="big">🥟</div>' +
+      'Nothing matches those filters.<br>Loosen them, or run a scan to widen the net.</li>';
     return;
   }
 
   var html = '';
   for(var i=0;i<rows.length;i++){
-    var x = rows[i], s = x.shop;
+    var x = rows[i], s = x.shop, seed = hash(s.name + '|' + s.town);
+    var champ = (i === 0);
 
-    var mapQ = encodeURIComponent(s.name + ', ' + (s.town || 'Cornwall'));
-    var mapUrl = s.mapUri || ('https://www.google.com/maps/search/?api=1&query=' + mapQ +
-                 '&query_place_id=');
     var dirUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lon;
-    var reviewUrl = 'https://www.google.com/search?q=' + encodeURIComponent(s.name + ' ' + (s.town||'Cornwall') + ' reviews');
+    var reviewUrl = 'https://www.google.com/search?q=' +
+                    encodeURIComponent(s.name + ' ' + (s.town || 'Cornwall') + ' reviews');
 
-    html += '<li class="card ' + cardStateClass(x) + '">' +
-      '<div class="chead">' +
-        '<div class="rank">' + (i+1) + '</div>' +
-        '<div class="ctitle">' +
-          '<h2>' + esc(s.name) + '</h2>' +
-          '<div class="where">' + esc(s.town || 'Cornwall') +
-            (s.locApprox ? ' · approx. location' : '') +
-            ' · ' + esc(s.sources.join(' + ')) +
-          '</div>' +
-        '</div>' +
-        '<div class="score"><b>' + x.score + '</b><small>score</small></div>' +
-      '</div>' +
+    html += '<li class="card' + (champ ? ' champ' : '') + '" style="animation-delay:' +
+            Math.min(i*45, 400) + 'ms">';
 
-      '<div class="facts">' +
-        '<span class="fact dist">📍 ' + esc(distLabel(x.km)) + (x.km != null ? ' as the crow flies' : '') + '</span>' +
-        statusFact(x) +
-        (s.rating != null
-          ? '<span class="fact"><span class="star">★</span> ' + s.rating.toFixed(1) +
-            ' · ' + (s.reviews || 0) + ' review' + (s.reviews === 1 ? '' : 's') + '</span>'
-          : '<span class="fact est">★ No review data — add a Google key</span>') +
-      '</div>' +
+    if(champ){
+      html += '<div class="banner">🏆 Today\'s best bet' +
+              (state.origin ? ' near ' + esc(state.origin.label) : '') + '</div>';
+      html += '<div class="media">' + mediaHTML(s, seed, true) + '<div class="shade"></div>' +
+              '<div class="cap"><span>' + esc(s.town || 'Cornwall') + '</span>' +
+              '<span>' + (s.photo ? (s.photoCredit ? 'Photo: ' + esc(s.photoCredit) : 'Photo: Google')
+                                  : 'Drawn artwork') + '</span></div></div>';
+    }
 
-      (s.note ? '<p class="note">' + esc(s.note) + '</p>' : '') +
+    html += '<div class="body"><div class="chead">';
+    if(!champ){
+      html += '<div class="thumb">' + mediaHTML(s, seed, false) +
+              '<span class="pos">' + (i+1) + '</span></div>';
+    }
+    html += '<div class="ctitle"><h2>' + esc(s.name) + '</h2>' +
+      '<div class="where"><span>' + esc(s.town || 'Cornwall') + '</span>' +
+      (s.locApprox ? '<span class="src">approx.</span>' : '') +
+      '<span class="src">' + esc(s.sources.join(' + ')) + '</span></div></div>' +
+      dial(x.score) + '</div>';
 
-      '<div class="actions">' +
-        '<a class="act go" href="' + dirUrl + '" target="_blank" rel="noopener">🧭 Directions</a>' +
-        (s.phone ? '<a class="act" href="tel:' + esc(s.phone.replace(/\s/g,'')) + '">📞 Call</a>' : '') +
-        (s.website ? '<a class="act" href="' + esc(s.website) + '" target="_blank" rel="noopener">🌐 Website</a>' : '') +
-        '<a class="act" href="' + reviewUrl + '" target="_blank" rel="noopener">🔍 Reviews</a>' +
-      '</div>' +
+    html += '<div class="facts">' +
+      '<span class="fact">📍 ' + esc(distLabel(x.km)) + '</span>' +
+      statusFact(x) +
+      (s.rating != null
+        ? '<span class="fact"><span class="star">★</span> ' + s.rating.toFixed(1) +
+          ' · ' + (s.reviews || 0) + ' review' + (s.reviews === 1 ? '' : 's') + '</span>'
+        : '<span class="fact est">★ No reviews — add a Google key</span>') +
+      '</div>';
 
-      '<div class="bars">' +
-        bar('Reviews', x.r.v, x.r.known) +
-        bar('Distance', x.d.v, x.d.known) +
-        bar('Open now', x.o.v, x.o.known) +
-      '</div>' +
-    '</li>';
+    if(x.arr){
+      html += '<div class="verdict ' + x.arr.kind + '"><span class="ic">' + x.arr.ic + '</span>' +
+              '<span>' + x.arr.html + '</span></div>';
+    } else if(!state.origin){
+      html += '<div class="verdict neutral"><span class="ic">📍</span>' +
+              '<span>Set your location and I\'ll tell you whether you\'ll get there before it shuts.</span></div>';
+    }
+
+    if(s.note) html += '<p class="note">' + esc(s.note) + '</p>';
+
+    html += '<div class="actions">' +
+      '<a class="act go" href="' + dirUrl + '" target="_blank" rel="noopener">🧭 Directions</a>' +
+      (s.phone ? '<a class="act" href="tel:' + esc(s.phone.replace(/\s/g,'')) + '">📞 Call</a>' : '') +
+      (s.website ? '<a class="act" href="' + esc(s.website) + '" target="_blank" rel="noopener">🌐 Website</a>' : '') +
+      '<a class="act" href="' + reviewUrl + '" target="_blank" rel="noopener">🔍 Reviews</a>' +
+      '</div>';
+
+    html += '<div class="why">' +
+      bar('Reviews', x.r.v, x.r.known, 60) +
+      bar('Distance', x.d.v, x.d.known, 130) +
+      bar('Open now', x.o.v, x.o.known, 200) +
+      '</div></div></li>';
   }
   list.innerHTML = html;
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
-   8. UI WIRING
+   9. UI WIRING
    ══════════════════════════════════════════════════════════════════════════ */
 
 var toastTimer = null;
@@ -1063,7 +1471,7 @@ function toast(msg){
   el.textContent = msg;
   document.body.appendChild(el);
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ el.remove(); }, 3200);
+  toastTimer = setTimeout(function(){ el.remove(); }, 3400);
 }
 
 function syncWeightUI(){
@@ -1086,7 +1494,9 @@ function init(){
   applyTheme();
   resetShops();
 
-  // Town picker
+  document.getElementById('mark').innerHTML = markSVG();
+  document.getElementById('heroArt').innerHTML = sceneSVG(7, 400, 210, false);
+
   var sel = document.getElementById('place');
   sel.innerHTML = '<option value="">Where are you staying?</option>' +
     PLACES.map(function(p, i){ return '<option value="' + i + '">' + esc(p[0]) + '</option>'; }).join('');
@@ -1102,8 +1512,7 @@ function init(){
     if(e.key === 'Enter') lookupPostcode();
   });
 
-  // Filter chips
-  [['fOpen','openOnly'],['fWalk','walkable'],['fRated','ratedOnly']].forEach(function(pair){
+  [['fOpen','openOnly'],['fMake','makeIt'],['fWalk','walkable'],['fRated','ratedOnly']].forEach(function(pair){
     var btn = document.getElementById(pair[0]);
     btn.addEventListener('click', function(){
       state.filters[pair[1]] = !state.filters[pair[1]];
@@ -1112,7 +1521,6 @@ function init(){
     });
   });
 
-  // Panels
   document.getElementById('tTune').addEventListener('click', function(){
     var p = document.getElementById('tunePanel');
     p.hidden = !p.hidden;
@@ -1124,7 +1532,6 @@ function init(){
     this.setAttribute('aria-pressed', String(!p.hidden));
   });
 
-  // Weights
   [['wRating','rating'],['wDist','dist'],['wOpen','open']].forEach(function(pair){
     document.getElementById(pair[0]).addEventListener('input', function(){
       state.weights[pair[1]] = +this.value;
@@ -1133,32 +1540,34 @@ function init(){
   });
   syncWeightUI();
 
-  // Scans
   document.getElementById('scanOsm').addEventListener('click', scanOSM);
   document.getElementById('scanG').addEventListener('click', scanGoogle);
+  document.getElementById('loadPix').addEventListener('click', loadPix);
   if(state.gKey) document.getElementById('gKey').value = state.gKey;
 
   document.getElementById('seedCount').textContent =
     SEED.length + ' known Cornish makers, ready offline.';
 
-  // Theme toggle: light → dark → follow system
   document.getElementById('theme').addEventListener('click', function(){
     state.theme = state.theme === 'light' ? 'dark' : (state.theme === 'dark' ? null : 'light');
     applyTheme(); savePrefs();
     toast('Theme: ' + (state.theme || 'follow system'));
   });
 
-  // Restore a saved origin, otherwise prompt for one.
   if(state.origin){
-    document.getElementById('locNow').innerHTML = 'Ranking from <b>' + esc(state.origin.label) + '</b>';
-  } else {
     document.getElementById('locNow').innerHTML =
-      'Set your location to rank by distance — everything else works without it.';
+      '<span class="pin">📍</span> Ranking from <b>' + esc(state.origin.label) + '</b>';
+  } else {
+    document.getElementById('locNow').textContent =
+      'Set your location to rank by distance and get arrival times — everything else works without it.';
   }
 
   render();
 
-  // Keep "open now" and "closes in" honest as the afternoon wears on.
+  // Decorative header photography, attempted quietly on load.
+  if(state.wantPix) loadPix();
+
+  // Keep "open now", countdowns and arrival times honest as the afternoon wears on.
   setInterval(render, 60000);
 }
 

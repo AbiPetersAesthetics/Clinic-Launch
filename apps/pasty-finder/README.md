@@ -2,7 +2,7 @@
 
 Ranks Cornish pasty shops by **reviews**, **opening hours** and **distance from where
 you're standing**, for holiday goers who want the best local pasty rather than the
-nearest chain.
+nearest chain — and tells you whether you'll actually get there before it shuts.
 
 One self-contained `index.html`. No build step, no dependencies, no server required.
 It lives outside the pnpm workspace globs, so it is not part of the Clinic Launch
@@ -42,6 +42,44 @@ API key persist in the browser.
 A signal that is genuinely unknown scores a neutral 0.5 and its bar renders grey with
 a `—` rather than a number, so an unknown never quietly masquerades as a good score.
 
+## The arrival check
+
+Ranking tells you where the good pasties are. The line under each card tells you
+whether you'll get one:
+
+> 🚶 **8 min walk** — arrive 15:48, 1h 7m before they shut.
+>
+> 🚗 Too far to walk in time — **drive 15 min**, arrive 15:55 with 30 min to spare.
+>
+> ⛔ Open now, but it shuts at 15:50 — **you won't make it** (92 min even driving).
+
+It combines the walking time with the closing time and allows five minutes to queue
+and choose. If the walk won't make it, it checks whether driving would before giving
+up. Shops that haven't opened yet get a leave-by time instead — and if the walk is
+longer than the wait, it says "set off now" rather than quoting a time in the past.
+
+The **I'll make it** filter reduces the list to shops you can actually reach in time.
+At 16:20 on a Monday from Truro that's 2 of 30 — which is the whole point.
+
+Walking assumes 4.8 km/h and driving 38 km/h, each with a detour allowance on top of
+the straight-line distance (30% and 40%) plus a few minutes to park. The estimates err
+slow deliberately: being told you'll make it and then finding the shutters down is a
+much worse outcome than the reverse.
+
+## Look and feel
+
+The interface is built around one motif — the crimp. It cuts the scalloped edge under
+the header, and the pasty silhouette in the artwork and the app mark is generated from
+the same path function, which lays small arcs along a dome. Each arc's radius has to
+stay above half the chord it spans; at exactly half an SVG arc becomes a semicircle,
+and anything below gets clamped up to one, which turns a crimp into a row of balloons.
+
+Beyond that: a display serif over a UI sans, a score dial per card, staggered card
+entry, animated score bars, skeleton rows during scans, and a full dark theme with a
+three-way toggle (light → dark → follow system). The artwork re-tints itself for dark
+mode, so the scenes become night scenes. Every animation is dropped under
+`prefers-reduced-motion`.
+
 ## Where the data comes from
 
 Open the **Scan** panel to see and control all three sources.
@@ -67,9 +105,27 @@ phone numbers and websites. Carries no reviews. Merged entries lose their `appro
 and `(estimated)` markers because the data behind them is now surveyed.
 
 **Google Places (your own key).** The only source here that carries star ratings and
-review counts. Get a key from the Google Cloud console, enable *Places API (New)*, and
-paste it in — the panel has step-by-step instructions. The key is stored in your
-browser's local storage and sent only to Google.
+review counts — and real photographs of each shop. Get a key from the Google Cloud
+console, enable *Places API (New)*, and paste it in — the panel has step-by-step
+instructions. The key is stored in your browser's local storage and sent only to Google.
+
+## Images
+
+Three layers, each falling back to the one below without the user seeing a broken box.
+
+1. **Generated artwork (always).** A Cornish scene drawn as inline SVG — cliffs,
+   harbour masts, moorland, rooftops or a lighthouse, chosen deterministically from
+   the shop's name so the list looks varied and a given shop always looks the same.
+   No network, no licensing, sharp at any DPI, and it works with no signal.
+2. **Google Places photos.** Real photographs of the actual shop, fetched through the
+   user's own key and credited to the photographer. The top pick's photo loads eagerly;
+   thumbnails stay lazy to spare a holiday data plan.
+3. **Wikimedia Commons.** Freely-licensed pasty photography for the header, credited to
+   the photographer with its licence shown. Purely decorative.
+
+No bakery photographs are scraped from the web, and no image URL is hardcoded. A photo
+that fails to load removes itself, leaving the drawn artwork that was underneath it all
+along — so the app never shows a broken image, online or off.
 
 Scans merge rather than replace: a shop is treated as the same business when its name
 reduces to the same core **and** it is within 1.2 km, so the Truro and Padstow branches
@@ -78,7 +134,8 @@ of a chain stay separate entries.
 ## Caveats worth reading before you drive anywhere
 
 - Distances are **straight-line**, not road miles. A shop 3 km away across the Fal is a
-  long way round.
+  long way round. Walking and driving times apply a flat detour allowance to that
+  straight line — they're a sense-check, not a route.
 - Seasonal hours change constantly and pasty shops sell out. Ring ahead if it matters.
 - The bounding-box fallback used when the Overpass area lookup fails bleeds slightly
   into west Devon on the eastern edge.
@@ -86,9 +143,10 @@ of a chain stay separate entries.
 ## Development
 
 The logic is deliberately kept in pure functions near the top of the script —
-`parseHours`, `openState`, `haversineKm`, `ratingScore`, `distScore`, `openScore`,
-`googleHours`, `normName`, `findMatch`, `mergeInto` — so they can be extracted and
-tested without a DOM.
+`parseHours`, `openState`, `haversineKm`, `travel`, `arrival`, `ratingScore`,
+`distScore`, `openScore`, `googleHours`, `normName`, `findMatch`, `mergeInto`,
+`pastyPath`, `sceneSVG` — so they can be extracted from the HTML and tested without a
+DOM, which is how they were developed.
 
 `parseHours` implements the subset of the OSM `opening_hours` grammar that actually
 turns up on bakeries: day ranges and lists, multiple spans per day, `off`/`closed`,
