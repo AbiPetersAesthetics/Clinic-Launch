@@ -174,6 +174,18 @@ input[type=text]{width:112px}
 }
 .locnow b{color:var(--ink);font-weight:650}
 .pin{color:var(--crust-ink)}
+/* Persistent, specific explanation when GPS can't work here. A toast is the wrong
+   channel for this: it vanishes, and the user is left thinking the app is broken. */
+.locwarn{
+  margin-top:10px;padding:10px 12px;border-radius:11px;background:var(--soon-bg);
+  color:var(--soon);font-size:12.5px;line-height:1.5;font-weight:550;
+}
+.locwarn[hidden]{display:none}
+.locwarn b{font-weight:750}
+.locwarn code{
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;
+  background:rgba(0,0,0,.10);padding:1px 5px;border-radius:5px;
+}
 
 /* ══════════════════════════════════════════════════════════════════════════
    FILTER STRIP
@@ -392,6 +404,7 @@ footer.legal b{color:var(--ink-2)}
       <button class="btn" id="goPostcode">Go</button>
     </div>
     <div class="locnow" id="locNow"></div>
+    <div class="locwarn" id="locWarn" hidden></div>
   </section>
 </div>
 
@@ -1262,28 +1275,75 @@ function setOrigin(lat, lon, label){
   render();
 }
 
+// Browsers refuse geolocation in several situations that all surface as the same
+// bland "denied" error, which makes the app look broken when it isn't. Work out
+// which one applies so we can say something specific and actionable.
+function gpsBlocker(){
+  if(!navigator.geolocation){
+    return {msg:'This browser has no location support.',
+            fix:'Pick your town from the dropdown instead — everything else works normally.'};
+  }
+  var framed = false;
+  try { framed = window.top !== window.self; } catch(e){ framed = true; }   // cross-origin frame
+  if(framed){
+    return {msg:'GPS is blocked inside an embedded preview.',
+            fix:'Open the file in a browser tab of its own and it will work. In the meantime, pick your town or type a postcode — both are exact.'};
+  }
+  if(location.protocol === 'file:'){
+    return {msg:'Browsers block GPS on files opened directly from disk.',
+            fix:'Serve it instead — <code>python3 -m http.server 8000</code> in this folder, then open <code>http://localhost:8000</code>. Or just pick your town below.'};
+  }
+  if(!window.isSecureContext){
+    return {msg:'GPS needs a secure page (https, or localhost).',
+            fix:'Open this over https and the button will work. Meanwhile the town picker and postcode box are exact.'};
+  }
+  return null;
+}
+
+function showLocWarn(html){
+  var el = document.getElementById('locWarn');
+  if(!el) return;
+  if(!html){ el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  el.innerHTML = html;
+}
+
 function useGps(){
   var btn = document.getElementById('useGps');
-  if(!navigator.geolocation){ toast('This browser has no location support — pick a town instead'); return; }
+
+  // Say why up front rather than spinning into a dead end.
+  var blocked = gpsBlocker();
+  if(blocked){
+    showLocWarn('<b>' + blocked.msg + '</b><br>' + blocked.fix);
+    toast(blocked.msg);
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span> Finding you…';
+  showLocWarn('');
+
   navigator.geolocation.getCurrentPosition(
     function(pos){
       setOrigin(pos.coords.latitude, pos.coords.longitude, 'your current location');
       btn.disabled = false; btn.innerHTML = '📍 Use my location';
+      showLocWarn('');
       toast('Got you — ranking from where you are');
     },
     function(err){
       btn.disabled = false; btn.innerHTML = '📍 Use my location';
-      // Chrome and Safari refuse geolocation on a file:// origin. That looks like a
-      // permission refusal, so say what's actually wrong rather than blaming the user.
-      if(err.code === 1 && location.protocol === 'file:'){
-        toast('Browsers block GPS on opened files — serve it over http, or pick a town');
-      } else if(err.code === 1){
-        toast('Location refused — pick a town instead');
+      var m;
+      if(err.code === 1){
+        m = '<b>Location permission was refused.</b><br>Allow location for this page in your browser' +
+            ' (the padlock or ⓘ icon in the address bar), then tap again. Or pick your town below — it is exact.';
+      } else if(err.code === 2){
+        m = '<b>Your device could not get a fix.</b><br>Check location services are on. Indoors and' +
+            ' inland Cornwall can both be slow — the town picker below works regardless.';
       } else {
-        toast('Could not get a fix — pick a town instead');
+        m = '<b>Location timed out.</b><br>Tap again, or pick your town below.';
       }
+      showLocWarn(m);
+      toast('Could not get your location — see the note above');
     },
     {enableHighAccuracy:true, timeout:12000, maximumAge:120000}
   );
@@ -1344,6 +1404,8 @@ function esc(s){
 
 function distLabel(km){
   if(km == null) return 'distance unknown';
+  // Town-centre coordinates can coincide exactly with a shop's, and "0 m" reads as a bug.
+  if(km < 0.05) return 'a few steps away';
   if(km < 1) return Math.round(km*1000) + ' m';
   if(km < 10) return km.toFixed(1) + ' km · ' + (km*0.621371).toFixed(1) + ' mi';
   return Math.round(km) + ' km · ' + Math.round(km*0.621371) + ' mi';
@@ -1604,6 +1666,17 @@ function init(){
   } else {
     document.getElementById('locNow').textContent =
       'Set your location to rank by distance and get arrival times — everything else works without it.';
+  }
+
+  // If GPS cannot work in this context, say so before the button is ever pressed and
+  // promote the town picker instead, so nobody is left tapping a button that can't win.
+  var blocked = gpsBlocker();
+  if(blocked){
+    showLocWarn('<b>' + blocked.msg + '</b><br>' + blocked.fix);
+    var gb = document.getElementById('useGps');
+    gb.classList.remove('primary');
+    gb.title = blocked.msg;
+    document.querySelector('.locard .lbl').textContent = 'Where are you? — pick a town or postcode';
   }
 
   render();
