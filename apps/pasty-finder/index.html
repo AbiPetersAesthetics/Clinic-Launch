@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Proper Pasty — Cornwall pasty finder</title>
+<meta name="description" content="Ranks Cornish pasty shops by reviews, opening hours and distance from where you're standing.">
+<meta name="theme-color" content="#1b2a35">
+<style>
+/* ── palette ───────────────────────────────────────────────────────────── */
+:root{
+  --bg:#f6f1e7; --bg-2:#efe7d8; --surface:#fffdf8; --surface-2:#f4ece0;
+  --ink:#22303a; --ink-2:#54636e; --ink-3:#8a97a1;
+  --line:#e2d7c4; --line-2:#d2c4ad;
+  --gold:#c8862a; --gold-ink:#8a5a12;
+  --sea:#1f6f7a; --sea-ink:#12525b;
+  --open:#2f7d4f; --open-bg:#e4f2e8;
+  --shut:#a83a3a; --shut-bg:#f8e6e4;
+  --soon:#b3701a; --soon-bg:#fbeedb;
+  --shadow:0 1px 2px rgba(34,48,58,.06), 0 6px 18px rgba(34,48,58,.07);
+  --r:14px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#151d24; --bg-2:#111820; --surface:#1b262f; --surface-2:#22303a;
+    --ink:#eef3f6; --ink-2:#a8b7c2; --ink-3:#75858f;
+    --line:#2c3a45; --line-2:#3a4b58;
+    --gold:#e0a445; --gold-ink:#f0c37c;
+    --sea:#4fb3bf; --sea-ink:#7fd0d9;
+    --open:#57c07e; --open-bg:#183227;
+    --shut:#e2726d; --shut-bg:#331d1d;
+    --soon:#dda13f; --soon-bg:#332715;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#151d24; --bg-2:#111820; --surface:#1b262f; --surface-2:#22303a;
+  --ink:#eef3f6; --ink-2:#a8b7c2; --ink-3:#75858f;
+  --line:#2c3a45; --line-2:#3a4b58;
+  --gold:#e0a445; --gold-ink:#f0c37c;
+  --sea:#4fb3bf; --sea-ink:#7fd0d9;
+  --open:#57c07e; --open-bg:#183227;
+  --shut:#e2726d; --shut-bg:#331d1d;
+  --soon:#dda13f; --soon-bg:#332715;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.28);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink);
+  font:400 16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  -webkit-text-size-adjust:100%;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+h1,h2,h3{margin:0;font-weight:650;letter-spacing:-.015em}
+button{font:inherit;color:inherit}
+a{color:var(--sea-ink)}
+.wrap{max-width:760px;margin:0 auto;padding:0 14px}
+
+/* ── masthead ──────────────────────────────────────────────────────────── */
+header.top{
+  background:linear-gradient(180deg,var(--surface),var(--bg-2));
+  border-bottom:1px solid var(--line);
+}
+.mast{display:flex;align-items:center;gap:12px;padding:16px 0 12px}
+.crest{
+  width:44px;height:44px;flex:none;border-radius:12px;
+  background:radial-gradient(120% 120% at 30% 20%,var(--gold),#8a5a12);
+  display:grid;place-items:center;font-size:23px;box-shadow:var(--shadow);
+}
+.mast h1{font-size:20px}
+.mast p{margin:2px 0 0;font-size:12.5px;color:var(--ink-2);line-height:1.35}
+.themebtn{
+  margin-left:auto;flex:none;background:var(--surface);border:1px solid var(--line);
+  border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px;
+}
+
+/* ── location bar ──────────────────────────────────────────────────────── */
+.locbar{display:flex;flex-wrap:wrap;gap:8px;padding:0 0 14px;align-items:center}
+.btn{
+  background:var(--surface);border:1px solid var(--line-2);border-radius:11px;
+  padding:9px 13px;cursor:pointer;font-size:14px;font-weight:550;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.btn:hover{border-color:var(--gold)}
+.btn.primary{background:var(--gold);border-color:var(--gold);color:#fff}
+:root[data-theme="dark"] .btn.primary,
+:root:not([data-theme="light"]) .btn.primary{color:#1b1206}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .btn.primary{color:#fff}}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn:disabled{opacity:.5;cursor:default}
+select,input[type=text]{
+  background:var(--surface);border:1px solid var(--line-2);border-radius:11px;
+  padding:9px 11px;font:inherit;font-size:14px;color:var(--ink);min-width:0;
+}
+input[type=text]{width:118px}
+.locnow{
+  font-size:13px;color:var(--ink-2);display:flex;align-items:center;gap:6px;
+  flex-basis:100%;
+}
+.locnow b{color:var(--ink);font-weight:600}
+
+/* ── control strip ─────────────────────────────────────────────────────── */
+.strip{
+  position:sticky;top:0;z-index:20;background:var(--bg-2);
+  border-bottom:1px solid var(--line);
+  padding:9px 0;backdrop-filter:saturate(1.4) blur(8px);
+}
+/* wraps rather than scrolls: an off-screen control on a phone is an invisible one */
+.strip .row{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.chipbtn{
+  background:var(--surface);border:1px solid var(--line-2);border-radius:999px;
+  padding:6px 12px;font-size:13px;cursor:pointer;white-space:nowrap;font-weight:550;
+}
+.chipbtn[aria-pressed="true"]{background:var(--sea);border-color:var(--sea);color:#fff}
+.count{margin-left:auto;font-size:12.5px;color:var(--ink-2);white-space:nowrap;padding-left:8px}
+
+/* ── panels ────────────────────────────────────────────────────────────── */
+.panel{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:14px;margin:12px 0;box-shadow:var(--shadow);
+}
+.panel h3{font-size:14px;margin-bottom:4px}
+.panel p{margin:6px 0 0;font-size:13px;color:var(--ink-2)}
+.panel[hidden]{display:none}
+.weights{display:grid;gap:11px;margin-top:12px}
+.wrow{display:grid;grid-template-columns:96px 1fr 42px;gap:10px;align-items:center;font-size:13.5px}
+.wrow input[type=range]{width:100%;accent-color:var(--gold)}
+.wrow span:last-child{text-align:right;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.srcrow{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+.srcrow:first-of-type{border-top:0}
+.srcrow .body{flex:1;min-width:0}
+.srcrow .body b{font-size:13.5px;display:block}
+.srcrow .body small{color:var(--ink-2);font-size:12.5px;display:block;margin-top:2px}
+.keyrow{display:flex;gap:7px;margin-top:8px}
+.keyrow input{flex:1;width:auto}
+details.help{margin-top:8px}
+details.help summary{cursor:pointer;font-size:12.5px;color:var(--sea-ink);font-weight:550}
+details.help ol{margin:8px 0 0;padding-left:20px;font-size:12.5px;color:var(--ink-2);line-height:1.6}
+
+/* ── shop cards ────────────────────────────────────────────────────────── */
+ol.list{list-style:none;margin:0;padding:0 0 28px;display:grid;gap:10px}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+  padding:13px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden;
+}
+.card::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--line-2);
+}
+.card.s-open::before{background:var(--open)}
+.card.s-soon::before{background:var(--soon)}
+.card.s-shut::before{background:var(--shut)}
+.chead{display:flex;gap:11px;align-items:flex-start}
+.rank{
+  flex:none;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+  background:var(--surface-2);border:1px solid var(--line);
+  font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink-2);
+}
+.card:nth-child(1) .rank,.card:nth-child(2) .rank,.card:nth-child(3) .rank{
+  background:var(--gold);border-color:var(--gold);color:#fff
+}
+.ctitle{flex:1;min-width:0}
+.ctitle h2{font-size:16px;line-height:1.25}
+.ctitle .where{font-size:12.5px;color:var(--ink-2);margin-top:2px}
+.score{
+  flex:none;text-align:right;font-variant-numeric:tabular-nums;
+}
+.score b{font-size:19px;color:var(--gold-ink);display:block;line-height:1}
+.score small{font-size:10px;color:var(--ink-3);text-transform:uppercase;letter-spacing:.07em}
+
+.facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fact{
+  font-size:12.5px;padding:4px 9px;border-radius:8px;background:var(--surface-2);
+  border:1px solid var(--line);display:inline-flex;align-items:center;gap:5px;font-weight:550;
+}
+.fact.open{background:var(--open-bg);border-color:transparent;color:var(--open)}
+.fact.soon{background:var(--soon-bg);border-color:transparent;color:var(--soon)}
+.fact.shut{background:var(--shut-bg);border-color:transparent;color:var(--shut)}
+.fact.est{border-style:dashed;color:var(--ink-2)}
+.fact.dist{color:var(--ink)}
+.fact .star{color:var(--gold)}
+
+.note{margin-top:9px;font-size:12.5px;color:var(--ink-2);line-height:1.45}
+.actions{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+.act{
+  background:var(--surface-2);border:1px solid var(--line);border-radius:9px;
+  padding:7px 11px;font-size:12.5px;font-weight:600;text-decoration:none;color:var(--ink);
+  display:inline-flex;align-items:center;gap:5px;cursor:pointer;
+}
+.act:hover{border-color:var(--gold)}
+.act.go{background:var(--sea);border-color:var(--sea);color:#fff}
+
+.bars{display:grid;gap:4px;margin-top:11px;padding-top:10px;border-top:1px dashed var(--line)}
+.bar{display:grid;grid-template-columns:62px 1fr 34px;gap:8px;align-items:center;font-size:11px;color:var(--ink-2)}
+/* both must be blockified: as inline spans, width/height would be ignored */
+.bar .track{display:block;height:5px;background:var(--surface-2);border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.bar .fill{display:block;height:100%;border-radius:99px;background:var(--gold);min-width:2px}
+.bar .fill.na{background:var(--line-2);opacity:.65}
+.bar span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+
+.empty{text-align:center;padding:40px 16px;color:var(--ink-2);font-size:14px}
+.toast{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));
+  background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13.5px;
+  z-index:60;max-width:90vw;text-align:center;box-shadow:var(--shadow);
+}
+footer.legal{
+  border-top:1px solid var(--line);margin-top:8px;padding:16px 0 30px;
+  font-size:12px;color:var(--ink-3);line-height:1.6;
+}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="mast">
+      <div class="crest" aria-hidden="true">🥟</div>
+      <div>
+        <h1>Proper Pasty</h1>
+        <p>Every pasty shop in Cornwall, ranked by reviews, opening hours and how far you'd have to walk.</p>
+      </div>
+      <button class="themebtn" id="theme" title="Switch light / dark">◐</button>
+    </div>
+
+    <div class="locbar">
+      <button class="btn primary" id="useGps">📍 Use my location</button>
+      <select id="place" aria-label="Or pick where you're staying"></select>
+      <input type="text" id="postcode" placeholder="Postcode" autocomplete="postal-code" spellcheck="false" aria-label="Or enter a postcode">
+      <button class="btn" id="goPostcode">Go</button>
+      <div class="locnow" id="locNow"></div>
+    </div>
+  </div>
+</header>
+
+<div class="strip">
+  <div class="wrap row">
+    <button class="chipbtn" id="fOpen" aria-pressed="false">Open now</button>
+    <button class="chipbtn" id="fWalk" aria-pressed="false">Walkable (2 km)</button>
+    <button class="chipbtn" id="fRated" aria-pressed="false">Has reviews</button>
+    <button class="chipbtn" id="tScan">⟳ Scan</button>
+    <button class="chipbtn" id="tTune">Tune ranking</button>
+    <span class="count" id="count"></span>
+  </div>
+</div>
+
+<main class="wrap">
+
+  <section class="panel" id="tunePanel" hidden>
+    <h3>What matters to you</h3>
+    <p>The Pasty Score is a weighted blend of three signals. Drag to suit — chasing a five-star pasty is a different holiday to wanting one in the next ten minutes.</p>
+    <div class="weights">
+      <label class="wrow"><span>Reviews</span><input type="range" id="wRating" min="0" max="100" step="5"><span id="wRatingV"></span></label>
+      <label class="wrow"><span>Distance</span><input type="range" id="wDist" min="0" max="100" step="5"><span id="wDistV"></span></label>
+      <label class="wrow"><span>Open now</span><input type="range" id="wOpen" min="0" max="100" step="5"><span id="wOpenV"></span></label>
+    </div>
+  </section>
+
+  <section class="panel" id="scanPanel" hidden>
+    <h3>Where the data comes from</h3>
+    <p>This app ships with a built-in list of well-known Cornish makers so it works with no signal. Run a scan to pull live, surveyed data over the top.</p>
+
+    <div class="srcrow">
+      <div class="body">
+        <b>Built-in Cornwall list</b>
+        <small id="seedCount"></small>
+        <small>Locations are town-level approximations. Opening hours are <em>indicative patterns</em>, not published hours — always shown with a dashed outline. No star ratings are invented.</small>
+      </div>
+    </div>
+
+    <div class="srcrow">
+      <div class="body">
+        <b>OpenStreetMap — free, no key</b>
+        <small>Sweeps every bakery and pasty shop mapped in Cornwall. Brings real coordinates and real published opening hours. Does not carry reviews.</small>
+        <div class="keyrow"><button class="btn" id="scanOsm">⟳ Scan Cornwall</button></div>
+        <small id="osmStatus"></small>
+      </div>
+    </div>
+
+    <div class="srcrow">
+      <div class="body">
+        <b>Google Places — needs your own key</b>
+        <small>The only source here that carries star ratings and review counts. Your key stays in this browser and is sent only to Google.</small>
+        <div class="keyrow">
+          <input type="text" id="gKey" placeholder="Paste Google Places API key" autocomplete="off" spellcheck="false">
+          <button class="btn" id="scanG">Fetch</button>
+        </div>
+        <small id="gStatus"></small>
+        <details class="help">
+          <summary>How to get a key (about three minutes, free tier)</summary>
+          <ol>
+            <li>Go to <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> and make a project.</li>
+            <li>Enable <b>Places API (New)</b> under APIs &amp; Services.</li>
+            <li>Credentials → Create credentials → API key.</li>
+            <li>Restrict it to the Places API. Google's free monthly allowance covers holiday use comfortably.</li>
+            <li>Paste it above. It's saved in this browser only.</li>
+          </ol>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <ol class="list" id="list"></ol>
+
+  <footer class="legal">
+    <p><b>Read this before you drive anywhere.</b> Distances are straight-line, not road miles — a shop 3 km away across the Fal is a long way round. Opening hours shown with a dashed outline are indicative patterns for a Cornish bakery, not the shop's published times; ring ahead if it matters. Seasonal hours change constantly and pasty shops sell out.</p>
+    <p>Built-in list © the app. Live map data © OpenStreetMap contributors (ODbL) via the Overpass API. Ratings, where shown, © Google. Nothing here is affiliated with any bakery.</p>
+  </footer>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ══════════════════════════════════════════════════════════════════════════
+   1. SEED DATA
+   Real, long-established Cornish makers so the app is useful with no signal.
+   lat/lon are town-level approximations. `hours` are INDICATIVE patterns, never
+   published times — the UI marks them estimated. Ratings are absent by design:
+   none are invented, they only ever arrive from a live Google lookup.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var PAT = {
+  town:    'Mo-Sa 08:00-16:30; Su 09:00-14:00',   // high-street bakery
+  harbour: 'Mo-Su 09:00-17:00',                    // tourist-trail / harbour shop
+  village: 'Mo-Sa 08:30-16:00; Su off',            // village shop
+  factory: 'Mo-Fr 09:00-16:00; Sa 09:00-13:00; Su off' // production site / factory shop
+};
+
+var SEED = [
+  {n:"Philp's Bakery", t:'Hayle', lat:50.1852, lon:-5.4193, h:PAT.town,
+   note:'East Quay institution — routinely named in "best pasty in Cornwall" arguments.'},
+  {n:"Ann's Pasties", t:'The Lizard', lat:49.9598, lon:-5.2027, h:PAT.village,
+   note:"On the Lizard peninsula — mainland Britain's most southerly pasty."},
+  {n:"Ann's Pasties", t:'Helston', lat:50.1004, lon:-5.2755, h:PAT.town},
+  {n:"Ann's Pasties", t:'Porthleven', lat:50.0847, lon:-5.3168, h:PAT.harbour},
+  {n:'Warrens Bakery', t:'St Just', lat:50.1237, lon:-5.6805, h:PAT.town,
+   note:'Claims the title of oldest Cornish pasty maker, baking in St Just since 1860.'},
+  {n:'Warrens Bakery', t:'Truro', lat:50.2632, lon:-5.0510, h:PAT.town},
+  {n:'Warrens Bakery', t:'St Ives', lat:50.2125, lon:-5.4805, h:PAT.harbour},
+  {n:"Rowe's Cornish Bakers", t:'Falmouth', lat:50.1533, lon:-5.0716, h:PAT.town,
+   note:'W C Rowe — one of the big Cornish bakery names, branches across the county.'},
+  {n:"Rowe's Cornish Bakers", t:'Truro', lat:50.2645, lon:-5.0520, h:PAT.town},
+  {n:"Rowe's Cornish Bakers", t:'Penzance', lat:50.1186, lon:-5.5372, h:PAT.town},
+  {n:"Rowe's Cornish Bakers", t:'Newquay', lat:50.4155, lon:-5.0737, h:PAT.harbour},
+  {n:'The Chough Bakery', t:'Padstow', lat:50.5410, lon:-4.9370, h:PAT.harbour,
+   note:'On the harbour at Padstow. A decorated World Pasty Championship entrant.'},
+  {n:'St Ives Bakery', t:'St Ives', lat:50.2118, lon:-5.4795, h:PAT.harbour,
+   note:'Fore Street. Expect a queue in August.'},
+  {n:'Malcolm Barnecutt Bakery', t:'Bodmin', lat:50.4710, lon:-4.7240, h:PAT.town},
+  {n:'Malcolm Barnecutt Bakery', t:'Wadebridge', lat:50.5170, lon:-4.8340, h:PAT.town},
+  {n:'Malcolm Barnecutt Bakery', t:'Padstow', lat:50.5405, lon:-4.9384, h:PAT.harbour},
+  {n:'Pengenna Pasties', t:'Boscastle', lat:50.6893, lon:-4.6952, h:PAT.harbour,
+   note:'Hand-crimped, north coast. Handy for the Boscastle harbour walk.'},
+  {n:'Pengenna Pasties', t:'Bude', lat:50.8285, lon:-4.5448, h:PAT.harbour},
+  {n:'Pengenna Pasties', t:'Wadebridge', lat:50.5165, lon:-4.8348, h:PAT.town},
+  {n:"Sarah's Pasty Shop", t:'Looe', lat:50.3536, lon:-4.4543, h:PAT.harbour,
+   note:'Buller Street. Small shop, big reputation on the south-east coast.'},
+  {n:'Portreath Bakery', t:'Portreath', lat:50.2620, lon:-5.2870, h:PAT.harbour},
+  {n:'The Cornish Bakery', t:'Falmouth', lat:50.1530, lon:-5.0700, h:PAT.town},
+  {n:'Oggy Oggy Pasty Co', t:'Newquay', lat:50.4150, lon:-5.0745, h:PAT.harbour},
+  {n:'Blewetts Bakery', t:'Wadebridge', lat:50.5175, lon:-4.8330, h:PAT.town},
+  {n:'Pasty Presto', t:'Bude', lat:50.8270, lon:-4.5460, h:PAT.harbour},
+  {n:'Hampsons of Hayle', t:'Hayle', lat:50.1860, lon:-5.4230, h:PAT.town},
+  {n:'Proper Cornish', t:'Bodmin', lat:50.4640, lon:-4.7180, h:PAT.factory,
+   note:'Large Bodmin producer supplying much of the county — a production site, not a high-street shop.'},
+  {n:'Cornish Premier Pasties', t:'Redruth', lat:50.2330, lon:-5.2280, h:PAT.factory},
+  {n:'Prima Bakeries', t:'Truro', lat:50.2560, lon:-5.0700, h:PAT.factory},
+  {n:'Ginsters', t:'Callington', lat:50.5030, lon:-4.3130, h:PAT.factory,
+   note:'The big industrial name. Here for completeness — on holiday you probably want one of the others.'}
+];
+
+var PLACES = [
+  ['St Ives',50.2110,-5.4800],['Padstow',50.5405,-4.9384],['Newquay',50.4155,-5.0737],
+  ['Falmouth',50.1533,-5.0716],['Truro',50.2632,-5.0510],['Penzance',50.1186,-5.5372],
+  ['St Austell',50.3390,-4.7900],['Bude',50.8280,-4.5450],['Looe',50.3540,-4.4540],
+  ['Fowey',50.3360,-4.6380],['Bodmin',50.4710,-4.7240],['Helston',50.1000,-5.2740],
+  ['Hayle',50.1850,-5.4200],['Wadebridge',50.5170,-4.8340],['Perranporth',50.3450,-5.1540],
+  ['Mevagissey',50.2700,-4.7860],['Port Isaac',50.5930,-4.8330],['Tintagel',50.6640,-4.7500],
+  ['Boscastle',50.6900,-4.6950],['Polperro',50.3320,-4.5170],['Mousehole',50.0830,-5.5390],
+  ['Marazion',50.1250,-5.4750],['The Lizard',49.9600,-5.2000],['St Agnes',50.3110,-5.2050],
+  ['Liskeard',50.4530,-4.4680],['Launceston',50.6370,-4.3600],['Camborne',50.2130,-5.2990],
+  ['Redruth',50.2330,-5.2280],['Charlestown',50.3320,-4.7570],['Porthleven',50.0850,-5.3160],
+  ['St Just',50.1240,-5.6810],['Saltash',50.4080,-4.2130]
+];
+
+/* ══════════════════════════════════════════════════════════════════════════
+   2. OPENING HOURS — a pragmatic subset of the OSM `opening_hours` grammar
+   Handles the forms that actually appear on bakeries: "Mo-Sa 08:00-16:30; Su off",
+   "Mo-Su 09:00-17:00", "Tu-Sa 09:00-13:00,14:00-17:00", "24/7".
+   Returns 7 buckets of minute-spans indexed by Date#getDay(), or null if we
+   can't read it — null means "unknown", which the UI reports honestly.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var DAY_IDX = {su:0,mo:1,tu:2,we:3,th:4,fr:5,sa:6};
+var DAY_NAME = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function expandDays(part){
+  var out = [], toks = part.split(','), i, j;
+  for(i=0;i<toks.length;i++){
+    var tok = toks[i].trim().toLowerCase();
+    if(!tok || tok === 'ph' || tok === 'sh') continue;      // holidays: ignore, don't guess
+    var range = tok.split('-');
+    if(range.length === 2){
+      var a = DAY_IDX[range[0].slice(0,2)], b = DAY_IDX[range[1].slice(0,2)];
+      if(a === undefined || b === undefined) return null;
+      for(j = a; ; j = (j+1)%7){ out.push(j); if(j === b) break; }
+    } else {
+      var d = DAY_IDX[tok.slice(0,2)];
+      if(d === undefined) return null;
+      out.push(d);
+    }
+  }
+  return out.length ? out : null;
+}
+
+function parseHours(spec){
+  if(!spec || typeof spec !== 'string') return null;
+  var clean = spec.replace(/\s+/g,' ').trim();
+  var week = [[],[],[],[],[],[],[]], parsedSomething = false, i;
+
+  if(/^24\/7$/i.test(clean)){
+    for(i=0;i<7;i++) week[i] = [{s:0,e:1440}];
+    return week;
+  }
+
+  var rules = clean.split(';');
+  for(i=0;i<rules.length;i++){
+    var rule = rules[i].trim();
+    if(!rule) continue;
+
+    // Split "<days> <times>". No leading day token means the rule applies all week.
+    var m = rule.match(/^((?:[A-Za-z]{2,3}(?:-[A-Za-z]{2,3})?)(?:\s*,\s*[A-Za-z]{2,3}(?:-[A-Za-z]{2,3})?)*)\s+(.*)$/);
+    var dayPart = m ? m[1] : 'Mo-Su';
+    var timePart = (m ? m[2] : rule).trim();
+
+    var days = expandDays(dayPart);
+    if(!days) continue;
+
+    if(/^(off|closed)$/i.test(timePart)){
+      for(var d0=0; d0<days.length; d0++) week[days[d0]] = [];
+      parsedSomething = true;
+      continue;
+    }
+
+    var spans = [], chunks = timePart.split(',');
+    for(var c=0;c<chunks.length;c++){
+      var tm = chunks[c].trim().match(/^(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})$/);
+      if(!tm) continue;
+      var s = (+tm[1])*60 + (+tm[2]);
+      var e = (+tm[3])*60 + (+tm[4]);
+      if(e <= s) e += 1440;                 // closes after midnight
+      spans.push({s:s, e:e});
+    }
+    if(spans.length){
+      for(var d1=0; d1<days.length; d1++) week[days[d1]] = week[days[d1]].concat(spans);
+      parsedSomething = true;
+    }
+  }
+  return parsedSomething ? week : null;
+}
+
+function hhmm(mins){
+  var m = ((mins % 1440) + 1440) % 1440;
+  return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+}
+function humanGap(mins){
+  if(mins < 60) return mins + ' min';
+  var h = Math.floor(mins/60), r = mins % 60;
+  return r ? h + 'h ' + r + 'm' : h + 'h';
+}
+
+// Current state against a parsed week. `now` is a Date.
+function openState(week, now){
+  if(!week) return {state:'unknown'};
+  var today = now.getDay(), mins = now.getHours()*60 + now.getMinutes(), i;
+
+  // Yesterday's spans can run past midnight into today.
+  var yday = (today + 6) % 7;
+  for(i=0;i<week[yday].length;i++){
+    var ys = week[yday][i];
+    if(ys.e > 1440 && mins < ys.e - 1440) return {state:'open', closesIn: (ys.e - 1440) - mins};
+  }
+  for(i=0;i<week[today].length;i++){
+    var sp = week[today][i];
+    if(mins >= sp.s && mins < sp.e) return {state:'open', closesIn: sp.e - mins};
+  }
+  // Still to open today?
+  var next = null;
+  for(i=0;i<week[today].length;i++){
+    if(week[today][i].s > mins && (next === null || week[today][i].s < next)) next = week[today][i].s;
+  }
+  if(next !== null) return {state:'later', opensIn: next - mins, opensAt: hhmm(next)};
+
+  // Next day with any hours at all.
+  for(var k=1;k<=7;k++){
+    var d = (today + k) % 7;
+    if(week[d].length){
+      var first = week[d].reduce(function(a,b){ return b.s < a ? b.s : a; }, 1e9);
+      return {state:'shut', nextDay: DAY_NAME[d], nextAt: hhmm(first), daysAhead:k};
+    }
+  }
+  return {state:'unknown'};
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   3. GEOMETRY + SCORING
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function haversineKm(a, b, c, d){
+  var R = 6371, p = Math.PI/180;
+  var dLat = (c-a)*p, dLon = (d-b)*p;
+  var s = Math.sin(dLat/2)*Math.sin(dLat/2) +
+          Math.cos(a*p)*Math.cos(c*p)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return 2*R*Math.asin(Math.min(1, Math.sqrt(s)));
+}
+
+// Reviews → 0..1. A 4.9 from 12 people is weaker evidence than a 4.6 from 900,
+// so pull thin samples toward the neutral middle rather than letting them win.
+function ratingScore(rating, count){
+  if(rating == null) return {v:0.5, known:false};
+  var base = Math.max(0, Math.min(1, (rating - 3.2) / 1.6));
+  var conf = Math.min(1, Math.log10((count || 0) + 1) / Math.log10(300));
+  return {v: 0.5 + (base - 0.5) * (0.35 + 0.65*conf), known:true};
+}
+
+// Distance → 0..1. Sharp falloff: on foot with a family, 400 m and 4 km are
+// completely different propositions, while 30 km and 40 km are both "a drive".
+function distScore(km){
+  if(km == null) return {v:0.5, known:false};
+  return {v: 1 / (1 + Math.pow(km / 2.2, 1.35)), known:true};
+}
+
+// Open state → 0..1. Being about to shut is nearly as bad as being shut when
+// you're walking there with a hungry child.
+function openScore(st){
+  if(!st || st.state === 'unknown') return {v:0.5, known:false};
+  if(st.state === 'open'){
+    if(st.closesIn <= 15) return {v:0.55, known:true};
+    if(st.closesIn <= 45) return {v:0.78, known:true};
+    return {v:1, known:true};
+  }
+  if(st.state === 'later'){
+    if(st.opensIn <= 60) return {v:0.5, known:true};
+    if(st.opensIn <= 180) return {v:0.33, known:true};
+    return {v:0.22, known:true};
+  }
+  return {v:0.08, known:true};   // shut for the rest of today
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   4. STATE
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var LS = 'properPasty.v1';
+var state = {
+  origin: null,              // {lat, lon, label}
+  weights: {rating:45, dist:35, open:20},
+  filters: {openOnly:false, walkable:false, ratedOnly:false},
+  gKey: '',
+  theme: null,
+  shops: []                  // merged working set
+};
+
+function loadPrefs(){
+  try{
+    var raw = localStorage.getItem(LS);
+    if(!raw) return;
+    var p = JSON.parse(raw);
+    if(p.weights) state.weights = p.weights;
+    if(p.gKey) state.gKey = p.gKey;
+    if(p.theme) state.theme = p.theme;
+    if(p.origin) state.origin = p.origin;
+  }catch(e){ /* corrupt or blocked storage — defaults are fine */ }
+}
+function savePrefs(){
+  try{
+    localStorage.setItem(LS, JSON.stringify({
+      weights: state.weights, gKey: state.gKey, theme: state.theme, origin: state.origin
+    }));
+  }catch(e){}
+}
+
+// Build the working set from seed data. Live scans merge into this.
+function resetShops(){
+  state.shops = SEED.map(function(s, i){
+    return {
+      id: 'seed:' + i,
+      name: s.n,
+      town: s.t,
+      lat: s.lat, lon: s.lon,
+      hours: s.h,
+      hoursEstimated: true,      // seed hours are indicative patterns, never published
+      locApprox: true,
+      note: s.note || '',
+      rating: null, reviews: null,
+      website: null, phone: null,
+      sources: ['built-in']
+    };
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   5. LIVE SCANS
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+// Cornwall unitary authority, ONS GSS code. Falls back to a bounding box if the
+// area lookup fails (the box bleeds a little into west Devon on the eastern edge).
+var OSM_QUERY =
+  '[out:json][timeout:60];' +
+  'area["ref:gss"="E06000052"]->.c;' +
+  '(' +
+    'nwr["shop"="bakery"](area.c);' +
+    'nwr["cuisine"~"pasty",i](area.c);' +
+    'nwr["name"~"pasty",i](area.c);' +
+  ');out center tags;';
+
+var OSM_QUERY_BBOX =
+  '[out:json][timeout:60];' +
+  '(' +
+    'nwr["shop"="bakery"](49.90,-5.80,50.95,-4.20);' +
+    'nwr["cuisine"~"pasty",i](49.90,-5.80,50.95,-4.20);' +
+    'nwr["name"~"pasty",i](49.90,-5.80,50.95,-4.20);' +
+  ');out center tags;';
+
+function fetchOverpass(query){
+  var attempt = 0;
+  function tryNext(){
+    if(attempt >= OVERPASS.length) return Promise.reject(new Error('All Overpass mirrors failed'));
+    var url = OVERPASS[attempt++];
+    return fetch(url, {method:'POST', body:'data=' + encodeURIComponent(query),
+                       headers:{'Content-Type':'application/x-www-form-urlencoded'}})
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .catch(function(){ return tryNext(); });
+  }
+  return tryNext();
+}
+
+function scanOSM(){
+  var el = document.getElementById('osmStatus');
+  var btn = document.getElementById('scanOsm');
+  btn.disabled = true;
+  el.innerHTML = '<span class="spin"></span> Sweeping Cornwall…';
+
+  fetchOverpass(OSM_QUERY)
+    .then(function(j){
+      if(j && j.elements && j.elements.length) return j;
+      return fetchOverpass(OSM_QUERY_BBOX);
+    })
+    .then(function(j){
+      var els = (j && j.elements) || [];
+      var added = 0, enriched = 0;
+
+      for(var i=0;i<els.length;i++){
+        var e = els[i], tags = e.tags || {};
+        if(!tags.name) continue;
+        var lat = e.lat != null ? e.lat : (e.center && e.center.lat);
+        var lon = e.lon != null ? e.lon : (e.center && e.center.lon);
+        if(lat == null || lon == null) continue;
+
+        var rec = {
+          id: 'osm:' + e.type + '/' + e.id,
+          name: tags.name,
+          town: tags['addr:city'] || tags['addr:town'] || tags['addr:village'] ||
+                tags['addr:suburb'] || tags['addr:place'] || '',
+          lat: lat, lon: lon,
+          hours: tags.opening_hours || null,
+          hoursEstimated: false,             // surveyed, published hours
+          locApprox: false,
+          note: '',
+          rating: null, reviews: null,
+          website: tags.website || tags['contact:website'] || null,
+          phone: tags.phone || tags['contact:phone'] || null,
+          sources: ['OpenStreetMap']
+        };
+
+        var match = findMatch(rec);
+        if(match){ mergeInto(match, rec); enriched++; }
+        else { state.shops.push(rec); added++; }
+      }
+
+      el.textContent = added + ' new shops added, ' + enriched +
+        ' existing entries upgraded to surveyed locations and published hours.';
+      render();
+      toast('Scan complete — ' + state.shops.length + ' pasty stops in range');
+    })
+    .catch(function(err){
+      el.textContent = 'Scan failed: ' + err.message +
+        '. You may be offline — the built-in list still works.';
+    })
+    .then(function(){ btn.disabled = false; });
+}
+
+// Google Places (New) text search. Only source here that carries reviews.
+function scanGoogle(){
+  var key = document.getElementById('gKey').value.trim();
+  var el = document.getElementById('gStatus');
+  var btn = document.getElementById('scanG');
+  if(!key){ el.textContent = 'Paste a key first.'; return; }
+  if(!state.origin){ el.textContent = 'Set your location first — the search is centred on you.'; return; }
+
+  state.gKey = key; savePrefs();
+  btn.disabled = true;
+  el.innerHTML = '<span class="spin"></span> Asking Google…';
+
+  fetch('https://places.googleapis.com/v1/places:searchText', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-Goog-Api-Key': key,
+      'X-Goog-FieldMask': [
+        'places.id','places.displayName','places.formattedAddress','places.location',
+        'places.rating','places.userRatingCount','places.regularOpeningHours',
+        'places.currentOpeningHours','places.websiteUri','places.nationalPhoneNumber',
+        'places.googleMapsUri'
+      ].join(',')
+    },
+    body: JSON.stringify({
+      textQuery: 'Cornish pasty shop bakery',
+      maxResultCount: 20,
+      locationBias: { circle: { center: {latitude: state.origin.lat, longitude: state.origin.lon},
+                                radius: 30000 } }
+    })
+  })
+  .then(function(r){
+    return r.json().then(function(j){
+      if(!r.ok) throw new Error((j.error && j.error.message) || ('HTTP ' + r.status));
+      return j;
+    });
+  })
+  .then(function(j){
+    var places = j.places || [], added = 0, enriched = 0;
+    for(var i=0;i<places.length;i++){
+      var p = places[i];
+      var rec = {
+        id: 'g:' + p.id,
+        name: (p.displayName && p.displayName.text) || 'Unnamed',
+        town: townFromAddress(p.formattedAddress),
+        lat: p.location && p.location.latitude,
+        lon: p.location && p.location.longitude,
+        hours: googleHours(p),
+        hoursEstimated: false,
+        locApprox: false,
+        note: '',
+        rating: p.rating != null ? p.rating : null,
+        reviews: p.userRatingCount != null ? p.userRatingCount : null,
+        website: p.websiteUri || null,
+        phone: p.nationalPhoneNumber || null,
+        mapUri: p.googleMapsUri || null,
+        sources: ['Google']
+      };
+      if(rec.lat == null || rec.lon == null) continue;
+
+      var match = findMatch(rec);
+      if(match){ mergeInto(match, rec); enriched++; }
+      else { state.shops.push(rec); added++; }
+    }
+    el.textContent = added + ' new places, ' + enriched + ' existing entries now carry real ratings.';
+    render();
+    toast('Reviews loaded for ' + (added + enriched) + ' shops');
+  })
+  .catch(function(err){
+    el.textContent = 'Google request failed: ' + err.message;
+  })
+  .then(function(){ btn.disabled = false; });
+}
+
+function townFromAddress(addr){
+  if(!addr) return '';
+  // "12 Fore St, St Ives TR26 1AB, UK" → "St Ives"
+  var parts = addr.split(',').map(function(s){ return s.trim(); });
+  for(var i=parts.length-1;i>=0;i--){
+    var p = parts[i].replace(/\b[A-Z]{2}\d{1,2}\s*\d[A-Z]{2}\b/,'').trim();
+    if(p && !/^(uk|united kingdom|england|cornwall)$/i.test(p)) return p;
+  }
+  return '';
+}
+
+// Google returns weekdayDescriptions like "Monday: 9:00 AM – 5:00 PM".
+// Convert to the OSM grammar our parser already understands.
+function googleHours(p){
+  var oh = p.currentOpeningHours || p.regularOpeningHours;
+  if(!oh || !oh.weekdayDescriptions) return null;
+  var abbr = {Monday:'Mo',Tuesday:'Tu',Wednesday:'We',Thursday:'Th',Friday:'Fr',Saturday:'Sa',Sunday:'Su'};
+  var rules = [];
+  for(var i=0;i<oh.weekdayDescriptions.length;i++){
+    var line = oh.weekdayDescriptions[i];
+    var m = line.match(/^([A-Za-z]+):\s*(.+)$/);
+    if(!m || !abbr[m[1]]) continue;
+    var day = abbr[m[1]], body = m[2].trim();
+    if(/closed/i.test(body)){ rules.push(day + ' off'); continue; }
+    if(/open 24 hours/i.test(body)){ rules.push(day + ' 00:00-24:00'); continue; }
+    var spans = [];
+    // "9:00 AM – 5:00 PM" (en dash or hyphen), possibly comma-separated
+    var segs = body.split(',');
+    for(var s=0;s<segs.length;s++){
+      var t = segs[s].match(/(\d{1,2})(?::(\d{2}))?\s*([AaPp])\.?[Mm]\.?\s*[–—-]\s*(\d{1,2})(?::(\d{2}))?\s*([AaPp])\.?[Mm]\.?/);
+      if(!t) continue;
+      spans.push(to24(t[1],t[2],t[3]) + '-' + to24(t[4],t[5],t[6]));
+    }
+    if(spans.length) rules.push(day + ' ' + spans.join(','));
+  }
+  return rules.length ? rules.join('; ') : null;
+}
+function to24(h, m, ap){
+  var hh = +h % 12;
+  if(/p/i.test(ap)) hh += 12;
+  return String(hh).padStart(2,'0') + ':' + (m || '00');
+}
+
+/* ── merging ───────────────────────────────────────────────────────────── */
+
+function normName(s){
+  return (s || '').toLowerCase()
+    .replace(/&/g,'and')
+    .replace(/\b(the|ltd|limited|bakery|bakers|bakehouse|co|company|shop|pasties|pasty)\b/g,'')
+    .replace(/[^a-z0-9]/g,'');
+}
+
+// Same business if the names reduce to the same core AND they're close enough
+// to be the same branch. Chains have many branches, so proximity is essential.
+function findMatch(rec){
+  var key = normName(rec.name);
+  if(!key) return null;
+  for(var i=0;i<state.shops.length;i++){
+    var s = state.shops[i];
+    if(normName(s.name) !== key) continue;
+    var km = haversineKm(s.lat, s.lon, rec.lat, rec.lon);
+    if(km < 1.2) return s;          // generous: seed coords are town-level
+  }
+  return null;
+}
+
+// Live, surveyed data wins over seed estimates; ratings only ever come from Google.
+function mergeInto(target, rec){
+  if(!rec.hoursEstimated && rec.hours){ target.hours = rec.hours; target.hoursEstimated = false; }
+  if(!rec.locApprox){ target.lat = rec.lat; target.lon = rec.lon; target.locApprox = false; }
+  if(rec.rating != null){ target.rating = rec.rating; target.reviews = rec.reviews; }
+  if(rec.website && !target.website) target.website = rec.website;
+  if(rec.phone && !target.phone) target.phone = rec.phone;
+  if(rec.mapUri) target.mapUri = rec.mapUri;
+  if(rec.town && !target.town) target.town = rec.town;
+  for(var i=0;i<rec.sources.length;i++){
+    if(target.sources.indexOf(rec.sources[i]) === -1) target.sources.push(rec.sources[i]);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   6. LOCATION
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function setOrigin(lat, lon, label){
+  state.origin = {lat:lat, lon:lon, label:label};
+  savePrefs();
+  document.getElementById('locNow').innerHTML =
+    'Ranking from <b>' + esc(label) + '</b>';
+  render();
+}
+
+function useGps(){
+  var btn = document.getElementById('useGps');
+  if(!navigator.geolocation){ toast('This browser has no location support — pick a town instead'); return; }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> Finding you…';
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      setOrigin(pos.coords.latitude, pos.coords.longitude, 'your current location');
+      btn.disabled = false; btn.innerHTML = '📍 Use my location';
+      toast('Got you — ranking from where you are');
+    },
+    function(err){
+      btn.disabled = false; btn.innerHTML = '📍 Use my location';
+      // Chrome and Safari refuse geolocation on a file:// origin. That looks like a
+      // permission refusal, so say what's actually wrong rather than blaming the user.
+      if(err.code === 1 && location.protocol === 'file:'){
+        toast('Browsers block GPS on opened files — serve it over http, or pick a town');
+      } else if(err.code === 1){
+        toast('Location refused — pick a town instead');
+      } else {
+        toast('Could not get a fix — pick a town instead');
+      }
+    },
+    {enableHighAccuracy:true, timeout:12000, maximumAge:120000}
+  );
+}
+
+function lookupPostcode(){
+  var pc = document.getElementById('postcode').value.trim();
+  if(!pc) return;
+  fetch('https://api.postcodes.io/postcodes/' + encodeURIComponent(pc))
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      if(j.status !== 200 || !j.result) throw new Error('not found');
+      setOrigin(j.result.latitude, j.result.longitude, j.result.postcode);
+    })
+    .catch(function(){ toast('Postcode not found (needs internet)'); });
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   7. RANKING + RENDER
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function rank(){
+  var now = new Date();
+  var w = state.weights;
+  var total = w.rating + w.dist + w.open;
+  if(total === 0) total = 1;
+
+  var rows = state.shops.map(function(s){
+    var km = state.origin ? haversineKm(state.origin.lat, state.origin.lon, s.lat, s.lon) : null;
+    var week = parseHours(s.hours);
+    var st = openState(week, now);
+
+    var r = ratingScore(s.rating, s.reviews);
+    var d = distScore(km);
+    var o = openScore(st);
+
+    var score = (r.v * w.rating + d.v * w.dist + o.v * w.open) / total;
+
+    return {shop:s, km:km, st:st, r:r, d:d, o:o, score: Math.round(score * 100)};
+  });
+
+  rows = rows.filter(function(x){
+    if(state.filters.openOnly && x.st.state !== 'open') return false;
+    if(state.filters.walkable && !(x.km != null && x.km <= 2)) return false;
+    if(state.filters.ratedOnly && x.shop.rating == null) return false;
+    return true;
+  });
+
+  rows.sort(function(a,b){
+    if(b.score !== a.score) return b.score - a.score;
+    if(a.km != null && b.km != null) return a.km - b.km;
+    return a.shop.name.localeCompare(b.shop.name);
+  });
+  return rows;
+}
+
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function distLabel(km){
+  if(km == null) return 'distance unknown';
+  if(km < 1) return Math.round(km*1000) + ' m';
+  if(km < 10) return km.toFixed(1) + ' km · ' + (km*0.621371).toFixed(1) + ' mi';
+  return Math.round(km) + ' km · ' + Math.round(km*0.621371) + ' mi';
+}
+
+function statusFact(x){
+  var st = x.st, est = x.shop.hoursEstimated;
+  var cls, txt;
+  if(st.state === 'open'){
+    if(st.closesIn <= 45){ cls = 'soon'; txt = 'Closes in ' + humanGap(st.closesIn); }
+    else { cls = 'open'; txt = 'Open · closes ' + humanGap(st.closesIn) + ' from now'; }
+  } else if(st.state === 'later'){
+    cls = 'shut'; txt = 'Opens ' + st.opensAt + ' (' + humanGap(st.opensIn) + ')';
+  } else if(st.state === 'shut'){
+    cls = 'shut'; txt = 'Shut · next ' + st.nextDay + ' ' + st.nextAt;
+  } else {
+    return '<span class="fact est">⏱ Hours unknown — ring ahead</span>';
+  }
+  return '<span class="fact ' + cls + (est ? ' est' : '') + '">' +
+         (est ? '≈ ' : '') + esc(txt) + (est ? ' (estimated)' : '') + '</span>';
+}
+
+function cardStateClass(x){
+  if(x.st.state === 'open') return x.st.closesIn <= 45 ? 's-soon' : 's-open';
+  if(x.st.state === 'later' || x.st.state === 'shut') return 's-shut';
+  return '';
+}
+
+function bar(label, val, known){
+  var pct = Math.round(val * 100);
+  return '<div class="bar"><span>' + label + '</span>' +
+    '<span class="track"><span class="fill' + (known ? '' : ' na') + '" style="width:' + pct + '%"></span></span>' +
+    '<span>' + (known ? pct : '—') + '</span></div>';
+}
+
+function render(){
+  var rows = rank();
+  var list = document.getElementById('list');
+  var cnt = document.getElementById('count');
+
+  cnt.textContent = rows.length + ' of ' + state.shops.length + ' shops';
+
+  if(!rows.length){
+    list.innerHTML = '<div class="empty">Nothing matches those filters. Loosen them, or run a scan to widen the net.</div>';
+    return;
+  }
+
+  var html = '';
+  for(var i=0;i<rows.length;i++){
+    var x = rows[i], s = x.shop;
+
+    var mapQ = encodeURIComponent(s.name + ', ' + (s.town || 'Cornwall'));
+    var mapUrl = s.mapUri || ('https://www.google.com/maps/search/?api=1&query=' + mapQ +
+                 '&query_place_id=');
+    var dirUrl = 'https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lon;
+    var reviewUrl = 'https://www.google.com/search?q=' + encodeURIComponent(s.name + ' ' + (s.town||'Cornwall') + ' reviews');
+
+    html += '<li class="card ' + cardStateClass(x) + '">' +
+      '<div class="chead">' +
+        '<div class="rank">' + (i+1) + '</div>' +
+        '<div class="ctitle">' +
+          '<h2>' + esc(s.name) + '</h2>' +
+          '<div class="where">' + esc(s.town || 'Cornwall') +
+            (s.locApprox ? ' · approx. location' : '') +
+            ' · ' + esc(s.sources.join(' + ')) +
+          '</div>' +
+        '</div>' +
+        '<div class="score"><b>' + x.score + '</b><small>score</small></div>' +
+      '</div>' +
+
+      '<div class="facts">' +
+        '<span class="fact dist">📍 ' + esc(distLabel(x.km)) + (x.km != null ? ' as the crow flies' : '') + '</span>' +
+        statusFact(x) +
+        (s.rating != null
+          ? '<span class="fact"><span class="star">★</span> ' + s.rating.toFixed(1) +
+            ' · ' + (s.reviews || 0) + ' review' + (s.reviews === 1 ? '' : 's') + '</span>'
+          : '<span class="fact est">★ No review data — add a Google key</span>') +
+      '</div>' +
+
+      (s.note ? '<p class="note">' + esc(s.note) + '</p>' : '') +
+
+      '<div class="actions">' +
+        '<a class="act go" href="' + dirUrl + '" target="_blank" rel="noopener">🧭 Directions</a>' +
+        (s.phone ? '<a class="act" href="tel:' + esc(s.phone.replace(/\s/g,'')) + '">📞 Call</a>' : '') +
+        (s.website ? '<a class="act" href="' + esc(s.website) + '" target="_blank" rel="noopener">🌐 Website</a>' : '') +
+        '<a class="act" href="' + reviewUrl + '" target="_blank" rel="noopener">🔍 Reviews</a>' +
+      '</div>' +
+
+      '<div class="bars">' +
+        bar('Reviews', x.r.v, x.r.known) +
+        bar('Distance', x.d.v, x.d.known) +
+        bar('Open now', x.o.v, x.o.known) +
+      '</div>' +
+    '</li>';
+  }
+  list.innerHTML = html;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   8. UI WIRING
+   ══════════════════════════════════════════════════════════════════════════ */
+
+var toastTimer = null;
+function toast(msg){
+  var old = document.querySelector('.toast');
+  if(old) old.remove();
+  var el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ el.remove(); }, 3200);
+}
+
+function syncWeightUI(){
+  document.getElementById('wRating').value = state.weights.rating;
+  document.getElementById('wDist').value = state.weights.dist;
+  document.getElementById('wOpen').value = state.weights.open;
+  var t = state.weights.rating + state.weights.dist + state.weights.open || 1;
+  document.getElementById('wRatingV').textContent = Math.round(state.weights.rating/t*100) + '%';
+  document.getElementById('wDistV').textContent = Math.round(state.weights.dist/t*100) + '%';
+  document.getElementById('wOpenV').textContent = Math.round(state.weights.open/t*100) + '%';
+}
+
+function applyTheme(){
+  if(state.theme) document.documentElement.setAttribute('data-theme', state.theme);
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+function init(){
+  loadPrefs();
+  applyTheme();
+  resetShops();
+
+  // Town picker
+  var sel = document.getElementById('place');
+  sel.innerHTML = '<option value="">Where are you staying?</option>' +
+    PLACES.map(function(p, i){ return '<option value="' + i + '">' + esc(p[0]) + '</option>'; }).join('');
+  sel.addEventListener('change', function(){
+    if(sel.value === '') return;
+    var p = PLACES[+sel.value];
+    setOrigin(p[1], p[2], p[0]);
+  });
+
+  document.getElementById('useGps').addEventListener('click', useGps);
+  document.getElementById('goPostcode').addEventListener('click', lookupPostcode);
+  document.getElementById('postcode').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') lookupPostcode();
+  });
+
+  // Filter chips
+  [['fOpen','openOnly'],['fWalk','walkable'],['fRated','ratedOnly']].forEach(function(pair){
+    var btn = document.getElementById(pair[0]);
+    btn.addEventListener('click', function(){
+      state.filters[pair[1]] = !state.filters[pair[1]];
+      btn.setAttribute('aria-pressed', String(state.filters[pair[1]]));
+      render();
+    });
+  });
+
+  // Panels
+  document.getElementById('tTune').addEventListener('click', function(){
+    var p = document.getElementById('tunePanel');
+    p.hidden = !p.hidden;
+    this.setAttribute('aria-pressed', String(!p.hidden));
+  });
+  document.getElementById('tScan').addEventListener('click', function(){
+    var p = document.getElementById('scanPanel');
+    p.hidden = !p.hidden;
+    this.setAttribute('aria-pressed', String(!p.hidden));
+  });
+
+  // Weights
+  [['wRating','rating'],['wDist','dist'],['wOpen','open']].forEach(function(pair){
+    document.getElementById(pair[0]).addEventListener('input', function(){
+      state.weights[pair[1]] = +this.value;
+      syncWeightUI(); savePrefs(); render();
+    });
+  });
+  syncWeightUI();
+
+  // Scans
+  document.getElementById('scanOsm').addEventListener('click', scanOSM);
+  document.getElementById('scanG').addEventListener('click', scanGoogle);
+  if(state.gKey) document.getElementById('gKey').value = state.gKey;
+
+  document.getElementById('seedCount').textContent =
+    SEED.length + ' known Cornish makers, ready offline.';
+
+  // Theme toggle: light → dark → follow system
+  document.getElementById('theme').addEventListener('click', function(){
+    state.theme = state.theme === 'light' ? 'dark' : (state.theme === 'dark' ? null : 'light');
+    applyTheme(); savePrefs();
+    toast('Theme: ' + (state.theme || 'follow system'));
+  });
+
+  // Restore a saved origin, otherwise prompt for one.
+  if(state.origin){
+    document.getElementById('locNow').innerHTML = 'Ranking from <b>' + esc(state.origin.label) + '</b>';
+  } else {
+    document.getElementById('locNow').innerHTML =
+      'Set your location to rank by distance — everything else works without it.';
+  }
+
+  render();
+
+  // Keep "open now" and "closes in" honest as the afternoon wears on.
+  setInterval(render, 60000);
+}
+
+if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+})();
+</script>
+</body>
+</html>
