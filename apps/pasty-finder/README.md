@@ -111,21 +111,42 @@ instructions. The key is stored in your browser's local storage and sent only to
 
 ## Images
 
-Three layers, each falling back to the one below without the user seeing a broken box.
+> [!IMPORTANT]
+> **The bundled photographs are test assets, not cleared for redistribution.**
+> They were supplied for this local build to see how the app looks with real
+> photography. Their provenance and licensing are unverified. Before this goes
+> anywhere public, replace them — delete the `PHOTOS` object and the app falls
+> straight back to its own drawn artwork with no other changes needed.
+
+Card and header imagery is layered, each layer painting over the one beneath, so a
+failure at any level degrades to the layer below rather than to a broken image box:
 
 1. **Generated artwork (always).** A Cornish scene drawn as inline SVG — cliffs,
    harbour masts, moorland, rooftops or a lighthouse, chosen deterministically from
    the shop's name so the list looks varied and a given shop always looks the same.
    No network, no licensing, sharp at any DPI, and it works with no signal.
-2. **Google Places photos.** Real photographs of the actual shop, fetched through the
-   user's own key and credited to the photographer. The top pick's photo loads eagerly;
+2. **Bundled library photographs.** Two pasty photos, cropped to five derivatives
+   (header, two card sizes, two thumbnails) and embedded as base64 data URIs — about
+   177 KB in total. Being inline keeps the app a single self-contained file that renders
+   photography with no network at all. They are **generic pasty photographs, not
+   pictures of any particular shop**, so the UI labels them "Library photo" and the
+   header reads "Library photograph · not a specific shop". That labelling is the point:
+   a stock image must never read as a picture of the bakery on the card.
+3. **Google Places photos.** Real photographs *of the actual shop*, fetched with the
+   user's own key and credited to the photographer. These override the library image
+   and are captioned with the credit instead. The top pick's photo loads eagerly;
    thumbnails stay lazy to spare a holiday data plan.
-3. **Wikimedia Commons.** Freely-licensed pasty photography for the header, credited to
-   the photographer with its licence shown. Purely decorative.
+4. **Wikimedia Commons (optional).** A button swaps the header for a freely-licensed
+   photograph credited to its photographer. No longer fetched automatically, since a
+   usable header image now ships with the file.
 
-No bakery photographs are scraped from the web, and no image URL is hardcoded. A photo
-that fails to load removes itself, leaving the drawn artwork that was underneath it all
-along — so the app never shows a broken image, online or off.
+No bakery photographs are scraped from the web and no image URL is hardcoded. Verified
+by test: with photography bundled in, loading the app makes **zero outbound network
+requests**.
+
+The derivatives were produced by cropping and re-encoding through Chromium's canvas
+(`enc.js` pattern — cover-crop, centred, JPEG q0.64), since no image tooling was
+available in the build environment.
 
 Scans merge rather than replace: a shop is treated as the same business when its name
 reduces to the same core **and** it is within 1.2 km, so the Truro and Padstow branches
@@ -153,5 +174,6 @@ turns up on bakeries: day ranges and lists, multiple spans per day, `off`/`close
 `24/7`, and closing times that run past midnight. Anything it cannot read returns
 `null`, which surfaces honestly as "Hours unknown — ring ahead" rather than a guess.
 
-Map data © OpenStreetMap contributors (ODbL). Ratings, where shown, © Google.
-Not affiliated with any bakery.
+Map data © OpenStreetMap contributors (ODbL). Ratings and shop photographs, where
+shown, © Google and their respective photographers. Bundled library photographs are
+unverified test assets — see the note under **Images**. Not affiliated with any bakery.
