@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Proper Pasty — Cornwall pasty finder</title>
+<title>Proper Pasty</title>
 <meta name="description" content="Ranks Cornish pasty shops by reviews, opening hours and distance — and tells you whether you'll make it before they shut.">
 <meta name="theme-color" content="#1b2a35">
 <!-- Add-to-home-screen, so it opens full screen on a phone in Cornwall -->
@@ -1291,12 +1291,12 @@ function gpsBlocker(){
   var framed = false;
   try { framed = window.top !== window.self; } catch(e){ framed = true; }   // cross-origin frame
   if(framed){
-    return {msg:'GPS is blocked inside an embedded preview.',
-            fix:'Open the file in a browser tab of its own and it will work. In the meantime, pick your town or type a postcode — both are exact.'};
+    return {msg:'GPS is usually blocked inside an embedded preview.',
+            fix:'Try the button anyway — some hosts allow it. If nothing happens, open the page in a browser tab of its own, or pick your town or postcode below. Both are exact.'};
   }
   if(location.protocol === 'file:'){
-    return {msg:'Browsers block GPS on files opened directly from disk.',
-            fix:'Serve it instead — <code>python3 -m http.server 8000</code> in this folder, then open <code>http://localhost:8000</code>. Or just pick your town below.'};
+    return {msg:'Most browsers block GPS on files opened directly from disk.',
+            fix:'Try the button anyway — Firefox sometimes allows it. Otherwise serve it: <code>python3 -m http.server 8000</code> in this folder, then open <code>http://localhost:8000</code>. Or just pick your town below.'};
   }
   if(!window.isSecureContext){
     return {msg:'GPS needs a secure page (https, or localhost).',
@@ -1316,11 +1316,14 @@ function showLocWarn(html){
 function useGps(){
   var btn = document.getElementById('useGps');
 
-  // Say why up front rather than spinning into a dead end.
-  var blocked = gpsBlocker();
-  if(blocked){
-    showLocWarn('<b>' + blocked.msg + '</b><br>' + blocked.fix);
-    toast(blocked.msg);
+  // Only a missing API is a genuine dead end. Everything else is host policy, and
+  // hosts vary — Firefox may prompt on file://, some embedders do grant geolocation.
+  // So warn, but still make the call: refusing to try would be wrong wherever it
+  // would have worked. A success clears the warning.
+  if(!navigator.geolocation){
+    var none = gpsBlocker();
+    showLocWarn('<b>' + none.msg + '</b><br>' + none.fix);
+    toast(none.msg);
     return;
   }
 
@@ -1337,8 +1340,12 @@ function useGps(){
     },
     function(err){
       btn.disabled = false; btn.innerHTML = '📍 Use my location';
-      var m;
-      if(err.code === 1){
+      var m, ctx = gpsBlocker();
+      if(err.code === 1 && ctx){
+        // Refused *and* we know a contextual reason — lead with the real cause,
+        // otherwise the message blames the user for something they didn't do.
+        m = '<b>' + ctx.msg + '</b><br>' + ctx.fix;
+      } else if(err.code === 1){
         m = '<b>Location permission was refused.</b><br>Allow location for this page in your browser' +
             ' (the padlock or ⓘ icon in the address bar), then tap again. Or pick your town below — it is exact.';
       } else if(err.code === 2){
