@@ -55,3 +55,6 @@ Thumbs.db
 
 # User-uploaded documents (invoices, tender docs) — never commit
 uploads/
+
+# Pasty finder build output (regenerate with: node apps/pasty-finder/make-public.mjs)
+apps/pasty-finder/public/

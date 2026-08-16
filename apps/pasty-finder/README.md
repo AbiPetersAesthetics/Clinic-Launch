@@ -21,8 +21,36 @@ cd apps/pasty-finder && python3 -m http.server 8000
 # then open http://localhost:8000
 ```
 
-To use it on a phone while actually in Cornwall, host the single file anywhere
-static (GitHub Pages, Netlify drop, any web server). It's one file with no backend.
+## Getting it onto a phone (the actual use case)
+
+`Use my location` needs a **secure origin**. That means https, or `localhost` — a
+`file://` page and an embedded preview iframe both have GPS blocked outright, and the
+app now says so on screen rather than failing silently. So using it in Cornwall means
+hosting it.
+
+**Build the publishable copy first:**
+
+```sh
+node make-public.mjs        # writes public/index.html
+```
+
+This strips the bundled photographs, which are unverified test assets not cleared for
+redistribution and must not go onto a public URL. The drawn artwork layer takes over
+automatically — that is what it is there for. Output is one self-contained 76 KB file.
+
+**Then host `public/index.html` anywhere static over https:**
+
+| Route | How |
+| --- | --- |
+| Netlify Drop | Drag the file onto <https://app.netlify.com/drop>. Instant https URL, no account needed. Easiest by far. |
+| Cloudflare Pages | Direct upload of the folder. |
+| GitHub Pages | Only from a **separate, dedicated repo**. Do not enable Pages on Clinic-Launch — Pages publishes repository content, and this repo holds financial models and tender documents. |
+
+Open the https URL on the phone, allow location when prompted, then **Add to Home
+Screen** — the meta tags make it open full screen like an app. It works offline after
+the first load, since everything is in the one file.
+
+Do not host the unstripped `index.html` publicly.
 
 ## How the ranking works
 
