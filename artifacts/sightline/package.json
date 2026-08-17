@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/sightline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Sightline — AI reach auditing. Find out whether AI assistants can reach, read, and cite your website.",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "sightline": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "node src/server/server.js",
+    "audit": "node src/cli.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.2"
+  }
+}

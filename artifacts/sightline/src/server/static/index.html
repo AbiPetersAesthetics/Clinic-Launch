@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sightline — can AI assistants find your website?</title>
+<meta name="description" content="Free audit. Find out whether ChatGPT, Claude, Perplexity, Google AI and Copilot can reach, read and cite your website — and exactly what to change.">
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='none' stroke='%232f6bff' stroke-width='12'/></svg>">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-inner">
+    <a class="brand" href="/">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-name">Sightline</span>
+    </a>
+    <nav class="masthead-nav">
+      <a href="#how">How it works</a>
+      <a href="/api/registry">Crawler registry</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero">
+  <div class="wrap">
+    <h1>Can AI assistants actually find you?</h1>
+    <p class="lede">
+      Your customers have started asking ChatGPT, Claude, Perplexity and Google AI
+      for recommendations instead of scrolling search results. Sightline checks
+      whether those systems can reach your site, read it, and cite you — and tells
+      you exactly what to change.
+    </p>
+
+    <form id="audit-form" class="search" autocomplete="off">
+      <label class="visually-hidden" for="url">Website address</label>
+      <input
+        id="url" name="url" type="text" inputmode="url" spellcheck="false"
+        placeholder="yourcompany.com" required>
+      <button type="submit" id="submit">Run free audit</button>
+    </form>
+
+    <p class="search-note">
+      No sign-up. One page audited in about ten seconds.
+    </p>
+
+    <div id="status" class="status" hidden aria-live="polite"></div>
+  </div>
+</section>
+
+<section id="report" class="report" hidden>
+  <div class="wrap">
+
+    <!-- Headline ------------------------------------------------------- -->
+    <div class="headline card">
+      <div class="score-block">
+        <svg class="dial" viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="dial-track" cx="60" cy="60" r="52"></circle>
+          <circle id="dial-value" class="dial-value" cx="60" cy="60" r="52"></circle>
+        </svg>
+        <div class="score-readout">
+          <span id="score-number">–</span>
+          <span id="score-grade" class="grade"></span>
+        </div>
+      </div>
+      <div class="headline-text">
+        <p class="eyebrow">AI reach score for <span id="report-host"></span></p>
+        <h2 id="score-summary"></h2>
+        <p id="posture-summary" class="posture-summary"></p>
+        <p class="posture-chip">Posture: <strong id="posture-label"></strong></p>
+      </div>
+    </div>
+
+    <!-- Pillars -------------------------------------------------------- -->
+    <div id="pillars" class="pillars"></div>
+
+    <!-- The crawler split: the core insight ---------------------------- -->
+    <div class="split">
+      <div class="card">
+        <h3>Answer engines</h3>
+        <p class="card-sub">These decide whether an assistant can cite you. Blocking one costs you visibility.</p>
+        <ul id="answer-engines" class="crawlers"></ul>
+      </div>
+      <div class="card">
+        <h3>Training crawlers</h3>
+        <p class="card-sub">These only feed model training. Blocking every one of them costs you <strong>nothing</strong>.</p>
+        <ul id="training-crawlers" class="crawlers"></ul>
+      </div>
+    </div>
+
+    <!-- Findings ------------------------------------------------------- -->
+    <div class="card">
+      <h3>What to fix</h3>
+      <p class="card-sub">Ordered by what it costs you to leave alone.</p>
+      <ol id="findings" class="findings"></ol>
+      <button id="show-all" class="ghost" type="button" hidden>Show all findings</button>
+    </div>
+
+    <!-- Remediation ---------------------------------------------------- -->
+    <div class="card">
+      <h3>Your fixes, ready to paste</h3>
+      <p class="card-sub">
+        Generated for your site. The robots.txt keeps every answer engine allowed
+        and opts you out of model training, and preserves your existing rules.
+      </p>
+      <ol id="steps" class="steps"></ol>
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-target="out-robots" role="tab">robots.txt</button>
+        <button class="tab" data-target="out-llms" role="tab">llms.txt</button>
+        <button class="tab" data-target="out-jsonld" role="tab">JSON-LD</button>
+      </div>
+      <div class="output">
+        <button class="copy" type="button" data-copy>Copy</button>
+        <pre id="out-robots" class="panel is-active"><code></code></pre>
+        <pre id="out-llms" class="panel"><code></code></pre>
+        <pre id="out-jsonld" class="panel"><code></code></pre>
+      </div>
+    </div>
+
+    <p class="meta" id="report-meta"></p>
+  </div>
+</section>
+
+<section id="how" class="how">
+  <div class="wrap">
+    <h2>Why this is not the same as SEO</h2>
+    <div class="how-grid">
+      <div>
+        <h3>The bots have split in two</h3>
+        <p>
+          OpenAI runs three separate crawlers. So does Anthropic. One collects
+          training data; another builds the index the assistant answers from; a
+          third fetches a page when a user asks for it by name. They take
+          separate robots.txt tokens and they do completely different jobs.
+        </p>
+      </div>
+      <div>
+        <h3>Blocking the wrong one is expensive</h3>
+        <p>
+          Refusing a training crawler costs you nothing. Refusing a search
+          crawler removes you from AI answers entirely. The names are one
+          hyphen apart, so sites that meant to opt out of training routinely
+          delete themselves from ChatGPT instead — and never find out.
+        </p>
+      </div>
+      <div>
+        <h3>Your browser will never show you</h3>
+        <p>
+          A page that renders in JavaScript looks perfect to you and arrives
+          empty at every crawler that does not run it. A CDN rule can refuse
+          AI user-agents while your robots.txt says they are welcome. Both
+          failures are silent, and both are visible from outside in seconds.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <p>
+      Sightline runs deterministic checks against published crawler
+      documentation. It reports what your configuration does — it does not
+      guess at rankings.
+    </p>
+  </div>
+</footer>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
