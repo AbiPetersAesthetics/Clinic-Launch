@@ -1,0 +1,19 @@
+{
+  "name": "@workspace/tell",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tell — a daily game. One of these was written by a person. Can you still tell?",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "start": "node src/server/server.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "~5.9.2"
+  }
+}

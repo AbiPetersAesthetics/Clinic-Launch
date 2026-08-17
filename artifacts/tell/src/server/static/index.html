@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tell — can you still tell?</title>
+<meta name="description" content="A daily game. Two pieces of writing, one human, one machine. Pick the person — and say how sure you are. Most people are far more confident than they are correct.">
+<meta property="og:title" content="Tell — can you still tell?">
+<meta property="og:description" content="Most people can't tell any more. Can you?">
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟩</text></svg>">
+</head>
+<body>
+
+<header class="bar">
+  <span class="logo">Tell</span>
+  <span class="puzzle-no" id="puzzle-no"></span>
+</header>
+
+<main>
+
+<!-- Intro ------------------------------------------------------------- -->
+<section id="intro" class="screen">
+  <h1>One of these was written by a person.</h1>
+  <p class="lede">
+    Five rounds. Each one has two pieces of writing on the same subject — one
+    human, one machine. Pick the person, and say how sure you are.
+  </p>
+  <p class="lede dim">
+    The confidence is the real test. Almost everyone believes they can spot
+    machine writing. Very few can, and the belief tends to survive the evidence.
+  </p>
+  <button id="start" class="primary">Play today's puzzle</button>
+  <p class="fine" id="intro-meta"></p>
+</section>
+
+<!-- Game -------------------------------------------------------------- -->
+<section id="game" class="screen" hidden>
+  <div class="progress" id="progress" aria-label="Progress"></div>
+  <p class="topic">On the subject of <strong id="topic"></strong></p>
+
+  <div class="cards">
+    <button class="sample" id="sample-left" data-side="left"><span></span></button>
+    <button class="sample" id="sample-right" data-side="right"><span></span></button>
+  </div>
+
+  <div class="confidence" id="confidence" hidden>
+    <label for="conf">How sure are you?</label>
+    <input type="range" id="conf" min="50" max="100" value="75" step="5">
+    <output id="conf-out">75%</output>
+    <p class="conf-hint" id="conf-hint">Fairly confident</p>
+    <button id="lock" class="primary">Lock it in</button>
+  </div>
+</section>
+
+<!-- Result ------------------------------------------------------------ -->
+<section id="result" class="screen" hidden>
+  <p class="eyebrow" id="result-eyebrow"></p>
+
+  <div class="gap">
+    <div class="gap-half">
+      <span class="gap-num" id="num-sure">–</span>
+      <span class="gap-label">sure</span>
+    </div>
+    <div class="gap-v">vs</div>
+    <div class="gap-half">
+      <span class="gap-num" id="num-right">–</span>
+      <span class="gap-label">right</span>
+    </div>
+  </div>
+
+  <h2 id="archetype-name"></h2>
+  <p class="verdict" id="archetype-verdict"></p>
+  <p class="detail" id="archetype-detail"></p>
+
+  <div class="grid-box">
+    <div class="grid" id="grid"></div>
+    <button id="share" class="primary">Copy result</button>
+    <p class="fine" id="share-note"></p>
+  </div>
+
+  <details class="stats">
+    <summary>The statistics behind that verdict</summary>
+    <dl id="stats-list"></dl>
+  </details>
+
+  <h3 class="reveal-head">Who wrote what</h3>
+  <ol class="reveal" id="reveal"></ol>
+
+  <!-- The second loop: players supply the corpus. -->
+  <div class="submit-box">
+    <h3>Could anyone tell with yours?</h3>
+    <p class="dim">
+      Write a few sentences on any subject below. If it goes into the game, you
+      will find out how many people were convinced a human wrote it.
+    </p>
+    <select id="submit-topic">
+      <option value="">Pick a subject…</option>
+      <option>coffee</option>
+      <option>moving house</option>
+      <option>a delayed flight</option>
+      <option>learning an instrument</option>
+      <option>baking</option>
+      <option>job interviews</option>
+      <option>cities</option>
+      <option>sleep</option>
+      <option>secondhand bookshops</option>
+      <option>running</option>
+    </select>
+    <textarea id="submit-text" rows="4" placeholder="Write like yourself. Specific beats polished."></textarea>
+    <button id="submit-btn" class="ghost">Submit my writing</button>
+    <p class="fine" id="submit-note"></p>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <p>
+    A new puzzle every day at midnight UTC. Every sample carries its provenance,
+    shown in the reveal — including which of the human samples were written as
+    seed content rather than submitted by a player.
+  </p>
+</footer>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>
