@@ -3151,6 +3151,16 @@ export default function ProjectPage() {
               if (!aDate && bDate) return 1;
               return 0;
             });
+          // Paid so far in this group: full actual for paid lines, partial for part-paid.
+          const paidTotal = (phase.tasks ?? []).reduce((s, t) => {
+            const ta = t as any;
+            if (ta.archived) return s;
+            const paid = ta.paidStatus === "paid" ? (ta.actualCost ?? 0)
+              : ta.paidStatus === "part-paid" ? (ta.amountPaidGbp ?? 0)
+              : 0;
+            return s + (paid || 0);
+          }, 0);
+          const remainingCost = phase.selectedCostTotal - paidTotal;
           if (sortedTasks.length === 0) return null;
 
           return (
@@ -3189,6 +3199,10 @@ export default function ProjectPage() {
                       Selected Cost
                     </p>
                     <p className="font-semibold">{formatGBP(phase.selectedCostTotal)}</p>
+                    <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">
+                      Remaining
+                    </p>
+                    <p className="text-sm font-medium tabular-nums">{formatGBP(remainingCost)}</p>
                   </div>
                 </div>
               </AccordionTrigger>
