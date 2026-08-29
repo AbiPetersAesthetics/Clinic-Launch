@@ -2332,10 +2332,13 @@ export default function ProjectPage() {
                         <Tabs value={spendFilter} onValueChange={setSpendFilter}>
                           <TabsList className="flex h-auto flex-wrap gap-1 bg-background/60 p-1 w-auto">
                             {([["all","All"],["paid","Paid"],["committed","Committed"],["part-paid","Part paid"]] as [string,string][]).map(([k,label]) => {
-                              const count = k === "all" ? pc.taskActuals.length : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k).length;
+                              const items = k === "all" ? (pc.taskActuals as any[]) : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k);
+                              const total = items.reduce((s: number, t: any) => s + (t.paidStatus === "paid" ? (t.actualCost || 0) : (t.committedCost || 0)), 0);
                               return (
-                                <TabsTrigger key={k} value={k} className="text-[11px] px-2.5 py-1 data-[state=active]:bg-background">
-                                  {label}{count > 0 && <span className="opacity-60 ml-1 tabular-nums">{count}</span>}
+                                <TabsTrigger key={k} value={k} className="text-[11px] px-2.5 py-1 gap-1 data-[state=active]:bg-background">
+                                  {label}
+                                  <span className="tabular-nums font-semibold">{formatGBP(total)}</span>
+                                  {items.length > 0 && <span className="opacity-50 tabular-nums text-[10px]">{items.length}</span>}
                                 </TabsTrigger>
                               );
                             })}
