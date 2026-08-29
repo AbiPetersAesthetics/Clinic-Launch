@@ -2333,7 +2333,7 @@ export default function ProjectPage() {
                           <TabsList className="flex h-auto flex-wrap gap-1 bg-background/60 p-1 w-auto">
                             {([["all","All"],["paid","Paid"],["committed","Committed"],["part-paid","Part paid"]] as [string,string][]).map(([k,label]) => {
                               const items = k === "all" ? (pc.taskActuals as any[]) : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k);
-                              const total = items.reduce((s: number, t: any) => s + (t.paidStatus === "paid" ? (t.actualCost || 0) : (t.committedCost || 0)), 0);
+                              const total = items.reduce((s: number, t: any) => s + (t.paidStatus === "paid" ? (t.actualCost || 0) : t.paidStatus === "part-paid" ? (t.actualCost > 0 ? t.actualCost : (t.amountPaidGbp || 0)) : (t.committedCost || 0)), 0);
                               return (
                                 <TabsTrigger key={k} value={k} className="text-[11px] px-2.5 py-1 gap-1 data-[state=active]:bg-background">
                                   {label}
@@ -2348,8 +2348,9 @@ export default function ProjectPage() {
                       <div className="divide-y">
                         {(pc.taskActuals as any[]).filter((ta: any) => spendFilter === "all" || ta.paidStatus === spendFilter).map((ta: any) => {
                           // part-paid: committedCost = full invoice; actualCost = cash paid so far
+                        const partPaidCash = ta.actualCost > 0 ? ta.actualCost : (ta.amountPaidGbp || 0);
                         const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
-                          : ta.paidStatus === "part-paid" ? ta.committedCost
+                          : ta.paidStatus === "part-paid" ? partPaidCash
                           : ta.committedCost;
                           const isExpanded = editingActualId === ta.taskId;
                           return (
@@ -2378,12 +2379,18 @@ export default function ProjectPage() {
                                   {ta.invoiceRef && <p className="text-muted-foreground/70 text-[10px]">{ta.invoiceRef}{ta.invoiceDate ? ` · ${ta.invoiceDate}` : ""}</p>}
                                 </div>
                                 <span className="tabular-nums text-muted-foreground text-right">{formatGBP(ta.plannedCost)}</span>
-                                <span className={`tabular-nums font-medium text-right flex items-center gap-1 justify-end ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
-                                  {ta.varianceGbp > 0 && <ArrowUp className="w-3 h-3 text-destructive shrink-0" />}
-                                  {ta.varianceGbp < 0 && <ArrowDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />}
-                                  {formatGBP(effectiveCost)}
-                                  {ta.varianceGbp !== 0 && <span className="text-[10px] ml-0.5 opacity-80">({ta.varianceGbp > 0 ? "+" : "−"}{formatGBP(Math.abs(ta.varianceGbp))})</span>}
-                                </span>
+                                {ta.paidStatus === "part-paid" ? (
+                                  <span className="tabular-nums font-medium text-right text-amber-600 dark:text-amber-400">
+                                    {formatGBP(effectiveCost)} <span className="text-[10px] opacity-80">of {formatGBP(ta.committedCost || 0)}</span>
+                                  </span>
+                                ) : (
+                                  <span className={`tabular-nums font-medium text-right flex items-center gap-1 justify-end ${ta.varianceGbp > 0 ? "text-destructive" : ta.varianceGbp < 0 ? "text-emerald-600 dark:text-emerald-400" : ""}`}>
+                                    {ta.varianceGbp > 0 && <ArrowUp className="w-3 h-3 text-destructive shrink-0" />}
+                                    {ta.varianceGbp < 0 && <ArrowDown className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />}
+                                    {formatGBP(effectiveCost)}
+                                    {ta.varianceGbp !== 0 && <span className="text-[10px] ml-0.5 opacity-80">({ta.varianceGbp > 0 ? "+" : "−"}{formatGBP(Math.abs(ta.varianceGbp))})</span>}
+                                  </span>
+                                )}
                                 <Badge variant="outline" className={`text-[10px] h-4 py-0 shrink-0 ${
                                   ta.paidStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
                                   : ta.paidStatus === "part-paid" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700"
