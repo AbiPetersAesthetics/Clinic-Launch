@@ -1357,6 +1357,7 @@ export default function ProjectPage() {
   const { data: project } = useGetProject(PROJECT_ID);
   const updateProject = useUpdateProject();
   const deleteTask = useDeleteTask();
+  const [spendFilter, setSpendFilter] = useState<string>("all");
 
   useEffect(() => {
     if (project) {
@@ -2324,12 +2325,20 @@ export default function ProjectPage() {
                   {/* Recorded spend table */}
                   {pc.taskActuals?.length > 0 && (
                     <div className="rounded-lg border overflow-hidden text-xs">
-                      <div className="bg-muted/50 px-3 py-1.5 border-b flex items-center justify-between">
-                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Recorded Spend</span>
-                        <span className="text-muted-foreground text-[10px]">{pc.taskActuals.length} task{pc.taskActuals.length !== 1 ? "s" : ""}</span>
+                      <div className="bg-muted/50 px-3 py-1.5 border-b flex flex-wrap items-center gap-1.5">
+                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] mr-auto">Recorded Spend</span>
+                        {([["all","All"],["paid","Paid"],["committed","Committed"],["part-paid","Part paid"]] as [string,string][]).map(([k,label]) => {
+                          const count = k === "all" ? pc.taskActuals.length : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k).length;
+                          return (
+                            <button key={k} type="button" onClick={() => setSpendFilter(k)}
+                              className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${spendFilter === k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
+                              {label}{count > 0 && <span className="opacity-70 ml-1">{count}</span>}
+                            </button>
+                          );
+                        })}
                       </div>
                       <div className="divide-y">
-                        {(pc.taskActuals as any[]).slice(0, 20).map((ta: any) => {
+                        {(pc.taskActuals as any[]).filter((ta: any) => spendFilter === "all" || ta.paidStatus === spendFilter).map((ta: any) => {
                           // part-paid: committedCost = full invoice; actualCost = cash paid so far
                         const effectiveCost = ta.paidStatus === "paid" ? ta.actualCost
                           : ta.paidStatus === "part-paid" ? ta.committedCost
