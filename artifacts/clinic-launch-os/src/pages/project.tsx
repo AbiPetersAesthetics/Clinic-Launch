@@ -35,6 +35,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -2325,17 +2326,20 @@ export default function ProjectPage() {
                   {/* Recorded spend table */}
                   {pc.taskActuals?.length > 0 && (
                     <div className="rounded-lg border overflow-hidden text-xs">
-                      <div className="bg-muted/50 px-3 py-1.5 border-b flex flex-wrap items-center gap-1.5">
-                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px] mr-auto">Recorded Spend</span>
-                        {([["all","All"],["paid","Paid"],["committed","Committed"],["part-paid","Part paid"]] as [string,string][]).map(([k,label]) => {
-                          const count = k === "all" ? pc.taskActuals.length : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k).length;
-                          return (
-                            <button key={k} type="button" onClick={() => setSpendFilter(k)}
-                              className={`px-2 py-0.5 rounded text-[10px] border transition-colors ${spendFilter === k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}>
-                              {label}{count > 0 && <span className="opacity-70 ml-1">{count}</span>}
-                            </button>
-                          );
-                        })}
+                      <div className="bg-muted/50 px-3 py-1.5 border-b space-y-1.5">
+                        <span className="font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">Recorded Spend</span>
+                        <Tabs value={spendFilter} onValueChange={setSpendFilter}>
+                          <TabsList className="flex h-auto flex-wrap gap-1 bg-background/60 p-1 w-auto">
+                            {([["all","All"],["paid","Paid"],["committed","Committed"],["part-paid","Part paid"]] as [string,string][]).map(([k,label]) => {
+                              const count = k === "all" ? pc.taskActuals.length : (pc.taskActuals as any[]).filter((t: any) => t.paidStatus === k).length;
+                              return (
+                                <TabsTrigger key={k} value={k} className="text-[11px] px-2.5 py-1 data-[state=active]:bg-background">
+                                  {label}{count > 0 && <span className="opacity-60 ml-1 tabular-nums">{count}</span>}
+                                </TabsTrigger>
+                              );
+                            })}
+                          </TabsList>
+                        </Tabs>
                       </div>
                       <div className="divide-y">
                         {(pc.taskActuals as any[]).filter((ta: any) => spendFilter === "all" || ta.paidStatus === spendFilter).map((ta: any) => {
