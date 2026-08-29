@@ -2172,6 +2172,8 @@ export default function ProjectPage() {
               const lffColor = ragStatus === "red" ? "text-destructive" : ragStatus === "amber" ? "text-amber-600 dark:text-amber-400" : ragStatus === "green" ? "text-emerald-600 dark:text-emerald-400" : "text-foreground";
               const remaining = Math.max(0, lff - (pc?.actualSpend ?? 0));
               const vatReclaimable = Math.round(pc?.reclaimableVat ?? 0);
+              const grossInclVat = Math.round(pc?.grossInclVat ?? lff);
+              const netExVat = Math.round(pc?.netExVat ?? (lff - vatReclaimable));
               const isGreen = totalSelectedCost <= davidCap;
               const isAmber = !isGreen && totalSelectedCost <= outerLimit;
               return (
@@ -2209,6 +2211,13 @@ export default function ProjectPage() {
                       <p className={`text-2xl font-bold tabular-nums mt-0.5 ${vatReclaimable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{vatReclaimable > 0 ? formatGBP(vatReclaimable) : "—"}</p>
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
                     </div>
+                  </div>
+                  {/* Pre / post VAT — cash paid out vs true cost after reclaim */}
+                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
+                    <span className="uppercase tracking-wider text-[10px] text-muted-foreground font-medium">Pre / post VAT</span>
+                    <span>You pay out <span className="font-semibold tabular-nums">{formatGBP(grossInclVat)}</span> <span className="text-muted-foreground/70">incl VAT</span></span>
+                    <span className="text-muted-foreground/50">·</span>
+                    <span>true cost <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(netExVat)}</span> <span className="text-muted-foreground/70">after you reclaim the VAT</span></span>
                   </div>
                   {/* Compact budget alert — amber/red only */}
                   {!isGreen && (

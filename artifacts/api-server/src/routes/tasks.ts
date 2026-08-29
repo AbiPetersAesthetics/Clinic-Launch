@@ -354,6 +354,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     let reclaimableVat = 0;
     let savingsCaptured = 0;
     let unknownVatTaskCount = 0;
+    let grossInclVat = 0;   // cash paid out, with VAT added onto ex-VAT lines
+    let netExVat = 0;       // true cost, with VAT stripped from inc-VAT lines
 
     for (const task of allTasks) {
       const planned = (task.selectedCost as number) ?? 0;
@@ -395,6 +397,18 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       } else {
         forecastFinalCost += planned;
       }
+
+      // Pre/post-VAT normalisation. The plan mixes bases (ex-VAT contract lines vs
+      // inc-VAT lines), so a single figure is neither gross nor net. Gross = cash you
+      // pay out (add 20% to ex-VAT lines); net = true cost after reclaim (strip 1/6 from
+      // inc-VAT lines). Exempt/unknown lines carry no VAT and sit in both unchanged.
+      const effCost = (paid === "paid" && actual > 0) ? actual : (committed > 0 ? committed : planned);
+      const vatBasis = String((hasSpend ? vatStatus : null) ?? (task.costVatStatus as string | null) ?? "").toLowerCase();
+      const basisExc = vatBasis === "exc" || vatBasis.includes("ex_vat");
+      const basisInc = !basisExc && (vatBasis === "inc" || vatBasis.includes("inc"));
+      if (basisExc) { grossInclVat += effCost * 1.2; netExVat += effCost; }
+      else if (basisInc) { grossInclVat += effCost; netExVat += (effCost * 5) / 6; }
+      else { grossInclVat += effCost; netExVat += effCost; }
       void hasSpend;
     }
 
@@ -574,6 +588,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       davidApprovedCapGbp,
       reclaimableVat: Math.round(reclaimableVat),
       netCostAfterVat: Math.round(netCostAfterVat),
+      grossInclVat: Math.round(grossInclVat),
+      netExVat: Math.round(netExVat),
       uncommittedBudget: Math.round(uncommittedBudget),
       capHeadroomGbp: Math.round(capHeadroomGbp),
       outerLimitGbp: Math.round(outerLimitGbp),
