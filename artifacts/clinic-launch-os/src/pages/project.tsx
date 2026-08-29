@@ -2212,12 +2212,14 @@ export default function ProjectPage() {
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
                     </div>
                   </div>
-                  {/* Pre / post VAT — cash paid out vs true cost after reclaim */}
-                  <div className="flex flex-wrap items-center gap-x-5 gap-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
+                  {/* Pre / post VAT — cash paid out, less reclaim, equals true cost (ties to the tile) */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
                     <span className="uppercase tracking-wider text-[10px] text-muted-foreground font-medium">Pre / post VAT</span>
-                    <span>You pay out <span className="font-semibold tabular-nums">{formatGBP(grossInclVat)}</span> <span className="text-muted-foreground/70">incl VAT</span></span>
-                    <span className="text-muted-foreground/50">·</span>
-                    <span>true cost <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(netExVat)}</span> <span className="text-muted-foreground/70">after you reclaim the VAT</span></span>
+                    <span>pay out <span className="font-semibold tabular-nums">{formatGBP(grossInclVat)}</span> <span className="text-muted-foreground/70">incl VAT</span></span>
+                    <span className="text-muted-foreground/50">less</span>
+                    <span>reclaim <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(vatReclaimable)}</span></span>
+                    <span className="text-muted-foreground/50">=</span>
+                    <span>true cost <span className="font-semibold tabular-nums">{formatGBP(netExVat)}</span></span>
                   </div>
                   {/* Compact budget alert — amber/red only */}
                   {!isGreen && (
