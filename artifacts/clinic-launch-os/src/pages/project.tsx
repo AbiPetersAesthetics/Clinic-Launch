@@ -3160,7 +3160,8 @@ export default function ProjectPage() {
               : 0;
             return s + (paid || 0);
           }, 0);
-          const remainingCost = phase.selectedCostTotal - paidTotal;
+          // Never negative: if a group is paid over its selected estimate, nothing is left to pay.
+          const remainingCost = Math.max(0, phase.selectedCostTotal - paidTotal);
           if (sortedTasks.length === 0) return null;
 
           return (
@@ -4057,6 +4058,14 @@ function TaskEditSheet({
   const [supplyScope, setSupplyScope] = useState("to_confirm");
   const [procurementStatus, setProcurementStatus] = useState("to_specify");
 
+  // Spend / payment, recorded straight from the task
+  const [spendStatus, setSpendStatus] = useState("unpaid");
+  const [spendAmount, setSpendAmount] = useState("");
+  const [spendPaidSoFar, setSpendPaidSoFar] = useState("");
+  const [spendInvoiceRef, setSpendInvoiceRef] = useState("");
+  const [spendInvoiceDate, setSpendInvoiceDate] = useState("");
+  const [spendVatStatus, setSpendVatStatus] = useState("exc");
+
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResult, setAiResult] = useState("");
@@ -4214,6 +4223,12 @@ function TaskEditSheet({
       setCostVatStatus((task as any).costVatStatus ?? "vat_unknown");
       setSupplyScope((task as any).supplyScope ?? "to_confirm");
       setProcurementStatus((task as any).procurementStatus ?? "to_specify");
+      setSpendStatus((task as any).paidStatus ?? "unpaid");
+      setSpendAmount((task as any).actualCost != null ? String((task as any).actualCost) : ((task as any).committedCost != null ? String((task as any).committedCost) : ""));
+      setSpendPaidSoFar((task as any).amountPaidGbp != null ? String((task as any).amountPaidGbp) : "");
+      setSpendInvoiceRef((task as any).invoiceRef ?? "");
+      setSpendInvoiceDate((task as any).invoiceDate ? new Date((task as any).invoiceDate).toISOString().split("T")[0] : "");
+      setSpendVatStatus((task as any).invoiceVatStatus ?? "exc");
     }
   }, [task?.id]);
 
@@ -4288,6 +4303,15 @@ function TaskEditSheet({
       costVatStatus,
       supplyScope,
       procurementStatus,
+      ...(() => {
+        const amt = spendAmount !== "" ? Number(spendAmount) : null;
+        const paidSoFar = spendPaidSoFar !== "" ? Number(spendPaidSoFar) : null;
+        const inv = { invoiceRef: spendInvoiceRef || null, invoiceDate: spendInvoiceDate || null, invoiceVatStatus: spendVatStatus };
+        if (spendStatus === "unpaid") return { paidStatus: null, actualCost: null, committedCost: null, amountPaidGbp: null, invoiceRef: null, invoiceDate: null };
+        if (spendStatus === "paid") return { paidStatus: "paid", actualCost: amt, committedCost: amt, amountPaidGbp: amt, ...inv };
+        if (spendStatus === "committed") return { paidStatus: "committed", actualCost: null, committedCost: amt, amountPaidGbp: null, ...inv };
+        return { paidStatus: "part-paid", actualCost: null, committedCost: amt, amountPaidGbp: paidSoFar, ...inv };
+      })(),
       ...(targetPhaseId !== null ? { phaseId: targetPhaseId } : {}),
       ...(activePropertyId ? { propertyId: activePropertyId } : {}),
     };
@@ -4386,6 +4410,73 @@ function TaskEditSheet({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Spend / Payment — record a spend straight from the task line */}
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm font-semibold">Spend / Payment</Label>
+                  {spendStatus !== "unpaid" && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                      spendStatus === "paid" ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700"
+                      : spendStatus === "part-paid" ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700"
+                      : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700"}`}>
+                      {spendStatus === "paid" ? "Paid" : spendStatus === "part-paid" ? "Part paid" : "Committed"}
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Payment status</Label>
+                    <Select value={spendStatus} onValueChange={setSpendStatus}>
+                      <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unpaid">Unpaid</SelectItem>
+                        <SelectItem value="committed">Committed</SelectItem>
+                        <SelectItem value="part-paid">Part paid</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {spendStatus !== "unpaid" && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground">{spendStatus === "part-paid" ? "Committed total (£)" : spendStatus === "paid" ? "Amount paid (£)" : "Committed (£)"}</Label>
+                      <Input type="number" step="0.01" value={spendAmount} onChange={e => setSpendAmount(e.target.value)} className="mt-1 h-9" placeholder="0.00" />
+                    </div>
+                  )}
+                </div>
+                {spendStatus === "part-paid" && (
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Paid so far (£)</Label>
+                    <Input type="number" step="0.01" value={spendPaidSoFar} onChange={e => setSpendPaidSoFar(e.target.value)} className="mt-1 h-9" placeholder="0.00" />
+                  </div>
+                )}
+                {spendStatus !== "unpaid" && (
+                  <>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Invoice ref</Label>
+                        <Input value={spendInvoiceRef} onChange={e => setSpendInvoiceRef(e.target.value)} className="mt-1 h-9" placeholder="INV-000" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Invoice date</Label>
+                        <Input type="date" value={spendInvoiceDate} onChange={e => setSpendInvoiceDate(e.target.value)} className="mt-1 h-9" />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">VAT</Label>
+                        <Select value={spendVatStatus} onValueChange={setSpendVatStatus}>
+                          <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="exc">+ VAT (reclaim 20%)</SelectItem>
+                            <SelectItem value="inc">Inc VAT (reclaim 1/6)</SelectItem>
+                            <SelectItem value="exempt">No VAT</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Recording spend here marks this line on the plan and feeds the group's Remaining and the VAT reclaim.</p>
+                  </>
+                )}
               </div>
 
               <div className="space-y-3">
