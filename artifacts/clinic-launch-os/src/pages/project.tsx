@@ -2176,6 +2176,7 @@ export default function ProjectPage() {
               const vatReclaimable = Math.round(pc?.reclaimableVat ?? 0);
               const grossInclVat = Math.round(pc?.grossInclVat ?? lff);
               const netExVat = Math.round(pc?.netExVat ?? (lff - vatReclaimable));
+              const trueCostRemaining = Math.round(pc?.trueCostRemaining ?? Math.max(0, netExVat - (pc?.actualSpend ?? 0)));
               const isGreen = totalSelectedCost <= davidCap;
               const isAmber = !isGreen && totalSelectedCost <= outerLimit;
               return (
@@ -2206,7 +2207,7 @@ export default function ProjectPage() {
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Remaining to pay</p>
                       <p className="text-2xl font-bold tabular-nums mt-0.5">{formatGBP(remaining)}</p>
-                      <p className="text-[10px] text-muted-foreground/60 mt-0.5">live actual minus paid</p>
+                      <p className="text-[10px] text-muted-foreground/60 mt-0.5"><span className="text-emerald-600 dark:text-emerald-400 font-medium">{formatGBP(trueCostRemaining)}</span> true cost, net of VAT</p>
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>

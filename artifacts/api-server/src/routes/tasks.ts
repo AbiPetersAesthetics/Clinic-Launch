@@ -356,6 +356,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     let unknownVatTaskCount = 0;
     let excVatReclaim = 0;  // reclaimable VAT sitting ON TOP of ex-VAT lines (added back for gross)
     let incVatReclaim = 0;  // reclaimable VAT sitting WITHIN inc-VAT lines (stripped out for net)
+    let reclaimOnPaid = 0;  // reclaimable VAT on cash already paid out (to net off the paid portion)
 
     for (const task of allTasks) {
       const planned = (task.selectedCost as number) ?? 0;
@@ -372,8 +373,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       if (paid === "paid" && actual > 0) {
         actualSpend += actual;
         forecastFinalCost += actual;
-        if (vatStatus === "inc") { reclaimableVat += actual / 6; incVatReclaim += actual / 6; }
-        else if (vatStatus === "exc") { reclaimableVat += actual * 0.20; excVatReclaim += actual * 0.20; }
+        if (vatStatus === "inc") { reclaimableVat += actual / 6; incVatReclaim += actual / 6; reclaimOnPaid += actual / 6; }
+        else if (vatStatus === "exc") { reclaimableVat += actual * 0.20; excVatReclaim += actual * 0.20; reclaimOnPaid += actual * 0.20; }
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
       } else if (paid === "part-paid" && committed > 0) {
@@ -383,8 +384,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         actualSpend += cashPaid;
         if (stillOwed > 0) committedCosts += stillOwed;
         forecastFinalCost += committed;
-        if (vatStatus === "inc") { reclaimableVat += actual / 6; incVatReclaim += actual / 6; }
-        else if (vatStatus === "exc") { reclaimableVat += actual * 0.20; excVatReclaim += actual * 0.20; }
+        if (vatStatus === "inc") { reclaimableVat += actual / 6; incVatReclaim += actual / 6; reclaimOnPaid += actual / 6; }
+        else if (vatStatus === "exc") { reclaimableVat += actual * 0.20; excVatReclaim += actual * 0.20; reclaimOnPaid += actual * 0.20; }
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
       } else if (committed > 0) {
@@ -409,6 +410,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     // (strip the VAT that sits within inc-VAT lines). gross - net === reclaimableVat.
     const grossInclVat = forecastFinalCost + excVatReclaim;
     const netExVat = forecastFinalCost - incVatReclaim;
+    // True cost still to pay: total true cost minus the true (net-of-reclaim) value already paid out.
+    const trueCostRemaining = Math.max(0, netExVat - (actualSpend - reclaimOnPaid));
     const liveForecastVsCapGbp = forecastFinalCost - davidApprovedCapGbp;
     const outerLimitGbp = davidApprovedCapGbp * (7 / 6); // stretch zone = +1/6 above cap (e.g. £80k → £93.3k)
 
@@ -582,6 +585,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       netCostAfterVat: Math.round(netCostAfterVat),
       grossInclVat: Math.round(grossInclVat),
       netExVat: Math.round(netExVat),
+      trueCostRemaining: Math.round(trueCostRemaining),
       uncommittedBudget: Math.round(uncommittedBudget),
       capHeadroomGbp: Math.round(capHeadroomGbp),
       outerLimitGbp: Math.round(outerLimitGbp),
