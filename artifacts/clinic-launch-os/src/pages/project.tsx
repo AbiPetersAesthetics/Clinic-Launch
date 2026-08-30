@@ -1496,9 +1496,51 @@ export default function ProjectPage() {
 
   const totalSelectedCost = phases?.reduce((sum, phase) => sum + phase.selectedCostTotal, 0) || 0;
   // Downselect / savings: flagged lines + the running total (baseline minus the downselect target)
-  const savingLines = (phases ?? []).flatMap(ph => (ph.tasks ?? []).filter((t: any) => !t.archived && t.savingFlag).map((t: any) => ({ ...t, phaseName: ph.name })));
-  const totalSavings = savingLines.reduce((s: number, t: any) => s + ((t.savingBaseline != null && t.savingTarget != null) ? Math.max(0, t.savingBaseline - t.savingTarget) : 0), 0);
+  const savingLinesRaw = (phases ?? []).flatMap(ph => (ph.tasks ?? []).filter((t: any) => !t.archived && t.savingFlag).map((t: any) => ({ ...t, phaseName: ph.name })))
+    .sort((a: any, b: any) => ((a.savingOrder ?? 0) - (b.savingOrder ?? 0)) || (a.id - b.id));
+  const lineSaving = (t: any) => (t.savingBaseline != null && t.savingTarget != null) ? Math.max(0, t.savingBaseline - t.savingTarget) : 0;
+  const availableSavings = savingLinesRaw.reduce((s: number, t: any) => s + lineSaving(t), 0);
+  const appliedSavings = savingLinesRaw.reduce((s: number, t: any) => s + (t.savingApplied ? lineSaving(t) : 0), 0);
+  const appliedSavingCount = savingLinesRaw.filter((t: any) => t.savingApplied && lineSaving(t) > 0).length;
   const [showSavings, setShowSavings] = useState(false);
+  const [dragSavingId, setDragSavingId] = useState<number | null>(null);
+  const [localSavingOrder, setLocalSavingOrder] = useState<number[] | null>(null);
+  const savingOrderKey = savingLinesRaw.map((t: any) => `${t.id}:${t.savingOrder ?? 0}`).join(",");
+  useEffect(() => {
+    if (!localSavingOrder) return;
+    const serverIds = savingLinesRaw.map((t: any) => t.id);
+    if (serverIds.length === localSavingOrder.length && serverIds.every((id: number, i: number) => id === localSavingOrder[i])) {
+      setLocalSavingOrder(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savingOrderKey]);
+  const savingLines = localSavingOrder
+    ? [...savingLinesRaw].sort((a: any, b: any) => localSavingOrder.indexOf(a.id) - localSavingOrder.indexOf(b.id))
+    : savingLinesRaw;
+  const handleSavingReorder = (draggedId: number, targetId: number) => {
+    if (draggedId === targetId) return;
+    const ids = (localSavingOrder ?? savingLines.map((t: any) => t.id)).slice();
+    const from = ids.indexOf(draggedId);
+    const to = ids.indexOf(targetId);
+    if (from < 0 || to < 0) return;
+    ids.splice(from, 1);
+    ids.splice(to, 0, draggedId);
+    setLocalSavingOrder(ids);
+    fetch(`/api/projects/${PROJECT_ID}/savings/reorder`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order: ids }) })
+      .then(() => invalidateAfterTaskChange())
+      .catch((e) => console.error(e));
+  };
+  const handleSavingApply = (taskId: number, applied: boolean) => {
+    fetch(`/api/tasks/${taskId}/saving-apply`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applied, propertyId: activePropertyId ?? undefined }) })
+      .then((r) => { if (!r.ok) throw new Error("saving-apply failed"); return r.json(); })
+      .then(() => invalidateAfterTaskChange())
+      .catch((e) => console.error(e));
+  };
+  const handleSavingsAll = (applied: boolean) => {
+    fetch(`/api/projects/${PROJECT_ID}/savings-mode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applied }) })
+      .then(() => invalidateAfterTaskChange())
+      .catch((e) => console.error(e));
+  };
   const criticalRiskCount = risks?.filter((r) => r.level === "critical").length || 0;
 
   const defaultTab = highlightedTaskId ? "plan" : "plan";
@@ -3160,68 +3202,76 @@ export default function ProjectPage() {
         );
       })()}
 
-      {savingLines.length > 0 && (() => {
-        const applied = (projectControls as any)?.savingsApplied ?? true;
-        return (
+      {savingLines.length > 0 && (
         <div className={`rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 overflow-hidden ${viewMode === "gantt" ? "hidden" : ""}`}>
-          <div className="flex items-center justify-between px-4 py-2.5 gap-3">
+          <div className="flex items-center justify-between px-4 py-2.5 gap-3 flex-wrap">
             <button type="button" onClick={() => setShowSavings(s => !s)} className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity">
-              <span className="font-semibold text-amber-800 dark:text-amber-300 text-sm">✂ Potential savings / downselect</span>
-              <span className="text-[11px] text-muted-foreground shrink-0">{savingLines.length} line{savingLines.length !== 1 ? "s" : ""}</span>
+              <span className="font-semibold text-amber-800 dark:text-amber-300 text-sm">✂ Savings armoury</span>
+              <span className="text-[11px] text-muted-foreground shrink-0">{appliedSavingCount} of {savingLines.filter((t: any) => lineSaving(t) > 0).length} on</span>
               <span className="text-amber-700 dark:text-amber-400 text-xs">{showSavings ? "▾" : "▸"}</span>
             </button>
             <div className="flex items-center gap-3 shrink-0">
-              <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{applied ? "-" : ""}{formatGBP(totalSavings)}</span>
-              <button
-                type="button"
-                title={applied ? "Savings are applied. Click to revert every flagged line to its original cost." : "Savings are off (original costs). Click to apply all downselect targets."}
-                onClick={async () => {
-                  const next = !applied;
-                  try {
-                    const r = await fetch(`/api/projects/${PROJECT_ID}/savings-mode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applied: next }) });
-                    if (!r.ok) throw new Error("savings-mode failed");
-                  } catch (e) { console.error(e); }
-                  invalidateAfterTaskChange();
-                }}
-                className={`flex items-center gap-1.5 text-[11px] font-semibold pl-1.5 pr-2.5 py-1 rounded-full border transition-colors ${applied ? "bg-emerald-600 text-white border-emerald-600" : "bg-muted text-muted-foreground border-border"}`}
-              >
-                <span className={`inline-block w-3.5 h-3.5 rounded-full ${applied ? "bg-white" : "bg-muted-foreground/50"}`} />
-                Savings {applied ? "ON" : "OFF"}
-              </button>
+              <span className="text-[11px] text-muted-foreground">applied <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">-{formatGBP(appliedSavings)}</span> of {formatGBP(availableSavings)} armed</span>
+              <div className="flex items-center gap-1">
+                <button type="button" onClick={() => handleSavingsAll(true)} className="text-[11px] font-semibold px-2 py-1 rounded-md border border-emerald-300 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/40">All on</button>
+                <button type="button" onClick={() => handleSavingsAll(false)} className="text-[11px] font-semibold px-2 py-1 rounded-md border border-border text-muted-foreground hover:bg-muted">All off</button>
+              </div>
             </div>
           </div>
           {showSavings && (
-            <div className="border-t border-amber-200 dark:border-amber-800 divide-y divide-amber-200/60 dark:divide-amber-800/40">
-              {savingLines.map((t: any) => {
-                const base = t.savingBaseline ?? t.selectedCost ?? 0;
-                const target = t.savingTarget;
-                const save = target != null ? Math.max(0, base - target) : 0;
-                return (
-                  <div key={t.id} className="px-4 py-2 grid grid-cols-[1fr_auto_5rem] gap-3 items-center text-xs">
-                    <div className="min-w-0">
-                      <button type="button" className="font-medium text-left hover:underline truncate block w-full" onClick={() => setEditingTask(t)}>{t.title}</button>
-                      <p className="text-muted-foreground/70 text-[10px] truncate">{t.phaseName}{t.savingNote ? ` · ${t.savingNote}` : ""}</p>
+            <div className="border-t border-amber-200 dark:border-amber-800">
+              <div className="px-4 py-1.5 text-[10px] text-muted-foreground/80 bg-amber-100/40 dark:bg-amber-950/30">Drag to set priority order (top = pull first). Flip each on as cash needs it.</div>
+              <div className="divide-y divide-amber-200/60 dark:divide-amber-800/40">
+                {savingLines.map((t: any) => {
+                  const base = t.savingBaseline ?? t.selectedCost ?? 0;
+                  const target = t.savingTarget;
+                  const hasTarget = target != null;
+                  const on = !!t.savingApplied && hasTarget;
+                  const save = hasTarget ? Math.max(0, base - target) : 0;
+                  return (
+                    <div
+                      key={t.id}
+                      draggable
+                      onDragStart={() => setDragSavingId(t.id)}
+                      onDragEnd={() => setDragSavingId(null)}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => { e.preventDefault(); if (dragSavingId != null) handleSavingReorder(dragSavingId, t.id); setDragSavingId(null); }}
+                      className={`px-3 py-2 grid grid-cols-[auto_auto_1fr_auto_4.5rem] gap-2 items-center text-xs transition-colors ${dragSavingId === t.id ? "opacity-40" : ""} ${on ? "bg-emerald-50/60 dark:bg-emerald-950/20" : ""}`}
+                    >
+                      <span className="cursor-grab active:cursor-grabbing text-muted-foreground/50 select-none px-0.5" title="Drag to reorder">⠿</span>
+                      <button
+                        type="button"
+                        disabled={!hasTarget}
+                        onClick={() => handleSavingApply(t.id, !on)}
+                        title={!hasTarget ? "Set a downselect target first" : on ? "Applied - click to arm (off)" : "Armed - click to apply this saving"}
+                        className={`relative w-8 h-[18px] rounded-full transition-colors shrink-0 ${!hasTarget ? "bg-muted cursor-not-allowed opacity-50" : on ? "bg-emerald-600" : "bg-muted-foreground/30"}`}
+                      >
+                        <span className={`absolute top-[2px] w-3.5 h-3.5 rounded-full bg-white transition-all ${on ? "left-[16px]" : "left-[2px]"}`} />
+                      </button>
+                      <div className="min-w-0">
+                        <button type="button" className="font-medium text-left hover:underline truncate block w-full" onClick={() => setEditingTask(t)}>{t.title}</button>
+                        <p className="text-muted-foreground/70 text-[10px] truncate">{t.phaseName}{t.savingNote ? ` · ${t.savingNote}` : ""}</p>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        {hasTarget ? (
+                          <span><span className={on ? "text-muted-foreground line-through" : "text-muted-foreground"}>{formatGBP(base)}</span>{on && <span className="font-medium"> {formatGBP(target)}</span>}</span>
+                        ) : (
+                          <span className="text-muted-foreground italic text-[10px]">no target set</span>
+                        )}
+                      </div>
+                      <div className={`text-right tabular-nums font-semibold ${on ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{save > 0 ? `-${formatGBP(save)}` : "—"}</div>
                     </div>
-                    <div className="text-right tabular-nums">
-                      {target != null ? (
-                        <span><span className={applied ? "text-muted-foreground line-through" : "text-muted-foreground"}>{formatGBP(base)}</span> {applied && <span className="font-medium">{formatGBP(target)}</span>}</span>
-                      ) : (
-                        <span className="text-muted-foreground italic text-[10px]">candidate, no target set</span>
-                      )}
-                    </div>
-                    <div className="text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{save > 0 ? `-${formatGBP(save)}` : "—"}</div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
               <div className="px-4 py-2 flex justify-between items-center text-xs font-semibold bg-amber-100/50 dark:bg-amber-950/40">
-                <span>Total potential saving {applied ? "(applied to the plan)" : "(off - plan shows original costs)"}</span>
-                <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(totalSavings)}</span>
+                <span>Applied now <span className="text-muted-foreground font-normal">of {formatGBP(availableSavings)} armed</span></span>
+                <span className="tabular-nums text-emerald-700 dark:text-emerald-400">-{formatGBP(appliedSavings)}</span>
               </div>
             </div>
           )}
         </div>
-        );
-      })()}
+      )}
 
       <Accordion
         type="multiple"
@@ -4422,20 +4472,21 @@ function TaskEditSheet({
       supplyScope,
       procurementStatus,
       ...(() => {
-        // Downselect stores a target; the global switch decides whether the live cost is the target or the baseline.
+        // Downselect stores a baseline + target; this line's own arm state decides the live cost.
         const priorBaseline = (task as any).savingBaseline;
+        const lineApplied = (task as any).savingApplied ?? false;
         const currentCost = task.selectedCost ?? 0;
         if (savingFlag && downselectCost !== "" && !isNaN(Number(downselectCost))) {
           const target = Number(downselectCost);
           // Baseline is the original cost: reuse the one already captured, else the current live cost.
           const baseline = priorBaseline != null ? priorBaseline : currentCost;
-          // Live cost follows the global switch: target when savings are ON, baseline when OFF.
-          return { savingFlag: true, savingNote, savingBaseline: baseline, savingTarget: target, costTier: "quoted", selectedCost: savingsApplied ? target : baseline };
+          // Live cost follows this line's arm state: target when applied, baseline when armed/off.
+          return { savingFlag: true, savingNote, savingApplied: lineApplied, savingBaseline: baseline, savingTarget: target, costTier: "quoted", selectedCost: lineApplied ? target : baseline };
         }
         if (savingFlag) return { savingFlag: true, savingNote };
-        // Unflagged: revert to the baseline cost and clear the saving target.
-        if (priorBaseline != null) return { savingFlag: false, savingNote, savingBaseline: null, savingTarget: null, costTier: "quoted", selectedCost: priorBaseline };
-        return { savingFlag: false, savingNote };
+        // Unflagged: revert to the baseline cost, clear the target, disarm.
+        if (priorBaseline != null) return { savingFlag: false, savingNote, savingApplied: false, savingBaseline: null, savingTarget: null, costTier: "quoted", selectedCost: priorBaseline };
+        return { savingFlag: false, savingNote, savingApplied: false };
       })(),
       ...(() => {
         const amt = spendAmount !== "" ? Number(spendAmount) : null;
@@ -4448,14 +4499,15 @@ function TaskEditSheet({
       })(),
       ...(() => {
         // Re-price the whole line: a downselected committed/paid line's committed/actual follow
-        // the target (switch ON) or the baseline (switch OFF), overriding the spend-amount above.
+        // the target (armed on) or the baseline (armed off), overriding the spend-amount above.
         const priorBaseline = (task as any).savingBaseline;
+        const lineApplied = (task as any).savingApplied ?? false;
         const hasTarget = savingFlag && downselectCost !== "" && !isNaN(Number(downselectCost));
         let eff: number | null = null;
         if (hasTarget) {
           const target = Number(downselectCost);
           const baseline = priorBaseline != null ? priorBaseline : (task.selectedCost ?? 0);
-          eff = savingsApplied ? target : baseline;
+          eff = lineApplied ? target : baseline;
         } else if (!savingFlag && priorBaseline != null) {
           eff = priorBaseline; // unflagged: revert committed/actual to the original too
         }
@@ -4576,7 +4628,7 @@ function TaskEditSheet({
                     <div className="flex items-center gap-2">
                       <Label className="text-xs text-muted-foreground whitespace-nowrap">Downselect cost to £</Label>
                       <Input type="number" step="1" value={downselectCost} onChange={e => setDownselectCost(e.target.value)} placeholder={String(Math.round(((task as any).savingBaseline ?? task.selectedCost ?? 0)))} className="h-8 w-28" />
-                      <span className="text-[10px] text-muted-foreground">applied when Savings switch is ON</span>
+                      <span className="text-[10px] text-muted-foreground">arm it on/off in the Savings armoury list</span>
                     </div>
                     {downselectCost !== "" && (() => {
                       const base = (task as any).savingBaseline ?? task.selectedCost ?? 0;

@@ -142,6 +142,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     if (body.savingNote !== undefined)      globalUpdates.savingNote = body.savingNote;
     if (body.savingBaseline !== undefined)  globalUpdates.savingBaseline = body.savingBaseline;
     if (body.savingTarget !== undefined)    globalUpdates.savingTarget = body.savingTarget;
+    if (body.savingApplied !== undefined)   globalUpdates.savingApplied = body.savingApplied;
+    if (body.savingOrder !== undefined)     globalUpdates.savingOrder = body.savingOrder;
     if (body.phaseId !== undefined)         globalUpdates.phaseId = body.phaseId;
     if (body.dependencies !== undefined) {
       globalUpdates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
@@ -609,10 +611,47 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
   }
 });
 
+// ── Savings re-price helpers ─────────────────────────────────────────────────
+// applied=true => a flagged line uses its downselect target; false => its baseline.
+// Re-prices selectedCost, and committed/actual for committed/paid lines (guarded so an
+// independently-set commitment is never clobbered).
+function buildRepricePatch(baseTask: any, existing: any, applied: boolean): Record<string, unknown> | null {
+  const baseline = baseTask.savingBaseline as number | null;
+  const target = baseTask.savingTarget as number | null;
+  if (baseline == null || target == null) return null;
+  const newCost = applied ? target : baseline;
+  const near = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.5;
+  const paidStatus = (existing?.paidStatus ?? baseTask.paidStatus) as string | null;
+  const curCommitted = (existing?.committedCost ?? baseTask.committedCost) as number | null;
+  const curActual = (existing?.actualCost ?? baseTask.actualCost) as number | null;
+  const patch: Record<string, unknown> = { selectedCost: newCost, costTier: "quoted", updatedAt: new Date() };
+  if ((paidStatus === "committed" || paidStatus === "part-paid") && (near(curCommitted, baseline) || near(curCommitted, target))) patch.committedCost = newCost;
+  if (paidStatus === "paid" && (near(curActual, baseline) || near(curActual, target))) { patch.actualCost = newCost; patch.committedCost = newCost; }
+  return patch;
+}
+
+async function applyRepriceToLine(baseTask: any, propertyId: number | undefined, applied: boolean): Promise<boolean> {
+  if (propertyId) {
+    const [existing] = await db.select().from(propertyTaskOverridesTable)
+      .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, baseTask.id)));
+    const patch = buildRepricePatch(baseTask, existing, applied);
+    if (!patch) return false;
+    if (existing) {
+      await db.update(propertyTaskOverridesTable).set(patch)
+        .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, baseTask.id)));
+    } else {
+      await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: baseTask.id, ...patch } as any);
+    }
+  } else {
+    const patch = buildRepricePatch(baseTask, null, applied);
+    if (!patch) return false;
+    await db.update(tasksTable).set(patch).where(eq(tasksTable.id, baseTask.id));
+  }
+  return true;
+}
+
 // ── POST /projects/:projectId/savings-mode ──────────────────────────────────
-// Global savings switch. ON => flagged lines use their downselect target; OFF => their baseline.
-// Swaps the live selectedCost for every flagged line (on the active property override) so the
-// whole plan total moves, and no data is lost (baseline and target are both kept).
+// Master "apply all / clear all". Sets every flagged line's per-line savingApplied and re-prices it.
 router.post("/projects/:projectId/savings-mode", async (req, res) => {
   try {
     const projectId = parseInt(req.params.projectId);
@@ -627,47 +666,55 @@ router.post("/projects/:projectId/savings-mode", async (req, res) => {
     if (phaseIds.length === 0) return res.json({ applied, updated: 0 });
 
     const flagged = await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.savingFlag, true)));
-    const near = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.5;
     let updated = 0;
     for (const t of flagged) {
-      const baseline = (t as any).savingBaseline as number | null;
-      const target = (t as any).savingTarget as number | null;
-      if (baseline == null || target == null) continue;
-      const newCost = applied ? target : baseline;
-      if (propertyId) {
-        const [existing] = await db.select().from(propertyTaskOverridesTable)
-          .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
-        // Effective payment state (override wins over base).
-        const paidStatus = (existing?.paidStatus ?? (t as any).paidStatus) as string | null;
-        const curCommitted = (existing?.committedCost ?? (t as any).committedCost) as number | null;
-        const curActual = (existing?.actualCost ?? (t as any).actualCost) as number | null;
-        const patch: Record<string, unknown> = { selectedCost: newCost, costTier: "quoted", updatedAt: new Date() };
-        // Re-price the whole line: a committed/paid line's committed/actual follow the target too.
-        // Guard: only swap committed/actual that currently sits at the baseline or the target,
-        // so an independently-set commitment is never clobbered.
-        if ((paidStatus === "committed" || paidStatus === "part-paid") && (near(curCommitted, baseline) || near(curCommitted, target))) patch.committedCost = newCost;
-        if (paidStatus === "paid" && (near(curActual, baseline) || near(curActual, target))) { patch.actualCost = newCost; patch.committedCost = newCost; }
-        if (existing) {
-          await db.update(propertyTaskOverridesTable).set(patch)
-            .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
-        } else {
-          await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: t.id, ...patch } as any);
-        }
-      } else {
-        const paidStatus = (t as any).paidStatus as string | null;
-        const curCommitted = (t as any).committedCost as number | null;
-        const curActual = (t as any).actualCost as number | null;
-        const patch: Record<string, unknown> = { selectedCost: newCost, costTier: "quoted", updatedAt: new Date() };
-        if ((paidStatus === "committed" || paidStatus === "part-paid") && (near(curCommitted, baseline) || near(curCommitted, target))) patch.committedCost = newCost;
-        if (paidStatus === "paid" && (near(curActual, baseline) || near(curActual, target))) { patch.actualCost = newCost; patch.committedCost = newCost; }
-        await db.update(tasksTable).set(patch).where(eq(tasksTable.id, t.id));
-      }
+      if ((t as any).savingBaseline == null || (t as any).savingTarget == null) continue;
+      await db.update(tasksTable).set({ savingApplied: applied, updatedAt: new Date() } as any).where(eq(tasksTable.id, t.id));
+      await applyRepriceToLine(t, propertyId, applied);
       updated++;
     }
     return res.json({ applied, updated });
   } catch (err) {
     console.error("[savings-mode]", err);
     return res.status(500).json({ error: "Failed to set savings mode" });
+  }
+});
+
+// ── POST /tasks/:id/saving-apply ── arm/disarm ONE saving independently, then re-price it.
+router.post("/tasks/:id/saving-apply", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const applied = !!req.body.applied;
+    const propertyId: number | undefined = req.body.propertyId ? parseInt(req.body.propertyId) : undefined;
+    const [t] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
+    if (!t) return res.status(404).json({ error: "Not found" });
+    if ((t as any).savingBaseline == null || (t as any).savingTarget == null) {
+      return res.status(400).json({ error: "Line has no downselect target to apply" });
+    }
+    await db.update(tasksTable).set({ savingApplied: applied, updatedAt: new Date() } as any).where(eq(tasksTable.id, id));
+    await applyRepriceToLine(t, propertyId, applied);
+    return res.json({ id, applied });
+  } catch (err) {
+    console.error("[saving-apply]", err);
+    return res.status(500).json({ error: "Failed to apply saving" });
+  }
+});
+
+// ── POST /projects/:projectId/savings/reorder ── set the priority order of the savings list.
+router.post("/projects/:projectId/savings/reorder", async (req, res) => {
+  try {
+    const order: number[] = Array.isArray(req.body.order)
+      ? req.body.order.map((x: any) => parseInt(x)).filter((n: number) => !isNaN(n))
+      : [];
+    let i = 0;
+    for (const taskId of order) {
+      await db.update(tasksTable).set({ savingOrder: i, updatedAt: new Date() } as any).where(eq(tasksTable.id, taskId));
+      i++;
+    }
+    return res.json({ ordered: order.length });
+  } catch (err) {
+    console.error("[savings-reorder]", err);
+    return res.status(500).json({ error: "Failed to reorder savings" });
   }
 });
 

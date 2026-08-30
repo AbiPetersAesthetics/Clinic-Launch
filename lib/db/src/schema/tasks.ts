@@ -65,7 +65,9 @@ export const tasksTable = pgTable("launch_tasks", {
   savingFlag: boolean("saving_flag").notNull().default(false),
   savingNote: text("saving_note"), // free text: what could be downselected here
   savingBaseline: real("saving_baseline"), // original cost (the "selected cost" to revert to when savings are OFF)
-  savingTarget: real("saving_target"), // downselected cost to apply when the global savings switch is ON
+  savingTarget: real("saving_target"), // downselected cost to apply when the saving is armed
+  savingApplied: boolean("saving_applied").notNull().default(false), // per-line: is this saving currently applied (target) vs armed (baseline)
+  savingOrder: integer("saving_order").notNull().default(0), // priority order in the savings list (lower = higher priority)
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
