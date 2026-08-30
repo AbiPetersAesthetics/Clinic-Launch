@@ -3289,6 +3289,11 @@ export default function ProjectPage() {
                                       ⚠ Risk
                                     </Badge>
                                   )}
+                                  {(task as any).savingFlag && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-400 text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40">
+                                      ✂ Saving
+                                    </Badge>
+                                  )}
                                   {task.files && (
                                     <Badge variant="outline" className="text-[10px] h-4 py-0 text-muted-foreground">
                                       Files attached
@@ -4101,6 +4106,10 @@ function TaskEditSheet({
   const [spendInvoiceDate, setSpendInvoiceDate] = useState("");
   const [spendVatStatus, setSpendVatStatus] = useState("exc");
 
+  // Downselect / saving review
+  const [savingFlag, setSavingFlag] = useState(false);
+  const [savingNote, setSavingNote] = useState("");
+
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
   const [aiResult, setAiResult] = useState("");
@@ -4264,6 +4273,8 @@ function TaskEditSheet({
       setSpendInvoiceRef((task as any).invoiceRef ?? "");
       setSpendInvoiceDate((task as any).invoiceDate ? new Date((task as any).invoiceDate).toISOString().split("T")[0] : "");
       setSpendVatStatus((task as any).invoiceVatStatus ?? "exc");
+      setSavingFlag((task as any).savingFlag ?? false);
+      setSavingNote((task as any).savingNote ?? "");
     }
   }, [task?.id]);
 
@@ -4338,6 +4349,8 @@ function TaskEditSheet({
       costVatStatus,
       supplyScope,
       procurementStatus,
+      savingFlag,
+      savingNote,
       ...(() => {
         const amt = spendAmount !== "" ? Number(spendAmount) : null;
         const paidSoFar = spendPaidSoFar !== "" ? Number(spendPaidSoFar) : null;
@@ -4445,6 +4458,17 @@ function TaskEditSheet({
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Downselect / saving review — owner flag + free-text on what could be cut */}
+              <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={savingFlag} onChange={e => setSavingFlag(e.target.checked)} className="h-4 w-4 rounded border-amber-400 accent-amber-600" />
+                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Potential saving / downselect</span>
+                </label>
+                {savingFlag && (
+                  <Textarea value={savingNote} onChange={e => setSavingNote(e.target.value)} placeholder="What could we downselect or cut here? Free text..." className="mt-1 text-sm" rows={3} />
+                )}
               </div>
 
               {/* Spend / Payment — record a spend straight from the task line */}

@@ -61,6 +61,9 @@ export const tasksTable = pgTable("launch_tasks", {
   // Archived tasks are kept for audit + recovery but excluded from every cost total.
   archived: boolean("archived").notNull().default(false),
   archivedReason: text("archived_reason"),
+  // ── Downselect / saving review: owner-flagged candidates for cost saving ──
+  savingFlag: boolean("saving_flag").notNull().default(false),
+  savingNote: text("saving_note"), // free text: what could be downselected here
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

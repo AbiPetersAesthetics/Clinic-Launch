@@ -551,6 +551,9 @@ export async function runStartupSeed(): Promise<void> {
         // V19 migration: tender award flow — archivable estimate lines + award record
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived_reason TEXT`);
+        // V20 migration: downselect / saving review — owner flag + free-text note on tasks
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_flag BOOLEAN NOT NULL DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_note TEXT`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,

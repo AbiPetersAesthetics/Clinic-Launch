@@ -138,6 +138,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     if (body.riskLevel !== undefined)       globalUpdates.riskLevel = body.riskLevel;
     if (body.isNonNegotiable !== undefined) globalUpdates.isNonNegotiable = body.isNonNegotiable;
     if (body.isCriticalRisk !== undefined)  globalUpdates.isCriticalRisk = body.isCriticalRisk;
+    if (body.savingFlag !== undefined)      globalUpdates.savingFlag = body.savingFlag;
+    if (body.savingNote !== undefined)      globalUpdates.savingNote = body.savingNote;
     if (body.phaseId !== undefined)         globalUpdates.phaseId = body.phaseId;
     if (body.dependencies !== undefined) {
       globalUpdates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
