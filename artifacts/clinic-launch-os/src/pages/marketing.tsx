@@ -1,658 +1,370 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { Megaphone, Palette, Globe, CalendarDays, Rocket, ChevronDown, ChevronUp, Plus, Minus, Sparkles, CheckCheck } from "lucide-react";
+import {
+  Megaphone, Wrench, Instagram, Mail, Facebook, Search as SearchIcon,
+  CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, RotateCcw, Tag,
+} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { ResetPageButton } from "@/components/reset-page-button";
 
 const PROJECT_ID = 1;
 const API_BASE = "/api";
-const WAITLIST_TARGET = 30;
+const OPEN_DATE_FALLBACK = "2026-11-02";
+
+// Known live facts (from the Meta ad account + GHL, Aug 2026) shown as context.
+const FOUNDING_LEADS = 443;
+const META_CPL = "£3.08";
 
 type Status = "not_started" | "in_progress" | "done" | "na";
-type Category = "brand" | "platform" | "content" | "launch";
 
-interface MarketingItem {
+interface Item {
   id: number;
-  projectId: number;
-  category: Category;
+  category: string;      // phase id p0..p5
   title: string;
+  detail: string;
+  channel: string;       // found | social | email | meta | google
+  owner: string;         // abi | david | both
+  weekStart: string;     // ISO Monday or ""
   status: Status;
-  dueWeeksBeforeOpen: number | null;
   notes: string;
   sortOrder: number;
 }
 
-const STATUS_META: Record<Status, { label: string; color: string; next: Status }> = {
-  not_started: {
-    label: "Not started",
-    color: "bg-muted text-muted-foreground border-border hover:border-primary/40",
-    next: "in_progress",
-  },
-  in_progress: {
-    label: "In progress",
-    color: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700",
-    next: "done",
-  },
-  done: {
-    label: "✓ Done",
-    color: "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-700",
-    next: "na",
-  },
-  na: {
-    label: "N/A",
-    color: "bg-muted/50 text-muted-foreground/50 border-border/30",
-    next: "not_started",
-  },
+const PHASES: { id: string; label: string; sub: string }[] = [
+  { id: "p0", label: "Foundations", sub: "Set up this week — the plan runs on these" },
+  { id: "p1", label: "September", sub: "Warm & convert at Bedhampton" },
+  { id: "p2", label: "October", sub: "Convert the offer + build the launch runway" },
+  { id: "p3", label: "Launch week", sub: "Winchester opens 2 November" },
+  { id: "p4", label: "November", sub: "Fill the diary" },
+  { id: "p5", label: "December", sub: "Christmas retail + retain" },
+];
+
+const CHANNELS: Record<string, { label: string; icon: React.ElementType; cls: string; dot: string }> = {
+  found:  { label: "Setup",      icon: Wrench,     cls: "text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700", dot: "bg-slate-400" },
+  social: { label: "Social",     icon: Instagram,  cls: "text-violet-700 dark:text-violet-300 bg-violet-100 dark:bg-violet-900/30 border-violet-200 dark:border-violet-800", dot: "bg-violet-500" },
+  email:  { label: "Email",      icon: Mail,       cls: "text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800", dot: "bg-blue-500" },
+  meta:   { label: "Meta ads",   icon: Facebook,   cls: "text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-800", dot: "bg-indigo-500" },
+  google: { label: "Google ads", icon: SearchIcon, cls: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800", dot: "bg-emerald-500" },
 };
 
-// ─── Item Row ──────────────────────────────────────────────────────────────────
-function ItemRow({
-  item,
-  expanded,
-  onToggleExpand,
-  onStatusChange,
-  onNotesChange,
-  weekLabel,
-}: {
-  item: MarketingItem;
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onStatusChange: (s: Status) => void;
-  onNotesChange: (n: string) => void;
-  weekLabel: string | null;
-}) {
-  const sm = STATUS_META[item.status];
-  const isCompliance = item.title.startsWith("⚠");
+const OWNERS: Record<string, { label: string; cls: string }> = {
+  abi:   { label: "Abi",   cls: "text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800" },
+  david: { label: "David", cls: "text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800" },
+  both:  { label: "Both",  cls: "text-muted-foreground bg-muted border-border" },
+};
+
+const STATUS_CYCLE: Record<Status, Status> = {
+  not_started: "in_progress",
+  in_progress: "done",
+  done: "not_started",
+  na: "not_started",
+};
+
+function StatusToggle({ status, onChange }: { status: Status; onChange: (s: Status) => void }) {
+  const next = () => onChange(STATUS_CYCLE[status]);
+  if (status === "done")
+    return <button onClick={next} title="Done — click to reset" className="shrink-0"><CheckCircle2 className="w-5 h-5 text-emerald-500" /></button>;
+  if (status === "in_progress")
+    return <button onClick={next} title="In progress — click to mark done" className="shrink-0"><CircleDashed className="w-5 h-5 text-amber-500" /></button>;
+  return <button onClick={next} title="Not started — click to start" className="shrink-0"><Circle className="w-5 h-5 text-muted-foreground/40 hover:text-muted-foreground" /></button>;
+}
+
+function OwnerChip({ owner }: { owner: string }) {
+  const o = OWNERS[owner] ?? OWNERS.both;
+  return <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full border ${o.cls}`}>{o.label}</span>;
+}
+
+function ChannelChip({ channel }: { channel: string }) {
+  const c = CHANNELS[channel] ?? CHANNELS.found;
+  const Icon = c.icon;
   return (
-    <div className={`rounded-xl border transition-all ${
-      isCompliance
-        ? "border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-950/10"
-        : item.status === "done"
-        ? "border-emerald-200/50 dark:border-emerald-800/30 bg-emerald-50/20 dark:bg-emerald-950/5"
-        : item.status === "na"
-        ? "border-border/30 bg-muted/5 opacity-55"
-        : "border-border/60 bg-card"
-    }`}>
-      <div className="flex items-center gap-3 px-3.5 py-3">
-        {!isCompliance && (
-          <div className="relative shrink-0">
-            <select
-              value={item.status}
-              onChange={e => onStatusChange(e.target.value as Status)}
-              className={`appearance-none text-[9px] font-bold pl-2.5 pr-6 py-1.5 rounded-full border cursor-pointer transition-colors ${sm.color}`}
-            >
-              {(Object.keys(STATUS_META) as Status[]).map(s => (
-                <option key={s} value={s}>{STATUS_META[s].label}</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 w-2.5 h-2.5 pointer-events-none opacity-60" />
-          </div>
-        )}
-        <div className="flex-1 min-w-0">
-          {weekLabel && (
-            <span className="inline-block text-[9px] font-semibold text-primary/80 bg-primary/8 px-1.5 py-0.5 rounded mr-1.5 align-middle">
-              {weekLabel}
-            </span>
-          )}
-          <span className={`text-sm leading-snug ${item.status === "na" ? "line-through text-muted-foreground" : isCompliance ? "text-amber-700 dark:text-amber-400 font-medium" : ""}`}>
-            {item.title}
-          </span>
-          {item.notes && !expanded && (
-            <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{item.notes}</p>
-          )}
-        </div>
-        {!isCompliance && (
-          <button
-            onClick={onToggleExpand}
-            className="text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0 p-0.5"
-          >
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </button>
-        )}
-      </div>
-      {expanded && !isCompliance && (
-        <div className="px-3.5 pb-3.5">
-          <Textarea
-            placeholder="Notes, links, contacts, decisions…"
-            value={item.notes}
-            onChange={e => onNotesChange(e.target.value)}
-            className="text-xs min-h-[64px] resize-none"
-          />
-        </div>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ${c.cls}`}>
+      <Icon className="w-2.5 h-2.5" />{c.label}
+    </span>
   );
 }
 
-// ─── Summary Generator ─────────────────────────────────────────────────────────
-function getSummary(
-  tab: Category,
-  byCategory: Record<Category, MarketingItem[]>,
-  readiness: Record<Category, number>,
-  openingDate: string | null,
-  waitlist: number,
-  activePlatforms: number,
-): string {
-  switch (tab) {
-    case "brand": {
-      const items = byCategory.brand;
-      const done = items.filter(i => i.status === "done").length;
-      const todo = items.filter(i => i.status === "not_started");
-      if (done === 0)
-        return "Brand identity is the foundation everything else builds on — logo, colours, fonts, photography. None of it is locked in yet. Start here before setting up any platforms.";
-      if (done === items.length)
-        return "Brand setup is complete. Every identity asset is confirmed and ready to use across all platforms.";
-      return `${done}/${items.length} brand elements complete (${readiness.brand}%).${todo.length > 0 ? ` Still to do: ${todo.slice(0, 2).map(i => i.title.split("—")[0].trim()).join(", ")}${todo.length > 2 ? ` and ${todo.length - 2} more` : ""}.` : ""}`;
-    }
-    case "platform": {
-      const total = byCategory.platform.length;
-      const inProg = byCategory.platform.filter(i => i.status === "in_progress").length;
-      if (activePlatforms === 0 && inProg === 0)
-        return "No platforms are live yet. Google Business Profile and Instagram are the two highest-impact starting points for a new aesthetics clinic — both are free.";
-      if (activePlatforms === total)
-        return "Every platform is live and fully set up. You're ready to run a coordinated multi-channel launch campaign from day one.";
-      return `${activePlatforms}/${total} platforms live${inProg > 0 ? `, ${inProg} in progress` : ""}. ${byCategory.platform.filter(i => i.status === "not_started").length} still to set up.`;
-    }
-    case "content": {
-      const contentItems = byCategory.content.filter(i => !i.title.startsWith("⚠"));
-      const done = contentItems.filter(i => i.status === "done").length;
-      const daysToOpen = openingDate
-        ? Math.ceil((new Date(openingDate + "T12:00:00").getTime() - Date.now()) / 86400000)
-        : null;
-      const weeksToOpen = daysToOpen !== null ? Math.floor(daysToOpen / 7) : null;
-      if (done === 0)
-        return `Content marketing should start 12 weeks before opening${weeksToOpen !== null ? ` — that's around week ${weeksToOpen < 12 ? `−${weeksToOpen}` : "−12"} from now` : ""}. Start with brand reveal and practitioner introduction content to build recognition before you open.`;
-      return `${done}/${contentItems.length} content phases complete.${weeksToOpen !== null ? ` ${weeksToOpen} weeks until opening.` : ""}${done < contentItems.length ? " Mark each phase done as you publish the content." : " All content phases published — ready for launch."}`;
-    }
-    case "launch": {
-      const launchItems = byCategory.launch;
-      const done = launchItems.filter(i => i.status === "done").length;
-      const total = launchItems.length;
-      if (done === 0)
-        return "Launch week planning not started yet. Aim to have all logistics confirmed 4 weeks before opening — photographer, influencers, and the opening offer take the longest to arrange.";
-      if (done === total)
-        return `Launch week is fully planned and ready to go.${waitlist > 0 ? ` ${waitlist} people on your waitlist ready to book.` : ""}`;
-      return `${done}/${total} launch items confirmed.${waitlist > 0 ? ` ${waitlist} on the waitlist${waitlist >= WAITLIST_TARGET ? " — target hit! 🎉" : ` (target: ${WAITLIST_TARGET})`}.` : " No waitlist yet — start capturing pre-opening interest now."}`;
-    }
-  }
+function weekLabel(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso + "T12:00:00");
+  const end = new Date(d.getTime() + 6 * 86400000);
+  const fmt = (x: Date, opts: Intl.DateTimeFormatOptions) => x.toLocaleDateString("en-GB", opts);
+  return `w/c ${fmt(d, { day: "numeric", month: "short" })}`;
 }
 
-// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function MarketingPage() {
-  const [items, setItems] = useState<MarketingItem[]>([]);
-  const [waitlist, setWaitlist] = useState(0);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "unsaved">("idle");
+  const [items, setItems] = useState<Item[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [tab, setTab] = useState<Category>("brand");
+  const [openingDate, setOpeningDate] = useState<string>(OPEN_DATE_FALLBACK);
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [channelFilter, setChannelFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  const [openingDate, setOpeningDate] = useState<string | null>(null);
-  const [aiCompleting, setAiCompleting] = useState<Category | null>(null);
-  const [aiJustDone, setAiJustDone] = useState<Category | null>(null);
-  const itemTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const [collapsedPhases, setCollapsedPhases] = useState<Set<string>>(new Set());
+  const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
-  useEffect(() => {
+  const load = () => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing`)
       .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (data) {
-          setItems((data.items ?? []) as MarketingItem[]);
-          setWaitlist(data.waitlistCount ?? 0);
-        }
-        setLoaded(true);
-        setSaveStatus("idle");
-      });
+      .then(data => { if (data) setItems((data.items ?? []) as Item[]); setLoaded(true); });
+  };
+
+  useEffect(() => {
+    load();
     fetch(`${API_BASE}/projects/${PROJECT_ID}`)
       .then(r => r.ok ? r.json() : null)
       .then(p => { if (p?.targetOpeningDate) setOpeningDate(p.targetOpeningDate); })
       .catch(() => {});
   }, []);
 
-  const persistItem = (item: MarketingItem) => {
-    setSaveStatus("saving");
+  const persist = (item: Item) => {
+    setSaveState("saving");
     fetch(`${API_BASE}/marketing/${item.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ status: item.status, notes: item.notes }),
-    })
-      .then(() => setSaveStatus("saved"))
-      .catch(() => setSaveStatus("unsaved"));
+    }).then(() => setSaveState("saved")).catch(() => setSaveState("idle"));
   };
-
-  const scheduleItemSave = (item: MarketingItem, delay = 600) => {
-    const t = itemTimers.current.get(item.id);
+  const scheduleSave = (item: Item, delay: number) => {
+    const t = timers.current.get(item.id);
     if (t) clearTimeout(t);
-    itemTimers.current.set(item.id, setTimeout(() => persistItem(item), delay));
+    timers.current.set(item.id, setTimeout(() => persist(item), delay));
   };
 
-  const setItemStatus = (id: number, status: Status) => {
+  const setStatus = (id: number, status: Status) => {
     setItems(prev => {
       const next = prev.map(i => i.id === id ? { ...i, status } : i);
-      const changed = next.find(i => i.id === id)!;
-      scheduleItemSave(changed, 400);
-      setSaveStatus("unsaved");
+      scheduleSave(next.find(i => i.id === id)!, 300);
       return next;
     });
   };
-
-  const updateNotes = (id: number, notes: string) => {
+  const setNotes = (id: number, notes: string) => {
     setItems(prev => {
       const next = prev.map(i => i.id === id ? { ...i, notes } : i);
-      const changed = next.find(i => i.id === id)!;
-      scheduleItemSave(changed, 800);
-      setSaveStatus("unsaved");
+      scheduleSave(next.find(i => i.id === id)!, 700);
       return next;
     });
   };
 
-  const updateWaitlist = (n: number) => {
-    const next = Math.max(0, n);
-    setWaitlist(next);
-    fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing/waitlist`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ count: next }),
-    }).catch(() => {});
+  const reseed = async () => {
+    if (!confirm("Rebuild the marketing plan from the template? This resets all statuses and notes.")) return;
+    await fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing/reseed`, { method: "POST" });
+    load();
   };
-
-  const resetMarketing = async () => {
-    await fetch(`${API_BASE}/projects/${PROJECT_ID}/reset/marketing`, { method: "POST" });
-    setItems(prev => prev.map(i => ({ ...i, status: "not_started" as Status, notes: "" })));
-    setWaitlist(0);
-    setSaveStatus("idle");
-  };
-
-  const runAiComplete = async (category: Category) => {
-    setAiCompleting(category);
-    setAiJustDone(null);
-    try {
-      const res = await fetch(`${API_BASE}/projects/${PROJECT_ID}/marketing/ai-complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category }),
-      });
-      if (!res.ok) throw new Error("AI complete failed");
-      const data = await res.json() as {
-        updates: Array<{ id: number; notes: string; status?: string }>;
-      };
-      setItems(prev =>
-        prev.map(item => {
-          const upd = data.updates.find(u => u.id === item.id);
-          if (!upd) return item;
-          return {
-            ...item,
-            notes: upd.notes ?? item.notes,
-            status: (upd.status === "in_progress" && item.status === "not_started"
-              ? "in_progress"
-              : item.status) as Status,
-          };
-        })
-      );
-      // Expand all filled items so Abi can see the notes
-      setExpanded(prev => {
-        const next = new Set(prev);
-        data.updates.forEach(u => next.add(u.id));
-        return next;
-      });
-      setAiJustDone(category);
-      setSaveStatus("saved");
-      setTimeout(() => setAiJustDone(null), 4000);
-    } catch {
-      // silently reset — button returns to normal
-    } finally {
-      setAiCompleting(null);
-    }
-  };
-
-  const toggleExpand = (id: number) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  // ── Derived ────────────────────────────────────────────────────────────────
-  const byCategory = useMemo(() => ({
-    brand: items.filter(i => i.category === "brand").sort((a, b) => a.sortOrder - b.sortOrder),
-    platform: items.filter(i => i.category === "platform").sort((a, b) => a.sortOrder - b.sortOrder),
-    content: items.filter(i => i.category === "content").sort((a, b) => a.sortOrder - b.sortOrder),
-    launch: items.filter(i => i.category === "launch").sort((a, b) => a.sortOrder - b.sortOrder),
-  }), [items]);
-
-  const readiness = useMemo(() => {
-    const calc = (these: MarketingItem[]) => {
-      const applicable = these.filter(i => i.status !== "na" && !i.title.startsWith("⚠"));
-      if (!applicable.length) return 0;
-      const score = applicable.reduce(
-        (acc, i) => acc + (i.status === "done" ? 1 : i.status === "in_progress" ? 0.5 : 0),
-        0,
-      );
-      return Math.round((score / applicable.length) * 100);
-    };
-    return {
-      brand: calc(byCategory.brand),
-      platform: calc(byCategory.platform),
-      content: calc(byCategory.content),
-      launch: calc(byCategory.launch),
-    };
-  }, [byCategory]);
-
-  const overall = Math.round(Object.values(readiness).reduce((a, b) => a + b, 0) / 4);
 
   const daysToOpen = useMemo(() => {
-    if (!openingDate) return null;
     return Math.ceil((new Date(openingDate + "T12:00:00").getTime() - Date.now()) / 86400000);
   }, [openingDate]);
 
-  const activePlatforms = byCategory.platform.filter(i => i.status === "done").length;
+  const applicable = items.filter(i => i.status !== "na");
+  const doneCount = applicable.filter(i => i.status === "done").length;
+  const overall = applicable.length ? Math.round((doneCount / applicable.length) * 100) : 0;
 
-  // Opening date → week label for content calendar items
-  const weekLabel = (weeksBeforeOpen: number | null): string | null => {
-    if (weeksBeforeOpen === null) return null;
-    if (!openingDate) return weeksBeforeOpen === 0 ? "Launch week" : `Week ${weeksBeforeOpen}`;
-    const open = new Date(openingDate + "T12:00:00");
-    const d = new Date(open.getTime() + weeksBeforeOpen * 7 * 86400000);
-    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  };
+  const visible = items.filter(i =>
+    (channelFilter === "all" || i.channel === channelFilter) &&
+    (ownerFilter === "all" || i.owner === ownerFilter || (ownerFilter !== "all" && i.owner === "both"))
+  );
 
-  // ── Tabs ───────────────────────────────────────────────────────────────────
-  const tabs: { key: Category; label: string; icon: React.ElementType }[] = [
-    { key: "brand",    label: "Brand Setup",   icon: Palette },
-    { key: "platform", label: "Platforms",     icon: Globe },
-    { key: "content",  label: "Content",       icon: CalendarDays },
-    { key: "launch",   label: "Launch Week",   icon: Rocket },
-  ];
+  const toggleExpand = (id: number) =>
+    setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const togglePhase = (id: string) =>
+    setCollapsedPhases(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   if (!loaded) {
-    return (
-      <div className="p-6 flex items-center justify-center min-h-40">
-        <p className="text-sm text-muted-foreground animate-pulse">Loading marketing plan…</p>
-      </div>
-    );
+    return <div className="p-6 flex items-center justify-center min-h-40"><p className="text-sm text-muted-foreground animate-pulse">Loading marketing plan…</p></div>;
   }
 
-  const tabItems = byCategory[tab];
-  const tabDone = tabItems.filter(i => i.status === "done").length;
-  const tabApplicable = tabItems.filter(i => i.status !== "na" && !i.title.startsWith("⚠")).length;
+  const channelTabs = [{ k: "all", label: "All" }, ...Object.keys(CHANNELS).map(k => ({ k, label: CHANNELS[k].label }))];
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-5">
 
-      {/* ── Header card ─────────────────────────────────────────────────────── */}
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="rounded-2xl border bg-card shadow-sm p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 shrink-0">
-              <Megaphone className="w-5 h-5 text-primary" />
-            </div>
+            <div className="p-2.5 rounded-xl bg-primary/10 shrink-0"><Megaphone className="w-5 h-5 text-primary" /></div>
             <div>
-              <h1 className="text-lg font-bold tracking-tight">Marketing & Launch</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Pre-launch sequence • Brand setup • Waitlist building</p>
+              <h1 className="text-lg font-bold tracking-tight">Marketing Command Centre</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Social · Email · Paid — from 1 Sep to launch + 2 months. Low effort, high yield, 3 posts a week.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${
-              saveStatus === "saved"   ? "text-emerald-600 dark:text-emerald-400"
-              : saveStatus === "saving"  ? "text-muted-foreground animate-pulse"
-              : saveStatus === "unsaved" ? "text-amber-600 dark:text-amber-400"
-              : ""
-            }`}>
-              {saveStatus === "saved" ? "✓ Saved" : saveStatus === "saving" ? "Saving…" : saveStatus === "unsaved" ? "Unsaved" : ""}
+            <span className={`text-[10px] font-medium ${saveState === "saved" ? "text-emerald-600 dark:text-emerald-400" : saveState === "saving" ? "text-muted-foreground animate-pulse" : "text-transparent"}`}>
+              {saveState === "saved" ? "✓ Saved" : saveState === "saving" ? "Saving…" : "•"}
             </span>
-            <ResetPageButton
-              pageLabel="Marketing"
-              description="Resets all marketing item statuses and notes to blank. Your project plan, financials, and all other pages are untouched."
-              onReset={resetMarketing}
-            />
+            <button onClick={reseed} title="Rebuild plan from template" className="flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg px-2 py-1">
+              <RotateCcw className="w-3 h-3" /> Rebuild
+            </button>
           </div>
         </div>
 
-        {/* ── KPI strip ───────────────────────────────────────────────────── */}
+        {/* KPI strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-border/50">
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Readiness</p>
-            <p className={`text-xl font-bold ${
-              overall >= 70 ? "text-emerald-600 dark:text-emerald-400"
-              : overall >= 40 ? "text-primary"
-              : "text-amber-500"
-            }`}>{overall}%</p>
-            <p className="text-[10px] text-muted-foreground">
-              {overall >= 70 ? "On track for launch" : overall >= 40 ? "Good progress" : "Early stage"}
-            </p>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Winchester opens in</p>
+            <p className="text-xl font-bold">{daysToOpen > 0 ? daysToOpen : 0}<span className="text-xs font-normal text-muted-foreground ml-0.5">days</span></p>
+            <p className="text-[10px] text-muted-foreground">{new Date(openingDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Waitlist</p>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <button
-                onClick={() => updateWaitlist(waitlist - 1)}
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60"
-              >
-                <Minus className="w-3 h-3" />
-              </button>
-              <p className={`text-xl font-bold min-w-[2ch] text-center ${waitlist >= WAITLIST_TARGET ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
-                {waitlist}
-              </p>
-              <button
-                onClick={() => updateWaitlist(waitlist + 1)}
-                className="w-6 h-6 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors border border-border/60"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1.5 mt-1">
-              <div className="flex-1 h-1 rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${waitlist >= WAITLIST_TARGET ? "bg-emerald-500" : "bg-primary"}`}
-                  style={{ width: `${Math.min(100, Math.round((waitlist / WAITLIST_TARGET) * 100))}%` }}
-                />
-              </div>
-              <span className="text-[9px] text-muted-foreground">/{WAITLIST_TARGET}</span>
-            </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Founding leads ready</p>
+            <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{FOUNDING_LEADS}</p>
+            <p className="text-[10px] text-muted-foreground">Meta, {META_CPL}/lead — nurture these</p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Opens in</p>
-            <p className="text-xl font-bold">
-              {daysToOpen !== null ? daysToOpen : "—"}
-              <span className="text-xs font-normal text-muted-foreground ml-0.5">{daysToOpen !== null ? "d" : ""}</span>
-            </p>
-            <p className="text-[10px] text-muted-foreground">
-              {openingDate
-                ? new Date(openingDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
-                : "Set in Financials"}
-            </p>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Plan progress</p>
+            <p className={`text-xl font-bold ${overall >= 70 ? "text-emerald-600 dark:text-emerald-400" : overall >= 35 ? "text-primary" : "text-amber-500"}`}>{overall}%</p>
+            <p className="text-[10px] text-muted-foreground">{doneCount}/{applicable.length} actions done</p>
           </div>
-          <div className="space-y-0.5">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Live platforms</p>
-            <p className="text-xl font-bold">
-              {activePlatforms}
-              <span className="text-xs font-normal text-muted-foreground ml-0.5">/{byCategory.platform.length}</span>
-            </p>
-            <p className="text-[10px] text-muted-foreground">channels active</p>
+          <div>
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cadence</p>
+            <p className="text-xl font-bold">3<span className="text-xs font-normal text-muted-foreground ml-0.5">posts/wk</span></p>
+            <p className="text-[10px] text-muted-foreground">Mon · Wed · Fri</p>
           </div>
-        </div>
-
-        {/* ── 4-domain mini scorecard ──────────────────────────────────────── */}
-        <div className="grid grid-cols-4 gap-2 mt-4 pt-4 border-t border-border/40">
-          {tabs.map(({ key, label, icon: Icon }) => {
-            const pct = readiness[key];
-            const color = pct >= 70 ? "emerald" : pct >= 40 ? "primary" : "amber";
-            const textCls = color === "emerald" ? "text-emerald-600 dark:text-emerald-400" : color === "primary" ? "text-primary" : "text-amber-600 dark:text-amber-400";
-            const barCls  = color === "emerald" ? "bg-emerald-500" : color === "primary" ? "bg-primary" : "bg-amber-500";
-            return (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className="group flex flex-col items-center gap-1.5 p-2 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/3 transition-all text-center"
-              >
-                <Icon className={`w-3.5 h-3.5 ${textCls} group-hover:scale-110 transition-transform`} />
-                <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide leading-tight hidden sm:block">{label}</span>
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className={`h-full rounded-full transition-all duration-500 ${barCls}`} style={{ width: `${pct}%` }} />
-                </div>
-                <span className={`text-[10px] font-bold ${textCls}`}>{pct}%</span>
-              </button>
-            );
-          })}
         </div>
       </div>
 
-      {/* ── Tab bar ─────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: "none" }}>
-        {tabs.map(({ key, label, icon: Icon }) => {
-          const these = byCategory[key];
-          const done = these.filter(i => i.status === "done").length;
-          const applicable = these.filter(i => i.status !== "na" && !i.title.startsWith("⚠")).length;
-          const isActive = tab === key;
-          return (
-            <button
-              key={key}
-              onClick={() => setTab(key)}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
-                isActive
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "border-border text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-muted/50"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              <span>{label}</span>
-              {done > 0 && (
-                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ml-0.5 ${
-                  done === applicable
-                    ? (isActive ? "bg-white/20 text-white" : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400")
-                    : (isActive ? "bg-white/20 text-white" : "bg-primary/15 text-primary")
-                }`}>
-                  {done}/{applicable}
-                </span>
-              )}
+      {/* ── Bedhampton offer banner ───────────────────────────────────────── */}
+      <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/60 dark:bg-rose-950/20 p-4">
+        <div className="flex items-start gap-3">
+          <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 shrink-0"><Tag className="w-4 h-4 text-rose-600 dark:text-rose-400" /></div>
+          <div>
+            <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Sep/Oct engine — Bedhampton only</p>
+            <p className="text-xs text-foreground/80 mt-1 leading-relaxed">
+              <strong>Complimentary skin analysis</strong> at Bedhampton, then <strong>20% off any treatment</strong> taken after it. Runs <strong>1 Sep-31 Oct</strong>, then everything pivots to the Winchester launch. Switch the two Bedhampton ads (cold + warm) back on and point them here.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── RACI ──────────────────────────────────────────────────────────── */}
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-card p-4">
+          <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800">Abi</span><span className="text-xs font-semibold">the face & the clinician</span></div>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+            <li>On-camera content — Reels, stories, treatment explainers, meet-Abi</li>
+            <li>Deliver the complimentary skin analyses & treatments</li>
+            <li>Reply to DMs/comments in her own voice</li>
+            <li>Ask every client for a Google review in-clinic</li>
+          </ul>
+        </div>
+        <div className="rounded-xl border border-sky-200 dark:border-sky-900 bg-card p-4">
+          <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-900/30 border-sky-200 dark:border-sky-800">David</span><span className="text-xs font-semibold">systems, ads & scheduling</span></div>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
+            <li>Meta + Google ads: setup, budget, monitoring</li>
+            <li>GHL nurture, email/SMS, automations, pipelines</li>
+            <li>Schedule the 3 posts/week; GBP reconnect + Winchester GBP</li>
+            <li>Landing pages, booking, reviews automation, analytics</li>
+          </ul>
+        </div>
+      </div>
+
+      {/* ── Filters ───────────────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1">
+          {channelTabs.map(t => (
+            <button key={t.k} onClick={() => setChannelFilter(t.k)}
+              className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${channelFilter === t.k ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+              {t.label}
             </button>
+          ))}
+        </div>
+        <span className="text-muted-foreground/40 text-xs px-1">·</span>
+        <div className="flex gap-1">
+          {[{ k: "all", label: "Everyone" }, { k: "abi", label: "Abi" }, { k: "david", label: "David" }].map(t => (
+            <button key={t.k} onClick={() => setOwnerFilter(t.k)}
+              className={`text-[11px] font-semibold px-2.5 py-1.5 rounded-lg border transition-colors ${ownerFilter === t.k ? "bg-foreground text-background border-foreground" : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Phased plan ───────────────────────────────────────────────────── */}
+      <div className="space-y-4">
+        {PHASES.map(phase => {
+          const phaseItems = visible.filter(i => i.category === phase.id);
+          if (phaseItems.length === 0) return null;
+          const collapsed = collapsedPhases.has(phase.id);
+          const pApplicable = phaseItems.filter(i => i.status !== "na");
+          const pDone = pApplicable.filter(i => i.status === "done").length;
+          // group by week within the phase
+          const weeks = Array.from(new Set(phaseItems.map(i => i.weekStart)));
+          return (
+            <div key={phase.id} className="rounded-2xl border bg-card overflow-hidden">
+              <button onClick={() => togglePhase(phase.id)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors text-left">
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[10px] font-bold px-2 py-1 rounded-md bg-primary/10 text-primary shrink-0">{phase.label}</span>
+                  <span className="text-xs text-muted-foreground truncate">{phase.sub}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">{pDone}/{pApplicable.length}</span>
+                  <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden hidden sm:block">
+                    <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pApplicable.length ? (pDone / pApplicable.length) * 100 : 0}%` }} />
+                  </div>
+                  {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
+                </div>
+              </button>
+
+              {!collapsed && (
+                <div className="border-t border-border/60">
+                  {weeks.map(wk => {
+                    const wkItems = phaseItems.filter(i => i.weekStart === wk);
+                    return (
+                      <div key={wk || "setup"}>
+                        {wk && (
+                          <div className="px-4 py-1.5 bg-muted/40 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{weekLabel(wk)}</div>
+                        )}
+                        <div className="divide-y divide-border/40">
+                          {wkItems.map(item => {
+                            const isExp = expanded.has(item.id);
+                            const done = item.status === "done";
+                            return (
+                              <div key={item.id} className={`px-4 py-2.5 ${done ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}>
+                                <div className="flex items-start gap-3">
+                                  <div className="pt-0.5"><StatusToggle status={item.status} onChange={s => setStatus(item.id, s)} /></div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                                      <ChannelChip channel={item.channel} />
+                                      <OwnerChip owner={item.owner} />
+                                    </div>
+                                    <p className={`text-sm leading-snug ${done ? "line-through text-muted-foreground" : ""}`}>{item.title}</p>
+                                    {item.detail && !isExp && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{item.detail}</p>}
+                                    {isExp && (
+                                      <div className="mt-2 space-y-2">
+                                        {item.detail && <p className="text-[11px] text-foreground/70 leading-relaxed bg-muted/40 rounded-lg p-2.5">{item.detail}</p>}
+                                        <Textarea placeholder="Your notes, links, decisions…" value={item.notes} onChange={e => setNotes(item.id, e.target.value)} className="text-xs min-h-[52px] resize-none" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  <button onClick={() => toggleExpand(item.id)} className="text-muted-foreground/50 hover:text-muted-foreground shrink-0 p-0.5">
+                                    {isExp ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           );
         })}
+        {visible.length === 0 && (
+          <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No actions match this filter.</div>
+        )}
       </div>
 
-      {/* ── Tab content ─────────────────────────────────────────────────────── */}
-      <div className="space-y-3">
-
-        {/* Summary + AI Fill */}
-        <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
-                {React.createElement(tabs.find(t => t.key === tab)!.icon, { className: "w-3 h-3" })}
-                {tabs.find(t => t.key === tab)!.label} — overview
-              </p>
-              <p className="text-sm text-foreground/80 leading-relaxed">
-                {getSummary(tab, byCategory, readiness, openingDate, waitlist, activePlatforms)}
-              </p>
-            </div>
-            <button
-              onClick={() => runAiComplete(tab)}
-              disabled={aiCompleting !== null}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
-                aiJustDone === tab
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700"
-                  : aiCompleting === tab
-                  ? "bg-primary/10 text-primary border-primary/30 cursor-wait"
-                  : aiCompleting !== null
-                  ? "opacity-40 cursor-not-allowed border-border text-muted-foreground"
-                  : "bg-primary/8 text-primary border-primary/25 hover:bg-primary/15 hover:border-primary/40 active:scale-95"
-              }`}
-              title="AI fills in specific, actionable notes for every item in this tab based on your clinic context"
-            >
-              {aiCompleting === tab ? (
-                <>
-                  <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                  <span>AI filling…</span>
-                </>
-              ) : aiJustDone === tab ? (
-                <>
-                  <CheckCheck className="w-3.5 h-3.5" />
-                  <span>Notes filled</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>AI Fill</span>
-                </>
-              )}
-            </button>
-          </div>
+      {/* ── Weekly template reminder ──────────────────────────────────────── */}
+      <div className="rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/50 dark:bg-violet-950/20 p-4">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-300 mb-2">The 3-posts-a-week template (repeat every week)</p>
+        <div className="grid sm:grid-cols-3 gap-2 text-xs">
+          <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Mon · Authority</p><p className="text-muted-foreground mt-0.5">Educate — a treatment, a skin tip, a myth. Builds trust, ASA-safe.</p></div>
+          <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Wed · Human</p><p className="text-muted-foreground mt-0.5">Behind-the-scenes, meet Abi, the clinic taking shape.</p></div>
+          <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Fri · Proof / offer</p><p className="text-muted-foreground mt-0.5">A review, a result (consent), the offer, a booking CTA.</p></div>
         </div>
-
-        {/* AI loading skeleton */}
-        {aiCompleting === tab && (
-          <div className="space-y-2">
-            {[...Array(Math.min(tabItems.filter(i => !i.title.startsWith("⚠")).length, 5))].map((_, i) => (
-              <div key={i} className="rounded-xl border border-border/40 bg-card p-3 animate-pulse">
-                <div className="flex items-center gap-3">
-                  <div className="h-6 w-20 rounded-full bg-muted" />
-                  <div className="flex-1 h-4 rounded bg-muted" />
-                </div>
-                <div className="mt-2 ml-24 h-3 rounded bg-muted/60 w-3/4" />
-              </div>
-            ))}
-            <p className="text-center text-xs text-muted-foreground pt-1 animate-pulse">
-              Generating APA-specific notes for every item…
-            </p>
-          </div>
-        )}
-
-        {/* Progress line */}
-        {tabApplicable > 0 && aiCompleting !== tab && (
-          <div className="flex items-center gap-3 px-1">
-            <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  readiness[tab] >= 70 ? "bg-emerald-500" : readiness[tab] >= 40 ? "bg-primary" : "bg-amber-500"
-                }`}
-                style={{ width: `${readiness[tab]}%` }}
-              />
-            </div>
-            <span className="text-[10px] text-muted-foreground font-medium shrink-0">
-              {tabDone}/{tabApplicable} done
-            </span>
-          </div>
-        )}
-
-        {/* Items */}
-        {aiCompleting !== tab && tabItems.map(item => (
-          <ItemRow
-            key={item.id}
-            item={item}
-            expanded={expanded.has(item.id)}
-            onToggleExpand={() => toggleExpand(item.id)}
-            onStatusChange={s => setItemStatus(item.id, s)}
-            onNotesChange={n => updateNotes(item.id, n)}
-            weekLabel={
-              item.category === "content" && item.dueWeeksBeforeOpen !== null
-                ? weekLabel(item.dueWeeksBeforeOpen)
-                : null
-            }
-          />
-        ))}
-
-        {/* Bottom encouragement for each tab */}
-        {tab === "brand" && readiness.brand === 100 && (
-          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 text-center">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Brand locked ✓</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Every identity asset is confirmed. Now set up your platforms.</p>
-          </div>
-        )}
-        {tab === "launch" && readiness.launch === 100 && (
-          <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/40 dark:bg-emerald-950/20 p-4 text-center">
-            <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Ready for opening day ✓</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Every launch element is confirmed. Go build something great.</p>
-          </div>
-        )}
-        {tab === "content" && waitlist >= WAITLIST_TARGET && (
-          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-primary">Waitlist target hit — {waitlist} sign-ups</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Your content is converting. Keep the momentum going into launch week.</p>
-              </div>
-            </div>
-          </div>
-        )}
+        <p className="text-[10px] text-muted-foreground mt-2">Abi batch-records a fortnight of Reels in one sitting; David schedules them. That's the whole engine.</p>
       </div>
     </div>
   );

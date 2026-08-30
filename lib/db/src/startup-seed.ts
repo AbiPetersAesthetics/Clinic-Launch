@@ -562,6 +562,11 @@ export async function runStartupSeed(): Promise<void> {
         // V23 migration: per-line savings control — arm/apply each saving independently + priority order
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_applied BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_order INTEGER NOT NULL DEFAULT 0`);
+        // V24 migration: marketing tab remodel — 3-channel, week-by-week, owner-tagged plan
+        await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS channel TEXT NOT NULL DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS owner TEXT NOT NULL DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS week_start TEXT NOT NULL DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS detail TEXT NOT NULL DEFAULT ''`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,

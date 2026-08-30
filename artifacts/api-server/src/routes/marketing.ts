@@ -1,92 +1,139 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { marketingItemsTable, projectsTable } from "@workspace/db";
-import { eq, asc, and } from "drizzle-orm";
-import { claudeComplete } from "@workspace/integrations-anthropic-ai";
+import { eq, asc } from "drizzle-orm";
 
 const router = Router();
 
-const SEED_ITEMS: Array<{
-  category: string;
+// ─────────────────────────────────────────────────────────────────────────────
+// Remodelled marketing plan — 3 channels (social / email / paid), week by week,
+// from 1 Sep 2026 to Winchester opening (2 Nov 2026) + the two months after.
+// Each item is owner-tagged (Abi / David / both) and phase-grouped.
+//   phase (category): p0 Foundations · p1 Sep · p2 Oct · p3 Launch · p4 Nov · p5 Dec
+//   channel: found (setup) · social · email · meta (Facebook/Instagram ads) · google (Search ads)
+//   owner: abi · david · both
+//   weekStart: ISO Monday of that week, or "" for one-off setup
+// ─────────────────────────────────────────────────────────────────────────────
+type Seed = {
+  phase: string;
+  channel: string;
+  owner: string;
+  week: string;
   title: string;
-  sortOrder: number;
-  dueWeeksBeforeOpen?: number;
-}> = [
-  // ── Brand Setup ──────────────────────────────────────────────────────────
-  { category: "brand", title: "Logo finalised (JPEG, PNG & SVG versions)", sortOrder: 10 },
-  { category: "brand", title: "Brand colour palette locked", sortOrder: 20 },
-  { category: "brand", title: "Brand fonts selected and licensed", sortOrder: 30 },
-  { category: "brand", title: "Photography session — booked", sortOrder: 40 },
-  { category: "brand", title: "Photography session — completed", sortOrder: 50 },
-  { category: "brand", title: "Price list finalised and designed", sortOrder: 60 },
-  { category: "brand", title: "Treatment menu finalised", sortOrder: 70 },
-  { category: "brand", title: "Consent form templates ready", sortOrder: 80 },
-  { category: "brand", title: "Clinic name & domain name confirmed", sortOrder: 90 },
-  { category: "brand", title: "Business cards & stationery ordered", sortOrder: 100 },
+  detail: string;
+};
 
-  // ── Platform Setup ───────────────────────────────────────────────────────
-  { category: "platform", title: "Google Business Profile — created", sortOrder: 10 },
-  { category: "platform", title: "Google Business Profile — verified (allow 5–14 days)", sortOrder: 20 },
-  { category: "platform", title: "Google Business Profile — opening hours, photos & first post live", sortOrder: 30 },
-  { category: "platform", title: "Instagram — handle, bio & highlight covers set", sortOrder: 40 },
-  { category: "platform", title: "Instagram — link in bio set (booking URL or landing page)", sortOrder: 50 },
-  { category: "platform", title: "Instagram — 9-post grid planned and ready for launch day", sortOrder: 60 },
-  { category: "platform", title: "Facebook — business page created and optimised", sortOrder: 70 },
-  { category: "platform", title: "Fresha listing — clinic profile created", sortOrder: 80 },
-  { category: "platform", title: "Fresha listing — services, prices & online booking enabled", sortOrder: 90 },
-  { category: "platform", title: "Website / landing page — live with custom domain", sortOrder: 100 },
-  { category: "platform", title: "Website — SEO title, meta description & Google Search Console set up", sortOrder: 110 },
-  { category: "platform", title: "Mailchimp / email list — account set up & sign-up form live", sortOrder: 120 },
-  { category: "platform", title: "Mailchimp — welcome email sequence drafted (minimum 3 emails)", sortOrder: 130 },
-  { category: "platform", title: "Google Ads — account created, search campaign drafted", sortOrder: 140 },
-  { category: "platform", title: "Canva Pro / design tool — brand kit set up with logo, colours & fonts", sortOrder: 150 },
+const P: Seed[] = [
+  // ── P0 · FOUNDATIONS (do this week — mostly David) ────────────────────────
+  { phase: "p0", channel: "found", owner: "david", week: "", title: "Reconnect Google Business Profile (Bedhampton + Waterlooville)", detail: "Both GBP connections are EXPIRED in GHL. Reconnect them — without it you lose Maps ranking, reviews and posts. 10 minutes, highest-yield fix on the list." },
+  { phase: "p0", channel: "found", owner: "david", week: "", title: "Create Winchester GBP (9A Jewry Street) + start verification", detail: "New profile for the Winchester clinic. Verification takes 5-14 days, so start now. Category: Skin care clinic / Medical spa. This is your #1 free local-search asset." },
+  { phase: "p0", channel: "meta", owner: "david", week: "", title: "Switch ON the two Bedhampton ads — Cold + Warm", detail: "Re-activate the most recent Bedhampton Cold + Warm consultation campaigns. Point both at the complimentary skin analysis + 20% off offer. Warm (the 443 + page engagers) should beat the ~£17 cold CPL." },
+  { phase: "p0", channel: "found", owner: "both", week: "", title: "Lock the Sep/Oct offer + Bedhampton booking calendar", detail: "Complimentary skin analysis at Bedhampton, 1 Sep-31 Oct. 20% off ANY treatment taken after the analysis (Bedhampton clients). Set the calendar + capacity so the diary can fill." },
+  { phase: "p0", channel: "email", owner: "david", week: "", title: "Build the GHL nurture sequence for the 443 founding leads", detail: "You have 443 warm Winchester leads at £3.08 each. Auto SMS+email: complimentary skin analysis (20% off after) at Bedhampton now → priority Winchester booking from Nov. Move them through the Founding List pipeline." },
+  { phase: "p0", channel: "google", owner: "david", week: "", title: "Set up Google Ads + draft Winchester Search campaign", detail: "High-intent terms: 'skin clinic Winchester', 'skin consultation Winchester', 'aesthetics Winchester'. NOT Botox/prescription terms (ad-restricted). Keep it drafted; go live mid-Oct." },
+  { phase: "p0", channel: "found", owner: "david", week: "", title: "Turn on review-request automation", detail: "Post-appointment SMS/email asking for a Google review. Once GBP is reconnected this compounds your local ranking every single week." },
+  { phase: "p0", channel: "social", owner: "abi", week: "", title: "Batch-record 6 Reels (a fortnight of content)", detail: "Film 6 short clips in one sitting: 3 treatment/skin explainers, 2 meet-Abi / behind-the-scenes, 1 the offer. This single session feeds two weeks of posting — the whole low-effort engine." },
+  { phase: "p0", channel: "social", owner: "david", week: "", title: "Load the 3-posts-a-week template into the GHL planner", detail: "Mon = authority/education · Wed = behind-the-scenes/human · Fri = proof/offer/CTA. Schedule a fortnight ahead (FB + Instagram) so it runs itself." },
+  { phase: "p0", channel: "found", owner: "both", week: "", title: "Standing weekly 15-minute marketing check-in", detail: "Once a week: what got posted, what leads came in, what to tweak. Keeps the plan alive without big meetings." },
 
-  // ── Content Calendar ─────────────────────────────────────────────────────
-  { category: "content", title: "Week –12: Brand reveal teaser + introducing the practitioner", dueWeeksBeforeOpen: -12, sortOrder: 10 },
-  { category: "content", title: "Week –10: Treatment education series begins (one treatment per post)", dueWeeksBeforeOpen: -10, sortOrder: 20 },
-  { category: "content", title: "Week –8: Behind the scenes — fit-out, build & clinic taking shape", dueWeeksBeforeOpen: -8, sortOrder: 30 },
-  { category: "content", title: "Week –6: Social proof — testimonials from Bedhampton clients (consent required)", dueWeeksBeforeOpen: -6, sortOrder: 40 },
-  { category: "content", title: "Week –4: Pre-launch waitlist CTA + opening date announcement", dueWeeksBeforeOpen: -4, sortOrder: 50 },
-  { category: "content", title: "Week –2: Countdown content — 14 days to go, final previews & anticipation", dueWeeksBeforeOpen: -2, sortOrder: 60 },
-  { category: "content", title: "Launch week: Grand opening post, story series, first booking celebrations", dueWeeksBeforeOpen: 0, sortOrder: 70 },
-  { category: "content", title: "⚠ Compliance reminder: no before/after client photos without separate written consent", sortOrder: 80 },
+  // ── P1 · SEPTEMBER — warm & convert at Bedhampton ─────────────────────────
+  { phase: "p1", channel: "email", owner: "david", week: "2026-09-01", title: "Email + SMS: complimentary analysis + 20% off, to founding list & Bedhampton clients", detail: "Relaunch the offer to everyone you have. One clear CTA: book your complimentary skin analysis at Bedhampton, 20% off any treatment after, ends 31 Oct." },
+  { phase: "p1", channel: "social", owner: "both", week: "2026-09-01", title: "3 posts — theme: introduce the complimentary skin analysis", detail: "Mon authority (why a skin analysis matters) · Wed BTS (meet Abi) · Fri offer (book it, 20% off after). Abi records, David schedules." },
+  { phase: "p1", channel: "meta", owner: "david", week: "2026-09-01", title: "Bedhampton Cold + Warm live; retarget the 443 to book", detail: "Offer-led creative. Warm audience = the 443 founding leads + page engagers. Watch cost per booked analysis, not just per lead." },
+  { phase: "p1", channel: "social", owner: "both", week: "2026-09-08", title: "3 posts — theme: skin-health education", detail: "Skin boosters, skincare basics, a myth-bust. Authority content is ASA-safe and builds trust with the Winchester audience." },
+  { phase: "p1", channel: "google", owner: "david", week: "2026-09-08", title: "Google Search live on a soft budget (~£10/day)", detail: "Test Winchester intent terms early so you learn real CPCs and which keywords convert before launch spend ramps." },
+  { phase: "p1", channel: "email", owner: "david", week: "2026-09-15", title: "Value newsletter: skin tips + book your complimentary analysis", detail: "Give value first (3 quick skin tips), then the soft CTA. Keeps the list warm without feeling salesy." },
+  { phase: "p1", channel: "social", owner: "both", week: "2026-09-15", title: "3 posts — theme: meet Abi / why nurse-led", detail: "Your biggest differentiator is Abi as a nurse. Put her on camera — trust converts." },
+  { phase: "p1", channel: "social", owner: "both", week: "2026-09-22", title: "3 posts — theme: Bedhampton client love", detail: "Reviews and happy-client stories (with written consent — no before/after without it). Social proof drives bookings." },
+  { phase: "p1", channel: "email", owner: "david", week: "2026-09-29", title: "'Last month for the complimentary analysis' heads-up", detail: "Create urgency: the free analysis + 20% off closes 31 Oct. Prompts the fence-sitters to book October." },
+  { phase: "p1", channel: "social", owner: "both", week: "2026-09-29", title: "3 posts — theme: Winchester coming soon (teaser)", detail: "Start seeding the Winchester story: the location, the vision, the countdown begins." },
 
-  // ── Launch Week ──────────────────────────────────────────────────────────
-  { category: "launch", title: "Soft launch date set (invite-only — friends, family & Bedhampton regulars)", sortOrder: 10 },
-  { category: "launch", title: "Grand opening date confirmed and announced publicly", sortOrder: 20 },
-  { category: "launch", title: "PR press release drafted and sent to local Hampshire press", sortOrder: 30 },
-  { category: "launch", title: "Photographer / videographer booked for opening day", sortOrder: 40 },
-  { category: "launch", title: "Local micro-influencers identified (3–5 in Hampshire aesthetic space)", sortOrder: 50 },
-  { category: "launch", title: "Influencer gifted treatment arranged and pre-launch content agreed", sortOrder: 60 },
-  { category: "launch", title: "Google Ads campaigns set to go-live on opening date", sortOrder: 70 },
-  { category: "launch", title: "Opening offer confirmed (e.g. 20% off first booking, limited to first 30 clients)", sortOrder: 80 },
-  { category: "launch", title: "Waitlist email campaign drafted — opening announcement + direct booking link", sortOrder: 90 },
-  { category: "launch", title: "Friends & family preview event run", sortOrder: 100 },
-  { category: "launch", title: "Launch week content pre-scheduled (all posts loaded in advance)", sortOrder: 110 },
-  { category: "launch", title: "Post-launch review booked (2 weeks after opening — what worked, what to double down on)", sortOrder: 120 },
+  // ── P2 · OCTOBER — convert + build the launch runway ──────────────────────
+  { phase: "p2", channel: "email", owner: "david", week: "2026-10-06", title: "Open Winchester founding-client priority booking", detail: "Invite the 443 + engaged clients to reserve a November slot (small deposit). Founding perks: priority diary, launch pricing. Turns warm leads into booked revenue." },
+  { phase: "p2", channel: "social", owner: "both", week: "2026-10-06", title: "3 posts — theme: countdown to Winchester + offer reminder", detail: "Split focus: 'analysis closes soon' at Bedhampton + 'Winchester opening / founding spots' teaser." },
+  { phase: "p2", channel: "meta", owner: "david", week: "2026-10-06", title: "Shift Meta toward conversion; keep the Bedhampton offer running", detail: "Move budget toward booked appointments. Keep the free-analysis offer live until 31 Oct." },
+  { phase: "p2", channel: "found", owner: "david", week: "2026-10-13", title: "Winchester GBP verified + first post; send the press release", detail: "Once verified, post opening hours + photos. Send a short press release: Hampshire Chronicle, So Hampshire, Winchester BID. David drafts, Abi approves." },
+  { phase: "p2", channel: "social", owner: "both", week: "2026-10-13", title: "3 posts — theme: behind-the-scenes Winchester fit-out", detail: "The clinic taking shape is your best content — people love a build. Reels of the space, the sign going up, first-look." },
+  { phase: "p2", channel: "email", owner: "david", week: "2026-10-20", title: "'Complimentary analysis closes 31 Oct' — final push", detail: "Last call to the whole list. Book now for the free analysis + 20% off before it's gone." },
+  { phase: "p2", channel: "social", owner: "both", week: "2026-10-20", title: "3 posts — theme: testimonials + last-chance offer", detail: "Proof-heavy week. Real results/words (consent) + the closing offer." },
+  { phase: "p2", channel: "found", owner: "both", week: "2026-10-20", title: "Finalise launch-week content + Winchester opening offer", detail: "Decide the founding-client launch offer and write/film every launch-week post now, so week 1 is hands-free." },
+  { phase: "p2", channel: "social", owner: "both", week: "2026-10-27", title: "3 posts — launch countdown (days to go)", detail: "Daily-style countdown into opening. Build anticipation; push founding bookings." },
+  { phase: "p2", channel: "found", owner: "david", week: "2026-10-27", title: "Pre-schedule ALL launch-week posts + the launch email", detail: "Load opening posts, stories and the launch email/SMS now so launch week runs itself while you're on the floor." },
+  { phase: "p2", channel: "meta", owner: "david", week: "2026-10-27", title: "Build Winchester launch campaigns (Meta + Google), ready to switch on 2 Nov", detail: "Conversion/booking objective, Winchester + travel radius. Staged and paused, ready to go live opening day." },
+
+  // ── P3 · LAUNCH WEEK (opens Mon 2 Nov) ────────────────────────────────────
+  { phase: "p3", channel: "found", owner: "both", week: "2026-11-02", title: "Soft launch — founding clients, friends & family first (30 Oct-1 Nov)", detail: "A quiet preview to iron out the flow and generate first reviews/photos before the public open." },
+  { phase: "p3", channel: "email", owner: "david", week: "2026-11-02", title: "LAUNCH email + SMS to the 443 + full list: we're open, book now", detail: "The big one. Winchester is open, here's the founding offer, book link front and centre. This is where the pre-built list pays off." },
+  { phase: "p3", channel: "social", owner: "abi", week: "2026-11-02", title: "Grand opening Reel + story series", detail: "Abi welcoming people into the Winchester clinic. Face-to-camera, warm, real. Pin it to the grid." },
+  { phase: "p3", channel: "meta", owner: "david", week: "2026-11-02", title: "Winchester Meta conversion/booking campaign LIVE", detail: "Switch on the staged launch campaign. Retarget everyone who engaged with the pre-launch content." },
+  { phase: "p3", channel: "google", owner: "david", week: "2026-11-02", title: "Winchester Google Search campaign LIVE (full budget)", detail: "Capture high-intent 'aesthetics/skin clinic Winchester' searches from day one." },
+  { phase: "p3", channel: "found", owner: "abi", week: "2026-11-02", title: "Ask every launch client for a Google review", detail: "In-clinic, at the end of each appointment. First reviews are the hardest and the most valuable for a brand-new location." },
+
+  // ── P4 · NOVEMBER — fill the diary ────────────────────────────────────────
+  { phase: "p4", channel: "social", owner: "both", week: "2026-11-09", title: "3 posts — opening highlights + book CTA", detail: "Show the buzz: opening moments, first clients (consent), the space in action. Every post ends with 'book now'." },
+  { phase: "p4", channel: "email", owner: "david", week: "2026-11-09", title: "'We're open' recap + founding-offer reminder", detail: "To anyone who hasn't booked yet: here's what opening week looked like, the offer's still on, grab a slot." },
+  { phase: "p4", channel: "found", owner: "both", week: "2026-11-09", title: "Reviews push — target 10 Google reviews in month 1", detail: "Keep the review automation running and ask in person. 10 reviews transforms a new clinic's Maps credibility." },
+  { phase: "p4", channel: "social", owner: "both", week: "2026-11-16", title: "3 posts — treatment spotlight + results (consent)", detail: "Feature one treatment in depth. Educational + a real result (with written consent) + CTA." },
+  { phase: "p4", channel: "meta", owner: "david", week: "2026-11-16", title: "Retarget website visitors & engagers → booking", detail: "Warm retargeting is your cheapest conversion. Anyone who clicked but didn't book gets a gentle nudge." },
+  { phase: "p4", channel: "email", owner: "david", week: "2026-11-16", title: "Turn on rebooking + referral automation", detail: "After each treatment: auto rebooking prompt + 'refer a friend' offer. Turns one visit into a habit and a referral." },
+  { phase: "p4", channel: "social", owner: "both", week: "2026-11-23", title: "3 posts — memberships / packages", detail: "Introduce a simple membership or course-of-treatment package for predictable repeat revenue." },
+  { phase: "p4", channel: "email", owner: "david", week: "2026-11-23", title: "Black Friday / gifting teaser (skincare + vouchers)", detail: "Warm the list for December: teaser on gift vouchers and skincare offers coming." },
+  { phase: "p4", channel: "social", owner: "both", week: "2026-11-30", title: "3 posts — Christmas gifting kick-off", detail: "'Give the gift of great skin' — vouchers + skincare. Gifting is huge for aesthetics in December." },
+
+  // ── P5 · DECEMBER — Christmas retail + retain ─────────────────────────────
+  { phase: "p5", channel: "email", owner: "david", week: "2026-12-07", title: "Christmas gift vouchers + skincare gifting campaign launch", detail: "The big December revenue lever. Vouchers (no capacity limit) + skincare bundles. Make buying effortless." },
+  { phase: "p5", channel: "social", owner: "both", week: "2026-12-07", title: "3 posts — gift ideas / voucher CTA", detail: "Gift-guide style posts. Every post links to buy a voucher or shop skincare." },
+  { phase: "p5", channel: "meta", owner: "david", week: "2026-12-07", title: "Gift-voucher + skincare retail campaigns (Meta + Google)", detail: "Low-friction 'buy a voucher' conversion ads to warm audiences + local intent." },
+  { phase: "p5", channel: "social", owner: "both", week: "2026-12-14", title: "3 posts — 'order by X for Christmas' retail push", detail: "Urgency on last order/collection dates. Push vouchers as the easy last-minute gift." },
+  { phase: "p5", channel: "email", owner: "david", week: "2026-12-14", title: "Last-order dates + book-your-January reminder", detail: "Two jobs: close Christmas sales + start filling January (traditionally strong for aesthetics)." },
+  { phase: "p5", channel: "social", owner: "both", week: "2026-12-21", title: "2 posts — festive thank-you + January pre-sell", detail: "Ease off over the holidays. A warm thank-you to founding clients + a nudge toward January." },
+  { phase: "p5", channel: "email", owner: "david", week: "2026-12-21", title: "'New year, new skin' January pre-sell to the full list", detail: "Get January booked before the year ends. A simple new-year offer or skin-goal consultation." },
+  { phase: "p5", channel: "found", owner: "both", week: "2026-12-21", title: "Year-end review: what worked, double down", detail: "Look at cost per booking by channel, which posts landed, which offers converted. Kill what didn't, scale what did — into January." },
 ];
 
-// GET all items + waitlist count (auto-seeds if empty)
+const SEED_ITEMS = P.map((s, i) => ({
+  category: s.phase,
+  title: s.title,
+  detail: s.detail,
+  channel: s.channel,
+  owner: s.owner,
+  weekStart: s.week,
+  sortOrder: (i + 1) * 10,
+  dueWeeksBeforeOpen: null as number | null,
+}));
+
+async function reseed(projectId: number) {
+  await db.delete(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId));
+  const seeded = await db.insert(marketingItemsTable).values(
+    SEED_ITEMS.map(s => ({
+      projectId,
+      category: s.category,
+      title: s.title,
+      detail: s.detail,
+      channel: s.channel,
+      owner: s.owner,
+      weekStart: s.weekStart,
+      status: "not_started",
+      dueWeeksBeforeOpen: s.dueWeeksBeforeOpen,
+      notes: "",
+      sortOrder: s.sortOrder,
+    }))
+  ).returning();
+  return seeded.sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+// GET all items + waitlist count (auto-seeds if empty; auto-upgrades the old plan)
 router.get("/projects/:projectId/marketing", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
 
   let items = await db.select().from(marketingItemsTable)
     .where(eq(marketingItemsTable.projectId, projectId))
-    .orderBy(asc(marketingItemsTable.category), asc(marketingItemsTable.sortOrder));
+    .orderBy(asc(marketingItemsTable.sortOrder));
 
-  if (items.length === 0) {
-    const seeded = await db.insert(marketingItemsTable).values(
-      SEED_ITEMS.map(s => ({
-        projectId,
-        category: s.category,
-        title: s.title,
-        status: "not_started",
-        dueWeeksBeforeOpen: s.dueWeeksBeforeOpen ?? null,
-        notes: "",
-        sortOrder: s.sortOrder,
-      }))
-    ).returning();
-    items = seeded.sort((a, b) => a.sortOrder - b.sortOrder);
+  // Reseed when empty, or when the stored rows predate the remodel (no channel set).
+  const isOldPlan = items.length > 0 && items.every(i => !(i as any).channel);
+  if (items.length === 0 || isOldPlan) {
+    items = await reseed(projectId);
   }
 
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
@@ -95,156 +142,26 @@ router.get("/projects/:projectId/marketing", async (req, res) => {
   return res.json({ items, waitlistCount });
 });
 
-// PUT update a single item
+// POST force reseed (rebuild the plan from the template, wiping statuses/notes)
+router.post("/projects/:projectId/marketing/reseed", async (req, res) => {
+  const projectId = parseInt(req.params["projectId"] as string);
+  const items = await reseed(projectId);
+  return res.json({ items, reseeded: items.length });
+});
+
+// PUT update a single item (status / notes)
 router.put("/marketing/:id", async (req, res) => {
   const id = parseInt(req.params["id"] as string);
   const { status, notes } = req.body;
+  const patch: Record<string, unknown> = { updatedAt: new Date() };
+  if (status !== undefined) patch.status = status;
+  if (notes !== undefined) patch.notes = notes;
   const [row] = await db.update(marketingItemsTable)
-    .set({ status, notes, updatedAt: new Date() })
+    .set(patch)
     .where(eq(marketingItemsTable.id, id))
     .returning();
   if (!row) return res.status(404).json({ error: "Not found" });
   return res.json(row);
-});
-
-// POST AI complete — generates tailored notes (and optional status nudge) for every item in a tab
-router.post("/projects/:projectId/marketing/ai-complete", async (req, res) => {
-  const projectId = parseInt(req.params["projectId"] as string);
-  const { category } = req.body as { category: string };
-
-  if (!["brand", "platform", "content", "launch"].includes(category)) {
-    return res.status(400).json({ error: "Invalid category" });
-  }
-
-  const items = await db
-    .select()
-    .from(marketingItemsTable)
-    .where(and(eq(marketingItemsTable.projectId, projectId), eq(marketingItemsTable.category, category)))
-    .orderBy(asc(marketingItemsTable.sortOrder));
-
-  const applicable = items.filter(i => !i.title.startsWith("⚠"));
-
-  // Fetch opening date from project
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
-  const openingDateStr: string = (project as any)?.targetOpeningDate ?? "2026-11-01";
-  const openDate = new Date(openingDateStr + "T12:00:00");
-  const fmt = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
-  const wBefore = (n: number) => fmt(new Date(openDate.getTime() - n * 7 * 86400000));
-
-  const dateTimeline = `PLANNED OPENING DATE: ${fmt(openDate)}
-Pre-launch calendar (calculated from opening date):
-  • 16 weeks before opening: ${wBefore(16)} — brand brief / logo commission
-  • 14 weeks before opening: ${wBefore(14)} — brand colours & fonts locked
-  • 12 weeks before opening: ${wBefore(12)} — ALL brand assets approved; photography complete; content calendar starts
-  • 10 weeks before opening: ${wBefore(10)} — Google Business Profile created & submitted for verification; Instagram live
-  • 8 weeks before opening:  ${wBefore(8)}  — website live; Fresha fully bookable; GBP verified
-  • 6 weeks before opening:  ${wBefore(6)}  — email list & welcome sequence live; social proof content published
-  • 4 weeks before opening:  ${wBefore(4)}  — waitlist CTA live; opening announcement; Google Ads drafted
-  • 2 weeks before opening:  ${wBefore(2)}  — all logistics confirmed; countdown content scheduled
-  • 1 week before opening:   ${wBefore(1)}  — soft launch (friends, family, Bedhampton regulars — invite only)
-  • Opening day:             ${fmt(openDate)}
-
-For EVERY item's notes, include the specific recommended completion date from the above timeline.`;
-
-  const categoryContext: Record<string, string> = {
-    brand: `Brand Setup tab — these are the identity and asset tasks Abi needs to complete before any platforms or marketing go live.
-Help Abi by writing specific, actionable notes for each task based on her context:
-- Clinic name is "Abi Peters Aesthetics" (APA)
-- Premium, nurse-led aesthetics — clinical yet warm and approachable
-- Located at 9A Jewry Street, Winchester, Hampshire SO23 8RZ
-- Target clients: affluent Winchester women aged 30–55, ABC1 demographic
-- Treatments: injectables (Botox, fillers), advanced skin treatments, medical skincare retail
-- Brand tone should feel: premium, trustworthy, clinical-chic — think Trinny London or Medik8 meets local warmth
-- Domain options to consider: abiapetersaesthetics.co.uk, apaesthetics.co.uk, abiaestetica.co.uk
-For photography: Winchester city centre backdrops, clean clinical setting at 9A Jewry Street, natural light.
-For price list: Winchester market rates — competitor analysis suggests Botox £180–£220/area, fillers £280–£380/ml.`,
-
-    platform: `Platform Setup tab — these are the digital channels Abi needs to configure before launch.
-Help Abi by writing specific, setup-ready notes for each platform task:
-- Business address: 9A Jewry Street, Winchester, Hampshire SO23 8RZ
-- Business name: Abi Peters Aesthetics
-- Category: Medical aesthetics / Skin clinic
-- Instagram handle to use: @abiapetersaesthetics (check availability first; fallback: @abi.peters.aesthetics)
-- For Google Business Profile: category = "Medical Spa" or "Skin Care Clinic"; phone, opening hours (Tue–Sat 9–5 suggested), booking link
-- Fresha listing: add all treatments with prices, enable instant booking, link to Instagram
-- Website domain: abiapetersaesthetics.co.uk — hosted on Squarespace, Wix or WordPress; booking via Fresha embed
-- SEO keywords: "aesthetics clinic Winchester", "botox Winchester", "lip filler Winchester Hampshire", "medical aesthetics SO23"
-- Mailchimp welcome sequence: Email 1 = welcome + meet Abi; Email 2 = what to expect at your first appointment; Email 3 = opening offer reveal
-- Meta Ads: target Winchester + 15-mile radius, women 28–55, interests: beauty, skincare, wellness`,
-
-    content: `Content Calendar tab — these are the 12-week pre-launch content phases leading up to the November 2026 opening.
-Help Abi by writing specific, ready-to-brief notes for each content phase:
-- Opening date: 1 November 2026
-- Platform: primarily Instagram + Facebook Reels; cross-post to Google Business Profile
-- Voice: expert but approachable, warm, educational — "your knowledgeable friend who happens to be a nurse"
-- Winchester audience: local pride matters — reference Winchester Cathedral, the high street, Hampshire countryside
-- Compliance: no before/after photos without separate written consent; no "guaranteed results" language (ASA/CAP guidelines)
-Include suggested post ideas, caption hooks, hashtags, and content types (Reel / static / carousel) for each phase.
-Key hashtags: #WinchesterAesthetics #AbiPetersAesthetics #HampshireAesthetics #WinchesterBeauty #MedicalAesthetics`,
-
-    launch: `Launch Week tab — these are the final logistics to confirm for the opening of the clinic.
-Help Abi by writing specific, contact-ready notes for each launch task:
-- Soft launch: suggest 25–29 October 2026, invite-only for friends, family, Bedhampton regulars, and local contacts
-- Grand opening: 1 November 2026
-- Hampshire press contacts: Hampshire Chronicle, Winchester BID, So Hampshire Magazine, About My Area Winchester
-- Local micro-influencers: search Instagram for #WinchesterBeauty, #HampshireLifestyle — look for 2–10k follower accounts with high engagement
-- Gifted treatment: offer a complimentary treatment in exchange for an honest Instagram post/Reel (no endorsement required — just an experience share); get this agreed in writing
-- Opening offer: suggested "Introductory Offer — £150 off your first treatment package (min £350 spend), first 30 clients only — closes 30 November 2026"
-- Photographer: search Hampshire Wedding & Portrait Photographers Association; day rate £400–£600; brief them on: clean clinical shots, hero treatment shots, practitioner headshots
-- Waitlist email: subject line ideas, content structure, booking link CTA`,
-  };
-
-  const itemList = applicable.map(i => `ID:${i.id} | "${i.title}"`).join("\n");
-
-  const prompt = `You are a marketing specialist helping set up Abi Peters Aesthetics, a premium nurse-led aesthetics clinic opening at 9A Jewry Street, Winchester, Hampshire on 1 November 2026.
-
-${dateTimeline}
-
-${categoryContext[category]}
-
-Here are the ${category} checklist items that need notes. For each item, write practical, specific, APA-tailored notes (2–6 sentences each) that give Abi a concrete head start — specific supplier names, wording suggestions, contact types, or next actions where relevant.
-
-Start every note with "📅 Target: [specific date from the timeline above]" so Abi knows exactly when each task needs to be done.
-
-Also suggest a status: use "in_progress" only if it would make sense for Abi to start this immediately (i.e. the deadline is within the next 4 weeks); otherwise use "not_started". Never use "done".
-
-Items:
-${itemList}
-
-Respond with a JSON object in this exact shape:
-{
-  "updates": [
-    { "id": <number>, "notes": "<string>", "status": "not_started" | "in_progress" }
-  ]
-}`;
-
-  const completionText = await claudeComplete({
-    jsonOnly: true,
-    messages: [{ role: "user", content: prompt }],
-    maxTokens: 4000,
-  });
-
-  const raw = JSON.parse(completionText || "{}") as {
-    updates?: Array<{ id: number; notes: string; status?: string }>;
-  };
-
-  const updates = (raw.updates ?? []).filter(u => applicable.some(i => i.id === u.id));
-
-  // Persist all updates
-  await Promise.all(
-    updates.map(u =>
-      db
-        .update(marketingItemsTable)
-        .set({
-          notes: u.notes ?? "",
-          status: (u.status === "in_progress" ? "in_progress" : undefined) as any,
-          updatedAt: new Date(),
-        })
-        .where(eq(marketingItemsTable.id, u.id))
-    )
-  );
-
-  return res.json({ updates });
 });
 
 // PATCH waitlist count
