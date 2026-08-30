@@ -64,6 +64,7 @@ export const tasksTable = pgTable("launch_tasks", {
   // ── Downselect / saving review: owner-flagged candidates for cost saving ──
   savingFlag: boolean("saving_flag").notNull().default(false),
   savingNote: text("saving_note"), // free text: what could be downselected here
+  savingBaseline: real("saving_baseline"), // original cost captured before a downselect override; saving = baseline - live selectedCost
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

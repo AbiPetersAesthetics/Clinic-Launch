@@ -554,6 +554,8 @@ export async function runStartupSeed(): Promise<void> {
         // V20 migration: downselect / saving review — owner flag + free-text note on tasks
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_flag BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_note TEXT`);
+        // V21 migration: downselect can master-overwrite the line cost — keep the original as a baseline
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_baseline REAL`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,

@@ -1495,6 +1495,10 @@ export default function ProjectPage() {
     : null;
 
   const totalSelectedCost = phases?.reduce((sum, phase) => sum + phase.selectedCostTotal, 0) || 0;
+  // Downselect / savings: flagged lines + the running total (baseline minus the overridden live cost)
+  const savingLines = (phases ?? []).flatMap(ph => (ph.tasks ?? []).filter((t: any) => !t.archived && t.savingFlag).map((t: any) => ({ ...t, phaseName: ph.name })));
+  const totalSavings = savingLines.reduce((s: number, t: any) => s + (t.savingBaseline != null ? Math.max(0, t.savingBaseline - (t.selectedCost ?? 0)) : 0), 0);
+  const [showSavings, setShowSavings] = useState(false);
   const criticalRiskCount = risks?.filter((r) => r.level === "critical").length || 0;
 
   const defaultTab = highlightedTaskId ? "plan" : "plan";
@@ -3156,6 +3160,48 @@ export default function ProjectPage() {
         );
       })()}
 
+      {savingLines.length > 0 && (
+        <div className={`rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 overflow-hidden ${viewMode === "gantt" ? "hidden" : ""}`}>
+          <button type="button" onClick={() => setShowSavings(s => !s)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors">
+            <span className="font-semibold text-amber-800 dark:text-amber-300 text-sm">✂ Potential savings / downselect</span>
+            <span className="flex items-center gap-3">
+              <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(totalSavings)}</span>
+              <span className="text-[11px] text-muted-foreground">{savingLines.length} line{savingLines.length !== 1 ? "s" : ""}</span>
+              <span className="text-amber-700 dark:text-amber-400 text-xs">{showSavings ? "▾" : "▸"}</span>
+            </span>
+          </button>
+          {showSavings && (
+            <div className="border-t border-amber-200 dark:border-amber-800 divide-y divide-amber-200/60 dark:divide-amber-800/40">
+              {savingLines.map((t: any) => {
+                const base = t.savingBaseline ?? t.selectedCost ?? 0;
+                const now = t.selectedCost ?? 0;
+                const save = t.savingBaseline != null ? Math.max(0, base - now) : 0;
+                return (
+                  <div key={t.id} className="px-4 py-2 grid grid-cols-[1fr_auto_5rem] gap-3 items-center text-xs">
+                    <div className="min-w-0">
+                      <button type="button" className="font-medium text-left hover:underline truncate block w-full" onClick={() => setEditingTask(t)}>{t.title}</button>
+                      <p className="text-muted-foreground/70 text-[10px] truncate">{t.phaseName}{t.savingNote ? ` · ${t.savingNote}` : ""}</p>
+                    </div>
+                    <div className="text-right tabular-nums">
+                      {t.savingBaseline != null ? (
+                        <span><span className="text-muted-foreground line-through">{formatGBP(base)}</span> <span className="font-medium">{formatGBP(now)}</span></span>
+                      ) : (
+                        <span className="text-muted-foreground italic text-[10px]">candidate, no cost set</span>
+                      )}
+                    </div>
+                    <div className="text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{save > 0 ? `-${formatGBP(save)}` : "—"}</div>
+                  </div>
+                );
+              })}
+              <div className="px-4 py-2 flex justify-between items-center text-xs font-semibold bg-amber-100/50 dark:bg-amber-950/40">
+                <span>Total potential saving</span>
+                <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(totalSavings)}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <Accordion
         type="multiple"
         value={openPhases}
@@ -4109,6 +4155,7 @@ function TaskEditSheet({
   // Downselect / saving review
   const [savingFlag, setSavingFlag] = useState(false);
   const [savingNote, setSavingNote] = useState("");
+  const [downselectCost, setDownselectCost] = useState("");
 
   const [aiOpen, setAiOpen] = useState(false);
   const [aiQuery, setAiQuery] = useState("");
@@ -4275,6 +4322,7 @@ function TaskEditSheet({
       setSpendVatStatus((task as any).invoiceVatStatus ?? "exc");
       setSavingFlag((task as any).savingFlag ?? false);
       setSavingNote((task as any).savingNote ?? "");
+      setDownselectCost(((task as any).savingFlag && (task as any).savingBaseline != null) ? String(task.selectedCost ?? "") : "");
     }
   }, [task?.id]);
 
@@ -4349,8 +4397,19 @@ function TaskEditSheet({
       costVatStatus,
       supplyScope,
       procurementStatus,
-      savingFlag,
-      savingNote,
+      ...(() => {
+        // Downselect can master-overwrite the tiered cost. Keep the original as savingBaseline.
+        const priorBaseline = (task as any).savingBaseline;
+        const currentCost = task.selectedCost ?? 0;
+        if (savingFlag && downselectCost !== "" && !isNaN(Number(downselectCost))) {
+          const baseline = priorBaseline != null ? priorBaseline : currentCost;
+          return { savingFlag: true, savingNote, savingBaseline: baseline, costTier: "quoted", selectedCost: Number(downselectCost) };
+        }
+        if (savingFlag) return { savingFlag: true, savingNote };
+        // Unflagged: revert any prior override back to the baseline cost.
+        if (priorBaseline != null) return { savingFlag: false, savingNote, savingBaseline: null, costTier: "quoted", selectedCost: priorBaseline };
+        return { savingFlag: false, savingNote };
+      })(),
       ...(() => {
         const amt = spendAmount !== "" ? Number(spendAmount) : null;
         const paidSoFar = spendPaidSoFar !== "" ? Number(spendPaidSoFar) : null;
@@ -4467,7 +4526,19 @@ function TaskEditSheet({
                   <span className="text-sm font-semibold text-amber-800 dark:text-amber-300">Potential saving / downselect</span>
                 </label>
                 {savingFlag && (
-                  <Textarea value={savingNote} onChange={e => setSavingNote(e.target.value)} placeholder="What could we downselect or cut here? Free text..." className="mt-1 text-sm" rows={3} />
+                  <div className="space-y-2">
+                    <Textarea value={savingNote} onChange={e => setSavingNote(e.target.value)} placeholder="What could we downselect or cut here? Free text..." className="text-sm" rows={2} />
+                    <div className="flex items-center gap-2">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Downselect cost to £</Label>
+                      <Input type="number" step="1" value={downselectCost} onChange={e => setDownselectCost(e.target.value)} placeholder={String(Math.round(((task as any).savingBaseline ?? task.selectedCost ?? 0)))} className="h-8 w-28" />
+                      <span className="text-[10px] text-muted-foreground">overrides the tier cost</span>
+                    </div>
+                    {downselectCost !== "" && (() => {
+                      const base = (task as any).savingBaseline ?? task.selectedCost ?? 0;
+                      const save = base - Number(downselectCost);
+                      return save > 0 ? <p className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">Saving {formatGBP(save)} vs original {formatGBP(base)}</p> : null;
+                    })()}
+                  </div>
                 )}
               </div>
 
