@@ -627,6 +627,7 @@ router.post("/projects/:projectId/savings-mode", async (req, res) => {
     if (phaseIds.length === 0) return res.json({ applied, updated: 0 });
 
     const flagged = await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.savingFlag, true)));
+    const near = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.5;
     let updated = 0;
     for (const t of flagged) {
       const baseline = (t as any).savingBaseline as number | null;
@@ -636,14 +637,30 @@ router.post("/projects/:projectId/savings-mode", async (req, res) => {
       if (propertyId) {
         const [existing] = await db.select().from(propertyTaskOverridesTable)
           .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
+        // Effective payment state (override wins over base).
+        const paidStatus = (existing?.paidStatus ?? (t as any).paidStatus) as string | null;
+        const curCommitted = (existing?.committedCost ?? (t as any).committedCost) as number | null;
+        const curActual = (existing?.actualCost ?? (t as any).actualCost) as number | null;
+        const patch: Record<string, unknown> = { selectedCost: newCost, costTier: "quoted", updatedAt: new Date() };
+        // Re-price the whole line: a committed/paid line's committed/actual follow the target too.
+        // Guard: only swap committed/actual that currently sits at the baseline or the target,
+        // so an independently-set commitment is never clobbered.
+        if ((paidStatus === "committed" || paidStatus === "part-paid") && (near(curCommitted, baseline) || near(curCommitted, target))) patch.committedCost = newCost;
+        if (paidStatus === "paid" && (near(curActual, baseline) || near(curActual, target))) { patch.actualCost = newCost; patch.committedCost = newCost; }
         if (existing) {
-          await db.update(propertyTaskOverridesTable).set({ selectedCost: newCost, costTier: "quoted", updatedAt: new Date() })
+          await db.update(propertyTaskOverridesTable).set(patch)
             .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
         } else {
-          await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: t.id, selectedCost: newCost, costTier: "quoted" } as any);
+          await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: t.id, ...patch } as any);
         }
       } else {
-        await db.update(tasksTable).set({ selectedCost: newCost, costTier: "quoted", updatedAt: new Date() }).where(eq(tasksTable.id, t.id));
+        const paidStatus = (t as any).paidStatus as string | null;
+        const curCommitted = (t as any).committedCost as number | null;
+        const curActual = (t as any).actualCost as number | null;
+        const patch: Record<string, unknown> = { selectedCost: newCost, costTier: "quoted", updatedAt: new Date() };
+        if ((paidStatus === "committed" || paidStatus === "part-paid") && (near(curCommitted, baseline) || near(curCommitted, target))) patch.committedCost = newCost;
+        if (paidStatus === "paid" && (near(curActual, baseline) || near(curActual, target))) { patch.actualCost = newCost; patch.committedCost = newCost; }
+        await db.update(tasksTable).set(patch).where(eq(tasksTable.id, t.id));
       }
       updated++;
     }

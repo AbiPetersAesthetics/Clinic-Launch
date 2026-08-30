@@ -4446,6 +4446,24 @@ function TaskEditSheet({
         if (spendStatus === "committed") return { paidStatus: "committed", actualCost: null, committedCost: amt, amountPaidGbp: null, ...inv };
         return { paidStatus: "part-paid", actualCost: null, committedCost: amt, amountPaidGbp: paidSoFar, ...inv };
       })(),
+      ...(() => {
+        // Re-price the whole line: a downselected committed/paid line's committed/actual follow
+        // the target (switch ON) or the baseline (switch OFF), overriding the spend-amount above.
+        const priorBaseline = (task as any).savingBaseline;
+        const hasTarget = savingFlag && downselectCost !== "" && !isNaN(Number(downselectCost));
+        let eff: number | null = null;
+        if (hasTarget) {
+          const target = Number(downselectCost);
+          const baseline = priorBaseline != null ? priorBaseline : (task.selectedCost ?? 0);
+          eff = savingsApplied ? target : baseline;
+        } else if (!savingFlag && priorBaseline != null) {
+          eff = priorBaseline; // unflagged: revert committed/actual to the original too
+        }
+        if (eff == null) return {};
+        if (spendStatus === "paid") return { actualCost: eff, committedCost: eff, amountPaidGbp: eff };
+        if (spendStatus === "committed" || spendStatus === "part-paid") return { committedCost: eff };
+        return {};
+      })(),
       ...(targetPhaseId !== null ? { phaseId: targetPhaseId } : {}),
       ...(activePropertyId ? { propertyId: activePropertyId } : {}),
     };
