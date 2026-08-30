@@ -141,6 +141,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     if (body.savingFlag !== undefined)      globalUpdates.savingFlag = body.savingFlag;
     if (body.savingNote !== undefined)      globalUpdates.savingNote = body.savingNote;
     if (body.savingBaseline !== undefined)  globalUpdates.savingBaseline = body.savingBaseline;
+    if (body.savingTarget !== undefined)    globalUpdates.savingTarget = body.savingTarget;
     if (body.phaseId !== undefined)         globalUpdates.phaseId = body.phaseId;
     if (body.dependencies !== undefined) {
       globalUpdates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
@@ -584,6 +585,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       liveForecastVsCapGbp: Math.round(liveForecastVsCapGbp),
       budgetStatus,
       davidApprovedCapGbp,
+      savingsApplied: (model as any)?.savingsApplied ?? true,
       reclaimableVat: Math.round(reclaimableVat),
       netCostAfterVat: Math.round(netCostAfterVat),
       grossInclVat: Math.round(grossInclVat),
@@ -604,6 +606,51 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
   } catch (err) {
     console.error("[project-controls]", err);
     return res.status(500).json({ error: "Failed to compute project controls" });
+  }
+});
+
+// ── POST /projects/:projectId/savings-mode ──────────────────────────────────
+// Global savings switch. ON => flagged lines use their downselect target; OFF => their baseline.
+// Swaps the live selectedCost for every flagged line (on the active property override) so the
+// whole plan total moves, and no data is lost (baseline and target are both kept).
+router.post("/projects/:projectId/savings-mode", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const applied = !!req.body.applied;
+    await db.update(financialsTable).set({ savingsApplied: applied, updatedAt: new Date() } as any).where(eq(financialsTable.projectId, projectId));
+
+    const [activeProp] = await db.select().from(propertiesTable).where(eq(propertiesTable.isActiveForProject, true));
+    const propertyId = activeProp?.id;
+
+    const phaseRows = await db.select().from(phasesTable).where(eq(phasesTable.projectId, projectId));
+    const phaseIds = phaseRows.map((p) => p.id);
+    if (phaseIds.length === 0) return res.json({ applied, updated: 0 });
+
+    const flagged = await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.savingFlag, true)));
+    let updated = 0;
+    for (const t of flagged) {
+      const baseline = (t as any).savingBaseline as number | null;
+      const target = (t as any).savingTarget as number | null;
+      if (baseline == null || target == null) continue;
+      const newCost = applied ? target : baseline;
+      if (propertyId) {
+        const [existing] = await db.select().from(propertyTaskOverridesTable)
+          .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
+        if (existing) {
+          await db.update(propertyTaskOverridesTable).set({ selectedCost: newCost, costTier: "quoted", updatedAt: new Date() })
+            .where(and(eq(propertyTaskOverridesTable.propertyId, propertyId), eq(propertyTaskOverridesTable.taskId, t.id)));
+        } else {
+          await db.insert(propertyTaskOverridesTable).values({ propertyId, taskId: t.id, selectedCost: newCost, costTier: "quoted" } as any);
+        }
+      } else {
+        await db.update(tasksTable).set({ selectedCost: newCost, costTier: "quoted", updatedAt: new Date() }).where(eq(tasksTable.id, t.id));
+      }
+      updated++;
+    }
+    return res.json({ applied, updated });
+  } catch (err) {
+    console.error("[savings-mode]", err);
+    return res.status(500).json({ error: "Failed to set savings mode" });
   }
 });
 

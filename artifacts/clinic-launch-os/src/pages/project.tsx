@@ -1495,9 +1495,9 @@ export default function ProjectPage() {
     : null;
 
   const totalSelectedCost = phases?.reduce((sum, phase) => sum + phase.selectedCostTotal, 0) || 0;
-  // Downselect / savings: flagged lines + the running total (baseline minus the overridden live cost)
+  // Downselect / savings: flagged lines + the running total (baseline minus the downselect target)
   const savingLines = (phases ?? []).flatMap(ph => (ph.tasks ?? []).filter((t: any) => !t.archived && t.savingFlag).map((t: any) => ({ ...t, phaseName: ph.name })));
-  const totalSavings = savingLines.reduce((s: number, t: any) => s + (t.savingBaseline != null ? Math.max(0, t.savingBaseline - (t.selectedCost ?? 0)) : 0), 0);
+  const totalSavings = savingLines.reduce((s: number, t: any) => s + ((t.savingBaseline != null && t.savingTarget != null) ? Math.max(0, t.savingBaseline - t.savingTarget) : 0), 0);
   const [showSavings, setShowSavings] = useState(false);
   const criticalRiskCount = risks?.filter((r) => r.level === "critical").length || 0;
 
@@ -3160,22 +3160,42 @@ export default function ProjectPage() {
         );
       })()}
 
-      {savingLines.length > 0 && (
+      {savingLines.length > 0 && (() => {
+        const applied = (projectControls as any)?.savingsApplied ?? true;
+        return (
         <div className={`rounded-lg border border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 overflow-hidden ${viewMode === "gantt" ? "hidden" : ""}`}>
-          <button type="button" onClick={() => setShowSavings(s => !s)} className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-amber-100/50 dark:hover:bg-amber-900/20 transition-colors">
-            <span className="font-semibold text-amber-800 dark:text-amber-300 text-sm">✂ Potential savings / downselect</span>
-            <span className="flex items-center gap-3">
-              <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(totalSavings)}</span>
-              <span className="text-[11px] text-muted-foreground">{savingLines.length} line{savingLines.length !== 1 ? "s" : ""}</span>
+          <div className="flex items-center justify-between px-4 py-2.5 gap-3">
+            <button type="button" onClick={() => setShowSavings(s => !s)} className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity">
+              <span className="font-semibold text-amber-800 dark:text-amber-300 text-sm">✂ Potential savings / downselect</span>
+              <span className="text-[11px] text-muted-foreground shrink-0">{savingLines.length} line{savingLines.length !== 1 ? "s" : ""}</span>
               <span className="text-amber-700 dark:text-amber-400 text-xs">{showSavings ? "▾" : "▸"}</span>
-            </span>
-          </button>
+            </button>
+            <div className="flex items-center gap-3 shrink-0">
+              <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-400">{applied ? "-" : ""}{formatGBP(totalSavings)}</span>
+              <button
+                type="button"
+                title={applied ? "Savings are applied. Click to revert every flagged line to its original cost." : "Savings are off (original costs). Click to apply all downselect targets."}
+                onClick={async () => {
+                  const next = !applied;
+                  try {
+                    const r = await fetch(`/api/projects/${PROJECT_ID}/savings-mode`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applied: next }) });
+                    if (!r.ok) throw new Error("savings-mode failed");
+                  } catch (e) { console.error(e); }
+                  invalidateAfterTaskChange();
+                }}
+                className={`flex items-center gap-1.5 text-[11px] font-semibold pl-1.5 pr-2.5 py-1 rounded-full border transition-colors ${applied ? "bg-emerald-600 text-white border-emerald-600" : "bg-muted text-muted-foreground border-border"}`}
+              >
+                <span className={`inline-block w-3.5 h-3.5 rounded-full ${applied ? "bg-white" : "bg-muted-foreground/50"}`} />
+                Savings {applied ? "ON" : "OFF"}
+              </button>
+            </div>
+          </div>
           {showSavings && (
             <div className="border-t border-amber-200 dark:border-amber-800 divide-y divide-amber-200/60 dark:divide-amber-800/40">
               {savingLines.map((t: any) => {
                 const base = t.savingBaseline ?? t.selectedCost ?? 0;
-                const now = t.selectedCost ?? 0;
-                const save = t.savingBaseline != null ? Math.max(0, base - now) : 0;
+                const target = t.savingTarget;
+                const save = target != null ? Math.max(0, base - target) : 0;
                 return (
                   <div key={t.id} className="px-4 py-2 grid grid-cols-[1fr_auto_5rem] gap-3 items-center text-xs">
                     <div className="min-w-0">
@@ -3183,10 +3203,10 @@ export default function ProjectPage() {
                       <p className="text-muted-foreground/70 text-[10px] truncate">{t.phaseName}{t.savingNote ? ` · ${t.savingNote}` : ""}</p>
                     </div>
                     <div className="text-right tabular-nums">
-                      {t.savingBaseline != null ? (
-                        <span><span className="text-muted-foreground line-through">{formatGBP(base)}</span> <span className="font-medium">{formatGBP(now)}</span></span>
+                      {target != null ? (
+                        <span><span className={applied ? "text-muted-foreground line-through" : "text-muted-foreground"}>{formatGBP(base)}</span> {applied && <span className="font-medium">{formatGBP(target)}</span>}</span>
                       ) : (
-                        <span className="text-muted-foreground italic text-[10px]">candidate, no cost set</span>
+                        <span className="text-muted-foreground italic text-[10px]">candidate, no target set</span>
                       )}
                     </div>
                     <div className="text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{save > 0 ? `-${formatGBP(save)}` : "—"}</div>
@@ -3194,13 +3214,14 @@ export default function ProjectPage() {
                 );
               })}
               <div className="px-4 py-2 flex justify-between items-center text-xs font-semibold bg-amber-100/50 dark:bg-amber-950/40">
-                <span>Total potential saving</span>
+                <span>Total potential saving {applied ? "(applied to the plan)" : "(off - plan shows original costs)"}</span>
                 <span className="tabular-nums text-emerald-700 dark:text-emerald-400">{formatGBP(totalSavings)}</span>
               </div>
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       <Accordion
         type="multiple"
@@ -3684,6 +3705,7 @@ export default function ProjectPage() {
         task={editingTask}
         allPhases={phases ?? []}
         activePropertyId={activePropertyId}
+        savingsApplied={(projectControls as any)?.savingsApplied ?? true}
         onClose={() => setEditingTask(null)}
       />
 
@@ -4102,11 +4124,13 @@ function TaskEditSheet({
   task,
   allPhases,
   activePropertyId,
+  savingsApplied,
   onClose,
 }: {
   task: LaunchTask | null;
   allPhases: PhaseWithTasks[];
   activePropertyId: number | null;
+  savingsApplied: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -4322,7 +4346,7 @@ function TaskEditSheet({
       setSpendVatStatus((task as any).invoiceVatStatus ?? "exc");
       setSavingFlag((task as any).savingFlag ?? false);
       setSavingNote((task as any).savingNote ?? "");
-      setDownselectCost(((task as any).savingFlag && (task as any).savingBaseline != null) ? String(task.selectedCost ?? "") : "");
+      setDownselectCost(((task as any).savingFlag && (task as any).savingTarget != null) ? String((task as any).savingTarget) : "");
     }
   }, [task?.id]);
 
@@ -4398,16 +4422,19 @@ function TaskEditSheet({
       supplyScope,
       procurementStatus,
       ...(() => {
-        // Downselect can master-overwrite the tiered cost. Keep the original as savingBaseline.
+        // Downselect stores a target; the global switch decides whether the live cost is the target or the baseline.
         const priorBaseline = (task as any).savingBaseline;
         const currentCost = task.selectedCost ?? 0;
         if (savingFlag && downselectCost !== "" && !isNaN(Number(downselectCost))) {
+          const target = Number(downselectCost);
+          // Baseline is the original cost: reuse the one already captured, else the current live cost.
           const baseline = priorBaseline != null ? priorBaseline : currentCost;
-          return { savingFlag: true, savingNote, savingBaseline: baseline, costTier: "quoted", selectedCost: Number(downselectCost) };
+          // Live cost follows the global switch: target when savings are ON, baseline when OFF.
+          return { savingFlag: true, savingNote, savingBaseline: baseline, savingTarget: target, costTier: "quoted", selectedCost: savingsApplied ? target : baseline };
         }
         if (savingFlag) return { savingFlag: true, savingNote };
-        // Unflagged: revert any prior override back to the baseline cost.
-        if (priorBaseline != null) return { savingFlag: false, savingNote, savingBaseline: null, costTier: "quoted", selectedCost: priorBaseline };
+        // Unflagged: revert to the baseline cost and clear the saving target.
+        if (priorBaseline != null) return { savingFlag: false, savingNote, savingBaseline: null, savingTarget: null, costTier: "quoted", selectedCost: priorBaseline };
         return { savingFlag: false, savingNote };
       })(),
       ...(() => {
@@ -4531,7 +4558,7 @@ function TaskEditSheet({
                     <div className="flex items-center gap-2">
                       <Label className="text-xs text-muted-foreground whitespace-nowrap">Downselect cost to £</Label>
                       <Input type="number" step="1" value={downselectCost} onChange={e => setDownselectCost(e.target.value)} placeholder={String(Math.round(((task as any).savingBaseline ?? task.selectedCost ?? 0)))} className="h-8 w-28" />
-                      <span className="text-[10px] text-muted-foreground">overrides the tier cost</span>
+                      <span className="text-[10px] text-muted-foreground">applied when Savings switch is ON</span>
                     </div>
                     {downselectCost !== "" && (() => {
                       const base = (task as any).savingBaseline ?? task.selectedCost ?? 0;

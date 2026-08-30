@@ -88,6 +88,8 @@ export const financialsTable = pgTable("financial_models", {
   additionalCliniciansJson: text("additional_clinicians_json").default("[]"),
   // Project controls: David's approved spend cap (default £60k)
   davidApprovedCapGbp: real("david_approved_cap_gbp").notNull().default(60000),
+  // Global savings switch: when true, flagged lines use their downselect target; when false, the original cost
+  savingsApplied: boolean("savings_applied").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

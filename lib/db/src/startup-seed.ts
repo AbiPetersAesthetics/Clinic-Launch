@@ -556,6 +556,9 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_note TEXT`);
         // V21 migration: downselect can master-overwrite the line cost — keep the original as a baseline
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_baseline REAL`);
+        // V22 migration: global savings switch — store the downselect target + a per-project on/off flag
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_target REAL`);
+        await db.execute(sql`ALTER TABLE financial_models ADD COLUMN IF NOT EXISTS savings_applied BOOLEAN NOT NULL DEFAULT TRUE`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,
