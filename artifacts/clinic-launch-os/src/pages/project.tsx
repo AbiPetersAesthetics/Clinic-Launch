@@ -1393,7 +1393,7 @@ export default function ProjectPage() {
       { id: taskId },
       {
         onSuccess: () => {
-          queryClient.removeQueries({ queryKey: [phasesUrl] });
+          queryClient.invalidateQueries({ queryKey: [phasesUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           setConfirmDeleteId(null);
@@ -1452,8 +1452,8 @@ export default function ProjectPage() {
   const updateTask = useUpdateTask();
 
   const invalidateAfterTaskChange = () => {
-    queryClient.removeQueries({ queryKey: [phasesUrl] });
-    queryClient.removeQueries({ queryKey: [`/api/projects/${PROJECT_ID}/phases-with-tasks`] });
+    queryClient.invalidateQueries({ queryKey: [phasesUrl] });
+    queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}/phases-with-tasks`] });
     queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}/project-controls`] });
@@ -4428,8 +4428,8 @@ function TaskEditSheet({
       {
         onSuccess: () => {
           const baseUrl = `/api/projects/${PROJECT_ID}/phases-with-tasks`;
-          queryClient.removeQueries({ queryKey: [activePropertyId ? `${baseUrl}?propertyId=${activePropertyId}` : baseUrl] });
-          queryClient.removeQueries({ queryKey: [baseUrl] });
+          queryClient.invalidateQueries({ queryKey: [activePropertyId ? `${baseUrl}?propertyId=${activePropertyId}` : baseUrl] });
+          queryClient.invalidateQueries({ queryKey: [baseUrl] });
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetProjectTimelineQueryKey(PROJECT_ID) });
