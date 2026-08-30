@@ -29,7 +29,7 @@ interface Item {
 }
 
 const PHASES: { id: string; label: string; sub: string }[] = [
-  { id: "p0", label: "Foundations", sub: "Set up this week — the plan runs on these" },
+  { id: "p0", label: "Foundations", sub: "Set up this week, the plan runs on these" },
   { id: "p1", label: "September", sub: "Warm & convert at Bedhampton" },
   { id: "p2", label: "October", sub: "Convert the offer + build the launch runway" },
   { id: "p3", label: "Launch week", sub: "Winchester opens 2 November" },
@@ -61,10 +61,10 @@ const STATUS_CYCLE: Record<Status, Status> = {
 function StatusToggle({ status, onChange }: { status: Status; onChange: (s: Status) => void }) {
   const next = () => onChange(STATUS_CYCLE[status]);
   if (status === "done")
-    return <button onClick={next} title="Done — click to reset" className="shrink-0"><CheckCircle2 className="w-5 h-5 text-emerald-500" /></button>;
+    return <button onClick={next} title="Done, click to reset" className="shrink-0"><CheckCircle2 className="w-5 h-5 text-emerald-500" /></button>;
   if (status === "in_progress")
-    return <button onClick={next} title="In progress — click to mark done" className="shrink-0"><CircleDashed className="w-5 h-5 text-amber-500" /></button>;
-  return <button onClick={next} title="Not started — click to start" className="shrink-0"><Circle className="w-5 h-5 text-muted-foreground/40 hover:text-muted-foreground" /></button>;
+    return <button onClick={next} title="In progress, click to mark done" className="shrink-0"><CircleDashed className="w-5 h-5 text-amber-500" /></button>;
+  return <button onClick={next} title="Not started, click to start" className="shrink-0"><Circle className="w-5 h-5 text-muted-foreground/40 hover:text-muted-foreground" /></button>;
 }
 
 function OwnerChip({ owner }: { owner: string }) {
@@ -184,7 +184,7 @@ export default function MarketingPage() {
             <div className="p-2.5 rounded-xl bg-primary/10 shrink-0"><Megaphone className="w-5 h-5 text-primary" /></div>
             <div>
               <h1 className="text-lg font-bold tracking-tight">Marketing Command Centre</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Social · Email · Paid — from 1 Sep to launch + 2 months. Low effort, high yield, 3 posts a week.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Social · Email · Paid, from 1 Sep to launch + 2 months. Low effort, high yield, 3 posts a week.</p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -207,7 +207,7 @@ export default function MarketingPage() {
           <div>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Founding leads ready</p>
             <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{FOUNDING_LEADS}</p>
-            <p className="text-[10px] text-muted-foreground">Meta, {META_CPL}/lead — nurture these</p>
+            <p className="text-[10px] text-muted-foreground">Meta, {META_CPL}/lead, nurture these</p>
           </div>
           <div>
             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Plan progress</p>
@@ -227,9 +227,9 @@ export default function MarketingPage() {
         <div className="flex items-start gap-3">
           <div className="p-2 rounded-lg bg-rose-100 dark:bg-rose-900/40 shrink-0"><Tag className="w-4 h-4 text-rose-600 dark:text-rose-400" /></div>
           <div>
-            <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Sep/Oct engine — Bedhampton only</p>
+            <p className="text-sm font-bold text-rose-700 dark:text-rose-300">Sep/Oct engine, Bedhampton only</p>
             <p className="text-xs text-foreground/80 mt-1 leading-relaxed">
-              <strong>Complimentary skin analysis</strong> at Bedhampton, then <strong>20% off any treatment</strong> taken after it. Runs <strong>1 Sep-31 Oct</strong>, then everything pivots to the Winchester launch. Switch the two Bedhampton ads (cold + warm) back on and point them here.
+              <strong>Complimentary skin analysis</strong> at Bedhampton, then <strong>15% off any treatment</strong> taken after it. Runs <strong>1 Sep-31 Oct</strong>, then everything pivots to the Winchester launch. Switch the two Bedhampton ads (cold + warm) back on and point them here.
             </p>
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function MarketingPage() {
         <div className="rounded-xl border border-rose-200 dark:border-rose-900 bg-card p-4">
           <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/30 border-rose-200 dark:border-rose-800">Abi</span><span className="text-xs font-semibold">the face & the clinician</span></div>
           <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-4">
-            <li>On-camera content — Reels, stories, treatment explainers, meet-Abi</li>
+            <li>On-camera content, Reels, stories, treatment explainers, meet-Abi</li>
             <li>Deliver the complimentary skin analyses & treatments</li>
             <li>Reply to DMs/comments in her own voice</li>
             <li>Ask every client for a Google review in-clinic</li>
@@ -360,7 +360,7 @@ export default function MarketingPage() {
       <div className="rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/50 dark:bg-violet-950/20 p-4">
         <p className="text-[10px] font-bold uppercase tracking-widest text-violet-700 dark:text-violet-300 mb-2">The 3-posts-a-week template (repeat every week)</p>
         <div className="grid sm:grid-cols-3 gap-2 text-xs">
-          <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Mon · Authority</p><p className="text-muted-foreground mt-0.5">Educate — a treatment, a skin tip, a myth. Builds trust, ASA-safe.</p></div>
+          <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Mon · Authority</p><p className="text-muted-foreground mt-0.5">Educate, a treatment, a skin tip, a myth. Builds trust, ASA-safe.</p></div>
           <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Wed · Human</p><p className="text-muted-foreground mt-0.5">Behind-the-scenes, meet Abi, the clinic taking shape.</p></div>
           <div className="rounded-lg bg-card border border-border/60 p-2.5"><p className="font-semibold">Fri · Proof / offer</p><p className="text-muted-foreground mt-0.5">A review, a result (consent), the offer, a booking CTA.</p></div>
         </div>
