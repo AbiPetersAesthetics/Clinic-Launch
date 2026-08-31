@@ -567,6 +567,8 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS owner TEXT NOT NULL DEFAULT ''`);
         await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS week_start TEXT NOT NULL DEFAULT ''`);
         await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS detail TEXT NOT NULL DEFAULT ''`);
+        // V25 migration: marketing plan goes fully day-by-day
+        await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS day_date TEXT NOT NULL DEFAULT ''`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,
