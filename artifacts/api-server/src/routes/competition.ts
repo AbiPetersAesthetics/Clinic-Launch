@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db, competitorsTable, financialsTable } from "@workspace/db";
 import { eq, and, isNull, or } from "drizzle-orm";
 import { claudeComplete } from "@workspace/integrations-anthropic-ai";
+import { STORED_STRATEGY } from "./pricing-strategy-data";
 
 const router = Router();
 
@@ -629,6 +630,21 @@ router.get("/projects/:id/competitors/pricing-strategy", async (req, res) => {
     const m = Math.floor(s.length / 2);
     return s.length % 2 !== 0 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
   };
+
+  // ── Stored verified strategy: serve instantly unless an AI regeneration is requested ──
+  if (STORED_STRATEGY && req.query.ai !== "1") {
+    return res.json({
+      ...STORED_STRATEGY,
+      competitorCount: allCompetitors.length,
+      competitorsWithPricing,
+      marketData: Object.fromEntries(
+        Object.entries(aggregated).map(([k, { prices }]) => [k, {
+          min: Math.min(...prices), max: Math.max(...prices), median: median(prices), count: prices.length,
+        }])
+      ),
+      generatedAt: STORED_STRATEGY.verifiedAt,
+    });
+  }
 
   // Build rich per-competitor profile blocks with pricing alongside positioning
   const COMPARABLE_CLINIC_TYPES = new Set(["nurse-led","doctor-led","dentist-led","mixed practitioner","injectables-only"]);

@@ -96,7 +96,7 @@ const TREATMENT_KEYS = [
 ];
 
 const APA_PROFILE = {
-  name: "Abi Peters Aesthetics",
+  name: "Abi Peters Skin Clinic",
   clinicType: "nurse-led", premisesType: "high street shopfront",
   positioningCategory: "natural-results nurse-led clinic",
   googleRating: 4.9, googleReviewCount: 127,
@@ -119,6 +119,13 @@ type PricingStrategy = {
   pricingTier: string | null;
   keyRisk: string | null;
   generatedAt: string;
+  // ── Stored verified-strategy extras (present when the strategy was built from live competitor verification) ──
+  verifiedAt?: string;
+  perTreatment?: Record<string, string>;              // treatment key -> pricing rationale
+  architecture?: { h: string; b: string }[];          // the pricing playbook blocks
+  competitiveRead?: { name: string; read: string }[]; // one line per competitor
+  risks?: string[];
+  acvMix?: string;                                    // assumed visit mix behind the ACV numbers
 };
 
 const PREMISES_TYPES = [
@@ -1043,12 +1050,56 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                     <p className="text-xs text-amber-700 dark:text-amber-400"><span className="font-medium">Key risk: </span>{strategy.keyRisk}</p>
                   </div>
                 )}
+                {strategy.acvMix && (
+                  <p className="text-[11px] text-muted-foreground mt-2"><span className="font-medium text-foreground/70">ACV basis: </span>{strategy.acvMix}</p>
+                )}
               </div>
+            )}
+
+            {/* ── The pricing playbook (stored verified strategy) ── */}
+            {strategy.architecture && strategy.architecture.length > 0 && (
+              <details className="rounded-lg border border-border bg-muted/20 open:bg-muted/10">
+                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold hover:bg-muted/40 rounded-lg">The pricing playbook · {strategy.architecture.length} rules</summary>
+                <div className="px-4 pb-3 pt-1 space-y-2.5">
+                  {strategy.architecture.map((a, i) => (
+                    <div key={i}>
+                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold">{a.h}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 whitespace-pre-wrap">{a.b}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+
+            {/* ── Competitor-by-competitor read ── */}
+            {strategy.competitiveRead && strategy.competitiveRead.length > 0 && (
+              <details className="rounded-lg border border-border bg-muted/20 open:bg-muted/10">
+                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold hover:bg-muted/40 rounded-lg">How to price against each competitor · {strategy.competitiveRead.length}</summary>
+                <div className="px-4 pb-3 pt-1 space-y-2">
+                  {strategy.competitiveRead.map((c, i) => (
+                    <p key={i} className="text-xs leading-relaxed"><span className="font-semibold">{c.name}: </span><span className="text-muted-foreground">{c.read}</span></p>
+                  ))}
+                </div>
+              </details>
+            )}
+
+            {/* ── Pricing risks ── */}
+            {strategy.risks && strategy.risks.length > 0 && (
+              <details className="rounded-lg border border-amber-500/25 bg-amber-500/5">
+                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg">Pricing risks and guardrails · {strategy.risks.length}</summary>
+                <ul className="px-4 pb-3 pt-1 space-y-1.5 list-disc pl-8">
+                  {strategy.risks.map((r, i) => (
+                    <li key={i} className="text-xs text-muted-foreground leading-relaxed">{r}</li>
+                  ))}
+                </ul>
+              </details>
             )}
 
             {/* Data footnote */}
             <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
-              Based on {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors with pricing data · Generated {new Date(strategy.generatedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}
+              {strategy.verifiedAt
+                ? <>Built from live competitor price verification on {new Date(strategy.verifiedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })} · {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors priced</>
+                : <>Based on {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors with pricing data · Generated {new Date(strategy.generatedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</>}
             </p>
           </div>
         )}
@@ -1134,6 +1185,11 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
                       {validPrices.length > 0 && (
                         <p className="text-[10px] text-muted-foreground">
                           Market: £{Math.min(...validPrices)}–£{Math.max(...validPrices)}
+                        </p>
+                      )}
+                      {strategy?.perTreatment?.[t.key] && (
+                        <p className="text-[10px] text-muted-foreground/80 leading-relaxed mt-1 max-w-[15rem]" title={strategy.perTreatment[t.key]}>
+                          {strategy.perTreatment[t.key]}
                         </p>
                       )}
                     </td>
@@ -1417,7 +1473,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
                       <td className="px-3 py-2.5">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                          <span className="font-semibold text-primary">Abi Peters Aesthetics</span>
+                          <span className="font-semibold text-primary">Abi Peters Skin Clinic</span>
                           <span className="text-[9px] font-semibold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">YOU</span>
                         </div>
                       </td>
@@ -1515,7 +1571,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
         <div className="flex flex-wrap items-center gap-4 mb-4 text-xs">
           <span className="flex items-center gap-1.5 font-semibold">
             <span className="w-3 h-3 rounded-full shrink-0" style={{ background: APA_COLOR }} />
-            Abi Peters Aesthetics
+            Abi Peters Skin Clinic
           </span>
           {selected.map(c=>(
             <span key={c.id} className="flex items-center gap-1.5 text-muted-foreground">
@@ -2165,7 +2221,7 @@ export default function CompetitionPage() {
             <Target className="w-6 h-6 text-primary" />
             <h1 className="text-2xl font-bold">Competition Intelligence</h1>
           </div>
-          <p className="text-muted-foreground text-sm">Is there genuinely room for Abi Peters Aesthetics? Who are the real threats?</p>
+          <p className="text-muted-foreground text-sm">Is there genuinely room for Abi Peters Skin Clinic? Who are the real threats?</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Property selector */}

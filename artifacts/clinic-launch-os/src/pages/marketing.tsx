@@ -22,19 +22,19 @@ type Block = { h: string; b: string };
 function parseDeep(s: string): Block[] { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
 
 const PHASES: Record<string, { label: string; sub: string }> = {
-  p0: { label: "Foundations", sub: "Build the engine this week" },
-  p1: { label: "September", sub: "Warm and convert at Bedhampton" },
-  p2: { label: "October", sub: "Convert the offer, build the launch runway" },
-  p3: { label: "Launch week", sub: "Winchester opens 2 November" },
-  p4: { label: "November", sub: "Fill the diary" },
-  p5: { label: "December", sub: "Christmas retail and retain" },
+  p0: { label: "Foundations", sub: "Rebuild measurement, no paid spend (30 Aug to 12 Sep)" },
+  p1: { label: "Warm and harvest", sub: "Wake the 443, harvest Bedhampton, build reviews (13 Sep to 4 Oct)" },
+  p2: { label: "Launch runway", sub: "Sell the 40 founding places, stage the clinic, close Bedhampton (5 Oct to 1 Nov)" },
+  p3: { label: "Launch week", sub: "Open, seat the founders, first reviews (2 to 8 Nov)" },
+  p4: { label: "Fill the diary", sub: "Analyses into treatments, memberships, referrals (9 to 29 Nov)" },
+  p5: { label: "Christmas and retain", sub: "Vouchers, skincare, rebook, pre-sell January (30 Nov to 31 Dec)" },
 };
 const PHASE_ORDER = ["p0", "p1", "p2", "p3", "p4", "p5"];
 
 const CHANNELS: Record<string, { label: string; icon: React.ElementType; where: string; bar: string; dot: string; text: string }> = {
   found:  { label: "Setup",  icon: Wrench,     where: "one-off task",         bar: "border-l-slate-400",  dot: "bg-slate-400",  text: "text-slate-600 dark:text-slate-300" },
   social: { label: "Post",   icon: Instagram,  where: "Instagram + Facebook", bar: "border-l-violet-400", dot: "bg-violet-500", text: "text-violet-600 dark:text-violet-300" },
-  email:  { label: "Email",  icon: Mail,       where: "email + SMS (GHL)",    bar: "border-l-blue-400",   dot: "bg-blue-500",   text: "text-blue-600 dark:text-blue-300" },
+  email:  { label: "Message",icon: Mail,       where: "email, SMS, WhatsApp (GHL)", bar: "border-l-blue-400",   dot: "bg-blue-500",   text: "text-blue-600 dark:text-blue-300" },
   meta:   { label: "Meta ad",icon: Facebook,   where: "Facebook / IG ads",    bar: "border-l-indigo-400", dot: "bg-indigo-500", text: "text-indigo-600 dark:text-indigo-300" },
   google: { label: "Google", icon: SearchIcon, where: "Search ads",           bar: "border-l-emerald-400",dot: "bg-emerald-500",text: "text-emerald-600 dark:text-emerald-300" },
 };
@@ -289,19 +289,16 @@ export default function MarketingPage() {
       {/* ── Strategy strip ──────────────────────────────────── */}
       <div className="grid md:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 p-4">
-          <div className="flex items-center gap-2 mb-1.5"><Tag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /><p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">Sep/Oct offer</p></div>
-          <p className="text-xs text-foreground/80 leading-relaxed">Complimentary skin analysis at Bedhampton, then <strong>15% off</strong> any treatment after. 1 Sep to 31 Oct. Switch the two Bedhampton ads back on.</p>
+          <div className="flex items-center gap-2 mb-1.5"><Tag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /><p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">The engine</p></div>
+          <p className="text-xs text-foreground/80 leading-relaxed">The <strong>AI Skin Analysis</strong> is the whole funnel: given free to acquire the patient, the money is made on the treatment after. Capped in the booking system so it never eats the diary.</p>
         </div>
         <div className="rounded-2xl border bg-card p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5">November: no discount</p>
-          <p className="text-xs text-foreground/80 leading-relaxed">A discount cheapens a premium clinic. Give a capped <strong>Founding Client</strong> bundle instead: priority booking, a free add-on, founding pricing locked in. First 40.</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5">No discounts, anywhere</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">Founding is <strong>status, not a discount</strong>: priority booking, member pricing held 12 months, a free add-on. 40 places, capped because 40 is what one nurse can look after.</p>
         </div>
-        <div className="rounded-2xl border bg-card p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5">The weekly rhythm</p>
-          <ul className="text-xs text-muted-foreground space-y-0.5">
-            <li><b className="text-foreground">Mon</b> authority, <b className="text-foreground">Wed</b> human, <b className="text-foreground">Fri</b> proof/offer</li>
-            <li><span className="text-rose-600 dark:text-rose-400 font-semibold">Abi</span> films + delivers, <span className="text-sky-600 dark:text-sky-400 font-semibold">David</span> runs ads + schedules</li>
-          </ul>
+        <div className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 mb-1.5">The one number</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">Cost per <strong>booked-and-attended analysis</strong> (target £15 to £25), never cost per lead. And <strong>no paid spend until the 12 Sep measurement gate</strong> passes.</p>
         </div>
       </div>
 
@@ -381,15 +378,6 @@ export default function MarketingPage() {
             </div>
           );
         })}
-      </div>
-
-      {/* ── Copy bank ───────────────────────────────────────── */}
-      <div className="rounded-2xl border bg-card overflow-hidden">
-        <button onClick={() => setShowCopy(s => !s)} className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/30 transition-colors">
-          <div className="text-left"><h2 className="text-base font-bold">Copy Bank</h2><p className="text-xs text-muted-foreground mt-0.5">Both nurtures, the launch email and every caption. Tap Copy, paste into GHL, swap {"{name}"}.</p></div>
-          {showCopy ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-        </button>
-        {showCopy && <div className="p-4 pt-0 grid md:grid-cols-2 gap-3">{COPY.map((c, i) => <CopyBlock key={i} c={c} />)}</div>}
       </div>
 
       {/* ── Day detail modal ────────────────────────────────── */}
