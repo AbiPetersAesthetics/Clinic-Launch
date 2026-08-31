@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { marketingItemsTable, projectsTable } from "@workspace/db";
 import { eq, asc } from "drizzle-orm";
+import { DEEP } from "./marketing-deep";
 
 const router = Router();
 
@@ -30,7 +31,7 @@ const WEEKS: Week[] = [
       T("david", "found", "Create the Winchester Google profile", "New Google Business Profile for 9A Jewry Street. Start the verification now - Google posts a code and it takes 5 to 14 days, so it must be started early. Category: Skin care clinic."),
     ] },
     { t: [
-      T("david", "email", "Build the nurture messages for the 443 leads", "In GHL, set up an automated sequence (the exact SMS + emails are in the Copy Bank below). It messages every one of the 443 warm leads: come for a free skin analysis at Bedhampton, 15% off after."),
+      T("david", "email", "Build TWO nurture sequences: Bedhampton + Winchester", "Bedhampton and Winchester leads need different follow-ups. Tag each contact: Bedhampton locals can come in now; the 443 are Winchester and get the founding track. Tap this task for both full sequences (also in the Copy Bank)."),
       T("both", "found", "Turn the offer on at Bedhampton", "Make sure the booking calendar has free-analysis slots, and everyone knows the deal: free skin analysis, then 15% off any treatment booked after. Runs to 31 Oct."),
     ] },
     { t: [
@@ -235,15 +236,17 @@ function addDays(iso: string, n: number): string {
 
 // Flatten the weeks into individual dated rows.
 const SEED_ITEMS = (() => {
-  const out: Array<{ category: string; title: string; detail: string; channel: string; owner: string; weekStart: string; dayDate: string; sortOrder: number; }> = [];
+  const out: Array<{ category: string; title: string; detail: string; deep: string; channel: string; owner: string; weekStart: string; dayDate: string; sortOrder: number; }> = [];
   WEEKS.forEach((wk, wi) => {
     wk.days.forEach((day, di) => {
       const dayDate = addDays(wk.sun, di);
       if (day.rest) {
-        out.push({ category: wk.phase, title: day.rest, detail: "", channel: "rest", owner: "both", weekStart: wk.sun, dayDate, sortOrder: wi * 100 + di * 10 });
+        out.push({ category: wk.phase, title: day.rest, detail: "", deep: "[]", channel: "rest", owner: "both", weekStart: wk.sun, dayDate, sortOrder: wi * 100 + di * 10 });
       }
       (day.t ?? []).forEach((tk, ti) => {
-        out.push({ category: wk.phase, title: tk.x, detail: tk.d ?? "", channel: tk.c, owner: tk.o, weekStart: wk.sun, dayDate, sortOrder: wi * 100 + di * 10 + ti + 1 });
+        const sortOrder = wi * 100 + di * 10 + ti + 1;
+        const deep = DEEP[`${dayDate}#${sortOrder}`];
+        out.push({ category: wk.phase, title: tk.x, detail: tk.d ?? "", deep: JSON.stringify(deep ?? []), channel: tk.c, owner: tk.o, weekStart: wk.sun, dayDate, sortOrder });
       });
     });
   });
@@ -258,6 +261,7 @@ async function reseed(projectId: number) {
       category: s.category,
       title: s.title,
       detail: s.detail,
+      deep: s.deep,
       channel: s.channel,
       owner: s.owner,
       weekStart: s.weekStart,

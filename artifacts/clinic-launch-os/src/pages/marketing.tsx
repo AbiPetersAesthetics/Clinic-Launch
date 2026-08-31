@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Megaphone, Wrench, Instagram, Mail, Facebook, Search as SearchIcon,
-  CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, RotateCcw, Tag, Copy, Check,
+  CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, RotateCcw, Tag, Copy, Check, X,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -13,10 +13,13 @@ const META_CPL = "£3.08";
 
 type Status = "not_started" | "in_progress" | "done" | "na";
 interface Item {
-  id: number; category: string; title: string; detail: string;
+  id: number; category: string; title: string; detail: string; deep: string;
   channel: string; owner: string; weekStart: string; dayDate: string;
   status: Status; notes: string; sortOrder: number;
 }
+type Block = { h: string; b: string };
+function parseDeep(s: string): Block[] { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
+function fullDayLabel(iso: string) { const d = parseISO(iso); return `${DAYNAMES[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`; }
 
 const PHASES: Record<string, { label: string; sub: string }> = {
   p0: { label: "Foundations", sub: "Build the engine this week" },
@@ -55,25 +58,34 @@ function monShort(iso: string) { return MONTHS[parseISO(iso).getUTCMonth()]; }
 function weekRange(sun: string) { const sat = addDaysISO(sun, 6); return `${dayNum(sun)} ${monShort(sun)} to ${dayNum(sat)} ${monShort(sat)}`; }
 
 const COPY: { title: string; sub: string; text: string }[] = [
-  { title: "Nurture the 443 · SMS 1 (day 0)", sub: "The moment a lead lands, or as the relaunch to the whole list.",
-    text: "Hi {name}, it's Abi from Abi Peters Aesthetics. Thanks for registering your interest! I'd love to give you a complimentary skin analysis at my Bedhampton clinic, and you'll get 15% off any treatment you book afterwards. It's only on until 31 Oct. Want me to find you a time? Just reply YES and I'll sort it x" },
-  { title: "Nurture · Email 1 (day 0)", sub: "Subject: Your complimentary skin analysis is waiting, {name}",
-    text: "Hi {name},\n\nThanks for registering your interest in Abi Peters Aesthetics.\n\nI'd love to invite you in for a complimentary skin analysis at my Bedhampton clinic. It's a relaxed 20 minutes: I look properly at your skin, talk through what's going on and what would genuinely help, and answer anything you've been wondering about. No pressure, no hard sell.\n\nAnd because you're on my list, you'll get 15% off any treatment you decide to book after your analysis.\n\nOne thing to know: this is only running until 31 October, so it's worth grabbing a slot now.\n\n[ Book my complimentary analysis ]\n\nSee you soon,\nAbi" },
-  { title: "Nurture · SMS 2 (day 3, no reply)", sub: "Gentle nudge for the quiet ones.",
-    text: "Hi {name}, Abi here - just checking you saw this. Your complimentary skin analysis + 15% off is still open at my Bedhampton clinic (until 31 Oct). Shall I book you in? Reply YES x" },
-  { title: "Nurture · Email 2 (day 6)", sub: "Subject: Why I start every client with a skin analysis",
-    text: "Hi {name},\n\nMost skin \"problems\" aren't what people think they are. Dryness that's actually a damaged barrier. \"Ageing\" that's mostly sun. Breakouts that a good routine would calm in weeks.\n\nThat's why I never recommend a treatment before I've properly looked at your skin. As a nurse, I want the honest answer, not the biggest sale.\n\nThat's all a complimentary skin analysis is: 20 minutes, a real look, and a plan that fits you. And 15% off if you decide to book something afterwards.\n\nIt's only on until 31 October.\n\n[ Book my complimentary analysis ]\n\nAbi x" },
-  { title: "Nurture · SMS 3 (day 12, last nudge)", sub: "Final urgency before the window closes.",
-    text: "Last nudge {name} - the complimentary skin analysis + 15% off ends 31 Oct and my Bedhampton diary is filling up fast. Grab a slot here: {link} x" },
+  { title: "Bedhampton nurture (they can come in now)", sub: "For Bedhampton locals + existing clients. 5 messages over ~2 weeks.",
+    text: "SMS 1 (day 0): Hi {name}, it's Abi from Abi Peters Skin Clinic. I'd love to see you at my Bedhampton clinic for a complimentary skin analysis, plus 15% off any treatment you book after. It's on until 31 Oct. Want me to find you a time? Reply YES x\n\nEMAIL 1 (day 0) Subject: Your complimentary skin analysis, {name}\nHi {name}, thanks for your interest in Abi Peters Skin Clinic. I'd love to invite you to my Bedhampton clinic for a complimentary skin analysis: a relaxed 20 minutes where I look properly at your skin and give you an honest plan, no pressure. Book a treatment after and it's 15% off. It's only on until 31 October.\n[ Book my complimentary analysis ]\nSee you soon, Abi\n\nSMS 2 (day 3, no reply): Hi {name}, Abi here, just checking you saw this. Your complimentary skin analysis and 15% off is still open at my Bedhampton clinic (until 31 Oct). Shall I book you in? Reply YES x\n\nEMAIL 2 (day 6) Subject: Why I start every client with a skin analysis\nHi {name}, most skin problems aren't what people think. As a nurse I want the honest answer, not the biggest sale, so I never recommend a treatment before I've properly looked at your skin. That's all a complimentary analysis is: 20 minutes, a real look, a plan that fits you. And 15% off if you book after. On until 31 October at my Bedhampton clinic.\n[ Book ]\nAbi x\n\nSMS 3 (day 12, last nudge): Last nudge {name}, the complimentary skin analysis and 15% off ends 31 Oct and my Bedhampton diary is filling up. Grab a slot: {link} x" },
+  { title: "Winchester nurture (the 443 founding leads)", sub: "Their clinic opens 2 Nov. Founding spot, with Bedhampton as an early taster.",
+    text: "SMS 1 (day 0): Hi {name}, it's Abi from Abi Peters Skin Clinic. Big news: your Winchester clinic opens on 2 November! I'd love to save you a Founding Client spot (priority booking plus perks). And if you can't wait, you're welcome at my Bedhampton clinic now for a complimentary skin analysis and 15% off. Which sounds good? Just reply x\n\nEMAIL 1 (day 0) Subject: Winchester news, {name} (and a spot with your name on it)\nHi {name}, a little while ago you registered your interest in skin care in Winchester, and I have news: I'm opening Abi Peters Skin Clinic on Jewry Street this November. You're on my founding list, which means first pick of the opening diary, a complimentary add-on with your first treatment, and founding pricing locked in for good. Want me to hold you a Founding spot?\n[ Reserve my Founding spot ]\nCan't wait until November? Pop to my Bedhampton clinic now for a complimentary skin analysis, 15% off after, well worth the short drive. Abi\n\nEMAIL 2 (day 6) Subject: Why I'm a nurse before anything else\nHi {name}, I trained as a registered nurse before I ever touched skin, and it shapes everything about the Winchester clinic: safety first, honesty always, natural results over overdone. That is what your Founding spot is a part of. Shall I reserve yours?\n[ Reserve my Founding spot ]\nAbi x\n\nSMS 3 (October): {name}, Founding Client spots for Winchester are filling up and we open 2 Nov. Want me to hold yours? Priority booking and founding pricing locked in. Reply YES x" },
   { title: "October · Winchester Founding invite (email)", sub: "Subject: You're invited to be a Winchester Founding Client",
     text: "Hi {name},\n\nWinchester opens on 2 November, and I'm inviting a small group to be Founding Clients before we open to everyone.\n\nFounding Clients get:\n- First pick of the opening diary\n- A complimentary skincare product or add-on with your first treatment\n- Founding pricing - you keep launch prices even as they go up later\n\nThere are only 40 spots, and they'll go to the people on this list first.\n\n[ Reserve my Founding spot ]\n\nCan't wait to see you in Winchester,\nAbi x" },
   { title: "2 November · Launch email + SMS", sub: "Subject: We're open, {name}. Winchester is here.",
-    text: "Hi {name},\n\nIt's official - Abi Peters Aesthetics is now open at 9A Jewry Street, Winchester.\n\nIf you've been waiting, this is your moment. Founding Client spots are open now: priority booking, a complimentary add-on with your first treatment, and founding pricing locked in for good. First 40 only.\n\n[ Book me in ]\n\nThank you for being here from the start. It means everything.\n\nAbi x\n\n(SMS: We're OPEN in Winchester, {name}! Founding Client spots (first 40) are live - priority booking + founding pricing locked in. Book: {link} x)" },
+    text: "Hi {name},\n\nIt's official - Abi Peters Skin Clinic is now open at 9A Jewry Street, Winchester.\n\nIf you've been waiting, this is your moment. Founding Client spots are open now: priority booking, a complimentary add-on with your first treatment, and founding pricing locked in for good. First 40 only.\n\n[ Book me in ]\n\nThank you for being here from the start. It means everything.\n\nAbi x\n\n(SMS: We're OPEN in Winchester, {name}! Founding Client spots (first 40) are live - priority booking + founding pricing locked in. Book: {link} x)" },
   { title: "Captions 1-3 (week one)", sub: "Mon authority · Wed human · Fri offer.",
-    text: "MON - AUTHORITY\nBefore any treatment, I do this one thing - and it changes everything.\n\nA skin analysis. 20 minutes where I actually look at your skin under proper light and tell you what's really going on. Not what an ad wants to sell you. What your skin actually needs.\n\nIt's how you stop wasting money on the wrong products and treatments.\n\nFree at my Bedhampton clinic until 31 Oct (and 15% off anything you book after). Comment ANALYSIS or tap the link.\n#WinchesterAesthetics #HampshireAesthetics #NurseLedAesthetics #SkinHealth\n\n- - - - -\n\nWED - HUMAN\nHi, I'm Abi. I'm a nurse, and I've spent years learning skin properly - which is exactly why I'll tell you when you DON'T need a treatment.\n\nThis autumn I'm opening my own clinic on Winchester high street. Before that, I'm seeing people at my Bedhampton clinic for complimentary skin analyses - my favourite thing to do.\n\nFollow along, the Winchester journey starts here.\n#AbiPetersAesthetics #WinchesterAesthetics #NurseLed #HampshireBeauty\n\n- - - - -\n\nFRI - OFFER\nYour skin, properly looked at. On me.\n\nComplimentary skin analysis at my Bedhampton clinic - a relaxed 20 minutes, an honest plan, zero pressure. Book a treatment after and it's 15% off.\n\nOnly until 31 October, then I'm all-in on opening Winchester.\n\nTap the link or DM me the word SKIN.\n#Bedhampton #HampshireAesthetics #WinchesterAesthetics #SkinAnalysis" },
+    text: "MON - AUTHORITY\nBefore any treatment, I do this one thing - and it changes everything.\n\nA skin analysis. 20 minutes where I actually look at your skin under proper light and tell you what's really going on. Not what an ad wants to sell you. What your skin actually needs.\n\nIt's how you stop wasting money on the wrong products and treatments.\n\nFree at my Bedhampton clinic until 31 Oct (and 15% off anything you book after). Comment ANALYSIS or tap the link.\n#WinchesterAesthetics #HampshireAesthetics #NurseLedAesthetics #SkinHealth\n\n- - - - -\n\nWED - HUMAN\nHi, I'm Abi. I'm a nurse, and I've spent years learning skin properly - which is exactly why I'll tell you when you DON'T need a treatment.\n\nThis autumn I'm opening my own clinic on Winchester high street. Before that, I'm seeing people at my Bedhampton clinic for complimentary skin analyses - my favourite thing to do.\n\nFollow along, the Winchester journey starts here.\n#AbiPetersSkinClinic #WinchesterAesthetics #NurseLed #HampshireBeauty\n\n- - - - -\n\nFRI - OFFER\nYour skin, properly looked at. On me.\n\nComplimentary skin analysis at my Bedhampton clinic - a relaxed 20 minutes, an honest plan, zero pressure. Book a treatment after and it's 15% off.\n\nOnly until 31 October, then I'm all-in on opening Winchester.\n\nTap the link or DM me the word SKIN.\n#Bedhampton #HampshireAesthetics #WinchesterAesthetics #SkinAnalysis" },
   { title: "Captions 4-6 (week two)", sub: "Mon authority · Wed human · Fri proof.",
-    text: "MON - AUTHORITY\n\"Skin boosters\" - what actually are they?\n\nNot filler. They don't change your shape. Think of them as a deep drink of water for your skin: hydration that helps it look fresher and healthier from within.\n\nThey're not for everyone, and that's the point - the right treatment depends on your skin, which is why I start everyone with an analysis.\n\nCurious if they'd suit you? Link in bio.\n#SkinBoosters #HampshireAesthetics #WinchesterAesthetics #NurseLedAesthetics\n\n- - - - -\n\nWED - HUMAN\nA little behind the scenes. The Winchester clinic is coming together and I honestly can't quite believe it. Every detail, chosen to make you feel calm the second you walk in.\n\nOpening 2 November on Jewry Street. Founding Client spots open soon - save this post.\n#WinchesterAesthetics #ComingSoon #Winchester #AbiPetersAesthetics\n\n- - - - -\n\nFRI - PROOF\nThis is why I do it.\n\n\"[client's own words - a short, honest line about how they felt, shared with their written permission]\"\n\nNo filters, no promises - just someone leaving feeling more like themselves. That's the whole job.\n\nWant your turn? Free skin analysis at Bedhampton until 31 Oct, 15% off after. Link in bio.\n#ClientLove #HampshireAesthetics #WinchesterAesthetics #NurseLed" },
+    text: "MON - AUTHORITY\n\"Skin boosters\" - what actually are they?\n\nNot filler. They don't change your shape. Think of them as a deep drink of water for your skin: hydration that helps it look fresher and healthier from within.\n\nThey're not for everyone, and that's the point - the right treatment depends on your skin, which is why I start everyone with an analysis.\n\nCurious if they'd suit you? Link in bio.\n#SkinBoosters #HampshireAesthetics #WinchesterAesthetics #NurseLedAesthetics\n\n- - - - -\n\nWED - HUMAN\nA little behind the scenes. The Winchester clinic is coming together and I honestly can't quite believe it. Every detail, chosen to make you feel calm the second you walk in.\n\nOpening 2 November on Jewry Street. Founding Client spots open soon - save this post.\n#WinchesterAesthetics #ComingSoon #Winchester #AbiPetersSkinClinic\n\n- - - - -\n\nFRI - PROOF\nThis is why I do it.\n\n\"[client's own words - a short, honest line about how they felt, shared with their written permission]\"\n\nNo filters, no promises - just someone leaving feeling more like themselves. That's the whole job.\n\nWant your turn? Free skin analysis at Bedhampton until 31 Oct, 15% off after. Link in bio.\n#ClientLove #HampshireAesthetics #WinchesterAesthetics #NurseLed" },
 ];
+
+function BlockRow({ blk }: { blk: Block }) {
+  const [done, setDone] = useState(false);
+  const canCopy = /copy|caption|script|subject/i.test(blk.h);
+  const copy = () => { const fin = () => { setDone(true); setTimeout(() => setDone(false), 1500); }; if (navigator.clipboard?.writeText) navigator.clipboard.writeText(blk.b).then(fin).catch(fin); else fin(); };
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-primary">{blk.h}</span>
+        {canCopy && <button onClick={copy} className={`text-[10px] font-semibold flex items-center gap-1 ${done ? "text-emerald-600" : "text-muted-foreground hover:text-foreground"}`}>{done ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy</>}</button>}
+      </div>
+      <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap text-foreground/85">{blk.b}</p>
+    </div>
+  );
+}
 
 function StatusToggle({ status, onChange }: { status: Status; onChange: (s: Status) => void }) {
   const next = () => onChange(STATUS_CYCLE[status]);
@@ -110,7 +122,7 @@ export default function MarketingPage() {
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
-  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
@@ -124,6 +136,12 @@ export default function MarketingPage() {
     fetch(`${API_BASE}/projects/${PROJECT_ID}`).then(r => r.ok ? r.json() : null)
       .then(p => { if (p?.targetOpeningDate) setOpeningDate(p.targetOpeningDate); }).catch(() => {});
   }, []);
+  useEffect(() => {
+    if (!selectedDay) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSelectedDay(null); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedDay]);
 
   const persist = (item: Item) => {
     setSaveState("saving");
@@ -160,7 +178,7 @@ export default function MarketingPage() {
     return byPhase;
   }, [items]);
 
-  const toggleExpand = (id: number) => setExpanded(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const dayItemsFor = (iso: string) => items.filter(i => i.dayDate === iso).sort((a, b) => a.sortOrder - b.sortOrder);
 
   if (!loaded) return <div className="p-6 flex items-center justify-center min-h-40"><p className="text-sm text-muted-foreground animate-pulse">Loading marketing plan…</p></div>;
 
@@ -245,17 +263,18 @@ export default function MarketingPage() {
                           const dayItems = weekItems.filter(i => i.dayDate === iso).sort((a, b) => a.sortOrder - b.sortOrder);
                           const rest = dayItems.find(i => i.channel === "rest");
                           const acts = dayItems.filter(i => i.channel !== "rest");
+                          const visibleActs = acts.filter(matchChannel).filter(matchOwner);
                           const ms = MILESTONES[iso];
+                          const hasDetail = acts.length > 0;
                           return (
-                            <div key={iso} className={`border-b xl:border-r xl:last:border-r-0 px-2.5 py-2.5 min-h-[92px] flex flex-col gap-1.5 ${ms === "big" ? "bg-amber-100/50 dark:bg-amber-950/25" : ms === "ms" ? "bg-amber-50/50 dark:bg-amber-950/12" : ""}`}>
-                              <div className="flex items-baseline justify-between">
+                            <div key={iso} className={`border-b xl:border-r xl:last:border-r-0 px-2.5 py-2.5 min-h-[96px] flex flex-col gap-1.5 ${ms === "big" ? "bg-amber-100/50 dark:bg-amber-950/25" : ms === "ms" ? "bg-amber-50/50 dark:bg-amber-950/12" : ""}`}>
+                              <button onClick={() => hasDetail && setSelectedDay(iso)} disabled={!hasDetail} className={`flex items-baseline justify-between text-left ${hasDetail ? "hover:opacity-70" : "cursor-default"}`}>
                                 <span className={`text-[10px] font-bold uppercase tracking-wide ${ms ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"}`}>{dayName(iso)}</span>
                                 <span className="text-[10px] text-muted-foreground tabular-nums">{dayNum(iso)} {monShort(iso)}</span>
-                              </div>
-                              {acts.filter(matchChannel).filter(matchOwner).map(it => {
+                              </button>
+                              {visibleActs.map(it => {
                                 const ch = CHANNELS[it.channel] ?? CHANNELS.found;
                                 const ow = OWNERS[it.owner] ?? OWNERS.both;
-                                const isExp = expanded.has(it.id);
                                 const done = it.status === "done";
                                 return (
                                   <div key={it.id} className={`task o-${it.owner} text-[11.5px] leading-snug`}>
@@ -266,19 +285,13 @@ export default function MarketingPage() {
                                           <span className={`text-[8.5px] font-bold px-1.5 py-px rounded-full ${ow.cls}`}>{ow.label}</span>
                                           <span className={`text-[8.5px] font-bold px-1.5 py-px rounded border ${ch.cls}`}>{ch.label}</span>
                                         </div>
-                                        <button className={`text-left ${done ? "line-through text-muted-foreground" : ""}`} onClick={() => toggleExpand(it.id)}>{it.title}</button>
-                                        {it.detail && !isExp && <p className="text-[10px] text-muted-foreground/80 mt-0.5">Tap for how</p>}
-                                        {isExp && (
-                                          <div className="mt-1.5 space-y-1.5">
-                                            {it.detail && <p className="text-[10.5px] text-foreground/75 bg-muted/50 rounded-md p-2 leading-relaxed">{it.detail}</p>}
-                                            <Textarea placeholder="Notes…" value={it.notes} onChange={e => setNotes(it.id, e.target.value)} className="text-[11px] min-h-[40px] resize-none" />
-                                          </div>
-                                        )}
+                                        <button className={`text-left hover:underline ${done ? "line-through text-muted-foreground" : ""}`} onClick={() => setSelectedDay(iso)}>{it.title}</button>
                                       </div>
                                     </div>
                                   </div>
                                 );
                               })}
+                              {hasDetail && <button onClick={() => setSelectedDay(iso)} className="mt-auto text-[9.5px] font-semibold text-primary/80 hover:text-primary text-left">Open day →</button>}
                               {rest && acts.length === 0 && <p className="text-[10.5px] text-muted-foreground italic mt-auto">{rest.title}</p>}
                             </div>
                           );
@@ -308,6 +321,51 @@ export default function MarketingPage() {
         </button>
         {showCopy && <div className="p-4 pt-0 grid md:grid-cols-2 gap-3">{COPY.map((c, i) => <CopyBlock key={i} c={c} />)}</div>}
       </div>
+
+      {/* Day detail modal */}
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+          <div className="bg-card border rounded-2xl shadow-xl w-full max-w-2xl max-h-[88vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-3.5 border-b shrink-0">
+              <div>
+                <h3 className="text-base font-bold">{fullDayLabel(selectedDay)}</h3>
+                <p className="text-[11px] text-muted-foreground">Everything on this day, in full. Tick tasks off as you go.</p>
+              </div>
+              <button onClick={() => setSelectedDay(null)} className="text-muted-foreground hover:text-foreground rounded-lg p-1"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-3">
+              {dayItemsFor(selectedDay).map(it => {
+                if (it.channel === "rest") return <p key={it.id} className="text-sm text-muted-foreground italic px-1">{it.title}</p>;
+                const ch = CHANNELS[it.channel] ?? CHANNELS.found;
+                const ow = OWNERS[it.owner] ?? OWNERS.both;
+                const blocks = parseDeep(it.deep);
+                return (
+                  <div key={it.id} className="rounded-xl border p-4">
+                    <div className="flex items-start gap-2.5">
+                      <StatusToggle status={it.status} onChange={s => setStatus(it.id, s)} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${ow.cls}`}>{ow.label}</span>
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${ch.cls}`}>{ch.label}</span>
+                          <span className="text-[10px] text-muted-foreground">{ch.where}</span>
+                        </div>
+                        <p className={`text-sm font-semibold ${it.status === "done" ? "line-through text-muted-foreground" : ""}`}>{it.title}</p>
+                        {it.detail && <p className="text-[12px] text-muted-foreground mt-0.5">{it.detail}</p>}
+                      </div>
+                    </div>
+                    {blocks.length > 0 ? (
+                      <div className="mt-3 space-y-2">{blocks.map((b, i) => <BlockRow key={i} blk={b} />)}</div>
+                    ) : (
+                      <p className="mt-3 text-[12px] text-muted-foreground italic">Full detail for this task is being written.</p>
+                    )}
+                    <Textarea placeholder="Your notes…" value={it.notes} onChange={e => setNotes(it.id, e.target.value)} className="mt-3 text-[12px] min-h-[44px] resize-none" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

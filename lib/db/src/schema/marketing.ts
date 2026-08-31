@@ -14,7 +14,8 @@ export const marketingItemsTable = pgTable("marketing_items", {
   owner: text("owner").notNull().default(""),           // abi | david | both
   weekStart: text("week_start").notNull().default(""),  // ISO date of that week's Sunday (grouping)
   dayDate: text("day_date").notNull().default(""),      // ISO date of the specific day
-  detail: text("detail").notNull().default(""),         // child-level explanation (plan copy, distinct from user notes)
+  detail: text("detail").notNull().default(""),         // child-level one-line summary
+  deep: text("deep").notNull().default("[]"),           // JSON array of {h,b} blocks: full strategy/creative/copy/how
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
