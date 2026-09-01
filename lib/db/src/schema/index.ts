@@ -15,6 +15,7 @@ export * from "./property_task_overrides";
 export * from "./lifestyle";
 export * from "./marketing";
 export * from "./competition";
+export * from "./market";
 export * from "./risks";
 export * from "./suppliers";
 export * from "./investments";

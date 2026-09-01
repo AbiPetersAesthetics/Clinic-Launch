@@ -571,6 +571,106 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS day_date TEXT NOT NULL DEFAULT ''`);
         // V26 migration: deep per-task detail (strategy/creative/copy/how) as JSON blocks
         await db.execute(sql`ALTER TABLE marketing_items ADD COLUMN IF NOT EXISTS deep TEXT NOT NULL DEFAULT '[]'`);
+        // V27 migration: market module — richer competitor fields + treatments, competitor prices,
+        // membership programmes (theirs and ours), referrals, enrolments and a VAT-split sales journal
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS trading_name TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS town TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS lead_clinician TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS credential TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS cqc_registered BOOLEAN DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS cqc_number TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS bacn BOOLEAN DEFAULT FALSE`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS publishes_prices TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS booking_platform TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS skincare_brands TEXT DEFAULT '[]'`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS devices TEXT DEFAULT '[]'`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS price_page_url TEXT DEFAULT ''`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS distance_km_winchester REAL`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS distance_km_bedhampton REAL`);
+        await db.execute(sql`ALTER TABLE competitors ADD COLUMN IF NOT EXISTS threat_level TEXT DEFAULT ''`);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS treatments (
+            id SERIAL PRIMARY KEY, key TEXT NOT NULL, display_name TEXT NOT NULL,
+            category TEXT NOT NULL DEFAULT 'skin', is_pom BOOLEAN NOT NULL DEFAULT FALSE,
+            duration_minutes INTEGER NOT NULL DEFAULT 30,
+            price_winchester REAL, price_bedhampton REAL,
+            course_size INTEGER, course_price_winchester REAL, course_price_bedhampton REAL,
+            is_new BOOLEAN NOT NULL DEFAULT FALSE, product_cost_estimate_gbp REAL,
+            description TEXT DEFAULT '', aftercare_url TEXT DEFAULT '',
+            variance_reason_winchester TEXT DEFAULT '', variance_reason_bedhampton TEXT DEFAULT '',
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS competitor_prices (
+            id SERIAL PRIMARY KEY, competitor_id INTEGER NOT NULL, treatment_key TEXT NOT NULL,
+            price_gbp REAL, price_qualifier TEXT NOT NULL DEFAULT 'exact',
+            course_size INTEGER, course_price_gbp REAL,
+            source_url TEXT DEFAULT '', captured_date TEXT DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS competitor_memberships (
+            id SERIAL PRIMARY KEY, competitor_id INTEGER NOT NULL, programme_name TEXT NOT NULL,
+            model TEXT NOT NULL DEFAULT 'discount_only',
+            price_monthly_gbp REAL, founder_price_gbp REAL, annual_price_gbp REAL,
+            min_commitment_months INTEGER, notice_period_days INTEGER,
+            included_treatments TEXT DEFAULT '[]',
+            discount_retail_pct REAL, discount_treatments_pct REAL,
+            rollover_allowed BOOLEAN, pause_allowed BOOLEAN,
+            includes_pom BOOLEAN NOT NULL DEFAULT FALSE,
+            stated_saving_gbp REAL, delivered_by TEXT DEFAULT '',
+            features_json TEXT DEFAULT '{}',
+            source_url TEXT DEFAULT '', captured_date TEXT DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS memberships (
+            id SERIAL PRIMARY KEY, name TEXT NOT NULL, tier_rank INTEGER NOT NULL DEFAULT 0,
+            site TEXT NOT NULL DEFAULT 'both', price_monthly_gbp REAL,
+            founder_price_gbp REAL, founder_places INTEGER,
+            min_commitment_months INTEGER NOT NULL DEFAULT 0, notice_period_days INTEGER NOT NULL DEFAULT 30,
+            inclusions TEXT NOT NULL DEFAULT '[]', is_public BOOLEAN NOT NULL DEFAULT TRUE,
+            live_from_date TEXT DEFAULT '', delivered_by TEXT DEFAULT '',
+            included_minutes_per_month INTEGER NOT NULL DEFAULT 0,
+            features_json TEXT DEFAULT '{}', notes TEXT DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS referrals (
+            id SERIAL PRIMARY KEY, referrer_contact_id TEXT NOT NULL, referee_contact_id TEXT,
+            referral_code TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'sent',
+            credit_referrer_gbp REAL NOT NULL DEFAULT 25, credit_referee_gbp REAL NOT NULL DEFAULT 25,
+            ghl_tag TEXT DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(), attended_at TIMESTAMP, credited_at TIMESTAMP
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS membership_enrolments (
+            id SERIAL PRIMARY KEY, contact_id TEXT NOT NULL, membership_id INTEGER,
+            plan_type TEXT NOT NULL DEFAULT 'tier', site TEXT NOT NULL DEFAULT 'winchester',
+            price_monthly_gbp REAL NOT NULL DEFAULT 0, next_billing_date TEXT DEFAULT '',
+            failed_payment_count INTEGER NOT NULL DEFAULT 0, pause_status BOOLEAN NOT NULL DEFAULT FALSE,
+            min_term_months_remaining INTEGER NOT NULL DEFAULT 0,
+            enrolment_date TEXT DEFAULT '', prescriber TEXT DEFAULT '', schedule_json TEXT DEFAULT '[]',
+            payments_made_gbp REAL NOT NULL DEFAULT 0, treatments_taken INTEGER NOT NULL DEFAULT 0,
+            balance_gbp REAL NOT NULL DEFAULT 0, ghl_subscription_id TEXT DEFAULT '',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
+        await db.execute(sql`
+          CREATE TABLE IF NOT EXISTS sales_transactions (
+            id SERIAL PRIMARY KEY, site TEXT NOT NULL DEFAULT 'winchester', treatment_key TEXT NOT NULL,
+            treatment_date TEXT NOT NULL, gross_gbp REAL NOT NULL, vat_gbp REAL NOT NULL,
+            payment_method TEXT NOT NULL DEFAULT 'card', contact_id TEXT DEFAULT '',
+            source TEXT NOT NULL DEFAULT 'ans',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
+          )
+        `);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS tender_awards (
             id SERIAL PRIMARY KEY,

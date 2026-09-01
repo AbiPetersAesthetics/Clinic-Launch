@@ -31,6 +31,7 @@ import {
   ShoppingBag,
   Brain,
   Users,
+  PoundSterling,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -164,6 +165,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
     { href: "/competition", label: "Competition Intel", icon: Target },
+    { href: "/market", label: "Market & Pricing", icon: PoundSterling },
     { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
