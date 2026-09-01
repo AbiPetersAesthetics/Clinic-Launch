@@ -147,16 +147,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const complianceScore = dashboard?.complianceReadinessPercent ?? null;
 
-  // Execution — what running the project to opening day actually needs
+  // Execution — what running the project to opening day and beyond actually needs
   const executionItems = [
     { href: "/", label: "Today", icon: LayoutDashboard },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
     { href: "/financials", label: "Money", icon: Calculator },
+    { href: "/market", label: "Market & Pricing", icon: PoundSterling },
     { href: "/people", label: "People & Capacity", icon: Users },
     { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
     { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/risk-register", label: "Risks", icon: AlertTriangle },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
+    { href: "/competition", label: "Competition Intel", icon: Target },
   ];
 
   // Planning Archive — the go/no-go era tools, kept for reference
@@ -164,8 +166,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/dashboard", label: "Go/No-Go Dashboard", icon: Gauge },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
-    { href: "/competition", label: "Competition Intel", icon: Target },
-    { href: "/market", label: "Market & Pricing", icon: PoundSterling },
     { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
