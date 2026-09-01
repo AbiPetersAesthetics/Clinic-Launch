@@ -126,7 +126,7 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
     await db.delete(membershipsTable);
     for (const m of OUR_MEMBERSHIPS) {
       const check = validateMembershipInclusions(m.inclusions as InclusionSpec[], m.isPublic, tmap);
-      if (!check.ok) return res.status(400).json({ error: `Seed blocked for ${m.name}: ${check.error}` });
+      if (!check.ok) return res.status(422).json({ error: `Seed blocked for ${m.name}: ${check.error}` });
       await db.insert(membershipsTable).values({
         name: m.name, tierRank: m.tierRank, site: m.site, priceMonthlyGbp: m.priceMonthlyGbp,
         founderPriceGbp: m.founderPriceGbp ?? null, founderPlaces: m.founderPlaces ?? null,
@@ -207,7 +207,9 @@ router.get("/projects/:id/market/pricing", async (req, res) => {
         courseSize: t.courseSize,
         coursePrice: catchment === "winchester" ? t.coursePriceWinchester : t.coursePriceBedhampton,
         bands: perBand, varianceFlag: flag, varianceReason: reason || "",
-        varianceNeedsReason: flag != null && !(reason || "").trim(),
+        // Only demand a reason when the median is trustworthy (n >= 4). A 15% band
+        // against a single competitor (n = 1) is statistical noise, not a variance.
+        varianceNeedsReason: flag != null && !(reason || "").trim() && !widest.lowConfidence,
         stale, notOnOurMenu: ourPrice == null,
         competitors: compRows,
       };

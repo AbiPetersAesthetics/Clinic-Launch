@@ -32,6 +32,7 @@ import {
   Brain,
   Users,
   PoundSterling,
+  Newspaper,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -150,6 +151,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Execution — what running the project to opening day and beyond actually needs
   const executionItems = [
     { href: "/", label: "Today", icon: LayoutDashboard },
+    { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
     { href: "/financials", label: "Money", icon: Calculator },
     { href: "/market", label: "Market & Pricing", icon: PoundSterling },
@@ -157,6 +159,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
     { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
     { href: "/risk-register", label: "Risks", icon: AlertTriangle },
+    { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
     { href: "/competition", label: "Competition Intel", icon: Target },
   ];
@@ -168,7 +171,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
     { href: "/risk-intelligence", label: "Risk Intelligence", icon: Brain },
     { href: "/operational-model", label: "Operational Model", icon: Gauge },
-    { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/decisions", label: "Decisions", icon: BookOpen },
     { href: "/lifestyle", label: "Life Design", icon: Leaf },
     { href: "/franchise", label: "Franchise Model", icon: Network },

@@ -686,6 +686,25 @@ export async function runStartupSeed(): Promise<void> {
             created_at TIMESTAMP DEFAULT NOW()
           )
         `);
+        // V28 migration: risk-register corrections from the full-product audit.
+        // R005 is mistitled — 9A Jewry Street is NOT a listed building; the real
+        // requirement is Advertisement Consent in the conservation area. Guarded on
+        // the old title so it fires once and is idempotent.
+        await db.execute(sql`
+          UPDATE risks SET
+            title = 'Advertisement Consent required for signage (conservation area)',
+            description = 'The unit sits in the Winchester City Centre Conservation Area and is adjacent to Grade II listed buildings, but is not itself listed. External signage is likely to require Advertisement Consent, which constrains the permitted design and adds lead time. Listed Building Consent does not apply to this unit.'
+          WHERE project_id = ${projectId} AND risk_id = 'R005' AND title = 'Listed building consent required for signage'
+        `);
+        // R023: the direct nurse-led rival (Winchester Medical Aesthetics, 81 High
+        // Street, 0.2km) is tracked in Competition but was missing from the register.
+        // Opens ~1 month before us pre-selling a founder membership. Score is a
+        // sensible starting point for the owner to confirm.
+        await db.execute(sql`
+          INSERT INTO risks (project_id, risk_id, title, description, category, likelihood, impact, pipeline_stage, linked_model_section, linked_risk_ids, is_watch_list, source, status)
+          SELECT ${projectId}, 'R023', 'Direct nurse-led rival opens on the High Street before us', 'Winchester Medical Aesthetics (81 High Street, 0.2km, nurse prescriber) is pre-selling a founder membership and opening about a month before us with the same positioning. It collides directly with our own founder mechanic and could capture the recurring-revenue client first. Counter with the Skin Plan ladder live from the first scan and the quarterly device rescan as the differentiator their facials-only model cannot match.', 'Market & Competition', 4, 4, 'Pre-Opening', 'Competition Intel', '["R008","R021","R022"]'::jsonb, TRUE, 'Audit', 'Not Started'
+          WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R023')
+        `);
         return;
       }
 
@@ -693,9 +712,9 @@ export async function runStartupSeed(): Promise<void> {
     } else {
       const [project] = await db.insert(schema.projectsTable).values({
         name: "Winchester Clinic Opening Plan",
-        description: "Full launch plan for Abi Peters Aesthetics — 9A Jewry Street, Winchester. 2 treatment rooms, Dad doing the fit-out labour.",
-        targetLocation: "9A Jewry Street, Winchester, Hampshire SO23 8QP",
-        targetOpeningDate: "2025-09-01",
+        description: "Full launch plan for Abi Peters Aesthetics at 9A Jewry Street, Winchester. Dad doing the fit-out labour.",
+        targetLocation: "9A Jewry Street, Winchester, Hampshire SO23 8RZ",
+        targetOpeningDate: "2026-11-02",
         status: "planning",
         launchReadinessPercent: 0,
       }).returning();

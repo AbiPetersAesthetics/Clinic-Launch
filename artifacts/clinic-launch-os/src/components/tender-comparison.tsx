@@ -99,7 +99,7 @@ export function TenderComparison() {
             <span><b>Quotes due:</b> Fri 24 Jul 2026, 12:00 noon</span>
             <span><b>Possession:</b> ~1 Sep 2026</span>
             <span><b>Target PC:</b> Fri 16 Oct 2026</span>
-            <span><b>Opening:</b> by 1 Nov 2026</span>
+            <span><b>Opening:</b> by 2 Nov 2026</span>
           </div>
           <div className="updated">Last updated: Thu 30 Jul 2026 · five contractors in the field</div>
         </header>

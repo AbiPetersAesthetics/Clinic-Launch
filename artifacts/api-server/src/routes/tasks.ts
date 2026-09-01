@@ -203,6 +203,12 @@ router.patch("/tasks/:id", handleTaskUpdate);
 
 router.delete("/tasks/:id", async (req, res) => {
   const id = parseInt(req.params.id);
+  // Clean up dependents first — these tables carry no FK cascade, so deleting the
+  // task alone would orphan per-property overrides and line-items pointing at it.
+  await db.delete(propertyTaskOverridesTable).where(eq(propertyTaskOverridesTable.taskId, id));
+  await db.delete(taskLineItemsTable).where(eq(taskLineItemsTable.taskId, id));
+  // Best-effort removal of any uploaded invoices for this task.
+  try { fs.rmSync(path.join(UPLOADS_ROOT, "invoices", String(id)), { recursive: true, force: true }); } catch { /* ignore */ }
   await db.delete(tasksTable).where(eq(tasksTable.id, id));
   res.status(204).send();
 });

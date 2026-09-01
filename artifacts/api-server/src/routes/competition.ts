@@ -878,7 +878,7 @@ router.post("/projects/:id/competitors/tab-research", async (req, res) => {
       title: "Identity & Contact Details",
       instructions: `Research this aesthetics clinic's identity and contact details. Use your training knowledge of UK aesthetics clinics, Google Business profiles, and social media.
 
-Find or confirm: official clinic/practitioner name, full postal address, UK phone number, Instagram handle, Google rating (as a string like "4.8"), total Google review count, Instagram follower count, distance in miles from Winchester city centre (9A Jewry Street, SO23 8RY), and any booking platform URL (Fresha, Timely, Ovatu, etc).
+Find or confirm: official clinic/practitioner name, full postal address, UK phone number, Instagram handle, Google rating (as a string like "4.8"), total Google review count, Instagram follower count, distance in miles from Winchester city centre (9A Jewry Street, SO23 8RZ), and any booking platform URL (Fresha, Timely, Ovatu, etc).
 
 Be specific — give actual numbers where you know them. If estimating, note it in the summary.`,
       schema: `{

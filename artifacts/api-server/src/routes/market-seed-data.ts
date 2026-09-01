@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Market module seed data, transcribed from the verified competitor capture of
-// 31 August to 1 September 2026 and the owner-final price list effective
-// 1 November 2026. All prices VAT inclusive (VRN 523 3501 30).
+// 31 August to 1 September 2026 and the owner-final price list, effective from
+// the 2 November 2026 opening. All prices VAT inclusive (VRN 523 3501 30).
 // Compliance: botulinum toxin lines are flagged is_pom and worded as
 // "anti-wrinkle treatment"; exosomes are applied topically post-microneedling.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,14 +35,14 @@ export const TREATMENTS: TreatmentSeed[] = [
   { key: "tearTrough", displayName: "Tear trough", category: "filler", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 375, isNew: true },
   { key: "temple", displayName: "Temple", category: "filler", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 375, isNew: true },
   { key: "dissolving", displayName: "Filler dissolving", category: "filler", isPom: false, durationMinutes: 30, priceWinchester: 250, priceBedhampton: 200, description: "Free for our own filler within 12 months." },
-  { key: "sculptraVial", displayName: "Sculptra, per vial", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 365, isNew: true, courseSize: 3, coursePriceWinchester: 1150, coursePriceBedhampton: 1300, description: "Two vials 800 Winchester, 900 Bedhampton. Three vials 1150 Winchester, 1300 Bedhampton." },
+  { key: "sculptraVial", displayName: "Sculptra, per vial", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 365, isNew: true, courseSize: 3, coursePriceWinchester: 1150, coursePriceBedhampton: 975, description: "Two vials 800 Winchester, 680 Bedhampton. Three vials 1150 Winchester, 975 Bedhampton." },
   { key: "profhiloFace", displayName: "Profhilo, face", category: "regenerative", isPom: false, durationMinutes: 30, priceWinchester: 300, priceBedhampton: 280, courseSize: 2, coursePriceWinchester: 550, coursePriceBedhampton: 500, varianceReasonWinchester: "Fixed national price. Held at 300 Winchester because the market has a fixed national price for Profhilo." },
   { key: "profhiloFaceNeck", displayName: "Profhilo, face and neck", category: "regenerative", isPom: false, durationMinutes: 60, priceWinchester: 625, priceBedhampton: 515, courseSize: 2, coursePriceWinchester: 1000, coursePriceBedhampton: 1000 },
   { key: "skinvive", displayName: "Skinvive", category: "regenerative", isPom: false, durationMinutes: 40, priceWinchester: 275, priceBedhampton: 250 },
   { key: "polyFace", displayName: "Polynucleotides, face", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 280, priceBedhampton: 225, courseSize: 3, coursePriceWinchester: 750, coursePriceBedhampton: 600 },
-  { key: "polyEye", displayName: "Polynucleotides, under eye, neck or decolletage", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 280, priceBedhampton: 175, courseSize: 3, coursePriceWinchester: 600, coursePriceBedhampton: 525 },
+  { key: "polyEye", displayName: "Polynucleotides, under eye, neck or decolletage", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 280, priceBedhampton: 175, courseSize: 3, coursePriceWinchester: 600, coursePriceBedhampton: 375 },
   { key: "exoFace", displayName: "Exosomes with microneedling, face", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 275, priceBedhampton: 235, isNew: true, courseSize: 3, coursePriceWinchester: 750, coursePriceBedhampton: 640, description: "Exosomes are applied topically after microneedling." },
-  { key: "exoHair", displayName: "Exosomes with microneedling, hair", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 300, priceBedhampton: 255, isNew: true, courseSize: 3, coursePriceWinchester: 795, coursePriceBedhampton: 875, description: "Exosomes are applied topically after microneedling of the scalp." },
+  { key: "exoHair", displayName: "Exosomes with microneedling, hair", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 300, priceBedhampton: 255, isNew: true, courseSize: 3, coursePriceWinchester: 795, coursePriceBedhampton: 675, description: "Exosomes are applied topically after microneedling of the scalp." },
   { key: "mnFace", displayName: "Microneedling, face", category: "skin", isPom: false, durationMinutes: 30, priceWinchester: 215, priceBedhampton: 140, courseSize: 3, coursePriceWinchester: 580, coursePriceBedhampton: 380 },
   { key: "mnFaceNeck", displayName: "Microneedling, face and neck", category: "skin", isPom: false, durationMinutes: 40, priceWinchester: 255, priceBedhampton: 205, courseSize: 3, coursePriceWinchester: 600, coursePriceBedhampton: 525 },
   { key: "mnFaceNeckDec", displayName: "Microneedling, face, neck and decolletage", category: "skin", isPom: false, durationMinutes: 45, priceWinchester: 300, priceBedhampton: 235, courseSize: 3, coursePriceWinchester: 700, coursePriceBedhampton: 635 },
@@ -206,7 +206,8 @@ export type OurMembershipSeed = {
 export const OUR_MEMBERSHIPS: OurMembershipSeed[] = [
   {
     name: "Skin Circle", tierRank: 1, site: "both", priceMonthlyGbp: 19,
-    minCommitmentMonths: 0, noticePeriodDays: 0, isPublic: true, liveFromDate: "2026-11-01", deliveredBy: "therapist",
+    founderPriceGbp: 15,
+    minCommitmentMonths: 0, noticePeriodDays: 0, isPublic: true, liveFromDate: "2026-11-02", deliveredBy: "therapist",
     includedMinutesPerMonth: 20,
     inclusions: [
       { treatmentKey: "led", qtyPerMonth: 1, label: "One 20 minute LED session monthly" },

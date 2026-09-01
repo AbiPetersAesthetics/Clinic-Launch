@@ -590,6 +590,9 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
   // Start tracking from the user's current rolling 12-month turnover position
   const VAT_THRESHOLD = 90000;
   const VAT_RATE = VAT_RATE_EFFECTIVE;
+  // Prices are VAT-inclusive, so the VAT element of gross turnover is
+  // rate/(1+rate) (= 1/6 at 20%), not the full rate.
+  const VAT_OUTPUT_RATIO = VAT_RATE > 0 ? VAT_RATE / (1 + VAT_RATE) : 0;
   // How much of the £90k has already been used up by prior revenue
   const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
   let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue
@@ -830,8 +833,8 @@ router.get("/projects/:projectId/cashflow", async (req, res) => {
     const isVatRegistered = vatRegistered;
     // VAT deducted from Bedhampton from the registration month onwards (July),
     // and from Winchester from its opening month (already post-registration).
-    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_RATE : 0;
-    const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_RATE : 0;
+    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_OUTPUT_RATIO : 0;
+    const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_OUTPUT_RATIO : 0;
     const vatLiability = bedhVat + wincVat;
 
     const bedhNet = bedhRevenue - bedhCosts - bedhVat - bedhFreeRentRates;

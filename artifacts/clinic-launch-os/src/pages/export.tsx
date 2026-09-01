@@ -450,9 +450,9 @@ export default function ExportPage() {
                 <div className="text-[10px] uppercase tracking-widest text-gray-400 mb-3 font-semibold">Project Details</div>
                 <div className="space-y-1.5 text-sm">
                   {[
-                    ["Clinic Name", "Abi Peters Aesthetics"],
+                    ["Clinic Name", "Abi Peters Skin Clinic"],
                     ["Target Location", "9A Jewry Street, Winchester SO23 8RZ"],
-                    ["Target Opening", "1 November 2026"],
+                    ["Target Opening", "2 November 2026"],
                     ["Revenue Target", "£25,000/month (steady state)"],
                     ["Legal Entity", "Abi Peters Aesthetics Ltd"],
                   ].map(([l, v]) => (

@@ -29,7 +29,7 @@ const AI_SCENARIO_PROFILES: Record<string, {
   stress_test:       { getTargetOcc: (m) => Math.max(Math.round(m.conservativeOccupancyPercent * 0.65), 12), startOcc: 5, rampMonths: 10, note: "Worst case: cold start at 5% occupancy, very slow ramp, lower spend" },
 };
 
-const SYSTEM_PROMPT = `You are a specialist senior consultant helping Abi Peters set up a private aesthetics clinic at 9A Jewry Street, Winchester, Hampshire, UK. Target opening: 1 November 2026.
+const SYSTEM_PROMPT = `You are a specialist senior consultant helping Abi Peters set up a private aesthetics clinic at 9A Jewry Street, Winchester, Hampshire, UK. Target opening: 2 November 2026.
 
 Context:
 - Solo practitioner clinic (Advanced Nurse Practitioner) offering aesthetic treatments (injectables, skin treatments, medical-grade skincare retail)
@@ -606,7 +606,7 @@ Client acquisition: Winchester is an Instagram-active, referral-driven market. L
   Revenue trend: ${revTrend}`;
   }
 
-  const daysToOpening = Math.ceil((new Date("2026-11-01").getTime() - Date.now()) / 86400000);
+  const daysToOpening = Math.ceil((new Date("2026-11-02").getTime() - Date.now()) / 86400000);
 
   // ── Lifestyle / life-design context ───────────────────────────────────────
   let lifestyleContext = "Life design plan: not completed yet.";
@@ -695,7 +695,7 @@ LIFE READINESS SCORE: ${lifeReadinessPct}% (${doneChecks}/${totalChecks} conside
   // ── Master prompt ─────────────────────────────────────────────────────────
   const masterPrompt = `You are a senior commercial property and business finance advisor specialising in UK healthcare and aesthetics SMEs. Your client is Abi Peters, a qualified aesthetics practitioner who runs a successful clinic in Bedhampton, Hampshire.
 
-THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of 1 November 2026?
+THE DECISION IN FRONT OF HER: Should she proceed into active property negotiation and agree heads of terms for a clinic space at ${propertyLabel}, targeting an opening of 2 November 2026?
 
 IMPORTANT FRAMING: This is NOT a launch readiness check. Do not assess CQC compliance progress, task lists, or operational preparation — those will be planned once the property decision is made. Focus entirely on: (1) whether the financial model stacks up against this property, (2) whether the property terms are commercially sound, (3) whether her personal financial position supports the commitment, and (4) whether the market opportunity at this location justifies the risk.
 

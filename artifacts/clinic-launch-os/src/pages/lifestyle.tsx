@@ -383,7 +383,7 @@ function NursingTimeline({ status, noticeWeeks, exitDate }: {
   const noticeDeadline = exitDateObj
     ? new Date(exitDateObj.getTime() - noticeWeeks * 7 * 24 * 60 * 60 * 1000)
     : null;
-  const clinicOpen = new Date("2026-11-01");
+  const clinicOpen = new Date("2026-11-02");
 
   const fmtDate = (d: Date | null) => d
     ? d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
@@ -1767,7 +1767,7 @@ function LaunchCountdown({ targetExitDate, noticeWeeks }: {
   targetExitDate: string; noticeWeeks: number;
 }) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  const clinicOpen = new Date("2026-11-01");
+  const clinicOpen = new Date("2026-11-02");
   const exitDateObj = parsePlanDate(targetExitDate);
   const noticeDeadline = exitDateObj
     ? new Date(exitDateObj.getTime() - noticeWeeks * 7 * 24 * 60 * 60 * 1000)
@@ -1777,7 +1777,7 @@ function LaunchCountdown({ targetExitDate, noticeWeeks }: {
   const milestones = [
     { label: "Give Notice", sub: "Deadline to hand in your notice", date: noticeDeadline, days: daysTo(noticeDeadline), bgClass: "bg-primary/5 border-primary/20", numClass: "text-primary", icon: BriefcaseMedical },
     { label: "Last Nursing Day", sub: "Your target exit from NHS", date: exitDateObj, days: daysTo(exitDateObj), bgClass: "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800", numClass: "text-amber-600 dark:text-amber-400", icon: GraduationCap },
-    { label: "Clinic Opens", sub: "Target: 1 November 2026", date: clinicOpen, days: daysTo(clinicOpen), bgClass: "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800", numClass: "text-violet-600 dark:text-violet-400", icon: Rocket },
+    { label: "Clinic Opens", sub: "Target: 2 November 2026", date: clinicOpen, days: daysTo(clinicOpen), bgClass: "bg-violet-50 dark:bg-violet-950/20 border-violet-200 dark:border-violet-800", numClass: "text-violet-600 dark:text-violet-400", icon: Rocket },
   ];
   return (
     <Card className="shadow-sm">

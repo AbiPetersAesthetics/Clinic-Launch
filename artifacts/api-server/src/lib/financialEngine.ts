@@ -5,19 +5,26 @@
 //
 // Assumptions documented here:
 // - VAT threshold: £90,000 rolling 12-month across ALL clinic entities
-// - VAT rate: 20% on gross revenue once registered (conservative: prices not raised)
-// - Break-even: (fixedCosts + fixedVarItems) / (1 − variableRatio − vatRate)
+// - VAT rate: 20%, but prices are VAT-inclusive, so the output VAT owed on a
+//   gross-inclusive £ of turnover is gross / 6 (i.e. gross × rate/(1+rate)),
+//   NOT gross × rate. Use vatShare() everywhere VAT is taken as a share of gross.
+// - Break-even: (fixedCosts + fixedVarItems) / (1 - variableRatio - vatShare)
 //   where fixedVarItems = marketing + staffing + consumables
-// - Self-funding: Winchester netProfit ≥ selfFundingBufferPercent% of gross revenue
+// - Self-funding: Winchester netProfit >= selfFundingBufferPercent% of gross revenue
 // - Bedhampton closes when Winchester hits self-funding target
 // - Solo practitioner: revenue capacity = 1 practitioner across N rooms, not N × capacity
 
 export const VAT_THRESHOLD = 90000;
 export const VAT_RATE = 0.20;
 
+// VAT element of VAT-inclusive turnover: rate / (1 + rate). At 20% this is 1/6.
+export function vatShare(rate: number): number {
+  return rate > 0 ? rate / (1 + rate) : 0;
+}
+
 // ─── UK PAYE / employer cost calculator (2025/26 rates) ──────────────────────
-// Spec: employee NI 12% above £12,570 to £50,270 / 2% above; employer NI 13.8%
-// above £9,100; employer pension 3% on qualifying earnings £6,240–£50,270.
+// Spec: employee NI 12% above £12,570 to £50,270 / 2% above; employer NI 15%
+// above £5,000 (2025/26); employer pension 3% on qualifying earnings £6,240-£50,270.
 export function calcPayeBreakdown(annualGross: number) {
   const g = Math.max(0, annualGross);
   const PRIMARY_THRESHOLD = 12570;
@@ -125,8 +132,9 @@ export function calcWincAtOccupancy(
   const variableCosts =
     grossRevenue * ((model.stockPercent || 0) / 100);
 
-  // VAT is a business-level liability on gross revenue
-  const vatLiability = grossRevenue * vatRate;
+  // VAT is a business-level liability. Prices are VAT-inclusive, so the VAT
+  // element of gross turnover is gross × rate/(1+rate) (= gross / 6 at 20%).
+  const vatLiability = grossRevenue * vatShare(vatRate);
   const totalCosts = fixedCosts + variableCosts + vatLiability;
   const netProfit = grossRevenue - totalCosts;
   const grossMarginPercent = grossRevenue > 0 ? ((grossRevenue - variableCosts) / grossRevenue) * 100 : 0;
@@ -146,11 +154,13 @@ export function calcWinchester(
   const { acv, slotsPerMonth, grossRevenue, fixedCosts, variableCosts, vatLiability, totalCosts, netProfit, grossMarginPercent } = base;
 
   const variableRatio = (model.stockPercent || 0) / 100;
+  // VAT-inclusive prices: VAT takes rate/(1+rate) of each gross £, not rate.
+  const vatRatio = vatShare(vatRate);
 
   // Break-even: revenue at which netProfit = 0
-  // Derivation: revenue × (1 − variableRatio − vatRate) = fixedCosts
-  // Therefore: breakEvenRevenue = fixedCosts / (1 − variableRatio − vatRate)
-  const effectiveMargin = 1 - variableRatio - vatRate;
+  // Derivation: revenue × (1 − variableRatio − vatRatio) = fixedCosts
+  // Therefore: breakEvenRevenue = fixedCosts / (1 − variableRatio − vatRatio)
+  const effectiveMargin = 1 - variableRatio - vatRatio;
   const breakEvenRevenue = effectiveMargin > 0.001
     ? fixedCosts / effectiveMargin
     : fixedCosts * 3; // fallback if margin near-zero
@@ -161,7 +171,7 @@ export function calcWinchester(
   // Self-funding: netProfit ≥ bufferPct × grossRevenue
   // Derivation: revenue × (1 − variableRatio − vatRate − bufferPct) = fixedCosts
   const bufferPct = (model.selfFundingBufferPercent ?? 20) / 100;
-  const sfDenominator = 1 - variableRatio - vatRate - bufferPct;
+  const sfDenominator = 1 - variableRatio - vatRatio - bufferPct;
   const sfRevenueTarget = sfDenominator > 0.001
     ? fixedCosts / sfDenominator
     : Infinity;
