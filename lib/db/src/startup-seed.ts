@@ -705,6 +705,23 @@ export async function runStartupSeed(): Promise<void> {
           SELECT ${projectId}, 'R023', 'Direct nurse-led rival opens on the High Street before us', 'Winchester Medical Aesthetics (81 High Street, 0.2km, nurse prescriber) is pre-selling a founder membership and opening about a month before us with the same positioning. It collides directly with our own founder mechanic and could capture the recurring-revenue client first. Counter with the Skin Plan ladder live from the first scan and the quarterly device rescan as the differentiator their facials-only model cannot match.', 'Market & Competition', 4, 4, 'Pre-Opening', 'Competition Intel', '["R008","R021","R022"]'::jsonb, TRUE, 'Audit', 'Not Started'
           WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R023')
         `);
+        // V29 migration: seed three known risks the audit found missing. All are
+        // real, documented exposures; scores are a starting point for the owner.
+        await db.execute(sql`
+          INSERT INTO risks (project_id, risk_id, title, description, category, likelihood, impact, pipeline_stage, linked_model_section, linked_risk_ids, is_watch_list, source, status)
+          SELECT ${projectId}, 'R024', 'Advertising a prescription-only medicine to the public', 'Botulinum toxin is a POM; naming it, or an anti-wrinkle offer that resolves to it, in any public ad, membership or funnel breaches CAP Code 12.12 and MHRA guidance. The risk is our own marketing copy, not a competitor. Mitigation lives in the market module write-gate and the copy-compliance checks, but every human-written post, ad and landing page needs the same discipline.', 'Legal & Lease', 3, 4, 'Pre-Opening', 'Marketing', '[]'::jsonb, TRUE, 'Audit', 'Not Started'
+          WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R024')
+        `);
+        await db.execute(sql`
+          INSERT INTO risks (project_id, risk_id, title, description, category, likelihood, impact, pipeline_stage, linked_model_section, linked_risk_ids, is_watch_list, source, status)
+          SELECT ${projectId}, 'R025', 'Single-nurse, single-room revenue ceiling caps growth', 'The model runs on one practitioner in one room. R014 covers absence, but not the structural ceiling: once the diary is full, courses and members crowd out new-client slots and revenue cannot grow without an associate or a second room. Protect a fixed weekly new-client quota and treat sustained high utilisation as the trigger to add capacity or move to mature prices.', 'Financial', 4, 3, 'Month 1-3', 'Financials - Revenue Ramp', '["R014"]'::jsonb, TRUE, 'Audit', 'Not Started'
+          WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R025')
+        `);
+        await db.execute(sql`
+          INSERT INTO risks (project_id, risk_id, title, description, category, likelihood, impact, pipeline_stage, linked_model_section, linked_risk_ids, is_watch_list, source, status)
+          SELECT ${projectId}, 'R026', 'Meta pixel dead since December 2025 blinds the paid-media plan', 'The Meta pixel has fired no events since December 2025. The launch cold-start mitigation (R008) leans on Meta ads, but without a working pixel there is no conversion tracking, no optimisation and no retargeting audience. Confirm the pixel state, then reinstall and verify before any spend goes live.', 'Market & Competition', 4, 3, 'Pre-Opening', 'Marketing', '["R008"]'::jsonb, TRUE, 'Audit', 'Not Started'
+          WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R026')
+        `);
         return;
       }
 

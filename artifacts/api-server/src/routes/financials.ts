@@ -416,7 +416,8 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
     monthlyVariableCosts: winc.variableCosts,
     monthlyTotalCosts: winc.totalCosts,
     monthlyNetProfit: combined.preSelfFundingMonthlyNet,
-    annualNetProfit: combined.annualNetProfit,
+    annualNetProfit: combined.annualNetProfit, // steady-state run-rate (target occupancy × 12), NOT year 1
+    firstYearNetProfit: cashflowMonths.length ? cashflowMonths[cashflowMonths.length - 1].cumulative : 0, // ramped first 12 months
     ebitda: combined.ebitda,
     cashRunwayMonths: owner.cashRunwayMonths,
     breakEvenRevenueGbp: winc.breakEvenRevenue,

@@ -101,7 +101,7 @@ type ExtendedCalcResult = {
   winc: WincMetrics; bedh: BedhMetrics; combined: CombinedMetrics; owner: OwnerMetrics;
   monthlyRevenue: number; annualRevenue: number; monthlyFixedCosts: number;
   monthlyVariableCosts: number; monthlyTotalCosts: number; monthlyNetProfit: number;
-  annualNetProfit: number; ebitda: number; cashRunwayMonths: number;
+  annualNetProfit: number; firstYearNetProfit: number; ebitda: number; cashRunwayMonths: number;
   breakEvenRevenueGbp: number; breakEvenOccupancyPercent: number;
   minimumViableRevenueGbp: number; safeOperatingThresholdGbp: number;
   occupancyUsedPercent: number; monthsUntilProfitable: number | null;
@@ -3788,8 +3788,12 @@ export default function FinancialsPage() {
                         </span>
                       </div>
                       <div className="flex justify-between items-center px-3 py-1.5 border-t border-border/50 bg-muted/10">
-                        <span className="text-muted-foreground text-xs">Annual net · Gross margin {cr.winc.grossMarginPercent}%</span>
+                        <span className="text-muted-foreground text-xs">Run-rate annual net (at target occupancy) · Gross margin {cr.winc.grossMarginPercent}%</span>
                         <span className="font-semibold text-xs">{formatGBP(cr.combined.annualNetProfit)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-1.5 bg-muted/10">
+                        <span className="text-muted-foreground text-xs">Year 1 net (ramped from opening)</span>
+                        <span className="font-semibold text-xs">{formatGBP(cr.firstYearNetProfit)}</span>
                       </div>
                     </div>
                     <div className="h-px bg-border" />
