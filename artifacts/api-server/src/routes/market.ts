@@ -50,12 +50,17 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
       });
     }
 
-    // 2. Competitors: upsert by name fragment
+    // 2. Competitors: upsert. Exact name first, then fragment, and never match
+    // a row twice (prevents "al aesthetics" claiming "Facial Aesthetics" rows).
     const existing = await db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId));
     const idByMatch = new Map<string, number>();
+    const claimed = new Set<number>();
     for (const seed of COMPETITOR_SEEDS) {
-      const found = existing.find(c => (c.name ?? "").toLowerCase().includes(seed.match))
-        ?? existing.find(c => seed.name.toLowerCase().includes((c.name ?? "").toLowerCase()) && (c.name ?? "").length > 4);
+      const unclaimed = existing.filter(c => !claimed.has(c.id));
+      const found = unclaimed.find(c => (c.name ?? "").toLowerCase() === seed.name.toLowerCase())
+        ?? unclaimed.find(c => (c.name ?? "").toLowerCase().includes(seed.match))
+        ?? unclaimed.find(c => seed.name.toLowerCase().includes((c.name ?? "").toLowerCase()) && (c.name ?? "").length > 6);
+      if (found) claimed.add(found.id);
       const patch: Record<string, unknown> = {
         tradingName: seed.tradingName ?? "", town: seed.town ?? "", leadClinician: seed.leadClinician ?? "",
         credential: seed.credential ?? "", cqcRegistered: seed.cqcRegistered ?? false, cqcNumber: seed.cqcNumber ?? "",
@@ -76,6 +81,8 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
       } else {
         const [created] = await db.insert(competitorsTable).values({ projectId, name: seed.name, lastChecked: CAPTURED_W, ...patch } as any).returning();
         idByMatch.set(seed.match, created.id);
+        claimed.add(created.id);
+        existing.push(created);
       }
     }
 

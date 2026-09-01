@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, boolean, timestamp, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, boolean, timestamp, index } from "drizzle-orm/pg-core";
 
 export const competitorsTable = pgTable("competitors", {
   id: serial("id").primaryKey(),
@@ -62,6 +62,23 @@ export const competitorsTable = pgTable("competitors", {
 
   // SEO / Google visibility
   googleKeywordsJson: text("google_keywords_json").default("[]"),
+
+  // Market module (V27): richer profile
+  tradingName: text("trading_name").default(""),
+  town: text("town").default(""),
+  leadClinician: text("lead_clinician").default(""),
+  credential: text("credential").default(""), // nurse | nurse_prescriber | anp_prescriber | doctor_gp | doctor_specialist | dentist | pharmacist | beauty_therapist
+  cqcRegistered: boolean("cqc_registered").default(false),
+  cqcNumber: text("cqc_number").default(""),
+  bacn: boolean("bacn").default(false),
+  publishesPrices: text("publishes_prices").default(""), // full | partial | none
+  bookingPlatform: text("booking_platform").default(""),
+  skincareBrands: text("skincare_brands").default("[]"),
+  devices: text("devices").default("[]"),
+  pricePageUrl: text("price_page_url").default(""),
+  distanceKmWinchester: real("distance_km_winchester"),
+  distanceKmBedhampton: real("distance_km_bedhampton"),
+  threatLevel: text("threat_level").default(""),
 
   // Data quality
   manuallyVerified: boolean("manually_verified").default(false),
