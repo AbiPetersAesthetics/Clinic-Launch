@@ -77,22 +77,22 @@ type FormData = Partial<Omit<Competitor, "id" | "projectId" | "createdAt" | "upd
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const TREATMENT_KEYS = [
-  { key: "antiWrinkle1", label: "Anti-wrinkle (1 area)", cat: "Injectables", apaPrice: 200 },
-  { key: "antiWrinkle2", label: "Anti-wrinkle (2 areas)", cat: "Injectables", apaPrice: 280 },
-  { key: "antiWrinkle3", label: "Anti-wrinkle (3 areas)", cat: "Injectables", apaPrice: 350 },
-  { key: "lipFiller05", label: "Lip filler 0.5ml", cat: "Injectables", apaPrice: 280 },
-  { key: "lipFiller1", label: "Lip filler 1ml", cat: "Injectables", apaPrice: 350 },
-  { key: "cheekFiller", label: "Cheek filler 1ml", cat: "Injectables", apaPrice: 350 },
-  { key: "jawChin", label: "Jaw/chin filler", cat: "Injectables", apaPrice: 380 },
-  { key: "tearTrough", label: "Tear trough", cat: "Injectables", apaPrice: 400 },
-  { key: "skinBooster", label: "Skin booster", cat: "Skin", apaPrice: 300 },
-  { key: "profhilo", label: "Profhilo (2 sessions)", cat: "Skin", apaPrice: 650 },
-  { key: "polynucleotides", label: "Polynucleotides", cat: "Skin", apaPrice: 350 },
-  { key: "microneedling", label: "Microneedling", cat: "Skin", apaPrice: 200 },
-  { key: "chemicalPeel", label: "Chemical peel", cat: "Skin", apaPrice: 150 },
-  { key: "laser", label: "Laser treatment", cat: "Laser", apaPrice: 0 },
-  { key: "consultation", label: "Consultation", cat: "Admin", apaPrice: 0 },
-  { key: "membership", label: "Membership / package", cat: "Admin", apaPrice: 0 },
+  { key: "antiWrinkle1", label: "Anti-wrinkle (1 area)", cat: "Injectables" },
+  { key: "antiWrinkle2", label: "Anti-wrinkle (2 areas)", cat: "Injectables" },
+  { key: "antiWrinkle3", label: "Anti-wrinkle (3 areas)", cat: "Injectables" },
+  { key: "lipFiller05", label: "Lip filler 0.5ml", cat: "Injectables" },
+  { key: "lipFiller1", label: "Lip filler 1ml", cat: "Injectables" },
+  { key: "cheekFiller", label: "Cheek filler 1ml", cat: "Injectables" },
+  { key: "jawChin", label: "Jaw/chin filler", cat: "Injectables" },
+  { key: "tearTrough", label: "Tear trough", cat: "Injectables" },
+  { key: "skinBooster", label: "Skin booster", cat: "Skin" },
+  { key: "profhilo", label: "Profhilo (2 sessions)", cat: "Skin" },
+  { key: "polynucleotides", label: "Polynucleotides", cat: "Skin" },
+  { key: "microneedling", label: "Microneedling", cat: "Skin" },
+  { key: "chemicalPeel", label: "Chemical peel", cat: "Skin" },
+  { key: "laser", label: "Laser treatment", cat: "Laser" },
+  { key: "consultation", label: "Consultation", cat: "Admin" },
+  { key: "membership", label: "Membership / package", cat: "Admin" },
 ];
 
 const APA_PROFILE = {
@@ -103,29 +103,6 @@ const APA_PROFILE = {
   clinicalAuthorityScore: 92, trustScore: 88, brandStrengthScore: 75, premisesStrengthScore: 80,
   instagramFollowers: 2400, saveFace: true, jccp: true, independentPrescriber: true, nhsBackground: true,
   yearsExperience: 12,
-};
-
-type PricingStrategy = {
-  competitorCount: number;
-  competitorsWithPricing: number;
-  launchPricing: Record<string, number>;
-  maturePricing: Record<string, number>;
-  launchAcv: number | null;
-  matureAcv: number | null;
-  marketData: Record<string, { min: number; max: number; median: number; count: number }>;
-  strategy: string | null;
-  launchRationale: string | null;
-  matureRationale: string | null;
-  pricingTier: string | null;
-  keyRisk: string | null;
-  generatedAt: string;
-  // ── Stored verified-strategy extras (present when the strategy was built from live competitor verification) ──
-  verifiedAt?: string;
-  perTreatment?: Record<string, string>;              // treatment key -> pricing rationale
-  architecture?: { h: string; b: string }[];          // the pricing playbook blocks
-  competitiveRead?: { name: string; read: string }[]; // one line per competitor
-  risks?: string[];
-  acvMix?: string;                                    // assumed visit mix behind the ACV numbers
 };
 
 const PREMISES_TYPES = [
@@ -537,7 +514,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
                         <span className="text-xs flex-1 leading-tight">{t.label}</span>
                         <div className="relative w-24 shrink-0">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
-                          <input type="number" className="w-full text-xs bg-muted border border-border rounded-md pl-5 pr-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" value={pricing[t.key]||""} onChange={e=>setPricing(t.key, parseFloat(e.target.value)||0)} placeholder={t.apaPrice > 0 ? String(t.apaPrice) : "—"} />
+                          <input type="number" className="w-full text-xs bg-muted border border-border rounded-md pl-5 pr-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" value={pricing[t.key]||""} onChange={e=>setPricing(t.key, parseFloat(e.target.value)||0)} placeholder="—" />
                         </div>
                       </div>
                     ))}
@@ -624,6 +601,17 @@ function OverviewTab({ competitors, onEdit, onAdd }: { competitors: Competitor[]
 
   return (
     <div className="space-y-6">
+      {/* Pricing lives elsewhere: one source of truth */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
+        <TrendingUp className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs leading-relaxed">
+          <p className="font-semibold">Looking for prices? They live in Market and Pricing.</p>
+          <p className="text-muted-foreground mt-0.5">
+            That page holds the final Winchester and Bedhampton price lists, computed medians with sample sizes across both catchments, the membership ladder and the referral engine. This page is about who the competitors are: profiles, credentials, threat, gaps and the map.{" "}
+            <a href="/market" className="text-primary font-semibold hover:underline">Open Market and Pricing</a>
+          </p>
+        </div>
+      </div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {[
           { label:"Competitors Mapped", value:competitors.length, sub:"manual entries" },
@@ -811,490 +799,6 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
   );
 }
 
-// ── Pricing Tab ───────────────────────────────────────────────────────────────
-// ── Rank helpers ──────────────────────────────────────────────────────────────
-function ordinal(n: number): string {
-  const s = ["th","st","nd","rd"];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-function priceRank(apaPrice: number, compPrices: number[]): { rank: number; total: number } | null {
-  if (!apaPrice || compPrices.length === 0) return null;
-  const all = [...compPrices, apaPrice].sort((a, b) => b - a);
-  return { rank: all.findIndex(p => p === apaPrice) + 1, total: all.length };
-}
-function RankBadge({ rank, total, color }: { rank: number; total: number; color: "teal"|"emerald"|"muted" }) {
-  const pct = rank / total;
-  const cls = pct <= 0.25 ? "text-teal-600 bg-teal-600/10 border-teal-500/30"
-             : pct <= 0.6  ? "text-foreground/70 bg-muted/60 border-border"
-             :                "text-amber-600 bg-amber-500/10 border-amber-500/30";
-  const _ = color; // suppress unused
-  return (
-    <span className={`inline-flex items-center text-[9px] font-semibold px-1.5 py-0.5 rounded-full border ml-1.5 ${cls}`}>
-      {ordinal(rank)} of {total}
-    </span>
-  );
-}
-
-function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, onApplyToModel, initialPlannedPricing }: {
-  competitors: Competitor[];
-  pricingStrategy: PricingStrategy | null;
-  strategyLoading: boolean;
-  onRefresh: () => void;
-  onApplyToModel: (acv: number, label: string) => Promise<void>;
-  initialPlannedPricing: Record<string, number>;
-}) {
-  const [catFilter, setCatFilter] = useState("all");
-  const [applying, setApplying] = useState<string | null>(null);
-  const [applyMsg, setApplyMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  const [pricingView, setPricingView] = useState<"launch" | "mature">("launch");
-  const [plannedPrices, setPlannedPrices] = useState<Record<string, number>>(initialPlannedPricing);
-  const [planStatus, setPlanStatus] = useState<"idle" | "saved" | "err">("idle");
-
-  useEffect(() => {
-    setPlannedPrices(initialPlannedPricing);
-  }, [initialPlannedPricing]);
-
-  const derivedAvc = useMemo(() => {
-    const vals = TREATMENT_KEYS.filter(t => t.apaPrice > 0)
-      .map(t => plannedPrices[t.key] || 0).filter(v => v > 0);
-    if (!vals.length) return null;
-    return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
-  }, [plannedPrices]);
-
-  const savePlannedPrice = async (key: string, raw: string) => {
-    const val = parseFloat(raw) || 0;
-    const updated = { ...plannedPrices };
-    if (val > 0) updated[key] = val; else delete updated[key];
-    setPlannedPrices(updated);
-    const vals = Object.values(updated).filter(v => v > 0);
-    const avc = vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : 0;
-    setPlanStatus("idle");
-    try {
-      await fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plannedPricingJson: JSON.stringify(updated), wincAcvGbp: avc > 0 ? avc : undefined }),
-      });
-      setPlanStatus("saved");
-      setTimeout(() => setPlanStatus("idle"), 2000);
-    } catch {
-      setPlanStatus("err");
-    }
-  };
-
-  const cats = ["all","Injectables","Skin","Laser"];
-  const treatments = catFilter === "all" ? TREATMENT_KEYS.filter(t=>t.apaPrice>0) : TREATMENT_KEYS.filter(t=>t.cat===catFilter&&t.apaPrice>0);
-
-  const strategy = pricingStrategy;
-
-  const handleApply = async (acv: number, label: string) => {
-    setApplying(label);
-    setApplyMsg(null);
-    try {
-      await onApplyToModel(acv, label);
-      setApplyMsg({ type: "ok", text: `ACV updated to £${acv} in the Financial Model.` });
-    } catch {
-      setApplyMsg({ type: "err", text: "Failed to update. Try again." });
-    } finally {
-      setApplying(null);
-    }
-  };
-
-  // ── Rank summary (computed across all treatments with competitor data) ──────
-  const rankSummary = (() => {
-    const rows = TREATMENT_KEYS.filter(t => t.apaPrice > 0).map(t => {
-      const compPrices = competitors
-        .map(c => parseJson<Record<string,number>>(c.pricingJson, {})[t.key] || 0)
-        .filter(p => p > 0);
-      const launchPrice = strategy?.launchPricing?.[t.key] ?? t.apaPrice;
-      const maturePrice = strategy?.maturePricing?.[t.key] ?? t.apaPrice;
-      return {
-        launch: priceRank(launchPrice, compPrices),
-        mature: priceRank(maturePrice, compPrices),
-      };
-    }).filter(r => r.launch !== null && r.mature !== null) as { launch: {rank:number;total:number}; mature: {rank:number;total:number} }[];
-
-    if (!rows.length) return null;
-    const avg = (arr: number[]) => arr.reduce((s,v) => s + v, 0) / arr.length;
-    const launchRanks = rows.map(r => r.launch.rank);
-    const matureRanks = rows.map(r => r.mature.rank);
-    const totals = rows.map(r => r.launch.total);
-    const avgTotal = Math.round(avg(totals));
-    return {
-      launchAvgRank: Math.round(avg(launchRanks) * 10) / 10,
-      matureAvgRank: Math.round(avg(matureRanks) * 10) / 10,
-      avgTotal,
-      launchTop: launchRanks.filter(r => r === 1).length,
-      matureTop: matureRanks.filter(r => r === 1).length,
-      launchBottom: launchRanks.filter((r, i) => r === rows[i].launch.total).length,
-      matureBottom: matureRanks.filter((r, i) => r === rows[i].mature.total).length,
-      count: rows.length,
-    };
-  })();
-
-  return (
-    <div className="space-y-6">
-
-      {/* ── Source of truth pointer ── */}
-      <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
-        <TrendingUp className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-        <div className="text-xs leading-relaxed">
-          <p className="font-semibold">The authoritative price list now lives in Market and Pricing.</p>
-          <p className="text-muted-foreground mt-0.5">
-            That page holds the owner-final Winchester and Bedhampton lists effective 1 November 2026, computed medians with sample sizes across both catchments, the membership ladder, and the referral engine. This panel is the strategy summary only.{" "}
-            <a href="/market" className="text-primary font-semibold hover:underline">Open Market and Pricing</a>
-          </p>
-        </div>
-      </div>
-
-      {/* ── AI Pricing Strategy Panel ── */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/20">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h3 className="font-semibold text-sm">APA Pricing Strategy</h3>
-            {strategy && (
-              <span className="text-[10px] uppercase tracking-wider font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                {strategy.pricingTier ?? "—"}
-              </span>
-            )}
-          </div>
-          <button
-            onClick={onRefresh}
-            disabled={strategyLoading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-muted border border-border hover:bg-muted/70 text-muted-foreground transition-colors disabled:opacity-50"
-          >
-            {strategyLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-            {strategyLoading ? "Generating…" : "Refresh"}
-          </button>
-        </div>
-
-        {strategyLoading && !strategy && (
-          <div className="flex items-center gap-3 px-5 py-8 text-muted-foreground text-sm">
-            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
-            Analysing competitor pricing and generating APA strategy…
-          </div>
-        )}
-
-        {!strategyLoading && !strategy && (
-          <div className="px-5 py-6 text-center text-muted-foreground text-sm">
-            <p className="mb-3">Click Refresh to generate AI pricing recommendations based on your competitor data.</p>
-            <button onClick={onRefresh} className="text-xs px-4 py-2 rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors">
-              Generate Strategy
-            </button>
-          </div>
-        )}
-
-        {strategy && (
-          <div className="p-5 space-y-5">
-            {/* ACV summary cards */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className={`rounded-xl border p-4 transition-all ${pricingView === "launch" ? "border-primary/40 bg-primary/5" : "border-border bg-muted/30 cursor-pointer hover:border-primary/20"}`}
-                onClick={() => setPricingView("launch")}>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Launch ACV · Nov 2026</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {strategy.launchAcv ? `£${strategy.launchAcv}` : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Recommended average client value at launch</p>
-                {pricingView === "launch" && (
-                  <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); if (strategy.launchAcv) handleApply(strategy.launchAcv, "launch"); }}
-                      disabled={!strategy.launchAcv || applying === "launch"}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                    >
-                      {applying === "launch" ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
-                      Apply to Financial Model
-                    </button>
-                  </div>
-                )}
-              </div>
-              <div className={`rounded-xl border p-4 transition-all ${pricingView === "mature" ? "border-emerald-500/40 bg-emerald-500/5" : "border-border bg-muted/30 cursor-pointer hover:border-emerald-500/20"}`}
-                onClick={() => setPricingView("mature")}>
-                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium mb-1">Mature ACV · 12m+</p>
-                <p className="text-2xl font-bold text-foreground">
-                  {strategy.matureAcv ? `£${strategy.matureAcv}` : "—"}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">Target once established with reviews &amp; retention</p>
-                {pricingView === "mature" && (
-                  <div className="mt-3 flex items-center gap-2 flex-wrap">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); if (strategy.matureAcv) handleApply(strategy.matureAcv, "mature"); }}
-                      disabled={!strategy.matureAcv || applying === "mature"}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 transition-colors"
-                    >
-                      {applying === "mature" ? <Loader2 className="w-3 h-3 animate-spin" /> : <TrendingUp className="w-3 h-3" />}
-                      Apply to Financial Model
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {applyMsg && (
-              <div className={`text-xs px-3 py-2 rounded-lg border ${applyMsg.type === "ok" ? "text-teal-700 bg-teal-600/5 border-teal-500/20" : "text-red-500 bg-red-500/5 border-red-500/20"}`}>
-                {applyMsg.type === "ok" ? "✓" : "✗"} {applyMsg.text}
-              </div>
-            )}
-
-            {/* Strategy rationale */}
-            {strategy.strategy && (
-              <div className="space-y-2">
-                <p className="text-xs text-foreground leading-relaxed">{strategy.strategy}</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                  {strategy.launchRationale && (
-                    <div className="bg-muted/40 rounded-lg p-3 border border-border">
-                      <p className="text-[11px] uppercase tracking-wider text-primary font-medium mb-1">Launch rationale</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{strategy.launchRationale}</p>
-                    </div>
-                  )}
-                  {strategy.matureRationale && (
-                    <div className="bg-muted/40 rounded-lg p-3 border border-border">
-                      <p className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-medium mb-1">12m+ rationale</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{strategy.matureRationale}</p>
-                    </div>
-                  )}
-                </div>
-                {strategy.keyRisk && (
-                  <div className="flex items-start gap-2 mt-2 bg-amber-500/5 border border-amber-500/20 rounded-lg px-3 py-2.5">
-                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700 dark:text-amber-400"><span className="font-medium">Key risk: </span>{strategy.keyRisk}</p>
-                  </div>
-                )}
-                {strategy.acvMix && (
-                  <p className="text-[11px] text-muted-foreground mt-2"><span className="font-medium text-foreground/70">ACV basis: </span>{strategy.acvMix}</p>
-                )}
-              </div>
-            )}
-
-            {/* ── The pricing playbook (stored verified strategy) ── */}
-            {strategy.architecture && strategy.architecture.length > 0 && (
-              <details className="rounded-lg border border-border bg-muted/20 open:bg-muted/10">
-                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold hover:bg-muted/40 rounded-lg">The pricing playbook · {strategy.architecture.length} rules</summary>
-                <div className="px-4 pb-3 pt-1 space-y-2.5">
-                  {strategy.architecture.map((a, i) => (
-                    <div key={i}>
-                      <p className="text-[11px] uppercase tracking-wider text-primary font-semibold">{a.h}</p>
-                      <p className="text-xs text-muted-foreground leading-relaxed mt-0.5 whitespace-pre-wrap">{a.b}</p>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            {/* ── Competitor-by-competitor read ── */}
-            {strategy.competitiveRead && strategy.competitiveRead.length > 0 && (
-              <details className="rounded-lg border border-border bg-muted/20 open:bg-muted/10">
-                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold hover:bg-muted/40 rounded-lg">How to price against each competitor · {strategy.competitiveRead.length}</summary>
-                <div className="px-4 pb-3 pt-1 space-y-2">
-                  {strategy.competitiveRead.map((c, i) => (
-                    <p key={i} className="text-xs leading-relaxed"><span className="font-semibold">{c.name}: </span><span className="text-muted-foreground">{c.read}</span></p>
-                  ))}
-                </div>
-              </details>
-            )}
-
-            {/* ── Pricing risks ── */}
-            {strategy.risks && strategy.risks.length > 0 && (
-              <details className="rounded-lg border border-amber-500/25 bg-amber-500/5">
-                <summary className="cursor-pointer px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 rounded-lg">Pricing risks and guardrails · {strategy.risks.length}</summary>
-                <ul className="px-4 pb-3 pt-1 space-y-1.5 list-disc pl-8">
-                  {strategy.risks.map((r, i) => (
-                    <li key={i} className="text-xs text-muted-foreground leading-relaxed">{r}</li>
-                  ))}
-                </ul>
-              </details>
-            )}
-
-            {/* Data footnote */}
-            <p className="text-[10px] text-muted-foreground border-t border-border pt-3">
-              {strategy.verifiedAt
-                ? <>Built from live competitor price verification on {new Date(strategy.verifiedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric" })} · {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors priced</>
-                : <>Based on {strategy.competitorsWithPricing} of {strategy.competitorCount} competitors with pricing data · Generated {new Date(strategy.generatedAt).toLocaleDateString("en-GB", { day:"numeric", month:"short", year:"numeric", hour:"2-digit", minute:"2-digit" })}</>}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Rank summary card ── */}
-      {rankSummary && (
-        <div className="grid grid-cols-2 gap-3">
-          {/* Launch rank card */}
-          <div className="rounded-xl border border-primary/30 bg-primary/5 p-4">
-            <p className="text-[11px] uppercase tracking-wider text-primary font-medium mb-1">Now — Launch pricing</p>
-            <p className="text-2xl font-bold text-foreground">
-              {ordinal(Math.round(rankSummary.launchAvgRank))}
-              <span className="text-sm font-normal text-muted-foreground ml-1">of {rankSummary.avgTotal}</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">most expensive on average across {rankSummary.count} treatments</p>
-            <div className="flex gap-3 mt-3 text-[11px]">
-              {rankSummary.launchTop > 0 && <span className="text-teal-600 font-medium">Most expensive: {rankSummary.launchTop} treatment{rankSummary.launchTop > 1 ? "s" : ""}</span>}
-              {rankSummary.launchBottom > 0 && <span className="text-amber-600 font-medium">Cheapest: {rankSummary.launchBottom} treatment{rankSummary.launchBottom > 1 ? "s" : ""}</span>}
-            </div>
-          </div>
-          {/* Mature rank card */}
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
-            <p className="text-[11px] uppercase tracking-wider text-emerald-600 dark:text-emerald-400 font-medium mb-1">High Street — Maturity pricing</p>
-            <p className="text-2xl font-bold text-foreground">
-              {ordinal(Math.round(rankSummary.matureAvgRank))}
-              <span className="text-sm font-normal text-muted-foreground ml-1">of {rankSummary.avgTotal}</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">most expensive on average across {rankSummary.count} treatments</p>
-            <div className="flex gap-3 mt-3 text-[11px]">
-              {rankSummary.matureTop > 0 && <span className="text-teal-600 font-medium">Most expensive: {rankSummary.matureTop} treatment{rankSummary.matureTop > 1 ? "s" : ""}</span>}
-              {rankSummary.matureBottom > 0 && <span className="text-amber-600 font-medium">Cheapest: {rankSummary.matureBottom} treatment{rankSummary.matureBottom > 1 ? "s" : ""}</span>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Category filter ── */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
-        <p className="text-xs text-muted-foreground">Rank 1st = most expensive in market. Badge colour: <span className="text-teal-600 font-medium">teal = premium</span> · <span className="text-amber-600 font-medium">amber = cheapest</span></p>
-        <div className="flex gap-1.5">
-          {cats.map(c=><button key={c} onClick={()=>setCatFilter(c)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${catFilter===c?"bg-muted border-border text-foreground font-medium":"bg-transparent border-border text-muted-foreground hover:text-foreground"}`}>{c}</button>)}
-        </div>
-      </div>
-
-      {/* ── Comparison table ── */}
-      <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b-2 border-primary/30">
-                <th className="text-left py-3 pr-4 text-xs text-muted-foreground font-medium uppercase tracking-wider w-44">Treatment</th>
-                <th className="text-right py-3 px-3 text-xs font-bold uppercase tracking-wider whitespace-nowrap text-primary bg-primary/5 border-x border-primary/20 w-32">
-                  <div className="flex flex-col items-end gap-0.5">
-                    <span>Our Price</span>
-                    {derivedAvc != null
-                      ? <span className="text-[10px] font-semibold text-primary normal-case tracking-normal">Winchester AVC = £{derivedAvc}</span>
-                      : <span className="text-[10px] font-normal text-muted-foreground/60 normal-case tracking-normal">sets Winchester AVC</span>
-                    }
-                  </div>
-                </th>
-                <th className="text-right py-3 px-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap text-muted-foreground">AI Launch</th>
-                <th className="text-right py-3 px-3 text-xs font-medium uppercase tracking-wider whitespace-nowrap text-muted-foreground">AI 12m+</th>
-                <th className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap">Median</th>
-                {competitors.map(c=><th key={c.id} title={c.name} className="text-right py-3 px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider whitespace-nowrap max-w-[7rem] overflow-hidden text-ellipsis">{shortClinicName(c.name)}</th>)}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {treatments.map(t=>{
-                const launchPrice  = strategy?.launchPricing?.[t.key] ?? t.apaPrice;
-                const maturePrice  = strategy?.maturePricing?.[t.key] ?? t.apaPrice;
-                const launchIsAi   = !!strategy?.launchPricing?.[t.key];
-                const matureIsAi   = !!strategy?.maturePricing?.[t.key];
-                const compPrices   = competitors.map(c=>({ id:c.id, name:c.name, price: parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0 }));
-                const validPrices  = compPrices.filter(p=>p.price>0).map(p=>p.price);
-                const medianPrice  = validPrices.length ? ([...validPrices].sort((a,b)=>a-b)[Math.floor(validPrices.length/2)]) : null;
-                const launchRank   = priceRank(launchPrice, validPrices);
-                const matureRank   = priceRank(maturePrice, validPrices);
-                const ourPrice     = plannedPrices[t.key] || 0;
-                return (
-                  <tr key={t.key} className="hover:bg-muted/30 transition-colors">
-                    <td className="py-2 pr-4">
-                      <p className="font-medium text-sm">{t.label}</p>
-                      {validPrices.length > 0 && (
-                        <p className="text-[10px] text-muted-foreground">
-                          Market: £{Math.min(...validPrices)}–£{Math.max(...validPrices)}
-                        </p>
-                      )}
-                      {strategy?.perTreatment?.[t.key] && (
-                        <p className="text-[10px] text-muted-foreground/80 leading-relaxed mt-1 max-w-[15rem]" title={strategy.perTreatment[t.key]}>
-                          {strategy.perTreatment[t.key]}
-                        </p>
-                      )}
-                    </td>
-                    {/* Our Planned Price — editable */}
-                    <td className="py-2 px-3 bg-primary/5 border-x border-primary/20">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
-                        <input
-                          type="number"
-                          min={0}
-                          step={5}
-                          defaultValue={ourPrice || ""}
-                          key={`${t.key}-${ourPrice}`}
-                          onBlur={e => savePlannedPrice(t.key, e.target.value)}
-                          onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
-                          placeholder={String(t.apaPrice || "—")}
-                          className="w-full pl-5 pr-1 py-1 text-sm font-semibold text-right bg-background border border-primary/30 rounded focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/40"
-                        />
-                      </div>
-                    </td>
-                    {/* AI Launch */}
-                    <td className="text-right py-2 px-3">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span className={`text-sm ${launchIsAi ? "text-muted-foreground font-medium" : "text-muted-foreground/50"}`}>
-                          £{launchPrice}{launchIsAi && <sup className="ml-0.5 text-[8px] opacity-60">AI</sup>}
-                        </span>
-                        {launchRank && <RankBadge rank={launchRank.rank} total={launchRank.total} color="teal" />}
-                      </div>
-                    </td>
-                    {/* AI Mature */}
-                    <td className="text-right py-2 px-3">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <span className={`text-sm ${matureIsAi ? "text-muted-foreground font-medium" : "text-muted-foreground/50"}`}>
-                          £{maturePrice}{matureIsAi && <sup className="ml-0.5 text-[8px] opacity-60">AI</sup>}
-                        </span>
-                        {matureRank && <RankBadge rank={matureRank.rank} total={matureRank.total} color="emerald" />}
-                      </div>
-                    </td>
-                    <td className="text-right py-2 px-3 text-muted-foreground text-sm">
-                      {medianPrice ? `£${medianPrice}` : <span className="text-muted-foreground/40">—</span>}
-                    </td>
-                    {competitors.map(c=>{ const p = parseJson<Record<string,number>>(c.pricingJson,{})[t.key]||0; const offered = parseJson<string[]>(c.treatmentsJson,[]).includes(t.key); const ref = ourPrice || launchPrice; return (
-                      <td key={c.id} className="text-right py-2 px-3">
-                        {p > 0 ? (
-                          <span className={`font-medium text-sm ${p < ref*0.85 ? "text-red-500" : p > ref*1.1 ? "text-emerald-500" : "text-foreground"}`}>£{p}</span>
-                        ) : offered ? <span className="text-xs text-muted-foreground">Offered</span> : <span className="text-xs text-muted-foreground/40">—</span>}
-                      </td>
-                    );})}
-                  </tr>
-                );
-              })}
-              {/* AVC summary footer row */}
-              <tr className="border-t-2 border-primary/30 bg-primary/5">
-                <td className="py-2 pr-4 text-xs font-semibold text-primary uppercase tracking-wider">Winchester AVC</td>
-                <td className="py-2 px-3 text-right border-x border-primary/20">
-                  {derivedAvc != null
-                    ? <span className="text-sm font-bold text-primary">£{derivedAvc}</span>
-                    : <span className="text-xs text-muted-foreground/50 italic">enter prices above</span>
-                  }
-                </td>
-                <td colSpan={3 + competitors.length} className="py-2 px-3 text-xs text-muted-foreground">
-                  {derivedAvc != null
-                    ? <>Mean of {Object.values(plannedPrices).filter(v=>v>0).length} treatment price{Object.values(plannedPrices).filter(v=>v>0).length !== 1 ? "s" : ""} → used as Winchester ACV in your financial model · {planStatus === "saved" ? <span className="text-teal-600 font-medium">✓ Saved</span> : planStatus === "err" ? <span className="text-red-500">Save failed — try again</span> : "saves automatically on each entry"}</>
-                    : "Enter your planned prices above — the mean becomes your Winchester AVC and updates the financial model automatically"
-                  }
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      <div className="flex items-center gap-6 text-xs text-muted-foreground pt-2 border-t border-border">
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500/60 shrink-0" />Cheaper than your planned price</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500/60 shrink-0" />More expensive than your planned price</div>
-        {strategy && <div className="flex items-center gap-1.5"><sup className="text-[9px] text-muted-foreground/60 font-medium">AI</sup> = AI-recommended price</div>}
-      </div>
-    </div>
-  );
-}
-
-// ── Comparison Tab ────────────────────────────────────────────────────────────
-const COMP_COLORS = ["#f59e0b","#6366f1","#ef4444","#a78bfa","#06b6d4","#ec4899","#84cc16","#f97316"];
-const APA_COLOR   = "#2dd4bf";
-
-const RADAR_DIMS = [
-  { key:"clinAuth",  label:"Clinical Auth",   apa: APA_PROFILE.clinicalAuthorityScore,             get:(c:Competitor)=>c.clinicalAuthorityScore },
-  { key:"trust",     label:"Trust",           apa: APA_PROFILE.trustScore,                         get:(c:Competitor)=>c.trustScore },
-  { key:"brand",     label:"Brand",           apa: APA_PROFILE.brandStrengthScore,                 get:(c:Competitor)=>c.brandStrengthScore },
-  { key:"premises",  label:"Premises",        apa: APA_PROFILE.premisesStrengthScore,              get:(c:Competitor)=>c.premisesStrengthScore },
-  { key:"rating",    label:"Rating",          apa: Math.round(APA_PROFILE.googleRating*20),        get:(c:Competitor)=>Math.round((parseFloat(c.googleRating)||0)*20) },
-  { key:"reviews",   label:"Reviews",         apa: Math.min(Math.round(APA_PROFILE.googleReviewCount/3),100), get:(c:Competitor)=>Math.min(Math.round((c.googleReviewCount||0)/3),100) },
-  { key:"social",    label:"Social",          apa: Math.min(Math.round(APA_PROFILE.instagramFollowers/50),100), get:(c:Competitor)=>Math.min(Math.round((c.instagramFollowers||0)/50),100) },
-];
-
 function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
   const sorted = useMemo(()=>[...competitors].sort((a,b)=>computeThreatScore(b)-computeThreatScore(a)),[competitors]);
 
@@ -1329,7 +833,9 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
   if(competitors.length===0) return <div className="text-center py-12 text-muted-foreground text-sm">Add competitors to compare against APA.</div>;
 
   // ── Scorecard calculations ──
-  const APA_AW1 = 200;
+  // Our Winchester anti-wrinkle 1 area, for the price-rank badge only.
+  // The authoritative price list is the treatments table in Market and Pricing.
+  const APA_AW1 = 190;
   // Composite score for APA (same weights as computeThreatScore but as competitor-equivalent)
   const apaComposite = Math.round(
     APA_PROFILE.clinicalAuthorityScore * 0.20 +
@@ -2087,22 +1593,6 @@ export default function CompetitionPage() {
   const [prefillData, setPrefillData] = useState<Partial<FormData> | null>(null);
   const [aiSearchOpen, setAiSearchOpen] = useState(false);
   const [enrichingId, setEnrichingId] = useState<number | null>(null);
-  const [pricingStrategy, setPricingStrategy] = useState<PricingStrategy | null>(null);
-  const [strategyLoading, setStrategyLoading] = useState(false);
-  const [strategyFetched, setStrategyFetched] = useState(false);
-  const [wincAcv, setWincAcv] = useState<number | null>(null);
-  const [plannedPricing, setPlannedPricing] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (!d) return;
-        if (d.wincAcvGbp != null) setWincAcv(d.wincAcvGbp);
-        try { setPlannedPricing(JSON.parse(d.plannedPricingJson || "{}")); } catch { /* ignore */ }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     fetch(`${API_BASE}/projects/${PROJECT_ID}/properties`)
@@ -2186,37 +1676,9 @@ export default function CompetitionPage() {
     setCompetitors(cs=>cs.map(x=>x.id===c.id ? {...x, onWatchlist:!c.onWatchlist} : x));
   };
 
-  const fetchPricingStrategy = async () => {
-    setStrategyLoading(true);
-    try {
-      const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/competitors/pricing-strategy`);
-      if (r.ok) {
-        const data = await r.json();
-        setPricingStrategy(data);
-        setStrategyFetched(true);
-      }
-    } catch { /* non-fatal */ }
-    finally { setStrategyLoading(false); }
-  };
-
-  const handleApplyToModel = async (acv: number) => {
-    const r = await fetch(`${API_BASE}/projects/${PROJECT_ID}/financial`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ wincAcvGbp: acv }),
-    });
-    if (!r.ok) throw new Error("Update failed");
-    setWincAcv(acv);
-  };
-
-  // Auto-fetch pricing strategy when user navigates to Pricing tab
-  useEffect(() => {
-    if (tab === 2 && !strategyFetched && !strategyLoading) {
-      fetchPricingStrategy();
-    }
-  }, [tab]);
-
-  const TABS = ["Overview","Competitors","Pricing","Comparison","Market Gap","Map","Watchlist"];
+  // Pricing lives in Market and Pricing. This page covers who the competitors
+  // are: profiles, credentials, threat, market gaps, map and watchlist.
+  const TABS = ["Overview","Competitors","Comparison","Market Gap","Map","Watchlist"];
 
   // Build default location for AI search from selected property
   const selectedProperty = properties.find(p => p.id === selectedPropertyId);
@@ -2291,11 +1753,10 @@ export default function CompetitionPage() {
           <>
             {tab === 0 && <OverviewTab competitors={competitors} onEdit={openEdit} onAdd={openAdd} />}
             {tab === 1 && <CompetitorsTab competitors={competitors} onEdit={openEdit} onDelete={handleDelete} onToggleWatchlist={handleToggleWatchlist} onAdd={openAdd} onEnrich={handleEnrich} enrichingId={enrichingId} />}
-            {tab === 2 && <PricingTab competitors={competitors} pricingStrategy={pricingStrategy} strategyLoading={strategyLoading} onRefresh={fetchPricingStrategy} onApplyToModel={handleApplyToModel} initialPlannedPricing={plannedPricing} />}
-            {tab === 3 && <ComparisonTab competitors={competitors} />}
-            {tab === 4 && <MarketGapTab competitors={competitors} />}
-            {tab === 5 && <MapTab competitors={competitors} />}
-            {tab === 6 && <WatchlistTab competitors={competitors} onEdit={openEdit} onToggle={handleToggleWatchlist} />}
+            {tab === 2 && <ComparisonTab competitors={competitors} />}
+            {tab === 3 && <MarketGapTab competitors={competitors} />}
+            {tab === 4 && <MapTab competitors={competitors} />}
+            {tab === 5 && <WatchlistTab competitors={competitors} onEdit={openEdit} onToggle={handleToggleWatchlist} />}
           </>
         )}
       </div>
