@@ -278,7 +278,7 @@ export const OUR_MEMBERSHIPS: OurMembershipSeed[] = [
 
 // ── Founders offer (Appendix D) and referral scheme (Appendix E) ─────────────
 export const FOUNDERS_OFFER = {
-  closes: "At 100 places or 31 January 2027, whichever comes first. Quantity-limited, not countdown-driven, to stay clear of ASA pressure-selling rules on cosmetic procedures.",
+  closes: "At 40 places or 31 January 2027, whichever comes first. Capped at 40 because that is what one nurse can look after. Quantity-limited, not countdown-driven, to stay clear of ASA pressure-selling rules on cosmetic procedures.",
   items: [
     "Complimentary skin analysis consultation with Abi",
     "Founder Skin Start: medical facial plus LED, 65 against 120 list",
