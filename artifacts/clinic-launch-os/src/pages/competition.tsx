@@ -936,6 +936,18 @@ function PricingTab({ competitors, pricingStrategy, strategyLoading, onRefresh, 
   return (
     <div className="space-y-6">
 
+      {/* ── Source of truth pointer ── */}
+      <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 flex items-start gap-3">
+        <TrendingUp className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+        <div className="text-xs leading-relaxed">
+          <p className="font-semibold">The authoritative price list now lives in Market and Pricing.</p>
+          <p className="text-muted-foreground mt-0.5">
+            That page holds the owner-final Winchester and Bedhampton lists effective 1 November 2026, computed medians with sample sizes across both catchments, the membership ladder, and the referral engine. This panel is the strategy summary only.{" "}
+            <a href="/market" className="text-primary font-semibold hover:underline">Open Market and Pricing</a>
+          </p>
+        </div>
+      </div>
+
       {/* ── AI Pricing Strategy Panel ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-muted/20">
