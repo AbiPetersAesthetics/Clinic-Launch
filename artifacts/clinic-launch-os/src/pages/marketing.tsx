@@ -5,6 +5,7 @@ import {
   Sparkles, ArrowRight,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import MarketingTimeline from "@/components/marketing-timeline";
 
 const PROJECT_ID = 1;
 const API_BASE = "/api";
@@ -158,6 +159,7 @@ export default function MarketingPage() {
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [openPhases, setOpenPhases] = useState<Set<string> | null>(null);
+  const [view, setView] = useState<"overview" | "plan">("overview");
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const TODAY = todayISO();
 
@@ -260,6 +262,13 @@ export default function MarketingPage() {
       </div>
 
       {/* ── Today spotlight ─────────────────────────────────── */}
+      {/* ── View tabs: Overview (front page) vs the day-by-day plan ── */}
+      <div className="flex items-center gap-1 border-b border-border">
+        <button onClick={() => setView("overview")} className={`px-3.5 py-2 text-[13px] font-semibold -mb-px border-b-2 transition-colors ${view === "overview" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>Overview</button>
+        <button onClick={() => setView("plan")} className={`px-3.5 py-2 text-[13px] font-semibold -mb-px border-b-2 transition-colors ${view === "plan" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>The plan, day by day</button>
+      </div>
+
+      {view === "plan" && (<>
       <div className="rounded-2xl border bg-gradient-to-br from-primary/[0.06] to-transparent p-5">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /><h2 className="text-base font-bold">Today, {fullDayLabel(TODAY)}</h2></div>
@@ -290,6 +299,9 @@ export default function MarketingPage() {
       </div>
 
       {/* ── Executive summary ─────────────────────────────────── */}
+      </>)}
+
+      {view === "overview" && (<>
       <div className="rounded-2xl border bg-card overflow-hidden">
         <div className="px-5 sm:px-6 pt-5 pb-4 border-b bg-muted/[0.15]">
           <div className="flex items-center gap-2 text-primary mb-2"><Sparkles className="w-4 h-4" /><span className="text-[11px] font-bold uppercase tracking-widest">Executive summary</span></div>
@@ -322,6 +334,10 @@ export default function MarketingPage() {
       </div>
 
       {/* ── Strategy strip ──────────────────────────────────── */}
+      <MarketingTimeline />
+      </>)}
+
+      {view === "plan" && (<>
       <div className="grid md:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 p-4">
           <div className="flex items-center gap-2 mb-1.5"><Tag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /><p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">The one thing</p></div>
@@ -416,6 +432,8 @@ export default function MarketingPage() {
       </div>
 
       {/* ── Day detail modal ────────────────────────────────── */}
+      </>)}
+
       {selectedDay && (
         <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
           <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
