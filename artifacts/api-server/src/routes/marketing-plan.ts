@@ -270,7 +270,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "top",
     "title": "Switch on: cut cold prospecting from about £19.80 a day to £8",
-    "detail": "You are paying a rising price (£5.64 CPL) for leads you cannot serve.",
+    "detail": "Done 2 Sep: already cut to £5 a day (tighter than £8), only Ad 1 and Ad 3 live. Full reclassification steps are in the Retargeting phase.",
     "channel": "meta",
     "owner": "david",
     "weekStart": "2026-08-30",
@@ -278,16 +278,16 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 13,
     "deep": [
       {
-        "h": "WHY",
-        "b": "Cost per lead moved from £3.16 lifetime to £5.64 over the last 7 days, and there are already 395 leads against a cap of 40. Left unchanged the cold ad set buys roughly 200 more leads for places that no longer exist."
+        "h": "DONE",
+        "b": "Actioned 2 September in Ads Manager: the Winchester campaign is now £5 a day (it is a CBO campaign, so the budget sits at campaign level), with only Ad 1 (Calm Premium control) and Ad 3 (Opening Soon on Jewry Street) live and Ad 2, 4 and 5 paused. That is tighter than the £8 this task asked for, so the decision is made. Nothing more to do here today."
       },
       {
-        "h": "RECOMMENDATION",
-        "b": "Cut to £8 a day and reclassify the ad set: it is no longer justified by the founding 40, it is justified by evergreen diary fill from 3 November, target about 40 leads a month. Releases about £422 to £615 depending on timing."
+        "h": "WHY (the rationale that drove it)",
+        "b": "Cost per lead had moved from £3.16 lifetime to £5.64 over seven days, against 395 leads for a cap of 40. Left unchanged the cold ad set would have bought roughly 200 more leads for places that no longer exist. At £5 it now runs as a low presence trickle, not a lead machine."
       },
       {
-        "h": "NOTE",
-        "b": "Keep or pause is the owner's call, but it must be a decision, not a default. The formal deadline and the £8 figure are set out as Decision 1 in the retargeting spec (by Friday 4 September, cut from Monday 7 September)."
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "The fuller reclassification, the exclusions and the formal deadline are in the Retargeting phase of this plan: 'Decision 1: cut cold prospecting from £19.34 to £8 a day' and 'Companion change: add exclusions to the prospecting ad set'. Those still say £8, which you have since tightened to £5, so treat them as satisfied. Revisit whether to reframe the ad set as evergreen diary fill when the retargeting build goes live."
       }
     ]
   },
@@ -306,8 +306,12 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "The 395 are warm and opted in. Turning 40 of them into founding clients is 10.1 per cent conversion, which is the entire business case. A small retargeting campaign sits underneath the conversation plan; it is not the thing that fills the 40 on its own."
       },
       {
-        "h": "NOTE",
-        "b": "This is a build, not a same-day switch. The full spec (audience union from GHL, £210 lifetime envelope, flight Monday 12 October to Sunday 1 November) lives in the retargeting document. Kick off the audience export and build now so it is ready to fly on 12 October."
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "This is the headline; the full step-by-step is the Retargeting phase of this plan, in order: Baseline audit of the 395, then Audience Steps 1 to 5 (export the founding list from GHL, confirm the legal basis, upload the customer list to Meta, size the union, branch on its size), then build the campaign shell and objective, the Warm First Party ad set, Facebook and Instagram placements only, the £210 lifetime envelope (10p per person), UTM tracking, ads A1 (live 12 to 25 October) then A2 (26 October to 1 November), and the hard stop that pauses the campaign when the 40th place books. Flight Monday 12 October to Sunday 1 November."
+      },
+      {
+        "h": "DO NOW",
+        "b": "Do not launch spend today; this builds now and flies on 12 October. Start with Audience Step 1 (export the founding list from GHL) and Step 3 (upload it to Meta) so the audience is warmed and ready. Everything else in the Retargeting phase can be built against it in the run-up."
       }
     ]
   },
