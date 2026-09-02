@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Megaphone, Wrench, Instagram, Mail, Facebook, Search as SearchIcon,
   CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, RotateCcw, Tag, Copy, Check, X,
-  Sparkles, ArrowRight,
+  Sparkles, ArrowRight, Info,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import MarketingTimeline from "@/components/marketing-timeline";
@@ -80,6 +80,22 @@ const COPY: { title: string; sub: string; text: string }[] = [
     text: "MON, AUTHORITY\n\"Skin boosters\", what actually are they?\n\nNot filler. They don't change your shape. Think of them as a deep drink of water for your skin: hydration that helps it look fresher and healthier from within.\n\nThey're not for everyone, and that's the point, the right treatment depends on your skin, which is why I start everyone with an analysis.\n\nCurious if they'd suit you? Link in bio.\n#SkinBoosters #HampshireAesthetics #WinchesterAesthetics #NurseLedAesthetics\n\n- - - - -\n\nWED, HUMAN\nA little behind the scenes. The Winchester clinic is coming together and I honestly can't quite believe it. Every detail, chosen to make you feel calm the second you walk in.\n\nOpening 2 November on Jewry Street. Founding Client spots open soon, save this post.\n#WinchesterAesthetics #ComingSoon #Winchester #AbiPetersSkinClinic\n\n- - - - -\n\nFRI, PROOF\nThis is why I do it.\n\n\"[client's own words, a short honest line about how they felt, shared with their written permission]\"\n\nNo filters, no promises, just someone leaving feeling more like themselves. That's the whole job.\n\nWant your turn? Free skin analysis at Bedhampton until 31 Oct, 15% off after. Link in bio.\n#ClientLove #HampshireAesthetics #WinchesterAesthetics #NurseLed" },
 ];
 
+type Kind = "info" | "done" | "action";
+// The "Read this first" section mixes status readouts (Q1..Qn), already-done
+// notes (DONE:) and real tasks (Switch on:/Build:/everything else). Derive which
+// is which from the title, so context and done items read as non-tasks and stay
+// out of the progress count.
+const itemKind = (title: string): Kind =>
+  /^Q\d/.test(title) || /^Read this first/i.test(title) ? "info"
+    : /^DONE:/i.test(title) ? "done"
+      : "action";
+
+function KindBadge({ kind }: { kind: Kind }) {
+  if (kind === "info") return <span className="text-[8.5px] font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300 bg-slate-200/70 dark:bg-slate-800/60 rounded px-1.5 py-0.5">For information</span>;
+  if (kind === "done") return <span className="text-[8.5px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/40 rounded px-1.5 py-0.5">Done</span>;
+  return null;
+}
+
 function StatusToggle({ status, onChange, big }: { status: Status; onChange: (s: Status) => void; big?: boolean }) {
   const sz = big ? "w-5 h-5" : "w-[18px] h-[18px]";
   const next = () => onChange(STATUS_CYCLE[status]);
@@ -133,16 +149,24 @@ function CopyBlock({ c }: { c: { title: string; sub: string; text: string } }) {
 function TaskCard({ it, onOpen, onStatus, big }: { it: Item; onOpen: () => void; onStatus: (s: Status) => void; big?: boolean }) {
   const ch = CHANNELS[it.channel] ?? CHANNELS.found;
   const ow = OWNERS[it.owner] ?? OWNERS.both;
-  const done = it.status === "done";
+  const kind = itemKind(it.title);
+  const done = it.status === "done" || kind === "done";
+  const mk = big ? "w-5 h-5" : "w-[18px] h-[18px]";
   return (
-    <div className={`task o-${it.owner} group flex items-start gap-2 rounded-lg border border-l-[3px] ${ch.bar} bg-card hover:bg-muted/40 transition-colors ${big ? "px-3 py-2.5" : "px-2.5 py-2"}`}>
-      <div className="pt-px"><StatusToggle status={it.status} onChange={onStatus} big={big} /></div>
+    <div className={`task o-${it.owner} group flex items-start gap-2 rounded-lg border border-l-[3px] ${ch.bar} ${kind === "action" ? "bg-card" : "bg-muted/25"} hover:bg-muted/40 transition-colors ${big ? "px-3 py-2.5" : "px-2.5 py-2"}`}>
+      <div className="pt-px">
+        {kind === "action"
+          ? <StatusToggle status={it.status} onChange={onStatus} big={big} />
+          : kind === "done"
+            ? <CheckCircle2 className={`${mk} text-emerald-500 shrink-0`} />
+            : <Info className={`${mk} text-muted-foreground/45 shrink-0`} />}
+      </div>
       <button onClick={onOpen} className="text-left min-w-0 flex-1">
         <p className={`${big ? "text-[13.5px]" : "text-[12px]"} leading-snug font-medium ${done ? "line-through text-muted-foreground" : ""}`}>{it.title}</p>
         <div className="flex items-center gap-1.5 mt-1">
+          {kind !== "action" && <KindBadge kind={kind} />}
           <span className={`text-[9px] font-bold uppercase tracking-wide ${ch.text}`}>{ch.label}</span>
-          <span className="text-muted-foreground/30">/</span>
-          <span className={`text-[9px] font-semibold ${ow.text}`}>{ow.label}</span>
+          {kind === "action" && <><span className="text-muted-foreground/30">/</span><span className={`text-[9px] font-semibold ${ow.text}`}>{ow.label}</span></>}
           <ArrowRight className="w-3 h-3 text-muted-foreground/0 group-hover:text-muted-foreground/60 transition-colors ml-auto" />
         </div>
       </button>
@@ -196,8 +220,11 @@ export default function MarketingPage() {
 
   const daysToOpen = useMemo(() => Math.max(0, Math.ceil((parseISO(openingDate).getTime() - Date.now()) / 86400000)), [openingDate]);
   const tasks = items.filter(i => i.channel !== "rest");
-  const doneCount = tasks.filter(i => i.status === "done").length;
-  const overall = tasks.length ? Math.round((doneCount / tasks.length) * 100) : 0;
+  // Context (Q...) and Done (DONE:...) items are readouts, not work: keep them
+  // out of the completion percentage so the bar reflects real tasks left.
+  const actionTasks = tasks.filter(i => itemKind(i.title) === "action");
+  const doneCount = actionTasks.filter(i => i.status === "done").length;
+  const overall = actionTasks.length ? Math.round((doneCount / actionTasks.length) * 100) : 0;
 
   const matchOwner = (i: Item) => ownerFilter === "all" || i.owner === ownerFilter || i.owner === "both";
   const matchChannel = (i: Item) => channelFilter === "all" || i.channel === channelFilter;
@@ -374,7 +401,8 @@ export default function MarketingPage() {
           const open = isPhaseOpen(phaseId);
           const weeks = Object.keys(grouped[phaseId]).sort();
           const pItems = Object.values(grouped[phaseId]).flat().filter(i => i.channel !== "rest");
-          const pDone = pItems.filter(i => i.status === "done").length;
+          const pActions = pItems.filter(i => itemKind(i.title) === "action");
+          const pDone = pActions.filter(i => i.status === "done").length;
           const isCurrent = phaseId === currentPhase;
           return (
             <div key={phaseId} className={`rounded-2xl border overflow-hidden ${isCurrent ? "border-primary/40" : ""}`}>
@@ -384,8 +412,8 @@ export default function MarketingPage() {
                   {isCurrent && <span className="text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 rounded-full px-2 py-0.5">Now</span>}
                   <span className="text-xs text-muted-foreground truncate hidden sm:inline">{PHASES[phaseId]?.sub}</span>
                 </div>
-                <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0">{pDone}/{pItems.length}</span>
-                <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden shrink-0 hidden sm:block"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${pItems.length ? (pDone / pItems.length) * 100 : 0}%` }} /></div>
+                <span className="text-[11px] font-semibold text-muted-foreground tabular-nums shrink-0">{pDone}/{pActions.length}</span>
+                <div className="w-14 h-1.5 rounded-full bg-muted overflow-hidden shrink-0 hidden sm:block"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${pActions.length ? (pDone / pActions.length) * 100 : 0}%` }} /></div>
                 {open ? <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" /> : <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />}
               </button>
 
@@ -454,18 +482,29 @@ export default function MarketingPage() {
                 const ch = CHANNELS[it.channel] ?? CHANNELS.found;
                 const ow = OWNERS[it.owner] ?? OWNERS.both;
                 const blocks = parseDeep(it.deep);
+                const kind = itemKind(it.title);
+                const isDone = it.status === "done" || kind === "done";
                 return (
-                  <div key={it.id} className={`rounded-xl border border-l-[3px] ${ch.bar} p-4`}>
+                  <div key={it.id} className={`rounded-xl border border-l-[3px] ${ch.bar} ${kind === "action" ? "" : "bg-muted/25"} p-4`}>
                     <div className="flex items-start gap-2.5">
-                      <div className="pt-0.5"><StatusToggle status={it.status} onChange={s => setStatus(it.id, s)} big /></div>
+                      <div className="pt-0.5">
+                        {kind === "action"
+                          ? <StatusToggle status={it.status} onChange={s => setStatus(it.id, s)} big />
+                          : kind === "done"
+                            ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                            : <Info className="w-5 h-5 text-muted-foreground/45 shrink-0" />}
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                          {kind !== "action" && <KindBadge kind={kind} />}
                           <span className={`text-[9px] font-bold uppercase tracking-wide ${ch.text}`}>{ch.label}</span>
-                          <span className="text-muted-foreground/30">/</span>
-                          <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase`}><span className={`w-1.5 h-1.5 rounded-full ${ow.badge}`} /><span className={ow.text}>{ow.label}</span></span>
-                          <span className="text-[10px] text-muted-foreground ml-1">{ch.where}</span>
+                          {kind === "action" && <>
+                            <span className="text-muted-foreground/30">/</span>
+                            <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase`}><span className={`w-1.5 h-1.5 rounded-full ${ow.badge}`} /><span className={ow.text}>{ow.label}</span></span>
+                          </>}
+                          <span className="text-[10px] text-muted-foreground ml-1">{kind === "action" ? ch.where : kind === "done" ? "already in place" : "context, nothing to action"}</span>
                         </div>
-                        <p className={`text-[15px] font-semibold leading-snug ${it.status === "done" ? "line-through text-muted-foreground" : ""}`}>{it.title}</p>
+                        <p className={`text-[15px] font-semibold leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>{it.title}</p>
                         {it.detail && <p className="text-[12.5px] text-muted-foreground mt-1">{it.detail}</p>}
                       </div>
                     </div>
