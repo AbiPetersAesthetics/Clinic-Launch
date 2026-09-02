@@ -3795,7 +3795,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "WRITE-BACK",
-        "b": "The £422 released goes to Bedhampton (open, earning, £160 lifetime ad spend, no live advertising, offer expires end October)."
+        "b": "The £422 released goes to Bedhampton (open, earning, £990.31 lifetime ad spend verified in the account, currently paused so no live advertising, offer expires end October)."
       }
     ]
   },
