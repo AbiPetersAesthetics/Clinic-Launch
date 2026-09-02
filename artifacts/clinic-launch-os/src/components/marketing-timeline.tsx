@@ -44,6 +44,8 @@ const LANES: Lane[] = [
       detail: "Bedhampton is verified and managed, 5.0 from 84 reviews. Only Winchester is missing." },
     { kind: "beat", from: "2026-09-03", label: "Create Winchester profile", loc: "winch", up: false,
       detail: "Longest lead time of anything. Address, 2 November open date, categories, photos, then start verification." },
+    { kind: "beat", from: "2026-09-10", label: "Review-ask automation loaded", loc: "winch", up: false, theme: "Built now, fires from launch",
+      detail: "Build the every-visit review request in GHL in build week (the D6 ask): seven days after an attended visit, WhatsApp or SMS, every client, never only the happy ones. Disable the ANS default so no one is asked twice." },
     { kind: "beat", from: "2026-11-02", label: "Reviews drive begins", loc: "winch", up: true, theme: "8 to 10 a month",
       detail: "Every attended client asked in person, plus a desk QR code. Unfiltered and unincentivised." },
   ] },
@@ -128,12 +130,14 @@ const LANES: Lane[] = [
   { name: "Retail & memberships", note: "the compounding margin", c: "#5a9b90", items: [
     { kind: "beat", from: "2026-11-02", label: "Memberships live", loc: "winch", up: true, theme: "Skin Circle £19, Skin Plan £115",
       detail: "The public ladder from opening: Skin Circle at 19, the Skin Plan at 115 (founder 95), Advanced at 185. A member is a pre-booked recurring slot." },
+    { kind: "beat", from: "2026-11-02", label: "Referrals live: £25 each-way", loc: "both", up: false, theme: "Warm introductions, POM-safe",
+      detail: "Founding clients introduce friends: £25 clinic credit each way, released only when the introduced person attends and pays for a first treatment. Loaded in build week; the cheapest lead you own." },
     { kind: "bar", from: "2026-12-01", to: "2026-12-24", label: "Christmas vouchers + gift sets", loc: "winch", theme: "POM-safe gifts, drive January",
       detail: "Gift vouchers and curated skincare sets, compliant, sold from the shop front to drive January bookings." },
     { kind: "beat", from: "2026-12-19", label: "Last Christmas posting", loc: "winch", up: false,
       detail: "Last order date for posted gifts before the clinic closes 24 December to 1 January." },
-    { kind: "bar", from: "2027-01-02", to: "2027-01-31", label: "January skin plans + wave two", loc: "winch", theme: "New-year pre-sell",
-      detail: "New-year skin plans and membership pre-sell, and founding wave two opens on the waitlist as the second, skin-focused clinician starts." },
+    { kind: "bar", from: "2027-01-02", to: "2027-01-31", label: "January skin plans + pre-sell", loc: "winch", theme: "New-year pre-sell",
+      detail: "New-year skin plans and membership pre-sell. The founding waitlist keeps building for wave two, which opens in spring 2027 when the second, skin-focused clinician starts, not in January." },
   ] },
 ];
 

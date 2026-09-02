@@ -5019,6 +5019,38 @@ export const PLAN_ITEMS: PlanItem[] = [
     ]
   },
   {
+    "category": "build",
+    "title": "Build the referral (introductions) mechanic: the £25 each-way credit",
+    "detail": "Founding clients are your warmest, cheapest introducers. Load it now so it is live from day one.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-09",
+    "sortOrder": 308,
+    "deep": [
+      { "h": "WHAT", "b": "Set up the referral in GHL: a unique share link or code per client, and a 25 pound clinic credit to BOTH the introducer and the introduced person, released only when the introduced person attends and pays for their first treatment. Build it in build week so it is live from the very first founding client." },
+      { "h": "WHY", "b": "A founding client who has been looked after is the warmest introducer you will ever have, and by far the cheapest Winchester lead. Ads and the 448 list fill the launch; introductions are what compound after it, at close to zero cost." },
+      { "h": "POM-SAFE", "b": "The reward is clinic credit toward any service, never money off a named prescription-only treatment, and it is never framed as a discount. The introducer earns it only on the introduced person's first attended, paid visit, so it cannot reward a no-show and it stays a genuine thank-you, not an inducement to a medicine." },
+      { "h": "MESSAGE", "b": "The ask is loaded as an automation and goes out warmly after a good visit, never at the point of sale: 'If you know someone who would love their skin looked after the way yours was, send them this. You will both get 25 pounds toward your next visit when they come in.' Do not rely on remembering to ask." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Build the review-request automation now (the D6 ask), and disable the ANS default",
+    "detail": "Reviews are the compounding asset that makes every other channel cheaper. Load the ask, never leave it manual.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 309,
+    "deep": [
+      { "h": "WHAT", "b": "Build the review request as a GHL automation now, so it fires on its own from launch: WhatsApp if the thread is open, else SMS, seven days after an attended visit, at 11:00. The full trigger and wording live in the D6 task in the nurture section; this is the build-week task to load it, not leave it to memory." },
+      { "h": "FIRST STEP", "b": "Disable the ANS built-in review request for Winchester first, or clients get asked twice. One ask, from one system." },
+      { "h": "COMPLIANCE", "b": "Ask EVERY attended client, never only the happy ones: selective solicitation breaches the DMCC Act 2024 and Google policy. The message invites an honest review and asks the client to tell Abi directly if anything was not right, as well as (not instead of) leaving it." },
+      { "h": "WHY", "b": "A new Winchester profile starts at zero reviews next to established rivals. A loaded, every-visit ask is what closes that gap fastest, and more reviews are what make the map pack and the Google ads cheaper over time." }
+    ]
+  },
+  {
     "category": "creative",
     "title": "Three posts a week: the Monday, Wednesday, Friday themes, by clinic",
     "detail": "A fixed weekly skeleton, Bedhampton-led then Winchester-led, all from the shoot.",
