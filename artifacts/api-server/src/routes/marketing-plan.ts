@@ -513,13 +513,41 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
+    "title": "Founding is wave one (40). The waitlist is wave two.",
+    "detail": "20 of 40 already booked. Keep 40 a real, closing cohort; the waitlist becomes a second founding wave when the second clinician starts.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 25,
+    "deep": [
+      {
+        "h": "THE DECISION",
+        "b": "20 of the 40 founding places are already booked, with the nurture barely started, 448 warm leads still waiting, and the Bedhampton base now invited too. Demand clearly exceeds 40. The question is whether to raise the cap."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Do not inflate 40. The whole brand, and every ad, rests on 40 being a real limit that one nurse can look after honestly. Quietly moving it to 60 breaks that promise, and the CAP Code expects a stated limit to be genuine. Instead, keep 40 as wave one, let it close cleanly (it is over half gone, which makes the scarcity true), and open a Founding wave two on the honest waitlist, released when the second, skin-focused clinician starts. That matches the cap to the capacity to serve it, and captures the overflow instead of turning warm people away."
+      },
+      {
+        "h": "HOW",
+        "b": "Everyone past 40, and everyone whose held slot lapses, goes onto the waitlist (the C4, C5 and D8 mechanic already does this). Tag them founding-wave-2. When the second clinician's start date is set, open roughly another 40 places to that list first, in order. Warm Bedhampton clients who miss wave one get priority on wave two."
+      },
+      {
+        "h": "CAPACITY NOTE",
+        "b": "Wave two cannot open until there is a second pair of hands to deliver it. Tying it to the hire is what keeps the promise honest and the diary deliverable. If wave one is filling this fast, bring the second clinician forward."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
     "title": "B4: get the analyser specification into the compliance folder",
     "detail": "B1 copy claims the device photographs and measures skin in layers, a technical claim needing manufacturer docs.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 25,
+    "sortOrder": 26,
     "deep": [
       {
         "h": "BLOCKER",
@@ -539,7 +567,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 26,
+    "sortOrder": 27,
     "deep": [
       {
         "h": "BLOCKER",
@@ -559,7 +587,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 27,
+    "sortOrder": 28,
     "deep": [
       {
         "h": "BLOCKER",
@@ -579,7 +607,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 28,
+    "sortOrder": 29,
     "deep": [
       {
         "h": "WHY",
@@ -599,7 +627,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 29,
+    "sortOrder": 30,
     "deep": [
       {
         "h": "STEPS",
@@ -619,7 +647,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 30,
+    "sortOrder": 31,
     "deep": [
       {
         "h": "STRATEGY",
@@ -643,7 +671,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 31,
+    "sortOrder": 32,
     "deep": [
       {
         "h": "TRIGGER",
@@ -671,7 +699,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 32,
+    "sortOrder": 33,
     "deep": [
       {
         "h": "TRIGGER",
@@ -699,7 +727,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 33,
+    "sortOrder": 34,
     "deep": [
       {
         "h": "TRIGGER",
@@ -717,13 +745,37 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
+    "title": "Bedhampton warm: build the migration list in GHL",
+    "detail": "Segment the existing Bedhampton clients, the warmest founding candidates you have, and tag them.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 35,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "The existing Bedhampton clients already know and trust Abi. They convert far better than any cold lead, and Bedhampton is closing, so they need somewhere to go. They should be offered a founding place before the cold 448, not after."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. In GHL, build a smart list of existing Bedhampton clients: opportunity Revenue Status is First Payment Taken or Repeat Client, OR First Treatment Date is set, OR Total Revenue is greater than 0. 2. Exclude anyone already on the Winchester Founding List. 3. Tag them bedhampton-warm. 4. Separately tag Bedhampton enquirers who never became clients as bedhampton-cold. 5. Confirm the counts, so you know how many founding places to hold for warm clients."
+      },
+      {
+        "h": "NOTE",
+        "b": "Warm clients get first refusal on founding. Hold places for them before opening the list wider."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
     "title": "A2: second ask, personalised if/else branch",
     "detail": "Fires 4 days after no reply to A1a; a merge field cannot conditionally rewrite a sentence, so build two branches.",
     "channel": "email",
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 34,
+    "sortOrder": 36,
     "deep": [
       {
         "h": "TRIGGER",
@@ -755,7 +807,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 35,
+    "sortOrder": 37,
     "deep": [
       {
         "h": "STEPS",
@@ -775,7 +827,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-17",
-    "sortOrder": 36,
+    "sortOrder": 38,
     "deep": [
       {
         "h": "TRIGGER",
@@ -797,13 +849,73 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
+    "title": "Bedhampton cold invite: Bedhampton now, or Winchester in November",
+    "detail": "To Bedhampton enquirers who never booked, offer the local analysis now and the Winchester option too.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-22",
+    "sortOrder": 39,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Tag bedhampton-cold (enquired, never became a client). Marketing Opt In respected: SMS where consented, email otherwise."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "Give them both doors and let them choose. The Bedhampton free analysis is on until 30 October and is the nearer option; Winchester opens 2 November for anyone happy with the drive. No pressure, honest about the closure."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it's Abi. Two things while I still can: my Bedhampton clinic has a complimentary skin analysis on until 30 October, and I'm opening a new clinic in Winchester on 2 November if that is easier for you. Either way I would love to see you. Which suits? Reply STOP to opt out. Abi"
+      },
+      {
+        "h": "NOTE",
+        "b": "Bedhampton locals who will not travel are still worth an analysis before 30 October, that is the harvest. The ones happy to travel become Winchester leads. Do not decide for them."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Bedhampton warm invite: follow Abi to Winchester (founding first)",
+    "detail": "Personal invite to existing Bedhampton clients, honest on the drive, first refusal on a founding place.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-09-27",
+    "dayDate": "2026-10-01",
+    "sortOrder": 40,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Tag bedhampton-warm. From Abi personally: SMS first, email for the fuller version. Sent before the Winchester 448 founding booking opens on 26 October, so loyal clients get first pick."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "These are the warmest people in the whole plan. Be honest that Winchester is about 25 minutes further, let them decide, and make the founding place a genuine thank-you for their loyalty. Never pushy. If the drive does not work for them, that is completely fine."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it's Abi. A change I wanted you to hear from me first: I'm opening my own clinic in Winchester on 2 November, and winding Bedhampton down. It's about 25 minutes up the road, and I would love to keep looking after your skin there. I'm holding founding places for my Bedhampton clients first, before anyone else. Would you like one? Just reply yes, or tell me your thoughts. Abi x"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Subject: A change, and a place saved for you\n\nHi {{contact.first_name}},\n\nAfter all this time at Bedhampton, I'm opening my own clinic in Winchester on Monday 2 November, at 9A Jewry Street. Bedhampton is winding down as I move across.\n\nI know Winchester is a bit further for you, about 25 minutes, so I wanted to be honest about that and let you decide. What I can promise is that the care does not change. And because you have trusted me here, you get first refusal on a founding place before I open the list to anyone else: priority booking, founding pricing held for twelve months, and a plan written for your skin rather than sold to you on the day.\n\nIf the drive works for you, I would genuinely love to keep looking after you. If it does not, thank you, truly, for everything.\n\n[ Reserve my founding place ]\n\nAbi x"
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On yes: Priority Access Requested, tag founding-warm, route into the C1 week question so they pick a November slot like any founding client. These bookings count against the 40."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
     "title": "B1: what the clinic actually is (email)",
     "detail": "First Phase B email to the Requested opted-in pool; sets up honesty and the £50 assessment.",
     "channel": "email",
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-05",
-    "sortOrder": 37,
+    "sortOrder": 41,
     "deep": [
       {
         "h": "TRIGGER",
@@ -831,7 +943,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 38,
+    "sortOrder": 42,
     "deep": [
       {
         "h": "TRIGGER",
@@ -859,7 +971,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-16",
-    "sortOrder": 39,
+    "sortOrder": 43,
     "deep": [
       {
         "h": "WHY",
@@ -879,7 +991,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 40,
+    "sortOrder": 44,
     "deep": [
       {
         "h": "TRIGGER",
@@ -903,7 +1015,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 41,
+    "sortOrder": 45,
     "deep": [
       {
         "h": "STRATEGY",
@@ -923,7 +1035,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-20",
-    "sortOrder": 42,
+    "sortOrder": 46,
     "deep": [
       {
         "h": "DECISION",
@@ -939,7 +1051,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-21",
-    "sortOrder": 43,
+    "sortOrder": 47,
     "deep": [
       {
         "h": "TRIGGER",
@@ -967,7 +1079,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-21",
-    "sortOrder": 44,
+    "sortOrder": 48,
     "deep": [
       {
         "h": "TRIGGER",
@@ -987,7 +1099,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-23",
-    "sortOrder": 45,
+    "sortOrder": 49,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1007,7 +1119,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-24",
-    "sortOrder": 46,
+    "sortOrder": 50,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1031,7 +1143,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 47,
+    "sortOrder": 51,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1055,7 +1167,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 48,
+    "sortOrder": 52,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1077,13 +1189,37 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
+    "title": "From 30 October: route the engaged Bedhampton base to Winchester",
+    "detail": "When Bedhampton closes, move any warm or cold Bedhampton lead who is engaged but not yet booked onto the Winchester nurture.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 53,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "The analyser and the Bedhampton offer both end on 30 October. After that, the only door left for an engaged Bedhampton lead is Winchester, so the nurture has to move them across rather than let them go cold."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. From 26 October, any bedhampton-warm or bedhampton-cold contact who is engaged but has no booking is offered the Winchester November complimentary analysis, and for warm clients a founding place if any remain (or wave two). 2. New Bedhampton enquiries from 26 October are answered with the Winchester offer, not a Bedhampton appointment that cannot happen. 3. Keep it honest about the 25 minute drive."
+      },
+      {
+        "h": "NOTE",
+        "b": "This is the one direction that is allowed. The Winchester 448 are never asked to travel to Bedhampton; the Bedhampton base is warmly invited to Winchester."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
     "title": "D1: day-before reminder",
     "detail": "Sent the evening before each founding appointment.",
     "channel": "email",
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-01",
-    "sortOrder": 49,
+    "sortOrder": 54,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1103,7 +1239,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-02",
-    "sortOrder": 50,
+    "sortOrder": 55,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1123,7 +1259,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-02",
-    "sortOrder": 51,
+    "sortOrder": 56,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1147,7 +1283,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-03",
-    "sortOrder": 52,
+    "sortOrder": 57,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1171,7 +1307,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-04",
-    "sortOrder": 53,
+    "sortOrder": 58,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1191,7 +1327,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-05",
-    "sortOrder": 54,
+    "sortOrder": 59,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1211,7 +1347,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-08",
     "dayDate": "2026-11-09",
-    "sortOrder": 55,
+    "sortOrder": 60,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1235,7 +1371,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-08",
     "dayDate": "2026-11-12",
-    "sortOrder": 56,
+    "sortOrder": 61,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1259,7 +1395,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-15",
     "dayDate": "2026-11-16",
-    "sortOrder": 57,
+    "sortOrder": 62,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1287,7 +1423,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 58,
+    "sortOrder": 63,
     "deep": [
       {
         "h": "DECISION",
@@ -1311,7 +1447,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 59,
+    "sortOrder": 64,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1335,7 +1471,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 60,
+    "sortOrder": 65,
     "deep": [
       {
         "h": "NOTE",
@@ -1355,7 +1491,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 61,
+    "sortOrder": 66,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1375,7 +1511,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 62,
+    "sortOrder": 67,
     "deep": [
       {
         "h": "DECISION",
@@ -1399,7 +1535,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 63,
+    "sortOrder": 68,
     "deep": [
       {
         "h": "DECISION",
@@ -1427,7 +1563,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-18",
-    "sortOrder": 64,
+    "sortOrder": 69,
     "deep": [
       {
         "h": "STEPS",
@@ -1447,7 +1583,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 65,
+    "sortOrder": 70,
     "deep": [
       {
         "h": "NOTE",
@@ -1471,7 +1607,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 66,
+    "sortOrder": 71,
     "deep": [
       {
         "h": "STEPS",
@@ -1487,7 +1623,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 67,
+    "sortOrder": 72,
     "deep": [
       {
         "h": "CONSENT",
@@ -1507,7 +1643,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 68,
+    "sortOrder": 73,
     "deep": [
       {
         "h": "STEPS",
@@ -1523,7 +1659,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 69,
+    "sortOrder": 74,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -1539,7 +1675,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 70,
+    "sortOrder": 75,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -1559,7 +1695,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 71,
+    "sortOrder": 76,
     "deep": [
       {
         "h": "TARGETING",
@@ -1579,7 +1715,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 72,
+    "sortOrder": 77,
     "deep": [
       {
         "h": "NOTE",
@@ -1595,7 +1731,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 73,
+    "sortOrder": 78,
     "deep": [
       {
         "h": "BUDGET",
@@ -1615,7 +1751,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-08",
-    "sortOrder": 74,
+    "sortOrder": 79,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1647,7 +1783,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 75,
+    "sortOrder": 80,
     "deep": [
       {
         "h": "DECISION",
@@ -1671,7 +1807,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 76,
+    "sortOrder": 81,
     "deep": [
       {
         "h": "STEPS",
@@ -1691,7 +1827,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 77,
+    "sortOrder": 82,
     "deep": [
       {
         "h": "STEPS",
@@ -1711,7 +1847,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 78,
+    "sortOrder": 83,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1727,7 +1863,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 79,
+    "sortOrder": 84,
     "deep": [
       {
         "h": "NOTE",
@@ -1759,7 +1895,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 80,
+    "sortOrder": 85,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1779,7 +1915,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 81,
+    "sortOrder": 86,
     "deep": [
       {
         "h": "STEPS",
@@ -1799,7 +1935,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-14",
-    "sortOrder": 82,
+    "sortOrder": 87,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1815,7 +1951,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 83,
+    "sortOrder": 88,
     "deep": [
       {
         "h": "NOTE",
@@ -1835,7 +1971,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 84,
+    "sortOrder": 89,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1851,7 +1987,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 85,
+    "sortOrder": 90,
     "deep": [
       {
         "h": "NOTE",
@@ -1875,7 +2011,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-21",
-    "sortOrder": 86,
+    "sortOrder": 91,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1891,7 +2027,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 87,
+    "sortOrder": 92,
     "deep": [
       {
         "h": "NOTE",
@@ -1923,7 +2059,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 88,
+    "sortOrder": 93,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1943,7 +2079,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-27",
-    "sortOrder": 89,
+    "sortOrder": 94,
     "deep": [
       {
         "h": "STEPS",
@@ -1963,7 +2099,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-02",
-    "sortOrder": 90,
+    "sortOrder": 95,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1979,7 +2115,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-03",
-    "sortOrder": 91,
+    "sortOrder": 96,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2015,7 +2151,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 92,
+    "sortOrder": 97,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2047,7 +2183,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 93,
+    "sortOrder": 98,
     "deep": [
       {
         "h": "DECISION",
@@ -2071,7 +2207,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 94,
+    "sortOrder": 99,
     "deep": [
       {
         "h": "STEPS",
@@ -2095,7 +2231,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 95,
+    "sortOrder": 100,
     "deep": [
       {
         "h": "DECISION",
@@ -2115,7 +2251,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 96,
+    "sortOrder": 101,
     "deep": [
       {
         "h": "DECISION",
@@ -2135,7 +2271,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 97,
+    "sortOrder": 102,
     "deep": [
       {
         "h": "DECISION",
@@ -2155,7 +2291,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 98,
+    "sortOrder": 103,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2191,7 +2327,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 99,
+    "sortOrder": 104,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2227,7 +2363,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-12",
-    "sortOrder": 100,
+    "sortOrder": 105,
     "deep": [
       {
         "h": "STEPS",
@@ -2251,7 +2387,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 101,
+    "sortOrder": 106,
     "deep": [
       {
         "h": "RULE",
@@ -2271,7 +2407,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 102,
+    "sortOrder": 107,
     "deep": [
       {
         "h": "STEPS",
@@ -2295,7 +2431,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 103,
+    "sortOrder": 108,
     "deep": [
       {
         "h": "STEPS",
@@ -2315,7 +2451,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 104,
+    "sortOrder": 109,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2347,7 +2483,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 105,
+    "sortOrder": 110,
     "deep": [
       {
         "h": "STEPS",
@@ -2371,7 +2507,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 106,
+    "sortOrder": 111,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -2395,7 +2531,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 107,
+    "sortOrder": 112,
     "deep": [
       {
         "h": "BUDGET",
@@ -2419,7 +2555,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-22",
-    "sortOrder": 108,
+    "sortOrder": 113,
     "deep": [
       {
         "h": "TRIGGER",
@@ -2439,7 +2575,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-27",
     "dayDate": "2026-09-29",
-    "sortOrder": 109,
+    "sortOrder": 114,
     "deep": [
       {
         "h": "STEPS",
@@ -2459,7 +2595,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-13",
-    "sortOrder": 110,
+    "sortOrder": 115,
     "deep": [
       {
         "h": "STEPS",
@@ -2479,7 +2615,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 111,
+    "sortOrder": 116,
     "deep": [
       {
         "h": "WHY",
@@ -2503,7 +2639,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 112,
+    "sortOrder": 117,
     "deep": [
       {
         "h": "NOTE",
@@ -2535,7 +2671,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 113,
+    "sortOrder": 118,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2555,7 +2691,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 114,
+    "sortOrder": 119,
     "deep": [
       {
         "h": "DECISION",
@@ -2583,7 +2719,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 115,
+    "sortOrder": 120,
     "deep": [
       {
         "h": "STEPS",
@@ -2603,7 +2739,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 116,
+    "sortOrder": 121,
     "deep": [
       {
         "h": "STEPS",
@@ -2619,7 +2755,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 117,
+    "sortOrder": 122,
     "deep": [
       {
         "h": "DECISION",
@@ -2635,7 +2771,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 118,
+    "sortOrder": 123,
     "deep": [
       {
         "h": "STEPS",
@@ -2651,7 +2787,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 119,
+    "sortOrder": 124,
     "deep": [
       {
         "h": "OFFER",
@@ -2687,7 +2823,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 120,
+    "sortOrder": 125,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -2707,7 +2843,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 121,
+    "sortOrder": 126,
     "deep": [
       {
         "h": "STEPS",
@@ -2743,7 +2879,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 122,
+    "sortOrder": 127,
     "deep": [
       {
         "h": "STEPS",
@@ -2759,7 +2895,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 123,
+    "sortOrder": 128,
     "deep": [
       {
         "h": "CAPACITY",
@@ -2775,7 +2911,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 124,
+    "sortOrder": 129,
     "deep": [
       {
         "h": "WHY",
@@ -2795,7 +2931,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 125,
+    "sortOrder": 130,
     "deep": [
       {
         "h": "TARGETING",
@@ -2827,7 +2963,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 126,
+    "sortOrder": 131,
     "deep": [
       {
         "h": "STEPS",
@@ -2847,7 +2983,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 127,
+    "sortOrder": 132,
     "deep": [
       {
         "h": "CAPACITY",
@@ -2867,7 +3003,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-09",
-    "sortOrder": 128,
+    "sortOrder": 133,
     "deep": [
       {
         "h": "STEPS",
@@ -2883,7 +3019,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 129,
+    "sortOrder": 134,
     "deep": [
       {
         "h": "AD COPY",
@@ -2915,7 +3051,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 130,
+    "sortOrder": 135,
     "deep": [
       {
         "h": "AD COPY",
@@ -2943,7 +3079,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 131,
+    "sortOrder": 136,
     "deep": [
       {
         "h": "STEPS",
@@ -2959,7 +3095,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 132,
+    "sortOrder": 137,
     "deep": [
       {
         "h": "BUDGET",
@@ -2991,7 +3127,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 133,
+    "sortOrder": 138,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -3007,7 +3143,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 134,
+    "sortOrder": 139,
     "deep": [
       {
         "h": "STEPS",
@@ -3023,7 +3159,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-21",
-    "sortOrder": 135,
+    "sortOrder": 140,
     "deep": [
       {
         "h": "STRATEGY",
@@ -3051,7 +3187,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 136,
+    "sortOrder": 141,
     "deep": [
       {
         "h": "STEPS",
@@ -3067,7 +3203,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-25",
-    "sortOrder": 137,
+    "sortOrder": 142,
     "deep": [
       {
         "h": "STEPS",
@@ -3083,7 +3219,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 138,
+    "sortOrder": 143,
     "deep": [
       {
         "h": "STEPS",
@@ -3099,7 +3235,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-30",
-    "sortOrder": 139,
+    "sortOrder": 144,
     "deep": [
       {
         "h": "STEPS",
@@ -3115,7 +3251,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 140,
+    "sortOrder": 145,
     "deep": [
       {
         "h": "STRATEGY",
@@ -3139,7 +3275,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 141,
+    "sortOrder": 146,
     "deep": [
       {
         "h": "LOCK",
@@ -3155,7 +3291,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 142,
+    "sortOrder": 147,
     "deep": [
       {
         "h": "DO NOT RE-ADD",
@@ -3175,7 +3311,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 143,
+    "sortOrder": 148,
     "deep": [
       {
         "h": "TERMINOLOGY",
@@ -3195,7 +3331,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 144,
+    "sortOrder": 149,
     "deep": [
       {
         "h": "DECISION",
@@ -3215,7 +3351,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 145,
+    "sortOrder": 150,
     "deep": [
       {
         "h": "DECISION",
@@ -3235,7 +3371,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 146,
+    "sortOrder": 151,
     "deep": [
       {
         "h": "DECISION",
@@ -3255,7 +3391,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 147,
+    "sortOrder": 152,
     "deep": [
       {
         "h": "DECISION",
@@ -3275,7 +3411,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 148,
+    "sortOrder": 153,
     "deep": [
       {
         "h": "DECISION",
@@ -3295,7 +3431,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 149,
+    "sortOrder": 154,
     "deep": [
       {
         "h": "DECISION",
@@ -3315,7 +3451,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 150,
+    "sortOrder": 155,
     "deep": [
       {
         "h": "DECISION",
@@ -3335,7 +3471,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 151,
+    "sortOrder": 156,
     "deep": [
       {
         "h": "DECISION",
@@ -3355,7 +3491,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 152,
+    "sortOrder": 157,
     "deep": [
       {
         "h": "DECISION",
@@ -3375,7 +3511,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 153,
+    "sortOrder": 158,
     "deep": [
       {
         "h": "DECISION",
@@ -3395,7 +3531,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 154,
+    "sortOrder": 159,
     "deep": [
       {
         "h": "DECISION",
@@ -3415,7 +3551,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 155,
+    "sortOrder": 160,
     "deep": [
       {
         "h": "DECISION",
@@ -3435,7 +3571,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 156,
+    "sortOrder": 161,
     "deep": [
       {
         "h": "DECISION",
@@ -3455,7 +3591,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-12",
-    "sortOrder": 157,
+    "sortOrder": 162,
     "deep": [
       {
         "h": "DECISION",
@@ -3475,7 +3611,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 158,
+    "sortOrder": 163,
     "deep": [
       {
         "h": "DECISION",
@@ -3495,7 +3631,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 159,
+    "sortOrder": 164,
     "deep": [
       {
         "h": "DECISION",
@@ -3515,7 +3651,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 160,
+    "sortOrder": 165,
     "deep": [
       {
         "h": "DECISION",
