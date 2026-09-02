@@ -35,34 +35,57 @@ async function reseed(projectId: number) {
   return seeded.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-// Insert any template items missing from an already-seeded project, without
-// touching the statuses and notes on the items already there. Lets a revised
-// plan add tasks non-destructively (the "Rebuild" button still does a full wipe).
-async function topUpMissing(projectId: number) {
-  const existing = await db.select({ title: marketingItemsTable.title })
-    .from(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId));
-  const have = new Set(existing.map(r => r.title));
-  const missing = PLAN_ITEMS.filter(s => !have.has(s.title));
-  if (missing.length === 0) return 0;
-  await db.insert(marketingItemsTable).values(
-    missing.map(s => ({
-      projectId, category: s.category, title: s.title, detail: s.detail ?? "",
-      deep: JSON.stringify(s.deep ?? []), channel: s.channel, owner: s.owner,
-      weekStart: s.weekStart, dayDate: s.dayDate, status: "not_started" as const,
-      dueWeeksBeforeOpen: null, notes: "", sortOrder: s.sortOrder,
-    }))
-  );
-  return missing.length;
+type ExistingItem = {
+  id: number; title: string; detail: string; deep: string; category: string;
+  channel: string; owner: string; weekStart: string; dayDate: string; sortOrder: number;
+};
+
+// Reconcile an already-seeded project against the current template WITHOUT wiping
+// statuses and notes: insert items whose title is new, and update the content of
+// items whose copy has changed. Keyed by title. Only the content columns are ever
+// touched, so a user's ticks and notes survive a revised plan. Does zero writes
+// when nothing changed, so it is cheap to run on every load. (The "Rebuild" button
+// still does a full destructive wipe when the owner wants a clean slate.)
+async function syncTemplate(projectId: number, existing: ExistingItem[]) {
+  const byTitle = new Map(existing.map(r => [r.title, r]));
+  const inserts: any[] = [];
+  const updates: { id: number; patch: Record<string, unknown> }[] = [];
+  for (const s of PLAN_ITEMS) {
+    const deep = JSON.stringify(s.deep ?? []);
+    const cur = byTitle.get(s.title);
+    if (!cur) {
+      inserts.push({
+        projectId, category: s.category, title: s.title, detail: s.detail ?? "",
+        deep, channel: s.channel, owner: s.owner, weekStart: s.weekStart,
+        dayDate: s.dayDate, status: "not_started" as const,
+        dueWeeksBeforeOpen: null, notes: "", sortOrder: s.sortOrder,
+      });
+    } else if (
+      cur.detail !== (s.detail ?? "") || cur.deep !== deep || cur.category !== s.category ||
+      cur.channel !== s.channel || cur.owner !== s.owner || cur.weekStart !== s.weekStart ||
+      cur.dayDate !== s.dayDate || cur.sortOrder !== s.sortOrder
+    ) {
+      updates.push({ id: cur.id, patch: {
+        category: s.category, detail: s.detail ?? "", deep, channel: s.channel,
+        owner: s.owner, weekStart: s.weekStart, dayDate: s.dayDate, sortOrder: s.sortOrder,
+      } });
+    }
+  }
+  if (inserts.length) await db.insert(marketingItemsTable).values(inserts);
+  for (const u of updates) {
+    await db.update(marketingItemsTable).set(u.patch).where(eq(marketingItemsTable.id, u.id));
+  }
+  return inserts.length + updates.length;
 }
 
-// GET all items + waitlist count (auto-seeds when empty, tops up when new template items exist)
+// GET all items + waitlist count (auto-seeds when empty, else syncs new/changed template copy)
 router.get("/projects/:projectId/marketing", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
   let items = await db.select().from(marketingItemsTable)
     .where(eq(marketingItemsTable.projectId, projectId))
     .orderBy(asc(marketingItemsTable.sortOrder));
   if (items.length === 0) items = await reseed(projectId);
-  else if (await topUpMissing(projectId)) {
+  else if (await syncTemplate(projectId, items as unknown as ExistingItem[])) {
     items = await db.select().from(marketingItemsTable)
       .where(eq(marketingItemsTable.projectId, projectId))
       .orderBy(asc(marketingItemsTable.sortOrder));

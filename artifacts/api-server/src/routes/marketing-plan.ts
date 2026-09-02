@@ -514,7 +514,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "nurture",
     "title": "Founding is wave one (40). The waitlist is wave two.",
-    "detail": "20 of 40 already booked. Keep 40 a real, closing cohort; the waitlist becomes a second founding wave when the second clinician starts.",
+    "detail": "20 of 40 already booked. Keep 40 a real, closing cohort; the waitlist becomes a second founding wave when the second clinician starts (planned spring 2027).",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
@@ -531,11 +531,11 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "HOW",
-        "b": "Everyone past 40, and everyone whose held slot lapses, goes onto the waitlist (the C4, C5 and D8 mechanic already does this). Tag them founding-wave-2. When the second clinician's start date is set, open roughly another 40 places to that list first, in order. Warm Bedhampton clients who miss wave one get priority on wave two."
+        "b": "Everyone past 40, and everyone whose held slot lapses, goes onto the waitlist (the C4, C5 and D8 mechanic already does this). Tag them founding-wave-2. When the second, skin-focused clinician starts in spring 2027 (about April or May), open roughly another 40 places to that list first, in order. Warm Bedhampton clients who miss wave one get priority on wave two."
       },
       {
         "h": "CAPACITY NOTE",
-        "b": "Wave two cannot open until there is a second pair of hands to deliver it. Tying it to the hire is what keeps the promise honest and the diary deliverable. If wave one is filling this fast, bring the second clinician forward."
+        "b": "Wave two cannot open until there is a second pair of hands to deliver it. The second, skin-focused clinician is planned for about April or May 2027, six or more months after opening: the first winter is deliberately for stabilising one nurse in one room, not for stretching it. So even if wave one fills fast, hold wave two for the spring rather than pulling the hire forward. Let the waitlist build in the meantime; a queue content to wait is a stronger asset than a diary that overpromises."
       }
     ]
   },
