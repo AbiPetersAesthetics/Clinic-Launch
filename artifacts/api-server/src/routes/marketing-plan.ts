@@ -4914,5 +4914,123 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Compute the cost before email B2 sends on 12 October, since B2 is where the twelve-month hold is promised in writing."
       }
     ]
+  },
+  {
+    "category": "build",
+    "title": "Build week: write every message before a single thing goes live",
+    "detail": "One week now. Everything written and loaded, then it runs on a Friday check.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 300,
+    "deep": [
+      { "h": "WHY", "b": "Sixty-two days out with the list already full, the constraint is your time, not leads. If every email, SMS and WhatsApp is written and loaded now, the ten weeks to launch run on a fifteen-minute Friday check, not on you drafting a send the night before." },
+      { "h": "WHAT", "b": "One build week. By Friday 13 September every message for both tracks exists in GHL, in its workflow, with its wait and its send time set. Nothing outbound is written after this week; from here it is monitoring and small edits only." },
+      { "h": "RULE", "b": "British English, no percentage discounts, and no naming of any prescription-only treatment or an anti-wrinkle offer that resolves to one. Founding is a place and a price, never a discount." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Load the Winchester nurture into GHL and schedule it",
+    "detail": "Every Winchester sequence built as a workflow, waits and send windows set.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 301,
+    "deep": [
+      { "h": "WHAT", "b": "Build every Winchester sequence as a GHL workflow: the founding selection fortnight, the autumn-or-next-year decision thread, the treatment-intent nurtures, and the membership invitations. Set each wait and send window so they fire on their own." },
+      { "h": "SEQUENCES", "b": "Founding selection from the scan, the honest-diary decision series, one treatment-intent thread per interest the lead ticked, and the Skin Plan and membership invitations that fill the paying diary between the free scans." },
+      { "h": "NOTE", "b": "Personalise by the interest already captured on the lead. Someone who asked about skin gets the skin thread the day we open, not a generic newsletter." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Load the Bedhampton harvest messages, warm and cold",
+    "detail": "Reactivation, the fourteen-day add-on, and the follow-Abi-to-Winchester series.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 302,
+    "deep": [
+      { "h": "WHAT", "b": "Build the Bedhampton reactivation thread: the free-analysis invitation, the fourteen-day add-on reminder, and the follow-Abi-to-Winchester migration series for both warm and cold local leads." },
+      { "h": "OFFER", "b": "Complimentary analysis at Bedhampton through October, offer closes 30 October, then the scanner moves to Winchester. Local only, within ten miles of PO9." },
+      { "h": "NOTE", "b": "Warm and cold both get invited. The cold list is the cheapest audience you own; press it now while there is still a Bedhampton chair to book." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Submit every email and SMS template for approval now",
+    "detail": "Templates, domain and numbers need lead time. Get them verified in build week.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 303,
+    "deep": [
+      { "h": "WHY", "b": "Templates and any new sending domain or number need lead time to verify and warm. Submit them in build week so nothing is held in review when a send is due." },
+      { "h": "WHAT", "b": "Register and verify the sends, warm the domain, and get the SMS and WhatsApp templates approved. Send yourself one test through every workflow and read it on a phone before it goes near a lead." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Batch-film six weeks of content and the three ad concepts in one session",
+    "detail": "Shoot once; the feed and the ads both run for weeks without filming again.",
+    "channel": "social",
+    "owner": "abi",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 304,
+    "deep": [
+      { "h": "WHY", "b": "Filming is the thing that stalls a feed. Shoot once and the feed and the ads both run for weeks without stopping to film again." },
+      { "h": "WHAT", "b": "One session: the founding story, treatment education, the room and Abi, and the three ad concepts. Cut into Reels, Stories, an email snippet and a Google profile post. Faces and before-and-afters only with written consent." },
+      { "h": "NOTE", "b": "Repeat the shoot once a fortnight to top up. It is a top-up, not the growth lever; the growth lever is the loaded nurture." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Set the weekly review: every Friday, fifteen minutes, all channels",
+    "detail": "One recurring check. It is the only report, and it runs the whole engine.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 305,
+    "deep": [
+      { "h": "WHAT", "b": "One recurring fifteen-minute review, every Friday. It is the only report. Reconcile booked-and-attended scans by hand from ANS against the ad spend, then read one number per channel." },
+      { "h": "CHECKLIST", "b": "Cost per lead, founding places filled out of 40, reviews added this month, members signed, and the diary against capacity. Confirm the pre-loaded sends fired. Adjust next week's spend; write nothing new." },
+      { "h": "WHY", "b": "Because everything is built up front, the week's work is checking, not producing. Fifteen minutes on a Friday keeps the whole engine honest without pulling Abi off the floor." }
+    ]
+  },
+  {
+    "category": "build",
+    "title": "Queue the social calendar a fortnight ahead",
+    "detail": "Always two weeks out, so the feed never waits on a free afternoon.",
+    "channel": "social",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 306,
+    "deep": [
+      { "h": "WHAT", "b": "Queue the organic posts two weeks out at all times, so the feed never depends on a free afternoon. Three a week: Monday, Wednesday, Friday." },
+      { "h": "NOTE", "b": "Repurpose, do not reinvent. Each post also becomes a Story, and the best line becomes an email snippet or a Google post." }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Three posts a week: the Monday, Wednesday, Friday themes, by clinic",
+    "detail": "A fixed weekly skeleton, Bedhampton-led then Winchester-led, all from the shoot.",
+    "channel": "social",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 307,
+    "deep": [
+      { "h": "RHYTHM", "b": "Monday is authority or education, Wednesday is human or behind the scenes, Friday is proof or the current offer. Same skeleton every week so it is quick to fill." },
+      { "h": "BY CLINIC", "b": "Through October the Bedhampton posts push the free local analysis before the scanner moves; the Winchester posts build the room, Abi and the founding window. From 2 November it is one Winchester-led feed." },
+      { "h": "NOTE", "b": "Lean and repurposed from the batch shoot. Organic social is reach and reassurance, not the booking engine; do not let it eat the Friday review time." }
+    ]
   }
 ];

@@ -24,6 +24,11 @@ const pct = (iso: string) => {
   return ((Date.UTC(y, m - 1, d) - START) / (END - START)) * 100;
 };
 const LAUNCH = pct("2026-11-02");
+const FRIDAYS: number[] = (() => {
+  const out: number[] = [];
+  for (let t = START; t <= END; t += 864e5) { if (new Date(t).getUTCDay() === 5) out.push(((t - START) / (END - START)) * 100); }
+  return out;
+})();
 
 const LOC: Record<Loc, { label: string; cls: string }> = {
   bed:   { label: "Bedhampton", cls: "bg-[#a9805e]/15 text-[#8a6547] dark:text-[#d1a482] border-[#a9805e]/30" },
@@ -69,6 +74,8 @@ const LANES: Lane[] = [
       detail: "A small presence to the engager audiences once open, keeping the November diary filling." },
   ] },
   { name: "Newsletter & nurture", note: "email, SMS, WhatsApp: where the 40 are won", c: "#907a86", items: [
+    { kind: "beat", from: "2026-09-04", label: "Pre-write + load ALL sends in GHL", loc: "winch", up: true, theme: "Front-load, then monitor",
+      detail: "In build week, every email, SMS and WhatsApp for both tracks is written and loaded into GHL, with the workflows, waits and schedules set and the templates submitted for approval. The campaign then runs on monitoring, not last-minute writing." },
     { kind: "bar", from: "2026-09-03", to: "2026-09-30", label: "Sort the 448", loc: "winch", theme: "Autumn, or next year?",
       detail: "One gentle question by SMS to the whole warm list, so people sort themselves without any sense of a race. 40 a day, batched." },
     { kind: "bar", from: "2026-10-05", to: "2026-10-16", label: "Earn it", loc: "winch", theme: "What the clinic is, the honest diary",
@@ -87,6 +94,16 @@ const LANES: Lane[] = [
       detail: "From opening, membership is the next step after a first treatment: a pre-booked recurring slot that fills the diary and retains." },
     { kind: "beat", from: "2026-12-01", label: "Monthly newsletter", loc: "both", up: false, theme: "One list, both sites, 1st of the month",
       detail: "After launch the two tracks fold into one monthly newsletter to the whole opted-in list, Winchester led." },
+  ] },
+  { name: "Social (organic)", note: "3 a week, batch filmed, repurposed", c: "#b07aa1", items: [
+    { kind: "beat", from: "2026-09-05", label: "Batch-film 6 Reels + 3 ad concepts", loc: "both", up: true, theme: "One shoot, weeks of content",
+      detail: "Film the founding content, the treatment education and the three ad concepts in one session, so the feed and the ads run without stopping to film. Repurposed into Stories, an email snippet and a Google post." },
+    { kind: "bar", from: "2026-09-15", to: "2027-01-31", label: "3 posts a week: Mon, Wed, Fri", loc: "both", theme: "Authority / human / proof",
+      detail: "Monday authority or education, Wednesday human or behind the scenes, Friday proof or offer. Lean and repurposed, not the growth lever, and pre-scheduled a fortnight ahead so it never stalls." },
+    { kind: "beat", from: "2026-09-15", label: "Bedhampton harvest posts", loc: "bed", up: false, theme: "Promote the free analysis locally",
+      detail: "September and October posts push the complimentary Bedhampton analysis to local followers before the scanner moves to Winchester." },
+    { kind: "beat", from: "2026-11-02", label: "Launch week content", loc: "winch", up: true, theme: "Doors, the room, Abi",
+      detail: "Opening week: the finished room, Abi, and founding places filling. Client faces or before-and-afters only with written consent." },
   ] },
   { name: "Bedhampton harvest", note: "the earning clinic, local only", c: "#a9805e", items: [
     { kind: "bar", from: "2026-09-10", to: "2026-10-30", label: "Harvest ads, 10 miles of PO9", loc: "bed", theme: "Free analysis before it moves",
@@ -183,7 +200,7 @@ export default function MarketingTimeline() {
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Level 0 · the whole launch on one view</div>
           <h2 className="text-lg font-semibold mt-0.5">Every channel, both clinics, converging on 2 November</h2>
         </div>
-        <p className="text-[11px] text-muted-foreground max-w-xs">Hover any bar or dot for the theme, hook, dates and clinic. Newsletters and ads are individual to each clinic in the run-up, then Winchester-led.</p>
+        <p className="text-[11px] text-muted-foreground max-w-xs">Hover any bar or dot for the theme, hook, dates and clinic. Everything is written and loaded up front in build week (early September), then it runs on a weekly Friday check. Newsletters and ads are individual to each clinic in the run-up, then Winchester-led.</p>
       </div>
 
       <div className="overflow-x-auto">
@@ -249,6 +266,19 @@ export default function MarketingTimeline() {
                 </div>
               </div>
             ))}
+
+            {/* weekly review rhythm — a marker on every Friday */}
+            <div className="flex border-t-2 border-border">
+              <div className="w-[210px] shrink-0 pr-2 flex flex-col justify-center py-2" style={{ borderRight: "2px solid #587F72" }}>
+                <div className="text-[11px] font-bold leading-tight flex items-center gap-1.5"><span className="w-2 h-2 rounded-full inline-block" style={{ background: "#587F72" }} />Weekly review</div>
+                <div className="text-[9px] text-muted-foreground mt-0.5">every Friday, 15 min, all channels</div>
+              </div>
+              <div className="relative flex-1 py-3 cursor-default"
+                onMouseEnter={e => enter(e, { label: "Weekly review, every Friday", loc: "both", theme: "15 minutes, all channels", from: "2026-09-04", to: "2027-01-29", detail: "Reconcile booked-and-attended analyses by hand from ANS against ad spend (the one number). Then scan each channel: cost per lead, founding places filled out of 40, reviews this month, members signed, and the diary against capacity. Adjust next week's spend, and check the pre-loaded sends fired. Nothing new is written; the sends are already queued." })}
+                onMouseMove={move} onMouseLeave={leave}>
+                {FRIDAYS.map((x, i) => <span key={i} className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-[7px] h-[7px] rounded-full" style={{ left: `${x}%`, background: "#587F72", opacity: 0.5, border: "1.5px solid var(--color-card)" }} />)}
+              </div>
+            </div>
 
             {/* convergence spine — overlay spans the track (left of it is the 210px label column) */}
             <div className="absolute top-0 bottom-0 right-0 pointer-events-none" style={{ left: "210px" }}>

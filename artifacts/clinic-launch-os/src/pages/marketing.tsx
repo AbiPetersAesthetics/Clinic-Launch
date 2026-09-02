@@ -25,6 +25,7 @@ function parseDeep(s: string): Block[] { try { const a = JSON.parse(s || "[]"); 
 
 const PHASES: Record<string, { label: string; sub: string }> = {
   top:        { label: "Read this first", sub: "What is actually live, and the one thing that changes the plan" },
+  build:      { label: "Build week", sub: "Front-load everything: write and load every send, batch-film the content, schedule it, then run on a Friday check (2 to 13 Sep)" },
   nurture:    { label: "The 40 from 448", sub: "The selection sequence: sort the list, select the 40, launch fortnight (3 Sep to 16 Nov)" },
   diary:      { label: "Fill the diary", sub: "Treatment-intent nurtures and memberships that fill the paying white space between the free analyses" },
   retarget:   { label: "Retargeting", sub: "A small, correctly sized Meta retarget under the conversations (12 Oct to 1 Nov)" },
@@ -32,7 +33,7 @@ const PHASES: Record<string, { label: string; sub: string }> = {
   bedhampton: { label: "Bedhampton harvest", sub: "Reactivate the earning clinic, local only, offer ends 30 Oct (10 Sep to 30 Oct)" },
   tail:       { label: "Decisions, dates and rules", sub: "The owner decisions, the compliance locks, and what must not change" },
 };
-const PHASE_ORDER = ["top", "nurture", "diary", "retarget", "creative", "bedhampton", "tail"];
+const PHASE_ORDER = ["top", "build", "nurture", "diary", "retarget", "creative", "bedhampton", "tail"];
 
 const CHANNELS: Record<string, { label: string; icon: React.ElementType; where: string; bar: string; dot: string; text: string }> = {
   found:  { label: "Setup",  icon: Wrench,     where: "one-off task",         bar: "border-l-slate-400",  dot: "bg-slate-400",  text: "text-slate-600 dark:text-slate-300" },

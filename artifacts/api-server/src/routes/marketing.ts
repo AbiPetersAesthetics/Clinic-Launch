@@ -35,13 +35,38 @@ async function reseed(projectId: number) {
   return seeded.sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-// GET all items + waitlist count (auto-seeds only when empty)
+// Insert any template items missing from an already-seeded project, without
+// touching the statuses and notes on the items already there. Lets a revised
+// plan add tasks non-destructively (the "Rebuild" button still does a full wipe).
+async function topUpMissing(projectId: number) {
+  const existing = await db.select({ title: marketingItemsTable.title })
+    .from(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId));
+  const have = new Set(existing.map(r => r.title));
+  const missing = PLAN_ITEMS.filter(s => !have.has(s.title));
+  if (missing.length === 0) return 0;
+  await db.insert(marketingItemsTable).values(
+    missing.map(s => ({
+      projectId, category: s.category, title: s.title, detail: s.detail ?? "",
+      deep: JSON.stringify(s.deep ?? []), channel: s.channel, owner: s.owner,
+      weekStart: s.weekStart, dayDate: s.dayDate, status: "not_started" as const,
+      dueWeeksBeforeOpen: null, notes: "", sortOrder: s.sortOrder,
+    }))
+  );
+  return missing.length;
+}
+
+// GET all items + waitlist count (auto-seeds when empty, tops up when new template items exist)
 router.get("/projects/:projectId/marketing", async (req, res) => {
   const projectId = parseInt(req.params["projectId"] as string);
   let items = await db.select().from(marketingItemsTable)
     .where(eq(marketingItemsTable.projectId, projectId))
     .orderBy(asc(marketingItemsTable.sortOrder));
   if (items.length === 0) items = await reseed(projectId);
+  else if (await topUpMissing(projectId)) {
+    items = await db.select().from(marketingItemsTable)
+      .where(eq(marketingItemsTable.projectId, projectId))
+      .orderBy(asc(marketingItemsTable.sortOrder));
+  }
   const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1);
   const waitlistCount = (project as any)?.waitlistCount ?? 0;
   return res.json({ items, waitlistCount });
