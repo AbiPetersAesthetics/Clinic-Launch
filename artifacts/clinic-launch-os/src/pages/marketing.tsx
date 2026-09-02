@@ -288,6 +288,38 @@ export default function MarketingPage() {
         </div>
       </div>
 
+      {/* ── Executive summary ─────────────────────────────────── */}
+      <div className="rounded-2xl border bg-card overflow-hidden">
+        <div className="px-5 sm:px-6 pt-5 pb-4 border-b bg-muted/[0.15]">
+          <div className="flex items-center gap-2 text-primary mb-2"><Sparkles className="w-4 h-4" /><span className="text-[11px] font-bold uppercase tracking-widest">Executive summary</span></div>
+          <p className="text-sm leading-relaxed text-foreground/85 max-w-3xl">
+            Open Winchester on <strong>2 November</strong> as a premium, nurse-led skin clinic that earns on treatments and skincare, using the one free thing worth talking about, the <strong>AI Skin Analysis</strong>, as the way in. The demand is already proven and cheap: <strong>448 warm leads at about £3 each</strong>. So the launch is not an acquisition problem, it is a <strong>selection, conversion and capacity</strong> problem. Every channel below is sized to that: convert the people we already have, protect one nurse's diary, and build the physical and organic presence that a shop front and a second, skin-focused clinician will compound over the first year. No discounts, ever. Value comes from the free analysis, priority and founding status, and honest advice.
+          </p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-px bg-border">
+          <div className="bg-card p-5">
+            <div className="flex items-center gap-2 mb-1.5"><Facebook className="w-4 h-4 text-indigo-500" /><span className="text-[13px] font-bold">Meta</span><span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300 bg-indigo-500/10 rounded-full px-2 py-0.5">Dial down</span></div>
+            <p className="text-[12px] font-semibold text-foreground/90 mb-1">The paid engine, now turned down.</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">Prospecting is already live and has done its job (395 leads at £3.16, now drifting to £5.64 as the 12 mile pool saturates). Cut cold spend to about £8 a day and move it into a small retargeting campaign against the 448, plus a creative refresh led by Abi and the free scan. From here Meta warms and reminds the people we already have, it does not buy more.</p>
+          </div>
+          <div className="bg-card p-5">
+            <div className="flex items-center gap-2 mb-1.5"><SearchIcon className="w-4 h-4 text-emerald-500" /><span className="text-[13px] font-bold">Google</span><span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-emerald-600 dark:text-emerald-300 bg-emerald-500/10 rounded-full px-2 py-0.5">Build first</span></div>
+            <p className="text-[12px] font-semibold text-foreground/90 mb-1">The gap, and the highest return fix.</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">Nothing runs today, and there is no Winchester Business Profile, so the map pack belongs to rivals with 130 to 150 reviews while we would open with none. Priority one is creating and verifying the Winchester profile with a 2 November open date, the longest lead time of anything. Paid Google is brand defence Search first, then tight local non brand once advertiser verification clears. Never name a prescription treatment.</p>
+          </div>
+          <div className="bg-card p-5">
+            <div className="flex items-center gap-2 mb-1.5"><Mail className="w-4 h-4 text-blue-500" /><span className="text-[13px] font-bold">Newsletter</span><span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-blue-600 dark:text-blue-300 bg-blue-500/10 rounded-full px-2 py-0.5">Where it is won</span></div>
+            <p className="text-[12px] font-semibold text-foreground/90 mb-1">The 40 are won here, not on Meta.</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">The launch turns on converting 40 founding clients from 448 warm, opted in leads, a 9 per cent ask on a list with WhatsApp connected. The GHL nurture does it in three gentle questions, autumn or next year, which week, a held time, so nobody is ever rejected and the diary fills itself. Email, SMS and WhatsApp, every message written and ready. Highest value, almost no cost.</p>
+          </div>
+          <div className="bg-card p-5">
+            <div className="flex items-center gap-2 mb-1.5"><Tag className="w-4 h-4 text-rose-500" /><span className="text-[13px] font-bold">Retail</span><span className="ml-auto text-[9px] font-bold uppercase tracking-wide text-rose-600 dark:text-rose-300 bg-rose-500/10 rounded-full px-2 py-0.5">Compounds later</span></div>
+            <p className="text-[12px] font-semibold text-foreground/90 mb-1">The margin the shop front unlocks.</p>
+            <p className="text-[12px] text-muted-foreground leading-relaxed">Retail is not a launch day channel, it is the compounding one. The only street level unit in the city, plus a skin focused second clinician, turn the free analysis into a prescribed skincare regime sold from a real shop front rather than a treatment room. Target a 30 to 35 per cent retail attach on treatment visits, a profit line that does not use a clinical slot. December, with gift vouchers and sets, is the first real retail moment, and it grows from there.</p>
+          </div>
+        </div>
+      </div>
+
       {/* ── Strategy strip ──────────────────────────────────── */}
       <div className="grid md:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 p-4">
