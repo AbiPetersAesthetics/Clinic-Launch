@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Megaphone, Wrench, Instagram, Mail, Facebook, Search as SearchIcon,
-  CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, RotateCcw, Tag, Copy, Check, X,
+  CheckCircle2, Circle, CircleDashed, ChevronDown, ChevronUp, ChevronLeft, RotateCcw, Tag, Copy, Check, X,
   Sparkles, ArrowRight, Info,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
@@ -182,10 +182,13 @@ export default function MarketingPage() {
   const [channelFilter, setChannelFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [openPhases, setOpenPhases] = useState<Set<string> | null>(null);
   const [view, setView] = useState<"overview" | "plan">("overview");
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  const itemsRef = useRef<Item[]>([]);
+  itemsRef.current = items;
   const TODAY = todayISO();
 
   const load = () => {
@@ -199,7 +202,7 @@ export default function MarketingPage() {
   }, []);
   useEffect(() => {
     if (!selectedDay) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSelectedDay(null); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setSelectedDay(null); setSelectedItemId(null); } };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedDay]);
@@ -244,6 +247,17 @@ export default function MarketingPage() {
   const todayTasks = dayItemsFor(TODAY).filter(i => i.channel !== "rest");
   const todayRest = dayItemsFor(TODAY).find(i => i.channel === "rest");
   const weekDays = Array.from({ length: 7 }, (_, i) => addDaysISO(currentWeekSun, i));
+
+  // The detail modal shows either a single clicked task, or a whole day (when a
+  // date header is clicked). A single task keeps the reader on what they tapped.
+  const selItem = selectedItemId != null ? items.find(i => i.id === selectedItemId) ?? null : null;
+  const modalDay = selItem ? selItem.dayDate : selectedDay;
+  const modalItems = selItem ? [selItem] : selectedDay ? dayItemsFor(selectedDay) : [];
+  const modalOpen = !!(selItem || selectedDay);
+  // Write a pending note immediately (on field blur), and flush everything on
+  // close, so a note is never lost to the debounce when you click away or leave.
+  const flushSave = (id: number) => { const t = timers.current.get(id); if (!t) return; clearTimeout(t); timers.current.delete(id); const it = itemsRef.current.find(i => i.id === id); if (it) persist(it); };
+  const closeModal = () => { timers.current.forEach((t, id) => { clearTimeout(t); const it = itemsRef.current.find(i => i.id === id); if (it) persist(it); }); timers.current.clear(); setSelectedItemId(null); setSelectedDay(null); };
 
   if (!loaded) return <div className="p-6 flex items-center justify-center min-h-40"><p className="text-sm text-muted-foreground animate-pulse">Loading marketing plan...</p></div>;
 
@@ -304,7 +318,7 @@ export default function MarketingPage() {
         </div>
         {todayTasks.length > 0 ? (
           <div className="grid sm:grid-cols-2 gap-2">
-            {todayTasks.map(it => <TaskCard key={it.id} it={it} big onOpen={() => setSelectedDay(TODAY)} onStatus={s => setStatus(it.id, s)} />)}
+            {todayTasks.map(it => <TaskCard key={it.id} it={it} big onOpen={() => setSelectedItemId(it.id)} onStatus={s => setStatus(it.id, s)} />)}
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">{todayRest ? todayRest.title : "Nothing scheduled today. Enjoy the breather."}</p>
@@ -444,7 +458,7 @@ export default function MarketingPage() {
                                   {isToday && <span className="text-[8px] font-bold uppercase text-primary bg-primary/15 rounded px-1 py-0.5">Today</span>}
                                 </button>
                                 {ms && <p className="text-[9px] font-semibold text-amber-600 dark:text-amber-400 -mt-0.5">{ms}</p>}
-                                {visible.map(it => <TaskCard key={it.id} it={it} onOpen={() => setSelectedDay(iso)} onStatus={s => setStatus(it.id, s)} />)}
+                                {visible.map(it => <TaskCard key={it.id} it={it} onOpen={() => setSelectedItemId(it.id)} onStatus={s => setStatus(it.id, s)} />)}
                                 {rest && acts.length === 0 && <p className="text-[10.5px] text-muted-foreground italic mt-auto pt-1">{rest.title}</p>}
                               </div>
                             );
@@ -463,21 +477,22 @@ export default function MarketingPage() {
       {/* ── Day detail modal ────────────────────────────────── */}
       </>)}
 
-      {selectedDay && (
-        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+      {modalOpen && modalDay && (
+        <div className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-3 sm:p-6 bg-black/50 backdrop-blur-sm" onClick={closeModal}>
           <div className="bg-card border rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b shrink-0">
-              <div>
+              <div className="min-w-0">
+                {selItem && <button onClick={() => { const d = selItem.dayDate; setSelectedItemId(null); setSelectedDay(d); }} className="text-[10px] font-semibold text-muted-foreground hover:text-foreground flex items-center gap-1 mb-1"><ChevronLeft className="w-3 h-3" />See the whole day</button>}
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold">{fullDayLabel(selectedDay)}</h3>
-                  {MILESTONES[selectedDay] && <span className="text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 rounded-full px-2 py-0.5">{MILESTONES[selectedDay]}</span>}
+                  <h3 className="text-lg font-bold">{fullDayLabel(modalDay)}</h3>
+                  {MILESTONES[modalDay] && <span className="text-[9px] font-bold uppercase text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/40 rounded-full px-2 py-0.5">{MILESTONES[modalDay]}</span>}
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Everything on this day, in full. Tick tasks off as you go.</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{selItem ? "This one, in full." : "Everything on this day, in full. Tick tasks off as you go."}</p>
               </div>
-              <button onClick={() => setSelectedDay(null)} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted"><X className="w-5 h-5" /></button>
+              <button onClick={closeModal} className="text-muted-foreground hover:text-foreground rounded-lg p-1.5 hover:bg-muted shrink-0"><X className="w-5 h-5" /></button>
             </div>
             <div className="overflow-y-auto p-4 space-y-3">
-              {dayItemsFor(selectedDay).map(it => {
+              {modalItems.map(it => {
                 if (it.channel === "rest") return <p key={it.id} className="text-sm text-muted-foreground italic px-1">{it.title}</p>;
                 const ch = CHANNELS[it.channel] ?? CHANNELS.found;
                 const ow = OWNERS[it.owner] ?? OWNERS.both;
@@ -513,7 +528,7 @@ export default function MarketingPage() {
                     ) : (
                       <p className="mt-3 text-[12px] text-muted-foreground italic">Full detail for this task is being written.</p>
                     )}
-                    <Textarea placeholder="Your notes..." value={it.notes} onChange={e => setNotes(it.id, e.target.value)} className="mt-3 text-[12.5px] min-h-[44px] resize-none" />
+                    <Textarea placeholder="Your notes (saved automatically, and readable by Claude to adjust the plan)..." value={it.notes} onChange={e => setNotes(it.id, e.target.value)} onBlur={() => flushSave(it.id)} className="mt-3 text-[12.5px] min-h-[44px] resize-none" />
                   </div>
                 );
               })}
