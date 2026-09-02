@@ -64,6 +64,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  /* Keep the larger card radii crisp too, in line with the website */
+  --radius-2xl: 6px;
+  --radius-3xl: 8px;
 }
 
 :root {
@@ -129,11 +132,12 @@
   --chart-4: 210 25% 45%;
   --chart-5: 154 17% 55%;
 
-  --app-font-sans: 'avenir-next-lt-pro', 'Avenir Next', 'Inter', 'Segoe UI', sans-serif;
+  --app-font-sans: 'avenir-next-lt-pro', 'Mulish', 'Avenir Next', 'Inter', 'Segoe UI', sans-serif;
   --app-font-serif: 'minion-pro', 'Minion Pro', 'Source Serif 4', Georgia, serif;
-  --app-font-mono: Menlo, monospace;
+  --app-font-mono: 'Mulish', Menlo, monospace;
 
-  --radius: 0.375rem;
+  /* Sharp 2px radius, like the website (--radius: 2px on abipetersskinclinic.co.uk) */
+  --radius: 0.125rem;
 
   --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
   --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.07);
@@ -213,6 +217,12 @@
     /* Mobile safety net: wide content must scroll inside its own container,
        never the page. Tables/Gantt have their own overflow-x containers. */
     overflow-x: hidden;
+  }
+  /* Serif headings, like the website (Minion Pro / Source Serif 4). Components
+     may still opt out with an explicit font-sans utility where needed. */
+  h1, h2 {
+    font-family: var(--app-font-serif);
+    letter-spacing: -0.01em;
   }
 }
 
