@@ -200,7 +200,28 @@ export default function MarketingTimeline() {
           <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground">Level 0 · the whole launch on one view</div>
           <h2 className="text-lg font-semibold mt-0.5">Every channel, both clinics, converging on 2 November</h2>
         </div>
-        <p className="text-[11px] text-muted-foreground max-w-xs">Hover any bar or dot for the theme, hook, dates and clinic. Everything is written and loaded up front in build week (early September), then it runs on a weekly Friday check. Newsletters and ads are individual to each clinic in the run-up, then Winchester-led.</p>
+        <p className="text-[11px] text-muted-foreground max-w-xs">Hover any box or dot for the theme, hook, dates and clinic. Everything is written and loaded up front in build week (early September), then it runs on a weekly Friday check. Newsletters and ads are individual to each clinic in the run-up, then Winchester-led.</p>
+      </div>
+
+      {/* key — what a box means versus a dot */}
+      <div className="px-4 sm:px-5 py-2 border-b bg-card flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[10.5px] text-muted-foreground">
+        <span className="font-bold uppercase tracking-[0.12em] text-[9px] text-foreground/55">Key</span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-6 h-3 rounded-[2px] shrink-0" style={{ background: "color-mix(in srgb, #3a4a63 20%, var(--color-card))", border: "1px solid color-mix(in srgb, #3a4a63 45%, transparent)" }} />
+          <span><strong className="text-foreground/80 font-semibold">Box</strong> = a run of work across these dates</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-6 h-3 rounded-[2px] shrink-0" style={{ background: "color-mix(in srgb, #3a4a63 9%, var(--color-card))", border: "1px dashed color-mix(in srgb, #3a4a63 32%, transparent)" }} />
+          <span><strong className="text-foreground/80 font-semibold">Dashed box</strong> = lighter or evergreen</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-[11px] h-[11px] rounded-full border-2 shrink-0" style={{ background: "#3a4a63", borderColor: "#3a4a63" }} />
+          <span><strong className="text-foreground/80 font-semibold">Dot</strong> = a single moment (a launch, a switch-on)</span>
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-[11px] h-[11px] rounded-full border-2 shrink-0" style={{ background: "var(--color-card)", borderColor: "#3a4a63" }} />
+          <span><strong className="text-foreground/80 font-semibold">Hollow dot</strong> = something closing</span>
+        </span>
       </div>
 
       <div className="overflow-x-auto">
