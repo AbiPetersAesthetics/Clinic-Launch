@@ -242,7 +242,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "top",
     "title": "Switch on: verify the domain with Meta, then reconnect the Conversions API",
-    "detail": "The domain has no Meta verification; add the meta tag or DNS record first.",
+    "detail": "Domain verified 2 Sep. The Conversions API turned out to be a fresh setup, not a reconnect, and is deferred to the retargeting build.",
     "channel": "meta",
     "owner": "david",
     "weekStart": "2026-08-30",
@@ -250,12 +250,20 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 12,
     "deep": [
       {
-        "h": "STEPS",
-        "b": "1. Verify abipetersskinclinic.co.uk in Meta Business settings (meta tag or DNS record; Google's is already present, Meta's is missing). 2. Once verified, reconnect the Conversions API."
+        "h": "DONE (domain)",
+        "b": "Domain verified 2 September 2026. The facebook-domain-verification meta tag is live in the site head (base.njk, so every page) and shows green in Meta Business settings."
       },
       {
-        "h": "WHY",
-        "b": "CAPI will not improve lead measurement (leads arrive via instant forms that never touch the site, and the pixel fires PageView and Lead only). Its real value is audience durability and retargeting quality, which is why it ranks below the Winchester profile and the retargeting build."
+        "h": "STATE (CAPI)",
+        "b": "Verified 2 September: there is NOTHING to reconnect. Only the browser Meta Pixel 433665886446944 is connected; no server or partner integration exists (the earlier server events stopped in December 2025 and the integration is gone). So this is a fresh CAPI setup, not a reconnect."
+      },
+      {
+        "h": "ROUTE (when built)",
+        "b": "Scoped 2 September: go GHL-native, not the Conversions API Gateway (the Gateway only mirrors website pixel events, the weakest signal here since instant-form leads never touch the site). Facebook is already connected in GHL for the page and lead ads, so there is no OAuth wall. Build a workflow that sends a conversion event to Meta CAPI when a lead reaches booked or attended, passing email and phone as match keys, to pixel 433665886446944 and ad account 1565785360704219. Confirm the GHL plan exposes the Facebook Conversions API workflow action first; if not, fall back to Zapier to CAPI. The owner picks the exact trigger stage at build time."
+      },
+      {
+        "h": "WHY (deferred)",
+        "b": "Deferred to the retargeting build on 2 September by the owner. CAPI does not improve lead measurement here (leads arrive via instant forms that never touch the site); its value is audience durability and retargeting quality, which is why it ranks below the Winchester profile and the retargeting build."
       }
     ]
   },
