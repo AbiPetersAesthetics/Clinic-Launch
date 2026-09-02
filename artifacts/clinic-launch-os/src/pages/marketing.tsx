@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 const PROJECT_ID = 1;
 const API_BASE = "/api";
 const OPEN_DATE_FALLBACK = "2026-11-02";
-const FOUNDING_LEADS = 443;
-const META_CPL = "£3.08";
+const FOUNDING_LEADS = 448;
+const FOUNDING_CAP = 40;
+const META_CPL = "£3.16 to £5.64";
 
 type Status = "not_started" | "in_progress" | "done" | "na";
 interface Item {
@@ -22,14 +23,14 @@ type Block = { h: string; b: string };
 function parseDeep(s: string): Block[] { try { const a = JSON.parse(s || "[]"); return Array.isArray(a) ? a : []; } catch { return []; } }
 
 const PHASES: Record<string, { label: string; sub: string }> = {
-  p0: { label: "Foundations", sub: "Rebuild measurement, no paid spend (30 Aug to 12 Sep)" },
-  p1: { label: "Warm and harvest", sub: "Wake the 443, harvest Bedhampton, build reviews (13 Sep to 4 Oct)" },
-  p2: { label: "Launch runway", sub: "Sell the 40 founding places, stage the clinic, close Bedhampton (5 Oct to 1 Nov)" },
-  p3: { label: "Launch week", sub: "Open, seat the founders, first reviews (2 to 8 Nov)" },
-  p4: { label: "Fill the diary", sub: "Analyses into treatments, memberships, referrals (9 to 29 Nov)" },
-  p5: { label: "Christmas and retain", sub: "Vouchers, skincare, rebook, pre-sell January (30 Nov to 31 Dec)" },
+  top:        { label: "Read this first", sub: "What is actually live, and the one thing that changes the plan" },
+  nurture:    { label: "The 40 from 448", sub: "The selection sequence: sort the list, select the 40, launch fortnight (3 Sep to 16 Nov)" },
+  retarget:   { label: "Retargeting", sub: "A small, correctly sized Meta retarget under the conversations (12 Oct to 1 Nov)" },
+  creative:   { label: "Creative refresh", sub: "Three concepts and a media plan that spends less than half (15 Sep to 2 Nov)" },
+  bedhampton: { label: "Bedhampton harvest", sub: "Reactivate the earning clinic, local only, offer ends 30 Oct (10 Sep to 30 Oct)" },
+  tail:       { label: "Decisions, dates and rules", sub: "The owner decisions, the compliance locks, and what must not change" },
 };
-const PHASE_ORDER = ["p0", "p1", "p2", "p3", "p4", "p5"];
+const PHASE_ORDER = ["top", "nurture", "retarget", "creative", "bedhampton", "tail"];
 
 const CHANNELS: Record<string, { label: string; icon: React.ElementType; where: string; bar: string; dot: string; text: string }> = {
   found:  { label: "Setup",  icon: Wrench,     where: "one-off task",         bar: "border-l-slate-400",  dot: "bg-slate-400",  text: "text-slate-600 dark:text-slate-300" },
@@ -45,8 +46,9 @@ const OWNERS: Record<string, { label: string; badge: string; text: string }> = {
 };
 const STATUS_CYCLE: Record<Status, Status> = { not_started: "in_progress", in_progress: "done", done: "not_started", na: "not_started" };
 const MILESTONES: Record<string, string> = {
-  "2026-10-05": "Founding booking opens", "2026-10-13": "Winchester GBP + press",
-  "2026-10-30": "Soft launch", "2026-10-31": "Offer closes", "2026-11-02": "Winchester opens", "2026-12-01": "Christmas campaign",
+  "2026-09-03": "Nurture begins", "2026-09-10": "Bedhampton ads live", "2026-09-15": "Creative live",
+  "2026-10-12": "Retargeting live", "2026-10-19": "Founding: pick a week", "2026-10-26": "Founding booking opens",
+  "2026-10-30": "Bedhampton offer closes", "2026-11-02": "Winchester opens", "2026-11-16": "Founding review",
 };
 
 const DAYNAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -96,7 +98,7 @@ function ProgressRing({ pct }: { pct: number }) {
 
 function BlockRow({ blk }: { blk: Block }) {
   const [done, setDone] = useState(false);
-  const canCopy = /copy|caption|script|subject/i.test(blk.h);
+  const canCopy = /copy|caption|script|subject|message|template|primary|sms|whatsapp|email|url/i.test(blk.h);
   const copy = () => { const fin = () => { setDone(true); setTimeout(() => setDone(false), 1500); }; if (navigator.clipboard?.writeText) navigator.clipboard.writeText(blk.b).then(fin).catch(fin); else fin(); };
   return (
     <div className="rounded-xl border bg-muted/25 p-3.5">
@@ -204,7 +206,7 @@ export default function MarketingPage() {
 
   const dayItemsFor = (iso: string) => items.filter(i => i.dayDate === iso).sort((a, b) => a.sortOrder - b.sortOrder);
   const currentWeekSun = addDaysISO(TODAY, -parseISO(TODAY).getUTCDay());
-  const currentPhase = items.find(i => i.weekStart === currentWeekSun)?.category ?? "p0";
+  const currentPhase = items.find(i => i.weekStart === currentWeekSun)?.category ?? "top";
   const isPhaseOpen = (p: string) => (openPhases ? openPhases.has(p) : p === currentPhase);
   const togglePhase = (p: string) => setOpenPhases(prev => { const n = new Set(prev ?? [currentPhase]); n.has(p) ? n.delete(p) : n.add(p); return n; });
 
@@ -225,7 +227,7 @@ export default function MarketingPage() {
         <div>
           <div className="flex items-center gap-2 text-primary mb-1.5"><Megaphone className="w-4 h-4" /><span className="text-[11px] font-bold uppercase tracking-widest">Marketing command centre</span></div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Your launch, one day at a time</h1>
-          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">Do today's tasks, tick them off, done. Tap any day for the full strategy, creative and copy.</p>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xl">Corrected against what is actually live on 1 September. Do today's tasks, tick them off. Tap any day for the full spec, ad copy and messages.</p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-[11px] font-medium ${saveState === "saved" ? "text-emerald-600 dark:text-emerald-400" : saveState === "saving" ? "text-muted-foreground animate-pulse" : "text-transparent"}`}>{saveState === "saved" ? "Saved" : saveState === "saving" ? "Saving..." : "."}</span>
@@ -241,18 +243,18 @@ export default function MarketingPage() {
           <p className="text-[10px] text-muted-foreground mt-0.5">{dayNum(openingDate)} {monShort(openingDate)} 2026</p>
         </div>
         <div className="rounded-2xl border bg-card p-4">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Founding leads ready</p>
-          <p className="text-2xl font-bold mt-1 tabular-nums text-emerald-600 dark:text-emerald-400">{FOUNDING_LEADS}</p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Meta, {META_CPL}/lead</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Leads vs founding cap</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums"><span className="text-emerald-600 dark:text-emerald-400">{FOUNDING_LEADS}</span><span className="text-muted-foreground text-lg"> / </span><span className="text-rose-600 dark:text-rose-400">{FOUNDING_CAP}</span></p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">leads in hand, 40 founding places</p>
         </div>
         <div className="rounded-2xl border bg-card p-4 flex items-center gap-3">
           <ProgressRing pct={overall} />
           <div><p className="text-[10px] text-muted-foreground uppercase tracking-wider">Plan progress</p><p className="text-sm font-semibold mt-0.5 tabular-nums">{doneCount} of {tasks.length}</p><p className="text-[10px] text-muted-foreground">tasks done</p></div>
         </div>
         <div className="rounded-2xl border bg-card p-4">
-          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cadence</p>
-          <p className="text-2xl font-bold mt-1">3<span className="text-sm font-normal text-muted-foreground ml-1">posts/wk</span></p>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Mon, Wed, Fri</p>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Cost per lead now</p>
+          <p className="text-2xl font-bold mt-1 tabular-nums text-amber-600 dark:text-amber-400">£5.64</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">up from £3.16, pool saturating</p>
         </div>
       </div>
 
@@ -289,16 +291,16 @@ export default function MarketingPage() {
       {/* ── Strategy strip ──────────────────────────────────── */}
       <div className="grid md:grid-cols-3 gap-3">
         <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/20 p-4">
-          <div className="flex items-center gap-2 mb-1.5"><Tag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /><p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">The engine</p></div>
-          <p className="text-xs text-foreground/80 leading-relaxed">The <strong>AI Skin Analysis</strong> is the whole funnel: given free to acquire the patient, the money is made on the treatment after. Capped in the booking system so it never eats the diary.</p>
+          <div className="flex items-center gap-2 mb-1.5"><Tag className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" /><p className="text-[11px] font-bold uppercase tracking-wide text-rose-700 dark:text-rose-300">The one thing</p></div>
+          <p className="text-xs text-foreground/80 leading-relaxed">The list is <strong>already full</strong>. 448 warm leads against 40 founding places, one nurse at 30 to 35 a week. Acquisition is not the constraint. <strong>Selection, conversion and capacity</strong> are.</p>
         </div>
         <div className="rounded-2xl border bg-card p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5">No discounts, anywhere</p>
-          <p className="text-xs text-foreground/80 leading-relaxed">Founding is <strong>status, not a discount</strong>: priority booking, member pricing held 12 months, a free add-on. 40 places, capped because 40 is what one nurse can look after.</p>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-primary mb-1.5">Cut the cold spend</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">Prospecting is buying leads for places that no longer exist, at a rising <strong>£5.64</strong>. Cut it to £8 a day and fund the <strong>conversation</strong> with the 448 instead. That frees about £422.</p>
         </div>
         <div className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-4">
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400 mb-1.5">The one number</p>
-          <p className="text-xs text-foreground/80 leading-relaxed">Cost per <strong>booked-and-attended analysis</strong> (target £15 to £25), never cost per lead. And <strong>no paid spend until the 12 Sep measurement gate</strong> passes.</p>
+          <p className="text-xs text-foreground/80 leading-relaxed">Cost per <strong>booked-and-attended analysis</strong>, counted by hand each week, never cost per lead. Founding is <strong>priority and status, never a discount</strong>. Cap 40, because 40 is what one nurse can look after.</p>
         </div>
       </div>
 

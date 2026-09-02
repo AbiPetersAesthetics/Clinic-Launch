@@ -1,3 +1,3530 @@
 export type DeepBlock = { h: string; b: string };
 export interface PlanItem { category: string; title: string; detail: string; channel: string; owner: string; weekStart: string; dayDate: string; sortOrder: number; deep: DeepBlock[]; }
-export const PLAN_ITEMS: PlanItem[] = [{"category":"p0","title":"Freeze all paid spend and stand up the single Phase 0 tracker.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-08-30","sortOrder":10,"deep":[{"h":"Why it matters","b":"Money spent before measurement is money you cannot learn from. You also need one place where both of you can see whether the gate will be met, so that 12 September is a decision and not a discussion."},{"h":"Steps","b":"Log into Meta Ads Manager. Set every existing campaign, ad set and ad to Paused. Confirm zero active delivery.\nLog into Google Ads. Pause all campaigns. Confirm daily spend shows zero.\nCreate a shared sheet named “Phase 0 Gate”. Five rows, one per gate item. Columns: Item, Owner, Status, Evidence link, Date cleared.\nAdd a sixth row, not a gate item but tracked: “Skin Audit bugs fixed”.\nPin the sheet in your shared channel. Update it every evening.\nDiary a 30 minute call for Saturday 12 September, 9am, titled “Phase 0 gate: go or no go”."}]},{"category":"p0","title":"Reintroduce the AI Skin Analysis machine as the thing that makes this clinic different.","detail":"","channel":"social","owner":"abi","weekStart":"2026-08-30","dayDate":"2026-08-31","sortOrder":20,"deep":[{"h":"Strategy","b":"Top of funnel. The scanner is the content spine for the next four months, so the first Monday of the plan establishes what it is and why it matters, before any offer is attached to it. No call to action beyond a soft one. This post exists to make the machine familiar so that later posts can simply reference it."},{"h":"Creative direction","b":"Reel, 30 to 40 seconds, filmed in clinic. Hook on screen at 0 to 2 seconds: “Your skin is telling you something you cannot see.” Shot list: close-up of the scanner unit powering on, Abi seating herself at it, the capture moment, then a slow pan across the on-screen results with the client identity fields cropped out entirely. Use Abi’s own scan as the demo so no consent question arises. B-roll: clinic light, clean surfaces, hands adjusting the chin rest. Text on screen kept to four short lines maximum. Trending audio at low volume under Abi’s voice."},{"h":"Consent note","b":"Abi’s own face and results only. No client imagery in this post."},{"h":"Caption","b":"Most of what happens to your skin happens under the surface first.\nPigment sitting deeper than you can see. Sun damage from summers you have forgotten about. Areas where hydration has quietly dropped away. By the time it shows on the surface, it has usually been building for a while.\nThis is the scanner we use to look at that properly. It photographs the skin across several different light readings and puts an honest picture on screen: pigmentation, redness, texture, hydration, pore congestion, and how much sun exposure is actually stored in there.\nNo guessing. No selling you a product because it is the one on the shelf. Just a clear look at what is going on, and a plan that fits it.\nI will be sharing a lot more of what this thing shows us over the next few months, including my own results, which were humbling.\nIf you have been wondering why your skincare is not doing what you hoped, this is usually where the answer is."},{"h":"First comment","b":"#hampshireskinclinic #winchesterskin #havantbeauty #waterloovilleskin #nurseledskincare #skinhealthhampshire"}]},{"category":"p0","title":"Full audit of the dead Meta pixel before rebuilding anything.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-08-31","sortOrder":30,"deep":[{"h":"Why it matters","b":"You do not know yet whether the pixel is dead because the base code was removed, because the domain was never verified, or because iOS and consent-banner changes broke it. Rebuilding without diagnosing risks rebuilding the same fault."},{"h":"Steps","b":"Open Meta Events Manager. Note the pixel ID and the last date any event was received.\nInstall the Meta Pixel Helper Chrome extension. Visit abipetersskinclinic.co.uk, then /winchester, then /founding, then /skin-audit. Record on each page whether the helper detects the pixel and which events fire.\nIn Events Manager, check Business Settings, Brand Safety, Domains. Confirm whether abipetersskinclinic.co.uk is verified. If not, this is very likely part of the failure.\nCheck whether the cookie or consent banner on the site is blocking the pixel from loading. Accept all cookies and re-test with the helper.\nRecord findings in the Phase 0 Gate sheet against item 1."}]},{"category":"p0","title":"Rebuild the Meta pixel and verify the domain.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-09-01","sortOrder":40,"deep":[{"h":"Why it matters","b":"Without a working pixel there is no retargeting audience, no website custom audience, and no browser-side signal to deduplicate the server event against. Every paid tactic in Phases 2 to 5 depends on this being right today."},{"h":"Steps","b":"In Events Manager, verify the domain via DNS TXT record. Add the record at your DNS host, then click Verify. Allow up to 24 hours; check again tomorrow.\nInstall the base pixel code sitewide in the Eleventy base layout so it is present on every page including new ones.\nConfigure the consent banner so the pixel loads once marketing consent is granted, and does not load before. This is a GDPR and PECR requirement, not optional.\nSet up standard events: PageView sitewide, ViewContent on /winchester and /founding, Lead on the skin audit and contact form completions, Schedule on the ANS booking confirmation page.\nUse the Meta Event Setup Tool to confirm each event fires on the correct action.\nIn Aggregated Event Measurement, rank your eight web events with Schedule at priority one and Lead at priority two.\nRe-test all four key pages with Pixel Helper. Screenshot each as evidence."}]},{"category":"p0","title":"Abi tells people, honestly and early, that she is moving to Winchester.","detail":"","channel":"social","owner":"abi","weekStart":"2026-08-30","dayDate":"2026-09-02","sortOrder":50,"deep":[{"h":"Strategy","b":"Mid funnel and reputation management in one. The Bedhampton client base will hear about the move eventually. Hearing it from Abi first, in her own words, protects the relationship and turns a potentially unsettling piece of news into anticipation. It also plants Winchester in front of the Bedhampton audience without asking anyone to travel, which is the correct posture at this stage."},{"h":"Creative direction","b":"Talking head Reel, 45 to 60 seconds, filmed sitting down, natural light, no clinic uniform. Deliberately unpolished. Hook on screen: “Some news, and I want you to hear it from me.” No music, or very low ambient only. Cut in three seconds of the empty Winchester unit if any usable footage exists, otherwise stay on Abi throughout."},{"h":"Consent note","b":"No clients featured."},{"h":"Caption","b":"I have some news and I would rather you heard it from me than from a sign in a window.\nI am opening a new clinic on Jewry Street in Winchester. It opens on Monday 2 November.\nBedhampton is not disappearing overnight. I am here through September and October, and I will keep seeing you as normal. But I want to be straight with you: over the autumn my time will gradually shift across, and from November my clinical days will be in Winchester.\nI have thought about this for a long time. The Winchester space lets me do the kind of skin work I have wanted to do properly for years, with the right rooms, the right equipment and the right amount of time per person.\nIf you are a Bedhampton client, please do not feel rushed or forgotten. Come and see me over the next two months. I will make sure you leave with a proper plan for your skin, whether you follow me to Winchester or not.\nAnd if you are in Winchester and this is the first you are hearing of me, hello. There is a lot coming."},{"h":"First comment","b":"#winchesterskin #jewrystreetwinchester #hampshireskinclinic #havantbeauty #nurseledclinic #winchesterlocal"}]},{"category":"p0","title":"Reinstate and fully complete the Bedhampton Google Business Profile.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-09-02","sortOrder":60,"deep":[{"h":"Why it matters","b":"An expired profile means you are invisible in the local map pack, which for a clinic is often the single highest-intent free traffic source there is. Reinstatement can take days, so this starts now and is chased, not waited on."},{"h":"Steps","b":"Sign in to Google Business Profile with the owning account. If the owning account is unclear, use the “Request access” flow immediately, because that alone takes up to seven days.\nReinstate the Bedhampton listing. Complete verification as prompted. Video verification is now common: have the shopfront, signage, interior and a piece of headed paperwork ready to film in one continuous take.\nSet primary category to “Skin care clinic”. Add secondary categories: “Medical clinic”, “Facial spa”, “Nurse practitioner”.\nComplete the full profile: address, service area, opening hours, phone 07849 989869, website, appointment link pointing to the booking page.\nAdd services with descriptions. Do not list any prescription-only treatment by name.\nUpload at least eight photos: exterior, reception, treatment room, the scanner, Abi at work, close detail shots. No client faces.\nWrite the business description in Abi’s voice, 750 characters, mentioning Bedhampton, Waterlooville, Havant and Portsmouth.\nAdd the wind-down honestly later, not now. Do not mark it as closing yet."}]},{"category":"p0","title":"Create and verify the Winchester Google Business Profile with a future opening date.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-09-03","sortOrder":70,"deep":[{"h":"Why it matters","b":"Google allows a listing to be created up to 90 days before opening. Creating it now means the profile has time to verify, accrue photos and posts, and start ranking before 2 November. A profile created on launch day ranks like a profile created on launch day, which is to say badly."},{"h":"Steps","b":"Create a new Business Profile at 9A Jewry Street, Winchester SO23 8RZ.\nSet the opening date to 2 November 2026. Google will display “Opening soon” and will not accept bookings before then.\nPrimary category “Skin care clinic”, same secondaries as Bedhampton.\nStart verification immediately. Postcard or video verification will be required and will be the long pole. Chase weekly.\nAdd website URL pointing to abipetersskinclinic.co.uk/winchester, not the homepage.\nUpload whatever imagery exists now, even fit-out and render images. Replace with real photography in late October.\nPre-write eight Q and A entries and answer them from the business account: parking, accessibility, what an AI Skin Analysis involves, whether a consultation is needed first, opening hours, whether Abi is a nurse, whether the Bedhampton clinic is closing, how to book.\nDiary a weekly Friday check on verification status until it clears."}]},{"category":"p0","title":"A real, anonymised scanner result with Abi’s read on it.","detail":"","channel":"social","owner":"abi","weekStart":"2026-08-30","dayDate":"2026-09-04","sortOrder":80,"deep":[{"h":"Strategy","b":"Proof. Nothing sells a diagnostic asset like showing what it found. Anonymised results avoid consent and ASA complications entirely while still demonstrating capability. This is the post format you will return to roughly every fortnight for the rest of the plan."},{"h":"Creative direction","b":"Carousel or Reel. Screen recording or clean photograph of a results screen with all identifying fields cropped or blurred. Abi voices over what the reading actually means in plain terms. Hook on screen: “This is sun damage you cannot see yet.” Three to four slides or beats maximum. Keep the reading general, avoid diagnosing anything."},{"h":"Consent note","b":"Use Abi’s own scan, or a scan from a client who has signed the written imagery consent form. If in doubt, use Abi’s."},{"h":"Caption","b":"This is what the scanner picks up that a mirror will not.\nThe image on the right is the UV reading. Those darker patches are pigment sitting under the surface, not on it. On the skin itself you would see almost nothing yet. Give it a few more summers and you would start to.\nThis is the single most useful thing about scanning someone before we make a plan. It changes the conversation from “what can we do about the marks you can see” to “what can we do about the ones that have not surfaced yet”.\nPrevention is quieter work. It is also cheaper, kinder to the skin and far more effective than trying to undo something ten years later.\nIf you want to see your own reading, the AI Skin Analysis is complimentary at Bedhampton through September and October. It takes about twenty minutes and you leave with a plan, whether or not you book anything.\nCall or message 07849 989869."},{"h":"First comment","b":"#skinanalysis #hampshireskinclinic #havantbeauty #waterloovilleskin #sundamage #nurseledskincare"},{"h":"Capacity note","b":"this is the first post carrying the Bedhampton offer. Cap complimentary analyses at eight per week at Bedhampton and hold the rest of the diary for paid treatment."}]},{"category":"p0","title":"Rebuild the website lead-capture webhook into GHL and prove a lead lands end to end.","detail":"","channel":"found","owner":"david","weekStart":"2026-08-30","dayDate":"2026-09-04","sortOrder":90,"deep":[{"h":"Why it matters","b":"Every organic post, every Google ad and every landing page in this plan pushes to a form. If that form does not reach the CRM, the entire funnel leaks at the first join. This is the cheapest fault to fix and the most expensive to leave."},{"h":"Steps","b":"In GHL, create a new inbound webhook and copy the endpoint URL.\nOn the Eleventy site, point the contact form, the /founding form and the Skin Audit completion to that endpoint. Map fields explicitly: first name, last name, email, phone, source page, UTM source, UTM medium, UTM campaign.\nAdd a hidden field capturing the full landing page URL so attribution survives.\nSubmit a test lead from each of the four forms using a distinct test email per form.\nConfirm in GHL that all four appear, with correct source, and trigger the correct tag.\nBuild a GHL workflow that tags any lead missing a source as “attribution-missing” and notifies David, so silent failures surface.\nDelete the test contacts. Screenshot the arrivals first as gate evidence."}]},{"category":"p0","title":"First batch film. Six Reels in one sitting.","detail":"","channel":"found","owner":"abi","weekStart":"2026-08-30","dayDate":"2026-09-05","sortOrder":100,"deep":[{"h":"Why it matters","b":"Three posts a week for eighteen weeks is fifty-four pieces of content. Filmed one at a time that is impossible for a working clinician. Filmed six at a time, every fortnight, it is roughly ninety minutes a fortnight. This cadence is the only reason the organic plan is deliverable."},{"h":"Steps","b":"Block ninety minutes. Phone on a tripod, one lamp or a window, no interruptions.\nChange top between takes so the six do not look like one session.\nFilm these six: (a) the scanner powering up and capturing, narrated; (b) what the six readings actually mean, one line each; (c) the three things Abi wishes people knew about SPF; (d) why she does not believe in overdone results; (e) a walk-through of the Winchester unit as it stands; (f) what to expect at a first appointment.\nRecord each twice: once straight to camera, once as voiceover over b-roll. Gives David editing options.\nFilm thirty seconds of pure b-roll per topic: hands, product textures, the scanner screen, clinic detail.\nAirDrop everything to David the same day. Do not let footage sit on the phone.\nDavid edits and schedules within four days."}]},{"category":"p0","title":"Edit and schedule the fortnight, and fix the Skin Audit bugs.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-06","dayDate":"2026-09-06","sortOrder":110,"deep":[{"h":"Why it matters","b":"The Skin Audit is generating live leads and producing broken reports. A premium clinic sending a patient a report containing the word UNDEFINED does measurable damage to a 290-review reputation."},{"h":"Steps","b":"Edit the six Reels. Burn in captions. Keep each under sixty seconds.\nSchedule the next fortnight of posts in GHL or Meta Business Suite: Monday, Wednesday, Friday, 7pm.\nFix the hydration mid-band inheriting the top-band copy.\nFix the barrier and comfort band rendering blank at mid-range scores.\nFind and fix the UNDEFINED template variable. Add a fallback so no variable can ever render empty.\nRun the audit end to end six times using deliberately varied inputs designed to land in mid-range bands. Read every generated report in full.\nOnly after all six pass, mark the Skin Audit row green in the tracker."}]},{"category":"p0","title":"What the six scanner readings actually mean.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-06","dayDate":"2026-09-07","sortOrder":120,"deep":[{"h":"Strategy","b":"Authority and search. This is the educational backbone post that makes the scanner comprehensible rather than gimmicky. It is also the most repurposable asset in the plan: it becomes six Stories, a Google Business post, an email and a landing page section."},{"h":"Creative direction","b":"Reel, 60 seconds, from the batch film. Hook on screen: “Six things a skin scan tells us in twenty minutes.” One reading per beat, each with a single line of on-screen text over relevant b-roll. Pacing brisk. End on Abi to camera."},{"h":"Consent note","b":"Abi’s own results only."},{"h":"Caption","b":"Six readings, twenty minutes, one honest picture of your skin.\nPigmentation. Where melanin is sitting, including the deeper patches that have not surfaced yet.\nRedness and vascular. Broken capillaries, background flushing, and whether there is inflammation running under everything else.\nTexture. Fine lines, roughness and how light is actually bouncing off the surface.\nHydration. Whether your barrier is holding water or quietly losing it, which is behind far more “sensitive skin” than people realise.\nPores and congestion. Where things are blocked, and whether it is oil, dead skin or product.\nUV damage. The stored sun exposure. This is the one that surprises people most, and it is the one worth acting on earliest.\nNone of this is a diagnosis and none of it replaces seeing your GP if something is genuinely worrying you. It is a starting point for a sensible plan rather than a guess.\nComplimentary at Bedhampton through September and October. Message or call 07849 989869."},{"h":"First comment","b":"#skinanalysis #hampshireskinclinic #havantbeauty #skinhealth #nurseledskincare #waterloovilleskin"}]},{"category":"p0","title":"Connect the GHL Conversions API to Meta.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-06","dayDate":"2026-09-07","sortOrder":130,"deep":[{"h":"Why it matters","b":"Browser-side tracking is now unreliable. iOS privacy, ad blockers and consent banners mean a meaningful share of conversions never reach Meta. Server-side CAPI recovers them, and more importantly lets you optimise to a booking that actually happened rather than a click."},{"h":"Steps","b":"In Meta Events Manager, create a Conversions API access token for the pixel. Store it in your password manager, not in a document.\nIn GHL, go to Settings, Integrations, Facebook, and enter the pixel ID and access token.\nMap the GHL event “Appointment Booked” to the Meta standard event Schedule.\nMap “Appointment Confirmed” or the ANS confirmation trigger to Purchase or a custom event named BookingConfirmed. Use the same event name consistently everywhere.\nEnable event ID deduplication so the browser event and the server event for the same booking are not double counted. Confirm GHL is passing an event_id.\nPass hashed customer data where available: email, phone, first name, last name, city, postcode. GHL hashes before transmission. Confirm this in the integration settings, and do not pass anything unhashed.\nIn Events Manager, check the Event Match Quality score for the booking event. Anything below 5.0 needs more parameters passing."}]},{"category":"p0","title":"Prove a real booking fires a server-side confirmed event.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-06","dayDate":"2026-09-08","sortOrder":140,"deep":[{"h":"Why it matters","b":"This is gate item 2 and the keystone of the whole measurement approach. Cost per booked-and-attended analysis cannot be optimised toward if the booking event does not exist."},{"h":"Steps","b":"Open Events Manager Test Events and copy the test event code.\nMake a genuine test booking through the ANS embed using a real email you control.\nWatch Test Events. Confirm both the browser Schedule event and the server BookingConfirmed event arrive, and confirm they are deduplicated rather than counted twice.\nAttend or manually mark the test appointment as attended in ANS. Confirm the attended trigger fires in GHL.\nBuild the GHL workflow: appointment status changes to Showed, apply tag “analysis-attended”, and fire the server event.\nCancel and delete the test booking so it does not sit in Abi’s diary.\nScreenshot Test Events output. Mark gate item 2 green."}]},{"category":"p0","title":"Abi on why she does not do overdone.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-06","dayDate":"2026-09-09","sortOrder":150,"deep":[{"h":"Strategy","b":"Positioning and pre-qualification. Winchester is a market with plenty of aesthetic providers, medical and non-medical. This post filters for the client who wants restraint and expertise, and filters out the client who wants volume and price. That is a good trade for a premium nurse-led clinic. It also does the brand work that lets you hold pricing later."},{"h":"Creative direction","b":"Talking head, 45 seconds, warm, no clinical setting, no uniform. Hook on screen: “I turn people away, and I want to explain why.” Slow cuts, minimal text. This one lives or dies on Abi being genuinely herself."},{"h":"Consent note","b":"No clients, no comparisons to other providers, no naming of any treatment that is prescription only."},{"h":"Caption","b":"I turn people away fairly regularly, and I think it is worth explaining why.\nSometimes someone comes in wanting something that will not actually solve what is bothering them. Sometimes they want more than their skin needs. Sometimes the honest answer is that they should spend the money on a decent routine and better sun protection for six months and then come back and see me.\nI know that is not a very good sales strategy. It is a very good way to sleep at night.\nI trained as a nurse before I did any of this. That order matters to me. My job is to give you an honest read of what is going on and a plan that suits your skin, your life and your budget, and to say no when no is the right answer.\nIf you want subtle, considered work from someone who will tell you the truth, we will get on very well.\nIf you want dramatic, I am probably not your clinician, and that is completely fine."},{"h":"First comment","b":"#nurseledaesthetics #hampshireskinclinic #naturalresults #havantbeauty #winchesterskin #honestskincare"}]},{"category":"p0","title":"Build the imagery and data consent pack for all scanner content.","detail":"","channel":"found","owner":"both","weekStart":"2026-09-06","dayDate":"2026-09-09","sortOrder":160,"deep":[{"h":"Why it matters","b":"Scanner images are personal data, and in a clinical setting they are special category health data under UK GDPR Article 9. Using them in marketing without a specific, informed, freely given, separately recorded consent is a data protection breach and a professional standards problem, not just an ASA one."},{"h":"Steps","b":"Draft a one-page imagery consent form. It must state separately and specifically: what will be captured, where it may be published (Instagram, Facebook, website, email, Google), whether the face is included, that consent can be withdrawn at any time, and how to withdraw it.\nMake consent to marketing use explicitly separate from consent to treatment. A patient must be able to decline one and receive the other.\nAdd a “no marketing use” default. Silence is not consent.\nStore signed forms in the clinical record system, not in a marketing folder or a phone.\nBuild a GHL tag “imagery-consent-given” with the date, and a matching “imagery-consent-withdrawn” tag that removes it.\nAgree the working rule: if the consent form is not signed and filed, the image does not get used. No exceptions, no “she said it was fine”.\nAdd withdrawal handling to your retention process, including taking published content down within a stated period."}]},{"category":"p0","title":"Authenticate the sending domain with SPF, DKIM and DMARC.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-06","dayDate":"2026-09-10","sortOrder":170,"deep":[{"h":"Why it matters","b":"You are about to email a list of 443 people who have not heard from you in months. Sending that from an unauthenticated domain is the fastest way to land in spam permanently and poison the domain for every future send. Google and Yahoo now enforce this for bulk senders."},{"h":"Steps","b":"In GHL, go to Settings, Email Services, and start Dedicated Domain setup.\nAdd the SPF record at your DNS host. Ensure a single SPF record that includes GHL’s sending infrastructure. Multiple SPF records will fail.\nAdd the DKIM CNAME records exactly as GHL provides them.\nAdd a DMARC record starting at p=none with an rua address you monitor. Move to p=quarantine after four weeks of clean reports.\nWait for propagation, then verify in GHL until all three show green.\nSend test emails to a Gmail, an Outlook and a Yahoo address. In Gmail, use Show Original and confirm SPF, DKIM and DMARC all show PASS.\nRun the domain through a deliverability checker and record the score as gate evidence."}]},{"category":"p0","title":"Straightforward Bedhampton offer post with a clear local frame.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-06","dayDate":"2026-09-11","sortOrder":180,"deep":[{"h":"Strategy","b":"Bottom of funnel for the local Bedhampton audience only. The offer is explicitly framed as local, so the Winchester audience sees the clinic being generous without being asked to drive to Havant. First appearance of the fourteen-day add-on bonus."},{"h":"Creative direction","b":"Single image or short Reel. Clean shot of the scanner with the results screen visible, or Abi beside it. Hook on screen: “Complimentary skin analysis, Bedhampton, until 31 October.” Keep the design calm. No starbursts, no percentages, no countdown graphics. Premium clinics do not shout."},{"h":"Consent note","b":"Abi’s results on screen or a fully anonymised screen."},{"h":"Caption","b":"If you are local to Bedhampton, Havant or Waterlooville, this one is for you.\nBetween now and 31 October, the AI Skin Analysis is complimentary at the Bedhampton clinic. It normally sits at fifty pounds.\nHere is what happens. You come in, we scan your skin properly across six readings, and we sit down and go through what it actually shows. You leave with a written plan built around your skin, your routine and what you are willing to actually do day to day. There is no obligation to book anything at all.\nIf you do decide to go ahead with a treatment within fourteen days, I will include a complimentary skincare add-on with it.\nI am not running a discount. I do not think slashing prices is a good look for medical work, and it is not how I want to fill a diary. What I am doing is giving you the diagnostic bit for nothing so you can make a properly informed decision.\nTwenty minutes. No pressure. Message or call 07849 989869."},{"h":"First comment","b":"#havantbeauty #waterloovilleskin #bedhampton #hampshireskinclinic #skinanalysis #portsmouthskin"},{"h":"Capacity note","b":"hold complimentary analyses to a maximum of eight per week at Bedhampton. Run them in a single dedicated block rather than scattered through the day."}]},{"category":"p0","title":"Clean the 443, set up the WhatsApp channel, and evidence the consent basis.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-06","dayDate":"2026-09-11","sortOrder":190,"deep":[{"h":"Why it matters","b":"These 443 are the most valuable asset you own going into Winchester. They cost £3.08 each, they are already warm, and they are local to the new clinic. Mishandling them, either through a spam-flagged blast or a PECR breach, would be the most expensive unforced error available."},{"h":"Steps","b":"Export the 443 from GHL. Check for duplicates, obvious junk, invalid phone formats and non-UK numbers.\nRetrieve the original Meta lead form. Screenshot the exact consent wording. File it. Determine whether it covers WhatsApp, SMS and email, or only some of these.\nIf WhatsApp is not clearly covered, the first contact must be email with an explicit WhatsApp opt-in. Do not assume.\nConnect the WhatsApp Business channel in GHL. Complete Meta Business verification if not already done.\nSubmit WhatsApp message templates for approval. Approval takes up to 48 hours and templates are required for any message initiating contact outside a 24 hour window. Submit the first three now: the re-warm, the founding invitation and the launch announcement.\nTag the whole cohort “winchester-443” and add “source-meta-2026” and the month of capture.\nBuild the suppression logic: anyone who books is excluded from further nurture and from all retargeting audiences.\nSet up unsubscribe and STOP handling on every channel, and test it."}]},{"category":"p0","title":"Phase 0 gate review. Go or no go on paid spend.","detail":"","channel":"found","owner":"both","weekStart":"2026-09-06","dayDate":"2026-09-12","sortOrder":200,"deep":[{"h":"Why it matters","b":"This is the discipline the whole plan rests on. If you let spend start with an amber gate, you will spend four months unable to tell which channel is working."},{"h":"Steps","b":"Thirty minutes, 9am, both of you, tracker open.\nWalk the five gate items. Each is green with evidence attached, or it is not.\nGreen on all five: Phase 1 proceeds as written, paid harvest begins 15 September.\nAmber on any: paid spend does not start. Organic, email and WhatsApp continue as written. Fix the amber item and re-gate the following Saturday.\nRed on Google Business Profile verification specifically, which is the most likely to slip: proceed with Meta paid but hold all Google Search spend, since without a verified profile the local ads have nowhere credible to land.\nRecord the decision in the tracker with the date. Do not relitigate it midweek.\nPHASE 1: WARM AND HARVEST\nSunday 13 September to Sunday 4 October\nThe point of this phase. Three jobs running in parallel. Gently wake the 443 Winchester leads without burning them. Harvest cheap local demand at Bedhampton to keep cash coming in through the wind-down. Build the review base that will make Winchester rank from day one.\nWhat this phase is not. It is not a Bedhampton growth push. No cold prospecting for Bedhampton. Everything at Bedhampton is harvest: existing clients, past enquiries, and genuinely local warm demand inside ten miles of PO9.\nBudget this phase. Meta £20 to £25 per day, weighted roughly 60 percent Winchester warming and 40 percent Bedhampton harvest. Google Search brand £10 per day, non-brand local £12 per day."}]},{"category":"p1","title":"Build both nurture tracks in GHL and set the tagging logic.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-13","sortOrder":210,"deep":[{"h":"Why it matters","b":"Two audiences with almost opposite needs are about to receive communication at the same time. Bedhampton clients need reassurance and a reason to come in before October ends. The 443 need to be reminded who you are and given something to wait for. Sending the wrong track to the wrong person is how you lose both."},{"h":"Steps","b":"Build two GHL workflows: “BEDHAMPTON LOCAL TRACK” and “WINCHESTER 443 TRACK”. Full copy for both is in Section 7 of this plan.\nSet entry conditions. Bedhampton track: tag “bedhampton-client” or “bedhampton-lead”. Winchester track: tag “winchester-443”.\nSet the WhatsApp-first rule on the Winchester track: attempt WhatsApp, and only if not delivered or not read within 48 hours, fall back to SMS, then email.\nBuild these tags and make sure every workflow applies them: analysis-booked, analysis-attended, treatment-booked, founding-waitlist, founding-confirmed, engaged-reply, unsubscribed, imagery-consent-given.\nSet the universal suppression rule: tag “analysis-booked” removes the contact from all nurture and from all paid retargeting audiences immediately.\nSet a global frequency cap of no more than two messages to any contact in any seven day period across all channels combined.\nBuild the “engaged-reply” tag to fire on any inbound reply on any channel. Historic data shows this is your strongest single predictor of a lead becoming revenue. Route anyone who earns it to Abi for a personal reply within 24 hours.\nTest both tracks end to end using your own contact details before a single real contact enters."}]},{"category":"p1","title":"SPF, told properly, without lecturing.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-13","dayDate":"2026-09-14","sortOrder":220,"deep":[{"h":"Strategy","b":"Authority, and deliberately the least commercial post in the phase. It builds trust with a Winchester audience who do not know Abi yet, and it is genuinely useful, which makes it shareable and saveable. Save rate is the signal Meta rewards."},{"h":"Creative direction","b":"Reel from batch one, 45 seconds. Hook on screen: “Three things about SPF that are not what you were told.” Abi to camera with product b-roll cut in. No brand names on screen unless the clinic stocks them."},{"h":"Consent note","b":"No clients."},{"h":"Caption","b":"Three things about sun protection that I end up saying almost every day.\nOne. UV comes through cloud and it comes through glass. If you drive to work, one side of your face is getting more exposure than the other, every single day, all year. The scanner shows this constantly and it is always the same side.\nTwo. The factor number is only half of it. A high factor applied thinly, once, at eight in the morning, is not doing what the bottle says. Most people use roughly a quarter of what was used in testing. Two fingers’ length for face and neck, and again if you are out.\nThree. It is not just about burning. UVA does not burn you. It goes deeper, it breaks down collagen, and it drives pigment. That is the ageing part, and it is happening on the grey days too.\nNone of this is about fear. It is the single highest return thing you can do for your skin and it costs less than most serums.\nIf you want to see what is already stored in your skin, the analysis picks it up clearly."},{"h":"First comment","b":"#spf #skinhealth #hampshireskinclinic #winchesterskin #havantbeauty #nurseledskincare"}]},{"category":"p1","title":"Launch the 443 re-warm sequence, day 0.","detail":"","channel":"email","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-14","sortOrder":230,"deep":[{"h":"Goal","b":"Re-establish permission and identity with a list that has gone cold since capture, without asking for anything. The ask comes later. The first message exists purely to get a reply, because a reply is what makes every subsequent message deliverable and worth sending."},{"h":"Send rules","b":"Send in batches of 100 per day across four days, Monday to Thursday, between 10am and 4pm. Never send the whole list at once. Watch delivery and block rates after each batch and stop if blocks exceed two percent."},{"h":"Full copy, WhatsApp, day 0","b":"Hi {name}, it is Abi Peters here.\nA while back you got in touch about skin treatments in Winchester, and I went quiet on you. I am sorry about that. I have spent most of this year building the clinic rather than talking about it.\nQuick update: we open on Jewry Street on Monday 2 November.\nI am not asking you for anything today. I just wanted you to hear it from me first, because you were interested before there was anything to be interested in.\nIf you would still like me to keep you posted, just reply with a yes and I will make sure you are near the front of the queue.\nIf not, reply STOP and I will not message again. No hard feelings at all.\nAbi"},{"h":"Tagging","b":"Any reply applies “engaged-reply”. A reply containing yes applies “founding-waitlist-warm”. STOP applies “unsubscribed” and removes from all channels."}]},{"category":"p1","title":"Bedhampton local harvest campaign goes live.","detail":"","channel":"meta","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-15","sortOrder":240,"deep":[{"h":"Objective","b":"Conversions, optimising for the Lead event initially, switching to the BookingConfirmed event once the campaign has recorded fifteen booking events in a week. Do not switch early or the algorithm will not have enough signal."},{"h":"Audience","b":"Women aged 30 to 60, ten mile radius centred on PO9 3FQ. Broad, no interest layering. Advantage+ audience with the age, gender and location as suggestions. Exclude: anyone tagged analysis-booked, anyone tagged winchester-443, all website visitors in the last 30 days who have already converted."},{"h":"Budget","b":"£9 per day. This is the smaller half of the Meta budget by design. Bedhampton is a harvest, not a growth market."},{"h":"Creative","b":"Three creatives in one ad set, let Meta choose. (a) The scanner Reel from batch one, cut to 20 seconds. (b) A static image of the scanner with the results screen, clean, no text overlay clutter. (c) A talking head cut of Abi explaining what the analysis involves. Test Meta instant form as the primary entry, with a second ad set at £4 per day testing click-to-book straight to the ANS calendar."},{"h":"Full copy","b":"Primary text: The AI Skin Analysis is complimentary at our Bedhampton clinic until 31 October.\nIt is a proper scan across six readings: pigmentation, redness, texture, hydration, congestion and stored sun damage. Some of what it finds has not surfaced on your skin yet, which is exactly why it is worth knowing about now.\nYou sit down with Abi, a registered nurse and independent prescriber, and go through what it actually shows. You leave with a written plan for your skin. There is no obligation to book anything.\nTwenty minutes, in Bedhampton, near Havant and Waterlooville.\nHeadline: Complimentary AI Skin Analysis, worth £50\nDescription: Bedhampton clinic. Until 31 October. No obligation to book."},{"h":"Instant form fields","b":"First name, email, mobile. Three fields only. Add one qualifying question: “Are you able to get to our Bedhampton clinic near Havant?” with Yes and No answers. Add a custom consent tickbox covering WhatsApp, SMS and email contact."},{"h":"Compliance check","b":"No prescription-only treatment named. No result claim. No guarantee. No before-and-after imagery. Age targeting starts at 30, well clear of the under 18 restriction."},{"h":"Capacity note","b":"at eight complimentary analyses a week and a target of £15 to £25 per booked-and-attended analysis, £9 a day buys roughly two to four attended analyses a week. That is correctly sized. Do not increase it because the cost per lead looks good."}]},{"category":"p1","title":"Brand defence campaign live.","detail":"","channel":"google","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-15","sortOrder":250,"deep":[{"h":"Objective","b":"Conversions. Defend the brand term so that competitors and aggregators cannot buy traffic from people specifically looking for Abi."},{"h":"Audience","b":"Presence-only location targeting: Winchester, Havant, Waterlooville, Portsmouth, Fareham. Presence only, never presence-or-interest, or you will pay for clicks from people in Manchester researching Hampshire."},{"h":"Budget","b":"£10 per day. Brand terms are cheap. Expect to spend well under this and that is fine. Do not reallocate the headroom."},{"h":"Creative","b":"Single ad group, exact and phrase match only."},{"h":"Keywords","b":"[abi peters], [abi peters aesthetics], abi peters skin clinic, [abi peters winchester], “abi peters nurse”, [abi peters bedhampton]."},{"h":"Negative keywords","b":"jobs, careers, salary, reviews complaints, scam, courses, training, nhs."},{"h":"Full copy, responsive search ad","b":"Headlines: Abi Peters Skin Clinic | Nurse Led Skin Clinic | Winchester and Bedhampton | Complimentary Skin Analysis | Registered Nurse Prescriber | Book Direct With Abi | Honest, Considered Skin Care | Opening Winchester 2 November | AI Skin Analysis, Worth £50 | Jewry Street, Winchester | Havant and Waterlooville | Speak To Abi Directly\nDescriptions: Nurse led skin clinic in Hampshire. Advanced skin imaging, honest advice, considered results. Book direct. | Complimentary AI Skin Analysis with a personalised plan. No obligation. Winchester and Bedhampton. | Run by Abi Peters, registered nurse and independent prescriber. Call 07849 989869. | New Winchester clinic opening 2 November on Jewry Street. Founding places available."},{"h":"Final URL","b":"abipetersskinclinic.co.uk/winchester for Winchester-located searches, abipetersskinclinic.co.uk/contact for Havant area."},{"h":"Compliance check","b":"No prescription-only medicine named or bid on. No outcome claims."}]},{"category":"p1","title":"The Winchester unit as it currently stands, mid fit-out.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-13","dayDate":"2026-09-16","sortOrder":260,"deep":[{"h":"Strategy","b":"Build-in-public content is the cheapest anticipation engine available and it performs disproportionately well locally. It also converts the abstract “new clinic” into a real address people walk past. Jewry Street footfall becomes an asset."},{"h":"Creative direction","b":"Handheld Reel, filmed by David, Abi walking through. Deliberately raw: dust, bare walls, wires. Hook on screen: “Six weeks ago this was an empty shell.” Point at where things will be. Forty five seconds. No music over Abi’s voice."},{"h":"Consent note","b":"Do not film any contractor without asking. Do not show anything that identifies neighbouring tenants’ business."},{"h":"Caption","b":"This is 9A Jewry Street as of this week.\nIt does not look like much yet. There is dust everywhere and I keep finding it in my hair three hours after leaving.\nBut standing in it, I can see it. Reception is here, where the light comes in off the street. The main treatment room goes back there. And the skin analysis will sit in its own space, because I want that to be a proper twenty minutes of somebody’s time, not something squeezed in at the end of an appointment.\nWe open on Monday 2 November.\nI have wanted a clinic in Winchester for a long time. Not a room in someone else’s building, not a day a week borrowed from somewhere else. An actual clinic, on a street I love, with my name on the door.\nI will keep showing you the ugly stages as well as the nice ones. It is quite good for the ego.\nIf you want to know the moment booking opens, drop me a message."},{"h":"First comment","b":"#jewrystreet #winchester #winchesterbusiness #newclinic #winchesterskin #hampshireskinclinic"}]},{"category":"p1","title":"Build the automated review engine.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-16","sortOrder":270,"deep":[{"h":"Why it matters","b":"290 five star reviews is the clinic’s single biggest competitive asset and it does not transfer to the new Google listing. Winchester starts at zero. Eight to ten new reviews a month from now until launch means Winchester opens with credibility rather than an empty profile. Reviews are also the cheapest local ranking lever there is."},{"h":"Steps","b":"Build a GHL workflow triggered when an appointment status changes to Showed.\nWait two hours, then send an SMS. If no review is detected within 48 hours, send an email. If still nothing after a further five days, stop. Two asks maximum, ever.\nSMS copy: “Hi {name}, it was lovely to see you today. If you have two minutes, a quick Google review really helps a small clinic like ours. {link} Thank you. Abi”\nEmail subject: “A small favour, {name}”. Body: “Hi {name}, thank you for coming in today. I hope the plan we put together makes sense. If you have a spare two minutes, leaving an honest Google review makes a genuine difference to a small independent clinic. Here is the link: {link}. And if anything was not right, please reply to this and tell me directly rather than leaving it. I would always rather fix it. Abi”\nRoute the link by clinic: Bedhampton reviews to the Bedhampton profile, Winchester to the Winchester profile from 2 November. Two separate links, switched by a location field.\nPrint a desk card with a QR to the review link. Matt black frame, calm design, next to the card machine.\nBuild a notification to Abi for any review of three stars or below so she can respond personally within 24 hours.\nNever offer anything in exchange for a review. Not a discount, not a prize draw, not a free add-on. This breaches Google’s policy and the CMA’s rules on incentivised reviews and can get the whole profile stripped."}]},{"category":"p1","title":"443 re-warm, day 3. The useful one.","detail":"","channel":"email","owner":"abi","weekStart":"2026-09-13","dayDate":"2026-09-17","sortOrder":280,"deep":[{"h":"Goal","b":"Give value before asking for anything, and identify who is genuinely interested by who clicks. This is the message that separates the list into warm and cold."},{"h":"Full copy, WhatsApp, day 3","b":"{name}, one thing worth knowing before the clinic opens.\nThe main piece of kit going into Winchester is an advanced skin scanner. It photographs your skin under several different light readings and shows what is happening underneath: pigment that has not surfaced yet, hydration levels, congestion, and how much sun damage is actually stored in there.\nIt is genuinely the most useful twenty minutes I can give someone, because it turns guessing into a plan.\nHere is a short clip of what the results look like: {link}\nIt will be complimentary for everyone through November when we open.\nAbi"},{"h":"Tagging","b":"Link click applies “engaged-clicked”. Reply applies “engaged-reply”. Anyone with either tag moves to the priority founding invitation on 5 October."}]},{"category":"p1","title":"A Bedhampton client outcome, told in words not photographs.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-13","dayDate":"2026-09-18","sortOrder":290,"deep":[{"h":"Strategy","b":"Proof without imagery risk. Written outcomes with permission are compliant, cheap and often more persuasive than photographs, because they describe the experience rather than promising a result. This also models the review you want people to leave."},{"h":"Creative direction","b":"Simple text-on-image carousel in brand colours, or Abi reading it to camera. Hook on screen: “She had been told it was just sensitive skin.” Two or three slides. No photographs of the client."},{"h":"Consent note","b":"Written consent required to quote any client, even anonymously, if any detail could identify them. Change identifying details and confirm with the client before posting."},{"h":"Caption","b":"She came in convinced she had sensitive skin.\nYears of avoiding actives, buying gentle everything, and still getting redness and stinging. She had assumed that was just how her skin was and she had made her peace with it.\nThe scan showed something different. Her barrier was significantly dehydrated and her hydration reading was well below where it should have been. It was not sensitivity in the way she thought. It was a barrier that had been stripped and never given a chance to recover, partly by the very gentle products she was using twice a day.\nWe changed almost nothing dramatic. We simplified her routine right down, added the right kind of moisture, and left it alone for six weeks.\nShe messaged me last week to say she has stopped flinching when she washes her face.\nI am not going to promise you the same thing, because skin is individual and I do not know yours yet. What I can tell you is that guessing is expensive and looking properly is not.\nComplimentary analysis at Bedhampton until 31 October. 07849 989869."},{"h":"First comment","b":"#sensitiveskin #skinbarrier #havantbeauty #hampshireskinclinic #waterloovilleskin #skinanalysis"}]},{"category":"p1","title":"Non-brand local search campaign live.","detail":"","channel":"google","owner":"david","weekStart":"2026-09-13","dayDate":"2026-09-18","sortOrder":300,"deep":[{"h":"Objective","b":"Conversions, optimising to the booking event."},{"h":"Audience","b":"Two location groups, presence only. Group A: Winchester and eight miles around SO23. Group B: Havant, Waterlooville, Bedhampton, Emsworth, ten miles around PO9. Run as two campaigns so budget and bids can be split, because Winchester is a launch investment and Havant is a harvest."},{"h":"Budget","b":"Winchester £8 per day rising to £15 from 19 October. Havant £6 per day, flat, ending 31 October."},{"h":"Creative","b":"Four tight ad groups, one theme each, exact and phrase match only. Broad match is a money pit at this budget.\nAd group 1, skin clinic Winchester. Keywords: [skin clinic winchester], “skin clinic winchester”, [skin clinic near me winchester], [best skin clinic winchester], “winchester skin clinic”.\nAd group 2, skin analysis. Keywords: [skin analysis hampshire], [skin analysis winchester], “skin scan winchester”, [skin consultation winchester], “skin analysis near me”.\nAd group 3, aesthetics Winchester. Keywords: [aesthetics winchester], [aesthetic clinic winchester], “aesthetics clinic winchester”, [nurse led clinic winchester].\nAd group 4, Havant harvest. Keywords: [skin clinic havant], [skin clinic waterlooville], “skin analysis havant”, [aesthetic clinic havant]."},{"h":"Negative keywords, applied at campaign level","b":"free, cheap, courses, training, jobs, salary, nhs, dermatologist referral, mole check, skin cancer, botox, filler, and every prescription-only treatment name. Add the POM negatives explicitly so no query ever triggers an ad against them."},{"h":"Full copy, responsive search ad, Winchester","b":"Headlines: Skin Clinic In Winchester | Nurse Led, Jewry Street | Complimentary Skin Analysis | Advanced Skin Imaging | Opening 2 November | Honest Advice, Natural Results | Registered Nurse Prescriber | Book Your Founding Place | Twenty Minutes, No Obligation | Skin Analysis Worth £50 | Central Winchester Clinic | Speak To Abi Directly\nDescriptions: New nurse led skin clinic on Jewry Street, Winchester. Advanced skin imaging and honest, considered advice. | Complimentary AI Skin Analysis with a personalised plan. Free for everyone through November. | Run by a registered nurse and independent prescriber. No pressure, no obligation to book. | Founding places limited to 40. Priority booking and member pricing held for twelve months."},{"h":"Final URL","b":"abipetersskinclinic.co.uk/winchester"},{"h":"Compliance check","b":"No POM named in any keyword, headline or description. No guarantee language. “Natural results” is a description of approach, not a promised outcome, and is acceptable. Do not change it to “guaranteed natural results”."}]},{"category":"p1","title":"The first fifteen minute Friday review. This now runs every Friday for the rest of the plan.","detail":"","channel":"found","owner":"both","weekStart":"2026-09-13","dayDate":"2026-09-18","sortOrder":310,"deep":[{"h":"Why it matters","b":"Weekly review is where a marketing plan either compounds or drifts. Fifteen minutes, same time, same six questions, no deck. The full checklist is in Section 11."},{"h":"Steps","b":"Friday, 4.45pm, fifteen minutes, both of you, standing up if that helps keep it short.\nRun the six-question checklist in Section 11.\nMake at most two changes per week. More than two and you will not know which one worked.\nLog the numbers in the tracker before you leave."}]},{"category":"p1","title":"Start the in-person review ask and put the desk QR out.","detail":"","channel":"found","owner":"abi","weekStart":"2026-09-13","dayDate":"2026-09-19","sortOrder":320,"deep":[{"h":"Why it matters","b":"The automated ask gets you a baseline. Abi asking warmly, in person, at the right moment, roughly doubles it. Best practice in UK clinics of this size is eight to ten new reviews a month; without a personal ask most sit at two to three."},{"h":"Steps","b":"Place the QR desk card next to the card machine at Bedhampton.\nAsk at the point of payment, not at the start of the appointment. The moment is: appointment has gone well, plan is agreed, money has changed hands.\nUse a consistent, low-pressure form of words: “If you have got two minutes at some point, a Google review really does help us. No pressure at all if not.”\nNever ask a client who has expressed any dissatisfaction. Ask them for feedback directly instead.\nNever offer anything in return, and never write a review on a client’s behalf.\nTrack weekly count in the Friday review."}]},{"category":"p1","title":"What actually happens in a first appointment.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-21","sortOrder":330,"deep":[{"h":"Strategy","b":"Removes the main friction to booking, which is not price, it is not knowing what you are walking into. Aesthetic clinics consistently underestimate how intimidating a first visit feels. This post converts hesitant lurkers who have been following for weeks."},{"h":"Creative direction","b":"Reel from batch one, 60 seconds, walk-through format. Hook on screen: “What actually happens when you come in. Start to finish.” Follow the physical journey: door, seat, kettle, scanner, screen, conversation, plan. Warm, unhurried pacing."},{"h":"Consent note","b":"No clients in shot. Use an empty clinic."},{"h":"Caption","b":"If you have never been to a skin clinic before, here is exactly what happens. No surprises.\nYou come in and sit down. There is tea. Nobody looks at your skin critically or comments on it, which is the thing most people are quietly dreading.\nWe talk first. What is bothering you, what you have tried, what your routine actually looks like on a bad week rather than a good one. I want the honest version.\nThen we scan. You sit at the machine, chin on the rest, and it takes a set of images across different light readings. It does not touch you and nothing is uncomfortable.\nThen we go through the results together, on screen. I explain what each reading means for you specifically.\nThen we build a plan. That might involve treatment. It might just be a much better routine and some sun protection. If the honest answer is that you do not need me, I will say that.\nYou leave with something written down. There is no obligation and no pressure.\nThat is it. Twenty minutes and a cup of tea."},{"h":"First comment","b":"#skinclinic #hampshireskinclinic #winchesterskin #havantbeauty #firstappointment #nurseledskincare"}]},{"category":"p1","title":"443 re-warm, day 6. The personal one, and the last message before founding opens.","detail":"","channel":"email","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-21","sortOrder":340,"deep":[{"h":"Goal","b":"Convert warm interest into an explicit request to be told first. This is the message that builds the founding waitlist without yet offering the founding tier."},{"h":"Full copy, WhatsApp, day 6","b":"{name}, a quick honest one.\nWhen we open on 2 November, I will have a limited number of appointments each week. There is one of me, and I would rather do fewer appointments properly than more of them badly.\nBecause of that, I am going to open booking to a small group first, before it goes public. People like you who were interested before there was a clinic to be interested in.\nIf you would like to be in that group, reply FIRST and I will put you on the list. I will message you before anyone else sees it.\nNo cost, no commitment, and I will not chase you if it is not for you.\nAbi"},{"h":"Tagging","b":"Reply containing FIRST applies “founding-waitlist”. Any other reply applies “engaged-reply” and routes to Abi. No reply after 72 hours: fall back to SMS with a shortened version, then email."},{"h":"Capacity note","b":"the founding waitlist is a genuine constraint, not a scarcity device. Forty places against one nurse at 30 to 40 appointments a week is already ambitious alongside general bookings. Do not exceed 40."}]},{"category":"p1","title":"Build every retargeting audience now, so they have time to populate.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-20","dayDate":"2026-09-22","sortOrder":350,"deep":[{"h":"Why it matters","b":"Custom audiences need time and volume to become useful. Building them in September means they are usable in October and mature by launch. Building them in November means they are empty when you need them most."},{"h":"Steps","b":"Website custom audiences from the rebuilt pixel: all visitors 180 days, /winchester visitors 180 days, /founding visitors 180 days, /skin-audit starters who did not complete 90 days.\nEngagement custom audiences: Instagram engagers 365 days, Facebook page engagers 365 days, video viewers who watched 50 percent or more, 365 days, instant form openers who did not submit, 90 days.\nCustomer list custom audiences: upload the 443 as a hashed list. Upload the Bedhampton client list separately, but only contacts with a lawful basis for this processing. Check your privacy notice covers it.\nBuild lookalikes from the highest quality source available: 1 percent lookalike of attended analyses, UK, and 1 percent lookalike of the 443. Hold these in reserve for November.\nBuild the exclusion audience: everyone tagged analysis-booked or founding-confirmed. Apply this exclusion to every prospecting campaign without exception.\nSet audiences to update dynamically, not as static snapshots."}]},{"category":"p1","title":"Abi’s own scan result, unflattering, shown honestly.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-23","sortOrder":360,"deep":[{"h":"Strategy","b":"The highest trust-building post available and zero consent risk. Showing your own sun damage as a clinician who talks about sun protection is disarming, memorable and shareable. It also demonstrates the machine on a face people are getting to know."},{"h":"Creative direction","b":"Reel, Abi at the scanner, her own UV image on screen, her reaction genuine. Hook on screen: “I run a skin clinic. This is my own sun damage.” Do not clean up the reaction shot."},{"h":"Consent note","b":"Abi only. No issue."},{"h":"Caption","b":"This is my own UV reading and it is not flattering.\nAll those darker patches across my cheeks and forehead are stored sun damage. Every one of them is a summer I did not take seriously enough. Teenage years on a beach in Cornwall with factor eight, mostly.\nI show people this a lot, for two reasons.\nThe first is that it is honest. I am not a person with perfect skin telling you what to do. I have the same history most people my age in this country have.\nThe second is that it makes the point better than I can. You cannot see most of this on my face in the mirror. It is there, it is real, and without doing anything about it, some of it will surface over the next decade.\nThe good news is that this is one of the most treatable and most preventable things we deal with. It responds well, and the single biggest lever is daily sun protection, which costs almost nothing.\nIf you want to see your own, the analysis is complimentary at Bedhampton until the end of October, and free for everyone at Winchester through November."},{"h":"First comment","b":"#sundamage #uvdamage #skinanalysis #hampshireskinclinic #winchesterskin #havantbeauty"}]},{"category":"p1","title":"Launch the Bedhampton local track, day 0, to existing clients and past enquiries.","detail":"","channel":"email","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-24","sortOrder":370,"deep":[{"h":"Goal","b":"Get Bedhampton clients into the diary before 31 October while Abi is still there, and give them an honest account of the move. Every Bedhampton appointment booked now is revenue that would otherwise be lost.\nFull sequence copy is in Section 7. Day 0 email is reproduced here.\nSubject line: A proper update from me, {name}\nBody.\nHi {name},\nI wanted to write to you properly rather than let you find out from social media.\nI am opening a second clinic in Winchester, on Jewry Street, which opens on Monday 2 November. From November my clinical days will mostly be there.\nBedhampton is not shutting its doors this week and you are not being abandoned. I am here through September and October and I would genuinely like to see you before the end of that.\nHere is what I would like to do. Between now and 31 October I am offering every Bedhampton client a complimentary AI Skin Analysis, which normally sits at fifty pounds. It is a proper scan across six readings, and we sit down afterwards and go through what it shows.\nWhatever happens next, you will leave with a written plan for your skin that you can follow with or without me. If you decide to book a treatment within fourteen days, I will include a complimentary skincare add-on.\nI am not discounting anything. I would rather give you the thing that has real value, which is my time and an honest look at what is going on.\nYou can book here: {link}\nOr call or message me on 07849 989869.\nThank you for everything over the last few years. Bedhampton clients built this clinic and I have not forgotten it.\nAbi"},{"h":"Tagging","b":"Open applies “bedhampton-engaged”. Click applies “engaged-clicked”. Booking applies “analysis-booked” and removes them from the rest of the sequence."}]},{"category":"p1","title":"Countdown framing on the Bedhampton offer, five weeks left.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-25","sortOrder":380,"deep":[{"h":"Strategy","b":"Genuine deadline urgency. The 31 October end date is real, because Abi physically will not be there. Real scarcity is the only kind worth using, and it is the kind ASA will not object to."},{"h":"Creative direction","b":"Static image or short Reel. Calm typography. Hook on screen: “Five weeks left at Bedhampton.” Warm, slightly wistful tone rather than urgent. No countdown timers."},{"h":"Consent note","b":"None required."},{"h":"Caption","b":"Five weeks left of Bedhampton.\nThat is not a marketing line, it is just the diary. From 2 November I am in Winchester, and the complimentary analysis at Bedhampton ends on Saturday 31 October.\nIf you have been meaning to come in, or you have been putting off doing something about your skin because life got in the way, this is the window.\nTwenty minutes, a proper scan, and an honest conversation about what is actually going on and what is worth doing about it. You leave with a written plan whether or not you book anything else.\nSome of you I have been seeing for years. I would really like to see you once more before I move across, and to send you off with a plan that works.\nCall or message 07849 989869, or book at the link in bio."},{"h":"First comment","b":"#bedhampton #havantbeauty #waterloovilleskin #hampshireskinclinic #skinanalysis #portsmouthskin"},{"h":"Capacity note","b":"expect this post plus the client email to fill the eight weekly analysis slots quickly. If demand exceeds capacity, open a waitlist rather than adding slots. Abi still needs paid treatment time."}]},{"category":"p1","title":"Friday review, week two.","detail":"","channel":"found","owner":"both","weekStart":"2026-09-20","dayDate":"2026-09-25","sortOrder":390,"deep":[{"h":"Detail","b":"Run the Section 11 checklist. Specific things to look at this week: cost per lead versus cost per attended analysis on the Bedhampton Meta campaign, the 443 WhatsApp reply rate, and the founding waitlist count. If the waitlist is under 40 by now, the day 6 message needs re-sending to non-responders via SMS."}]},{"category":"p1","title":"Batch film two. Six Reels.","detail":"","channel":"found","owner":"abi","weekStart":"2026-09-20","dayDate":"2026-09-26","sortOrder":400,"deep":[{"h":"Steps","b":"Ninety minutes, same setup as 5 September.\nFilm these six: (a) the founding client offer explained by Abi in plain terms; (b) three questions to ask any clinic before you let them treat you; (c) the Winchester fit-out progress update; (d) what an independent prescriber actually is and why it matters; (e) skincare that is genuinely worth the money versus skincare that is not; (f) a day in the life across two clinics.\nSame rules: two takes each, thirty seconds of b-roll per topic, sent to David same day."}]},{"category":"p1","title":"Edit, schedule, and start weekly Google Business posts on both profiles.","detail":"","channel":"found","owner":"david","weekStart":"2026-09-27","dayDate":"2026-09-27","sortOrder":410,"deep":[{"h":"Steps","b":"Edit and schedule the next fortnight of posts.\nTurn each of the six Reels into three Stories, one email snippet and one Google Business post. That is eighteen Stories, six email snippets and six Google posts from ninety minutes of filming.\nPost to both Google Business Profiles weekly from now on. Google posts expire, so this needs to be a standing habit, not a one-off.\nFirst Winchester Google post: the opening date and the address, with a fit-out photo.\nFirst Bedhampton Google post: the complimentary analysis, ending 31 October."}]},{"category":"p1","title":"What an independent prescriber is, and why it should matter to you.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-27","dayDate":"2026-09-28","sortOrder":420,"deep":[{"h":"Strategy","b":"Direct competitive positioning against non-medical providers in the Winchester market, done through education rather than criticism. Never name or imply a competitor. Let the standard speak."},{"h":"Creative direction","b":"Reel from batch two, 50 seconds. Hook on screen: “The question almost nobody asks their aesthetics clinic.” Abi to camera, calm and matter of fact, not combative."},{"h":"Consent note","b":"None. Do not reference any specific competitor or incident."},{"h":"Caption","b":"Here is a question worth asking any clinic before you let them near your face.\nWho is medically responsible if something goes wrong?\nNot who does the treatment. Who is clinically accountable, who is registered with a professional body, and who can actually manage it if there is a complication.\nI am a registered nurse and an independent prescriber. That means I am accountable to the Nursing and Midwifery Council, I carry medical indemnity, and I am qualified to assess, prescribe and manage complications myself rather than sending you elsewhere.\nI am not saying this to frighten anybody. The vast majority of treatments in this country are done safely by people who care. But the industry is barely regulated, and the responsibility for checking sits with you, which is not really fair but is how it currently is.\nSo ask. Ask anyone, including me. Ask what happens if it does not go to plan. A good clinician will be pleased you asked."},{"h":"First comment","b":"#nurseledaesthetics #patientsafety #hampshireskinclinic #winchesterskin #independentprescriber #havantbeauty"}]},{"category":"p1","title":"Local partnership outreach round one. Six Winchester businesses.","detail":"","channel":"email","owner":"abi","weekStart":"2026-09-27","dayDate":"2026-09-28","sortOrder":430,"deep":[{"h":"Goal","b":"Build reciprocal local referral relationships before opening, so that launch week has warm introducers rather than cold ones. Local partnership is the cheapest acquisition channel in this plan and requires no ad spend at all.\nThe shortlist and full outreach copy are in Section 9. Send six emails this week, all personalised, none of them a template blast."},{"h":"Steps","b":"Walk Jewry Street and the immediate surrounds. Note the businesses whose customers overlap with yours: independent hair salons, boutiques, a good coffee shop, a florist, a pilates or yoga studio, a bridal or occasionwear shop.\nFind the owner’s name. Address the email to the person, not to “the manager”.\nSend the Section 9 outreach email, adapted. Never send the same wording to two neighbouring businesses. They talk.\nLog every outreach in GHL as an opportunity so nothing is followed up twice or forgotten."}]},{"category":"p1","title":"A day across two clinics.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-27","dayDate":"2026-09-30","sortOrder":440,"deep":[{"h":"Strategy","b":"Humanises the stretch Abi is under and builds the honest scarcity that underpins the founding cap. People book faster when they can see the constraint is real."},{"h":"Creative direction","b":"Reel from batch two, day-in-the-life format, 60 seconds. Timestamps on screen. Hook: “Two clinics, one nurse, and a machine in the boot of my car.” Fast cuts, natural sound."},{"h":"Consent note","b":"No clients, no client names, no identifiable clinical detail."},{"h":"Caption","b":"06:40. Bedhampton, opening up, coffee, checking the diary.\n08:00. First in. This is the part of the job I actually like.\n12:30. Twenty minutes for lunch, which today is eaten standing up while replying to messages.\n15:00. Drive to Winchester. Meet the contractor. Discover the flooring is delayed by ten days. Do not cry in the car park.\n17:30. Back home. Reply to the messages I did not get to at lunch. Order things I did not know a clinic needed.\n21:00. Actually eat something.\nThere is one of me. That is the whole reason I am capping founding places at forty, and the reason I have never been interested in seeing as many people as possible in a day. I would rather do less and do it properly.\nIf you have messaged me and I have taken a day to come back to you, this is why. I do read all of them and I do reply to all of them, eventually.\nWinchester opens Monday 2 November."},{"h":"First comment","b":"#dayinthelife #smallbusiness #winchesterbusiness #hampshireskinclinic #nurseled #winchesterskin"}]},{"category":"p1","title":"443 track, day 14. Founding tier teaser, no booking link yet.","detail":"","channel":"email","owner":"abi","weekStart":"2026-09-27","dayDate":"2026-10-01","sortOrder":450,"deep":[{"h":"Goal","b":"Build appetite and let people self-select into the founding group before the doors actually open on 5 October. Creates a deliberate 96 hour gap between wanting it and being able to have it."},{"h":"Full copy, WhatsApp, day 14","b":"{name}, an update on Winchester.\nI have decided how the opening is going to work.\nThere will be forty founding places. That is it, and it is not a marketing number, it is the number of people I can properly look after alongside everything else in the first few months.\nFounding clients get priority booking, member pricing held for twelve months, and a complimentary add-on with the first treatment. It is not a discount and it is not a sale. It is a small group of people who get looked after first, for as long as they stay with me.\nBooking opens to this list on Monday 5 October, before it goes anywhere public.\nYou do not need to do anything now. I will message you on Monday with the link.\nAbi"},{"h":"Tagging","b":"Any reply applies “engaged-reply” and “founding-waitlist”. Non-responders receive the equivalent by email on 2 October."}]},{"category":"p1","title":"Review milestone post, done without boasting.","detail":"","channel":"social","owner":"abi","weekStart":"2026-09-27","dayDate":"2026-10-02","sortOrder":460,"deep":[{"h":"Strategy","b":"Social proof, and a soft prompt to the people who have been meaning to leave one. Reviews compound: publicising them generates more of them."},{"h":"Creative direction","b":"Simple carousel of three or four review screenshots with names reduced to a first name and initial. Calm brand typography. Hook: “Two hundred and ninety of these, and I still read every one.”"},{"h":"Consent note","b":"Public Google reviews may be reshared. Reduce surnames to an initial anyway as good practice. Never edit the wording of a review."},{"h":"Caption","b":"Two hundred and ninety of these now, and I still read every single one.\nI know it is a slightly odd thing to be sentimental about. But for a small independent clinic, reviews are more or less everything. They are how someone in Winchester who has never heard of me decides whether to trust me with their face.\nI have never asked anyone to leave one in exchange for anything, and I never will. If you like what we did, say so. If you did not, tell me directly and let me fix it. Both are useful.\nThank you to every single person who took two minutes to write something. It matters more than you think.\nWinchester opens on 2 November, and we start again from zero over there. If you have been meaning to leave one, now would be a genuinely helpful moment."},{"h":"First comment","b":"#reviews #hampshireskinclinic #havantbeauty #winchesterskin #smallbusiness #thankyou"}]},{"category":"p1","title":"Friday review, and Phase 1 close-out.","detail":"","channel":"found","owner":"both","weekStart":"2026-09-27","dayDate":"2026-10-02","sortOrder":470,"deep":[{"h":"Detail","b":"Run the Section 11 checklist, plus these Phase 1 questions.\nHow many of the 443 replied, clicked or joined the waitlist? Target: 25 percent showing any engagement, 40 or more on the founding waitlist.\nWhat is the actual cost per booked-and-attended analysis at Bedhampton? If it is above £25, pause and diagnose before increasing spend.\nHow many new Google reviews this phase? Target: eight or more.\nIs the Winchester Google Business Profile verified? If not, escalate. It becomes urgent from here.\nWhich creative is winning on Meta? Kill anything at more than double the winner’s cost per result.\nSaturday 3 and Sunday 4 October. Phase 1.\nOwner: David Channel: Setup Summary: Stage everything for founding launch on Monday."},{"h":"Steps","b":"Build and QA the /founding landing page: what founding means, the four benefits, the cap of forty, a live counter or an honest “places remaining” figure updated manually, and one booking action.\nEnsure /founding has the pixel, the ViewContent event and the lead form wired to GHL. Test with a real submission.\nBuild the founding confirmation workflow: instant WhatsApp confirmation, email with what happens next, calendar invite, and the tag “founding-confirmed”.\nSet the exclusion so founding-confirmed contacts drop out of every nurture sequence and every prospecting audience.\nDraft and queue Monday’s 443 WhatsApp broadcast. Submit the template for approval today if not already approved.\nDecide and write down the founding member pricing schedule, and how it will be honoured for twelve months in ANS and in GHL. Do this before you sell it, not after.\nPHASE 2: LAUNCH RUNWAY AND FOUNDING WAITLIST\nMonday 5 October to Sunday 1 November\nThe point of this phase. Sell the forty founding places to the warm list before spending a penny on cold Winchester traffic. Get the Winchester clinic photographed, listed and staged. Run Bedhampton’s last month hard enough to bank the revenue but not so hard that the diary cannot absorb it. Plan and fill the open evening.\nBudget this phase. Meta £22 to £25 per day, shifting from 40 percent Winchester at the start to 80 percent Winchester by 26 October. Google Winchester £8 rising to £15 from 19 October. Google Havant £6 flat, ends 31 October.\nThe critical dependency. Practical completion is targeted for 16 October. If it slips beyond 23 October, the 2 November opening is at risk and the founding places already sold become a service failure. Review this at the 16 October Friday meeting and make the call then, not in the last week."}]},{"category":"p2","title":"Founding booking opens to the 443. The single most important message in the plan.","detail":"","channel":"email","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-05","sortOrder":480,"deep":[{"h":"Goal","b":"Fill 25 to 30 of the 40 founding places from the warm list alone, before any cold spend. If the 443 fill most of the tier, the November ad budget can be spent on general bookings rather than on founding recruitment, which is a much better use of it."},{"h":"Send rules","b":"Send to the “founding-waitlist” tag first, at 8am. Send to the rest of the 443 at 1pm. Waitlist members should genuinely get it first, because you told them they would."},{"h":"Full copy, WhatsApp","b":"{name}, as promised. Founding places are open.\nForty places, and this list gets them before anyone else.\nWhat you get: Priority booking, so you get first pick of appointment times while the diary is quiet Founding member pricing, held for twelve months from your first appointment A complimentary skincare add-on with your first treatment Your complimentary AI Skin Analysis booked in before we open to the public\nThere is no fee to become a founding client and there is nothing to pay today. You are booking your first appointment, that is all.\nHere is the link: {link}\nWhen they are gone they are gone, and I am not going to add more. Forty is what I can look after properly.\nAbi\nBackup channels. Not read within 24 hours: SMS at the same wording, shortened. Not opened within 48 hours: email with subject “Founding places are open, {name}”."},{"h":"Tagging","b":"Booking applies “founding-confirmed” and removes from all sequences and audiences. Click without booking applies “founding-considering” and enters a three-message follow-up on days 2, 5 and 9."},{"h":"Capacity note","b":"forty founding clients plus general November bookings plus free analyses is at the ceiling of one nurse. Stagger founding onboarding across November and the first half of December rather than seating all forty in launch week."}]},{"category":"p2","title":"The founding offer explained honestly, including what it is not.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-05","sortOrder":490,"deep":[{"h":"Strategy","b":"Public announcement of the founding tier, twelve hours after the list got it. This sequencing matters: the list must genuinely have had first access or the promise was hollow, and people notice."},{"h":"Creative direction","b":"Reel from batch two, 50 seconds, Abi explaining it plainly. Hook on screen: “Forty founding places, and what they actually are.” No graphics, no counters, no urgency devices. The restraint is the positioning."},{"h":"Consent note","b":"None."},{"h":"Caption","b":"Winchester opens on Monday 2 November, and I am taking forty founding clients.\nHere is exactly what that means, including the bit most places leave out.\nFounding clients get priority booking, member pricing held for twelve months, a complimentary add-on with the first treatment, and their skin analysis booked in before we open publicly.\nHere is what it is not. It is not a discount and it is not a sale. I am not knocking money off medical work to fill a diary, because I do not think that is a good thing for a clinic to do and I do not think it is a good thing for you either.\nWhat it is, is a small group of people who get looked after first, properly, for as long as they stay with me.\nForty is not a marketing number. It is the number I can genuinely look after alongside everything else while I am finding my feet in a new clinic.\nThe link is in my bio. My existing enquiry list had first access this morning, which felt like the fair way round."},{"h":"First comment","b":"#winchester #jewrystreet #winchesterskin #foundingclients #hampshireskinclinic #winchesterbusiness"}]},{"category":"p2","title":"Build the entire launch-week ad set now, paused, ready to switch on.","detail":"","channel":"found","owner":"david","weekStart":"2026-10-04","dayDate":"2026-10-06","sortOrder":500,"deep":[{"h":"Why it matters","b":"Launch week is the busiest week of the year for both of you. Nothing should need building that week. Everything gets built now, reviewed at leisure, and switched on with one click."},{"h":"Steps","b":"Build the November prospecting campaign: objective Conversions, optimising for BookingConfirmed, Advantage+ audience, women 30 to 60, 12 miles around SO23, £25 per day. Status Paused, scheduled to start 2 November.\nBuild the November retargeting campaign: audiences are the 443, website visitors 180 days, Instagram and Facebook engagers 365 days, video viewers 50 percent plus. Exclude founding-confirmed and analysis-booked. £10 per day. Status Paused.\nBuild all launch creative now: three prospecting creatives and two retargeting creatives, with placeholders for the real clinic photography arriving 17 October.\nBuild the Winchester Google campaign budget change as a scheduled rule: £8 to £15 on 19 October, £15 to £20 on 2 November.\nSet an automated rule to pause any ad set whose cost per booking exceeds £35 over a rolling three day window with at least £50 spent. This is your circuit breaker.\nWrite the whole thing up in one page so either of you can operate it. Do not leave launch week dependent on one person’s memory."}]},{"category":"p2","title":"Three questions to ask any clinic before you let them treat you.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-07","sortOrder":510,"deep":[{"h":"Strategy","b":"Highly saveable and shareable, positions on safety, and does the competitive work without naming anyone. This is the post most likely to be sent between friends, which is exactly what a new clinic in an unfamiliar town needs."},{"h":"Creative direction","b":"Reel from batch two, 45 seconds. Hook on screen: “Three questions. Ask them of me too.” Direct to camera, one question per beat."},{"h":"Consent note","b":"No competitor named or implied."},{"h":"Caption","b":"Three questions worth asking any clinic, including this one.\nOne. What are your qualifications, and who regulates you? Not what course did you do. Who holds you accountable if something goes wrong.\nTwo. Who assesses me, and how long do I get? If nobody looks properly at your skin before deciding what to do to it, that is your answer.\nThree. What happens if there is a complication, and who manages it? A good clinic has a plan and will tell you what it is without being defensive.\nAsk me these. I would far rather have that conversation than not.\nThis industry is barely regulated in the UK and the burden of checking sits with the person paying, which is not fair but is the situation. Asking three questions takes a minute and it is the single best protection you have.\nWinchester opens 2 November. Bedhampton until 31 October."},{"h":"First comment","b":"#patientsafety #aestheticsafety #hampshireskinclinic #winchesterskin #nurseledaesthetics #havantbeauty"}]},{"category":"p2","title":"Micro-influencer gifting outreach. Three to five genuine local faces.","detail":"","channel":"email","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-08","sortOrder":520,"deep":[{"h":"Goal","b":"Reach a Winchester audience through people who already have local trust, at zero media cost. Full approach and outreach copy in Section 10."},{"h":"Steps","b":"Shortlist five genuine local accounts: 2,000 to 20,000 followers, majority Hampshire audience, real engagement, no obvious aesthetics sponsorship history. Local food, lifestyle, family, fitness and interiors accounts often outperform beauty accounts here because their audiences are not saturated.\nCheck each one manually. Look at who comments. A Winchester account with an audience in London is worth nothing to you.\nSend the Section 10 outreach email, personalised. Never a template.\nGift the analysis only. Do not gift treatments at this stage.\nDisclosure is mandatory. #ad must appear, prominently, at the start of the caption, not buried. This is a CAP Code requirement and the ASA enforces it against the brand as well as the creator.\nBrief them explicitly in writing: no result claims, no before-and-after, no naming of any prescription-only treatment, no medical advice. Send the brief in the email so it is on record.\nDo not ask for approval rights over their honest opinion. You can require compliance points, not sentiment."}]},{"category":"p2","title":"Founding places update, honest number.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-09","sortOrder":530,"deep":[{"h":"Strategy","b":"Real scarcity, reported honestly. Give the actual number remaining. If it is a good number, it creates urgency. If it is a poor number, it creates honesty, and you have a bigger problem to solve than the post."},{"h":"Creative direction","b":"Simple text over a clinic image. Hook: “Founding places: [X] of 40 remaining.” Update the number manually and only ever report the truth."},{"h":"Consent note","b":"None."},{"h":"Caption","b":"Founding places update.\n[X] of the forty are gone, most of them in the first day, and almost all to people who had messaged me months ago about Winchester before there was anything to book.\nIf you have been sitting on the fence, that is completely fine, there is no pressure from me. But I am not going to add places once the forty are taken, so it is worth knowing where it stands.\nPriority booking, member pricing held for twelve months, a complimentary add-on with your first treatment, and your skin analysis booked in before we open publicly.\nLink in bio, or message me on 07849 989869 and I will sort it out for you directly.\nAnd if founding is not for you, that is genuinely fine. The complimentary AI Skin Analysis is free to everyone in Winchester all through November regardless."},{"h":"First comment","b":"#winchester #foundingclients #jewrystreet #winchesterskin #hampshireskinclinic #winchesterbusiness"}]},{"category":"p2","title":"Friday review.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-04","dayDate":"2026-10-09","sortOrder":540,"deep":[{"h":"Detail","b":"Run the Section 11 checklist. Phase-specific questions: founding places filled out of 40, cost per booked-and-attended analysis on both Meta campaigns separately, Winchester Google Business Profile verification status, and whether practical completion is still tracking to 16 October."}]},{"category":"p2","title":"Batch film three, launch-focused.","detail":"","channel":"found","owner":"abi","weekStart":"2026-10-04","dayDate":"2026-10-10","sortOrder":550,"deep":[{"h":"Steps","b":"Film these six: (a) unboxing or first setup of anything new arriving at Winchester; (b) why Jewry Street, why Winchester; (c) what to bring to a first appointment and what not to bother with; (d) the three most common things the scanner finds; (e) an invitation to the founding open evening; (f) a piece straight to camera for launch day itself, filmed early so it exists.\nFilm the launch day piece in something you will still own on 2 November."}]},{"category":"p2","title":"Edit, schedule, repurpose.","detail":"","channel":"found","owner":"david","weekStart":"2026-10-11","dayDate":"2026-10-11","sortOrder":560,"deep":[{"h":"Steps","b":"Edit and schedule the fortnight.\nCut eighteen Stories, six email snippets, six Google Business posts.\nPost to both Google Business Profiles.\nUpdate the /founding page places-remaining figure."}]},{"category":"p2","title":"The three things the scanner finds most often.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-11","dayDate":"2026-10-12","sortOrder":570,"deep":[{"h":"Strategy","b":"Authority through specificity. Naming the common findings makes the machine concrete and makes people recognise themselves in it, which is the mechanism that drives an enquiry."},{"h":"Creative direction","b":"Reel from batch three, 60 seconds. Hook: “The same three things, over and over.” One finding per beat with scanner b-roll."},{"h":"Consent note","b":"Generalised findings only. No individual client’s results described in a way that could identify them."},{"h":"Caption","b":"After hundreds of these scans, three things come up again and again.\nOne. Sun damage that has not surfaced. Almost everyone over thirty in this country has it and almost nobody can see it yet. It is the most preventable thing we find and the most ignored.\nTwo. Dehydration mistaken for sensitivity. People buying gentle everything, stripping the barrier further, and concluding their skin is just difficult. It usually is not. It is usually thirsty.\nThree. Congestion that is product related. Beautiful, expensive skincare, layered in the wrong order or in too much quantity, sitting in the pores and causing the exact thing it was bought to fix.\nNone of these need dramatic intervention. All three need someone to look properly first.\nThat is the entire argument for scanning before treating. Twenty minutes of looking saves a lot of money spent guessing.\nComplimentary at Bedhampton until 31 October, and free for everyone in Winchester through November."},{"h":"First comment","b":"#skinanalysis #skincare #hampshireskinclinic #winchesterskin #havantbeauty #skinhealth"}]},{"category":"p2","title":"Founding follow-up to the 443 who clicked but did not book.","detail":"","channel":"email","owner":"david","weekStart":"2026-10-11","dayDate":"2026-10-12","sortOrder":580,"deep":[{"h":"Goal","b":"Recover the “founding-considering” segment. These are the highest intent people on the list who have not yet converted. This is worth more effort than any cold audience."},{"h":"Full copy, SMS","b":"Hi {name}, Abi here. You had a look at the founding places last week but did not book, which is completely fine. Just wanted to check whether it was the timing, the times available, or you had a question I have not answered. Reply here and I will answer it properly. {link}"},{"h":"Full copy, email","b":"Subject: A question, {name}\nHi {name},\nYou looked at the founding places last week and did not book. I am not chasing you, I promise. I just want to know if there is something I have not explained well.\nThe three things people usually ask me:\nIs there a fee to be a founding client? No. There is nothing to pay to join. You are booking a first appointment, that is all.\nDo I have to commit to anything? No. Founding pricing is held for you for twelve months, whether you use it a lot or a little.\nWhat if the times do not work? Message me on 07849 989869 and I will find something. Founding clients get first pick of the diary, which is largely the point.\nIf it is simply not for you, that is genuinely fine and I will stop mentioning it. The complimentary skin analysis is free to everyone in November regardless of whether you take a founding place.\n{link}\nAbi"}]},{"category":"p2","title":"Winchester pre-launch prospecting campaign live.","detail":"","channel":"meta","owner":"david","weekStart":"2026-10-11","dayDate":"2026-10-13","sortOrder":590,"deep":[{"h":"Objective","b":"Conversions, optimising for Lead until fifteen weekly booking events exist, then BookingConfirmed. Pre-launch bookings are for November dates, so the ANS calendar must be open for November before this campaign starts. Check it today."},{"h":"Audience","b":"Women 30 to 60, 12 mile radius around SO23. Advantage+ audience. Exclude founding-confirmed, analysis-booked, and the 443 (they are handled by retargeting, not prospecting)."},{"h":"Budget","b":"£13 per day, rising to £25 on 2 November. Reduce the Bedhampton campaign to £7 per day on the same date, and to zero on 31 October."},{"h":"Creative","b":"Scanner-led, always. Three variants: the 20 second scanner Reel, a static of the scanner and the results screen, and Abi to camera on what the analysis involves. Interior render or interior photography consistently outperforms shopfront and video-only creative for this brand, so lead with interior."},{"h":"Full copy","b":"Primary text: A new nurse led skin clinic opens on Jewry Street, Winchester, on Monday 2 November.\nThrough November, the AI Skin Analysis is complimentary for everyone. It is an advanced skin scan across six readings: pigmentation, redness, texture, hydration, congestion and stored sun damage. Some of what it picks up has not surfaced on your skin yet.\nYou sit down with Abi Peters, a registered nurse and independent prescriber, go through what the scan actually shows, and leave with a written plan for your skin. There is no obligation to book anything else.\nTwenty minutes, in central Winchester.\nHeadline: Complimentary AI Skin Analysis, Winchester\nDescription: Opening 2 November on Jewry Street. Free for everyone in November.\nDestination: abipetersskinclinic.co.uk/winchester. Never the homepage."},{"h":"Compliance check","b":"No POM named. No outcome promised. Age floor 30. Consent tickbox on the instant form covering WhatsApp, SMS and email."},{"h":"Capacity note","b":"this campaign is deliberately underfunded until launch. It exists to build the retargeting pool and prove creative, not to fill November. Do not raise it above £13 before 2 November."}]},{"category":"p2","title":"Why Winchester, why Jewry Street.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-11","dayDate":"2026-10-14","sortOrder":600,"deep":[{"h":"Strategy","b":"Local belonging. A new business in a town like Winchester has to earn the right to be there. This post does that work."},{"h":"Creative direction","b":"Reel from batch three, filmed walking on Jewry Street. Hook: “People keep asking why Winchester.” Natural sound, street life visible."},{"h":"Consent note","b":"Avoid filming identifiable members of the public in close-up."},{"h":"Caption","b":"People keep asking why Winchester.\nThe honest answer is that I have been coming here for years and I have always liked it. It is a town of independent places, run by people who care about what they do, and it has never felt like anywhere else in Hampshire.\nJewry Street specifically because of the light, because of the neighbours, and because when I stood in the empty unit it just felt right. Which is not a very businesslike reason but it is the true one.\nI know a new clinic in a town like this has to earn its place. I am not arriving with big claims and a discount. I am arriving with a scanner, a lot of training and a willingness to tell people the truth about their skin, including when the truth is that they do not need me.\nWe open Monday 2 November. Come and say hello."},{"h":"First comment","b":"#winchester #jewrystreet #winchesterbusiness #shoplocalwinchester #winchesterskin #hampshire"}]},{"category":"p2","title":"Plan the founding open evening for launch week.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-11","dayDate":"2026-10-14","sortOrder":610,"deep":[{"h":"Why it matters","b":"The open evening converts the waitlist and the undecided in one sitting, at almost no cost. It also creates a fortnight of content and gives local partners and micro-influencers something concrete to attend."},{"h":"Steps","b":"Set it for Thursday 5 November, 6.30pm to 8.30pm. Thursday because it does not compete with weekend plans and leaves Friday clear.\nCap attendance at 25. The unit is 614 square feet. Twenty five is comfortable, forty is a fire risk and a bad experience.\nInvite in this order: founding-confirmed clients first, then founding-waitlist, then local partners, then micro-influencers, then general list. Send in waves so it fills honestly."},{"h":"Format","b":"arrival drink, fifteen minutes from Abi on what the clinic does and does not do, live scanner demonstration on a volunteer with signed consent, twenty minutes of questions, then open floor with the diary open for bookings.\nBook someone to run the door and drinks. Abi cannot host, demonstrate and take bookings at the same time. This is a two hour cost that protects the whole evening.\nHave the ANS diary open on a tablet with a person operating it. Bookings taken in the room convert vastly better than “book online later”.\nAlcohol and clinical premises: serve soft drinks and a small amount of prosecco at most, and do not perform any treatment on anyone who has had a drink. Do not take treatment consent on the night from anyone who has drunk anything.\nCheck the insurance position for a public event on the premises before the invitations go out."}]},{"category":"p2","title":"Partnership outreach round two, plus follow-up on round one.","detail":"","channel":"email","owner":"abi","weekStart":"2026-10-11","dayDate":"2026-10-15","sortOrder":620,"deep":[{"h":"Steps","b":"Follow up the six businesses contacted on 28 September who have not replied. One follow-up only, then leave it.\nSend six more from the Section 9 shortlist, focusing this round on wedding and occasion venues and salons, which have the longest lead times.\nFor anyone who has said yes, agree the actual mechanic now: a named card, a specific offer, and a way to track it. A vague “we will send each other people” achieves nothing.\nPrint partner cards: a simple card with the clinic details and a QR to a dedicated tracking link per partner, so you can see which partnerships work."}]},{"category":"p2","title":"Two weeks left at Bedhampton.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-11","dayDate":"2026-10-16","sortOrder":630,"deep":[{"h":"Strategy","b":"Final genuine deadline push on the Bedhampton harvest. Every appointment banked here is revenue that disappears entirely after 31 October."},{"h":"Creative direction","b":"Static or short Reel, Bedhampton clinic, warm and slightly valedictory. Hook: “Two weeks left at Bedhampton.”"},{"h":"Consent note","b":"None."},{"h":"Caption","b":"Two weeks left at Bedhampton.\n31 October is the last day, and the complimentary analysis ends then too.\nIf you have been meaning to book and have not, please do it now rather than in the last three days, because the last three days will not have room in them.\nI would really like to see as many of you as I can before I move across. Not for a sales conversation, but so you leave with a proper plan and know what you are doing with your skin next.\nSome of you have been coming to me since the beginning. Bedhampton is where this clinic was built and I am not remotely casual about that.\n07849 989869, or book at the link in bio."},{"h":"First comment","b":"#bedhampton #havantbeauty #waterloovilleskin #hampshireskinclinic #portsmouthskin #skinanalysis"}]},{"category":"p2","title":"Friday review plus the practical completion go or no go.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-11","dayDate":"2026-10-16","sortOrder":640,"deep":[{"h":"Steps","b":"Run the Section 11 checklist.\nThen the hard question: is the clinic going to be finished, snagged, cleaned and equipped by 30 October?\nIf yes, proceed exactly as planned.\nIf it is going to be close, decide today what the contingency is: a soft opening on 2 November for founding clients only with the public opening moved to 9 November, communicated honestly and early. A late, quiet change is far less damaging than a cancellation on the day.\nIf it is going to slip beyond 9 November, tell the founding clients this week. They have been told they are being looked after. Telling them late is the thing that would break that.\nRecord the decision. Do not revisit it midweek without new information."}]},{"category":"p2","title":"Real photography and video at the finished Winchester clinic.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-11","dayDate":"2026-10-17","sortOrder":650,"deep":[{"h":"Why it matters","b":"Every ad, every landing page, every Google listing and every launch post from here to Christmas uses these images. Render images and fit-out photos have carried the plan so far. From here they will actively undermine it, because people compare the picture to the room."},{"h":"Steps","b":"Book two hours with a photographer who shoots interiors well. This is worth paying for. Phone photography of a premium clinic interior is visibly phone photography.\nShot list: exterior with signage, reception, treatment room, the scanner in position, the scanner screen with results, Abi at work, hands and detail shots, product shelf, the waiting area.\nShoot both landscape and vertical crops of everything. Vertical for Reels and Stories, landscape for Google and the website.\nGet at least twelve usable stills and three minutes of usable b-roll.\nFilm Abi’s launch day piece to camera in the finished room, so launch day itself needs no filming.\nNo clients in any shot on this day. Use Abi or a consenting friend for any human presence."}]},{"category":"p2","title":"Swap every image everywhere to the real photography.","detail":"","channel":"found","owner":"david","weekStart":"2026-10-18","dayDate":"2026-10-18","sortOrder":660,"deep":[{"h":"Steps","b":"Replace all imagery on /winchester and /founding.\nUpload at least eight new photographs to the Winchester Google Business Profile and replace the fit-out shots.\nUpdate all paused November ad creative with the real interiors.\nUpdate the WhatsApp and email templates that carry imagery.\nRefresh Instagram and Facebook profile imagery and the Winchester highlight cover.\nPost to both Google profiles."}]},{"category":"p2","title":"First look inside the finished Winchester clinic.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-18","dayDate":"2026-10-19","sortOrder":670,"deep":[{"h":"Strategy","b":"The single highest-performing organic post of the phase. Anticipation content that has been building for six weeks pays off here. Expect the strongest reach and the highest founding conversion of any post so far."},{"h":"Creative direction","b":"Reel using the new photography and b-roll, 45 seconds, walk-through, Abi voicing over. Hook: “It is finished.” Slow, considered pacing. Let the room do the work. Minimal text on screen."},{"h":"Consent note","b":"None. No clients present."},{"h":"Caption","b":"It is finished.\nSix weeks ago I filmed this room full of dust and wires and told you I could see it. Here it is.\nReception at the front where the light comes in off Jewry Street. The treatment room at the back, quiet, away from the street noise. And the skin analysis in its own space, which was the thing I was most determined about, because that twenty minutes deserves a proper room rather than a corner.\nI have wanted this for a long time. Standing in it finished, on a Saturday morning, with nobody else in the building, was quite a moment.\nWe open Monday 2 November.\nThe AI Skin Analysis is complimentary for everyone all through November. Founding places are still open but not many. Link in bio, or message me on 07849 989869 and I will sort it.\nCome and see it in person. I would like that."},{"h":"First comment","b":"#winchester #jewrystreet #newclinic #winchesterskin #winchesterbusiness #hampshireskinclinic"}]},{"category":"p2","title":"Ramp Winchester Google spend and repoint the signage QR code.","detail":"","channel":"google","owner":"david","weekStart":"2026-10-18","dayDate":"2026-10-19","sortOrder":680,"deep":[{"h":"Steps","b":"Increase the Winchester Google Search budget from £8 to £15 per day.\nReview search terms report. Add every irrelevant query as a negative. At this budget, waste matters.\nRepoint the Bitly signage QR code (UTM source qr, medium signage, campaign winchester_shopfront) to the founding landing page now, ahead of the hoarding and shopfront going live.\nDiary a reminder to repoint the same QR to the booking page on 2 November.\nCheck the QR resolves correctly on both iOS and Android before the signage goes up. A dead QR on a shopfront for a fortnight is an expensive silent failure."}]},{"category":"p2","title":"Open evening invitation.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-18","dayDate":"2026-10-21","sortOrder":690,"deep":[{"h":"Strategy","b":"Fills the room, and gives the undecided a zero-commitment way to meet Abi before booking anything. For a new clinic in an unfamiliar town, meeting the clinician is the conversion event."},{"h":"Creative direction","b":"Reel from batch three, Abi in the finished clinic, informal. Hook: “Come and have a look before you commit to anything.”"},{"h":"Consent note","b":"None."},{"h":"Caption","b":"We are having an open evening on Thursday 5 November, 6.30 to 8.30, at the clinic on Jewry Street.\nCome and see the place, meet me, have a drink, and ask whatever you want to ask. I will do a live demonstration of the skin scanner so you can see exactly what it does and what the results look like.\nThere is no sales pitch and nothing to buy on the night. If you want to book something afterwards you can, and if you want to come, look, and go home, that is completely fine and quite normal.\nI am capping it at 25 people because the clinic is not enormous and I would rather have a proper conversation with everyone than a crowd.\nFounding clients and people on my list have first refusal, then it opens up. Message me on 07849 989869 or comment below and I will put your name down."},{"h":"First comment","b":"#winchester #jewrystreet #openevening #winchesterbusiness #winchesterskin #winchesterlocal"}]},{"category":"p2","title":"Open evening invitations sent in four waves.","detail":"","channel":"email","owner":"david","weekStart":"2026-10-18","dayDate":"2026-10-22","sortOrder":700,"deep":[{"h":"Goal","b":"Fill 25 places with the highest value attendees first.\nWave 1, founding-confirmed, WhatsApp. {name}, you are a founding client so you get this first. I am doing an open evening at the clinic on Thursday 5 November, 6.30 to 8.30. Drinks, a proper look round, and a live demonstration of the skin scanner. 25 places. Would you like one? Bring someone if you want to, just tell me so I can count. Abi\nWave 2, founding-waitlist, WhatsApp, sent 24 hours later. {name}, open evening at the Winchester clinic, Thursday 5 November, 6.30 to 8.30. Come and see the place, meet me, and watch the scanner in action. No sales pitch and nothing to buy. 25 places and they are going. Reply YES and I will put your name down. Abi\nWave 3, local partners and micro-influencers, email, sent 48 hours later. Subject: An invitation, Thursday 5 November\nHi {name},\nWe are opening on Jewry Street on 2 November and I am having a small open evening on Thursday 5 November, 6.30 to 8.30.\nI would really like you to come. It is a good chance to meet properly rather than over email, have a look at the clinic, and see the skin scanner in action.\nBring someone if you would like to. Let me know either way so I can keep an eye on numbers.\nAbi\nWave 4, general list, email, sent 72 hours later, only if places remain. Subject: A few places left, Thursday 5 November\nHi {name},\nWe have a handful of places left at the open evening on Thursday 5 November, 6.30 to 8.30, at the new clinic on Jewry Street in Winchester.\nDrinks, a look round, a live demonstration of the skin scanner, and the chance to ask me anything. Nothing to buy and no pressure.\nReply to this and I will put you down. {link}\nAbi"}]},{"category":"p2","title":"One week left at Bedhampton, final call.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-18","dayDate":"2026-10-23","sortOrder":710,"deep":[{"h":"Creative direction","b":"Simple, warm, static or short clip. Hook: “One week left at Bedhampton.”"},{"h":"Caption","b":"One week.\nSaturday 31 October is the last day at Bedhampton and the last day for the complimentary analysis there.\nI have a handful of slots left and then that is genuinely it.\nIf you have been putting it off, or you have been meaning to come in and say goodbye properly, this is the week. I would rather see you now than have you message me in December.\nThank you to everyone who has already been in over the last two months. It has been lovely, and slightly emotional, and I have talked about sun protection more times than any human being should.\n07849 989869."},{"h":"First comment","b":"#bedhampton #havantbeauty #waterloovilleskin #hampshireskinclinic #portsmouthskin #lastcall"}]},{"category":"p2","title":"Friday review.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-18","dayDate":"2026-10-23","sortOrder":720,"deep":[{"h":"Detail","b":"Section 11 checklist. Specific checks: founding places filled, open evening RSVPs against the cap of 25, whether November’s diary is filling with paid treatment or only with free analyses. If it is only free analyses, that is the signal to reduce prospecting spend and increase the same-day booking push at the end of every analysis."}]},{"category":"p2","title":"Batch film four. Launch week and November content.","detail":"","channel":"found","owner":"abi","weekStart":"2026-10-18","dayDate":"2026-10-24","sortOrder":730,"deep":[{"h":"Steps","b":"Film these six: (a) launch day welcome, filmed in the finished clinic; (b) what happens in the first week, honestly; (c) a scanner demonstration filmed properly with the new lighting; (d) the founding membership explained; (e) how to find the clinic, parking and access; (f) a Christmas gifting teaser, filmed now to be used in late November.\nFilm the Christmas piece now while you have the time and the setup. Late November you will not have either."}]},{"category":"p2","title":"Edit, schedule and final pre-launch checks.","detail":"","channel":"found","owner":"david","weekStart":"2026-10-25","dayDate":"2026-10-25","sortOrder":740,"deep":[{"h":"Steps","b":"Edit and schedule everything through to 15 November so launch week needs no production.\nConfirm the November ANS diary is open, correctly configured, with analysis appointments as their own appointment type with the right duration.\nCap analysis slots in ANS at twelve per week for November. This is the single control preventing a diary full of free work.\nConfirm the Winchester Google Business Profile is verified and will flip from “Opening soon” to open on 2 November.\nTest the whole booking journey end to end from a Meta ad, on a phone, as a stranger would experience it. Every step. Fix anything that takes more than three taps.\nConfirm the WhatsApp launch template is approved."}]},{"category":"p2","title":"How to find the clinic, park, and get in.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-25","dayDate":"2026-10-26","sortOrder":750,"deep":[{"h":"Strategy","b":"Removes the last practical friction before launch. Winchester parking is a genuine barrier and answering it plainly converts more people than another benefit post would."},{"h":"Creative direction","b":"Reel from batch four, walking from the nearest car park to the door, filmed as a route. Hook: “Where to park, and how to find us.” Practical and useful."},{"h":"Caption","b":"Practical post. Where we are and how to get here.\nWe are at 9A Jewry Street, Winchester SO23 8RZ. Ground floor.\nParking: the closest options are the Tower Street and Jewry Street car parks, both a few minutes’ walk. There is limited on-street parking nearby but I would not rely on it, particularly on a Saturday.\nIf you are coming by train, it is about a ten minute walk from Winchester station, straight down.\nAccess is at street level. If you have any access needs at all, message me before you come and I will make sure everything is sorted in advance rather than on the day.\nDoors open Monday 2 November.\nSave this one for when you come."},{"h":"First comment","b":"#winchester #jewrystreet #winchesterparking #winchesterskin #winchesterbusiness #hampshireskinclinic"}]},{"category":"p2","title":"Stage every launch week asset. Nothing gets built after today.","detail":"","channel":"found","owner":"david","weekStart":"2026-10-25","dayDate":"2026-10-27","sortOrder":760,"deep":[{"h":"Steps","b":"Queue all launch week emails, SMS and WhatsApp broadcasts as drafts with send times set.\nConfirm both November Meta campaigns are built, creative-complete with real photography, and scheduled to activate at 00:01 on 2 November.\nConfirm the Google budget increase rule is set for 2 November.\nPrepare the Bedhampton Google Business Profile change: from 1 November, mark it as permanently closed or moved, per the actual position. Do not delete it, because deleting it destroys the review history and any local authority the profile carries. Use “Moved” and link it to Winchester if the profile allows.\nWrite the launch week run sheet: one page, hour by hour, both names against every item.\nPrepare a holding response for the most likely launch week problems: a booking system failure, a no-show rate spike, a negative comment, and a fully booked diary."}]},{"category":"p2","title":"The last week at Bedhampton, honestly.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-25","dayDate":"2026-10-28","sortOrder":770,"deep":[{"h":"Creative direction","b":"Filmed at Bedhampton, informal, a bit reflective. Hook: “Last week here.”"},{"h":"Caption","b":"Last week at Bedhampton.\nI opened here not knowing whether anyone would come. People came. Then they came back. Then they sent their friends, and their mums, and in a couple of cases their husbands, which I did not expect.\nTwo hundred and ninety reviews came from this room. Everything I have learned about running a clinic rather than just doing treatments came from this room.\nI am not sad exactly. It is the right move and I am ready. But I am aware that I am packing up something that mattered.\nSaturday 31 October is the last day. There are a few slots left.\nTo everyone who came here over the years: thank you. Genuinely. You built this and I know it.\nWinchester opens Monday."},{"h":"First comment","b":"#bedhampton #havantbeauty #smallbusiness #thankyou #hampshireskinclinic #waterloovilleskin"}]},{"category":"p2","title":"Final Bedhampton reminder to local clients who have not booked.","detail":"","channel":"email","owner":"david","weekStart":"2026-10-25","dayDate":"2026-10-29","sortOrder":780,"deep":[{"h":"Goal","b":"Capture the last of the Bedhampton revenue. This is the last commercial message that clinic will send."},{"h":"Full copy, SMS","b":"Hi {name}, Abi here. Saturday is my last day at Bedhampton and I have two or three slots left. If you have been meaning to come in for your complimentary skin analysis before I move to Winchester, this is the last chance. {link} or call 07849 989869. And if not, thank you for everything, genuinely. Abi"}]},{"category":"p2","title":"Tomorrow is the last day at Bedhampton. Winchester opens Monday.","detail":"","channel":"social","owner":"abi","weekStart":"2026-10-25","dayDate":"2026-10-30","sortOrder":790,"deep":[{"h":"Creative direction","b":"Split feel: goodbye to one, hello to the other. Two-part Reel or carousel."},{"h":"Caption","b":"Tomorrow is the last day at Bedhampton. Monday is the first day in Winchester.\nTwo very different feelings in the same weekend.\nBedhampton, thank you. Seven years’ worth of people who trusted me with their skin, and a clinic that taught me how to run a clinic.\nWinchester, we open Monday 2 November on Jewry Street. The AI Skin Analysis is complimentary for everyone all month. Founding places are nearly gone. And there is an open evening on Thursday 5 November if you want to come and have a look before committing to anything.\nThe scanner travels over the weekend, which I am trying not to think about too hard.\nSee you Monday."},{"h":"First comment","b":"#winchester #jewrystreet #bedhampton #newclinic #winchesterskin #hampshireskinclinic"}]},{"category":"p2","title":"Final Friday review before launch.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-25","dayDate":"2026-10-30","sortOrder":800,"deep":[{"h":"Detail","b":"Run the checklist, then walk the launch week run sheet line by line together. Confirm who is doing what on Monday morning. Agree a single point of contact for problems so you are not both firefighting the same thing."}]},{"category":"p2","title":"Bedhampton closes. Machine moves. Offer ends.","detail":"","channel":"found","owner":"both","weekStart":"2026-10-25","dayDate":"2026-10-31","sortOrder":810,"deep":[{"h":"Steps","b":"Last Bedhampton appointments. Abi asks every single one for a review in person.\nPause the Bedhampton Meta campaign and the Havant Google campaign at close of business. Confirm zero spend.\nMove the scanner. Transport it properly, insured, and test it fully in situ at Winchester the same day. Do not discover a fault on Monday morning.\nRun three full test scans at Winchester and check the report generation end to end.\nUpdate the Bedhampton Google Business Profile to reflect the move from tomorrow.\nStop. Both of you. Sunday is a rest day. Launch week is a marathon and you start it tired if you work through."}]},{"category":"p2","title":"Final readiness check. Thirty minutes, then stop.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-01","dayDate":"2026-11-01","sortOrder":820,"deep":[{"h":"Steps","b":"Confirm: scanner working, diary open, booking journey tested, campaigns scheduled, messages queued, QR repointed, Google profile flipping to open.\nConfirm the founding places number and who is booked in which week.\nConfirm the open evening headcount and that someone is running the door.\nThen close the laptops.\nPHASE 3: LAUNCH WEEK\nMonday 2 November to Sunday 8 November\nThe point of this phase. Open well, seat the founding clients, run the open evening, and start collecting Winchester reviews from day one. Nothing new gets built this week. Everything was built in Phase 2.\nBudget this phase. Meta prospecting £25 per day, Meta retargeting £10 per day, total £35. Google Winchester £20 per day.\nThe single biggest risk this week. Over-promising the diary. Every free analysis booked this week that does not convert is a slot that could have been a paying treatment. Hold analyses to twelve per week and put the rest of the diary into treatment."}]},{"category":"p3","title":"Open. Switch everything on in one sequence.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-01","dayDate":"2026-11-02","sortOrder":830,"deep":[{"h":"Steps","b":"07:30. Confirm scanner powered and tested. Confirm diary loaded.\n08:00. David activates both Meta campaigns and the Google budget increase. Confirm delivery within thirty minutes.\n08:00. Repoint the signage QR from the founding page to the booking page.\n08:15. Flip the Winchester Google Business Profile from “Opening soon” to open. Post a Google post announcing it.\n08:30. Send the launch WhatsApp broadcast to the 443, then the SMS to non-WhatsApp contacts at 10:00, then the email to everyone at 13:00.\n09:00. Doors open. Abi in clinic.\nThrough the day: Abi asks every single person who comes in for a Google review, in person, at payment.\n17:30. David checks: are the campaigns delivering, is the booking event firing, has anything broken.\n19:00. Launch post goes live."}]},{"category":"p3","title":"Launch broadcast to the 443.","detail":"","channel":"email","owner":"abi","weekStart":"2026-11-01","dayDate":"2026-11-02","sortOrder":840,"deep":[{"h":"Goal","b":"Convert the remaining warm list into November bookings on day one, while attention is at its peak."},{"h":"Full copy, WhatsApp, 08:30","b":"{name}, we are open.\n9A Jewry Street, Winchester. Doors opened this morning and it still does not feel real.\nThrough November the AI Skin Analysis is complimentary for everyone. Twenty minutes, a proper scan across six readings, and you leave with a written plan for your skin. Nothing to buy and no obligation.\nBook here: {link}\nThere is also an open evening on Thursday 5 November, 6.30 to 8.30, if you would rather come and have a look first. Reply OPEN and I will put your name down.\nThank you for waiting. Some of you have been on this list since the spring.\nAbi\nSMS version, 10:00, for non-WhatsApp contacts. {name}, Abi here. We are open. 9A Jewry Street, Winchester. The AI Skin Analysis is complimentary for everyone through November, twenty minutes and you leave with a plan. Book: {link} Or reply and I will sort it for you. Abi\nEmail version, 13:00. Subject: We are open, {name}\nHi {name},\nAs of nine o’clock this morning, the clinic on Jewry Street is open.\nIt has taken most of the year and considerably more than I planned to spend, and this morning I stood in it with the lights on and a full diary and had a small moment about it.\nHere is what is on offer through November.\nThe AI Skin Analysis is complimentary for everyone, all month. It normally sits at fifty pounds. Twenty minutes, a proper scan across six readings, and a written plan for your skin. There is genuinely no obligation to book anything else.\nFounding places: a handful left of the forty. Priority booking, member pricing held for twelve months, and a complimentary add-on with your first treatment.\nOpen evening: Thursday 5 November, 6.30 to 8.30. Drinks, a look round, a live demonstration of the scanner, and no sales pitch. Reply to this and I will add you.\nBook anything here: {link}\nOr call or message me on 07849 989869 and I will sort it out personally.\nThank you for your patience. See you soon.\nAbi"},{"h":"Capacity note","b":"this broadcast will generate more demand than Monday’s diary can absorb. Have the honest waitlist ready. “I am full this week, I can offer you the 12th” is a better answer than an overstuffed diary and a rushed appointment."}]},{"category":"p3","title":"Launch day post.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-01","dayDate":"2026-11-02","sortOrder":850,"deep":[{"h":"Strategy","b":"The highest reach post of the plan. Use the pre-filmed launch day piece so nothing depends on filming during a busy first day."},{"h":"Creative direction","b":"Reel from batch four, filmed in the finished clinic, 45 seconds. Hook: “We are open.” Warm, real, not corporate. Cut in three seconds of the door opening, filmed on the morning if there is a spare hand."},{"h":"Caption","b":"We are open.\n9A Jewry Street, Winchester. Doors opened at nine this morning.\nIf you want to know what actually happens here: you come in, we talk about what is bothering you, we scan your skin properly across six readings, and we go through what it shows together. You leave with a written plan. If the honest answer is that you do not need a treatment, I will tell you that.\nThrough November, the AI Skin Analysis is complimentary for everyone. It normally sits at fifty pounds. There is nothing to buy and no obligation.\nOpen evening is Thursday 5 November, 6.30 to 8.30, if you would rather have a look first. Comment or message and I will put your name down.\nA last handful of founding places are still open.\nThank you to everyone who has followed the dust and the delays and the flooring saga. Come and see it.\nLink in bio, or 07849 989869."},{"h":"First comment","b":"#winchester #jewrystreet #nowopen #winchesterskin #winchesterbusiness #hampshireskinclinic"}]},{"category":"p3","title":"Launch retargeting campaign, warm audiences only.","detail":"","channel":"meta","owner":"david","weekStart":"2026-11-01","dayDate":"2026-11-03","sortOrder":860,"deep":[{"h":"Objective","b":"Conversions, optimising for BookingConfirmed."},{"h":"Audience","b":"The 443 as a customer list, all website visitors 180 days, /winchester and /founding visitors 180 days, Instagram and Facebook engagers 365 days, video viewers 50 percent plus 365 days. Exclude founding-confirmed and analysis-booked."},{"h":"Budget","b":"£10 per day. This will be your cheapest cost per booking of any paid channel. Watch it, and if it clears £15 per booked-and-attended analysis, take budget from prospecting and give it here."},{"h":"Creative","b":"Different creative from prospecting, because these people have already seen the prospecting ads. Use the open evening invitation and the finished-clinic walk-through."},{"h":"Full copy","b":"Primary text: You had a look at us at some point, so you will know the clinic on Jewry Street opened this week.\nThe AI Skin Analysis is complimentary for everyone through November. Twenty minutes, an advanced scan across six readings, and a written plan for your skin. Nothing to buy and no obligation to book a treatment.\nThere is also an open evening on Thursday 5 November, 6.30 to 8.30, if you would rather come and have a look first. Drinks, a proper tour, and a live demonstration of the scanner.\nAbi Peters is a registered nurse and independent prescriber. Central Winchester.\nHeadline: We are open. Complimentary skin analysis all November.\nDescription: 9A Jewry Street, Winchester. Open evening Thursday 5 November."}]},{"category":"p3","title":"Day two, honestly. First reactions in the room.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-01","dayDate":"2026-11-04","sortOrder":870,"deep":[{"h":"Strategy","b":"Momentum content. Showing a busy, warm first week builds the social proof that a brand new location has no other way of getting."},{"h":"Creative direction","b":"Filmed on the day, phone, rough. Hook: “Two days in.” Cut of the reception, the scanner in use with the client out of frame, Abi at the end of the day."},{"h":"Consent note","b":"No client faces, no identifiable clients, no results shown that belong to anyone who has not signed the consent form."},{"h":"Caption","b":"Two days in.\nThings I have learned so far.\nThe light in reception at about half three in the afternoon is genuinely lovely and I did not plan that, I just got lucky.\nEveryone says the same thing when they see their UV reading, and it is usually a swear word.\nI have drunk no water and eaten one sandwich in two days, which is not a sustainable operating model and I will fix it.\nWinchester has been extremely kind. Several neighbours have come in just to say hello, someone brought flowers, and the coffee place down the road has already learned my order.\nThank you. Honestly.\nComplimentary skin analysis all through November. Open evening tomorrow evening, 6.30 to 8.30, and there are still a couple of places. Message me."},{"h":"First comment","b":"#winchester #jewrystreet #nowopen #winchesterbusiness #winchesterskin #shoplocalwinchester"}]},{"category":"p3","title":"Founding open evening, 6.30 to 8.30.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-01","dayDate":"2026-11-05","sortOrder":880,"deep":[{"h":"Why it matters","b":"This is the highest conversion event in the entire plan. A room of 25 warm people with the clinician in front of them and a diary open on the table will out-convert several thousand pounds of advertising."},{"h":"Steps","b":"17:30. Clinic reset, drinks out, diary open on a tablet, someone briefed to run the door and take names.\n18:30. Doors. Everyone greeted by name if possible. Have the RSVP list printed.\n18:50. Abi speaks for fifteen minutes. What the clinic does, what it does not do, why she scans before treating, and what founding means. Do not sell. Explain.\n19:10. Live scanner demonstration on a volunteer who has signed the imagery and data consent form in advance. Have a backup volunteer.\n19:30. Questions. Let them run.\n19:50. Open floor. Diary open. Someone other than Abi takes bookings so Abi can keep talking to people.\nTake a photograph of the room, wide, from behind, so no faces are identifiable without consent. This becomes Friday’s post.\nAsk every attendee, in person, for a Google review of the evening if they enjoyed it.\nNext morning: follow-up message to every attendee, and a separate one to every RSVP who did not turn up.\nFollow-up WhatsApp, sent 09:00 Friday to attendees. {name}, thank you for coming last night. It was lovely to meet you properly and the room felt exactly like I hoped it would. If you would like to get booked in, here is the link: {link}. And if you have any questions you did not want to ask in a room full of people, just message me. Abi\nFollow-up WhatsApp, sent 09:00 Friday to no-shows. {name}, we missed you last night, no problem at all, life happens. If you would still like to see the place, come in any time or book your complimentary skin analysis here: {link}. It is free for everyone through November. Abi"}]},{"category":"p3","title":"Open evening recap, room full, social proof.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-01","dayDate":"2026-11-06","sortOrder":890,"deep":[{"h":"Strategy","b":"Turns a 25 person event into proof for several thousand people. This is the highest value repurposing in the plan."},{"h":"Creative direction","b":"Reel or carousel from last night: the room from behind, the scanner demonstration screen, drinks, detail shots. Hook: “Last night, in a clinic that was a building site six weeks ago.”"},{"h":"Consent note","b":"No identifiable faces without consent. Shoot from behind, or use detail shots. The volunteer’s scanner results may only be shown if the consent form was signed."},{"h":"Caption","b":"Last night.\nTwenty five people in a room that was a building site six weeks ago, asking better questions than I expected and staying much later than I expected.\nWe did a live scan on a very brave volunteer and put her results on the screen for everyone to see. Her reaction to the UV image is the same reaction I get every time, and it never gets old.\nThank you to everyone who came. Several of you got booked in on the night, a few of you took founding places, and one of you brought a bottle of wine, which was extremely well judged.\nIf you missed it: the AI Skin Analysis is complimentary for everyone through November. Twenty minutes, a proper scan, a written plan, nothing to buy.\nLink in bio or 07849 989869."},{"h":"First comment","b":"#winchester #jewrystreet #openevening #winchesterbusiness #winchesterskin #hampshireskinclinic"}]},{"category":"p3","title":"Friday review, launch week.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-01","dayDate":"2026-11-06","sortOrder":900,"deep":[{"h":"Detail","b":"Run the Section 11 checklist. Launch week specifics: total attended analyses, analysis to treatment conversion in the room, founding places filled, first Winchester Google reviews, cost per booked-and-attended analysis on each campaign separately, and whether next week’s diary is full of free work or paid work. If it is more than 40 percent free analyses, reduce prospecting spend on Monday.\nSaturday 7 and Sunday 8 November. Phase 3.\nOwner: David Channel: Setup Summary: Consolidate week one."},{"h":"Steps","b":"Reply to every Google review received. Every one, personally, within 48 hours.\nReply to every DM and comment. Route anything with an “engaged-reply” tag to Abi.\nCheck Event Match Quality on the booking event now that real volume exists.\nKill any Meta creative running at more than double the winner’s cost per booking.\nUpdate the /founding page with the true remaining number.\nPost to the Winchester Google Business Profile.\nBook Abi’s next batch film for Saturday 14 November.\nPHASE 4: FILL THE DIARY\nMonday 9 November to Sunday 29 November\nThe point of this phase. Launch adrenaline is over. This is the phase that determines whether Winchester is a business or an event. Convert free analyses into treatments, convert founding clients into members, start the referral engine, and get honest about capacity.\nBudget this phase. Meta £35 per day total, weighted toward whichever of prospecting or retargeting is producing the cheaper booked-and-attended analysis. Google Winchester £20 per day.\nThe conversion problem to solve. Historic data shows a patient who only ever has a consultation carries a median lifetime value of zero, and patients who return for a second visit are worth substantially more. November is full of free analyses. If the analysis-to-treatment conversion is not being actively engineered, November produces goodwill and no revenue. Every task in this phase points at that."}]},{"category":"p4","title":"Build the same-day conversion mechanic into every analysis.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-08","dayDate":"2026-11-09","sortOrder":910,"deep":[{"h":"Why it matters","b":"This is the single highest value change in the whole plan. A free analysis that ends with “have a think about it” converts poorly. A free analysis that ends with a specific recommendation and a diary open on the desk converts several times better."},{"h":"Steps","b":"Standardise the close of every analysis. Abi finishes with: the single most important thing to do, the recommended first treatment or product, and “shall I get you in the diary while you are here”.\nPrint the plan. A written, physical plan handed over at the end, with the recommendation on it. This costs pennies and dramatically increases follow-through.\nHave the diary accessible in the room. Not at reception, not later, not online.\nBuild the GHL follow-up for anyone who does not book on the day: day 2 WhatsApp, day 7 email, day 21 check-in. Full copy in Section 7.\nTrack analysis-to-treatment conversion weekly from now on. It is the second most important number in the business after cost per attended analysis.\nSet the target: 40 percent of attended analyses converting to a booked treatment within 30 days. Below 25 percent, stop buying analyses and fix the conversation first."}]},{"category":"p4","title":"What happens after the analysis, and what a plan actually looks like.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-08","dayDate":"2026-11-09","sortOrder":920,"deep":[{"h":"Strategy","b":"Pre-frames the conversion. If people understand before they arrive that the analysis produces a plan and the plan sometimes involves treatment, converting in the room stops feeling like a sales pitch to either party."},{"h":"Creative direction","b":"Reel, 50 seconds, showing an anonymised printed plan. Hook: “What you actually walk out with.”"},{"h":"Consent note","b":"Use a mocked-up plan or Abi’s own. No client’s plan."},{"h":"Caption","b":"People ask what you actually walk out with after the analysis, so here it is.\nA printed plan. Physical, on paper, with your name on it.\nOn it: what the scan found, in plain English rather than jargon. What is worth doing something about now and what can wait. What to use in the morning and what to use at night, in order. And if a treatment would genuinely help, which one and why, with the cost written down so there are no surprises.\nSometimes the plan is entirely products and sun protection and I do not see you again for six months. That is a perfectly good outcome and it happens often.\nSometimes it involves a course of treatment, in which case I will tell you what it costs and how long it takes before you decide anything.\nWhat I will not do is scan you, look concerned, and let you leave without knowing what to do next. That helps nobody.\nComplimentary for everyone through November. {link} or 07849 989869."},{"h":"First comment","b":"#skinanalysis #skincareplan #winchesterskin #jewrystreet #hampshireskinclinic #nurseledskincare"}]},{"category":"p4","title":"Launch the referral mechanic.","detail":"","channel":"found","owner":"david","weekStart":"2026-11-08","dayDate":"2026-11-10","sortOrder":930,"deep":[{"h":"Why it matters","b":"Referrals and retention are the cheapest revenue in a clinic, by a wide margin. At a £15 to £25 cost per attended analysis on paid media, a referral that costs a complimentary add-on is dramatically better economics, and it arrives pre-trusted.\nFull mechanic in Section 8. Build it today, launch it Wednesday."}]},{"category":"p4","title":"Introduce the referral mechanic without it sounding like a scheme.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-08","dayDate":"2026-11-11","sortOrder":940,"deep":[{"h":"Strategy","b":"Referral programmes fail when they feel transactional. Framing it as “bring someone you think would benefit” rather than “earn rewards” preserves the premium positioning and actually converts better in a medical setting."},{"h":"Creative direction","b":"Abi to camera, warm, brief. 30 seconds. Hook: “The only marketing that has ever really worked for me.”"},{"h":"Caption","b":"The honest truth about how this clinic grew.\nIt was not adverts. It was one person telling another person, usually in a kitchen or a car park, that they had been somewhere good.\nSo here is what I would like to do.\nIf you send someone to me, I will look after them properly. They get their complimentary skin analysis and a plan, same as everyone. And after their first treatment, I will add a complimentary skincare add-on to your next appointment as a thank you.\nThat is it. No points, no codes, no scheme. Just tell them to mention your name.\nI am not asking you to sell anything. If you know somebody who is spending money on skincare that is not working, or who has been putting off doing something properly, send them my way and I will give them an honest answer.\nThat is the whole thing."},{"h":"First comment","b":"#referral #wordofmouth #winchesterskin #jewrystreet #hampshireskinclinic #smallbusiness"}]},{"category":"p4","title":"Founding Membership offered to founding clients who have had a first treatment.","detail":"","channel":"email","owner":"abi","weekStart":"2026-11-08","dayDate":"2026-11-12","sortOrder":950,"deep":[{"h":"Goal","b":"Convert one-off founding clients into recurring monthly revenue. Predictable diary and predictable cash flow are worth more to this business right now than a higher one-off ticket."},{"h":"Full copy","b":"Subject: Something I want to offer you first, {name}\nHi {name},\nYou are one of the founding forty, so you get this before anyone else.\nI am starting a Founding Membership. It is a simple monthly arrangement and here is exactly what it includes.\nA monthly skin check with me, where we look at how things are actually going and adjust the plan rather than guessing.\nAll treatments at founding member rates, held for as long as you are a member.\nPriority booking, so you get first pick of the diary, which matters more than people expect once we get busy.\nThe reason I want to do it this way is that skin responds to consistency, not to occasional bursts. The people who get the best results from me are the ones I see regularly, and the honest truth is that the current model does not encourage that.\nIt also helps me. Knowing roughly who I am seeing each month lets me plan properly and keep the clinic small and personal rather than chasing volume.\nThere is no tie-in. You can stop whenever you like.\nHave a read here: {link}\nOr just reply to this and ask me anything. I would rather answer questions than have you sign up to something you are not sure about.\nAbi"},{"h":"Capacity note","b":"memberships create a recurring monthly diary commitment. Model the total monthly appointment load before selling more than twenty memberships. Twenty monthly skin checks is roughly half a clinical day every month before any treatment is delivered."}]},{"category":"p4","title":"First Winchester reviews.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-08","dayDate":"2026-11-13","sortOrder":960,"deep":[{"h":"Strategy","b":"New location, new reviews, immediate proof. Publicising the first Winchester reviews prompts more of them, which is exactly what a two-week-old Google profile needs."},{"h":"Creative direction","b":"Clean carousel of two or three reviews, first name and initial only. Hook: “Our first Winchester reviews.”"},{"h":"Consent note","b":"Public reviews may be reshared. Reduce surnames."},{"h":"Caption","b":"Our first Winchester reviews.\nTwo weeks ago this clinic had no reviews, no history and no reputation in this town. That is a strange feeling after seven years of building one somewhere else.\nSo these mean rather a lot.\nThank you to the people who took two minutes to write something. If you have been in and you have not, and you have a spare moment, it genuinely helps a new clinic more than you would think.\nAnd as always: I have never asked anyone to leave a review in exchange for anything and I never will. If we did a good job, say so. If we did not, tell me directly and let me fix it.\nComplimentary skin analysis for everyone until the end of November. {link}"},{"h":"First comment","b":"#reviews #winchester #jewrystreet #winchesterskin #hampshireskinclinic #thankyou"}]},{"category":"p4","title":"Friday review, and the recruitment decision.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-08","dayDate":"2026-11-13","sortOrder":970,"deep":[{"h":"Steps","b":"Run the Section 11 checklist.\nThen the honest conversation: is Abi doing front of house, treatments, analyses, content, reviews and messages? If so, that is not a business, it is a bottleneck with a diary.\nDecide today whether to recruit a part-time therapist or receptionist for January. Recruitment lead time is six to eight weeks, so a January start means advertising this month.\nModel it: a part-time receptionist at roughly £12 to £14 per hour, sixteen hours a week, is around £900 to £1,050 a month. If it frees four clinical hours a week for Abi at treatment rates, it pays for itself several times over. The question is not whether it pays back, it is whether the diary can be filled with those four hours.\nIf yes, write the advert this weekend."}]},{"category":"p4","title":"Batch film five, Christmas-weighted.","detail":"","channel":"found","owner":"abi","weekStart":"2026-11-08","dayDate":"2026-11-14","sortOrder":980,"deep":[{"h":"Steps","b":"Film these six: (a) Christmas gift vouchers explained; (b) skincare that makes a genuinely good present and skincare that does not; (c) what a course of treatment actually involves; (d) a client question answered honestly; (e) the founding membership explained; (f) January skin, and why the new year is the right time to start.\nFilm everything Christmas-facing now. From 30 November you will not have a spare ninety minutes."}]},{"category":"p4","title":"What a course of treatment actually involves, honestly, including the cost.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-15","dayDate":"2026-11-16","sortOrder":990,"deep":[{"h":"Strategy","b":"Conversion content aimed directly at the analysis attendees who have not yet booked. Price transparency is unusual in this sector and builds disproportionate trust."},{"h":"Creative direction","b":"Reel from batch five, 60 seconds. Hook: “Nobody in this industry talks about what it actually costs, so I will.”"},{"h":"Consent note","b":"Do not name any prescription-only treatment. Discuss non-POM treatments in general terms only."},{"h":"Caption","b":"Nobody in this industry talks about cost properly, so let me.\nMost skin work is not one appointment. It is a course, usually three to six sessions spaced a few weeks apart, and then a maintenance rhythm after that.\nThat means it is a commitment of both money and time, and you should know the whole number before you start rather than discovering it at session two.\nWhen I recommend something, I will tell you: how many sessions, how far apart, what the total cost is, what you need to do at home alongside it, and roughly when you would expect to notice a difference. I will not promise you a specific outcome, because nobody honest can, and skin varies enormously between people.\nI will also tell you if the honest answer is that a better routine and consistent sun protection for six months would serve you better than anything I could do in a treatment room. That happens more often than you would think.\nIf you have had your analysis and you are still weighing it up, message me and I will talk you through the numbers with no pressure at all."},{"h":"First comment","b":"#skintreatment #honestpricing #winchesterskin #jewrystreet #hampshireskinclinic #nurseledskincare"}]},{"category":"p4","title":"Mid-month optimisation. Rebalance to whatever is converting.","detail":"","channel":"meta","owner":"david","weekStart":"2026-11-15","dayDate":"2026-11-17","sortOrder":1000,"deep":[{"h":"Steps","b":"Pull cost per booked-and-attended analysis for each campaign and each ad set separately. Not cost per lead.\nMove budget toward the winner in increments of no more than 20 percent per change, and no more than one change every three days. Larger or faster changes reset the learning phase.\nKill any creative at more than double the winner’s cost per result.\nIf retargeting is materially cheaper than prospecting, which it usually will be, shift toward it, but do not starve prospecting entirely. Retargeting has no fuel without prospecting refilling the pool.\nCheck frequency on the retargeting campaign. Above 4 in a 7 day window, refresh creative or reduce budget.\nReview the Google search terms report and add negatives."}]},{"category":"p4","title":"Answering a real question from the open evening.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-15","dayDate":"2026-11-18","sortOrder":1010,"deep":[{"h":"Strategy","b":"Question-answering content is cheap to produce, genuinely useful, and directly addresses the objections holding people back from booking."},{"h":"Creative direction","b":"Talking head, 45 seconds, filmed on a phone in the clinic. Hook: “Someone asked me this at the open evening and I have not stopped thinking about it.”"},{"h":"Caption","b":"Someone asked me this at the open evening and I have thought about it since.\n“How do I know if I actually need any of this, or if I am just being sold to?”\nWhich is a brilliant question and I wish more people asked it.\nHere is my honest test. Did somebody look at your skin properly before recommending anything? Did they explain why that particular thing, for your particular skin, rather than reaching for whatever they have got a lot of? And were they willing to tell you that something was not necessary?\nIf the answer to all three is yes, you are probably in good hands. If a recommendation arrived before an assessment did, be careful.\nThat is the whole reason I scan before I treat. Not because the machine is impressive, although it is. Because it means the conversation is about evidence rather than opinion, and you can see it on the screen for yourself.\nYou do not have to take my word for anything. That is rather the point.\nComplimentary analysis for everyone until 30 November."},{"h":"First comment","b":"#honestadvice #skinanalysis #winchesterskin #jewrystreet #hampshireskinclinic #patientfirst"}]},{"category":"p4","title":"Follow-up to everyone who attended an analysis and has not booked a treatment.","detail":"","channel":"email","owner":"abi","weekStart":"2026-11-15","dayDate":"2026-11-19","sortOrder":1020,"deep":[{"h":"Goal","b":"Recover the highest intent, lowest cost segment in the business. These people have met Abi, seen their results and have a plan. They are worth more attention than any cold audience."},{"h":"Full copy, WhatsApp","b":"{name}, no pressure at all, just checking in.\nYou came in for your skin analysis and we put a plan together. I wanted to see how you were getting on with it, and whether anything on it did not make sense once you got home.\nIf you have questions about any of it, just ask. If the timing is not right, that is completely fine, the plan does not expire.\nAnd if you want to get started, here is the diary: {link}\nEither way, do the sun protection bit. That one is free and it is the one that matters most.\nAbi"},{"h":"Tagging","b":"Reply applies “engaged-reply” and routes to Abi. Booking applies “treatment-booked” and exits the sequence. No response after two attempts: move to the long-term nurture at one message a month, not more."}]},{"category":"p4","title":"Ten days of complimentary analysis left.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-15","dayDate":"2026-11-20","sortOrder":1030,"deep":[{"h":"Creative direction","b":"Calm static or short clip. Hook: “Ten days left of the complimentary analysis.”"},{"h":"Caption","b":"Ten days left.\nThe complimentary AI Skin Analysis ends on Sunday 30 November. After that it returns to fifty pounds, which is what it is worth and what it will cost from December.\nIf you have been meaning to book it, this is the fortnight. Twenty minutes, a proper scan across six readings, and a written plan for your skin. Nothing to buy and no obligation to book a treatment afterwards.\nWe have had a genuinely lovely first three weeks in Winchester. Thank you to everyone who has come in, and to the neighbours who keep popping their heads round the door.\nLink in bio or 07849 989869."},{"h":"First comment","b":"#winchester #jewrystreet #skinanalysis #winchesterskin #hampshireskinclinic #lastchance"}]},{"category":"p4","title":"Friday review. Christmas readiness check.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-15","dayDate":"2026-11-20","sortOrder":1040,"deep":[{"h":"Detail","b":"Section 11 checklist, plus: are gift vouchers built and sellable, is the skincare gift set stock ordered and in, is the December Performance Max feed ready. If any of these is not done, this weekend is the last comfortable moment to do it."}]},{"category":"p4","title":"Build the Christmas retail infrastructure.","detail":"","channel":"found","owner":"david","weekStart":"2026-11-15","dayDate":"2026-11-21","sortOrder":1050,"deep":[{"h":"Steps","b":"Build gift vouchers as a sellable product: fixed values at £50, £100 and £150, plus an open value. Physical card in a proper envelope, and a digital version for last-minute buyers.\nSet voucher validity at twelve months from purchase. Be aware that unreasonably short expiry on gift vouchers is challengeable under consumer protection law, and twelve months is a defensible standard.\nVoucher liability is deferred revenue, not profit. Cash arrives in December, the service is delivered in January or later, at cost. Do not spend December voucher cash as though it were margin.\nBuild three curated skincare gift sets at £45, £75 and £120. Every item must be non-POM and freely retailable.\nPhotograph all of it properly this weekend. Product photography on a phone in bad December light will undo the brand work.\nBuild a simple Christmas landing page or section with the vouchers and sets, and wire it to the pixel.\nSet up the December Performance Max feed with the retail products only. Never include any service that touches a prescription-only medicine."}]},{"category":"p4","title":"Skincare that is worth the money and skincare that is not.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-22","dayDate":"2026-11-23","sortOrder":1060,"deep":[{"h":"Strategy","b":"Highly saveable and shareable, positions the clinic as honest rather than acquisitive, and sets up the Christmas retail campaign by establishing that Abi only stocks things she believes in."},{"h":"Creative direction","b":"Reel from batch five, 60 seconds, product b-roll. Hook: “Where the money actually goes in skincare.” Do not disparage specific brands by name."},{"h":"Caption","b":"Where the money actually goes in skincare.\nWorth paying for: sun protection you will genuinely use every day, a well-formulated vitamin A at a strength that suits you, vitamin C that has been formulated and packaged properly rather than sitting in a clear bottle going brown, and anything prescribed for a specific problem you actually have.\nNot worth paying for: an eight-step routine, a cleanser that costs more than your moisturiser, anything sold on packaging, and buying a new active every time you see one recommended online. The last one is the most expensive mistake I see, and it is usually what causes the congestion the scanner picks up.\nThe unglamorous truth is that consistency beats ingredients. A simple routine you actually do every day will outperform a brilliant routine you do three times a week.\nI stock a small number of things. Not a wall of them. If I would not use it or recommend it to my mum, it is not in the clinic.\nIf you want to know whether what you are currently using is doing anything, bring it in with you. I will tell you honestly."},{"h":"First comment","b":"#skincare #honestskincare #winchesterskin #jewrystreet #hampshireskinclinic #skincareadvice"}]},{"category":"p4","title":"Advertise the part-time role for January.","detail":"","channel":"found","owner":"david","weekStart":"2026-11-22","dayDate":"2026-11-24","sortOrder":1070,"deep":[{"h":"Steps","b":"Post the role: part-time clinic assistant and receptionist, sixteen hours a week, January start.\nAdvertise locally: Indeed, local Facebook groups, and a card in the clinic window. Local hires with local knowledge work better in a business like this than anyone you find nationally.\nBe explicit in the advert about handling patient information, because they will be. This will affect who applies and it should.\nInterview in early December, offer mid December, start early January.\nData protection: whoever you hire will handle special category health data. They need a contract with confidentiality provisions, GDPR training before day one, and their own login to every system. Never a shared login."}]},{"category":"p4","title":"Christmas teaser. First mention, soft.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-22","dayDate":"2026-11-25","sortOrder":1080,"deep":[{"h":"Strategy","b":"Plants Christmas before the campaign properly starts on 30 November, so the launch is not cold. The teaser also gathers early intent for retargeting."},{"h":"Creative direction","b":"Reel from batch five, the pre-filmed Christmas piece. Warm, low key. Hook: “I have been quietly putting something together.”"},{"h":"Caption","b":"I have been quietly putting something together for Christmas.\nGift vouchers, and a small number of curated skincare sets that I have actually chosen rather than assembled from whatever was left in the stockroom.\nI have thought about this quite carefully, because I do not think skincare is automatically a good present. Given badly it can feel like a comment on someone’s face, which is the opposite of what anyone wants on Christmas morning.\nGiven well, it is one of the nicest things you can give somebody: twenty minutes of proper attention and something that genuinely works.\nEverything goes live on Monday 30 November.\nIf you want first look, message me and I will tell you before it goes public."},{"h":"First comment","b":"#christmasgifts #winchester #jewrystreet #skincaregifts #winchesterskin #shoplocalwinchester"}]},{"category":"p4","title":"Final weekend of the complimentary analysis.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-22","dayDate":"2026-11-27","sortOrder":1090,"deep":[{"h":"Caption","b":"Last weekend of the complimentary skin analysis.\nSunday 30 November is the final day. From December it returns to fifty pounds.\nIf you have been circling this for a month, this is it. Twenty minutes, a full scan across six readings, and a written plan you keep. There is no obligation to book anything afterwards and there never has been.\nI have a few slots left across the weekend and Monday. Message me on 07849 989869 and I will get you in.\nThank you to everyone who has come through the door this month. Winchester has been considerably kinder than I dared hope."},{"h":"First comment","b":"#winchester #jewrystreet #lastchance #skinanalysis #winchesterskin #hampshireskinclinic"}]},{"category":"p4","title":"Friday review and November close-out.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-22","dayDate":"2026-11-27","sortOrder":1100,"deep":[{"h":"Steps","b":"Run the Section 11 checklist.\nThen the month numbers: total attended analyses, analysis to treatment conversion, average first treatment value, founding places filled of 40, memberships sold, reviews collected, total ad spend, cost per booked-and-attended analysis blended.\nAnswer honestly: did November generate revenue or goodwill? If the conversion rate is below 25 percent, December’s priority is fixing the conversation, not buying more traffic.\nSet the December budget accordingly.\nSaturday 28 and Sunday 29 November. Phase 4.\nOwner: Both Channel: Setup Summary: Stage the Christmas campaign for Monday."},{"h":"Steps","b":"Confirm voucher and gift set stock is physically in the clinic.\nConfirm the Christmas page is live and tested.\nConfirm the Performance Max feed is approved and the campaign built, paused, scheduled for 30 November.\nReduce the Meta budget from £35 to £25 per day effective 30 November, and shift creative from the analysis offer to gifting.\nQueue all Christmas emails, SMS and WhatsApp broadcasts.\nAbi: batch film six on Sunday if energy allows, otherwise 5 December.\nPHASE 5: CHRISTMAS RETAIL AND RETAIN\nMonday 30 November to Thursday 31 December\nThe point of this phase. Three jobs. Bring in retail cash through vouchers and gift sets. Rebook and retain everyone who came in during November so January is not empty. Pre-sell January before the doors close on 23 December.\nThe commercial logic. December in an aesthetics clinic is short on treatment days and long on retail intent. Vouchers convert December attention into January and February appointments, which is exactly when a clinic like this is quietest. A voucher sold on 15 December is a January booking that costs nothing to acquire.\nBudget this phase. Meta £25 per day. Google Winchester £15 per day. Performance Max £6 per day for retail only.\nThe cash flow warning. Voucher revenue is deferred, not earned. It is a liability on the balance sheet until redeemed. December will look like a good cash month and January will look like a bad one, because January’s work is paid for by December’s cash. Model this before it happens, particularly with Winchester rent, the new hire and any VAT position landing in the same window."}]},{"category":"p5","title":"Christmas campaign goes live across every channel.","detail":"","channel":"social","owner":"both","weekStart":"2026-11-29","dayDate":"2026-11-30","sortOrder":1110,"deep":[{"h":"Steps","b":"Activate the Performance Max campaign, £6 per day, retail products only. Confirm no service touching a prescription-only medicine appears in the feed.\nReduce Meta to £25 per day and swap the creative to gifting.\nGoogle Winchester to £15 per day. Add a Christmas ad group: [skincare gift set winchester], [gift voucher winchester], “beauty gift voucher hampshire”, [christmas gift winchester].\nUpdate both Google Business Profiles with a Christmas post and Christmas opening hours, including the closure from 24 December to 1 January.\nSend the Christmas launch email to the full list at 10:00.\nPublish the Christmas launch post at 19:00.\nUpdate the clinic window and the desk with the voucher display."},{"h":"Full copy, launch email","b":"Subject: Christmas at the clinic, {name}\nHi {name},\nEverything is ready.\nGift vouchers. Any value, or £50, £100 and £150. They come as a proper card in an envelope rather than a printout, and they are valid for twelve months. There is a digital version too if you have left it late, which is not a judgement, it is a feature.\nThree curated skincare sets, at £45, £75 and £120. I have chosen every item in these myself. There is nothing in them that is there to make up the numbers.\nA word on giving skincare, because I think about this more than is reasonable. Given carelessly it can read as a comment on somebody’s face, which is the last thing anyone wants on Christmas Day. Given well, it is twenty minutes of proper attention and something that genuinely works.\nIf you are not sure what to choose, a voucher is nearly always the right answer. It lets them come in, get their skin looked at properly, and choose for themselves.\nHave a look: {link}\nOr come into the clinic on Jewry Street and I will talk you through it.\nLast orders for anything posted is Friday 18 December. Collection from the clinic until Saturday 19 December. Digital vouchers right up to Christmas Eve.\nAbi"}]},{"category":"p5","title":"Christmas launch post.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-29","dayDate":"2026-11-30","sortOrder":1120,"deep":[{"h":"Creative direction","b":"Carousel or Reel using the product photography from 21 November. Vouchers and the three sets, shot properly. Hook: “Christmas, done properly.” Restrained styling. No red and gold. Keep the brand palette."},{"h":"Consent note","b":"None."},{"h":"Caption","b":"Christmas at the clinic, and I have kept it simple.\nGift vouchers, in any value or at £50, £100 and £150. A proper card in an envelope, valid for twelve months. There is a digital version too for the genuinely last minute among us, and I say that with affection because I am one of them.\nThree skincare sets, at £45, £75 and £120. I have chosen every single item. Nothing is in there to bulk it out.\nHere is my honest thought about giving skincare. Done badly it can land as a comment on somebody’s face, which is grim on Christmas morning. Done well, it is one of the nicest things you can give somebody, because it is attention and it is something that actually works.\nIf you are unsure, the voucher is almost always the right call. They come in, get their skin properly looked at, and choose for themselves.\nIn the clinic on Jewry Street, or at the link in bio.\nLast post is Friday 18 December. Collection from the clinic until Saturday 19 December. Digital vouchers until Christmas Eve."},{"h":"First comment","b":"#christmasgifts #winchester #jewrystreet #shoplocalwinchester #skincaregifts #winchesterchristmas"}]},{"category":"p5","title":"What is actually in the gift sets and why.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-29","dayDate":"2026-12-02","sortOrder":1130,"deep":[{"h":"Strategy","b":"Product-led conversion content. Explaining the reasoning behind each set justifies the price and reinforces that Abi curates rather than upsells."},{"h":"Creative direction","b":"Reel, 60 seconds, hands unpacking each set. Hook: “What is actually in these, and why.” One set per beat."},{"h":"Caption","b":"What is actually in the sets, and why I chose it.\nThe £45 one is the starting point. A proper cleanser, a good daily sun protection, and a simple moisturiser. If somebody in your life is using a face wipe and a supermarket moisturiser, this changes more than you would expect, and it does not overwhelm anybody.\nThe £75 one adds an active. This is for somebody who already has a routine and is ready to do something about texture or pigment rather than just maintaining.\nThe £120 one is the full thing. Cleanse, treat, protect, and something for the eyes, which is where people always ask about first and treat last.\nEverything in all three is something I use or recommend regularly. There is no filler and there is nothing in there because I bought too much of it.\nIf you are not sure which, get the voucher and let them choose with me.\nIn the clinic or at the link in bio. Last post Friday 18 December."},{"h":"First comment","b":"#skincaregifts #christmasgifts #winchester #jewrystreet #shoplocalwinchester #skincare"}]},{"category":"p5","title":"The voucher as the safe choice.","detail":"","channel":"social","owner":"abi","weekStart":"2026-11-29","dayDate":"2026-12-04","sortOrder":1140,"deep":[{"h":"Caption","b":"If you have someone difficult to buy for, this is the answer.\nA gift voucher, any value, valid for twelve months. They come in, sit down, have their skin properly looked at, and choose for themselves.\nThat last part matters. Nobody wants to be given a product for a problem they did not know they had. A voucher hands the choice back to them, and it comes with twenty minutes of my time and an honest conversation.\nThey come as a card in an envelope, not a printout, and I will write it out by hand if you want me to.\nPick one up in the clinic on Jewry Street or order at the link in bio. Last post is Friday 18 December, collection until Saturday 19 December, and digital vouchers right up to Christmas Eve."},{"h":"First comment","b":"#giftvoucher #christmasgifts #winchester #jewrystreet #shoplocalwinchester #winchesterchristmas"}]},{"category":"p5","title":"Friday review.","detail":"","channel":"found","owner":"both","weekStart":"2026-11-29","dayDate":"2026-12-04","sortOrder":1150,"deep":[{"h":"Detail","b":"Section 11 checklist, plus December specifics: voucher units sold, gift set units sold, retail revenue to date against a sensible target, Performance Max cost per sale, and January diary fill rate. January fill rate is the number that matters most this month."}]},{"category":"p5","title":"Batch film six. January and year-end content.","detail":"","channel":"found","owner":"abi","weekStart":"2026-11-29","dayDate":"2026-12-05","sortOrder":1160,"deep":[{"h":"Steps","b":"Film these six: (a) a year in review, honest, including the hard bits; (b) why January is the right time to start on skin; (c) new year skincare resolutions that are actually worth making; (d) what the clinic is doing differently in 2027; (e) a thank you to Winchester; (f) a last-minute gift piece for mid December.\nThis is the last batch of the year. Film generously."}]},{"category":"p5","title":"Gift guide by recipient, not by product.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-06","dayDate":"2026-12-07","sortOrder":1170,"deep":[{"h":"Strategy","b":"Gift guides organised by “who is this for” convert far better than guides organised by price, because the buyer arrives with a person in mind, not a budget."},{"h":"Creative direction","b":"Carousel, one slide per recipient type, product on each. Hook: “A gift guide, by person rather than by price.”"},{"h":"Caption","b":"A gift guide organised by person rather than by price, because that is how people actually shop.\nFor the one who has never had a routine and is slightly frightened of starting: the £45 set. Three things, in order, nothing intimidating.\nFor the one with a shelf full of half-used bottles: a voucher. What they need is somebody to look at their skin and tell them which four of those thirty products to keep. That is a conversation, not a product.\nFor the one who has been saying for two years that they want to do something about their skin: a voucher at a value that covers a treatment. Sometimes people need permission and a deadline.\nFor the one who is genuinely into skincare and knows more than you do: the £120 set, or a voucher, and do not try to outguess them.\nFor your mum: honestly, a voucher, and come with her.\nIn the clinic on Jewry Street or the link in bio. Last post Friday 18 December."},{"h":"First comment","b":"#giftguide #christmasgifts #winchester #jewrystreet #shoplocalwinchester #skincaregifts"}]},{"category":"p5","title":"Thank you to Winchester, five weeks in.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-06","dayDate":"2026-12-09","sortOrder":1180,"deep":[{"h":"Strategy","b":"Community and gratitude content performs strongly in December and does the local belonging work that a new clinic needs. It also generates the warmest comment section of the year, which helps everything else."},{"h":"Creative direction","b":"Abi to camera, in the clinic, informal, evening light. Hook: “Five weeks in Winchester.”"},{"h":"Caption","b":"Five weeks in Winchester.\nI did not know what to expect. Opening somewhere new, with no reputation in the town and no idea whether anyone would come, is genuinely frightening in a way I did not admit to at the time.\nPeople came. Neighbours brought flowers and coffee and, on one memorable occasion, a plant that I have already nearly killed. The businesses on this street have been kind in a way that I did not take for granted.\nAnd the clients. Some of you followed me from Havant, which is a forty minute drive and not a small thing to do. Some of you had never heard of me until an advert appeared on your phone. Both of those mean a lot.\nThank you. I am aware it is early and there is a long way to go. But it feels like the right decision, which is not something I could have told you in September.\nWe are here until 23 December and back on 2 January."},{"h":"First comment","b":"#winchester #jewrystreet #shoplocalwinchester #winchesterbusiness #thankyou #winchesterskin"}]},{"category":"p5","title":"Gift reminder to the warm list, and rebooking push to November clients.","detail":"","channel":"email","owner":"abi","weekStart":"2026-12-06","dayDate":"2026-12-10","sortOrder":1190,"deep":[{"h":"Goal","b":"Two audiences, two messages, sent the same day."},{"h":"Full copy, WhatsApp, to the general warm list","b":"{name}, a gentle nudge in case Christmas has crept up on you.\nGift vouchers and three skincare sets are ready at the clinic. Vouchers are any value, valid twelve months, and come as a proper card. There is a digital one if you are running late.\n{link} or pop into the clinic on Jewry Street.\nLast post is Friday 18 December.\nAbi"},{"h":"Full copy, SMS, to everyone who attended in November","b":"Hi {name}, Abi here. Two things. First, thank you for coming in during our first month, it meant a lot. Second, if you want to get your next appointment in before January fills up, here is the diary: {link} January and February are the best months to start on skin, and they are also the quietest, so you get the pick of the times. Abi"}]},{"category":"p5","title":"One week to last post.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-06","dayDate":"2026-12-11","sortOrder":1200,"deep":[{"h":"Caption","b":"One week until last post.\nFriday 18 December is the last day I can get anything into the post in time. After that it is collection from the clinic until Saturday 19 December, or a digital voucher, which arrives instantly and is a perfectly respectable way to do Christmas.\nVouchers in any value, valid twelve months. Three skincare sets at £45, £75 and £120.\nIf you want a voucher written out by hand, order this week and tell me the name, and I will do it properly rather than printing it.\nLink in bio, or come in and see us on Jewry Street."},{"h":"First comment","b":"#christmasgifts #lastpost #winchester #jewrystreet #shoplocalwinchester #giftvoucher"}]},{"category":"p5","title":"Friday review, and set the January diary target.","detail":"","channel":"found","owner":"both","weekStart":"2026-12-06","dayDate":"2026-12-11","sortOrder":1210,"deep":[{"h":"Steps","b":"Run the Section 11 checklist.\nCount January appointments already booked. Set a target for how full the January diary needs to be by 23 December for the month to work financially. Work backwards from fixed costs.\nIf January is under target, the priority for the remaining two weeks is rebooking, not retail. Retail is nice. A full January is survival.\nConfirm the new hire is offered and starting."}]},{"category":"p5","title":"Why January is the right month to start on skin.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-13","dayDate":"2026-12-14","sortOrder":1220,"deep":[{"h":"Strategy","b":"The most important post of the phase. This is the January pre-sell, dressed as advice, and it is genuinely true, which is why it works."},{"h":"Creative direction","b":"Reel from batch six, 50 seconds. Hook: “If you are going to do something about your skin, do it in January.” Practical, not resolution-flavoured."},{"h":"Caption","b":"If you are going to do something about your skin, January is the month to start. Here is why, and it is not about resolutions.\nMost skin work is best done when the sun is weak. Anything that resurfaces or targets pigment leaves the skin more sensitive to UV, and doing that work in January and February means you get the benefit and you are protected through the process.\nIt also takes time. A course of treatment plus the settling period is often eight to twelve weeks. Start in January and you are in a good place by spring. Start in April and you are chasing it into summer, which is the wrong way round.\nAnd the practical bit: January and February are the quietest months in any clinic, which means you get the pick of the appointment times before the diary tightens up in spring.\nI am closed from 24 December and back on 2 January. The January diary is open now if you want to get something in.\n{link} or 07849 989869."},{"h":"First comment","b":"#januaryskin #skincare #winchesterskin #jewrystreet #hampshireskinclinic #newyear"}]},{"category":"p5","title":"Last minute gifting, no judgement.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-13","dayDate":"2026-12-16","sortOrder":1230,"deep":[{"h":"Creative direction","b":"Reel from batch six, light and funny. Hook: “For those of us who do Christmas on the 22nd.”"},{"h":"Caption","b":"For those of us who do Christmas on the 22nd.\nI am not judging. I am one of you.\nDigital vouchers arrive by email within minutes, any value, valid twelve months. Order at eleven o’clock on Christmas Eve if you like. It will still be a good present.\nPhysical vouchers and gift sets: last post is Friday 18 December, collection from the clinic until Saturday 19 December.\nIf you are stuck and cannot decide, message me on 07849 989869 and tell me a bit about the person. I will tell you what I would get them. That is a genuine offer and I quite enjoy it.\nLink in bio."},{"h":"First comment","b":"#lastminutegifts #christmasgifts #winchester #jewrystreet #giftvoucher #shoplocalwinchester"}]},{"category":"p5","title":"Last order reminder across the full list.","detail":"","channel":"email","owner":"david","weekStart":"2026-12-13","dayDate":"2026-12-17","sortOrder":1240,"deep":[{"h":"Full copy, SMS","b":"Hi {name}, Abi here. Tomorrow, Friday 18th, is the last day for posting gift vouchers and skincare sets in time for Christmas. Collection from the clinic until Saturday. Digital vouchers right up to Christmas Eve. {link} Abi"},{"h":"Full copy, email","b":"Subject: Last post is tomorrow, {name}\nHi {name},\nQuick one. Tomorrow, Friday 18 December, is the last day I can post anything in time for Christmas.\nAfter that: collection from the clinic on Jewry Street until Saturday 19 December, or a digital voucher, which arrives by email in minutes and works right up to Christmas Eve.\nVouchers in any value, valid twelve months. Skincare sets at £45, £75 and £120.\n{link}\nAnd if you are stuck, reply to this and tell me about the person. I will tell you what I would choose.\nAbi"}]},{"category":"p5","title":"Last post day.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-13","dayDate":"2026-12-18","sortOrder":1250,"deep":[{"h":"Caption","b":"Today is the last post.\nAnything ordered today goes out in time for Christmas. After today it is collection from the clinic until tomorrow lunchtime, or a digital voucher, which arrives in minutes and is available right up to Christmas Eve.\nVouchers any value, valid twelve months. Sets at £45, £75 and £120.\nWe are open until Wednesday 23 December, then closed until Saturday 2 January.\nIf you are coming in for a last look, the kettle is on.\nLink in bio or 07849 989869."},{"h":"First comment","b":"#lastpost #christmasgifts #winchester #jewrystreet #shoplocalwinchester #giftvoucher"}]},{"category":"p5","title":"Friday review, penultimate of the year.","detail":"","channel":"found","owner":"both","weekStart":"2026-12-13","dayDate":"2026-12-18","sortOrder":1260,"deep":[{"h":"Detail","b":"Section 11 checklist. Also: schedule everything that needs to go out over the closure, because neither of you should be working on 28 December. Queue the January pre-sell email, the new year post, and the reopening reminder now."}]},{"category":"p5","title":"Collection cut-off and in-clinic Christmas trading.","detail":"","channel":"found","owner":"abi","weekStart":"2026-12-13","dayDate":"2026-12-19","sortOrder":1270,"deep":[{"h":"Steps","b":"Last collection day for physical vouchers and sets.\nEvery client in today: ask for a Google review in person, and rebook them for January before they leave.\nRebooking in the room is the single most valuable thing happening this week. A January appointment booked today costs nothing. A January appointment sold in January costs money."}]},{"category":"p5","title":"Digital vouchers only, and a January nudge.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-20","dayDate":"2026-12-21","sortOrder":1280,"deep":[{"h":"Caption","b":"Digital vouchers only from here, and they are genuinely fine.\nAny value, arrives by email in minutes, valid for twelve months. Order it on Christmas Eve in your dressing gown if you need to. Nobody will know.\nLink in bio.\nWe are open until Wednesday, then closed until Saturday 2 January.\nAnd if you are already thinking about January: the diary is open. January and February are the best months to start on skin, and the quietest, which means you get first pick of times. Book now and it is done before the new year rush."},{"h":"First comment","b":"#digitalvoucher #christmasgifts #winchester #jewrystreet #januaryskin #winchesterskin"}]},{"category":"p5","title":"Closing post and year in review.","detail":"","channel":"social","owner":"abi","weekStart":"2026-12-20","dayDate":"2026-12-23","sortOrder":1290,"deep":[{"h":"Strategy","b":"Emotional close to the year, high engagement, and a soft January call to action. This post carries the brand through the closure period."},{"h":"Creative direction","b":"Reel from batch six, Abi in the clinic at the end of the last day, lights low. Hook: “Last one of the year.” Unhurried, genuine."},{"h":"Caption","b":"Last one of the year.\nThis year I closed a clinic I loved, opened one I had wanted for a long time, learned considerably more than I wanted to about flooring lead times, and had one week in October where I genuinely wondered whether the whole thing was a mistake.\nIt was not. We opened on 2 November and Winchester has been extraordinarily kind since.\nThank you to the Bedhampton clients who came for one last appointment and sent me off properly. Thank you to the people who drove from Havant to Winchester because they wanted to keep seeing me, which I do not take lightly. Thank you to the founding forty for backing a clinic that did not exist yet. And thank you to Jewry Street for making a newcomer feel like a neighbour.\nWe are closed from tomorrow until Saturday 2 January.\nThe January diary is open and it is the best month to start if you are thinking about it.\nHave a good Christmas. Wear the sun protection anyway, even in December. I am contractually obliged to say that."},{"h":"First comment","b":"#merrychristmas #winchester #jewrystreet #yearinreview #winchesterskin #thankyou"}]},{"category":"p5","title":"Close the campaigns down properly for the break.","detail":"","channel":"found","owner":"david","weekStart":"2026-12-20","dayDate":"2026-12-23","sortOrder":1300,"deep":[{"h":"Steps","b":"Reduce Meta to £10 per day over the closure. Do not switch it off completely, because restarting a paused campaign resets the learning phase and costs you the first week of January.\nSwitch Meta creative to the January pre-sell, not the Christmas gifting.\nPause the Performance Max campaign on 24 December. Retail intent collapses after Christmas Eve.\nReduce Google to £8 per day, brand campaign only, over the closure.\nUpdate both Google Business Profiles with the closure dates and the reopening date.\nSet an auto-responder on the inbox and an away message on WhatsApp with the reopening date and an emergency clinical contact route.\nThen stop."}]},{"category":"p5","title":"January pre-sell email, scheduled in advance, sent while closed.","detail":"","channel":"email","owner":"david","weekStart":"2026-12-27","dayDate":"2026-12-28","sortOrder":1310,"deep":[{"h":"Goal","b":"Capture new year intent at exactly the moment it peaks, without either of you working."},{"h":"Full copy","b":"Subject: The best month to start, {name}\nHi {name},\nWe are back on Saturday 2 January, and the diary is open now.\nIf you are in the mood for making a plan for the year, here is one worth making. January and February are the two best months to do anything meaningful with your skin.\nThe sun is weak, which matters more than people realise for anything that targets pigment or texture. The timeline works, because a course plus settling is usually eight to twelve weeks, so starting now means you are in a good place by spring. And the diary is quiet, so you get first pick of times before it tightens up.\nIf you have never been in, start with the AI Skin Analysis. Twenty minutes, a proper scan across six readings, a written plan you keep, and no obligation to book anything else. It is fifty pounds, and it is the most useful fifty pounds you will spend on your skin, because it stops you guessing.\nIf you have a voucher from Christmas, book it in and let us make a proper plan.\n{link}\nHappy new year.\nAbi\nTuesday 29 to Wednesday 30 December. Phase 5.\nOwner: David Channel: Setup Summary: Year-end numbers pull. Two hours, no meetings."},{"h":"Steps","b":"Pull the full year on: total attended analyses, analysis to treatment conversion, average first treatment value, average second visit value, total ad spend by channel, blended cost per booked-and-attended analysis, founding places filled, memberships active, reviews collected on each profile, and revenue by month across both sites.\nCalculate the actual cost per acquired treating patient, not per lead. This is the only number that tells you whether the marketing paid for itself.\nCalculate what a founding client is worth so far, and project twelve months. If founding clients are not returning, the tier is a discount you gave away for nothing.\nBreak the numbers by channel: Meta prospecting, Meta retargeting, Google brand, Google non-brand, Performance Max, organic, referral, partnership, open evening. Rank by cost per treating patient.\nWrite down the three things that worked and the three that did not. Be honest about the ones that did not."}]},{"category":"p5","title":"Year-end review and 2027 decisions. Ninety minutes.","detail":"","channel":"found","owner":"both","weekStart":"2026-12-27","dayDate":"2026-12-31","sortOrder":1320,"deep":[{"h":"Steps","b":"Walk the numbers together.\nDecide the 2027 budget by channel, based on the ranking, not on habit. Cut anything that did not produce a treating patient at a defensible cost.\nDecide whether the founding membership scales or stops. If fewer than fifteen memberships are active, the model needs rethinking rather than more marketing.\nDecide the capacity plan. If Abi was at capacity in November and December, more marketing spend in 2027 buys nothing except longer waits and worse experience. The constraint is clinical hours, not demand.\nSet the January to March plan on one page. Do not build another four month plan in December. Build one quarter, review it in March.\nAgree what you are stopping. Every year of a marketing plan should include something you stop doing.\nSECTION 7: THE TWO NURTURE TRACKS IN FULL\nTwo audiences, two tracks, opposite jobs. A contact can only ever be in one. If someone is on both lists, the Winchester track wins, because Winchester is the future of the business.\nUniversal rules, applied to both tracks. - Global frequency cap: no more than two messages to any contact in any seven day period, counted across all channels combined. - Tag “analysis-booked” or “founding-confirmed” removes the contact from the track immediately and from every paid retargeting audience. - Any inbound reply on any channel applies “engaged-reply” and routes the contact to Abi for a personal answer within 24 hours. This tag is the single strongest predictor in the CRM of a lead becoming revenue. Treat it as a priority queue, not a data point. - STOP or unsubscribe applies “unsubscribed” and suppresses on every channel, not just the one it came in on. Test this. - Nothing sends before 9am or after 7pm, and nothing sends on a Sunday.\nTRACK A: BEDHAMPTON LOCAL\nWho enters. Tag “bedhampton-client” or “bedhampton-lead”. Existing clients, past enquiries, and anyone within ten miles of PO9 who converts on the Bedhampton harvest ads.\nThe job. Book them in before 31 October. Every appointment banked here is revenue that vanishes on 1 November. Secondary job: leave them with a good final impression and a genuine choice about whether to follow to Winchester.\nChannel order. Email primary, SMS support. WhatsApp is not used for this track. Existing clients have an established email relationship, and SMS is reserved for deadline messages where it earns its intrusion.\nRuns from. 24 September to 31 October. Hard stop. Do not let this track run into November.\nTrack A, Day 0. Email.\nFull copy is reproduced in the 24 September task above. Subject: “A proper update from me, {name}”."},{"h":"Tagging","b":"Open applies “bedhampton-engaged”. Click applies “engaged-clicked”.\nTrack A, Day 3. SMS."},{"h":"Goal","b":"Catch the people who did not open the email, on a channel that gets read.\nHi {name}, Abi here. I sent you an email on Thursday but emails get lost, so briefly: I am opening a clinic in Winchester on 2 November, and I am at Bedhampton until 31 October. Complimentary skin analysis for every Bedhampton client until then, normally £50. I would like to see you before I move across. {link} or call 07849 989869. Abi\nSkip condition. Do not send to anyone who has already clicked the day 0 email.\nTrack A, Day 7. Email."},{"h":"Goal","b":"Move from announcement to reason. Give them a specific, useful reason to come in rather than a general invitation."},{"h":"Subject","b":"What I would actually do with your skin, {name}\nHi {name},\nFollowing on from last week.\nWhen I offer a complimentary skin analysis, I appreciate it can sound like the free thing that leads to the sales conversation. So let me be specific about what it actually is.\nYou sit at the scanner for about two minutes. It takes images across several light readings and shows what is happening under the surface: pigment that has not come through yet, hydration levels, congestion, redness, texture, and stored sun damage.\nThen we sit down and go through it. I explain what each reading means for you specifically. And then I write you a plan.\nThe plan is often quite boring. Simplify this, use that in the morning, stop using this one at night, wear sun protection properly. Sometimes it involves treatment. Sometimes it does not.\nEither way you leave with something written down that you can follow with or without me, in Bedhampton or anywhere else.\nI have got until 31 October and then I am in Winchester. If you have been meaning to sort your skin out, this is a good moment and it costs you nothing but twenty minutes.\n{link} or 07849 989869.\nAbi\nTrack A, Day 12. SMS."},{"h":"Goal","b":"Introduce the fourteen-day add-on bonus, which is the only value mechanic in the Bedhampton offer.\nHi {name}, one thing I did not mention. If you come in for your complimentary analysis and decide to book a treatment within fourteen days, I will include a complimentary skincare add-on with it. Not a discount, an actual extra. Offer ends 31 October along with everything else at Bedhampton. {link} Abi\nTrack A, Day 18. Email."},{"h":"Goal","b":"Handle the objection that most non-bookers actually hold, which is not price, it is a quiet worry about being judged or sold to."},{"h":"Subject","b":"In case you are putting it off, {name}\nHi {name},\nI want to say something to the people who have read these and not booked.\nI know that going to a skin clinic can feel exposing. You are handing someone a face you may not be entirely happy with and inviting them to look at it closely. A lot of people put this off for years for exactly that reason, and then apologise for their skin as they walk through the door.\nPlease do not. Nobody here comments on your skin critically. I have seen a great deal of skin and none of it is remarkable to me in the way it feels to you. And whatever it is doing, it is almost certainly something I have seen before and can explain.\nThere is also no obligation to buy anything. If you come in, get scanned, take your plan and never book a treatment, that is a completely fine outcome and it happens regularly.\nTwenty minutes, a cup of tea, and an honest answer.\n31 October is the last day at Bedhampton.\n{link} or just reply to this and I will book you in myself.\nAbi\nTrack A, Day 25. SMS."},{"h":"Goal","b":"Final deadline. Genuine scarcity, no manufactured urgency.\nHi {name}, last call from Bedhampton. Saturday 31 October is my final day here and the complimentary analysis ends with it. I have a handful of slots left. If you would like one: {link} or call 07849 989869. And if not, thank you for everything, genuinely. Abi\nExit. Everyone exits the track on 31 October regardless of position. Anyone who booked exits earlier via the “analysis-booked” tag. Anyone within reasonable travel of Winchester who engaged but did not book moves to a low-frequency Winchester list at one message a month.\nTRACK B: WINCHESTER 443\nWho enters. Tag “winchester-443”. The 443 Meta leads captured at £3.08 each, plus any new Winchester lead from Phase 1 onward.\nThe job. Re-establish permission, build the founding waitlist, fill the founding forty before any cold spend, then convert the remainder into November analyses.\nChannel order, the WhatsApp-first rule. WhatsApp is the primary channel throughout. These are Meta-sourced leads, WhatsApp is a Meta property, and open rates on WhatsApp materially exceed both email and SMS. The rule is:\nSend by WhatsApp using an approved Business template.\nIf not delivered or not read within 48 hours, send the SMS equivalent.\nIf neither is read within a further 48 hours, send the email equivalent.\nThree failed touchpoints in a row and the contact moves to email-only at monthly frequency. Stop pushing on a channel that is not landing.\nThe consent check that governs all of this. Before any WhatsApp broadcast, confirm the original Meta lead form consent wording covers WhatsApp contact. If it does not, the first touch must be email with an explicit WhatsApp opt-in, and only those who opt in enter the WhatsApp track. This is a PECR requirement and it is not a formality.\nSending discipline. Batches of 100 per day maximum. Monitor block and report rates after each batch. Stop and reassess if blocks exceed two percent. A WhatsApp Business number that gets blocked at scale can be restricted, and you would lose the channel for the launch.\nTrack B, Day 0. WhatsApp, sent 14 September.\nFull copy is in the 14 September task above. The apology-and-update message. No ask."},{"h":"Tagging","b":"Reply applies “engaged-reply”. Reply containing yes applies “founding-waitlist-warm”. STOP applies “unsubscribed”.\nTrack B, Day 3. WhatsApp, sent 17 September.\nFull copy is in the 17 September task above. The scanner explainer with a link, which is the segmentation message."},{"h":"Tagging","b":"Click applies “engaged-clicked”.\nTrack B, Day 6. WhatsApp, sent 21 September.\nFull copy is in the 21 September task above. The FIRST reply message that builds the waitlist."},{"h":"Tagging","b":"Reply FIRST applies “founding-waitlist”.\nTrack B, Day 10. SMS, sent 24 September, to non-responders only."},{"h":"Goal","b":"Recover the people WhatsApp did not reach. Shorter, plainer, same ask.\nHi {name}, Abi Peters here. You enquired about skin treatments in Winchester a while back. We open on Jewry Street on 2 November. I am opening booking to a small group first, before it goes public. Reply FIRST if you would like to be on that list and I will make sure you hear before anyone else. Reply STOP if not. Abi\nTrack B, Day 14. WhatsApp, sent 1 October.\nFull copy is in the 1 October task above. The founding tier teaser with no link.\nEmail equivalent, sent 2 October to non-responders. Subject: Forty places, {name}\nHi {name},\nAn update on the Winchester clinic, which opens on Jewry Street on Monday 2 November.\nI have decided how the opening will work. There will be forty founding places.\nFounding clients get priority booking, member pricing held for twelve months, a complimentary add-on with their first treatment, and their complimentary skin analysis booked in before we open publicly.\nIt is not a discount and it is not a sale. It is a small group of people who get looked after first, for as long as they stay with me. Forty is the number I can genuinely look after properly alongside everything else in the first few months.\nBooking opens to this list on Monday 5 October, before it goes anywhere public.\nYou do not need to do anything today. I will message you on Monday.\nAbi\nTrack B, Day 21. WhatsApp, sent 5 October.\nFull copy is in the 5 October task above. Founding booking opens. This is the highest value message in the plan.\nCascade. Waitlist tag at 8am, remainder at 1pm, SMS at 24 hours to unread, email at 48 hours to unopened.\nTrack B, Day 23. WhatsApp, to “founding-considering” only."},{"h":"Goal","b":"Recover clickers who did not book. Highest intent segment on the list.\n{name}, you had a look at the founding places and did not book, which is completely fine.\nI just wanted to check it was not something I have failed to explain. There is no fee, no commitment, and no catch. You are booking a first appointment and the founding pricing is held for you for twelve months whether you come in a lot or a little.\nIf the appointment times are the problem, message me and I will find you something. Founding clients get first pick of the diary, which is largely the point of it.\n{link}\nAnd if it is just not for you, that is fine and I will leave it there.\nAbi\nTrack B, Day 26 and Day 30. SMS then Email, 12 October.\nFull copy for both is in the 12 October task above.\nTrack B, Day 40. WhatsApp, sent 22 October.\nOpen evening invitation, wave 2. Full copy is in the 22 October task above.\nTrack B, Day 51. WhatsApp, sent 2 November.\nLaunch broadcast. Full copy, plus the SMS and email versions, is in the 2 November task above.\nTrack B, Day 58. WhatsApp, sent 9 November, to anyone still unbooked."},{"h":"Goal","b":"Final conversion push while the free analysis offer still exists.\n{name}, we have been open a week and it has been busier and lovelier than I expected.\nThe complimentary AI Skin Analysis is free for everyone until 30 November. Twenty minutes, a proper scan, a written plan you keep. Nothing to buy and no obligation.\nAfter November it goes back to fifty pounds, so if you have been meaning to, this is the month.\n{link}\nIf the times do not work, message me and I will find something.\nAbi\nTrack B, Day 72. WhatsApp, sent 23 November. Final message of the track."},{"h":"Goal","b":"Last call, then stop. A list you keep pushing at is a list you burn.\n{name}, last one from me on this.\nThe complimentary skin analysis ends on Sunday 30 November and goes back to fifty pounds from December.\nIf you want it, here is the diary: {link}\nIf not, that is genuinely fine and I will stop filling up your phone. You are welcome any time, and there is no expiry on that.\nThank you for your patience with me this year.\nAbi\nExit. Everyone still unbooked moves to the general list at a maximum of one message a month. No further sequences. Anyone who never engaged with any of the twelve touchpoints is marked “cold-dormant” and excluded from all broadcasts, but retained for lookalike modelling.\nTRACK C: POST-ANALYSIS CONVERSION\nNot requested, but it is the highest value sequence in the business and its absence is what turns a free analysis into a zero-value patient. Build it before 2 November.\nWho enters. Tag “analysis-attended” without tag “treatment-booked”.\nDay 2. WhatsApp. {name}, lovely to meet you the other day. How are you getting on with the plan? If anything on it did not make sense once you got home, just ask, that is what I am here for. And if you want to get started, here is the diary: {link} No rush at all. Abi\nDay 7. Email. Subject: Your plan, {name}\nHi {name},\nChecking in a week on.\nThe single most important thing on your plan is the sun protection. If you only do one thing, do that one. It is free advice and it does more than anything I could sell you.\nThe second thing is consistency. Whatever we agreed, doing it every day for six weeks will do more than doing something more sophisticated three times a week.\nIf we talked about a treatment and you have been weighing it up, message me and I will go through the numbers with you properly. No pressure, and I will tell you honestly if I think you should wait.\n{link}\nAbi\nDay 21. WhatsApp. {name}, three weeks on. Any difference yet, or too early to tell? Honest answers welcome, including “I have not started”. If you want to get something booked, or you want to come back and rescan in a few months to see whether it is working, both are easy to arrange. {link} Abi\nDay 90. Email. A rescan invitation. The second visit is where lifetime value actually lives. Offer a follow-up scan at a founding or member rate so the comparison is visible on screen. Nothing sells a course of treatment like the same person’s before and after readings on the same machine.\nSECTION 8: THE REFERRAL MECHANIC\nWhy this matters more than the ad budget. At £15 to £25 per booked-and-attended analysis on paid media, a referral costs a complimentary skincare add-on, arrives pre-trusted, converts at a materially higher rate, and stays longer. In a clinic this size, referral and retention are the two cheapest routes to revenue that exist. Everything else is what you do when those are not enough.\nThe mechanic, deliberately simple.\nA client refers someone. The new person mentions their name when they book. The new person gets their complimentary AI Skin Analysis and a plan, like anyone would. When the new person completes their first paid treatment, the referrer receives a complimentary skincare add-on at their next appointment.\nThat is all of it. No codes, no points, no tiers, no app.\nWhy it is built this way. - The reward triggers on a completed paid treatment, not on a booking or an attendance. This prevents the mechanic being gamed and prevents you rewarding referrals that produce no revenue. - The reward is a product add-on, not money off. Cash discounts erode premium positioning and signal that the price was soft. An add-on preserves the price and still feels generous. - The reward is redeemed at the referrer’s next appointment, which means the mechanic also drives rebooking. That is the second-order benefit and it is the real reason to structure it this way. - Nothing is offered to the new client beyond what everyone gets. Paying people to be referred cheapens the introduction.\nBuild steps, David.\nAdd a “How did you hear about us” field to every booking form, with a free text option for a referrer name.\nBuild the GHL tag “referred-by-{name}” and a linked opportunity so the pair can be tracked.\nBuild the workflow: on treatment completion by the referred client, apply “referral-reward-due” to the referrer and notify Abi.\nAdd the reward to the referrer’s next appointment note in ANS so it is not forgotten in the room. A forgotten reward is worse than no scheme.\nTrack referrals as a channel in the year-end review, with a cost per treating patient alongside the paid channels. It will almost certainly win.\nHow Abi asks, in person. At the end of a good appointment, once the plan is agreed: “If you know anyone who is spending money on skincare that is not working, send them in. I will give them an honest answer, and I will look after you next time you are in.” Then stop talking. Do not explain the mechanics.\nWhat not to do. Do not offer anything for a review, ever. Do not conflate the referral mechanic with reviews. Reviews are unincentivised, full stop, and mixing the two creates a compliance problem with Google and with the CMA."},{"h":"Capacity note","b":"a working referral mechanic will produce demand that does not appear in any ad account and cannot be turned down without damage. Leave headroom in the diary for it.\nSECTION 9: LOCAL PARTNERSHIPS\nWhy. Winchester is a town where independent businesses refer to each other and customers trust those referrals. Twelve good partnerships cost nothing but time and outperform several thousand pounds of cold media in a market this size. They also give you a permanent local presence that does not switch off when the budget does.\nThe shortlist, by category. Twelve targets, prioritised.\nTier 1, highest overlap, approach first.\nIndependent hair salons within five minutes’ walk. Highest customer overlap of any category, similar appointment rhythm, and stylists have exactly the kind of conversations where a skin recommendation lands naturally.\nIndependent beauty and nail salons that do not offer medical aesthetics. Complementary rather than competing, and they field questions they cannot answer, which you can.\nBridal and occasionwear boutiques. Long lead times, high intent, and a customer with a specific date in mind, which is the strongest booking driver there is.\nPilates, yoga and boutique fitness studios. Female, 30 to 60, disposable income, already spending on themselves regularly.\nTier 2, good overlap, approach second. 5. Wedding venues within fifteen miles. Long lead times, and the venue coordinator is a genuine gatekeeper. 6. Independent boutiques and womenswear on Jewry Street and the immediate surrounds. Neighbours first, partners second. 7. A good independent coffee shop nearby. Lower direct conversion, but high goodwill, high footfall and a natural place for a card. 8. Independent florists. Overlap with weddings and with gifting.\nTier 3, longer game. 9. Local photographers, particularly wedding and portrait. Their clients care about how they look on a specific date. 10. Dental practices, particularly cosmetic. Same client, same motivation, no competition, and they are used to referral relationships. 11. Physiotherapy and osteopathy practices. Health-adjacent, professional, credible. 12. Local golf and country clubs with active women’s sections.\nThe rule. Never send the same email to two neighbouring businesses. They talk to each other. Personalise every one, name the owner, and reference something specific about their business that proves you have actually been in.\nOutreach email, template to adapt."},{"h":"Subject","b":"From the new clinic on Jewry Street\nHi {name},\nI am Abi, I have just opened a skin clinic at 9A Jewry Street, a few doors along from you.\nI came in last week for {specific thing, be genuine} and thought I would introduce myself properly rather than just nodding at you in the street for the next five years.\nI am a registered nurse and independent prescriber and the clinic does skin health work: advanced skin analysis, and treatments for things like pigmentation, texture and congestion. Most of my clients are women between thirty and sixty, which I suspect overlaps quite a lot with yours.\nI am not after anything complicated. What I would like to do is this.\nI have a small number of complimentary AI Skin Analyses I can offer to you and your team, so you know what we actually do rather than taking my word for it. It is a proper skin scan and a written plan, and it normally costs fifty pounds.\nIf you like what we do and you have a client who mentions their skin, you would have somewhere sensible to send them. And I would happily do the same in the other direction, because I get asked for local recommendations constantly and I would much rather send people to my neighbours.\nIf that sounds useful, I would love to buy you a coffee. If it is not for you, no problem at all, and it was still nice to meet you.\nAbi Peters Abi Peters Skin Clinic, 9A Jewry Street 07849 989869\nFollow-up, once, seven days later, then stop.\nHi {name},\nJust bumping this in case it got buried, which happens to all of us. The offer of a complimentary skin analysis for you and the team stands whenever you fancy it, and there is no obligation attached to it at all.\nEither way, do pop in and say hello when you are passing.\nAbi\nMaking a partnership actually work.\nAgree the specific mechanic, not a vague intention. A named contact, a card with a tracked QR, and an agreed thing that gets said.\nGive each partner a unique tracked link so you can see which relationships produce and which are polite fictions.\nDeliver first. Send them clients before you expect any back. A partnership where one side has already given is far more likely to reciprocate.\nReview at the year end. Keep the three that work, thank the rest, and stop pretending.\nDo not pay for referrals from any healthcare-adjacent business without checking the professional standards position. Fee-sharing arrangements involving clinical referrals raise regulatory issues that a coffee and a card do not.\nSECTION 10: MICRO-INFLUENCER GIFTING\nThe approach, and why it is deliberately small. Three to five genuine local faces, gifted the analysis only, once. This is not an influencer programme. It is borrowing local trust from people who already have it, in a town where you have none.\nSelection criteria, all five must be true.\nBetween 2,000 and 20,000 followers. Above that, the audience stops being local and the ask stops being free.\nA genuinely Hampshire audience. Check the comments. A Winchester account with a London following is worth nothing here.\nReal engagement, not bought. Comments from real accounts having real conversations, not one-word replies from bot networks.\nNo history of aesthetics sponsorship. An account that has promoted four clinics this year has spent its credibility.\nSomeone Abi would actually be happy to have as a client. This is the test that matters. If the answer is no, do not gift them.\nCategories that work better than beauty accounts here. Local food and restaurant accounts, family and parenting accounts, interiors and home accounts, local running and fitness groups, and “things to do in Winchester” accounts. Their audiences are less saturated with aesthetics content, so it lands rather than washing over.\nThe compliance rules, non-negotiable. - #ad must appear prominently at the start of the caption, not buried in a hashtag block and not at the end. The ASA enforces this against the brand as well as the creator, so it is your exposure, not just theirs. - No result claims of any kind, by them or by you. - No before-and-after imagery. - No naming of any prescription-only treatment. They may talk about the analysis, the clinic and their experience. - No medical advice. They are describing an experience, not giving a recommendation about anyone’s skin. - Send the brief in writing so it is on record. If the ASA ever asks, “we told them verbally” is not a defence. - Do not require positive sentiment. You can mandate compliance points. You cannot buy an opinion and call it honest.\nOutreach message, direct message or email.\nHi {name},\nI am Abi, I have just opened a skin clinic on Jewry Street in Winchester.\nI have been following you for a while and I like that you actually go to the places you post about, which is rarer than it should be.\nI have an advanced skin scanner at the clinic. It photographs the skin across several light readings and shows what is happening underneath, including sun damage that has not surfaced yet. It normally costs fifty pounds and takes about twenty minutes.\nI would like to offer you one, with no obligation to post anything at all.\nIf you do want to post, I would ask for two things. Mark it as #ad at the start of the caption, because that is the legal requirement and I would rather we both did it properly. And be honest about it, including if you did not find it interesting. I would genuinely rather have that than a polite post.\nI will not ask to approve what you write, and I will not ask you to say anything about results.\nIf you are up for it, message me and we will find a time. If not, no problem at all.\nAbi Peters Abi Peters Skin Clinic, 9A Jewry Street, Winchester 07849 989869\nThe written brief, sent once they agree.\nWhat we would love you to cover: what the scanner does, what the appointment was like, and your honest impression.\nWhat we cannot include, for legal reasons: any claim about results, any before-and-after imagery, any naming of prescription-only treatments, and any advice about anyone else’s skin.\nDisclosure: #ad at the start of the caption. This is a legal requirement under the CAP Code, not a preference.\nTag @abipetersskinclinic and use the location tag.\nIf you would rather not post at all after the appointment, that is completely fine and there is no obligation.\nMeasurement. Give each one a unique tracked link. If none of the five produces a booked analysis, do not repeat the tactic in 2027. Gifting is cheap but it is not free, because it costs Abi twenty minutes of clinical time each, which is the most expensive resource in the business.\nSECTION 11: KPIS AND THE FRIDAY REVIEW\nThe one metric\nCost per booked-and-attended AI Skin Analysis. Total marketing spend in the period, divided by the number of analyses actually attended. Not booked. Attended.\nTarget: £15 to £25.\nEverything else is a supporting metric. If someone asks how the marketing is going, this is the answer.\nWhy not cost per lead. Historic lead cost is £3.08, which looks excellent and means very little. A lead that does not attend is worth nothing, and a diary full of no-shows costs more than it saves.\nSupporting metrics, with targets\nAnalysis to treatment conversion. Percentage of attended analyses that book a paid treatment within 30 days. Target 40 percent. Below 25 percent, stop buying analyses and fix the conversation in the room first. Historic data shows consultation-only patients carry a median lifetime value of zero, so this metric decides whether the entire funnel produces revenue or goodwill.\nAverage first treatment value. Track monthly. Set the baseline in November and watch the direction. A falling first treatment value while volume rises means you are attracting the wrong client.\nSecond visit rate. Percentage of first-treatment clients who return within 90 days. This is where lifetime value actually lives. A patient who returns is worth several times a patient who does not, and this metric predicts the year ahead better than any acquisition number.\nFounding places filled. Out of 40. Target: 25 by 19 October, all 40 by 8 November. Track weekly.\nReviews per month. Target 8 to 10 per profile, per month. This is the UK benchmark for a well-run clinic of this size with a systematic ask. Without a personal ask, most clinics manage two to three.\nDiary utilisation. Percentage of available clinical hours booked. Target 75 to 85 percent. Below 70 percent, increase spend. Above 90 percent, reduce spend, because you are paying for demand you cannot seat and creating a worse experience for the people you can.\nFree analysis share. Percentage of the diary given to complimentary analyses. Ceiling: 30 percent in November, 15 percent thereafter. Above that and the clinic is doing unpaid work at scale.\nBlended cost per treating patient. Total marketing spend divided by patients who booked and completed a paid treatment. This is the number for the year-end review. It is the honest one and it will be considerably higher than cost per analysis.\nThe fifteen minute Friday review\nFriday, 4.45pm, both of you, fifteen minutes, standing up. Same six questions, every week, no deck, no preparation.\n1. What did an attended analysis cost us this week? One number. Total spend divided by attended analyses. Write it in the tracker next to last week’s.\n2. How many attended analyses turned into a booked treatment? Count, not percentage, on a weekly basis. If it is zero two weeks running, that is the problem to solve, not the ad account.\n3. Is next week’s diary too full, about right, or too empty? Abi answers this one, not David. If too full, reduce spend on Monday. If too empty, check whether the problem is demand or availability before spending more.\n4. How many reviews did we get, and did we reply to all of them? Two numbers. The second one should always match the first.\n5. What is the single worst-performing thing we are paying for? Kill it or fix it. One thing per week, no more.\n6. What are the two changes for next week? Two. Not five. Write them down, name an owner and a day. More than two changes and you will not know which one worked.\nThen stop. Fifteen minutes. Do not turn it into strategy.\nEscalation triggers\nThese are the numbers that mean stop and think rather than adjust.\nCost per attended analysis above £35 for two consecutive weeks: pause the worst campaign entirely and diagnose.\nAnalysis to treatment conversion below 25 percent for a month: stop increasing spend. The problem is in the room, not the ad account.\nDiary utilisation above 90 percent for two weeks: reduce spend. You are damaging the experience and the reviews will follow.\nAny review below four stars: Abi responds personally within 24 hours, before anything else that day.\nNo-show rate above 15 percent on complimentary analyses: add a confirmation step and consider a nominal refundable deposit. Free appointments no-show at several times the rate of paid ones, and every no-show is a slot that earned nothing.\nSECTION 12: CAPACITY, THE HARD CONSTRAINT\nThe maths. One nurse. Roughly 30 to 40 appointments a week maximum. In November, two clinics overlapping and a machine that physically moves between them.\nWhere Abi is, and when. - Through 31 October: Bedhampton, full clinical weeks. Winchester only for site visits and photography. - Saturday 31 October: last Bedhampton day. Scanner moves to Winchester that afternoon and is tested the same day. - From Monday 2 November: Winchester only. Bedhampton is closed. There is no overlap in clinical days, and the plan is deliberately built that way, because splitting one clinician across two sites in launch month would produce two mediocre clinics rather than one good one. - If any Bedhampton client needs a final appointment after 31 October, they come to Winchester or they are seen before the deadline. Do not reopen Bedhampton for stragglers.\nThe controls that keep the diary honest.\nComplimentary analyses capped in ANS as their own appointment type. Eight per week at Bedhampton in September and October. Twelve per week at Winchester in November. This cap is enforced in the booking system, not by willpower.\nAnalyses run in a dedicated block rather than scattered through the day, so a twenty minute free appointment does not fragment a clinical afternoon.\nFounding onboarding staggered across November and the first half of December. Do not seat forty founding clients in launch week.\nAutomated spend circuit breaker: any ad set exceeding £35 per booking over a rolling three day window with at least £50 spent is paused automatically.\nAn honest waitlist rather than an overstuffed diary. “I am full this week, I can do the 12th” protects the experience and creates real scarcity. An overbooked clinic produces rushed appointments and three star reviews, and a three star review costs more than an empty slot.\nThe thing that has to change before January. One person cannot deliver treatments, run analyses, staff reception, film content, ask for reviews, answer messages and take bookings. Every hour Abi spends on front of house is an hour not spent on the highest value activity in the business. A part-time clinic assistant at sixteen hours a week costs roughly £900 to £1,050 a month and needs to release around four clinical hours a week to pay for itself, which it comfortably will if the diary can be filled with those hours. Advertise in November, interview in early December, start in January. Recruitment lead time is six to eight weeks and there is no way to compress it.\nBlind spots worth checking while you are doing all this. Indemnity cover naming the limited company rather than a sole trader. Business insurance covering a public event on clinical premises. A written business continuity position if Abi is unavailable, because a single-clinician business has no redundancy at all. A data protection position for the scanner, which processes special category health data and needs either offline operation or a signed data processing agreement with UK or EEA hosting. And a documented process for handling withdrawal of imagery consent, including taking published content down.\nEnd of plan."}]}];
+// Winchester launch plan, corrected against the live Meta/GHL/Google/site audit of 1 September 2026.
+// Generated from the four verified build documents (correction, nurture, retargeting, creative, Bedhampton).
+export const PLAN_ITEMS: PlanItem[] = [
+  {
+    "category": "top",
+    "title": "Read this first: the list is already full (448 leads vs 40 places)",
+    "detail": "Acquisition is not the constraint. Selection, conversion and capacity are.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 0,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The whole plan was written as though the job is to fill the list. The list is already full. There are 395 leads (448 opportunities in GHL) against a founding cap of 40, served by one nurse at 30 to 35 appointments a week."
+      },
+      {
+        "h": "WHY",
+        "b": "Acquisition is not the constraint. Selection, conversion and capacity are. Every extra lead bought from here is a lead for a place that no longer exists, at a rising price."
+      },
+      {
+        "h": "KEY FIGURES",
+        "b": "395 leads captured (448 opportunities in GHL). 40 founding places. Cost per lead £5.64 over the last 7 days against £3.16 lifetime. 3.6 leads per 1,000 reached, down from 13.8 lifetime. £422 released by correcting the cold spend."
+      },
+      {
+        "h": "NOTE",
+        "b": "Headline state, measured 1 September 2026: Meta prospecting live and producing leads daily, no Winchester Business Profile, no Google campaigns, 62 days to launch (Monday 2 November). Read this before anything else in the plan."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q1 Google Ads: not started, verification still gates launch",
+    "detail": "Account 431-745-4350, zero campaigns, both conversion actions Needs attention.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 1,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Not started. Account 431-745-4350 is still named Abi Peters Aesthetics. Zero campaigns exist, brand or non-brand. The only conversion actions are the two Business Profile defaults, both showing Needs attention with zero recorded results."
+      },
+      {
+        "h": "NOTE",
+        "b": "Advertiser verification still gates any launch, so start verification early. Nothing can spend on Google until it clears."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q2 Website and landing pages: live, but the domain is unverified with Meta",
+    "detail": "All ten pages return 200; no Meta verification, meta tag or DNS record; Google's is present.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 2,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Live, not verified. All ten pages return 200, including /winchester, /bedhampton, /founding and /skin-audit. The old domain 308 redirects to the new one, so the CRM listing still resolves and is cosmetic only."
+      },
+      {
+        "h": "NOTE",
+        "b": "The domain has no Meta verification, no meta tag and no DNS record, while Google's is present. Verifying the domain with Meta is the fix (see the switch-on task)."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q3 Business Profiles: Bedhampton verified, Winchester does not exist",
+    "detail": "You would open Winchester with no profile; the map pack belongs to two rivals.",
+    "channel": "google",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 3,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Bedhampton is verified and managed, 5.0 from 84 reviews. Winchester does not exist as a profile."
+      },
+      {
+        "h": "NOTE",
+        "b": "The Winchester map pack currently belongs to The Aesthetics Bae (5.0 from 151 reviews) and Dr Victoria Cosmetic Dermatology (4.8 from 131). You would open with none, which is why creating the Winchester profile is the longest lead-time job here."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q4 Booking export: manual weekly CSV, matched on email each Sunday",
+    "detail": "No API and no server-side booking event; this reconciliation is the only closed loop.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 4,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Manual. Weekly CSV export from the booking system, not screenshots and not a manual count. Match on email each Sunday and write back First Treatment Date, Value and Revenue Status."
+      },
+      {
+        "h": "NOTE",
+        "b": "There is no API and no server-side booking event, so this reconciliation is the only closed loop available. Build it as a standing Sunday routine."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q5 Live Meta ad set: the age band is a suggestion, not a limit",
+    "detail": "age_min is 18 and Advantage Audience is on with full expansion; the two videos were never fairly tested.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 5,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Drifting. Jewry Street pin, 12 mile radius, home and recent, excluding Chandler's Ford, Eastleigh and Southampton. Age reads 28 to 65, but age_min is 18 and Advantage Audience is on with full expansion, so the band is a suggestion rather than a limit."
+      },
+      {
+        "h": "NOTE",
+        "b": "All three live ads are static images. Both videos are paused on under £6 of spend and were never fairly tested."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Q6 Conversions API: worth reconnecting, but rank it below profile and retargeting",
+    "detail": "Pixel fires PageView and Lead only; leads bypass the site, so CAPI won't improve lead measurement.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 6,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Yes, later. Worth reconnecting, but rank it below the Winchester profile and the retargeting build. The pixel fires PageView and Lead only."
+      },
+      {
+        "h": "NOTE",
+        "b": "Because leads arrive through instant forms that never touch the website, reconnecting will not improve lead measurement. Its value is audience durability and retargeting quality."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "DONE: Meta prospecting live and producing leads daily",
+    "detail": "Stop planning this; the cold ad set is already running and delivering.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 7,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Already built and live. Meta prospecting is running and producing leads daily. Stop planning it as a Phase 0 job; the only open question is the budget (see the cold-spend cut)."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "DONE: website, all landing pages and the old-domain redirect",
+    "detail": "Ten pages return 200; the old domain 308-redirects to the new one.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 8,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Already built and live. Website, all landing pages and the old-domain redirect are done. Ten pages return 200. Stop planning these; the only website job left is Meta domain verification."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "DONE: pipeline, custom fields and WhatsApp built in the CRM",
+    "detail": "GHL is wired; stop planning this part of Phase 0.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 9,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Already built. Pipeline, custom fields and WhatsApp are in the CRM. Stop planning them. Remaining CRM work is additive (Booked and Attended stages, nurture stop-on-booking, weekly export), handled in the retargeting spec."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "DONE: Bedhampton Business Profile verified, 5.0 from 84 reviews",
+    "detail": "Bedhampton is verified and managed; only Winchester is missing.",
+    "channel": "google",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 10,
+    "deep": [
+      {
+        "h": "STATUS",
+        "b": "Already done. The Bedhampton Business Profile is verified and managed, 5.0 from 84 reviews. Only the Winchester profile is missing (see the switch-on task to create it)."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Switch on: create the Winchester Business Profile, 2 November opening date",
+    "detail": "Longest lead time of anything here; set the opening date to Monday 2 November.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 11,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "This has the longest lead time of anything in Phase 0. Winchester does not exist as a profile today, and the map pack belongs to two established rivals. Verification and review-building both take weeks, so start now."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. Create the Winchester Business Profile at the Jewry Street address. 2. Set the opening date to Monday 2 November 2026 (Google supports a future open date). 3. Begin verification immediately. 4. Keep the listing accurate and ready to switch to open on launch day."
+      },
+      {
+        "h": "NOTE",
+        "b": "Highest return, lowest effort this week. Do not wait for the rest of the plan to settle before starting it."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Switch on: verify the domain with Meta, then reconnect the Conversions API",
+    "detail": "The domain has no Meta verification; add the meta tag or DNS record first.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 12,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "1. Verify abipetersskinclinic.co.uk in Meta Business settings (meta tag or DNS record; Google's is already present, Meta's is missing). 2. Once verified, reconnect the Conversions API."
+      },
+      {
+        "h": "WHY",
+        "b": "CAPI will not improve lead measurement (leads arrive via instant forms that never touch the site, and the pixel fires PageView and Lead only). Its real value is audience durability and retargeting quality, which is why it ranks below the Winchester profile and the retargeting build."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Switch on: cut cold prospecting from about £19.80 a day to £8",
+    "detail": "You are paying a rising price (£5.64 CPL) for leads you cannot serve.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 13,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "Cost per lead moved from £3.16 lifetime to £5.64 over the last 7 days, and there are already 395 leads against a cap of 40. Left unchanged the cold ad set buys roughly 200 more leads for places that no longer exist."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Cut to £8 a day and reclassify the ad set: it is no longer justified by the founding 40, it is justified by evergreen diary fill from 3 November, target about 40 leads a month. Releases about £422 to £615 depending on timing."
+      },
+      {
+        "h": "NOTE",
+        "b": "Keep or pause is the owner's call, but it must be a decision, not a default. The formal deadline and the £8 figure are set out as Decision 1 in the retargeting spec (by Friday 4 September, cut from Monday 7 September)."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Switch on: launch the retargeting campaign against the 395",
+    "detail": "A small, correctly sized retargeting campaign to convert the warm list.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 14,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The 395 are warm and opted in. Turning 40 of them into founding clients is 10.1 per cent conversion, which is the entire business case. A small retargeting campaign sits underneath the conversation plan; it is not the thing that fills the 40 on its own."
+      },
+      {
+        "h": "NOTE",
+        "b": "This is a build, not a same-day switch. The full spec (audience union from GHL, £210 lifetime envelope, flight Monday 12 October to Sunday 1 November) lives in the retargeting document. Kick off the audience export and build now so it is ready to fly on 12 October."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Switch on: open the November booking calendar in ANS",
+    "detail": "So interest can become a booking; the single highest value operational change.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 15,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "Until November availability is open and bookable, warm interest has nowhere to go. Opening the calendar is the single highest value operational change: it is what lets a conversation become a booking."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. Open the November Winchester calendar in ANS. 2. Confirm it is genuinely bookable. 3. Align it with the founding priority window if that decision is taken (founding list chooses from Monday 26 October, general booking from Monday 2 November)."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Build: confirm how many complimentary analysis slots exist per week",
+    "detail": "Capacity number needed before any offer runs; sets the free-analysis ceiling.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 16,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Confirm how many complimentary AI Skin Analysis slots exist per week. Nothing currently caps how many free analyses are given away, and one nurse runs only 30 to 35 appointments a week."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "A 30 minute analysis against a 60 minute standard slot means 12 analyses a week consume about 6 of 30 to 35 slots (17 to 20 per cent, affordable); a full 60 minutes pushes it to 34 to 40 per cent, which is not affordable. Also confirm whether the 30 to 35 a week is Winchester only or shared with Bedhampton, and state the Winchester share before any ad runs."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Build: weekly booking export routine into the CRM",
+    "detail": "Sunday CSV, match on email, write back First Treatment Date, Value, Revenue Status.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-06",
+    "sortOrder": 17,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Each Sunday, export the weekly CSV from the booking system (not screenshots, not a manual count). Match on email and write back First Treatment Date, Value and Revenue Status into the CRM."
+      },
+      {
+        "h": "WHY",
+        "b": "There is no API and no server-side booking event, so this manual reconciliation is the only closed loop between bookings and the CRM. Make it a standing weekly habit."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Build: decide the founding 40 selection mechanic",
+    "detail": "The real launch decision, missing from the plan: how the 40 are chosen from 395.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 18,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How are the founding 40 chosen from 395 warm leads? This is the real launch decision and it is missing from the original plan. It needs an owner call and a written basis, especially if any Apply Now or genuine-selection framing is used in ads."
+      },
+      {
+        "h": "NOTE",
+        "b": "It interacts with what founding actually buys (a priority booking window from 26 October is the honest, exclusive, zero-cost option) and with capacity. Settle it before the announcement cadence begins."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Build: finish advertiser verification, then brand-defence Search only",
+    "detail": "Verification gates any Google launch; run brand Search only once cleared.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 19,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "1. Complete Google advertiser verification (it gates any launch). 2. Once cleared, run brand-defence Search only, protecting Abi Peters and clinic-name queries. Nothing non-brand and no spend before verification and the conversion-action repair are done."
+      },
+      {
+        "h": "NOTE",
+        "b": "Account 431-745-4350 has zero campaigns today. Brand defence is the only Google spend contemplated pre-launch."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Build: repair the two Needs attention conversion actions before any spend",
+    "detail": "Both Business Profile default actions show Needs attention with zero results.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-09",
+    "sortOrder": 20,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "The only conversion actions in the Google account are the two Business Profile defaults, both showing Needs attention with zero recorded results. Fix them so conversions record properly before any Google spend goes live."
+      },
+      {
+        "h": "NOTE",
+        "b": "Sequence: advertiser verification, then repair these actions, then brand-defence Search. Do not spend with broken conversion tracking."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B1: read the workflow moving records to Contacted",
+    "detail": "Confirm whether the 413 Contacted records were already messaged, then rewrite A1a's opener if so.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 21,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "The Founding List pipeline (XviU0AiNzzdmBK83koVl) holds 448: 35 New Meta Lead, 413 Contacted, 0 Replied/Interested, 0 Later/No Reply. lastStageChangeAt is spread 15 Aug to 1 Sep, so something moves records to Contacted on a rolling basis."
+      },
+      {
+        "h": "WHY",
+        "b": "If those 413 already had a message, then A1a's line 'you put your name down' is a second or third touch and every reply assumption is stale. Trigger on the TAG 'winchester founding client', not the stage New Meta Lead (which only reaches 35)."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. Open the workflow that has been moving records to Contacted since 15 Aug. 2. Read exactly what it sends and when. 3. If a message already went out, rewrite A1a's opening line before Phase A sends."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B2: confirm the SMS sender is a two-way UK long code",
+    "detail": "The whole design is reply-based; an alphanumeric sender ID makes every gate fail silently.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 22,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "Confirm the SMS sender number is a two-way UK mobile long code that can receive replies. If it is an alphanumeric sender ID, contacts cannot reply, and every reply-gated step (autumn/next year, YES, KEEP, STOP) silently fails."
+      },
+      {
+        "h": "NOTE",
+        "b": "First outbound is always SMS (WhatsApp sessions are closed); WhatsApp only takes over once the contact has replied."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B3: write the lawful basis for SMS and email",
+    "detail": "Retrieve the instant-form consent wording and record that it covers direct marketing by SMS and email.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 23,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "Write down the lawful basis once, covering both SMS and email. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by SMS and email, and record the date range."
+      },
+      {
+        "h": "WHY",
+        "b": "PECR reg 22 applies to SMS as it does to email. Some records predate 1 Sep 2026, so consent may have degraded. This is owner decision 6 in section 14. If consent covers email, Phase B goes to the whole Requested pool; if not, only to Marketing Opt In = Yes."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Pause the Winchester prospecting ad set today",
+    "detail": "Pause Winchester | 12 Mile Radius | 28-65 | Open Targeting; the pool is exhausted and Phase A excludes it.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 24,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Winchester | 12 Mile Radius | 28-65 | Open Targeting runs at about £19.34 a day. Today to 2 Nov is 62 days, another £1,199 buying 170 to 213 more leads at £5.64 against a cap of 40. Cost per founding place today is £1,249/40 = £31.23; keep spending and it becomes £2,448/40 = £61.20."
+      },
+      {
+        "h": "WHY",
+        "b": "The CPL trend is structural, not creative: 28,608 lifetime reach in a 12 mile radius, only 6,710 in the last 7 days at frequency 1.96. CPL moved £3.16 lifetime to £5.64 last 7 days to £7.07 last 3 days."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. Today (2 Sep) pause the ad set. 2. If it is ever unpaused, tighten advantage_audience, targeting_optimization and age_min first."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B4: get the analyser specification into the compliance folder",
+    "detail": "B1 copy claims the device photographs and measures skin in layers, a technical claim needing manufacturer docs.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 25,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "B1 email copy says the device 'photographs and measures your skin in layers', a specific technical claim. Get the analyser specification into the compliance folder and verify it against the manufacturer documentation."
+      },
+      {
+        "h": "WHY",
+        "b": "If the device does surface photography with software only, use the softer wording: replace with 'It photographs and analyses your skin in detail...'. Also check the word 'AI' actually matches the device."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B5: add the WhatsApp delivery tick to the analyser consent form",
+    "detail": "D4 sends the report by WhatsApp: facial imagery and health data, Article 9; imaging consent is not channel consent.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 26,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "Add an explicit WhatsApp delivery consent tick to the in-clinic analyser consent form."
+      },
+      {
+        "h": "WHY",
+        "b": "D4 sends the analysis report and plan by WhatsApp. That is facial imagery and health data (Article 9). Consent to imaging is not consent to the delivery channel, so a separate tick is required before any report is sent by WhatsApp."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B6: answer the seven owner decisions in section 14",
+    "detail": "Days in Winchester, price-hold cost, weekly free-analysis cap and revenue target, Bedhampton cover, messaging owner, lawful basis, reconciliation owner.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 27,
+    "deep": [
+      {
+        "h": "BLOCKER",
+        "b": "Six blockers gate the build; B6 is answering the seven owner decisions in section 14 before the sequence goes live."
+      },
+      {
+        "h": "DECISION",
+        "b": "1. How many days a week Abi is in Winchester (30 to 35 is her total across both clinics; at three days the real Winchester number is nearer 18 to 21 and the founding 40 take half). Decides whether C6 and D3 go to the whole list or a throttled slice, and fixes B2's wording. 2. The founding benefit is four elements; what does the twelve-month price hold cost (compute before B2 sends on 12 Oct). 3. How many complimentary analysis hours per week and what November must earn (cap at a stated number, 8 a sensible start; set a November revenue target). 4. Does Bedhampton keep running through November and who covers it. 5. Who answers messages 09:00 to 17:00, five days a week, from the day Phase A starts (about 30 hours of messaging labour before a single appointment). 6. One written lawful-basis position covering SMS and email (blocker B3). 7. Confirm the reconciliation owner and the daily slot."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Structural fix: build a Winchester calendar inside GHL",
+    "detail": "At the moment a slot is accepted, book a placeholder in the GHL calendar as well as the ANS diary.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 28,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "There is no appointment-date field in GHL; the only DATE fields are contact.first_treatment_date and contact.entry_date, so 'appointment is tomorrow' cannot be built against text. A GHL Winchester calendar fixes D1 date reminders, the D2 merge field, the D4 attended trigger, and D5/D6/D7 timing, and gives a countable diary without an ANS API, collapsing the daily ritual to about 30 seconds."
+      },
+      {
+        "h": "STEPS",
+        "b": "1. Create a Winchester calendar inside GHL. 2. At the moment a slot is accepted, book a placeholder event in the GHL calendar as well as the ANS diary. 3. Keep the two diaries in step (Confirmed is hand-written at the appointment)."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Structural fix: add the three new text fields",
+    "detail": "contact.offered_slot, contact.founding_week and contact.skin_concern_safe, all load-bearing for the sequence.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 29,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Create three new text fields. 1. contact.offered_slot: the nurse enters this at the moment of offer; used by C2, C3, C4, D8 and the C7/D1 confirmations. Format 'Tuesday 10 November at 2pm'. Load-bearing. 2. contact.founding_week: set on the C1 reply; drives the per-week cap in C2. 3. contact.skin_concern_safe: written by workflow, allow list only, used by A2."
+      },
+      {
+        "h": "NOTE",
+        "b": "Also clean the duplicate keys before building: contact.subject appears twice and contact.message appears twice, and merge fields on a duplicated key resolve unpredictably. Point the cap workflow at the real Priority Access field contact.priority_access (QFP9hFbNkkC9rbzv0oB1), NOT the booby-trapped 'Would you like priority access?' field (q3drS9TcT4hMPk3hxP7a, key contact.how_did_you_hear_about_our_company)."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Build the Priority Access state machine",
+    "detail": "contact.priority_access states from blank through Requested, Booked, Confirmed, Waitlist, December, Keep in touch, Not now.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 30,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The selection narrows through three questions, each slightly more demanding; the uninterested simply do not answer and deselect themselves in private with no rejection event. The cap is never announced as a race and nobody is told they lost. The cap binds at booking, not treatment."
+      },
+      {
+        "h": "STEPS",
+        "b": "States on contact.priority_access: blank = not yet asked. Requested = said autumn, wants November (set by A1a/A1b on positive reply). Booked = accepted slot in both diaries, counts against 40 (C2 on YES plus daily reconciliation). Confirmed = founding client, plan agreed, first treatment date set (manual at appointment). Waitlist = wants founding but November full or hold lapsed (C4 or C5). December = chose December (C1 or C5). Keep in touch = replied KEEP to A3. Not now = declined, or three asks and silence."
+      },
+      {
+        "h": "NOTE",
+        "b": "Cap counter smart list is Booked OR Confirmed; at 40, pause C2 and start C5. Keep in touch is included in the C6, D3 and D9 audiences. Two guards on every send: Clinic Interest = Winchester, and split first touch by whether First Treatment Date is empty."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "A1a: re-opener SMS to new leads",
+    "detail": "First touch to the founding tag: autumn or next year, batched 40 a day from Tue 3 Sep.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 31,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Tag 'winchester founding client', Clinic Interest = Winchester, First Treatment Date empty, created before 1 Sep 2026, not stage New Meta Lead. Batched 40 a day from Tue 3 Sep, Mon to Fri at 10:00."
+      },
+      {
+        "h": "CHANNEL",
+        "b": "SMS (WhatsApp session closed). Before the first send, search the text for the curly apostrophe U+2019 (it forces UCS-2 and drops the segment from 160 to 67 characters)."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it's Abi. You put your name down for the new Winchester clinic. We open on Monday 2 November and I'm planning the diary now. Is your skin something you'd like looked at this autumn, or is it more of a next year thing? Just reply autumn or next year. Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On send: stage Contacted. On 'autumn': stage Replied/Interested, Priority Access Requested, Treatment Timeline Autumn 2026. On 'next year': stage Later/No Reply, Priority Access Not now, Treatment Timeline 2027. No reply in 4 days: stage Later/No Reply, fire A2."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "A1b: re-opener SMS to existing clients",
+    "detail": "Shorter yes/not yet ask to people Abi has treated before; on yes, skip Phase B and go to C1.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 32,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "As A1a but First Treatment Date NOT empty (if the field is never backfilled, build this list from ANS or Total Revenue > 0, else A1b fires to nobody and everyone gets the cold script)."
+      },
+      {
+        "h": "CHANNEL",
+        "b": "SMS, 10:00 Mon to Fri, batched from Tue 3 Sep."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it's Abi. You already know how I work so I'll keep this short. The Winchester clinic opens on Monday 2 November and I'm keeping a few founding places for people I've treated before. Would you like one? Just reply yes or not yet. Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On yes: Priority Access Requested, stage Replied/Interested, skip Phase B, go straight to C1."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "A4: consent housekeeping SMS",
+    "detail": "Asks Requested contacts with no marketing opt-in for email consent, 24 hours after Requested.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 33,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access Requested AND Marketing Opt In empty. SMS, same thread, 24 hours after Requested."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "One bit of housekeeping {{contact.first_name}}. Would you like the occasional email from me about the clinic, opening times and skin advice? Reply YES and I'll add you. Reply NO and I'll only ever message you about your own appointments. Either is genuinely fine. Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "YES: Marketing Opt In Yes. NO: Marketing Opt In No, excluded from Phase B, no SMS fallback."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "A2: second ask, personalised if/else branch",
+    "detail": "Fires 4 days after no reply to A1a; a merge field cannot conditionally rewrite a sentence, so build two branches.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-07",
+    "sortOrder": 34,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Stage Later/No Reply, 4 days elapsed, no inbound. SMS at 17:30. Build as an if/else branch: an empty merge field would send 'you told me you wanted to work on .'"
+      },
+      {
+        "h": "SMS COPY (Branch 1, skin_concern_safe set)",
+        "b": "Hi {{contact.first_name}}, Abi here. When you did the skin audit on the website you told me you wanted to work on {{contact.skin_concern_safe}}. I open in Winchester on 2 November and I'll be doing the in-clinic skin analysis there, complimentary until 30 November. Would you like me to hold you a time, or leave you be for now? Reply STOP to opt out."
+      },
+      {
+        "h": "SMS COPY (Branch 2, everyone else)",
+        "b": "Hi {{contact.first_name}}, Abi here. You put your name down for the Winchester clinic a little while back. I open there on 2 November and I'll be doing the in-clinic skin analysis, complimentary until 30 November. Would you like me to hold you a time, or leave you be for now? Reply STOP to opt out."
+      },
+      {
+        "h": "NOTE",
+        "b": "skin_concern_safe is written only where the raw Skin Audit Concerns matches an allow list (fine lines, texture, pigmentation, dryness, redness, breakouts, dullness, laxity); anything else, including blank, falls to branch 2. Never merge a free-text field without an allow list (strict liability, Human Medicines Regs 2012 reg 284). The website skin audit is the free online form; the skin analysis is the in-clinic £50 imaging session; do not use the terms interchangeably."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On reply: stage Replied/Interested, Priority Access Requested. No reply in 10 days: fire A3."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Monday scoreboard: six numbers, 15 minutes",
+    "detail": "Every Monday pull Requested, Booked, Confirmed, December, Not now and total first treatment value from smart lists.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-07",
+    "sortOrder": 35,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Every Monday, 15 minutes, read six numbers, all as smart lists: Requested, Booked, Confirmed, December, Not now, and the sum of first treatment value."
+      },
+      {
+        "h": "NOTE",
+        "b": "The cap counter (Booked OR Confirmed) is the binding number; at 40, pause C2 and start C5. This scoreboard is the only place the count reliably lives and it feeds the failure-branch checkpoints on 16 Oct and 20 Oct."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "A3: graceful close, I'll leave you be",
+    "detail": "Last message after two unanswered touches; reply KEEP to stay in touch, otherwise close and suppress.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-17",
+    "sortOrder": 36,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Stage Later/No Reply, A2 sent 10 days ago, no inbound. Email if Marketing Opt In = Yes, SMS only if blank, never if No. 08:00."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "I'll leave you be"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, I've messaged twice and had no reply, which is completely fine. I'll stop here. The Winchester clinic opens on Monday 2 November at 9A Jewry Street, Winchester. The skin analysis is complimentary there until 30 November if you ever fancy it. It's an assessment, not a sales meeting. If you'd like me to keep in touch about the clinic, reply KEEP and I will. Otherwise this is my last message. Abi"
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On KEEP: Marketing Opt In Yes, Priority Access Keep in touch, evergreen S6, receives C6, D3, D9. No reply: Priority Access Not now, close the Founding List opportunity, evergreen S6, suppressed from every further send including D9."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B1: what the clinic actually is (email)",
+    "detail": "First Phase B email to the Requested opted-in pool; sets up honesty and the £50 assessment.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-05",
+    "sortOrder": 37,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access Requested AND Marketing Opt In Yes AND Clinic Interest Winchester. Email Mon 5 Oct 07:30. If B3 concludes original consent covers email, send to the whole Requested pool."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "What I'm opening in Winchester"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, A short note about what's coming, so you know whether it's for you. I'm a nurse. The Winchester clinic is one room, one practitioner, and appointments long enough to actually look at your skin before anyone suggests anything. No packages sold at the door, and nothing I would not be happy to have done myself. Every first appointment starts with the skin analysis. It photographs and measures your skin in layers, so we work from what is there rather than what either of us assumes. The analysis is a £50 assessment, and it is complimentary at Winchester until 30 November. We open on Monday 2 November at 9A Jewry Street, Winchester. I'll write once more before then. Abi"
+      },
+      {
+        "h": "NOTE",
+        "b": "If B4 finds surface photography only, replace with 'It photographs and analyses your skin in detail...'. Price wording 'The analysis is a £50 assessment' is forward-looking and true; never 'normally £50' (it has never been charged at Winchester, unsubstantiated under CAP 3.17). No write-back on open."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "B2: the honest bit about the diary (email)",
+    "detail": "Second Phase B email; explains the founding forty and its four benefits, no discount, nothing to buy.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 38,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "As B1 plus B1 sent 7 days ago. Email Mon 12 Oct 07:30."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "The honest bit about the diary"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, There is one of me, so there are only so many appointments in a week. That is the whole business. Because of that, I'm opening the first month as a founding group of forty. Founding clients get their prices held at launch rates for twelve months from their first treatment, priority booking, a complimentary skincare add on with their first treatment, and a plan written before we start rather than sold to them on the day. It is not a discount and there is nothing to buy today. Next week I'll ask you which week in November suits. If November doesn't suit, that is genuinely fine. December is open, and the analysis is complimentary to anyone who comes in before the end of November, founding place or not. Abi"
+      },
+      {
+        "h": "NOTE",
+        "b": "The founding benefit is four elements (priority booking, complimentary skincare add on with first treatment, founding pricing held twelve months, first 40); do not drop the add-on. Cost the twelve-month price hold before this sends (owner decision 2). 'only so many appointments in a week' replaces 'about thirty a week' until owner decision 1. 'It is not a discount and there is nothing to buy today' is word-for-word locked."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Failure branch checkpoint: Friday 16 October",
+    "detail": "Count Priority Access = Requested; 55+ proceed, under 55 phone, under 30 reconsider the cap.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-16",
+    "sortOrder": 39,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "Realistic first-SMS reply is 8 to 18 per cent. The 12 per cent scenario produces 18 founding clients, not 40, so the plan needs a dated decision point."
+      },
+      {
+        "h": "DECISION",
+        "b": "Friday 16 October, count Priority Access = Requested. 55 or more: proceed as planned. Under 55: phone the non-repliers (not a fourth SMS), pull December forward, and open founding to web and walk-in from 2 Nov. Under 30: all of that, plus reconsider whether 40 is the right cap (a real 25 beats a padded 40)."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C1: the week question",
+    "detail": "Asks Requested contacts which November week suits; single send Mon 19 Oct.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 40,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access Requested (sent regardless of Marketing Opt In, one-to-one reply). WhatsApp where a session is open from a Phase A reply, else SMS. Mon 19 Oct 09:00, single send."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, Abi. Time to put dates in. Which suits you best for your first appointment: the week of 2 November, 9 November, 16 November, or 23 November? Or reply December if that is easier. Whichever you pick I'll hold you a time and send it back. Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On a November reply: Founding Week set, Treatment Timeline November 2026, stage stays Replied/Interested, queue for C2. On December: Priority Access December, exit founding, receive C6 and D3. No reply in 5 days: Priority Access stays Requested, stage Later/No Reply, receive C6 and D3 only, no chase."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Start retargeting at £8 a day",
+    "detail": "Air cover behind the SMS sequence to the lead-form and website audiences, 19 Oct to 15 Nov.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 41,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Mon 19 Oct, start retargeting at £8 a day to the lead-form and website audiences, running 19 Oct to 15 Nov (£224). This is air cover behind the SMS sequence, not a lead machine."
+      },
+      {
+        "h": "NOTE",
+        "b": "Phase A excludes the live prospecting audience. If prospecting is ever unpaused, tighten advantage_audience, targeting_optimization and age_min first."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "Failure branch checkpoint: Monday 20 October (media decision)",
+    "detail": "If Booked under 25 release up to £400 for a two-week launch reach push; if 25+ spend nothing further.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-20",
+    "sortOrder": 42,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Monday 20 October is the media decision. If Booked is under 25, release up to £400 for a two-week local reach push over the launch fortnight. If Booked is 25 or more, spend nothing further."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C2: the held slot (manual task)",
+    "detail": "Offer a held hour to the next in the queue; nurse writes offered_slot and books both diaries at the offer.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-21",
+    "sortOrder": 43,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Founding Week set AND Priority Access Requested AND combined Booked+Confirmed under 40 AND Booked in that Founding Week under 10. Rolling, earliest week first then reply time. Build as a manual task with a saved snippet, not send-and-forget. WhatsApp falling back to SMS, from Wed 21 Oct within 24 hours of the C1 reply. Both caps hard."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, I've held {{contact.offered_slot}} for you at 9A Jewry Street. It's a full hour: the analysis first, then we talk about what is worth doing and what isn't. Nothing to pay to hold it. Reply YES and I'll confirm, or tell me a better day and I'll move it. I'll keep it until Thursday evening."
+      },
+      {
+        "h": "STEPS",
+        "b": "At the moment of offer the nurse writes contact.offered_slot (format 'Tuesday 10 November at 2pm'), books the GHL placeholder and the ANS diary, all three at the offer."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On YES: Priority Access Booked, confirm the calendar event, evergreen S3, opportunity.revenue_status No Payment Yet, fire C7. On counter-offer: re-offer, rewrite offered_slot. 'Nothing to pay to hold it' is word-for-word locked."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C7: confirmation and preparation",
+    "detail": "Fires the instant Priority Access becomes Booked; confirms slot and how to prepare.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-21",
+    "sortOrder": 44,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access changes to Booked. WhatsApp if session open else SMS, immediately."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "That's you booked, {{contact.first_name}}: {{contact.offered_slot}}, 9A Jewry Street, Winchester. Two things that help. Come without make-up if you can, and have a think about the one thing that bothers you most when you look in the mirror. That is where we'll start. Anything you want to ask before then, just message me here. Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C3: the 48 hour nudge",
+    "detail": "Same-thread reminder that the held slot is still there until tomorrow evening.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-23",
+    "sortOrder": 45,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "C2 sent 48 hours ago AND Priority Access still Requested. Same thread, 48 hours, 17:00."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, just so it doesn't quietly disappear: {{contact.offered_slot}} is still yours until tomorrow evening. Yes, or a different day, either is easy."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C4: releasing the hold",
+    "detail": "Lets the slot go gracefully after 72 hours; nobody is rejected, C2 fires for the next in the queue.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-24",
+    "sortOrder": 46,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "C2 sent 72 hours ago AND Priority Access still Requested. Same thread, 72 hours, 18:00."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "No problem at all, I've let that time go so someone else can use it. You haven't missed anything: the diary is open into December, and the analysis is complimentary to anyone who comes in before the end of November. Say the word whenever you're ready and I'll find you a time. Abi. Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Priority Access Waitlist, clear offered_slot, stage Later/No Reply, evergreen S8, delete the placeholders. C2 fires for the next in the queue. This message is locked word-for-word."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C5: November is full",
+    "detail": "Sent when the cap reaches 40; offers December and keeps the complimentary analysis open.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 47,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Combined Booked+Confirmed reaches 40 AND contact is Requested or Waitlist with a November Founding Week. WhatsApp or SMS, one-to-one, within 24 hours."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, an honest update. The November founding places have gone. I would rather not fit you in at a time that does not do the appointment justice. What I can do: the first week of December is open and yours to choose from, and if you come in before the end of November the skin analysis is still complimentary, founding place or not. If a November time frees up, you are first on my list. Shall I look at December for you? Reply STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On yes: Priority Access December, evergreen S2. No reply: stays Waitlist, evergreen S8, eligible for D8."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "C6: opening on 2 November to everyone else",
+    "detail": "Bulk email to the wider opted-in list once the founding round is running.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 48,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Clinic Interest Winchester AND Marketing Opt In Yes AND Priority Access not Booked/Confirmed/Not now (Keep in touch included). Email Mon 26 Oct 07:30. Throttle if Winchester capacity is thin."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "Opening on 2 November"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, We open on Monday 2 November at 9A Jewry Street in Winchester. If you'd like to come in, the skin analysis is complimentary for the whole of November. You'll see your own skin properly, and hear what I would actually do about it. You are under no obligation to do any of it. The diary is here: [booking link] Abi"
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "One link, no Treatment Interest write-back on click."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D1: day-before reminder",
+    "detail": "Sent the evening before each founding appointment.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-01",
+    "sortOrder": 49,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "GHL Winchester calendar event tomorrow. WhatsApp or SMS, 17:00 the day before."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "See you tomorrow, {{contact.first_name}}: {{contact.offered_slot}}, 9A Jewry Street, Winchester. No make-up if you can manage it. If tomorrow has gone wrong for you, just tell me and we'll move it, no drama. Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D2: doors open to the founding group",
+    "detail": "Launch-morning thank-you to everyone Booked or Confirmed.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 50,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access Booked or Confirmed. WhatsApp if open else SMS. Mon 2 Nov 08:00."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "We're open. Thank you for putting your name down back in the summer and then waiting for it, it genuinely made this possible. Your time is already in the diary and I'll send a reminder the day before. Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D4: the same evening (analysis and plan)",
+    "detail": "Manual send of the analysis and written plan the evening of each attended appointment.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 51,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "GHL calendar event marked attended. WhatsApp if open and consent on file (blocker B5) else secure alternative, 19:00. About 5 minutes each, roughly 3.3 hours across 40; unbudgeted labour needing an open session and the B5 consent tick."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Lovely to meet you today, {{contact.first_name}}. Your analysis and the plan we talked through are attached. Nothing to decide tonight. If anything feels odd on your skin over the next couple of days, message me here rather than Googling it. If something is painful, spreading, or you are worried at all, please ring me on 07849 989869, and if you cannot reach me contact 111 or your GP."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Evergreen S4. If a treatment agreed: Priority Access Confirmed, opportunity.first_treatment_date, first_treatment_value, revenue_status First Payment Taken, evergreen S5, close Founding List won. Did not attend: Priority Access Waitlist, evergreen S7, slot released to D8."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D3: doors open to the wider list",
+    "detail": "Bulk email to the opted-in list the morning after opening.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-03",
+    "sortOrder": 52,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Clinic Interest Winchester AND Marketing Opt In Yes AND Priority Access not Booked/Confirmed/Not now (Keep in touch included). Email Tue 3 Nov 07:30."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "We opened yesterday"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, The Winchester clinic opened yesterday at 9A Jewry Street. It is quieter and smaller than most people expect, which is deliberate. The skin analysis is complimentary all month. Around an hour, no obligation, and you leave with a clear picture of your own skin and an honest view of the options, including doing nothing. [booking link] Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D8: a time has come free",
+    "detail": "Offers a released November slot to the oldest waitlisted contact first, one at a time.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-04",
+    "sortOrder": 53,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Priority Access Waitlist AND a November slot released by C4 or a no-show, one person at a time, oldest first. WhatsApp if open else SMS within 2 hours."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, a November time has come free: {{contact.offered_slot}}. It's yours if you want it, first refusal because you asked first. Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D5: day three check-in",
+    "detail": "Short how-is-the-skin message three days after the appointment.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-05",
+    "sortOrder": 54,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Attended 3 days ago. WhatsApp if open else SMS, 09:00."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Morning {{contact.first_name}}, three days on. How is the skin behaving? Abi"
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D6: the review ask",
+    "detail": "Asks every attended client for a Google review seven days on; never selective.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-08",
+    "dayDate": "2026-11-09",
+    "sortOrder": 55,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Attended 7 days ago, no other condition. Do not exclude complainants: selective solicitation breaches the DMCC Act 2024 and Google policy. WhatsApp if open else SMS, 11:00. Disable the ANS review request for Winchester first."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, if you have a couple of minutes, a few honest lines on Google would help a new clinic more than anything else. [link] And whatever you put there, if anything wasn't right please tell me as well so I can put it right. Abi"
+      },
+      {
+        "h": "NOTE",
+        "b": "'as well' not 'instead'."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D7: the first step",
+    "detail": "Gentle nudge to book the first treatment ten days on, only where none is booked.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-08",
+    "dayDate": "2026-11-12",
+    "sortOrder": 56,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Attended 10 days ago AND opportunity.first_treatment_date empty. WhatsApp if open else SMS, 10:00."
+      },
+      {
+        "h": "MESSAGE",
+        "b": "{{contact.first_name}}, no rush at all, but the plan we wrote has a first step in it, and your analysis is a snapshot of your skin on the day we took it. Happy to find you a time whenever you are ready, or to leave it. Abi"
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Never claim the analysis 'works best started while current'. On yes: evergreen S5 plus revenue fields. No reply: evergreen S8."
+      }
+    ]
+  },
+  {
+    "category": "nurture",
+    "title": "D9: the 30 November date",
+    "detail": "Final email to the never-attended opted-in list; the analysis is £50 from 1 December.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-15",
+    "dayDate": "2026-11-16",
+    "sortOrder": 57,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Clinic Interest Winchester AND Marketing Opt In Yes AND never attended AND Priority Access not Not now (Keep in touch included). Email Mon 16 Nov 07:30."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "A date worth knowing"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Hi {{contact.first_name}}, Just so you know: the complimentary skin analysis runs until 30 November. From 1 December it is £50. No pressure either way. But if you have been meaning to come in, that is the date. [booking link] Abi"
+      },
+      {
+        "h": "NOTE",
+        "b": "Never 'goes back to £50' (never charged at Winchester); 'From 1 December it is £50' is forward-looking. 'No pressure either way. But if you have been meaning to come in, that is the date.' is locked word-for-word."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Decision 1: cut cold prospecting from £19.34 to £8 a day",
+    "detail": "Reclassify the live prospecting ad set as evergreen diary fill, not founding acquisition.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 58,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Deadline Friday 4 September. Ad set 120252011075130558 runs at about £19.34 a day. Today to 1 November is 61 days, about £1,180 more spend at a CPL that moved from £3.16 lifetime to £5.64 over the last seven days. That is another 200 or so leads against a cap of 40."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Cut to £8 a day from Monday 7 September and reclassify it. It stops being justified by the founding 40 and is justified instead by evergreen diary fill from 3 November, target about 40 leads a month. Releases about £615."
+      },
+      {
+        "h": "NOTE",
+        "b": "Keep or pause is the owner's call, but it must be a decision, not a default."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Baseline audit of the 395: segment engaged, contactable, cold",
+    "detail": "Audit contactability and consent across the 395 to target real two-way conversations.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-07",
+    "sortOrder": 59,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Forty from 395 is 10.1 per cent conversion on a warm, opted-in list with WhatsApp connected. Very achievable and it is the entire business case. £210 of Meta will not fix a conversation problem, so conversations get specified first."
+      },
+      {
+        "h": "STEPS",
+        "b": "Baseline audit in the week of 7 September: of the 395, (1) how many ever contacted, (2) how many replied, (3) how many have a working phone and WhatsApp consent. Then segment into engaged, contactable, cold."
+      },
+      {
+        "h": "NOTE",
+        "b": "Target a real two way conversation with 120 of the 395. Forty bookings from 120 is a 33 per cent close."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Finding 1: no single warm audience can carry the ad set, build a union",
+    "detail": "Every warm asset is below Meta's floor alone, so the primary audience is a union led by a GHL customer list.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-07",
+    "sortOrder": 60,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Delivery status: 25% Video View (120216553243880558) 8,900 to 10,500 ACTIVE; 365 Day Instagram (120216553251130558) 3,600 to 4,300 ACTIVE; 365 Day Facebook (120216553252930558) 2,700 to 3,100 ACTIVE; 30 Day Facebook at floor ACTIVE. Lead Form Open With Submission (120235722805390558), Lead Form Open Nil Submission (120235722764790558), Website 180 Day (120220204216300558) and 180 Day Website (120216553250160558) are all at or below 1,000 INACTIVE. 25 lookalikes below floor INACTIVE."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "\"Approximately 1,000\" is Meta's floor reading, not a count. Every warm asset is too small to deliver alone, which forces a union structure and makes the union size a prerequisite. No lookalikes in this campaign; all 25 are prospecting tools built Jan and Mar 2025 with seeds below floor."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Finding 2: lead form audiences are perishable, use a GHL upload",
+    "detail": "Meta caps lead form audiences at 90 days, so the durable copy of the 395 must come from GHL.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-07",
+    "sortOrder": 61,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Meta caps lead form engagement audiences at 90 days retention. The July leads begin dropping in September and are largely gone by mid October."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "The durable copy of the 395 is in GHL, so the primary audience must be a customer list uploaded from GHL, not the platform lead form audience."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Decision 2: what \"founding\" actually buys (priority window)",
+    "detail": "Make the founding exclusive a priority booking window from 26 October, not the free analysis.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-11",
+    "sortOrder": 62,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Deadline Friday 11 September. At present the founding benefit and the general November offer are the same thing, a complimentary AI Skin Analysis. That is not an exclusive, and advertising it as one is a misleading exclusivity claim."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "The founding exclusive is a priority booking window. The founding list chooses appointments from Monday 26 October. Booking opens to everyone else Monday 2 November. Genuinely exclusive, costs nothing, honest. The complimentary analysis stays available to everyone booking before end November."
+      },
+      {
+        "h": "NOTE",
+        "b": "If no priority window is granted, \"founding\" and \"40\" come out of the ad copy and this becomes a straightforward opening announcement."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Decision 3: capacity numbers (analysis length, weekly cap, Winchester share)",
+    "detail": "Lock analysis length, weekly free-analysis cap and whether 30 to 35 slots are Winchester only.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-11",
+    "sortOrder": 63,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Deadline Friday 11 September. Forty founding clients each get a complimentary analysis; nothing currently caps how many more are given away before 30 November. Three numbers are needed."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "How long is an analysis appointment: 30 min against a 60 min standard slot means 12 analyses a week consume about 6 of 30 to 35 weekly slots (17 to 20 per cent, affordable); a full 60 minutes is 34 to 40 per cent, not affordable. Recommendation: 30 minute analysis blocks."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "How many complimentary analyses a week and when: 12 a week in three fixed blocks of four, diarised in advance, founding clients first claim through November. Is 30 to 35 a week Winchester only or shared with Bedhampton: Bedhampton still trades to end October; if shared, the Winchester share must be stated before any ad runs."
+      },
+      {
+        "h": "NOTE",
+        "b": "Founding scheduling window Monday 2 to Friday 27 November: at 12 a week that is 48 slots for 40 people, fits with slack."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "GHL: add Booked and Attended stages, stop nurture on Booked",
+    "detail": "Extend the Winchester pipeline so a Booked card halts nurture and Attended anchors treatment data.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-18",
+    "sortOrder": 64,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "The Winchester pipeline ends at Later or No Reply today. (1) Add Booked and Attended stages. (2) Moving a card to Booked stops the nurture immediately. (3) The Attended stage lets First Treatment Date, Value and Revenue Status hang off it."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "This replaces a suppression list. Bookings complete inside the ANS iframe with no completion event, no API and no thank-you URL, so the pipeline move is the only closed loop. Do not build the iframe focus detection hack."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Build the retargeting campaign shell and objective",
+    "detail": "Create the Traffic campaign optimised for Landing Page Views, lifetime budget at ad set level.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 65,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Name: APA | Winchester | Founding Retargeting | October 2026."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "Objective Traffic, optimised for Landing Page Views. Not Leads (they already gave details). Not conversion optimisation on the Lead pixel event (it needs about 50 events a week and the retargeting slice would sit permanently learning-limited). Landing Page View, not Link Click."
+      },
+      {
+        "h": "BUDGET",
+        "b": "Buying auction, lifetime budget at ad set level, Advantage campaign budget OFF. Attribution 7 day click 1 day view. Flight Monday 12 October to Sunday 1 November inclusive, 21 days, ends the day before opening. Nothing runs before 12 October."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Audience Step 1: export the founding list from GHL",
+    "detail": "Export only the Winchester Founding List pipeline with marketing opt-in, correct columns.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 66,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Filter pipeline is APA | Winchester Founding List and Marketing Opt-In = yes. Do not export all opted-in contacts. Columns: email, phone, first name, last name, city, postcode, country."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Audience Step 2: confirm legal basis, keep the audience name generic",
+    "detail": "Confirm the privacy notice covers matched advertising audiences before uploading.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 67,
+    "deep": [
+      {
+        "h": "CONSENT",
+        "b": "Confirm legal basis before uploading. Confirm the privacy notice covers matched advertising audiences."
+      },
+      {
+        "h": "NOTE",
+        "b": "Keep the audience name generic: never name a treatment or skin concern in a Meta audience name."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Audience Step 3: upload the customer list to Meta",
+    "detail": "Upload the exported list as a customer audience and read the matched size.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 68,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Upload as APA | Winchester Founding List | Oct 2026 by Friday 25 September. Read the matched size."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Audience Step 4: size the full union in the ad set builder",
+    "detail": "Add the four platform audiences to the customer list and read the union size.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 69,
+    "deep": [
+      {
+        "h": "AUDIENCE",
+        "b": "Read the size of the full union in the ad set builder with the four platform audiences added: the customer list, Lead Form Open With Submission (120235722805390558), Lead Form Open Nil Submission (120235722764790558), Website 180 Day (120220204216300558) and 180 Day Website (120216553250160558). Expect 600 to 1,500."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Audience Step 5: branch on the union size",
+    "detail": "Build as specified if union 1,000 or more, else add three engager audiences and rename.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 70,
+    "deep": [
+      {
+        "h": "AUDIENCE",
+        "b": "Union 1,000 or more: build as specified. Union under 1,000: the ad set will not deliver, so add 25% Video View (120216553243880558), 365 Day Instagram (120216553251130558) and 365 Day Facebook (120216553252930558), then rename to Winchester | 25 Mile Radius | 25 to 65 | Warm Plus Engagers."
+      },
+      {
+        "h": "NOTE",
+        "b": "Do not publish and hope. Budget set at 10p per person once the union is sized."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Configure the retargeting ad set (Warm First Party)",
+    "detail": "Widen geo to 25 miles, ages 25 to 65+, Advantage audience OFF, no detailed targeting.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 71,
+    "deep": [
+      {
+        "h": "TARGETING",
+        "b": "Ad set: Winchester | 25 Mile Radius | 25 to 65 | Warm First Party. Geo Winchester Jewry Street 25 mile radius, living in or recently in. Widen from 12 miles and drop the Chandler's Ford, Eastleigh, Southampton exclusions (those are prospecting economics; a warm hand-raiser from Eastleigh is qualified). Age 25 to 65+, all genders. Detailed targeting none. Exclusions none."
+      },
+      {
+        "h": "NOTE",
+        "b": "Advantage audience OFF, use \"switch to original audience options\" (the single most common way a retargeting campaign silently becomes prospecting). Verify after publish: estimated size close to your measured union, low thousands; if hundreds of thousands, expansion is still on."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Set placements: Facebook and Instagram only",
+    "detail": "Manual placements, all positions, deselect Audience Network and Messenger.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 72,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Placements manual, Facebook and Instagram only, all positions. Deselect Audience Network and Messenger."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Set the lifetime budget: 10p per person, capped at £210",
+    "detail": "Lifetime budget sized at 10p per person in the audience, hard cap £210.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 73,
+    "deep": [
+      {
+        "h": "BUDGET",
+        "b": "Lifetime = 10p per person in the audience, capped at £210 (union 1,200 = £120; 1,600 = £160; 2,000 = £200; 2,100+ = £210 cap). Use lifetime not daily."
+      },
+      {
+        "h": "NOTE",
+        "b": "CPM sensitivity £18 to £30, decided in advance; if high, accept lower reach, do not raise the budget."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Tracking: UTM tag and the closing WhatsApp question",
+    "detail": "No suppression list; UTM to /founding/ plus one closing question on the confirmation.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-08",
+    "sortOrder": 74,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "No suppression list (excluding 40 booked from a 1,500 pool at 50 to 70 per cent match with 24 to 48 hour lag suppresses about 1 per cent of impressions, about £2, not worth six upload cycles). Bookings complete inside the ANS iframe with no completion event, so the pipeline Booked and Attended stages replace it. Do not build the iframe focus detection hack."
+      },
+      {
+        "h": "NOTE",
+        "b": "UTM tagging does work: the site captures utm_source, utm_medium, utm_campaign, utm_content, utm_term into a first party ap_attr cookie for 90 days and merges into every GHL form post. Use the canonical www domain."
+      },
+      {
+        "h": "COPY UTM URL",
+        "b": "https://www.abipetersskinclinic.co.uk/founding/?utm_source=facebook&utm_medium=paid_social&utm_campaign=winchester_founding_retargeting&utm_content={{ad.name}}&utm_term={{adset.name}}"
+      },
+      {
+        "h": "MESSAGE",
+        "b": "Out of interest, what prompted you to book this week?"
+      },
+      {
+        "h": "NOTE",
+        "b": "Add that one closing question to the first WhatsApp confirmation, free text, one line."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Decision 4: confirm £50 as the Winchester list price",
+    "detail": "Publish £50 as the Winchester list price before 9 Oct or remove the price line from both ads.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-09",
+    "sortOrder": 75,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Deadline Friday 9 October. prices.json records £50 as a Bedhampton guide price and notes Winchester \"may differ\". A \"normally £50\" claim needs a price the service has genuinely been sold at."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Confirm £50 as the published Winchester list price before 9 October. Ad copy uses \"It is £50 on our price list\", supportable once the list says so."
+      },
+      {
+        "h": "NOTE",
+        "b": "If not confirmed, the price reference comes out of both ads."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Companion change: add exclusions to the prospecting ad set",
+    "detail": "Exclude owned audiences from the live prospecting ad set so the two campaigns do not bid against each other.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-09",
+    "sortOrder": 76,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "By Friday 9 October, add exclusions to prospecting ad set 120252011075130558: exclude Lead Form Open With Submission, Website 180 Day and the new APA | Winchester Founding List | Oct 2026 list."
+      },
+      {
+        "h": "NOTE",
+        "b": "This stops paying prospecting rates to re-collect owned contacts and prevents the two campaigns bidding against each other from 12 Oct. Expect CPM and CPL to rise slightly."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Companion change: restore the pixel mid-funnel signal (not a prerequisite)",
+    "detail": "Add a ViewContent event on /founding/ and /prices/ when there is time; do not repoint ads at /prices/.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-09",
+    "sortOrder": 77,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "When there is time, add a ViewContent event on /founding/ and /prices/. Not a prerequisite: LPV optimisation runs off PageView, which already fires."
+      },
+      {
+        "h": "NOTE",
+        "b": "Do not repoint either ad at /prices/ or any anti-wrinkle consultation page. Meta and the ASA treat the landing page as part of the ad, and the price list carries POM framing that is fine organically and wrong as a paid destination."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Hard stop: pause the campaign when the 40th place books",
+    "detail": "The moment the 40th founding place is booked, pause the campaign the same day.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 78,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "The moment the 40th place is booked, pause the campaign. The daily 09:00 diary check is the only place the count exists and is the trigger for this stop rule."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Ad A1: founding list re-opener (live 12 to 25 Oct)",
+    "detail": "Static image ad to /founding/, CTA Sign Up, leads on the priority booking window.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 79,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Live 12 to 25 October. Destination /founding/. CTA Sign Up."
+      },
+      {
+        "h": "AD COPY PRIMARY TEXT",
+        "b": "Abi Peters Skin Clinic opens on Jewry Street in Winchester on Monday 2 November. The founding list is the first 40 clients. Joining it means you choose your appointment from Monday 26 October, a week before booking opens to everyone else. It is one nurse and a small diary, so 40 is a real limit rather than a marketing one. Every new client starts with an AI Skin Analysis with Abi. It is £50 on our price list and it is complimentary for anyone booking before the end of November. You will leave with an honest view of your skin, a clear sense of what is worth doing and what is not, and a plan you are free to take away and think about. No pressure to book anything on the day. That has never been how Abi works."
+      },
+      {
+        "h": "AD COPY HEADLINE",
+        "b": "Winchester opens Monday 2 November."
+      },
+      {
+        "h": "AD COPY DESCRIPTION",
+        "b": "Founding list, first 40 clients."
+      },
+      {
+        "h": "NOTE",
+        "b": "One single image ad in three crops (4:5 feeds, 1:1 fallback, 9:16 Stories/Reels). Shot list: Abi in the Winchester treatment room, natural light, unhurried; the Jewry Street frontage; the treatment room empty and calm. No before and after, needles, injections, annotated faces or stock models. On-image text minimal (\"Winchester. Opening 2 November.\"), never the price or the number 40. Built and submitted by Thursday 8 October, scheduled start Monday 12 October."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Announcement email 1 to all 395",
+    "detail": "GHL email: Winchester opens 2 Nov, founding list chooses from 26 Oct.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 80,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "Announcement: Winchester opens 2 November, founding list chooses from 26 October. Email to all 395 via a GHL workflow."
+      },
+      {
+        "h": "NOTE",
+        "b": "Sent Mon 12 Oct, the same day the campaign goes live and the daily 09:00 diary check begins."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Daily 09:00 diary check from 12 Oct",
+    "detail": "Each morning: open the ANS diary, move new bookings to Booked, write down founding places left.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 81,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Daily 09:00 from 12 October: Abi opens the ANS diary, moves new bookings to Booked in GHL, and writes down the founding places remaining."
+      },
+      {
+        "h": "NOTE",
+        "b": "Five minute habit. It is the only place the count exists and the trigger for every stop rule."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "WhatsApp to all consented leads (shorter)",
+    "detail": "Same announcement, shorter, WhatsApp to everyone with consent.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-14",
+    "sortOrder": 82,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "Same message as email 1 but shorter. WhatsApp to all leads with consent."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Frequency rules and the single headroom raise",
+    "detail": "Check frequency at day 7 and day 14, cut budget if it runs hot, raise once only under strict conditions.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 83,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Frequency is controlled structurally by the lifetime budget (you cannot set a frequency cap on Traffic). Check the Frequency column Mon 19 Oct and Mon 26 Oct."
+      },
+      {
+        "h": "STEPS",
+        "b": "(1) If rolling 7 day frequency exceeds 3.0, cut remaining budget by a third. (2) If it also has outbound CTR below 1.0 per cent, cut by half and coast. (3) Headroom rule: at the day 7 check Monday 19 October, raise the lifetime budget once to the £210 cap only if fewer than 18 founding places booked AND rolling frequency under 3.0. Run continuously, no dayparting."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Email 2 to non-openers (different subject)",
+    "detail": "Second email, different subject line, to non-openers only.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 84,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "Second email with a different subject, sent to non-openers only."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Success metrics: platform ratios and the one number that matters",
+    "detail": "Track reach, frequency, CPM, CTR and cost per LPV, but 40 places filled by 1 Nov is the only real target.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 85,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Platform ratios (primary): reach as a share of the matched union 60 to 85 per cent (investigate under 50); total frequency over 21 days 3.3 to 5.6 (over 6.5); rolling 7 day frequency 1.1 to 2.0 (over 3.0); CPM £18 to £30 (over £40 sustained); outbound CTR 2.0 to 4.0 per cent (under 1.0); LPV 95 to 360 (fewer than 80); cost per LPV £0.55 to £2.00 (over £2.50); LPV a day at least 5 (under 3)."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "Business metrics live in GHL: 40 founding places filled by Sunday 1 November is the only number that matters. Founding to paid conversion target 60 per cent book a paid treatment within 30 days. Media cost per founding client: 40 from 395 leads at £1,249 is £31.23; adding £210 retargeting takes it to about £36; if prospecting runs on it rises to about £66. Break even: total media £1,459 across 40 needs more than about £37 of gross margin each, a low bar."
+      },
+      {
+        "h": "DECISION",
+        "b": "Stop and escalate rules: 40 filled before 1 Nov, pause same day; fewer than 18 at Mon 19 Oct, apply the headroom rule and add phone calls early; fewer than 25 at Mon 26 Oct, the problem is follow up not media, do not raise budget; CPM over £40 sustained, cut remaining budget by a third; if the complimentary analysis blocks fill up, stop advertising the free analysis."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "SMS reminder to non-responders",
+    "detail": "Short reminder by SMS to everyone who has not responded.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-21",
+    "sortOrder": 86,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "Short reminder to non-responders, sent by SMS."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Ad A2: founding diary open (swap in 26 Oct to 1 Nov)",
+    "detail": "Swap creative to Book Now once the founding booking route is genuinely live on /founding/.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 87,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Live 26 October to 1 November. Swap in only if the founding booking route is genuinely live on /founding/. CTA Book Now."
+      },
+      {
+        "h": "AD COPY PRIMARY TEXT",
+        "b": "Abi Peters Skin Clinic opens on Jewry Street in Winchester on Monday 2 November, and the founding diary is open now. Founding clients are the first 40 through the door. It is one nurse and a small diary, so 40 is a real limit rather than a marketing one. Booking opens to everyone else on 2 November. Every new client starts with an AI Skin Analysis with Abi. It is £50 on our price list and it is complimentary for anyone booking before the end of November. You will leave with an honest view of your skin, a clear sense of what is worth doing and what is not, and a plan you are free to take away and think about. No pressure to book anything on the day. That has never been how Abi works."
+      },
+      {
+        "h": "AD COPY HEADLINE",
+        "b": "The founding diary is open."
+      },
+      {
+        "h": "AD COPY DESCRIPTION",
+        "b": "First 40 clients, one nurse, one small diary."
+      },
+      {
+        "h": "NOTE",
+        "b": "Same single image in three crops as A1. One version live at a time."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Founding booking opens: link to everyone engaged",
+    "detail": "Send the booking link to everyone engaged by email and WhatsApp as the priority window opens.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 88,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "Founding booking opens. Send the booking link to everyone engaged, by email and WhatsApp."
+      },
+      {
+        "h": "NOTE",
+        "b": "Also the day Ad A2 swaps in and the day 14 check runs."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Abi phones the most engaged non-bookers",
+    "detail": "Ten calls a day to engaged non-bookers, about 30 minutes a day, 27 to 30 Oct.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-27",
+    "sortOrder": 89,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Tuesday 27 to Friday 30 October: Abi phones the most engaged non-bookers, 10 a day, about 30 minutes a day."
+      },
+      {
+        "h": "NOTE",
+        "b": "If fewer than 18 booked at the Mon 19 Oct check, add these phone calls early."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "General booking opens: email and social",
+    "detail": "On launch day, open general booking with an email to all and an organic social post.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 90,
+    "deep": [
+      {
+        "h": "MESSAGE",
+        "b": "General booking opens. Announce by email and social on launch day, Monday 2 November."
+      }
+    ]
+  },
+  {
+    "category": "retarget",
+    "title": "Phase 2: Diary Fill campaign and Ad B from 3 Nov",
+    "detail": "Post-launch engager campaign to /book-consultation/, £105 lifetime, founding messaging retired.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-03",
+    "sortOrder": 91,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Engager audiences belong from 3 November, not before. Campaign APA | Winchester | Diary Fill | November 2026, ad set Winchester | 12 Mile Radius | 28 to 65 | Social Engagers. Audience 25% Video View (120216553243880558) + 365 Day Instagram (120216553251130558) + 365 Day Facebook (120216553252930558), exclude the phase 1 union. Geo Winchester 12 mile radius home plus recent, keeping the Chandler's Ford, Eastleigh, Southampton exclusions."
+      },
+      {
+        "h": "BUDGET",
+        "b": "£105 lifetime, 3 to 30 November, about £3.50 a day. A presence, not a diary-filling machine."
+      },
+      {
+        "h": "AD COPY PRIMARY TEXT",
+        "b": "A nurse led skin clinic has opened on Jewry Street in Winchester. Abi Peters is an aesthetic nurse. The way she works is unhurried: a proper consultation first, a clear explanation of what might help your skin and what is not worth doing, and no push towards anything you are not sure about. Every new client starts with an AI Skin Analysis. It takes clinical images of your skin across several light spectra, and Abi talks you through the results herself. If you have been curious about aesthetics but cautious about where to go, this is a sensible place to start. You leave with information, not a commitment."
+      },
+      {
+        "h": "AD COPY HEADLINE",
+        "b": "Nurse led skin clinic, Winchester."
+      },
+      {
+        "h": "AD COPY DESCRIPTION",
+        "b": "Open now on Jewry Street."
+      },
+      {
+        "h": "NOTE",
+        "b": "Destination /book-consultation/, CTA Book Now. This copy does not push the complimentary analysis (November free blocks are committed to the founding 40). Founding messaging retires entirely once the 40 are in."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Read first: the pool is saturated, not the creative",
+    "detail": "Lead volume is not the constraint; spend less than half and put the best concept where it converts.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 92,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The three creative concepts are good. The plan around them has changed and the change matters more than the creative. 395 leads in the Winchester list, founding cap 40, one nurse 30 to 35 a week; the conversion needed is 40 out of 395, 10.1 per cent. Lead volume is not the constraint."
+      },
+      {
+        "h": "WHY",
+        "b": "If we keep spending about £19.80 a day from 15 Sep to 2 Nov that is a further £950 and about 181 leads. Cost per founding client goes from £1,249/40 = £31.23 to £2,199/40 = £54.98: same 40 clients, 76 per cent more expensive."
+      },
+      {
+        "h": "EVIDENCE FOR SATURATION",
+        "b": "Not frequency (1.96 over 7 days is unremarkable). Leads per thousand reached: lifetime 395 from 28,608 reach = 13.8 per 1,000; last 7 days 24 from 6,710 = 3.6 per 1,000. A 74 per cent collapse in conversion per person reached, and last week delivered 23 per cent of lifetime unique reach. The pool is exhausted. Day to day CPL (1 to 7 around a mean of 3.8) is ordinary variation; 27 Aug at £21.21 was the day after the bank holiday."
+      },
+      {
+        "h": "NOTE",
+        "b": "Cheaper levers considered and rejected. Widen the geo or drop the exclusions: rejected because we do not want more cold leads; it costs nothing and should be tried before another shoot if we ever do. Advantage Audience is on, with expansion_all and age_min 18, so 28 to 65 is not enforced, a possible cause of quality drift that has nothing to do with creative."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Three finished ad concepts fully specified, plus a media plan that spends less than half of current, puts the best concept in front of the people who will convert, and moves the rest to Bedhampton (the clinic that earns money and has no advertising)."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: is the Winchester room shootable by 8 September",
+    "detail": "Confirm the room is fitted and shootable by 8 Sep, or everything shoots at Bedhampton.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 93,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Is the Winchester room fitted and shootable by 8 September? All three concepts specify it."
+      },
+      {
+        "h": "WHY",
+        "b": "This is the largest execution risk and it is only seven days away. If the room is not ready, everything shoots at Bedhampton and no copy or visual may name or imply the Winchester room."
+      },
+      {
+        "h": "NOTE",
+        "b": "Deadline 3 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: pull the last 30 days lead age breakdown",
+    "detail": "If a meaningful share of leads is under 35, duplicate the ad set with Advantage Audience off and age_min 30.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 94,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Pull the age breakdown of the last 30 days of leads. If a meaningful share is under 35, duplicate the ad set with Advantage Audience off and age_min 30."
+      },
+      {
+        "h": "WHY",
+        "b": "Advantage Audience is on with expansion_all and age_min 18, so the 28 to 65 band is not enforced. Under-target leads may be a cause of quality drift that has nothing to do with creative."
+      },
+      {
+        "h": "NOTE",
+        "b": "Deadline 3 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: length of a complimentary analysis slot",
+    "detail": "Decide how long a complimentary analysis slot runs in the diary.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 95,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How long is a complimentary analysis slot in the diary?"
+      },
+      {
+        "h": "NOTE",
+        "b": "Feeds the weekly capacity maths and the diarised analysis blocks. Deadline 5 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: how many free analysis slots a week and which days",
+    "detail": "Decide the number of complimentary analysis slots per week and the days they sit on.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 96,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How many complimentary analysis slots per week and which days (for example eight across two afternoons)?"
+      },
+      {
+        "h": "NOTE",
+        "b": "Deadline 5 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: is the free analysis the gate to founding or separate",
+    "detail": "Decide whether the complimentary analysis is the gate to founding status; this sets the CTA button.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 97,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Is the complimentary analysis the gate to founding status, or separate? This decides the CTA button: Sign Up if it is open, Apply Now only if the founding 40 is a genuine selection with a written basis."
+      },
+      {
+        "h": "NOTE",
+        "b": "Deadline 5 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Concept 1: The ten minute answer",
+    "detail": "Still ad, ambiguity aversion, sells information not treatment. Shoot on the day, then hold.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 98,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Angle ambiguity aversion; sells information, not treatment."
+      },
+      {
+        "h": "PRIMARY TEXT",
+        "b": "Nothing is sold on the day. Most people can describe what they do not like about their skin. Very few have ever had a proper look at it. The AI skin analysis takes about ten minutes. A camera captures your skin, and a nurse takes you through what it picks up: texture, tone, pigment, redness, the areas that look different to how they feel. It is a consultation aid rather than a diagnosis. You leave with a clear record of your skin and an honest view on what is worth doing, here or anywhere else. We open in Winchester on Monday 2 November. The analysis will be £50 from December. It is complimentary for appointments in November. Abi is one nurse, so the number of appointments each week is limited. Add your name and we will be in touch as times become available, and we will tell you honestly if November is full."
+      },
+      {
+        "h": "HEADLINE COPY",
+        "b": "Headline: Ten minutes. An honest look. Description: Nurse-led in Winchester. CTA: Sign Up."
+      },
+      {
+        "h": "VISUAL",
+        "b": "Single still, 4:5 1080x1350 with a 9:16 crop. Abi seated at the analysis screen with her own scan on the display (removes the consent problem). Daylight from a window to camera left, overhead clinical light off, phone 1x lens never 0.5x, portrait mode off."
+      },
+      {
+        "h": "ON-IMAGE TEXT COPY",
+        "b": "Top left in the site serif: \"What is actually going on with my skin?\" then smaller: \"Ten minutes will show you what is there.\""
+      },
+      {
+        "h": "NOTE",
+        "b": "Do not include before and after, price stickers, arrows, starbursts, countdowns, stock, or legible client data. Shoot on the day if it allows (twenty minutes, room already lit) then hold; deploy when lead volume is a constraint or as a November replacement if Concept 3 fatigues."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Concept 2: The shelf",
+    "detail": "Still-life ad, loss aversion on money already spent, permission to own fewer things. Shoot and hold.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 99,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Angle loss aversion on money already spent; permission to own fewer things."
+      },
+      {
+        "h": "PRIMARY TEXT",
+        "b": "Nothing is sold on the day. Most bathroom shelves hold a few half-used bottles that were bought on a guess. The AI skin analysis is ten minutes with a camera and a nurse. It gives you a record of what the camera picks up, so the next thing you buy, or do, is a considered choice rather than a hopeful one. It is a consultation aid rather than a diagnosis. Often the honest answer is fewer products, not more, and we will say so if that is what we see. We open in Winchester on Monday 2 November. The analysis will be £50 from December. It is complimentary for appointments in November. Abi is one nurse, so the number of appointments each week is limited. Add your name and we will be in touch as times become available, and we will tell you honestly if November is full."
+      },
+      {
+        "h": "HEADLINE COPY",
+        "b": "Headline: Fewer products, better chosen. Description: Ten minutes with a nurse. CTA: Sign Up."
+      },
+      {
+        "h": "VISUAL",
+        "b": "A still life, no face, 4:5 plus a flat-lay variant. Seven to nine unbranded skincare bottles in a loose cluster with one clean folded blank card set apart (never a real analysis sheet; that is health data). Single window light, camera left."
+      },
+      {
+        "h": "ON-IMAGE TEXT COPY",
+        "b": "Bottom left: \"Most of these were bought on a guess.\" then: \"Ten minutes of evidence instead of another guess.\""
+      },
+      {
+        "h": "NOTE",
+        "b": "Caution: point at the objects, not the reader; never make a woman feel inadequate (ASA). Shoot on the day (twenty minutes, room already lit) then hold; deploy when lead volume is a constraint or as a November replacement if Concept 3 fatigues."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: open the November Winchester calendar in ANS",
+    "detail": "Open the November Winchester diary in ANS so interest can become a booking.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-12",
+    "sortOrder": 100,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Open the November Winchester calendar in ANS."
+      },
+      {
+        "h": "WHY",
+        "b": "The single highest value operational change. Without a bookable diary, interest cannot convert."
+      },
+      {
+        "h": "NOTE",
+        "b": "Deadline 12 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Decision: write the nothing-sold-on-the-day rule",
+    "detail": "Write down the rule for the analysis appointment: nothing sold on the day.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-14",
+    "sortOrder": 101,
+    "deep": [
+      {
+        "h": "RULE",
+        "b": "Write down the rule for the analysis appointment: nothing is sold on the day. No payment, no product, no price list unless asked."
+      },
+      {
+        "h": "NOTE",
+        "b": "Complete before 15 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Build: one instant form per concept, named after its concept",
+    "detail": "Duplicate the instant form once per concept and name each form after its concept for attribution.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-14",
+    "sortOrder": 102,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Duplicate the instant form once per concept and name each form after its concept."
+      },
+      {
+        "h": "WHY",
+        "b": "The only workable attribution, since instant form leads never load the website. Reply rate per ad and booked November appointments are read from these concept-named forms."
+      },
+      {
+        "h": "NOTE",
+        "b": "Complete before 15 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Build: confirm form privacy, opt-in and WhatsApp handling",
+    "detail": "Confirm each form carries a privacy notice, a marketing opt-in for email and SMS, and separate WhatsApp handling.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-14",
+    "sortOrder": 103,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Confirm the form carries a privacy notice link, a specific marketing opt-in covering email and SMS, and separate WhatsApp handling."
+      },
+      {
+        "h": "NOTE",
+        "b": "Complete before 15 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Concept 3: Nothing is sold on the day (launch video)",
+    "detail": "30-second vertical video in Abi's first-person voice, fear of the room. This is the launch creative, live 15 Sep.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 104,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Angle fear of the room, in Abi's first-person voice. This is the proven launch creative and the only concept run cold."
+      },
+      {
+        "h": "PRIMARY TEXT",
+        "b": "Nothing is sold on the day. A lot of people put off asking about their skin because they expect to be sold something. I am Abi, a registered nurse. The AI skin analysis is ten minutes: a camera, a screen, and a straight conversation about what it picks up. It is a consultation aid rather than a diagnosis, and I will not hand you a treatment plan unless you ask me for one. Sometimes the useful answer is to change one thing at home and see me again in six months. Sometimes it is to leave things alone. You will get my honest view either way. We open in Winchester on Monday 2 November. The analysis will be £50 from December. It is complimentary for appointments in November. I am one nurse, so the number of appointments each week is limited. Add your name and I will be in touch as times become available, and I will tell you honestly if November is full."
+      },
+      {
+        "h": "SPOKEN SCRIPT",
+        "b": "Nothing is sold on the day. I am Abi, I am a registered nurse, and in November we open in Winchester. For that first month the AI skin analysis is complimentary. It takes ten minutes. A camera looks at your skin and we go through what it picks up together. It is a consultation aid, not a diagnosis. I tell you honestly what I would and would not do. Tap below and I will be in touch."
+      },
+      {
+        "h": "HEADLINE COPY",
+        "b": "Headline: Nothing is sold on the day. Description: Nurse-led. No sales pitch. CTA: Sign Up (Apply Now only if the founding 40 is a genuine selection with a written basis)."
+      },
+      {
+        "h": "VISUAL",
+        "b": "30 second vertical video, one take no cuts, native 9:16 1080x1920 with a 4:5 centre crop. Abi seated at eye level about 1.2m, rear camera, she faces the window, phone between her and the window, audio within 60cm or AirPods, head and shoulders, analysis screen out of focus behind. She looks down the lens, does not smile on the first line, no music or a low piano bed. Script is 71 words, about 32 seconds. Burnt-in captions in the bottom third; it is watched on mute."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Media: launch Concept 3 cold at £8/day from 15 Sep",
+    "detail": "Concept 3 only, one ad in the existing ad set, £8 a day (about £384). Pause the incumbent, do not delete.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 105,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Run Concept 3 only as one ad in the existing ad set at £8 a day, 15 Sep to 2 Nov (about £384). Pause the incumbent, do not delete it."
+      },
+      {
+        "h": "WHY",
+        "b": "The purpose is not volume, it is to have the launch creative proven and the account warm for November (about 70 leads over seven weeks, more than enough on top of the 395). Do not run all three concepts against each other: each arm would get about 12 leads a week, would never resolve and never exit learning."
+      },
+      {
+        "h": "NOTE",
+        "b": "Advantage Audience is on with expansion_all and age_min 18, so watch quality; if the last 30 days skew under 35, duplicate with Advantage off and age_min 30."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Media: launch Concept 3 warm video at £3/day from 15 Sep",
+    "detail": "Concept 3 video to the hand-raisers, £2 to £3 a day (about £120). The highest value media in the plan.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 106,
+    "deep": [
+      {
+        "h": "AUDIENCE",
+        "b": "Winchester lead form submitters + Website 180 day + Facebook and Instagram engagement."
+      },
+      {
+        "h": "BUDGET",
+        "b": "£2 to £3 a day, 15 Sep to 2 Nov (about £120). Objective Video Views or Reach (they already gave their details). Frequency capped 6 to 8 across the seven weeks."
+      },
+      {
+        "h": "WHY",
+        "b": "Concept 3 as video to the people who put their hand up. This is the highest value media in the plan."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Media: the money table and £422 released to Bedhampton",
+    "detail": "Winchester total £528 against a £950 run rate; £422 released goes to Bedhampton.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 107,
+    "deep": [
+      {
+        "h": "BUDGET",
+        "b": "Winchester cold Concept 3 £8/day 15 Sep to 2 Nov = £384. Winchester warm Concept 3 video £3/day = £144. Winchester total £528. Current run rate if left alone £19.80/day = £950. Released £422."
+      },
+      {
+        "h": "NOTE",
+        "b": "Cost per founding client, all 40 from the existing list plus this spend, is £1,777/40 = £44.43, against £54.98 if the current run rate continues."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "The £422 released goes to Bedhampton (open, earning, £160 lifetime ad spend, no live advertising, offer expires end October)."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Kill criteria and weekly judging for the cold ad",
+    "detail": "Pause and reopen the creative decision if CPL over £12 across 10 days, or reply rate below the incumbent's.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-22",
+    "sortOrder": 108,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Kill criteria for the cold ad: CPL over £12 across a rolling 10 days, or reply rate below the incumbent's. If either fires, pause and reopen the launch creative decision."
+      },
+      {
+        "h": "STEPS",
+        "b": "Judge on reply rate per ad (Replied or Interested / leads, from the concept-named forms) and booked November appointments per ad (matched by hand weekly), plus the qualitative WhatsApp replies. Read weekly from 22 September."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Review point 1: read the numbers on 29 September",
+    "detail": "First scheduled review of the refreshed media plan.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-27",
+    "dayDate": "2026-09-29",
+    "sortOrder": 109,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "First review point. Judge on reply rate per ad (Replied or Interested / leads, from the concept-named forms) and booked November appointments per ad (matched by hand weekly), plus the qualitative WhatsApp replies. Read weekly from 22 September."
+      },
+      {
+        "h": "NOTE",
+        "b": "Apply the kill criteria: CPL over £12 across a rolling 10 days, or reply rate below the incumbent's, pause and reopen the launch creative decision."
+      }
+    ]
+  },
+  {
+    "category": "creative",
+    "title": "Review point 2: read the numbers on 13 October",
+    "detail": "Second scheduled review of the refreshed media plan.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-13",
+    "sortOrder": 110,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Second review point. Judge on reply rate per ad (from the concept-named forms) and booked November appointments per ad (matched by hand weekly), plus the qualitative WhatsApp replies."
+      },
+      {
+        "h": "NOTE",
+        "b": "Apply the kill criteria: CPL over £12 across a rolling 10 days, or reply rate below the incumbent's, pause and reopen the launch creative decision."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 1: cut the live Winchester ad set to £5 a day today",
+    "detail": "Ad set 120252011075130558 burns about £19.34 a day buying leads you cannot serve; drop it to £5 now.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 111,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "The live Winchester ad set 120252011075130558 spends about £19.34 a day at a CPL that moved from £3.16 lifetime to £5.64 over seven days and £9.68 on 31 Aug. Running unchanged to 2 November costs about £1,200 and buys 150 to 210 more leads against only 40 founding places."
+      },
+      {
+        "h": "STEPS",
+        "b": "1) In Ads Manager cut the ad set to £5 a day today. 2) Leave the rest of Winchester as is apart from this cut. Saves about £890, the single highest return action this week."
+      },
+      {
+        "h": "NOTE",
+        "b": "This is step 1 of the build window and also section 0's step zero: it costs nothing and saves the most."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Verified live state: account, campaign and ad IDs",
+    "detail": "Record what is actually live before spending: account 1565785360704219, paused July campaign, four ads, two findings.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 112,
+    "deep": [
+      {
+        "h": "NOTE",
+        "b": "Ad account 1565785360704219. Campaign 120252260138780558 'APA | Bedhampton | Cold Consultation | July 2026' is PAUSED, OUTCOME_LEADS, £20 a day at campaign level, Advantage campaign budget ON, started 21 June 2026. Ad set 120252260138890558 is ACTIVE, effective CAMPAIGN_PAUSED."
+      },
+      {
+        "h": "NOTE",
+        "b": "Ads: Ad 1 120252260138870558 Natural Results Consultation 5,923 impressions £79.42; Ad 2 120252260138880558 Not Sure Where To Start 10,209 impressions £162.78; Ad 3 120252260138850558 Skin Quality 2,999 impressions £40.86; Ad 4 120252260138860558 Abi Reel Natural Medically Led 35,506 impressions £707.25 (the delivery winner). Campaign lifetime £990.31, 54,637 impressions, 16,456 reach, frequency 3.32, 57 leads, £17.37 per lead."
+      },
+      {
+        "h": "DECISION",
+        "b": "Finding 1: the ad set name does not describe the targeting. Named '12 Mile Radius, 25 to 65, Open Targeting' but saved targeting is Havant plus 25 mile radius, home or recent, Advantage Audience on including geographic expansion, saved minimum age 18 not 25. Havant to Jewry Street is 20.6 miles, so this ad set covered the entire live Winchester 12 mile radius and the two campaigns were bidding against each other. This is the most valuable finding, worth more than the budget decision."
+      },
+      {
+        "h": "DECISION",
+        "b": "Finding 2: the £160 lifetime figure in the brief does not match the account (£990.31). The four ads reconcile exactly, so the account figure is sound. Correct £160 before anyone reports spend upward. All forecasting uses £17.37 as the pessimistic CPL baseline."
+      },
+      {
+        "h": "NOTE",
+        "b": "The honest deadline: /bedhampton/ already states the analyser moves to Winchester on 1 November, a genuine reason for an end date. Guard it: if the analyser does not move, pull the line."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 13: work the existing 395 by phone and WhatsApp (ongoing)",
+    "detail": "Start converting the leads you already own from 2 Sep; acquisition is not the constraint, conversion is.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 113,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "You hold 395 leads (448 in GHL) and 40 founding places. Lead volume is not the constraint; conversion and clinical capacity are. Work the existing list by phone and WhatsApp on an ongoing basis from 2 September, before any Bedhampton money is released."
+      },
+      {
+        "h": "GATE",
+        "b": "Release Bedhampton spend only when the 40 founding places are filled, or provably unfillable, from the 395 you already own."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 2: answer the three pre-money decisions D1, D2, D3",
+    "detail": "Three owner questions gate any Bedhampton spend: trading days, speed to contact, and the deposit.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 114,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "D1: does Bedhampton still trade after 2 November and on how many days a week? The add-on window means an analysis on 30 Oct can produce a treatment booking on 13 Nov and an appointment as late as 29 Nov. If Bedhampton closes or drops to one day, you would sell November capacity that does not exist."
+      },
+      {
+        "h": "DECISION",
+        "b": "D2: who answers a new lead and within what time? Speed to first contact is the largest single lever. One nurse with a client in the chair cannot answer in five minutes. Without a named owner and a service level the booking rate is fiction."
+      },
+      {
+        "h": "DECISION",
+        "b": "D3: do you take a £25 fully redeemable deposit at booking? Free appointments with no commitment device commonly no-show at 30 to 50 per cent. If declined, the attendance assumption drops to 60 per cent."
+      },
+      {
+        "h": "GATE",
+        "b": "Release Bedhampton spend only when the 40 founding places are filled, or provably unfillable, from the 395 you already own."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 3: vet both reused creatives frame by frame",
+    "detail": "Reuse Ad 4 reel and Ad 2 hero only after confirming no result claims, medically led wording or old offer.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 115,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Reuse Ad 4 reel (creative 1535936224849019) and Ad 2 hero image (creative 1020123900599555). Before reuse confirm: no result claim including 'natural results'; no 'medically led' (use nurse led); no burnt-in old July offer; no before and after; no close-up problem shots. If any are present, re-edit or replace and move the 10 Sep start."
+      },
+      {
+        "h": "NOTE",
+        "b": "Landing page check: /bedhampton/ and the booking embed must carry no POM names, no before and after and no result claims for the whole run."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 4: create GHL fields and add-on tags",
+    "detail": "Add fields Analysis Date and Add On Window Closes plus the four add-on lifecycle tags.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 116,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Create GHL fields Analysis Date and Add On Window Closes. Create tags bh-analysis-attended, bh-addon-live, bh-addon-redeemed, bh-addon-expired. These carry the add-on window mechanics in section 7."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 5: decide and create the Bedhampton pipeline",
+    "detail": "Choose a new four stage Bedhampton pipeline or the existing eight stage evergreen with a source tag.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 117,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "There is no Bedhampton pipeline today. Decide a new four stage Bedhampton pipeline or reuse the existing eight stage evergreen pipeline with a source tag, then create it in GHL. This is a prerequisite for the form mapping and test lead in step 12."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 6: submit three WhatsApp templates for approval",
+    "detail": "Approval takes days, so submit the three WhatsApp templates now; do not leave this to the end.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 118,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Submit three WhatsApp templates for approval in GHL. Meta review and WhatsApp template approval take days, so do not leave this: it is on the critical path for the day 2, day 7 and day 12 follow ups outside the 24 hour session window."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "The offer: complimentary AI Skin Analysis, normally £50",
+    "detail": "Free analysis at Bedhampton to Fri 30 Oct, add-on cleanser or SPF50 if a treatment is booked within 14 days.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 119,
+    "deep": [
+      {
+        "h": "OFFER",
+        "b": "A complimentary AI Skin Analysis, normally £50, at Bedhampton up to and including Friday 30 October 2026 (published reason true: the analyser moves to Winchester on 1 November). Nothing is sold on the day; the client leaves with a written plan. If they start a treatment from that plan and book within 14 days of their analysis, their first appointment includes a complimentary cleanser or SPF50 from the professional skincare range, chosen for their skin, worth £42 to £56. One public end date everywhere: Friday 30 October."
+      },
+      {
+        "h": "WORDING RULES",
+        "b": "No percentage anywhere. Value is a genuine usual price ('normally £50', 'worth £42 to £56', never 'up to £56'). Use 'included with your first treatment' never 'free gift with purchase'. Never 'medical grade', write 'professional skincare'. No countdown, no hurry. Internal rule never published: the add-on never attaches to a prescription treatment."
+      },
+      {
+        "h": "PUBLIC TERMS COPY",
+        "b": "One per new client. Subject to suitability at consultation. Skin treatments only."
+      },
+      {
+        "h": "MECHANICS",
+        "b": "At the analysis Abi hands the written plan with the date and 'add-on included if you book by [date plus 14]'. Booking must be within 14 days; the appointment may sit up to 30 days out. GHL on attended sets Analysis Date, computes Add On Window Closes = Analysis Date + 14, applies bh-addon-live. Follow up day 2 plan recap, day 7 check-in, day 12 last reminder on SMS and email (WhatsApp needs approved templates outside the 24 hour window). Tag bh-addon-redeemed on the treatment, bh-addon-expired at day 15. One per client, max 30 redemptions (about £1,500 retail, about £750 cost); ring fence 30 units."
+      },
+      {
+        "h": "EVIDENCE",
+        "b": "On file before launch: dated proof the analysis has genuinely been charged at £50, dated captures of the £42 to £56 products, all prices VAT inclusive."
+      },
+      {
+        "h": "NOTE",
+        "b": "Nothing is sold on the day is absolute: no price list handed over, no product sold, no deposit for a treatment, no card machine at the analysis. The £25 booking deposit, if adopted, is taken at the point of booking the analysis and is fully redeemable."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 7: build three custom audiences",
+    "detail": "Build Winchester lead form submitters, Bedhampton lead form submitters and the client list for exclusion.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 120,
+    "deep": [
+      {
+        "h": "AUDIENCE",
+        "b": "Build three custom audiences: Winchester lead form submitters, Bedhampton lead form submitters, and the client list (marketing consent only). These are used as exclusions on the cold ad set."
+      },
+      {
+        "h": "NOTE",
+        "b": "Meta caps lead form engagement audiences at 90 days retention. If so, export about 1,000 submitters from GHL and upload as a customer list instead (no retention cap, better match). Marketing consent only."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 8: build and publish the new instant form",
+    "detail": "Higher-intent form, four fields, two qualifying questions, health-data consent and a diary completion link.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 121,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Build and publish a new instant form named 'Bedhampton | AI Skin Analysis | Sep 2026'. Published forms cannot be edited, so get it right before publishing. Fields: first name, last name, email, mobile."
+      },
+      {
+        "h": "TEMPLATE",
+        "b": "Custom question 1: What would you most like to talk about? (sun exposure and pigmentation / lines and texture / redness / breakouts and congestion / general skin health). Custom question 2: When would you like to come in? (this week / in the next two weeks / just looking for now)."
+      },
+      {
+        "h": "CONSENT",
+        "b": "Skin answers can be Article 9 health data; marketing consent alone is not an Article 9 condition. Frame as a conversation topic, add the privacy link, map the marketing consent tick to Marketing Opt-In, and add a separate explicit consent for storing what the client says about their skin."
+      },
+      {
+        "h": "SCOPE COPY",
+        "b": "This is a cosmetic skin assessment, not a medical diagnosis. If you are concerned about a mole or a change in your skin, please see your GP."
+      },
+      {
+        "h": "COMPLETION URL COPY",
+        "b": "https://abipetersskinclinic.co.uk/bedhampton/#book"
+      },
+      {
+        "h": "NOTE",
+        "b": "Completion button 'View the diary' points to the URL above with UTM including utm_content=iform_thanks."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 9: verify the page lead ads terms are accepted",
+    "detail": "leadgen_tos_accepted read false but lead ads are delivering, so glance and do not block.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 122,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Verify the Facebook page lead ads terms are accepted. leadgen_tos_accepted false was recorded, but lead ads are delivering now (24 leads in the last 7 days on Winchester), so the reading is stale. Glance, do not block."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 10: ring fence stock for the add-on",
+    "detail": "Set aside 30 units of the professional skincare add-on before ads go live.",
+    "channel": "found",
+    "owner": "abi",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 123,
+    "deep": [
+      {
+        "h": "CAPACITY",
+        "b": "Ring fence 30 units of the professional skincare range (cleanser or SPF50) for the add-on. One per client, max 30 redemptions, roughly £1,500 retail and about £750 cost."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Build a new campaign, do not reuse the July one",
+    "detail": "Archive campaign 120252260138780558 and switch off all four ads; the spending limit makes reuse a dead end.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 124,
+    "deep": [
+      {
+        "h": "WHY",
+        "b": "Do not unpause 120252260138780558. Meta's campaign spending limit counts total spend since creation; it has spent £990.31, so a £1,400 cap leaves about £410 and delivery hard stops around 19 Sep. Archive the old campaign and switch off all four ads (they carry the old July offer)."
+      },
+      {
+        "h": "STEPS",
+        "b": "New campaign: name 'APA | Bedhampton | Skin Analysis | Sep and Oct 2026'; objective Leads; budget at ad set level, CBO OFF; campaign spending limit £800 lifetime; special ad category none; status paused until the form, audiences and both ads are approved and one test lead lands in GHL with attribution."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Ad set spec: Bedhampton | PO9 10 Miles | 30 to 60 | Cold",
+    "detail": "Tight cold local ad set, PO9 10 miles, living-in home only, age 30 to 60, £15 a day, 10 Sep to 25 Oct.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 125,
+    "deep": [
+      {
+        "h": "TARGETING",
+        "b": "Name 'Bedhampton | PO9 10 Miles | 30 to 60 | Cold'. Location search PO9 radius 10 miles (or pin the clinic and 10 miles). Location type people living in this location, home only. Age 30 to 60 and set Audience Controls minimum age to 30. Advantage Audience OFF if available; turn off location expansion specifically. Detailed targeting none."
+      },
+      {
+        "h": "EXCLUSIONS",
+        "b": "Excluded locations: Isle of Wight and Winchester (city). PO9 to Jewry Street is 20.6 miles, so this closes the thin overlap band near Bishop's Waltham. Excluded audiences: Winchester lead form submitters, Bedhampton lead form submitters, and your client list (marketing consent only)."
+      },
+      {
+        "h": "BUDGET",
+        "b": "£15 a day at ad set level. Placements Advantage placements all. Optimisation Leads, instant form, highest volume, no cost cap at launch. Instant form new (published forms cannot be edited)."
+      },
+      {
+        "h": "SCHEDULE",
+        "b": "Start Thursday 10 September 2026 08:00, end Sunday 25 October 2026 23:59."
+      },
+      {
+        "h": "NOTE",
+        "b": "No paid warm ad set. The addressable warm pool after exclusions is about 500 to 2,000; message them free from GHL by WhatsApp template and SMS in week one. Below about 3,000 addressable, do not buy retargeting. Winchester stays as is apart from the section 0 budget cut."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 11: build campaign, ad set and both ads, submit for review",
+    "detail": "Assemble the new campaign, ad set and Ads A and B in Ads Manager and submit; review takes 24 to 48 hours.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 126,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Build the new campaign, the cold ad set and both ads, and submit for review. Allow 24 to 48 hours. Keep the campaign paused until the form, audiences and both ads are approved and one test lead has landed in GHL with attribution (step 12)."
+      },
+      {
+        "h": "NOTE",
+        "b": "Build new ads, do not edit the old ones."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Ring-fence the Bedhampton week for one nurse",
+    "detail": "20 to 24 slots for existing and paid clients, 4 to 6 for complimentary analyses; acquisition never eats revenue.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 127,
+    "deep": [
+      {
+        "h": "CAPACITY",
+        "b": "Ring fence the week: 20 to 24 slots for existing clients and paid treatments, 4 to 6 for complimentary analyses, the rest buffer and admin. Acquisition never eats revenue slots."
+      },
+      {
+        "h": "NOTE",
+        "b": "What these clients are: Bedhampton revenue, Google reviews before launch, and a warm base who have met Abi. They are not a Winchester founding pipeline."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 12: land one test lead and confirm GHL attribution",
+    "detail": "Send a test lead end to end, confirm it maps on form id into the pipeline with full attribution.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-09",
+    "sortOrder": 128,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Land one test lead end to end and confirm attribution in GHL. Mapping is keyed on the form id. Confirm the lead lands in the chosen Bedhampton pipeline (the new four stage, or the eight stage evergreen with a source tag) with full attribution before ads go live."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Ad A (reel): complimentary AI Skin Analysis, normally £50",
+    "detail": "Reel copy reusing Ad 4 subject to vetting; CTA Book now, headline Complimentary AI Skin Analysis.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 129,
+    "deep": [
+      {
+        "h": "AD COPY",
+        "b": "Bedhampton: a £50 AI Skin Analysis, complimentary until Friday 30 October. Your skin changes quietly. Most people notice the result, not the cause. At my clinic in Bedhampton, the AI Skin Analysis gives us a proper look at your skin: the sun exposure, pigmentation, redness, texture and hydration the camera picks up. We read it together on screen, in plain English, and I write you a plan. It is complimentary here until Friday 30 October, because the analyser then moves to my new Winchester clinic. Nothing is sold to you on the day. You take the plan home and think about it. If you decide to start, and you book within 14 days of your analysis, your first treatment includes a complimentary cleanser or SPF50 from my professional skincare range, chosen for your skin, worth £42 to £56. Abi Peters, Advanced Nurse Practitioner, NMC registered. 16 years in healthcare. This is a cosmetic skin assessment, not a medical diagnosis. If you are concerned about a mole or a change in your skin, please see your GP. One per new client. Subject to suitability at consultation. Skin treatments only."
+      },
+      {
+        "h": "HEADLINE COPY",
+        "b": "Complimentary AI Skin Analysis"
+      },
+      {
+        "h": "DESCRIPTION COPY",
+        "b": "Normally £50. Bedhampton, until Friday 30 October."
+      },
+      {
+        "h": "NOTE",
+        "b": "Reuses Ad 4 reel, subject to vetting. CTA Book now (or Sign up if the diary link is not live)."
+      },
+      {
+        "h": "COPY RULES",
+        "b": "Never place prescriber status, injectable language, 'wrinkles', 'relaxing', units or brand initials in the same ad, image, caption or landing page. Hold 'I' and 'my'; keep 'we' for the moment Abi and the client read the screen together."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Ad B (image): not sure where to start?",
+    "detail": "Image copy reusing Ad 2 subject to vetting; CTA Book now, headline Not sure where to start?",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 130,
+    "deep": [
+      {
+        "h": "AD COPY",
+        "b": "An AI Skin Analysis in Bedhampton, normally £50, complimentary until Friday 30 October. If you have been meaning to do something about your skin for a while and have not known where to begin, start here. We scan, we look at the results together, and I tell you honestly what is worth doing and what is not. Sometimes the answer is good skincare and patience, and I will say so. After 30 October the analyser moves to my new Winchester clinic, so that is the last date it can be done at Bedhampton. There is no selling on the day. Go away, think about it, and if you book a treatment from your plan within 14 days of your analysis, your first appointment includes a complimentary cleanser or SPF50 from my professional skincare range, chosen for your skin, worth £42 to £56. Bedhampton, a short drive from Havant, Emsworth, Waterlooville and Portsmouth. This is a cosmetic skin assessment, not a medical diagnosis. If you are concerned about a mole or a change in your skin, please see your GP. One per new client. Subject to suitability at consultation. Skin treatments only."
+      },
+      {
+        "h": "HEADLINE COPY",
+        "b": "Not sure where to start?"
+      },
+      {
+        "h": "DESCRIPTION COPY",
+        "b": "An unhurried, nurse-led look at your skin."
+      },
+      {
+        "h": "NOTE",
+        "b": "Reuses Ad 2 image, subject to vetting. CTA Book now. Book one new 20 second asset now (scan reading on screen), live 1 October."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 14: ads live Thursday 10 September 08:00",
+    "detail": "Cold Bedhampton campaign goes live once approved and the test lead is confirmed.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 131,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Set the campaign live Thursday 10 September 2026 at 08:00, once the form, audiences and both ads are approved and one test lead has landed in GHL with attribution."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Budget in two tranches with the 1 October gate",
+    "detail": "£315 committed 10 to 30 Sep, £375 gated 1 to 25 Oct; release tranche two only if cost per attended is under £55.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 132,
+    "deep": [
+      {
+        "h": "BUDGET",
+        "b": "Tranche one committed 10 Sep to 30 Sep, 21 days, £15 a day, £315. Tranche two gated 1 Oct to 25 Oct, 25 days, £15 a day, £375. Total £690 against a campaign spending limit of £800. Roughly £1,570 is freed across both campaigns once the Winchester cut is included."
+      },
+      {
+        "h": "GATE",
+        "b": "The 1 October gate is real: release tranche two only if the manually reconciled cost per attended analysis is under £55. Before tranche two, pull the actual stage counts from the 395 Winchester pipeline leads, because real observed behaviour beats an assumed rate."
+      },
+      {
+        "h": "TARGETING",
+        "b": "What £690 should produce: at £17.37 CPL, 40 leads; with the radius cut, no overlap, higher intent form and stronger offer, target £12 to £15, so 46 to 57 leads."
+      },
+      {
+        "h": "SCENARIOS",
+        "b": "Plan case with the £25 deposit: lead to booked 50 per cent, attended 75 per cent, 17 to 21 attended analyses, cost per attended £33 to £41. No deposit: attended 60 per cent, 14 to 17, £41 to £49. Downside, no deposit and weaker calling: 35 per cent booked, 60 per cent attended, 10 to 12, £58 to £69."
+      },
+      {
+        "h": "FINANCIALS",
+        "b": "Plan case: 40 per cent of 17 to 21 attended convert to 7 to 8 first treatments at about £200, so £1,400 to £1,700 first treatment revenue against £690 media plus about £190 add-on cost (£25 each) plus about £265 consumables (£35 each), roughly £1,145 cost. Acquisition is bought at close to cost and repays on the second treatment, skincare repeat and reviews. The real ceiling is the nurse: four complimentary analyses a week at 45 minutes is three hours of unpaid clinical time."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 15: message the warm Bedhampton list free from GHL",
+    "detail": "Reach the warm pool by WhatsApp template and SMS free from GHL in week one; do not buy retargeting for it.",
+    "channel": "email",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-14",
+    "sortOrder": 133,
+    "deep": [
+      {
+        "h": "AUDIENCE",
+        "b": "The addressable warm pool after exclusions is about 500 to 2,000. Message them free from GHL by WhatsApp template and SMS in the week of 14 September. Below about 3,000 addressable, do not buy retargeting, so there is no paid warm ad set."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Step 16: book the new creative shoot for 1 October",
+    "detail": "Book a shoot for a new 20 second asset (scan reading on screen) to go live 1 October.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 134,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Book the new creative shoot for 1 October. Capture one new 20 second asset showing the scan reading on screen. Target going live 1 October alongside the reused creatives."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "Measurement: ten manual minutes a day",
+    "detail": "Track attended analyses (target 17 to 21) and the metric triggers; review every Friday, frequency weekly from 21 Sep.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-21",
+    "sortOrder": 135,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Manual, ten minutes a day. Headline number: attended analyses at Bedhampton, target 17 to 21, minimum 14."
+      },
+      {
+        "h": "NOTE",
+        "b": "Metrics with review triggers: leads 46 to 57 (trigger under 20 by 30 Sep); CPL £12 to £15 (above £20 for five days); speed to first contact automated WhatsApp/SMS inside 60 seconds then two named human call blocks a day, three attempts across 72 hours (trigger any day with no call block); lead to booked within 72 hours 50 per cent or more (below 35); booked to attended 75 per cent with deposit, 60 without (below 55, add a two hour reminder); cost per attended analysis under £45 (above £55 at the 1 Oct gate, above £65 for two weeks); analysis to treatment within 14 days 40 per cent so 7 to 8 (below 25, the plan conversation needs work); second treatment within 90 days 40 per cent; first treatment revenue £1,400 to £1,700 against about £1,145 cost (below £1,000); add-on redemptions 7 to 9 (approaching 30, pause); new Google reviews by 31 Oct 15 (below 8 at 15 Oct); analysis slots booked out two weeks ahead is the binding constraint (pause immediately); frequency below 3.5 (check weekly from 21 Sep, refresh creative never raise budget)."
+      },
+      {
+        "h": "DECISION",
+        "b": "Stop and shift rules: cost per attended above £55 at the 1 Oct gate, do not release tranche two; above £65 for two weeks, pause and work the list; new client slots booked out two weeks ahead, pause immediately; frequency above 3.5, refresh creative not budget; review every Friday."
+      },
+      {
+        "h": "NOTE",
+        "b": "Reviews stay clean: ask every attended client on the day, never mention the offer in the same conversation, never ask only the pleased. Unfiltered and unincentivised or not at all."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "12 Oct: drop the Bedhampton ad set to £10 a day",
+    "detail": "Scheduled not conditional: Abi's Winchester day cuts clinical capacity by about a fifth, so cut spend.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 136,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Monday 12 October, drop the ad set to £10 a day. This is scheduled, not conditional: Abi's Winchester day cuts Bedhampton clinical capacity by about a fifth, so buy fewer leads to match."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "25 Oct: stop cold acquisition",
+    "detail": "Cold acquisition stops Sunday 25 Oct so the last leads still get an analysis before the deadline.",
+    "channel": "meta",
+    "owner": "david",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-25",
+    "sortOrder": 137,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Cold acquisition stops Sunday 25 October so the last leads still get an analysis. The last analysis at Bedhampton is Friday 30 October."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "26 Oct: switch new Bedhampton enquiries to Winchester",
+    "detail": "GHL rule routes any new Bedhampton enquiry from 26 Oct to the Winchester November offer and founding list.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-26",
+    "sortOrder": 138,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Build the 26 October switch now. From 26 Oct a new Bedhampton enquiry cannot be promised the analysis at Bedhampton; a GHL rule routes them to the Winchester November offer and the founding list."
+      }
+    ]
+  },
+  {
+    "category": "bedhampton",
+    "title": "30 Oct: last analysis at Bedhampton, protect launch week",
+    "detail": "Friday 30 Oct is the last Bedhampton analysis; take no new treatments into launch week beyond regulars.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-25",
+    "dayDate": "2026-10-30",
+    "sortOrder": 139,
+    "deep": [
+      {
+        "h": "STEPS",
+        "b": "Last analysis at Bedhampton Friday 30 October. Protect 2 to 8 November: no new Bedhampton treatments into launch week beyond regulars."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Owner decisions: the master list before anything is built",
+    "detail": "One consolidated list of every distinct call the owner must make, each with its own deadline.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 140,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Acquisition is not the constraint. The list is already full: 395 leads on Meta (448 opportunities in GHL) against a founding cap of 40, served by one nurse at 30 to 35 appointments a week. Selection, conversion and capacity are the real problems, so most of what remains is decisions and build, not more ad spend. Every ad, message and build step below waits on one of these calls."
+      },
+      {
+        "h": "DECISION GATES BY DATE",
+        "b": "Wed 3 Sep: Winchester room shootable by 8 Sep; age breakdown of recent leads; does Bedhampton trade after 2 Nov and on how many days; who answers a new lead and within what time; £25 redeemable deposit or not. Fri 4 Sep: live prospecting budget (cut, pause or reclassify); reconciliation owner and daily slot. Fri 5 Sep: analysis appointment length; how many free analyses a week and what November must earn; is the free analysis the gate to founding or separate. Fri 11 Sep: what founding actually buys; how many days a week Abi is in Winchester. Fri 12 Sep: open the November Winchester calendar in ANS. Mon 15 Sep: write down the nothing-sold-on-the-day rule. Fri 9 Oct: confirm the £50 Winchester list price. Sun 12 Oct: cost the twelve-month founding price hold. Ongoing from 3 Sep: one written lawful-basis position for SMS and email."
+      },
+      {
+        "h": "NOTE",
+        "b": "The retargeting Decisions 1 to 4, the creative seven decisions, the Bedhampton D1 to D3 and the nurture seven owner decisions overlap heavily. They are merged here into the genuinely distinct calls. Each is broken out as its own dated item that follows."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Locks: what must not be changed (nurture section 15)",
+    "detail": "Six non-negotiable rules protecting the honest, no-pressure voice; reproduced word for word.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 141,
+    "deep": [
+      {
+        "h": "LOCK",
+        "b": "1 Scarcity attaches to diary access and to a complimentary assessment, never to a treatment. 2 No countdown device anywhere (C2's \"until Thursday evening\" and C3's \"until tomorrow evening\" are real diary holds). 3 A3 and C4 are the best messages (\"I'll leave you be\", \"I've let that time go so someone else can use it\"); nobody is ever rejected. 4 B2's \"It is not a discount and there is nothing to buy today\" and C2's \"Nothing to pay to hold it\", word for word. 5 D9's \"No pressure either way. But if you have been meaning to come in, that is the date.\" 6 The Winchester list is never asked to travel to Bedhampton."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Locks: what was cut, do not re-add (Bedhampton section 11)",
+    "detail": "Rejected ideas and non-compliant claims that must not creep back into the Bedhampton build.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 142,
+    "deep": [
+      {
+        "h": "DO NOT RE-ADD",
+        "b": "reusing campaign 120252260138780558 (£990 already spent); the £7/day warm retargeting ad set £413 (pool 500 to 2,000, message from GHL free); budget of £1,367 (£690 in two tranches with a real gate); the \"founding client pipeline\" justification and its target of 10 (these are Bedhampton clients); the word \"harvest\" in campaign names and headings (reads as extractive over a shoulder); \"Bedhampton Skin Plan sign-ups at £85 target 6\" (undefined); the claim the analysis detects \"UV damage forming beneath the surface\" and \"pigmentation in its early stages\" (an early disease claim the device does not support); \"medical grade skincare\"; \"Independent Prescriber\" in the ad (reads as prescription injectables available, use NMC registered); \"Worth up to £56\" (Abi chooses, most get the lower item); \"Never prescription treatments\" in public terms (keep as internal rule only)."
+      },
+      {
+        "h": "NOTE",
+        "b": "Correct the £160 lifetime figure quoted in the brief before anyone reports spend upward: the account shows £990.31 and the four ads reconcile exactly."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Locks: the terminology that is fixed everywhere",
+    "detail": "Skin audit vs skin analysis, ANS, and the full address, locked across ads, messages and the website.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 143,
+    "deep": [
+      {
+        "h": "TERMINOLOGY",
+        "b": "Skin audit = the free online form these leads completed. Skin analysis = the in-clinic £50 imaging session (pick this term everywhere including the website). Aesthetics Nurse Software (ANS), not \"Aesthetic Nurse Software\". 9A Jewry Street, Winchester, not \"Jewry Street\" alone on first mention."
+      },
+      {
+        "h": "NOTE",
+        "b": "Do not use skin audit and skin analysis interchangeably: the leads did the free online skin audit; the skin analysis is the paid in-clinic imaging session. Confirm before build: 448 in GHL vs Meta's 395 vs the plan's 443, three numbers for one list; the arithmetic assumes 448 is the true reachable figure."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: is the Winchester room fitted and shootable by 8 September",
+    "detail": "All three creative concepts specify the Winchester room; this is the largest execution risk.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 144,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Is the Winchester room fitted and shootable by 8 September. All three creative concepts specify it. This is the largest execution risk and it is only seven days away."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "If it is not ready, everything shoots at Bedhampton and no copy or visual may name or imply the Winchester room. Decide by 3 September so the shoot can be planned either way."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: pull the age breakdown and enforce the age band if skewed young",
+    "detail": "Advantage Audience is on with age_min 18, so the 28 to 65 band is not enforced.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 145,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Pull the age breakdown of the last 30 days of leads. Advantage Audience is on with expansion and age_min 18, so 28 to 65 is a suggestion, not a limit, and may be a cause of quality drift that has nothing to do with creative."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "If a meaningful share of recent leads is under 35, duplicate the ad set with Advantage Audience off and age_min 30."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: does Bedhampton trade after 2 November and on how many days",
+    "detail": "The add-on window means a 30 Oct analysis can produce an appointment as late as 29 Nov.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 146,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Does Bedhampton still trade after 2 November and on how many days a week. The add-on window means an analysis on 30 October can produce a treatment booking on 13 November and an appointment as late as 29 November. If Bedhampton closes or drops to one day, you would be selling November capacity that does not exist."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Answer before any Bedhampton money is released, and name who covers Bedhampton through November. These clients are Bedhampton revenue, Google reviews and a warm base who have met Abi; they are not a Winchester founding pipeline."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: who answers a new lead and within what time",
+    "detail": "Speed to first contact is the largest single lever; without a named owner the booking rate is fiction.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 147,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Who answers a new lead and within what time, and who answers messages 09:00 to 17:00 five days a week from the day Phase A starts. Speed to first contact is the largest single lever. One nurse with a client in the chair cannot answer in five minutes. The whole programme is about 30 hours of messaging labour before a single appointment."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Name the owner and a service level: automated WhatsApp or SMS inside 60 seconds, then two named human call blocks a day, three attempts across 72 hours. Consider VA hours. Without this the booking rate is fiction."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: take a £25 fully redeemable deposit at booking or not",
+    "detail": "Free appointments with no commitment device commonly no-show at 30 to 50 per cent.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 148,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Do you take a £25 fully redeemable deposit at the point of booking. Free appointments with no commitment device commonly no-show at 30 to 50 per cent. If declined, the attendance assumption drops to about 60 per cent."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Take the £25 at booking, fully redeemable against treatment. It is taken when the analysis is booked, never at the analysis itself. Nothing is sold on the day stays absolute: no card machine at the analysis."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: one written lawful-basis position for SMS and email",
+    "detail": "Blocker B3; the whole nurture design is reply-based and PECR reg 22 applies to SMS as to email.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 149,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Write down the lawful basis once, covering SMS and email, before Phase A starts. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by SMS and email, and record the date range. PECR reg 22 applies to SMS as to email, and some records predate 1 September 2026 so consent may have degraded."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "This is blocker B3 and it gates the whole sequence. Separately, by Friday 25 September, confirm the privacy notice covers matched advertising audiences before any customer list is uploaded to Meta, and keep every Meta audience name generic (never name a treatment or skin concern)."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: cut, pause or reclassify the live prospecting spend",
+    "detail": "Ad set 120252011075130558 runs at about £19.34 a day buying leads for places that no longer exist.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 150,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Ad set 120252011075130558 runs at about £19.34 a day. Today to 1 November is 61 days, so about £1,180 more spend at a CPL that moved from £3.16 lifetime to £5.64 over the last seven days. That is another 200 or so leads against a cap of 40. Keep, cut or pause: it must be an active decision, not a default."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Cut to £8 a day from Monday 7 September and reclassify it. It stops being justified by the founding 40 and is justified instead by evergreen diary fill from 3 November, target about 40 leads a month. Releases about £615. (The creative doc proposes the same £8/day carrying Concept 3 as launch creative; the Bedhampton and nurture docs argue for a deeper cut to £5/day or a full pause on 2 Sep. The owner picks one, but the spend cannot keep running unchanged.)"
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: confirm the reconciliation owner and the daily slot",
+    "detail": "The weekly CSV booking export and daily diary check are the only closed loop; someone must own them.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-04",
+    "sortOrder": 151,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Confirm who owns the reconciliation and when. There is no booking API and no server-side booking event, so a weekly CSV export from the booking system, matched on email each Sunday, is the only closed loop. A daily 09:00 diary check from 12 October is the only place the founding count exists and the trigger for every stop rule."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Name the owner and a fixed daily slot. Weekly: match on email each Sunday and write back First Treatment Date, Value and Revenue Status. Daily: open the ANS diary, move new bookings to Booked in GHL, write down founding places remaining. A five minute habit."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: how long is a complimentary analysis appointment",
+    "detail": "30 minutes consumes about 6 of 30 to 35 weekly slots; a full 60 minutes is not affordable.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 152,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How long is a complimentary analysis appointment. At 30 minutes against a 60 minute standard slot, 12 analyses a week consume about 6 of 30 to 35 weekly slots (17 to 20 per cent, affordable). At a full 60 minutes it is 34 to 40 per cent, not affordable."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "30 minute analysis blocks. (Bedhampton's own figure is 45 minutes for four a week, three hours of unpaid clinical time; hold Winchester tighter.)"
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: how many free analyses a week, which days, and what November must earn",
+    "detail": "Nothing currently caps how many complimentary analyses are given away before 30 November.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 153,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How many complimentary analyses a week, on which days, and what November must earn. Forty founding clients each get a free analysis, and nothing currently caps how many more are given away before 30 November. C6, D3 and D9 offer the same free hour to the whole opted-in list, uncapped. There is no revenue number anywhere and there should be."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "12 a week in three fixed blocks of four, diarised in advance, founding clients first claim through November (a sensible alternative floor is 8 a week). Ring-fence the rest of the week for paid treatment and set a stated November revenue target."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: is the free analysis the gate to founding status or separate",
+    "detail": "This decides the CTA button on the ad and the funnel logic.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 154,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Is the complimentary analysis the gate to founding status, or separate from it. This decides the CTA button on the creative (Sign Up versus Apply Now)."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "The complimentary analysis cannot be the scarce thing: it is available to everyone until 30 November. What is scarce is the founding benefit and the diary. Apply Now / Apply is only honest if the founding 40 is a genuine selection with a written basis; otherwise keep Sign Up."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: what \"founding\" actually buys",
+    "detail": "Advertising a shared free analysis as a founding exclusive is a misleading exclusivity claim.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-11",
+    "sortOrder": 155,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "What founding actually buys. At present the founding benefit and the general November offer are the same thing, a complimentary AI Skin Analysis. That is not an exclusive, and advertising it as one is a misleading exclusivity claim."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "The founding exclusive is a priority booking window: the founding list chooses appointments from Monday 26 October, booking opens to everyone else Monday 2 November. Genuinely exclusive, costs nothing, honest. The complimentary analysis stays available to everyone booking before end November. If no priority window is granted, founding and 40 come out of the ad copy and this becomes a straightforward opening announcement. The founding benefit is four elements: priority booking, a complimentary skincare add-on with the first treatment, founding pricing held twelve months, and the first 40. Do not drop the add-on."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: how many days a week is Abi in Winchester",
+    "detail": "30 to 35 a week is her total across both clinics; at three days the real Winchester number is nearer 18 to 21.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-11",
+    "sortOrder": 156,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "How many days a week is Abi in Winchester, and is 30 to 35 a week Winchester only or shared with Bedhampton. 30 to 35 is her total across both clinics. At three Winchester days the real Winchester number is nearer 18 to 21 a week, and the founding 40 consume half."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "State the Winchester share of capacity before any ad runs. It decides whether C6 and D3 go to the whole list or a throttled slice, and it fixes B2's wording (\"only so many appointments in a week\")."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: open the November Winchester calendar in ANS",
+    "detail": "The single highest value operational change: interest cannot become a booking without it.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-12",
+    "sortOrder": 157,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Open the November Winchester calendar in ANS so interest can become a booking. Described as the single highest value operational change. Nothing downstream (the held-slot messages, the founding count, the day-before reminders) can work until the diary is bookable."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Publish November Winchester availability and make it bookable by 12 September. A parallel GHL Winchester calendar holds a placeholder event at the moment a slot is accepted, giving a countable diary without an ANS API."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: write down the nothing-sold-on-the-day rule for the analysis",
+    "detail": "The rule that governs every analysis appointment, set in writing before creative goes out.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 158,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "Write down the rule for the analysis appointment before 15 September, so everyone works to the same script."
+      },
+      {
+        "h": "RULE",
+        "b": "Nothing is sold on the day: no payment, no product, no price list unless asked. The client leaves with a written plan. The £25 booking deposit, if adopted, is taken at the point of booking the analysis and is fully redeemable, never at the analysis."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: confirm £50 as the published Winchester list price",
+    "detail": "A \"normally £50\" claim needs a price the service has genuinely been sold at.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-09",
+    "sortOrder": 159,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "prices.json records £50 as a Bedhampton guide price and notes Winchester \"may differ\". A price claim needs a price the service has genuinely been sold at. Confirm £50 as the published Winchester list price before 9 October."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Ad copy uses \"It is £50 on our price list\", supportable once the list says so. At Winchester the analysis has never been charged, so use forward-looking wording (\"The analysis is a £50 assessment\", \"From 1 December it is £50\"), never \"normally £50\" or \"goes back to £50\". If £50 is not confirmed, the price reference comes out of the ads entirely."
+      }
+    ]
+  },
+  {
+    "category": "tail",
+    "title": "Decision: cost the twelve-month founding price hold",
+    "detail": "If launch prices sit below mature prices, a hold across 40 clients has a real cash number.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 160,
+    "deep": [
+      {
+        "h": "DECISION",
+        "b": "The founding benefit is four elements; what does the twelve-month price hold cost. If launch prices sit below mature prices, a hold across 40 clients has a cash number, and it sits close to the no-discounts rule."
+      },
+      {
+        "h": "RECOMMENDATION",
+        "b": "Compute the cost before email B2 sends on 12 October, since B2 is where the twelve-month hold is promised in writing."
+      }
+    ]
+  }
+];
