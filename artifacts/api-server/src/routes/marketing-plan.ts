@@ -1416,6 +1416,1258 @@ export const PLAN_ITEMS: PlanItem[] = [
     ]
   },
   {
+    "category": "diary",
+    "title": "Fill the diary: the white-space engine",
+    "detail": "How treatment-intent, memberships, founding rebooking and the Bedhampton warm base fill paid slots in parallel with the free analyses, from opening day.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-03",
+    "sortOrder": 63,
+    "deep": [
+      {
+        "h": "THE WHITE-SPACE PROBLEM",
+        "b": "One nurse runs about 30 to 35 appointments a week. The free AI Skin Analysis is capped at about 12 a week and makes no money: it is the top of the funnel, not the diary. That leaves roughly 18 to 23 paid slots a week, the white space, and today the only thing filling it is the hope that an analysis converts to a treatment later. That is too slow to open a clinic on. This workstream fills the white space directly, from opening day, alongside the analysis nurture rather than in place of it."
+      },
+      {
+        "h": "STRATEGY, THE FOUR ENGINES",
+        "b": "1. Treatment intent. The 443 warm leads already typed what they want into Treatment Interest on the Meta forms. We map that to a safe cluster and invite each person to book the thing they asked for, consultation first. 2. Memberships. Skin Circle at 19 a month, The Skin Plan at 115 Winchester with a founder rate of 95, and Skin Plan Advanced at 185 are pre-booked recurring slots, the single best way to fill white space and retain, so every warm and every new client is offered the membership as the natural next step. 3. Founding rebooking. Every founding client and every first treatment leaves with the next visit booked, so the diary compounds instead of resetting to zero. 4. The Bedhampton warm base. Existing Bedhampton clients who are local enough, or willing to follow Abi across, are invited as known paying regulars, not as cold leads."
+      },
+      {
+        "h": "PARALLEL, NOT INSTEAD OF",
+        "b": "The analysis funnel keeps running for anyone who is unsure, curious or unmapped: it stays the safe default. The diary-fill tracks sit alongside it and take only the people who have already named a treatment or a membership. Nobody is pulled out of the analysis nurture to force a booking; they are simply offered the faster route when they have already asked for it."
+      },
+      {
+        "h": "WHAT GOOD LOOKS LIKE",
+        "b": "Paid slots booked each week climbs toward 18 to 23 without pushing total appointments past about 30 to 35. Members signed each week builds a stable recurring base. Treatment bookings appear across the filler, boosters and skin clusters, not only from analyses. The anti-wrinkle-concern cluster produces consultations with Abi, never an advertised treatment."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This engine is built to fill the white space, not to overflow it. One nurse across two overlapping clinics in November is the hard ceiling. Demand above about 30 to 35 appointments a week goes onto an honest waitlist, not into an overbooked diary. The capacity governor item holds the mechanism."
+      },
+      {
+        "h": "OWNERS",
+        "b": "David builds the segmentation, tags, pipeline and dashboard in GHL. Abi is the voice of every outbound message and runs every consultation. This item is the shared brief that the rest of the Fill the diary workstream is built against."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Segment the list by Treatment Interest",
+    "detail": "Map the free-text Treatment Interest to six safe clusters with an allow list, and fall back to the analysis funnel for anyone unsure or unmapped.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 64,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Treatment Interest is free text typed by the public on the Meta instant forms. It can contain misspellings, several treatments at once, brand names, or a prescription-only request. Treat it exactly like the Skin Audit Concerns field: it is a routing signal only. We map it to a safe cluster through an allow list and never merge the raw value into any outbound message, subject line or merge tag. If a phrase does not match the allow list, the contact is unsure by default and stays in the analysis funnel."
+      },
+      {
+        "h": "ALLOW LIST, TEMPLATE",
+        "b": "Match on lower-cased Treatment Interest, in this precedence order, first match wins.\n1. anti-wrinkle-concern (prescription route, consultation only, never named): anti-wrinkle, anti wrinkle, wrinkles, frown, frown lines, forehead lines, crows feet, the 11s, expression lines, looking tired, looking cross, prevention, preventative, gummy smile, masseter, jaw clenching, teeth grinding, lip flip, sweating, excessive sweating, hyperhidrosis, and any brand or toxin name a member of the public might type.\n2. membership: membership, member, monthly, subscription, skin circle, skin plan, package, join.\n3. filler: filler, dermal filler, lips, lip filler, cheeks, cheek, tear trough, under eye, undereye, temple, chin, jawline, volume, nasolabial, marionette.\n4. boosters: profhilo, skin booster, boosters, skinvive, polynucleotide, polynucleotides, sculptra, exosome, exosomes, regenerative, skin quality, hydration, glow.\n5. skin: microneedling, needling, peel, chemical peel, facial, medical facial, acne, pigmentation, melasma, rosacea, scarring, texture, pores, skincare, led, b12, dull.\n6. unsure: blank, not sure, dont know, advice, general, everything, or anything that matches none of the above."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "For each contact, set the custom field Diary Cluster to one of anti-wrinkle-concern, filler, boosters, skin, membership or unsure, and add the matching tag cluster-anti-wrinkle-concern, cluster-filler, cluster-boosters, cluster-skin, cluster-membership or cluster-unsure. Never write the raw Treatment Interest into Diary Cluster, into any outbound field, or into any message body. Keep the raw value only in the read-only source field for the audit trail."
+      },
+      {
+        "h": "FALLBACK",
+        "b": "Anyone tagged cluster-unsure, and anyone whose Treatment Interest is empty or unmapped, is left in, or returned to, the AI Skin Analysis nurture. The analysis is the safe default: it needs no cluster, names no treatment, and lets Abi assess in person. Nobody is invited to book a named treatment on the strength of an ambiguous phrase."
+      },
+      {
+        "h": "TRIGGER",
+        "b": "Run the mapping twice. First, a one-off batch across the existing 443 warm Winchester leads and the Bedhampton base in September, so every warm contact carries a Diary Cluster before the October pre-book invites go out. Second, on every new form submit going forward, so new leads are clustered the moment they arrive. Re-run the batch after any allow-list change."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Clustering creates warm demand faster than one nurse can serve it. Do not release the cluster invites all at once. Stage them behind the capacity governor so the number invited to book in any week matches the paid slots actually open that week."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Anti-wrinkle-concern is consultation-only and never named",
+    "detail": "The prescription cluster leads with the concern and books a consultation with Abi; it never names the treatment, the toxin or a brand, and never promises a result.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-05",
+    "sortOrder": 65,
+    "deep": [
+      {
+        "h": "RULE",
+        "b": "Botulinum toxin is a prescription-only medicine, sold to the clinic as anti-wrinkle treatment across one, two or three areas at 190, 255 and 305, plus the lip flip, gummy smile, masseter, platysmal and hyperhidrosis uses. You cannot advertise a prescription-only medicine to the public, including to people who enquired about it. This is strict liability under the Human Medicines Regulations 2012 regulation 284 and CAP Code 12.12, so we err safe every time. A single non-compliant message to this cluster is a breach regardless of intent."
+      },
+      {
+        "h": "WHAT WE LEAD WITH",
+        "b": "Lead with the concern, never the treatment: lines, expression, prevention, looking tired, looking cross, feeling that the face looks crosser or older than the person feels. Then offer the one honest first step, a consultation with Abi, who assesses the skin and expression and advises honestly on what will and will not help. A consultation is a service, not a medicine, so it is fully bookable and promotable."
+      },
+      {
+        "h": "BANNED IN OUTBOUND",
+        "b": "To this cluster, never write: the treatment name, any toxin, any brand, the areas or their prices, the words that describe the mechanism, and never any promise or implication of a result. No before and after, no result guarantee, no time-limited treatment offer. If a sentence would still make sense with a brand name dropped in, it is too close to the line."
+      },
+      {
+        "h": "COPY, COMPLIANT INVITE",
+        "b": "Hi {{contact.first_name}}, it is Abi here. You mentioned you would like to look a little less tired and cross around the eyes and brow. The honest first step is a proper consultation with me, where I look at your skin and your expression and tell you plainly what will help and what will not, with no pressure at all. Would you like me to hold you a slot?"
+      },
+      {
+        "h": "CONSENT",
+        "b": "The private Frown Free Club carries a prescribed, individually assessed schedule and never appears in any public nurture, ad, post or broadcast. It is offered only in person, by Abi, after a consultation and prescription. Keep it entirely out of every automated message and every cluster invite."
+      },
+      {
+        "h": "NOTE",
+        "b": "This rule governs the cluster-anti-wrinkle-concern tag from the segmentation item. Every message that could reach that tag is reviewed by Abi before it goes live. When in doubt, route the person to a consultation or back to the free analysis rather than risk naming the medicine."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Build the Skin Focus segment in GHL",
+    "detail": "Map the free-text Treatment Interest to a safe skin cluster via an allow list, then tag it ready for the warm pre-book invites.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 66,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The skin track absorbs analysis converts and every non-injectable enquiry, so it needs its own clean segment before any invite goes out. Build one tag, Skin Focus, filtered to Clinic Interest Winchester and Marketing Opt In true, plus a Skin Cluster field holding the matched sub-theme so later copy can speak to the right concern without ever touching the raw text."
+      },
+      {
+        "h": "TRIGGER, allow-list mapping",
+        "b": "Treatment Interest is free text typed by the public. Lower-case it and match on keywords, whole word where possible. Map to Skin Focus when the value contains any of: acne, spot, spots, breakout, breakouts, congestion, congested, blackhead, texture, rough, bumpy, uneven, pigmentation, pigment, dark mark, dark marks, sun damage, melasma, pores, pore, redness, rosacea, high colour, flushing, peel, peels, chemical peel, microneedling, micro needling, dermapen, facial, facials, glow, dull, dullness, tired skin, skincare, skin care, skincare plan, skin plan, skin health, scar, scarring, blemish, blemishes. Set Skin Cluster to the matched theme: acne, texture, pigmentation, redness, pores, peels-microneedling, facials or skin-plan."
+      },
+      {
+        "h": "TRIGGER, what NOT to map here",
+        "b": "Leave for other tracks: any anti-wrinkle, line, frown, expression, tired or cross, brand or toxin wording goes to the anti-wrinkle consultation track, never here. Filler, lip, lips, cheek, tear trough, jaw, chin, temple, Profhilo, SkinVive, skin booster, volume goes to the injectables track. If a value hits both a skin and an injectable term, tag both and let the earliest booking win."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Add tag Skin Focus, set Skin Cluster to the matched theme, and record the date the mapping ran. Do not overwrite an existing manual tag. Leave anything ambiguous in a Skin Focus, review queue for a human eye rather than guessing."
+      },
+      {
+        "h": "NOTE",
+        "b": "Never merge the raw Treatment Interest value into any outbound message. Speak only to the safe cluster label, exactly the same rule as Skin Audit Concerns. The public typed that field and it can contain anything."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This only sizes the audience, it books nobody, but it sets up two-wave sending. One nurse has roughly 18 to 23 paid slots a week between the capped free analyses, so the segment must be splittable in half for staggered invites."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Map clusters to the pipeline so bookings can be counted",
+    "detail": "Each cluster writes to a pipeline stage and the Diary Cluster field so paid bookings can be reconciled by cluster for the dashboard.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-08",
+    "sortOrder": 67,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Booking runs in Aesthetics Nurse Software, an enclosed iframe with no API and no outbound webhook, so there is no automatic booking event. Paid bookings therefore have to be counted by hand and attributed to a cluster. This item makes that reconciliation quick by giving every clustered contact a pipeline home, so David can move a card and know instantly which cluster the paid slot came from."
+      },
+      {
+        "h": "STAGES",
+        "b": "In the existing Winchester pipeline, add a Fill the diary lane with these stages: Clustered warm, Invited to book, Consultation booked, Treatment booked, Member signed, and Rebooked. A contact enters at Clustered warm carrying its Diary Cluster field, moves to Invited to book when its cluster invite is sent, and onward as David reconciles ANS by hand. The Diary Cluster field stays on the card throughout so bookings can be split six ways."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "When David marks a slot booked and attended in the weekly reconciliation, he moves the card and confirms the Diary Cluster and, for members, the tier: Skin Circle, The Skin Plan, or Skin Plan Advanced. This is the only reliable source of paid bookings by cluster, since ANS cannot report it. Keep the raw Treatment Interest out of the card title; use the cluster label only."
+      },
+      {
+        "h": "NOTE",
+        "b": "The anti-wrinkle-concern cluster stops at Consultation booked in the diary lane. It never carries a Treatment booked value tied to a named prescription treatment in any outbound-visible field. Any treatment that follows a consultation is recorded by Abi in the clinical notes, not surfaced in marketing copy or automations."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Wire the skin-plan consultation into the pipeline",
+    "detail": "Give the skin track its own visible pipeline stage so David can count the paid white-space fill by hand each week.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-06",
+    "dayDate": "2026-09-10",
+    "sortOrder": 68,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The paid diary between the free analyses is the white space we are filling. To manage it we need a Skin, booked stage in the pipeline, separate from the free-analysis flow, so at a glance we can see how many paid skin slots and skin-plan consultations are pledged for opening fortnight."
+      },
+      {
+        "h": "TRIGGER",
+        "b": "A Skin Focus contact books a skin appointment or a skin-plan consultation, or replies YES to a warm invite. Because the treatments here are not prescription-only, the skin-plan consultation and every treatment can be booked and promoted freely, unlike the anti-wrinkle track."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Move the opportunity into Skin, booked, add tag Skin Focus Booked, stamp the booking date and the Skin Cluster sub-theme, and remove the contact from any further pre-book invite step so they are not chased for something they have already done."
+      },
+      {
+        "h": "NOTE",
+        "b": "ANS is an enclosed iframe with no booking event or webhook, so the actual booking cannot fire this automatically. David reconciles skin bookings by hand every week in the Marketing tab, the same manual method used for the analyses, and moves the stage himself. The automation only handles the YES-reply path inside GHL."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Build the expression and prevention warm segment",
+    "detail": "Map anti-wrinkle enquiries to a POM-safe concern cluster, then tag and consent-gate them for the pre-book invite.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 69,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "A contact enters this segment only when all three are true: Clinic Interest = Winchester; Marketing Opt In = yes; and the free-text Treatment Interest value matches the allow-list below. Nothing else routes in. This runs in parallel with the AI Skin Analysis nurture, it does not replace it."
+      },
+      {
+        "h": "ALLOW-LIST MAPPING (raw Treatment Interest to safe cluster)",
+        "b": "Treatment Interest is free text typed by the public, so map it, never echo it. Values that map into this cluster: anti wrinkle, anti-wrinkle, antiwrinkle, wrinkles, lines, fine lines, frown, frown lines, 11s, forehead, forehead lines, crows feet, crow's feet, crows-feet, expression lines, prevention, preventative, preventive, looking tired, look tired, tired looking, look cross, looking cross, angry looking, smooth, smoothing. Match case-insensitively and trim spacing. Anything not on this list does NOT enter this track. Under no circumstances merge the raw typed value into outbound copy (same rule as Skin Audit Concerns): several of these values name or hint at a medicine, and repeating them back to the public would itself be an advert for a POM."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Apply the tag track-expression-prevention. Do not create or apply any tag, note or custom field that names a medicine, a toxin or a brand. The stored label describes the concern, not the treatment."
+      },
+      {
+        "h": "CONSENT",
+        "b": "Action only contacts with Marketing Opt In = yes. Where the Priority Access flag is also set, route the contact to the first-week November consultation hold ahead of the rest of the segment."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "One nurse does about 30 to 35 appointments a week, of which roughly 18 to 23 are paid slots. Cap how many of this segment are actioned per week so the invites cannot promise more consultation time than Abi can honestly give. Hold a named first-week ceiling (about 8 to 10 consultations) and stop inviting once it is full."
+      },
+      {
+        "h": "NOTE (why the field, not the value)",
+        "b": "Botulinum toxin is a prescription-only medicine and cannot be advertised to the public, including to the very people who typed its name into the form. Keying on the concern cluster (not the raw value) lets us reach warm enquirers while keeping every downstream message about the concern and the consultation, never the medicine."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Segment: skin quality and regenerative interest",
+    "detail": "Build the GHL segment that maps free-text Treatment Interest to the safe booster and regenerative cluster.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-15",
+    "sortOrder": 70,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "These are warm leads who already named a skin-quality or regenerative want. None of it is a POM, so we can name the treatments and book them directly. This segment feeds the paid white space between the capped free analyses: consultations and first treatments booked from opening day, not 'an analysis might convert later'. It runs in parallel with the AI Skin Analysis nurture, it does not replace it."
+      },
+      {
+        "h": "TRIGGER",
+        "b": "Contact matches ALL of: Clinic Interest = Winchester; Marketing Opt In = yes; and Treatment Interest (free text) maps to the cluster on the allow list below. Priority Access = yes marks the original 443 warm leads and gets the earlier invite wave."
+      },
+      {
+        "h": "ALLOW LIST (COPY-SAFE MAPPING)",
+        "b": "Lower-case and trim Treatment Interest, then match against these tokens only: hydration, hydrated, dehydrated, dry skin, glow, glowing, radiance, dull, dullness, tired skin, tired-looking, flat skin, skin quality, texture, collagen, regenerative, regeneration, bio-remodelling, injectable moisturiser, skin booster, skin boosters, booster, profhilo, skinvive, polynucleotide, polynucleotides, PN, exosome, exosomes. A match sets the cluster. This is a safe cluster label only. NEVER merge the raw typed value into any outbound message (same rule as Skin Audit Concerns), because the public types free text."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On match, add tag track-boosters-regen. Do not remove any analysis-nurture tag; the two tracks co-exist. Anything that does not match the allow list is NOT added here: route it to a manual-review view for David, or to the correct named track (filler, or the concern-led anti-wrinkle consultation track). Never guess a cluster from an unrecognised value."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "One nurse does about 30 to 35 appointments a week, roughly 18 to 23 of them paid. This track competes for the same paid slots as the filler and anti-wrinkle consultation tracks. Cap the invite waves to diary capacity, invite Priority Access contacts first, and hold the rest on an honest waitlist rather than over-filling week one."
+      },
+      {
+        "h": "NOTE",
+        "b": "Exosomes are applied topically after microneedling to support recovery. They are never described as injected, anywhere in this track. Nothing in this cluster is a POM, so all of it is nameable and bookable."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "POM guardrail card for the expression track",
+    "detail": "The short checklist every message in this track must pass before it is allowed to send.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-16",
+    "sortOrder": 71,
+    "deep": [
+      {
+        "h": "NOTE (compliance, read before writing or sending anything in this track)",
+        "b": "This is the highest-risk track we run, so it is worded defensively on purpose. Advertising a prescription-only medicine to the public is a strict-liability offence under the Human Medicines Regulations 2012 reg 284, and CAP Code rule 12.12 prohibits marketing that references a POM to the public. Strict liability means intent and good faith are no defence, so we err safe."
+      },
+      {
+        "h": "THE FIVE THINGS EVERY MESSAGE MUST DO",
+        "b": "1. Never name the treatment, the toxin, or any brand, in subject line, body, tags or links. 2. Never promise or imply a result (no smoother, no younger, no lasts x months). 3. Lead with the concern the person raised (lines, expression, prevention, looking tired or cross). 4. Invite a consultation with Abi, which is a service and not a POM, so it is bookable and promotable. 5. Frame the consultation as honest assessment and advice with no pressure to proceed. If a draft fails any one of these, it does not send."
+      },
+      {
+        "h": "WHY A CONSULTATION IS SAFE TO PROMOTE",
+        "b": "A consultation is a clinical conversation and assessment. Abi looks at the skin, listens, and advises honestly on what would and would not help. It is a service in its own right, priced and bookable, and it does not reference or promise any medicine. That is the entire mechanism by which this track can market at all: we sell the conversation, never the prescription."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Filler and lip segment: build the smart list",
+    "detail": "Map Treatment Interest to the filler-lip cluster via an allow list, tag warm and cold, exclude POM terms.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-13",
+    "dayDate": "2026-09-18",
+    "sortOrder": 72,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Contact has Clinic Interest = Winchester AND Marketing Opt In = yes AND Treatment Interest (free text) matches the filler-lip allow list below. Rebuild the smart list nightly so new Meta instant-form leads flow in on their own."
+      },
+      {
+        "h": "ALLOW LIST (map raw free text to a safe cluster, never merge the raw value into copy)",
+        "b": "Match, case-insensitive contains, on: lip, lips, lip filler, filler, dermal filler, tear trough, under eye, under-eye, dark circles, eye bags, cheek, cheeks, midface, volume, definition, facial balancing, chin, jawline, temple. Map all of these to the internal cluster tag filler-lip. Outbound copy may only ever use the safe words lip filler, dermal filler, tear trough treatment, cheek and facial balancing. Same rule as Skin Audit Concerns: the public's typed words are data, never merged verbatim into a message or an ad."
+      },
+      {
+        "h": "EXCLUDE (route elsewhere, do not add to this segment)",
+        "b": "If the same free text also matches the anti-wrinkle allow list (line, lines, wrinkle, frown, forehead, crow, crows feet, anti wrinkle, sweating, hyperhidrosis, masseter, jaw slimming, teeth grinding, gummy) send it to the anti-wrinkle consultation track, not here. Note the jaw ambiguity: jawline definition or jaw filler is filler (this track), but jaw slimming, teeth grinding or masseter is a POM (anti-wrinkle track). Flag any contact whose text contains a bare jaw for a quick human read before any send."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Tag matched contacts win-filler-lip and split warm (Revenue Status First Payment Taken or Repeat, or First Treatment Date set, or Total Revenue greater than 0, or tag bedhampton-warm) from cold (enquired, never converted). Store the mapped cluster label in a custom field so each send picks the right variant; never store the raw free text in an outbound field."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "One nurse does about 30 to 35 appointments a week, roughly 18 to 23 of them paid. Consultations from this track must fill that white space, not sit on top of the capped free analyses. Cap the warm invite sends per week so accepted bookings stay inside one diary, and hold the rest as a named waitlist rather than overfilling."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Build the membership audience in GHL",
+    "detail": "Tags, a custom field and three saved segments so every membership track can fire cleanly.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-22",
+    "sortOrder": 73,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Membership is the white-space filler. A member holds a pre-booked recurring diary slot, so every attended analysis and every first treatment should have a membership conversation waiting behind it. This item is the plumbing the other membership items enrol from."
+      },
+      {
+        "h": "BUILD",
+        "b": "Create tags: membership-interested, member-skin-circle, member-skin-plan, member-skin-plan-advanced, membership-offered, membership-declined. Add a custom field Membership Interest (dropdown: Skin Circle, The Skin Plan, Advanced, Not now). Build three saved smart lists: (1) attended a first paid treatment with no membership tag; (2) attended a free AI Skin Analysis with no membership tag; (3) warm leads with Marketing Opt In yes whose mapped Treatment Interest cluster is ongoing skin care and who have not booked."
+      },
+      {
+        "h": "NOTE",
+        "b": "Map Treatment Interest to the ongoing-care cluster through the allow list only (skin boosters, facials, skin plans, general skin). Never merge the raw free-text value into any outbound copy, same rule as Skin Audit Concerns."
+      },
+      {
+        "h": "TRIGGER",
+        "b": "Nothing sends from this item. It defines the audiences and fields the later membership items rely on."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "One nurse does about 30 to 35 appointments a week. Members hold recurring slots, so cap active Skin Plan and Advanced members at what the diary can protect, starting at the thirty founder places, and let Skin Circle, which is one LED session a month, carry the overflow. Review before lifting any cap."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Filler consultation: booking calendar and follow-up workflow",
+    "detail": "Stand up a bookable consultation service (not a POM), auto-confirm, remind, and write the outcome back to the pipeline.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-09-20",
+    "dayDate": "2026-09-25",
+    "sortOrder": 74,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "A consultation is a service, not a prescription-only medicine, so it is fully bookable and promotable. It is the honest front door for filler and lips: Abi assesses, talks through options and costs, and there is no pressure to treat on the day. Every asset in this track books toward the consultation, never toward a named treatment as a guaranteed outcome."
+      },
+      {
+        "h": "BUILD",
+        "b": "Create a Filler and facial balancing consultation calendar in GHL, mapped only into the paid white-space slots, not the analysis slots. Auto-send a confirmation and a same-day reminder (copy lives in the message items below). On booking, move the opportunity to a Consultation booked stage; on attendance, to Consultation attended; wire a no-show path and a rebook path."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Stamp Priority Access on anyone who books from a warm invite so they keep their place if the diary fills. Record the consultation outcome (proceeding, thinking it over, or not suitable) as an opportunity note so nurture softens or stops accordingly and no one is chased after a no."
+      },
+      {
+        "h": "CONSENT",
+        "b": "No before-and-after or client photos in any asset without written consent on file; any clinical photos Abi takes stay in the record and are never used in marketing. No result guarantees anywhere in the booking flow or the reminders."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Because this track can create more demand than one nurse can serve, keep the consultation calendar's daily cap conservative for the opening fortnight and let David widen it only once the real diary shape is known."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Capacity governor and honest waitlist",
+    "detail": "Cap the engine to about 30 to 35 appointments a week; when paid slots are full, warm invites pause and overflow goes to an honest waitlist, not an overbooked diary.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-05",
+    "sortOrder": 75,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The engine can create warm demand faster than one nurse can serve it, especially across two overlapping clinics in November. The governor keeps the promise honest: we fill the white space, we do not oversell it. The weekly ceiling is about 30 to 35 appointments, of which about 12 are free analyses and 18 to 23 are paid slots. Invites are released to match the paid slots genuinely open that week, not the size of the list."
+      },
+      {
+        "h": "MECHANISM",
+        "b": "Each week David sets a paid-slot budget from the diary. Cluster invites and membership offers are released up to that budget only. When the paid slots for a week are full, pause the outbound invites for that week and switch new interest to the waitlist message below. Stagger founding onboarding across weeks rather than booking all forty founding clients into November at once. State clearly which days Abi is at Winchester and which at Bedhampton during the November move, so nobody is offered a slot on a day the nurse is at the other site."
+      },
+      {
+        "h": "COPY, WAITLIST MESSAGE",
+        "b": "Hi {{contact.first_name}}, it is Abi. I am so pleased you want to come in. I am one nurse and this week is full, so rather than rush you I would rather hold you the first proper slot that opens. May I add you to my personal waitlist and message you the moment one comes free? You will be near the front."
+      },
+      {
+        "h": "NOTE",
+        "b": "The waitlist is genuine scarcity, not a tactic: never invite more people than can actually be seen. Flag to the owners that a second pair of hands should be in place before January, when founding onboarding, memberships and rebookings all compound on top of new demand."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Fire the membership offer after a first treatment",
+    "detail": "A GHL workflow that waits two days after an attended first treatment, then sends the invite.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-04",
+    "dayDate": "2026-10-06",
+    "sortOrder": 76,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Enrol when an opportunity reaches Treatment Attended (or a First Treatment Date is set) AND Clinic Interest is Winchester AND Marketing Opt In is yes AND the tag membership-offered is absent. Do not enrol anyone already tagged member-skin-plan or member-skin-plan-advanced."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "The best moment to offer a plan is just after a good first result, when the client can feel the difference and wants to protect it. The workflow waits two days so the message lands once the skin has settled, not on the drive home."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "On send, add the tag membership-offered. If the client replies yes or books, add the matching member tag and set Membership Interest. If there is no reply after seven days, send one gentle SMS nudge, then stop and leave them in the ordinary nurture."
+      },
+      {
+        "h": "NOTE",
+        "b": "This workflow sends the copy held in the item 'Post-treatment membership invite'. Keep the two in step: if the copy changes, only the template it points to needs editing, not the workflow."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Diary fill dashboard: David's weekly watch",
+    "detail": "What David reconciles by hand every Friday: paid slots booked versus capacity, members signed, and treatment bookings by cluster.",
+    "channel": "found",
+    "owner": "david",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-12",
+    "sortOrder": 77,
+    "deep": [
+      {
+        "h": "WHAT TO WATCH",
+        "b": "Three numbers, every week. 1. Paid slots booked versus capacity: paid slots filled this week against the 18 to 23 available, and total appointments against the 30 to 35 ceiling. 2. Members signed: new Skin Circle, Skin Plan and Skin Plan Advanced sign-ups this week and the running recurring base. 3. Treatment bookings by cluster: paid bookings split across filler, boosters, skin and membership, with anti-wrinkle-concern shown as consultations booked, never as a named treatment."
+      },
+      {
+        "h": "HOW",
+        "b": "ANS is enclosed and cannot report any of this automatically, so the dashboard is reconciled by hand from the Winchester pipeline and the ANS diary. David moves the pipeline cards and reads the counts off the Diary Cluster field and the member tags. Log the three numbers in the Marketing tab tracker each Friday so the trend is visible week on week."
+      },
+      {
+        "h": "FRIDAY 15-MINUTE CHECK",
+        "b": "1. Count paid slots booked this week and next; compare to capacity. 2. Count members signed this week; update the running base. 3. Split paid bookings by cluster; note any cluster going quiet. 4. Check the anti-wrinkle-concern line is consultations only. 5. If paid slots are full for the coming week, confirm the capacity governor has paused invites and the waitlist is catching overflow. 6. If a cluster is under-filling the white space, flag the matching invite track to reopen next week."
+      },
+      {
+        "h": "NOTE",
+        "b": "The primary launch metric, cost per booked and attended analysis, still lives in the analysis funnel tracker. This dashboard measures the parallel goal: paid diary utilisation, the recurring member base, and where the paid bookings are coming from. Watched together they show whether the white space is filling from opening day or still waiting on slow conversions."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Warm pre-book invite: booster consultation (email)",
+    "detail": "October email inviting the skin-quality segment to reserve an early Winchester appointment before general booking opens.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-13",
+    "sortOrder": 78,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Sent to tag track-boosters-regen, Priority Access first. Goal is a pre-booked consultation or first treatment in the opening fortnight, filling paid white space from day one. Lead with the concern (skin quality, glow), name the non-POM treatments plainly, promise nothing, and keep it consultation-first and no-pressure."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "An early skin appointment, held for you in Winchester"
+      },
+      {
+        "h": "PREVIEW",
+        "b": "The skin-quality treatments you asked about, and an honest plan first."
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nWhen you got in touch, the thing on your mind was your skin quality: that lit-from-within glow that comes and goes, or skin that looks a little tired or flat however well you look after it.\n\nThat is exactly what our skin booster and regenerative treatments are for. Rather than changing your face, they work on the skin itself, with deep hydration, better texture and a healthier bounce that builds over a few weeks.\n\nOur nurse-led clinic on Jewry Street, Winchester opens on Monday 2 November, and I would love to see you in the first fortnight. Because you reached out early, you can reserve a first appointment now, before general booking fills up.\n\nIt always starts with a proper consultation. I am Abi, an Aesthetic Nurse Prescriber, and I will look at your skin honestly and talk through what would genuinely help, whether that is Profhilo, Skinvive, polynucleotides or a course of microneedling. I only ever recommend what is right for you, and there is no pressure to go ahead on the day.\n\nReply to this email, or tap below, and I will hold a slot for you.\n\n[Reserve my first appointment]\n\nWarmly,\nAbi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Send in a capped wave sized to the opening fortnight's paid slots. If it books out, switch the call to action to an honest waitlist rather than promising times we cannot staff with one nurse across two clinics in November."
+      },
+      {
+        "h": "NOTE",
+        "b": "No result promised, no discount, no POM named. The booking link points to the Winchester booking page, not a raw treatment menu."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Warm skin leads: pre-book a skin appointment for opening",
+    "detail": "Email the Skin Focus segment inviting a skin treatment or a skin-plan consultation in Winchester's first fortnight.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-13",
+    "sortOrder": 79,
+    "deep": [
+      {
+        "h": "GOAL",
+        "b": "Convert warm, self-declared skin interest straight into a paid opening-fortnight booking, from Abi's own voice, before launch week. Send to wave one of the Skin Focus segment only."
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "Your skin, a plan, and an early slot with your name on it"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hello {{contact.first_name}},\n\nWhen you got in touch, you told us your skin was on your mind. Now that our Winchester clinic is nearly ready, I wanted to write to you first.\n\nFrom opening week you can book a skin appointment at 9A Jewry Street. We start with a proper look at what your skin actually needs, then I give you a clear, honest plan. Depending on what we find, that might be microneedling, a chemical peel, one of our medical facials, or a simple skincare plan you can follow at home. There is no pressure to have anything on the day, and I will never make a promise I cannot keep. Just a real assessment and my honest advice.\n\nIf you would like one of the first appointments, reply to this email or tap the button below and I will hold a time for you.\n\nI am one nurse as we open, so the early diary is genuinely limited. First come, first booked.\n\nWarmly,\nAbi"
+      },
+      {
+        "h": "NOTE, link",
+        "b": "Button and reply both route to the skin appointment calendar in ANS. Do not personalise the copy from the raw Treatment Interest text, the concern words above are deliberately generic to the Skin Focus cluster."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "Openers and clickers who do not book within five days drop into the WhatsApp and SMS nudge. Anyone who books is tagged Skin Focus Booked and stops receiving the sequence."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Send in two waves, not the whole segment at once, so the first-fortnight diary is not oversold by one nurse. Once weeks one and two are full, switch the button to an honest waitlist rather than a live slot."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Warm pre-book invite: booster consultation (WhatsApp)",
+    "detail": "Short WhatsApp follow-up to the pre-book email for the skin-quality segment who did not book.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-11",
+    "dayDate": "2026-10-16",
+    "sortOrder": 80,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "WhatsApp is already connected to GHL. Sent three days after the email to segment members who have not booked. Same goal, lighter touch, easy yes. Reply handled by Abi."
+      },
+      {
+        "h": "WHATSAPP TEMPLATE COPY",
+        "b": "Hi {{contact.first_name}}, it is Abi at Abi Peters Skin Clinic. You asked about treatments for skin quality and glow. Our Winchester clinic opens on 2 November and I am holding early appointments for people who reached out first. It starts with an honest consultation, no pressure. Would you like me to reserve one for you? Reply YES and I will sort it."
+      },
+      {
+        "h": "NOTE",
+        "b": "Submit this for WhatsApp template approval before scheduling; it cannot go out until approved. Map it to the pre-book nurture step for tag track-boosters-regen. No POM, no discount, no promised result."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Only send to the same capped wave as the email. Do not widen the audience while one nurse is covering the opening fortnight."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Warm pre-book: lips and facial balancing",
+    "detail": "October invite to the filler-lip warm segment to reserve a consultation in the opening fortnight.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-19",
+    "sortOrder": 81,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Segment win-filler-lip, warm split, mapped cluster lip filler, dermal filler or cheek and facial balancing (not tear trough). Send in staggered daily batches from 19 October so replies stay inside one diary; hold overflow on the waitlist with Priority Access."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. You got in touch about lip or dermal filler, so I wanted you to hear first: my new Winchester clinic opens on 2 November, and I am holding a few consultation times in the opening fortnight for people who enquired early. A consultation is a proper sit-down with me to talk through what you are after and whether filler is the right option for you, with no pressure to have anything done on the day. Would you like me to hold one? Reply YES and I will send you some times. Abi"
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "A consultation held for you in Winchester, {{contact.first_name}}"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nIt is Abi here. A little while ago you got in touch about lip or dermal filler, and I did not want you to miss this: my new Winchester clinic opens on 2 November, and I am setting aside a small number of consultation times in the first fortnight for the people who enquired early.\n\nI work consultation-first, always. That means we sit down together, I look at your face as a whole, I listen to what you would like to change, and I tell you honestly what I would and would not recommend. Sometimes that is filler, sometimes it is something gentler, and sometimes it is nothing at all for now. There is never any pressure to go ahead on the day.\n\nSo you can plan, lip and dermal filler starts at 180 pounds for 0.5ml and 300 pounds for 1ml, and I will always talk you through costs openly before anything is booked.\n\nWould you like me to hold a consultation for you? Just reply to this email or text me on 07849 989869 and I will send you some times.\n\nWarmly,\nAbi\nAbi Peters Skin Clinic, Winchester"
+      },
+      {
+        "h": "CONSENT / CLAIMS",
+        "b": "No before-and-after images and no promised results; the invite sells the honest consultation, not an outcome. Prices quoted are the real Winchester list: 0.5ml 180 pounds, 1ml 300 pounds."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This is the warm list most likely to book, so meter the send: a daily batch sized to the consultation slots actually available, waitlist the rest, and never let accepted YES replies exceed the opening-fortnight white space that one nurse can serve."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "October pre-book invite, email",
+    "detail": "Warm October email to the expression segment, offering to reserve a first-week November consultation with Abi.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-20",
+    "sortOrder": 82,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "These leads already told us what is on their mind, so we do not restart the funnel. We write to them once, personally, before opening, and offer to hold a first-week slot. The value is priority and Abi's honest attention, not a discount. This is one of the tracks that fills paid white space directly rather than waiting for a free analysis to convert."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "A first-week appointment with Abi, held for you"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hello {{contact.first_name}},\n\nThank you for getting in touch about the lines and the expression changes you had been noticing. I am Abi, the nurse behind the new Winchester clinic, and I wanted to write to you myself before we open.\n\nWhen you enquired you mentioned you had been feeling as though you look a little tired or cross, even when you are not. That is one of the most common things people raise with me, and it is exactly the sort of thing I like to sit down and talk through properly before anyone decides on anything at all.\n\nOur doors open on 2 November. I am keeping a small number of first-week consultation appointments for the people who reached out early, and I would like to hold one for you. A consultation is simply a proper conversation. I look at your skin, I listen to what is bothering you, and I give you my honest view on what would help, what would not, and what I would happily leave alone. There is no pressure to book anything on the day.\n\nIf you would like me to reserve a first-week slot, just reply to this message or use the button below, and we will find a time that suits you.\n\nWarmly,\nAbi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Send in tranches against the first-week ceiling, not all at once. Once the held first-week consultations are gone, switch later replies to the next available week rather than overpromising. One nurse, so the diary is the constraint we protect."
+      },
+      {
+        "h": "NOTE",
+        "b": "Copy leads entirely with the concern the lead themselves raised and invites a consultation only. It names no treatment, toxin or brand, and promises no result. The raw Treatment Interest value is never quoted back, only the safe concern language."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Membership invite for ongoing-care leads",
+    "detail": "October pre-book note to warm leads who want a routine, not a one-off.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-20",
+    "sortOrder": 83,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Send to saved segment 3: warm leads, Marketing Opt In yes, whose mapped Treatment Interest cluster is ongoing skin care (skin boosters, facials, skin plans, general skin). Map through the allow list only and never merge the raw Treatment Interest text into the copy."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "Some people do not want a single treatment, they want someone to look after their skin over time. For them the plan is the product, offered before the doors open so a founder place is genuinely reserved."
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Subject: A plan for your skin, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nYou got in touch about looking after your skin, and it sounds like you are after a routine rather than a one-off. That is exactly what The Skin Plan is for.\n\nIt is a monthly place kept in my diary for you: a skin treatment each month and a device rescan with written notes, so we build results steadily and you can see them. It is £115 a month, and as one of my first Winchester clients you can lock in the founder rate of £95 a month for as long as you stay. There are only thirty founder places, and they are going before we open on the first of November.\n\nIf you would like me to hold one for you, just reply and I will note your name. We will still start with a proper consultation so the plan fits your skin, never the other way round.\n\nAbi"
+      },
+      {
+        "h": "CONSENT",
+        "b": "Marketing Opt In yes only. No prescription treatment named, no result promised, a plan and a consultation only. Safe to send."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "October pre-book invite, SMS or WhatsApp",
+    "detail": "Short October text version for enquirers who prefer a message, holding a first-week consultation.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-22",
+    "sortOrder": 84,
+    "deep": [
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it's Abi from the new Winchester skin clinic. Thank you for enquiring about those lines and the tired look you mentioned. We open on 2 November and I am keeping a few first-week consultations for early enquirers. Would you like me to hold one for you? It is just an honest look and my advice, with no pressure to book anything on the day. Reply YES and I will find you a time. Reply STOP to opt out."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Same first-week ceiling as the email. Text and email share one pool of held slots, so decrement both from the same count to avoid double-booking Abi."
+      },
+      {
+        "h": "NOTE",
+        "b": "Concern-led, consultation-only, no medicine named, no result promised, STOP included for opt-out compliance."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Warm pre-book: tear trough and under-eye",
+    "detail": "October invite to the under-eye sub-cluster, consultation-critical, framed around looking tired rather than a promised fix.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-22",
+    "sortOrder": 85,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Segment win-filler-lip, warm split, mapped cluster tear trough, dark circles or under-eye only. A separate send from the lips invite because the under-eye is an advanced assessment: not everyone is suitable, so the copy leans harder on the honest consultation."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. You asked about the under-eye area, tired eyes or dark circles. My Winchester clinic opens on 2 November and I am holding a few consultation times early on. The under-eye is one area where a proper assessment really matters, because tear trough treatment suits some people and not others, and I would rather tell you honestly than book you in regardless. Shall I hold a consultation for you? Reply YES for times. Abi"
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "About those tired-looking eyes, {{contact.first_name}}"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nIt is Abi. You got in touch about the under-eye area, whether that was dark circles, a little hollowing, or just looking tired when you feel perfectly fine. My new Winchester clinic opens on 2 November, and I am keeping some consultation times free in the opening fortnight for early enquirers like you.\n\nI want to be straight with you about the under-eye, because it is the area I am most careful with. Tear trough treatment can help some people and is not right for others, and the only way to know is to look properly, in person. So the first step is always a consultation: I assess the area, explain what is realistic, and tell you honestly if I do not think it is the right route for you. No pressure, and nothing done on the day unless you are certain.\n\nSo you can plan, a tear trough treatment is 430 pounds, and we would only ever get there after that honest conversation.\n\nWould you like me to hold a consultation for you? Reply here or text 07849 989869 and I will send some times.\n\nWarmly,\nAbi\nAbi Peters Skin Clinic, Winchester"
+      },
+      {
+        "h": "CONSENT / CLAIMS",
+        "b": "No promised outcome and no before-and-after; suitability is explicitly framed as uncertain until assessed in person. The price stated is the real Winchester tear trough price, 430 pounds."
+      },
+      {
+        "h": "NOTE",
+        "b": "If a contact mapped here only on a bare dark circles or tired term that could equally be a skincare concern, it is fine for this consultation to conclude in a skin plan instead. Record the real outcome so the parallel nurture follows the genuine need."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Skin leads WhatsApp and SMS nudge for an early slot",
+    "detail": "Gently nudge Skin Focus leads who did not act on the email, with a ready-to-submit WhatsApp template and an SMS fallback.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-10-18",
+    "dayDate": "2026-10-22",
+    "sortOrder": 86,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Tag Skin Focus, did not open or click the 13 October invite within five days, Marketing Opt In true. Send WhatsApp where connected, SMS where not. David builds and fires it, the words are Abi's."
+      },
+      {
+        "h": "WHATSAPP TEMPLATE, ready to submit, marketing category",
+        "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. Our Winchester clinic opens on 2 November and I am holding a few early skin appointments for the people who enquired first. If you would still like a proper look at your skin and an honest plan, reply YES and I will send you a time. No pressure at all."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Abi Peters Skin Clinic: hi {{contact.first_name}}, we open in Winchester on 2 Nov and I am holding a few early skin appointments. Reply YES for a time, or STOP to opt out."
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "A YES reply moves the opportunity to Skin, booked once a time is agreed, tags Skin Focus Booked, and ends the nudge. No reply after this step leaves the contact in the from-opening nurture, it does not chase them again before launch."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This reaches the leads most likely to fill a slot, so watch the diary as replies land. Once the opening fortnight is full, change the ask from a time to the waitlist wording, still one nurse only."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "From-opening consultation invite, email",
+    "detail": "Opening-week email to the expression segment inviting a consultation with Abi now the doors are open.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 87,
+    "deep": [
+      {
+        "h": "SUBJECT",
+        "b": "We are open, and there is a chair here for you"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hello {{contact.first_name}},\n\nWe are officially open in Winchester, and I have not forgotten that you got in touch about the expression lines and that slightly tired look that had been on your mind.\n\nIf it is still something you would like to do something about, the best first step is a consultation with me. We sit down together, I assess your skin and the way it moves when you talk and smile, and I tell you honestly what I think will help, what will not, and what I would leave well alone. Some people leave with a plan. Some leave reassured that they need very little. Both are completely fine, and there is never any pressure either way.\n\nIf you would like to come in, reply to this message or book a consultation using the link below, and I will look after you from there.\n\nWarmly,\nAbi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Runs across 2 to 9 November alongside the analysis nurture. Keep an eye on the paid diary daily. If consultation slots fill, pause the send rather than let replies wait, because a slow or apologetic reply undoes the warmth of the invite."
+      },
+      {
+        "h": "NOTE",
+        "b": "Opens on the concern the lead raised, invites a consultation, names no treatment, toxin or brand, and makes no promise of outcome. Explicitly offers reassurance and a no as valid outcomes, which keeps it advice-led rather than sales-led."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "From opening: doors are open, book your consultation",
+    "detail": "Opening-day message to any filler-lip contact not yet booked, warm and cold, honest and no-pressure.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 88,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Segment win-filler-lip, anyone without a Consultation booked stage. Sends on opening day, 2 November. Suppress anyone who already replied YES or booked from the October warm invite."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, Abi here: my Winchester clinic is officially open. You enquired about lip or dermal filler a while back, so if the timing is better now, I would love to see you for a consultation. No pressure, just an honest chat about whether it is right for you. Text me on 07849 989869 or reply YES and I will send some times. Abi"
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "We are open in Winchester, {{contact.first_name}}"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nIt is Abi, with a quick and happy update: my new Winchester clinic is now open.\n\nYou got in touch a while ago about lip or dermal filler. Life gets busy and timing is everything, so if now suits you better, the door is open. The first step is always a relaxed consultation with me: I look at the whole picture, listen to what you would like, and give you my honest view, including when the answer is not to treat. You are never committed to anything on the day.\n\nIf you would like to come in, just reply to this email or text me on 07849 989869 and I will find you a time that works.\n\nWarmly,\nAbi\nAbi Peters Skin Clinic, Winchester"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "The opening-week diary is tight and shared with the free analyses, so release these invitations in daily batches and route accepted bookings into the paid white-space slots only, waitlisting once the fortnight fills."
+      },
+      {
+        "h": "CONSENT / CLAIMS",
+        "b": "No result claims and no imagery; the ask is the consultation, and the honest no-pressure framing is the whole point."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Opening day: booster appointment ready (email)",
+    "detail": "2 November email telling the skin-quality segment the Winchester clinic is open and their appointment is ready to book.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 89,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "First from-opening touch to tag track-boosters-regen. Converts the warm intent into a booked consultation or first treatment now that the clinic is live. Names the non-POM treatments plainly, stays consultation-first."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "We are open in Winchester, and your skin appointment is ready"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nWe are open. Our nurse-led skin clinic on Jewry Street, Winchester welcomed its first clients today, and the appointment you were thinking about, for skin quality and glow, is ready to book.\n\nIf dull, dehydrated or tired-looking skin is what you want to work on, this is where we start. Skin boosters and regenerative treatments, such as Profhilo, Skinvive and polynucleotides, hydrate and improve the skin from within and build over a few weeks into a natural, healthy glow. For texture and firmness, microneedling, with exosomes applied afterwards to support recovery, is another route we might take.\n\nEverything begins with a consultation with me. I will assess your skin, talk you through the options honestly, and we decide together, if at all. No pressure, ever.\n\n[Book my consultation]\n\nI look forward to seeing you on Jewry Street.\n\nAbi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This lands the same week as the free-analysis launch, so paid slots are tight. Keep an honest waitlist ready and stagger bookings across the fortnight rather than promising same-week times we cannot staff."
+      },
+      {
+        "h": "NOTE",
+        "b": "Exosomes described as applied afterwards to support recovery, never injected. No result guaranteed, no discount, no POM named."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Opening week: the skin menu is live in Winchester",
+    "detail": "From-opening nurture email to the Skin Focus segment, tying the free November analysis to a bookable paid skin appointment.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 90,
+    "deep": [
+      {
+        "h": "GOAL",
+        "b": "On opening day, turn warm skin interest into booked paid appointments, and use the free AI Skin Analysis, free to everyone in November, as the reason to come in now rather than later."
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "We are open. Your skin appointment is ready to book"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hello {{contact.first_name}},\n\nWe are open. From today you can book your skin appointment at 9A Jewry Street, Winchester.\n\nYou told us your skin was on your mind, so here is exactly what that first visit looks like. We start with a proper assessment, including a complimentary AI Skin Analysis all through November, then I talk you through what would genuinely help. That might be microneedling, a chemical peel, one of our medical facials, or a skincare plan to follow at home. You decide what happens next, and there is never any pressure.\n\nBook here: {link}\n\nThe opening diary is limited to what one nurse can do well, so if your first choice of time has gone, ask me to add you to the waitlist and I will fit you in as soon as I can.\n\nSee you soon,\nAbi"
+      },
+      {
+        "h": "NOTE",
+        "b": "The complimentary analysis is the free hero asset and it is what makes this paid booking easy to say yes to. Keep the two joined all month: every skin appointment opens with the analysis. Still no result guarantees, and no client faces or before and after in any follow-up without written consent."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This lands on launch day alongside the general opening sends, so it will pull hard. Hold back wave two of the Skin Focus segment by a few days, and move to the waitlist the moment weeks one and two fill."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Post-treatment membership invite",
+    "detail": "The message that turns a happy first treatment into a booked monthly slot.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 91,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Lead with the plan and the protected slot, never a saving. A member is booked in before they leave, which is the recurring slot that fills the white space between the capped free analyses."
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Subject: Keeping your results going, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nIt was lovely to look after you. Skin does best with a little and often rather than one big push, so the clients who see the steadiest results are usually the ones on a plan.\n\nThe Skin Plan is a monthly place in my diary kept just for you: one skin treatment each month, plus a device rescan with written notes so we can both see how your skin is actually changing. It is £115 a month, and as one of my first Winchester clients you can lock in the founder rate of £95 a month for as long as you stay. There are only thirty founder places.\n\nIf you would like a little more, Skin Plan Advanced at £185 a month adds a deeper quarterly session. And if you simply want to keep your glow ticking over, Skin Circle at £19 a month gives you a monthly LED session and member pricing on your skincare.\n\nNo pressure at all. Have a read, and reply here or text me and I will hold your place.\n\nAbi"
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, it was lovely to look after you. If you would like to keep your results going, The Skin Plan holds you a monthly slot with me plus a skin rescan, founder rate £95 a month for my first thirty Winchester clients. Happy to hold you a place, no pressure. Just reply here. Abi"
+      },
+      {
+        "h": "CONSENT",
+        "b": "Send only to contacts with Marketing Opt In yes. The copy names no prescription treatment and promises no result. It offers a plan and a place, which are services, so it is safe to send."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "In-clinic membership conversation",
+    "detail": "What Abi says at the end of a first treatment or analysis to offer the plan in person.",
+    "channel": "found",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 92,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "The strongest sign-ups happen in the room, not by email. The email and SMS are the safety net for anyone Abi did not get to in person. Offer it warmly, once, and let them decide."
+      },
+      {
+        "h": "SCRIPT",
+        "b": "At the end of the appointment, while writing notes: 'Your skin has responded really well. The clients who keep this going tend to do it with a plan rather than booking in fits and starts. I keep a monthly slot for plan clients, so you would have a set time with me each month and I rescan your skin so we can both see it changing. It is £115 a month, and because you are one of my first Winchester clients I can hold the founder rate of £95 for you, there are only thirty of those. Would you like me to keep one for you?' If they hesitate: 'No pressure at all, have a think. Shall I pop a place on hold for a week so you do not miss the founder rate?'"
+      },
+      {
+        "h": "WRITE-BACK",
+        "b": "If they say yes in clinic, David sets up the GoCardless plan and tags the contact member-skin-plan. If they want to think it over, tag membership-offered so the follow-up email does not repeat the ask cold."
+      },
+      {
+        "h": "NOTE",
+        "b": "This is the public ladder only. The private Frown Free Club and any prescription-only treatment stay out of this conversation entirely."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Opening-week post: why I consult before any filler",
+    "detail": "Consultation-first education post for opening week, names filler and lips plainly, no before-and-after.",
+    "channel": "social",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-04",
+    "sortOrder": 93,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "A public, POM-safe post that names filler and lips plainly and sells the honest consultation, not a result. It reinforces the same message the warm and opening nurtures carry, so the paid track and the social feed say one thing. Runs in the Wednesday human slot in opening week."
+      },
+      {
+        "h": "CAPTION COPY",
+        "b": "Here is something I say to almost everyone who comes in about lip or dermal filler: let us have a proper conversation first.\n\nA consultation with me is not a sales pitch. I look at your whole face, I listen to what is bothering you, and I tell you honestly what I would recommend, which is sometimes filler, sometimes something gentler, and sometimes nothing at all for now. You never have to decide anything on the day.\n\nMy new Winchester clinic is open, and a consultation is the first step for filler, lips, cheeks and the under-eye area. If you have been thinking about it, come and talk it through with no pressure.\n\nDrop me a message or call 07849 989869. Abi x"
+      },
+      {
+        "h": "CONSENT / CLAIMS",
+        "b": "No before-and-after and no client images unless written consent is on file; no promised outcomes. The post leads with the concern and the consultation, and names only non-POM treatments (filler, lips, cheeks, under-eye)."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "If the post drives more consultation requests than the opening-fortnight white space holds, David waitlists with Priority Access rather than overbooking Abi's single-nurse diary."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Opening week: booster appointment (WhatsApp)",
+    "detail": "Opening-week WhatsApp nudge for the skin-quality segment who have not yet booked.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-04",
+    "sortOrder": 94,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Second from-opening touch, WhatsApp, to segment members not yet booked. Warm, direct, easy to reply. Abi handles the thread and finds a time."
+      },
+      {
+        "h": "WHATSAPP TEMPLATE COPY",
+        "b": "Hi {{contact.first_name}}, Abi here. We are now open in Winchester on Jewry Street. Your appointment for skin quality and glow is ready whenever you are. It starts with an honest consultation, with no pressure to book anything on the day. Shall I find you a time this fortnight? Reply and I will help."
+      },
+      {
+        "h": "NOTE",
+        "b": "Use an approved WhatsApp template. No POM, no discount, no promised result. Map to the from-opening nurture step for tag track-boosters-regen."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Send in line with remaining paid slots for the fortnight. If full, offer the waitlist rather than an appointment we cannot honour."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Post: the skin treatments now open in Winchester",
+    "detail": "Wednesday treatment post naming the non-POM skin menu plainly, one call to action to book a skin appointment.",
+    "channel": "social",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-04",
+    "sortOrder": 95,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Organic support for the skin track in launch week. These treatments are not prescription-only, so name them plainly and openly, unlike anything in the anti-wrinkle track. Hook first, one call to action, local hashtags in the first comment."
+      },
+      {
+        "h": "CAPTION COPY",
+        "b": "Your skin, looked at properly.\n\nNow open at 9A Jewry Street, Winchester. If your skin has been on your mind, breakouts, texture, dullness, pigmentation or redness, come in for a proper assessment and an honest plan. Depending on what your skin needs, that could be microneedling, a chemical peel, one of our medical facials, or a simple routine to follow at home. Every visit this month starts with a complimentary AI Skin Analysis.\n\nNo pressure, no promises I cannot keep, just a nurse led look and clear advice.\n\nTap the link to book, or send me a message.\n\nAbi"
+      },
+      {
+        "h": "FIRST COMMENT, hashtags",
+        "b": "#WinchesterSkinClinic #WinchesterFacials #HampshireSkin #Winchester #SkinHealth #JewryStreet"
+      },
+      {
+        "h": "SHOT LIST",
+        "b": "Treatment room, the analysis machine, Abi to camera talking about the first visit. Warm, calm, unhurried, no salesy energy."
+      },
+      {
+        "h": "CONSENT",
+        "b": "No client faces and no before and after without written consent. Use Abi, the room and the machine only unless a signed consent is on file."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Organic reach is small and warm, so this is a light demand source. If it does pull, point overflow to the waitlist rather than opening more of one nurse's diary."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Membership as the next step after an analysis",
+    "detail": "For clients who came for the free analysis: offer the plan, not just a single treatment.",
+    "channel": "email",
+    "owner": "abi",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-04",
+    "sortOrder": 96,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Enrol from segment 2: attended a free AI Skin Analysis, no membership tag, Marketing Opt In yes. Sends the day after the analysis, alongside and not instead of the normal analysis nurture."
+      },
+      {
+        "h": "STRATEGY",
+        "b": "The analysis is capped at about twelve a week and makes no money, so its job is to open a door. For anyone whose scan showed things worth working on over time, the honest next step is a plan, not a single appointment. This runs in parallel with the analysis nurture and simply adds the membership door."
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Subject: What your scan showed us, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nThank you for coming in for your skin analysis. The things your scan picked up are the kind that respond best to steady care over a few months rather than one appointment, so I wanted to mention the plan built for exactly that.\n\nThe Skin Plan keeps you a monthly slot with me: one skin treatment a month and a device rescan with written notes, so at each visit we can both see what your skin is actually doing. It is £115 a month, with a founder rate of £95 for my first thirty Winchester clients.\n\nIf a full plan is more than you want right now, Skin Circle at £19 a month keeps things ticking over with a monthly LED session and member pricing on your skincare, a gentle way to stay in a routine.\n\nNo rush and no pressure. If you would like me to hold a place, just reply.\n\nAbi"
+      },
+      {
+        "h": "CONSENT",
+        "b": "Marketing Opt In yes only. Describes what the scan flagged in general terms, names no prescription treatment and promises no result. Safe to send."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "From-opening consultation nudge, SMS",
+    "detail": "Gentle opening-week text to segment members who have not yet replied, offering a consultation time.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-06",
+    "sortOrder": 97,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Send only to expression-segment contacts who received the 2 November email, are still Marketing Opt In = yes, and have not replied or booked. One nudge only, then leave them in the standing nurture."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, Abi here at the new Winchester clinic. We are open, and I still have a couple of consultation times this week if you would like to talk through those lines you mentioned. No pressure, just an honest look and my advice. Reply YES for a time. Reply STOP to opt out."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Only send if there are genuinely consultation times left in the week. If the diary is full, hold this message rather than offer time that does not exist."
+      },
+      {
+        "h": "NOTE",
+        "b": "Concern-led, consultation-only, no medicine named, no result promised, single nudge, STOP for opt-out. If they do not respond, they stay in the parallel analysis and skin nurture, they are not chased again on this track."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "From opening: gentle second touch",
+    "detail": "Soft single follow-up to filler-lip contacts who have not replied, with an easy opt-down.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-06",
+    "sortOrder": 98,
+    "deep": [
+      {
+        "h": "TRIGGER",
+        "b": "Segment win-filler-lip, no reply and no booking after the 2 November message. One gentle follow-up only, then stop. Honour any opt-down immediately."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, just a soft nudge from Abi: no rush at all, but if you would still like to talk through lip or dermal filler, my Winchester consultations are open and I am happy to hold you a time. If now is not right, no worries and I will leave you be. Just let me know either way. Abi"
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "No rush, {{contact.first_name}}, whenever you are ready"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nA gentle follow-up, and genuinely no pressure. I know an enquiry from a while back does not always mean the time is right now, and that is completely fine.\n\nIf you would still like to talk through lip or dermal filler, my Winchester consultations are open and I would be glad to hold you a time. A consultation is just an honest conversation with me about whether it is the right thing for you, nothing more until you are ready.\n\nAnd if now is not the moment, that is absolutely fine too. Just reply and say so and I will not keep nudging. You can always come back when it suits.\n\nWarmly,\nAbi\nAbi Peters Skin Clinic, Winchester"
+      },
+      {
+        "h": "NOTE",
+        "b": "This is the last touch in the paid filler-lip track. After it, contacts fall back to the general analysis nurture that runs in parallel; they are not chased again on filler specifically."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Turn skin bookings into a monthly Skin Plan",
+    "detail": "Invite opening-week skin clients into a membership to pre-book recurring slots and fill the paid white space.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-06",
+    "sortOrder": 99,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "A membership is a pre-booked recurring slot, the single best way to fill the white space between the free analyses and to keep a skin client past a single treatment. Offer it at the end of a first skin appointment and by this email to everyone who booked skin in opening week. David sets up the recurring billing and slot, Abi is the voice and makes the recommendation."
+      },
+      {
+        "h": "EMAIL SUBJECT",
+        "b": "The simplest way to keep your skin moving in the right direction"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hello {{contact.first_name}},\n\nIt has been lovely to see your skin getting the attention it deserves. If you would like to keep it going, a membership is the easiest way, and it holds a regular slot in the diary just for you.\n\nSkin Circle, 19 a month: one LED session each month, plus member pricing on your skincare. Cancel any time. The easy first step.\n\nThe Skin Plan, founder rate 95 a month held for a full twelve months, 115 after that: a monthly skin treatment we choose together, plus a rescan on the analysis machine with written notes, so you can actually see your skin change month by month.\n\nThe Skin Plan Advanced, 185 a month: everything in The Skin Plan, with a microneedling or exosome session every quarter.\n\nThere is no lock in beyond the month you are in, and I will only ever suggest the level that genuinely suits your skin and your budget. Reply and tell me which sounds right, and I will set it up.\n\nWarmly,\nAbi"
+      },
+      {
+        "h": "SCRIPT, in-clinic ask",
+        "b": "If you enjoyed today and want to keep it up, the easiest way is our Skin Circle at 19 a month, one LED session and member pricing on your skincare. If you would like a proper plan, The Skin Plan holds you a monthly treatment and a rescan for 95 a month as a founder, held for a year. No rush at all, have a think, and I can set it up before you leave or drop you a note."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Members hold recurring slots, so cap founder Skin Plan and Skin Plan Advanced places to protect the single-nurse diary and track them against the 18 to 23 weekly paid appointments. Once the recurring diary is full, pause the monthly-treatment tiers and keep only Skin Circle open, as its LED session is quick and light on nurse time. This is exactly the retention that lets a second skin-focused clinician be justified before January."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Skin Circle as the easy yes",
+    "detail": "A GBP 19 monthly on-ramp so no warm lead leaves empty-handed.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-06",
+    "sortOrder": 100,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Not everyone will commit to a full monthly treatment plan, and that is fine. Skin Circle at £19 is the easy yes: a monthly LED session brings them back through the door every month, which is a booked slot and a habit, and many step up to The Skin Plan later. It keeps the relationship rather than losing the lead to nothing."
+      },
+      {
+        "h": "TRIGGER",
+        "b": "Offer Skin Circle to anyone tagged membership-offered who declined The Skin Plan, and to direct Skin Circle enquirers. On sign-up David sets the GoCardless plan and tags member-skin-circle."
+      },
+      {
+        "h": "SMS COPY",
+        "b": "Hi {{contact.first_name}}, no problem at all if a full plan is not right just now. Skin Circle is a gentler option at £19 a month: a monthly LED session to keep your skin ticking over, plus member pricing on your skincare, and you can stop any time. Would you like me to set it up? Abi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Skin Circle is one LED session a month, light on nurse time, so it can safely carry more members than the treatment plans. It is the right home for overflow demand that the capped analyses and the thirty founder plan places cannot absorb."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Opening week nurture: what good skin quality means (email)",
+    "detail": "Educational from-opening email for the skin-quality segment who have not booked, explaining the regenerative options honestly.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-07",
+    "sortOrder": 101,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "Third from-opening touch, for non-bookers. No hard sell. Teaches what skin boosters and regenerative treatments actually do, sets honest expectations (builds over weeks, best after a short course), and invites a consultation. Keeps the segment warm without pressure."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "What good skin quality actually means, and how we build it"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nA quick note, and no hard sell.\n\nWhen people tell me they want their glow back, they usually mean skin that looks hydrated, even and awake, rather than anything dramatic. That is the whole idea behind skin boosters and regenerative treatments.\n\nThey are not fillers and they do not change your shape. Profhilo and Skinvive spread soft hydration through the skin for bounce and light. Polynucleotides support the skin's own repair and quality over a course. Microneedling, sometimes finished with exosomes applied to the surface to aid recovery, works on texture and fine lines. Results build over two to four weeks and are usually best after a short course.\n\nThe honest part is that the right choice depends entirely on your skin, which is why we always start with a consultation and never a menu. If you would like me to take a look, I am now seeing clients in Winchester.\n\n[Book a consultation]\n\nAbi"
+      },
+      {
+        "h": "NOTE",
+        "b": "Exosomes applied to the surface, never injected. Results framed as building over weeks and varying between people, never guaranteed. No POM, no discount."
+      },
+      {
+        "h": "CAPACITY",
+        "b": "This is a soft nurture, not a push, so it is safe to send to the whole non-booked segment. Bookings still land on the honest waitlist once the fortnight's paid slots are full."
+      }
+    ]
+  },
+  {
+    "category": "diary",
+    "title": "Next step: The Skin Plan for booster clients (email)",
+    "detail": "Membership email offering booster and regenerative clients a pre-booked recurring monthly slot as their next step.",
+    "channel": "email",
+    "owner": "both",
+    "weekStart": "2026-11-08",
+    "dayDate": "2026-11-09",
+    "sortOrder": 102,
+    "deep": [
+      {
+        "h": "STRATEGY",
+        "b": "A membership is a pre-booked recurring slot, so it is the single best way to fill the paid white space and retain. Sent to booster-track contacts who have booked or attended a first appointment, positioning consistency, not a one-off, as the way to hold skin quality. Public, no POM, promotable freely."
+      },
+      {
+        "h": "SUBJECT",
+        "b": "The simplest way to keep your skin at its best"
+      },
+      {
+        "h": "EMAIL COPY",
+        "b": "Hi {{contact.first_name}},\n\nIf skin quality is your goal, the thing that makes the biggest difference is not a single treatment, it is consistency.\n\nThat is what The Skin Plan is for. It is our monthly membership for people who want to look after their skin properly over time:\n\n- A skin treatment every month, chosen for where your skin is that month\n- A device rescan with written notes, so we can see the change rather than guess at it\n- Priority booking and member pricing\n\nThe Skin Plan is 115 pounds a month in Winchester, and as a founding member you can hold the founder rate of 95 pounds a month. If you would like a lighter option, Skin Circle is 19 pounds a month, with a monthly LED session and a standing member saving on your skincare. There is also Skin Plan Advanced at 185 pounds a month, which adds a quarterly microneedling or exosome session for skin that needs a little more.\n\nNo lock-in, and you can cancel any time. We can set it up at your appointment, or reply here and I will explain how it would work for your skin.\n\nAbi"
+      },
+      {
+        "h": "CAPACITY",
+        "b": "Memberships book a recurring slot, so each one permanently reserves diary time. Onboard founding members in a staggered way so the monthly slots stay serviceable by one nurse; flag to David when recurring commitments start crowding out new-client capacity."
+      },
+      {
+        "h": "NOTE",
+        "b": "Public and no POM. No percentage figure is quoted in the copy, member benefits are stated as founder pricing and a standing member saving. The private Frown Free Club is never mentioned here. Founder rate held for 12 months per the launch terms."
+      }
+    ]
+  },
+  {
     "category": "retarget",
     "title": "Decision 1: cut cold prospecting from £19.34 to £8 a day",
     "detail": "Reclassify the live prospecting ad set as evergreen diary fill, not founding acquisition.",
@@ -1423,7 +2675,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 63,
+    "sortOrder": 103,
     "deep": [
       {
         "h": "DECISION",
@@ -1447,7 +2699,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 64,
+    "sortOrder": 104,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1471,7 +2723,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 65,
+    "sortOrder": 105,
     "deep": [
       {
         "h": "NOTE",
@@ -1491,7 +2743,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-07",
-    "sortOrder": 66,
+    "sortOrder": 106,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1511,7 +2763,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 67,
+    "sortOrder": 107,
     "deep": [
       {
         "h": "DECISION",
@@ -1535,7 +2787,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 68,
+    "sortOrder": 108,
     "deep": [
       {
         "h": "DECISION",
@@ -1563,7 +2815,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-18",
-    "sortOrder": 69,
+    "sortOrder": 109,
     "deep": [
       {
         "h": "STEPS",
@@ -1583,7 +2835,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 70,
+    "sortOrder": 110,
     "deep": [
       {
         "h": "NOTE",
@@ -1607,7 +2859,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 71,
+    "sortOrder": 111,
     "deep": [
       {
         "h": "STEPS",
@@ -1623,7 +2875,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 72,
+    "sortOrder": 112,
     "deep": [
       {
         "h": "CONSENT",
@@ -1643,7 +2895,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 73,
+    "sortOrder": 113,
     "deep": [
       {
         "h": "STEPS",
@@ -1659,7 +2911,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 74,
+    "sortOrder": 114,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -1675,7 +2927,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 75,
+    "sortOrder": 115,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -1695,7 +2947,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 76,
+    "sortOrder": 116,
     "deep": [
       {
         "h": "TARGETING",
@@ -1715,7 +2967,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 77,
+    "sortOrder": 117,
     "deep": [
       {
         "h": "NOTE",
@@ -1731,7 +2983,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-25",
-    "sortOrder": 78,
+    "sortOrder": 118,
     "deep": [
       {
         "h": "BUDGET",
@@ -1751,7 +3003,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-08",
-    "sortOrder": 79,
+    "sortOrder": 119,
     "deep": [
       {
         "h": "STRATEGY",
@@ -1783,7 +3035,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 80,
+    "sortOrder": 120,
     "deep": [
       {
         "h": "DECISION",
@@ -1807,7 +3059,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 81,
+    "sortOrder": 121,
     "deep": [
       {
         "h": "STEPS",
@@ -1827,7 +3079,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 82,
+    "sortOrder": 122,
     "deep": [
       {
         "h": "STEPS",
@@ -1847,7 +3099,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 83,
+    "sortOrder": 123,
     "deep": [
       {
         "h": "TRIGGER",
@@ -1863,7 +3115,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 84,
+    "sortOrder": 124,
     "deep": [
       {
         "h": "NOTE",
@@ -1895,7 +3147,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 85,
+    "sortOrder": 125,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1915,7 +3167,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 86,
+    "sortOrder": 126,
     "deep": [
       {
         "h": "STEPS",
@@ -1935,7 +3187,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-14",
-    "sortOrder": 87,
+    "sortOrder": 127,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1951,7 +3203,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 88,
+    "sortOrder": 128,
     "deep": [
       {
         "h": "NOTE",
@@ -1971,7 +3223,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 89,
+    "sortOrder": 129,
     "deep": [
       {
         "h": "MESSAGE",
@@ -1987,7 +3239,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-19",
-    "sortOrder": 90,
+    "sortOrder": 130,
     "deep": [
       {
         "h": "NOTE",
@@ -2011,7 +3263,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-18",
     "dayDate": "2026-10-21",
-    "sortOrder": 91,
+    "sortOrder": 131,
     "deep": [
       {
         "h": "MESSAGE",
@@ -2027,7 +3279,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 92,
+    "sortOrder": 132,
     "deep": [
       {
         "h": "NOTE",
@@ -2059,7 +3311,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 93,
+    "sortOrder": 133,
     "deep": [
       {
         "h": "MESSAGE",
@@ -2079,7 +3331,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-27",
-    "sortOrder": 94,
+    "sortOrder": 134,
     "deep": [
       {
         "h": "STEPS",
@@ -2099,7 +3351,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-02",
-    "sortOrder": 95,
+    "sortOrder": 135,
     "deep": [
       {
         "h": "MESSAGE",
@@ -2115,7 +3367,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-11-01",
     "dayDate": "2026-11-03",
-    "sortOrder": 96,
+    "sortOrder": 136,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2151,7 +3403,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 97,
+    "sortOrder": 137,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2183,7 +3435,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 98,
+    "sortOrder": 138,
     "deep": [
       {
         "h": "DECISION",
@@ -2207,7 +3459,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 99,
+    "sortOrder": 139,
     "deep": [
       {
         "h": "STEPS",
@@ -2231,7 +3483,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 100,
+    "sortOrder": 140,
     "deep": [
       {
         "h": "DECISION",
@@ -2251,7 +3503,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 101,
+    "sortOrder": 141,
     "deep": [
       {
         "h": "DECISION",
@@ -2271,7 +3523,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 102,
+    "sortOrder": 142,
     "deep": [
       {
         "h": "DECISION",
@@ -2291,7 +3543,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 103,
+    "sortOrder": 143,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2327,7 +3579,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 104,
+    "sortOrder": 144,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2363,7 +3615,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-12",
-    "sortOrder": 105,
+    "sortOrder": 145,
     "deep": [
       {
         "h": "STEPS",
@@ -2387,7 +3639,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 106,
+    "sortOrder": 146,
     "deep": [
       {
         "h": "RULE",
@@ -2407,7 +3659,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 107,
+    "sortOrder": 147,
     "deep": [
       {
         "h": "STEPS",
@@ -2431,7 +3683,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 108,
+    "sortOrder": 148,
     "deep": [
       {
         "h": "STEPS",
@@ -2451,7 +3703,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 109,
+    "sortOrder": 149,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2483,7 +3735,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 110,
+    "sortOrder": 150,
     "deep": [
       {
         "h": "STEPS",
@@ -2507,7 +3759,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 111,
+    "sortOrder": 151,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -2531,7 +3783,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 112,
+    "sortOrder": 152,
     "deep": [
       {
         "h": "BUDGET",
@@ -2555,7 +3807,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-22",
-    "sortOrder": 113,
+    "sortOrder": 153,
     "deep": [
       {
         "h": "TRIGGER",
@@ -2575,7 +3827,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-27",
     "dayDate": "2026-09-29",
-    "sortOrder": 114,
+    "sortOrder": 154,
     "deep": [
       {
         "h": "STEPS",
@@ -2595,7 +3847,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-13",
-    "sortOrder": 115,
+    "sortOrder": 155,
     "deep": [
       {
         "h": "STEPS",
@@ -2615,7 +3867,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 116,
+    "sortOrder": 156,
     "deep": [
       {
         "h": "WHY",
@@ -2639,7 +3891,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 117,
+    "sortOrder": 157,
     "deep": [
       {
         "h": "NOTE",
@@ -2671,7 +3923,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 118,
+    "sortOrder": 158,
     "deep": [
       {
         "h": "STRATEGY",
@@ -2691,7 +3943,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 119,
+    "sortOrder": 159,
     "deep": [
       {
         "h": "DECISION",
@@ -2719,7 +3971,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 120,
+    "sortOrder": 160,
     "deep": [
       {
         "h": "STEPS",
@@ -2739,7 +3991,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 121,
+    "sortOrder": 161,
     "deep": [
       {
         "h": "STEPS",
@@ -2755,7 +4007,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 122,
+    "sortOrder": 162,
     "deep": [
       {
         "h": "DECISION",
@@ -2771,7 +4023,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 123,
+    "sortOrder": 163,
     "deep": [
       {
         "h": "STEPS",
@@ -2787,7 +4039,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 124,
+    "sortOrder": 164,
     "deep": [
       {
         "h": "OFFER",
@@ -2823,7 +4075,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 125,
+    "sortOrder": 165,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -2843,7 +4095,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 126,
+    "sortOrder": 166,
     "deep": [
       {
         "h": "STEPS",
@@ -2879,7 +4131,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 127,
+    "sortOrder": 167,
     "deep": [
       {
         "h": "STEPS",
@@ -2895,7 +4147,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "abi",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 128,
+    "sortOrder": 168,
     "deep": [
       {
         "h": "CAPACITY",
@@ -2911,7 +4163,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 129,
+    "sortOrder": 169,
     "deep": [
       {
         "h": "WHY",
@@ -2931,7 +4183,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 130,
+    "sortOrder": 170,
     "deep": [
       {
         "h": "TARGETING",
@@ -2963,7 +4215,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 131,
+    "sortOrder": 171,
     "deep": [
       {
         "h": "STEPS",
@@ -2983,7 +4235,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-08",
-    "sortOrder": 132,
+    "sortOrder": 172,
     "deep": [
       {
         "h": "CAPACITY",
@@ -3003,7 +4255,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-09",
-    "sortOrder": 133,
+    "sortOrder": 173,
     "deep": [
       {
         "h": "STEPS",
@@ -3019,7 +4271,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 134,
+    "sortOrder": 174,
     "deep": [
       {
         "h": "AD COPY",
@@ -3051,7 +4303,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 135,
+    "sortOrder": 175,
     "deep": [
       {
         "h": "AD COPY",
@@ -3079,7 +4331,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 136,
+    "sortOrder": 176,
     "deep": [
       {
         "h": "STEPS",
@@ -3095,7 +4347,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-10",
-    "sortOrder": 137,
+    "sortOrder": 177,
     "deep": [
       {
         "h": "BUDGET",
@@ -3127,7 +4379,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-14",
-    "sortOrder": 138,
+    "sortOrder": 178,
     "deep": [
       {
         "h": "AUDIENCE",
@@ -3143,7 +4395,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 139,
+    "sortOrder": 179,
     "deep": [
       {
         "h": "STEPS",
@@ -3159,7 +4411,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-09-20",
     "dayDate": "2026-09-21",
-    "sortOrder": 140,
+    "sortOrder": 180,
     "deep": [
       {
         "h": "STRATEGY",
@@ -3187,7 +4439,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 141,
+    "sortOrder": 181,
     "deep": [
       {
         "h": "STEPS",
@@ -3203,7 +4455,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-25",
-    "sortOrder": 142,
+    "sortOrder": 182,
     "deep": [
       {
         "h": "STEPS",
@@ -3219,7 +4471,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-26",
-    "sortOrder": 143,
+    "sortOrder": 183,
     "deep": [
       {
         "h": "STEPS",
@@ -3235,7 +4487,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-25",
     "dayDate": "2026-10-30",
-    "sortOrder": 144,
+    "sortOrder": 184,
     "deep": [
       {
         "h": "STEPS",
@@ -3251,7 +4503,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 145,
+    "sortOrder": 185,
     "deep": [
       {
         "h": "STRATEGY",
@@ -3275,7 +4527,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 146,
+    "sortOrder": 186,
     "deep": [
       {
         "h": "LOCK",
@@ -3291,7 +4543,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 147,
+    "sortOrder": 187,
     "deep": [
       {
         "h": "DO NOT RE-ADD",
@@ -3311,7 +4563,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-02",
-    "sortOrder": 148,
+    "sortOrder": 188,
     "deep": [
       {
         "h": "TERMINOLOGY",
@@ -3331,7 +4583,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 149,
+    "sortOrder": 189,
     "deep": [
       {
         "h": "DECISION",
@@ -3351,7 +4603,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "david",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 150,
+    "sortOrder": 190,
     "deep": [
       {
         "h": "DECISION",
@@ -3371,7 +4623,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 151,
+    "sortOrder": 191,
     "deep": [
       {
         "h": "DECISION",
@@ -3391,7 +4643,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 152,
+    "sortOrder": 192,
     "deep": [
       {
         "h": "DECISION",
@@ -3411,7 +4663,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 153,
+    "sortOrder": 193,
     "deep": [
       {
         "h": "DECISION",
@@ -3431,7 +4683,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-03",
-    "sortOrder": 154,
+    "sortOrder": 194,
     "deep": [
       {
         "h": "DECISION",
@@ -3451,7 +4703,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 155,
+    "sortOrder": 195,
     "deep": [
       {
         "h": "DECISION",
@@ -3471,7 +4723,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-04",
-    "sortOrder": 156,
+    "sortOrder": 196,
     "deep": [
       {
         "h": "DECISION",
@@ -3491,7 +4743,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 157,
+    "sortOrder": 197,
     "deep": [
       {
         "h": "DECISION",
@@ -3511,7 +4763,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 158,
+    "sortOrder": 198,
     "deep": [
       {
         "h": "DECISION",
@@ -3531,7 +4783,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-08-30",
     "dayDate": "2026-09-05",
-    "sortOrder": 159,
+    "sortOrder": 199,
     "deep": [
       {
         "h": "DECISION",
@@ -3551,7 +4803,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 160,
+    "sortOrder": 200,
     "deep": [
       {
         "h": "DECISION",
@@ -3571,7 +4823,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-11",
-    "sortOrder": 161,
+    "sortOrder": 201,
     "deep": [
       {
         "h": "DECISION",
@@ -3591,7 +4843,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-06",
     "dayDate": "2026-09-12",
-    "sortOrder": 162,
+    "sortOrder": 202,
     "deep": [
       {
         "h": "DECISION",
@@ -3611,7 +4863,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-09-13",
     "dayDate": "2026-09-15",
-    "sortOrder": 163,
+    "sortOrder": 203,
     "deep": [
       {
         "h": "DECISION",
@@ -3631,7 +4883,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-04",
     "dayDate": "2026-10-09",
-    "sortOrder": 164,
+    "sortOrder": 204,
     "deep": [
       {
         "h": "DECISION",
@@ -3651,7 +4903,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "owner": "both",
     "weekStart": "2026-10-11",
     "dayDate": "2026-10-12",
-    "sortOrder": 165,
+    "sortOrder": 205,
     "deep": [
       {
         "h": "DECISION",
