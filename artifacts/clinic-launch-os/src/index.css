@@ -78,10 +78,10 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Abi Peters Skin Clinic brand — ivory body, deep navy ink
-     (tokens mirror the website: #1F2A44 ink, #F6F3ED ivory, #DFD4C3 sand,
-      #9FBBAF/#587F72 sage, #445B72 slate blue) */
-  --background: 40 33% 95%;
+  /* Abi Peters Skin Clinic brand — clean white/cool ground, deep navy ink
+     (the website's real --colour-bg is #FFFFFF, not ivory). Navy #1F2A44,
+     sage #7FA49A/#A7C0B6, slate #445B72. No warm cream ground. */
+  --background: 214 20% 98%;
   --foreground: 222 37% 19%;
 
   --border: 222 15% 88%;
@@ -109,11 +109,11 @@
   --primary: 222 37% 19%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary — warm sand wash */
-  --secondary: 36 30% 91%;
+  /* Secondary — cool neutral wash (no warm sand) */
+  --secondary: 214 16% 94%;
   --secondary-foreground: 222 37% 19%;
 
-  --muted: 40 25% 93%;
+  --muted: 214 16% 96%;
   --muted-foreground: 220 13% 41%;
 
   /* Accent — quiet sage wash (the website's interaction colour family) */
