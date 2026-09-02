@@ -145,6 +145,13 @@ function CopyBlock({ c }: { c: { title: string; sub: string; text: string } }) {
   );
 }
 
+// Copy a whole task (title, detail, every block, and the note) to the clipboard.
+function CopyAllButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const copy = () => { const fin = () => { setDone(true); setTimeout(() => setDone(false), 1600); }; if (navigator.clipboard?.writeText) navigator.clipboard.writeText(text).then(fin).catch(fin); else fin(); };
+  return <button onClick={copy} title="Copy the whole task, including your note" className={`shrink-0 flex items-center gap-1 text-[11px] font-semibold border rounded-lg px-2 py-1 transition-colors ${done ? "text-emerald-600 border-emerald-400" : "text-muted-foreground border-border hover:text-foreground"}`}>{done ? <><Check className="w-3 h-3" />Copied</> : <><Copy className="w-3 h-3" />Copy all</>}</button>;
+}
+
 // A single task, rendered as a channel-coded card
 function TaskCard({ it, onOpen, onStatus, big }: { it: Item; onOpen: () => void; onStatus: (s: Status) => void; big?: boolean }) {
   const ch = CHANNELS[it.channel] ?? CHANNELS.found;
@@ -499,6 +506,7 @@ export default function MarketingPage() {
                 const blocks = parseDeep(it.deep);
                 const kind = itemKind(it.title);
                 const isDone = it.status === "done" || kind === "done";
+                const fullText = [it.title, it.detail || "", ...blocks.map(b => `${b.h}\n${b.b}`), it.notes && it.notes.trim() ? `MY NOTE\n${it.notes.trim()}` : ""].filter(Boolean).join("\n\n");
                 return (
                   <div key={it.id} className={`rounded-xl border border-l-[3px] ${ch.bar} ${kind === "action" ? "" : "bg-muted/25"} p-4`}>
                     <div className="flex items-start gap-2.5">
@@ -522,6 +530,7 @@ export default function MarketingPage() {
                         <p className={`text-[15px] font-semibold leading-snug ${isDone ? "line-through text-muted-foreground" : ""}`}>{it.title}</p>
                         {it.detail && <p className="text-[12.5px] text-muted-foreground mt-1">{it.detail}</p>}
                       </div>
+                      <CopyAllButton text={fullText} />
                     </div>
                     {blocks.length > 0 ? (
                       <div className="mt-3 space-y-2">{blocks.map((b, i) => <BlockRow key={i} blk={b} />)}</div>
