@@ -38,6 +38,7 @@ async function reseed(projectId: number) {
 type ExistingItem = {
   id: number; title: string; detail: string; deep: string; category: string;
   channel: string; owner: string; weekStart: string; dayDate: string; sortOrder: number;
+  notes: string; status: string;
 };
 
 // Reconcile an already-seeded project against the current template WITHOUT wiping
@@ -71,11 +72,19 @@ async function syncTemplate(projectId: number, existing: ExistingItem[]) {
       } });
     }
   }
+  // Orphans: items whose title left the template (e.g. a task was renamed). Delete
+  // only UNTOUCHED ones (no notes, never started), so a rename replaces the default
+  // cleanly while anything the owner actually wrote on is preserved for review.
+  const templateTitles = new Set(PLAN_ITEMS.map(s => s.title));
+  const orphans = existing.filter(e => !templateTitles.has(e.title) && (!e.notes || !e.notes.trim()) && e.status === "not_started");
   if (inserts.length) await db.insert(marketingItemsTable).values(inserts);
   for (const u of updates) {
     await db.update(marketingItemsTable).set(u.patch).where(eq(marketingItemsTable.id, u.id));
   }
-  return inserts.length + updates.length;
+  for (const o of orphans) {
+    await db.delete(marketingItemsTable).where(eq(marketingItemsTable.id, o.id));
+  }
+  return inserts.length + updates.length + orphans.length;
 }
 
 // GET all items + waitlist count (auto-seeds when empty, else syncs new/changed template copy)

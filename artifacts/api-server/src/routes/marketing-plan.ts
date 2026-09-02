@@ -449,8 +449,8 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
-    "title": "B2: confirm the SMS sender is a two-way UK long code",
-    "detail": "The whole design is reply-based; an alphanumeric sender ID makes every gate fail silently.",
+    "title": "B2: confirm the WhatsApp sender and get the templates approved",
+    "detail": "The whole design is reply-based; WhatsApp is connected, so the job is the approved templates that let the first message send.",
     "channel": "found",
     "owner": "david",
     "weekStart": "2026-08-30",
@@ -459,18 +459,18 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "BLOCKER",
-        "b": "Confirm the SMS sender number is a two-way UK mobile long code that can receive replies. If it is an alphanumeric sender ID, contacts cannot reply, and every reply-gated step (autumn/next year, YES, KEEP, STOP) silently fails."
+        "b": "Confirm the WhatsApp Business number is connected in GHL and can send and receive. WhatsApp is already set up, so the real work is getting the business-initiated templates approved: every first outbound is a template, and each reply-gated step (autumn/next year, YES, KEEP, STOP) then runs free-form inside the 24 hour window."
       },
       {
         "h": "NOTE",
-        "b": "First outbound is always SMS (WhatsApp sessions are closed); WhatsApp only takes over once the contact has replied."
+        "b": "First outbound is always an approved WhatsApp template, because no session is open yet. Once the contact replies, the 24 hour window opens and the rest of the thread is free-form WhatsApp."
       }
     ]
   },
   {
     "category": "nurture",
-    "title": "B3: write the lawful basis for SMS and email",
-    "detail": "Retrieve the instant-form consent wording and record that it covers direct marketing by SMS and email.",
+    "title": "B3: write the lawful basis for WhatsApp and email",
+    "detail": "Retrieve the instant-form consent wording and record that it covers direct marketing by WhatsApp and email.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
@@ -479,11 +479,11 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "BLOCKER",
-        "b": "Write down the lawful basis once, covering both SMS and email. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by SMS and email, and record the date range."
+        "b": "Write down the lawful basis once, covering both WhatsApp and email. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by WhatsApp and email, and record the date range."
       },
       {
         "h": "WHY",
-        "b": "PECR reg 22 applies to SMS as it does to email. Some records predate 1 Sep 2026, so consent may have degraded. This is owner decision 6 in section 14. If consent covers email, Phase B goes to the whole Requested pool; if not, only to Marketing Opt In = Yes."
+        "b": "PECR reg 22 applies to WhatsApp marketing as it does to email. Some records predate 1 Sep 2026, so consent may have degraded. This is owner decision 6 in section 14. If consent covers email, Phase B goes to the whole Requested pool; if not, only to Marketing Opt In = Yes."
       }
     ]
   },
@@ -595,7 +595,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "DECISION",
-        "b": "1. How many days a week Abi is in Winchester (30 to 35 is her total across both clinics; at three days the real Winchester number is nearer 18 to 21 and the founding 40 take half). Decides whether C6 and D3 go to the whole list or a throttled slice, and fixes B2's wording. 2. The founding benefit is four elements; what does the twelve-month price hold cost (compute before B2 sends on 12 Oct). 3. How many complimentary analysis hours per week and what November must earn (cap at a stated number, 8 a sensible start; set a November revenue target). 4. Does Bedhampton keep running through November and who covers it. 5. Who answers messages 09:00 to 17:00, five days a week, from the day Phase A starts (about 30 hours of messaging labour before a single appointment). 6. One written lawful-basis position covering SMS and email (blocker B3). 7. Confirm the reconciliation owner and the daily slot."
+        "b": "1. How many days a week Abi is in Winchester (30 to 35 is her total across both clinics; at three days the real Winchester number is nearer 18 to 21 and the founding 40 take half). Decides whether C6 and D3 go to the whole list or a throttled slice, and fixes B2's wording. 2. The founding benefit is four elements; what does the twelve-month price hold cost (compute before B2 sends on 12 Oct). 3. How many complimentary analysis hours per week and what November must earn (cap at a stated number, 8 a sensible start; set a November revenue target). 4. Does Bedhampton keep running through November and who covers it. 5. Who answers messages 09:00 to 17:00, five days a week, from the day Phase A starts (about 30 hours of messaging labour before a single appointment). 6. One written lawful-basis position covering WhatsApp and email (blocker B3). 7. Confirm the reconciliation owner and the daily slot."
       }
     ]
   },
@@ -665,7 +665,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
-    "title": "A1a: re-opener SMS to new leads",
+    "title": "A1a: re-opener WhatsApp to new leads",
     "detail": "First touch to the founding tag: autumn or next year, batched 40 a day from Tue 3 Sep.",
     "channel": "email",
     "owner": "david",
@@ -679,10 +679,10 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "CHANNEL",
-        "b": "SMS (WhatsApp session closed). Before the first send, search the text for the curly apostrophe U+2019 (it forces UCS-2 and drops the segment from 160 to 67 characters)."
+        "b": "Approved WhatsApp template (no session open yet). Before the first send, confirm the template is approved and every merge field resolves, since an empty variable fails template validation."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it's Abi. You put your name down for the new Winchester clinic. We open on Monday 2 November and I'm planning the diary now. Is your skin something you'd like looked at this autumn, or is it more of a next year thing? Just reply autumn or next year. Reply STOP to opt out."
       },
       {
@@ -693,7 +693,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
-    "title": "A1b: re-opener SMS to existing clients",
+    "title": "A1b: re-opener WhatsApp to existing clients",
     "detail": "Shorter yes/not yet ask to people Abi has treated before; on yes, skip Phase B and go to C1.",
     "channel": "email",
     "owner": "david",
@@ -707,10 +707,10 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "CHANNEL",
-        "b": "SMS, 10:00 Mon to Fri, batched from Tue 3 Sep."
+        "b": "WhatsApp, 10:00 Mon to Fri, batched from Tue 3 Sep."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it's Abi. You already know how I work so I'll keep this short. The Winchester clinic opens on Monday 2 November and I'm keeping a few founding places for people I've treated before. Would you like one? Just reply yes or not yet. Reply STOP to opt out."
       },
       {
@@ -721,7 +721,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "nurture",
-    "title": "A4: consent housekeeping SMS",
+    "title": "A4: consent housekeeping WhatsApp",
     "detail": "Asks Requested contacts with no marketing opt-in for email consent, 24 hours after Requested.",
     "channel": "email",
     "owner": "david",
@@ -731,15 +731,15 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Priority Access Requested AND Marketing Opt In empty. SMS, same thread, 24 hours after Requested."
+        "b": "Priority Access Requested AND Marketing Opt In empty. WhatsApp, same thread, 24 hours after Requested."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "One bit of housekeeping {{contact.first_name}}. Would you like the occasional email from me about the clinic, opening times and skin advice? Reply YES and I'll add you. Reply NO and I'll only ever message you about your own appointments. Either is genuinely fine. Reply STOP to opt out."
       },
       {
         "h": "WRITE-BACK",
-        "b": "YES: Marketing Opt In Yes. NO: Marketing Opt In No, excluded from Phase B, no SMS fallback."
+        "b": "YES: Marketing Opt In Yes. NO: Marketing Opt In No, excluded from Phase B, no WhatsApp fallback."
       }
     ]
   },
@@ -779,14 +779,14 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Stage Later/No Reply, 4 days elapsed, no inbound. SMS at 17:30. Build as an if/else branch: an empty merge field would send 'you told me you wanted to work on .'"
+        "b": "Stage Later/No Reply, 4 days elapsed, no inbound. WhatsApp at 17:30. Build as an if/else branch: an empty merge field would send 'you told me you wanted to work on .'"
       },
       {
-        "h": "SMS COPY (Branch 1, skin_concern_safe set)",
+        "h": "WHATSAPP COPY (Branch 1, skin_concern_safe set)",
         "b": "Hi {{contact.first_name}}, Abi here. When you did the skin audit on the website you told me you wanted to work on {{contact.skin_concern_safe}}. I open in Winchester on 2 November and I'll be doing the in-clinic skin analysis there, complimentary until 30 November. Would you like me to hold you a time, or leave you be for now? Reply STOP to opt out."
       },
       {
-        "h": "SMS COPY (Branch 2, everyone else)",
+        "h": "WHATSAPP COPY (Branch 2, everyone else)",
         "b": "Hi {{contact.first_name}}, Abi here. You put your name down for the Winchester clinic a little while back. I open there on 2 November and I'll be doing the in-clinic skin analysis, complimentary until 30 November. Would you like me to hold you a time, or leave you be for now? Reply STOP to opt out."
       },
       {
@@ -831,7 +831,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Stage Later/No Reply, A2 sent 10 days ago, no inbound. Email if Marketing Opt In = Yes, SMS only if blank, never if No. 08:00."
+        "b": "Stage Later/No Reply, A2 sent 10 days ago, no inbound. Email if Marketing Opt In = Yes, WhatsApp only if blank, never if No. 08:00."
       },
       {
         "h": "SUBJECT",
@@ -859,14 +859,14 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Tag bedhampton-cold (enquired, never became a client). Marketing Opt In respected: SMS where consented, email otherwise."
+        "b": "Tag bedhampton-cold (enquired, never became a client). Marketing Opt In respected: WhatsApp where consented, email otherwise."
       },
       {
         "h": "STRATEGY",
         "b": "Give them both doors and let them choose. The Bedhampton free analysis is on until 30 October and is the nearer option; Winchester opens 2 November for anyone happy with the drive. No pressure, honest about the closure."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it's Abi. Two things while I still can: my Bedhampton clinic has a complimentary skin analysis on until 30 October, and I'm opening a new clinic in Winchester on 2 November if that is easier for you. Either way I would love to see you. Which suits? Reply STOP to opt out. Abi"
       },
       {
@@ -887,14 +887,14 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Tag bedhampton-warm. From Abi personally: SMS first, email for the fuller version. Sent before the Winchester 448 founding booking opens on 26 October, so loyal clients get first pick."
+        "b": "Tag bedhampton-warm. From Abi personally: WhatsApp first, email for the fuller version. Sent before the Winchester 448 founding booking opens on 26 October, so loyal clients get first pick."
       },
       {
         "h": "STRATEGY",
         "b": "These are the warmest people in the whole plan. Be honest that Winchester is about 25 minutes further, let them decide, and make the founding place a genuine thank-you for their loyalty. Never pushy. If the drive does not work for them, that is completely fine."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it's Abi. A change I wanted you to hear from me first: I'm opening my own clinic in Winchester on 2 November, and winding Bedhampton down. It's about 25 minutes up the road, and I would love to keep looking after your skin there. I'm holding founding places for my Bedhampton clients first, before anyone else. Would you like one? Just reply yes, or tell me your thoughts. Abi x"
       },
       {
@@ -975,11 +975,11 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "WHY",
-        "b": "Realistic first-SMS reply is 8 to 18 per cent. The 12 per cent scenario produces 18 founding clients, not 40, so the plan needs a dated decision point."
+        "b": "Realistic first-WhatsApp reply is 8 to 18 per cent. The 12 per cent scenario produces 18 founding clients, not 40, so the plan needs a dated decision point."
       },
       {
         "h": "DECISION",
-        "b": "Friday 16 October, count Priority Access = Requested. 55 or more: proceed as planned. Under 55: phone the non-repliers (not a fourth SMS), pull December forward, and open founding to web and walk-in from 2 Nov. Under 30: all of that, plus reconsider whether 40 is the right cap (a real 25 beats a padded 40)."
+        "b": "Friday 16 October, count Priority Access = Requested. 55 or more: proceed as planned. Under 55: phone the non-repliers (not a fourth WhatsApp), pull December forward, and open founding to web and walk-in from 2 Nov. Under 30: all of that, plus reconsider whether 40 is the right cap (a real 25 beats a padded 40)."
       }
     ]
   },
@@ -995,7 +995,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Priority Access Requested (sent regardless of Marketing Opt In, one-to-one reply). WhatsApp where a session is open from a Phase A reply, else SMS. Mon 19 Oct 09:00, single send."
+        "b": "Priority Access Requested (sent regardless of Marketing Opt In, one-to-one reply). WhatsApp. Mon 19 Oct 09:00, single send."
       },
       {
         "h": "MESSAGE",
@@ -1010,7 +1010,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "nurture",
     "title": "Start retargeting at £8 a day",
-    "detail": "Air cover behind the SMS sequence to the lead-form and website audiences, 19 Oct to 15 Nov.",
+    "detail": "Air cover behind the WhatsApp sequence to the lead-form and website audiences, 19 Oct to 15 Nov.",
     "channel": "meta",
     "owner": "david",
     "weekStart": "2026-10-18",
@@ -1019,7 +1019,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STRATEGY",
-        "b": "Mon 19 Oct, start retargeting at £8 a day to the lead-form and website audiences, running 19 Oct to 15 Nov (£224). This is air cover behind the SMS sequence, not a lead machine."
+        "b": "Mon 19 Oct, start retargeting at £8 a day to the lead-form and website audiences, running 19 Oct to 15 Nov (£224). This is air cover behind the WhatsApp sequence, not a lead machine."
       },
       {
         "h": "NOTE",
@@ -1055,7 +1055,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Founding Week set AND Priority Access Requested AND combined Booked+Confirmed under 40 AND Booked in that Founding Week under 10. Rolling, earliest week first then reply time. Build as a manual task with a saved snippet, not send-and-forget. WhatsApp falling back to SMS, from Wed 21 Oct within 24 hours of the C1 reply. Both caps hard."
+        "b": "Founding Week set AND Priority Access Requested AND combined Booked+Confirmed under 40 AND Booked in that Founding Week under 10. Rolling, earliest week first then reply time. Build as a manual task with a saved snippet, not send-and-forget. WhatsApp, from Wed 21 Oct within 24 hours of the C1 reply. Both caps hard."
       },
       {
         "h": "MESSAGE",
@@ -1083,7 +1083,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Priority Access changes to Booked. WhatsApp if session open else SMS, immediately."
+        "b": "Priority Access changes to Booked. WhatsApp if session open else WhatsApp, immediately."
       },
       {
         "h": "MESSAGE",
@@ -1147,7 +1147,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Combined Booked+Confirmed reaches 40 AND contact is Requested or Waitlist with a November Founding Week. WhatsApp or SMS, one-to-one, within 24 hours."
+        "b": "Combined Booked+Confirmed reaches 40 AND contact is Requested or Waitlist with a November Founding Week. WhatsApp, one-to-one, within 24 hours."
       },
       {
         "h": "MESSAGE",
@@ -1223,7 +1223,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "GHL Winchester calendar event tomorrow. WhatsApp or SMS, 17:00 the day before."
+        "b": "GHL Winchester calendar event tomorrow. WhatsApp, 17:00 the day before."
       },
       {
         "h": "MESSAGE",
@@ -1243,7 +1243,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Priority Access Booked or Confirmed. WhatsApp if open else SMS. Mon 2 Nov 08:00."
+        "b": "Priority Access Booked or Confirmed. WhatsApp. Mon 2 Nov 08:00."
       },
       {
         "h": "MESSAGE",
@@ -1311,7 +1311,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Priority Access Waitlist AND a November slot released by C4 or a no-show, one person at a time, oldest first. WhatsApp if open else SMS within 2 hours."
+        "b": "Priority Access Waitlist AND a November slot released by C4 or a no-show, one person at a time, oldest first. WhatsApp within 2 hours."
       },
       {
         "h": "MESSAGE",
@@ -1331,7 +1331,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Attended 3 days ago. WhatsApp if open else SMS, 09:00."
+        "b": "Attended 3 days ago. WhatsApp, 09:00."
       },
       {
         "h": "MESSAGE",
@@ -1351,7 +1351,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Attended 7 days ago, no other condition. Do not exclude complainants: selective solicitation breaches the DMCC Act 2024 and Google policy. WhatsApp if open else SMS, 11:00. Disable the ANS review request for Winchester first."
+        "b": "Attended 7 days ago, no other condition. Do not exclude complainants: selective solicitation breaches the DMCC Act 2024 and Google policy. WhatsApp, 11:00. Disable the ANS review request for Winchester first."
       },
       {
         "h": "MESSAGE",
@@ -1375,7 +1375,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Attended 10 days ago AND opportunity.first_treatment_date empty. WhatsApp if open else SMS, 10:00."
+        "b": "Attended 10 days ago AND opportunity.first_treatment_date empty. WhatsApp, 10:00."
       },
       {
         "h": "MESSAGE",
@@ -1855,7 +1855,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "WRITE-BACK",
-        "b": "On send, add the tag membership-offered. If the client replies yes or books, add the matching member tag and set Membership Interest. If there is no reply after seven days, send one gentle SMS nudge, then stop and leave them in the ordinary nurture."
+        "b": "On send, add the tag membership-offered. If the client replies yes or books, add the matching member tag and set Membership Interest. If there is no reply after seven days, send one gentle WhatsApp nudge, then stop and leave them in the ordinary nurture."
       },
       {
         "h": "NOTE",
@@ -1955,7 +1955,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "WRITE-BACK",
-        "b": "Openers and clickers who do not book within five days drop into the WhatsApp and SMS nudge. Anyone who books is tagged Skin Focus Booked and stops receiving the sequence."
+        "b": "Openers and clickers who do not book within five days drop into the WhatsApp nudge. Anyone who books is tagged Skin Focus Booked and stops receiving the sequence."
       },
       {
         "h": "CAPACITY",
@@ -2006,7 +2006,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Segment win-filler-lip, warm split, mapped cluster lip filler, dermal filler or cheek and facial balancing (not tear trough). Send in staggered daily batches from 19 October so replies stay inside one diary; hold overflow on the waitlist with Priority Access."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. You got in touch about lip or dermal filler, so I wanted you to hear first: my new Winchester clinic opens on 2 November, and I am holding a few consultation times in the opening fortnight for people who enquired early. A consultation is a proper sit-down with me to talk through what you are after and whether filler is the right option for you, with no pressure to have anything done on the day. Would you like me to hold one? Reply YES and I will send you some times. Abi"
       },
       {
@@ -2089,7 +2089,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "October pre-book invite, SMS or WhatsApp",
+    "title": "October pre-book invite, WhatsApp",
     "detail": "Short October text version for enquirers who prefer a message, holding a first-week consultation.",
     "channel": "email",
     "owner": "both",
@@ -2098,7 +2098,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 84,
     "deep": [
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it's Abi from the new Winchester skin clinic. Thank you for enquiring about those lines and the tired look you mentioned. We open on 2 November and I am keeping a few first-week consultations for early enquirers. Would you like me to hold one for you? It is just an honest look and my advice, with no pressure to book anything on the day. Reply YES and I will find you a time. Reply STOP to opt out."
       },
       {
@@ -2126,7 +2126,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Segment win-filler-lip, warm split, mapped cluster tear trough, dark circles or under-eye only. A separate send from the lips invite because the under-eye is an advanced assessment: not everyone is suitable, so the copy leans harder on the honest consultation."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. You asked about the under-eye area, tired eyes or dark circles. My Winchester clinic opens on 2 November and I am holding a few consultation times early on. The under-eye is one area where a proper assessment really matters, because tear trough treatment suits some people and not others, and I would rather tell you honestly than book you in regardless. Shall I hold a consultation for you? Reply YES for times. Abi"
       },
       {
@@ -2149,8 +2149,8 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "Skin leads WhatsApp and SMS nudge for an early slot",
-    "detail": "Gently nudge Skin Focus leads who did not act on the email, with a ready-to-submit WhatsApp template and an SMS fallback.",
+    "title": "Skin leads WhatsApp nudge for an early slot",
+    "detail": "Gently nudge Skin Focus leads who did not act on the email, with a ready-to-submit WhatsApp template.",
     "channel": "email",
     "owner": "both",
     "weekStart": "2026-10-18",
@@ -2159,14 +2159,14 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Tag Skin Focus, did not open or click the 13 October invite within five days, Marketing Opt In true. Send WhatsApp where connected, SMS where not. David builds and fires it, the words are Abi's."
+        "b": "Tag Skin Focus, did not open or click the 13 October invite within five days, Marketing Opt In true. Send WhatsApp. David builds and fires it, the words are Abi's."
       },
       {
         "h": "WHATSAPP TEMPLATE, ready to submit, marketing category",
         "b": "Hi {{contact.first_name}}, it is Abi from Abi Peters Skin Clinic. Our Winchester clinic opens on 2 November and I am holding a few early skin appointments for the people who enquired first. If you would still like a proper look at your skin and an honest plan, reply YES and I will send you a time. No pressure at all."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Abi Peters Skin Clinic: hi {{contact.first_name}}, we open in Winchester on 2 Nov and I am holding a few early skin appointments. Reply YES for a time, or STOP to opt out."
       },
       {
@@ -2222,7 +2222,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Segment win-filler-lip, anyone without a Consultation booked stage. Sends on opening day, 2 November. Suppress anyone who already replied YES or booked from the October warm invite."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, Abi here: my Winchester clinic is officially open. You enquired about lip or dermal filler a while back, so if the timing is better now, I would love to see you for a consultation. No pressure, just an honest chat about whether it is right for you. Text me on 07849 989869 or reply YES and I will send some times. Abi"
       },
       {
@@ -2326,7 +2326,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Subject: Keeping your results going, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nIt was lovely to look after you. Skin does best with a little and often rather than one big push, so the clients who see the steadiest results are usually the ones on a plan.\n\nThe Skin Plan is a monthly place in my diary kept just for you: one skin treatment each month, plus a device rescan with written notes so we can both see how your skin is actually changing. It is £115 a month, and as one of my first Winchester clients you can lock in the founder rate of £95 a month for as long as you stay. There are only thirty founder places.\n\nIf you would like a little more, Skin Plan Advanced at £185 a month adds a deeper quarterly session. And if you simply want to keep your glow ticking over, Skin Circle at £19 a month gives you a monthly LED session and member pricing on your skincare.\n\nNo pressure at all. Have a read, and reply here or text me and I will hold your place.\n\nAbi"
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, it was lovely to look after you. If you would like to keep your results going, The Skin Plan holds you a monthly slot with me plus a skin rescan, founder rate £95 a month for my first thirty Winchester clients. Happy to hold you a place, no pressure. Just reply here. Abi"
       },
       {
@@ -2347,7 +2347,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STRATEGY",
-        "b": "The strongest sign-ups happen in the room, not by email. The email and SMS are the safety net for anyone Abi did not get to in person. Offer it warmly, once, and let them decide."
+        "b": "The strongest sign-ups happen in the room, not by email. The email and WhatsApp are the safety net for anyone Abi did not get to in person. Offer it warmly, once, and let them decide."
       },
       {
         "h": "SCRIPT",
@@ -2485,7 +2485,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "From-opening consultation nudge, SMS",
+    "title": "From-opening consultation nudge, WhatsApp",
     "detail": "Gentle opening-week text to segment members who have not yet replied, offering a consultation time.",
     "channel": "email",
     "owner": "both",
@@ -2498,7 +2498,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Send only to expression-segment contacts who received the 2 November email, are still Marketing Opt In = yes, and have not replied or booked. One nudge only, then leave them in the standing nurture."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, Abi here at the new Winchester clinic. We are open, and I still have a couple of consultation times this week if you would like to talk through those lines you mentioned. No pressure, just an honest look and my advice. Reply YES for a time. Reply STOP to opt out."
       },
       {
@@ -2526,7 +2526,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Segment win-filler-lip, no reply and no booking after the 2 November message. One gentle follow-up only, then stop. Honour any opt-down immediately."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, just a soft nudge from Abi: no rush at all, but if you would still like to talk through lip or dermal filler, my Winchester consultations are open and I am happy to hold you a time. If now is not right, no worries and I will leave you be. Just let me know either way. Abi"
       },
       {
@@ -2594,7 +2594,7 @@ export const PLAN_ITEMS: PlanItem[] = [
         "b": "Offer Skin Circle to anyone tagged membership-offered who declined The Skin Plan, and to direct Skin Circle enquirers. On sign-up David sets the GoCardless plan and tags member-skin-circle."
       },
       {
-        "h": "SMS COPY",
+        "h": "WHATSAPP COPY",
         "b": "Hi {{contact.first_name}}, no problem at all if a full plan is not right just now. Skin Circle is a gentler option at £19 a month: a monthly LED session to keep your skin ticking over, plus member pricing on your skincare, and you can stop any time. Would you like me to set it up? Abi"
       },
       {
@@ -3257,8 +3257,8 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "retarget",
-    "title": "SMS reminder to non-responders",
-    "detail": "Short reminder by SMS to everyone who has not responded.",
+    "title": "WhatsApp reminder to non-responders",
+    "detail": "Short reminder by WhatsApp to everyone who has not responded.",
     "channel": "email",
     "owner": "david",
     "weekStart": "2026-10-18",
@@ -3267,7 +3267,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "MESSAGE",
-        "b": "Short reminder to non-responders, sent by SMS."
+        "b": "Short reminder to non-responders, sent by WhatsApp."
       }
     ]
   },
@@ -3678,7 +3678,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "creative",
     "title": "Build: confirm form privacy, opt-in and WhatsApp handling",
-    "detail": "Confirm each form carries a privacy notice, a marketing opt-in for email and SMS, and separate WhatsApp handling.",
+    "detail": "Confirm each form carries a privacy notice, a marketing opt-in for email and WhatsApp.",
     "channel": "found",
     "owner": "david",
     "weekStart": "2026-09-13",
@@ -3687,7 +3687,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STEPS",
-        "b": "Confirm the form carries a privacy notice link, a specific marketing opt-in covering email and SMS, and separate WhatsApp handling."
+        "b": "Confirm the form carries a privacy notice link, a specific marketing opt-in covering email and WhatsApp."
       },
       {
         "h": "NOTE",
@@ -4055,7 +4055,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "MECHANICS",
-        "b": "At the analysis Abi hands the written plan with the date and 'add-on included if you book by [date plus 14]'. Booking must be within 14 days; the appointment may sit up to 30 days out. GHL on attended sets Analysis Date, computes Add On Window Closes = Analysis Date + 14, applies bh-addon-live. Follow up day 2 plan recap, day 7 check-in, day 12 last reminder on SMS and email (WhatsApp needs approved templates outside the 24 hour window). Tag bh-addon-redeemed on the treatment, bh-addon-expired at day 15. One per client, max 30 redemptions (about £1,500 retail, about £750 cost); ring fence 30 units."
+        "b": "At the analysis Abi hands the written plan with the date and 'add-on included if you book by [date plus 14]'. Booking must be within 14 days; the appointment may sit up to 30 days out. GHL on attended sets Analysis Date, computes Add On Window Closes = Analysis Date + 14, applies bh-addon-live. Follow up day 2 plan recap, day 7 check-in, day 12 last reminder by WhatsApp template and email (a business-initiated template is used outside the 24 hour window). Tag bh-addon-redeemed on the treatment, bh-addon-expired at day 15. One per client, max 30 redemptions (about £1,500 retail, about £750 cost); ring fence 30 units."
       },
       {
         "h": "EVIDENCE",
@@ -4203,7 +4203,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "NOTE",
-        "b": "No paid warm ad set. The addressable warm pool after exclusions is about 500 to 2,000; message them free from GHL by WhatsApp template and SMS in week one. Below about 3,000 addressable, do not buy retargeting. Winchester stays as is apart from the section 0 budget cut."
+        "b": "No paid warm ad set. The addressable warm pool after exclusions is about 500 to 2,000; message them free from GHL by WhatsApp template in week one. Below about 3,000 addressable, do not buy retargeting. Winchester stays as is apart from the section 0 budget cut."
       }
     ]
   },
@@ -4374,7 +4374,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "bedhampton",
     "title": "Step 15: message the warm Bedhampton list free from GHL",
-    "detail": "Reach the warm pool by WhatsApp template and SMS free from GHL in week one; do not buy retargeting for it.",
+    "detail": "Reach the warm pool by WhatsApp template free from GHL in week one; do not buy retargeting for it.",
     "channel": "email",
     "owner": "david",
     "weekStart": "2026-09-13",
@@ -4383,7 +4383,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "AUDIENCE",
-        "b": "The addressable warm pool after exclusions is about 500 to 2,000. Message them free from GHL by WhatsApp template and SMS in the week of 14 September. Below about 3,000 addressable, do not buy retargeting, so there is no paid warm ad set."
+        "b": "The addressable warm pool after exclusions is about 500 to 2,000. Message them free from GHL by WhatsApp template in the week of 14 September. Below about 3,000 addressable, do not buy retargeting, so there is no paid warm ad set."
       }
     ]
   },
@@ -4419,7 +4419,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "NOTE",
-        "b": "Metrics with review triggers: leads 46 to 57 (trigger under 20 by 30 Sep); CPL £12 to £15 (above £20 for five days); speed to first contact automated WhatsApp/SMS inside 60 seconds then two named human call blocks a day, three attempts across 72 hours (trigger any day with no call block); lead to booked within 72 hours 50 per cent or more (below 35); booked to attended 75 per cent with deposit, 60 without (below 55, add a two hour reminder); cost per attended analysis under £45 (above £55 at the 1 Oct gate, above £65 for two weeks); analysis to treatment within 14 days 40 per cent so 7 to 8 (below 25, the plan conversation needs work); second treatment within 90 days 40 per cent; first treatment revenue £1,400 to £1,700 against about £1,145 cost (below £1,000); add-on redemptions 7 to 9 (approaching 30, pause); new Google reviews by 31 Oct 15 (below 8 at 15 Oct); analysis slots booked out two weeks ahead is the binding constraint (pause immediately); frequency below 3.5 (check weekly from 21 Sep, refresh creative never raise budget)."
+        "b": "Metrics with review triggers: leads 46 to 57 (trigger under 20 by 30 Sep); CPL £12 to £15 (above £20 for five days); speed to first contact automated WhatsApp inside 60 seconds then two named human call blocks a day, three attempts across 72 hours (trigger any day with no call block); lead to booked within 72 hours 50 per cent or more (below 35); booked to attended 75 per cent with deposit, 60 without (below 55, add a two hour reminder); cost per attended analysis under £45 (above £55 at the 1 Oct gate, above £65 for two weeks); analysis to treatment within 14 days 40 per cent so 7 to 8 (below 25, the plan conversation needs work); second treatment within 90 days 40 per cent; first treatment revenue £1,400 to £1,700 against about £1,145 cost (below £1,000); add-on redemptions 7 to 9 (approaching 30, pause); new Google reviews by 31 Oct 15 (below 8 at 15 Oct); analysis slots booked out two weeks ahead is the binding constraint (pause immediately); frequency below 3.5 (check weekly from 21 Sep, refresh creative never raise budget)."
       },
       {
         "h": "DECISION",
@@ -4511,7 +4511,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "DECISION GATES BY DATE",
-        "b": "Wed 3 Sep: Winchester room shootable by 8 Sep; age breakdown of recent leads; does Bedhampton trade after 2 Nov and on how many days; who answers a new lead and within what time; £25 redeemable deposit or not. Fri 4 Sep: live prospecting budget (cut, pause or reclassify); reconciliation owner and daily slot. Fri 5 Sep: analysis appointment length; how many free analyses a week and what November must earn; is the free analysis the gate to founding or separate. Fri 11 Sep: what founding actually buys; how many days a week Abi is in Winchester. Fri 12 Sep: open the November Winchester calendar in ANS. Mon 15 Sep: write down the nothing-sold-on-the-day rule. Fri 9 Oct: confirm the £50 Winchester list price. Sun 12 Oct: cost the twelve-month founding price hold. Ongoing from 3 Sep: one written lawful-basis position for SMS and email."
+        "b": "Wed 3 Sep: Winchester room shootable by 8 Sep; age breakdown of recent leads; does Bedhampton trade after 2 Nov and on how many days; who answers a new lead and within what time; £25 redeemable deposit or not. Fri 4 Sep: live prospecting budget (cut, pause or reclassify); reconciliation owner and daily slot. Fri 5 Sep: analysis appointment length; how many free analyses a week and what November must earn; is the free analysis the gate to founding or separate. Fri 11 Sep: what founding actually buys; how many days a week Abi is in Winchester. Fri 12 Sep: open the November Winchester calendar in ANS. Mon 15 Sep: write down the nothing-sold-on-the-day rule. Fri 9 Oct: confirm the £50 Winchester list price. Sun 12 Oct: cost the twelve-month founding price hold. Ongoing from 3 Sep: one written lawful-basis position for WhatsApp and email."
       },
       {
         "h": "NOTE",
@@ -4651,7 +4651,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "RECOMMENDATION",
-        "b": "Name the owner and a service level: automated WhatsApp or SMS inside 60 seconds, then two named human call blocks a day, three attempts across 72 hours. Consider VA hours. Without this the booking rate is fiction."
+        "b": "Name the owner and a service level: automated WhatsApp inside 60 seconds, then two named human call blocks a day, three attempts across 72 hours. Consider VA hours. Without this the booking rate is fiction."
       }
     ]
   },
@@ -4677,8 +4677,8 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "tail",
-    "title": "Decision: one written lawful-basis position for SMS and email",
-    "detail": "Blocker B3; the whole nurture design is reply-based and PECR reg 22 applies to SMS as to email.",
+    "title": "Decision: one written lawful-basis position for WhatsApp and email",
+    "detail": "Blocker B3; the whole nurture design is reply-based and PECR reg 22 applies to WhatsApp marketing as to email.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
@@ -4687,7 +4687,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "DECISION",
-        "b": "Write down the lawful basis once, covering SMS and email, before Phase A starts. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by SMS and email, and record the date range. PECR reg 22 applies to SMS as to email, and some records predate 1 September 2026 so consent may have degraded."
+        "b": "Write down the lawful basis once, covering WhatsApp and email, before Phase A starts. Retrieve the exact instant-form consent wording, confirm it covers direct marketing by WhatsApp and email, and record the date range. PECR reg 22 applies to WhatsApp marketing as to email, and some records predate 1 September 2026 so consent may have degraded."
       },
       {
         "h": "RECOMMENDATION",
@@ -4925,7 +4925,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "dayDate": "2026-09-02",
     "sortOrder": 300,
     "deep": [
-      { "h": "WHY", "b": "Sixty-two days out with the list already full, the constraint is your time, not leads. If every email, SMS and WhatsApp is written and loaded now, the ten weeks to launch run on a fifteen-minute Friday check, not on you drafting a send the night before." },
+      { "h": "WHY", "b": "Sixty-two days out with the list already full, the constraint is your time, not leads. If every email and WhatsApp is written and loaded now, the ten weeks to launch run on a fifteen-minute Friday check, not on you drafting a send the night before." },
       { "h": "WHAT", "b": "One build week. By Friday 13 September every message for both tracks exists in GHL, in its workflow, with its wait and its send time set. Nothing outbound is written after this week; from here it is monitoring and small edits only." },
       { "h": "RULE", "b": "British English, no percentage discounts, and no naming of any prescription-only treatment or an anti-wrinkle offer that resolves to one. Founding is a place and a price, never a discount." }
     ]
@@ -4962,7 +4962,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "build",
-    "title": "Submit every email and SMS template for approval now",
+    "title": "Submit every email and WhatsApp template for approval now",
     "detail": "Templates, domain and numbers need lead time. Get them verified in build week.",
     "channel": "found",
     "owner": "david",
@@ -4971,7 +4971,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 303,
     "deep": [
       { "h": "WHY", "b": "Templates and any new sending domain or number need lead time to verify and warm. Submit them in build week so nothing is held in review when a send is due." },
-      { "h": "WHAT", "b": "Register and verify the sends, warm the domain, and get the SMS and WhatsApp templates approved. Send yourself one test through every workflow and read it on a phone before it goes near a lead." }
+      { "h": "WHAT", "b": "Register and verify the sends, warm the domain, and get the WhatsApp templates approved. Send yourself one test through every workflow and read it on a phone before it goes near a lead." }
     ]
   },
   {
@@ -5044,7 +5044,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "dayDate": "2026-09-10",
     "sortOrder": 309,
     "deep": [
-      { "h": "WHAT", "b": "Build the review request as a GHL automation now, so it fires on its own from launch: WhatsApp if the thread is open, else SMS, seven days after an attended visit, at 11:00. The full trigger and wording live in the D6 task in the nurture section; this is the build-week task to load it, not leave it to memory." },
+      { "h": "WHAT", "b": "Build the review request as a GHL automation now, so it fires on its own from launch: WhatsApp, seven days after an attended visit, at 11:00. The full trigger and wording live in the D6 task in the nurture section; this is the build-week task to load it, not leave it to memory." },
       { "h": "FIRST STEP", "b": "Disable the ANS built-in review request for Winchester first, or clients get asked twice. One ask, from one system." },
       { "h": "COMPLIANCE", "b": "Ask EVERY attended client, never only the happy ones: selective solicitation breaches the DMCC Act 2024 and Google policy. The message invites an honest review and asks the client to tell Abi directly if anything was not right, as well as (not instead of) leaving it." },
       { "h": "WHY", "b": "A new Winchester profile starts at zero reviews next to established rivals. A loaded, every-visit ask is what closes that gap fastest, and more reviews are what make the map pack and the Google ads cheaper over time." }

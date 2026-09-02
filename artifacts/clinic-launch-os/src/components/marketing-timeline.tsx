@@ -45,7 +45,7 @@ const LANES: Lane[] = [
     { kind: "beat", from: "2026-09-03", label: "Create Winchester profile", loc: "winch", up: false,
       detail: "Longest lead time of anything. Address, 2 November open date, categories, photos, then start verification." },
     { kind: "beat", from: "2026-09-10", label: "Review-ask automation loaded", loc: "winch", up: false, theme: "Built now, fires from launch",
-      detail: "Build the every-visit review request in GHL in build week (the D6 ask): seven days after an attended visit, WhatsApp or SMS, every client, never only the happy ones. Disable the ANS default so no one is asked twice." },
+      detail: "Build the every-visit review request in GHL in build week (the D6 ask): seven days after an attended visit, by WhatsApp, every client, never only the happy ones. Disable the ANS default so no one is asked twice." },
     { kind: "beat", from: "2026-11-02", label: "Reviews drive begins", loc: "winch", up: true, theme: "8 to 10 a month",
       detail: "Every attended client asked in person, plus a desk QR code. Unfiltered and unincentivised." },
   ] },
@@ -75,11 +75,11 @@ const LANES: Lane[] = [
     { kind: "bar", from: "2026-11-03", to: "2026-11-30", label: "Phase 2 diary fill", loc: "winch", theme: "Engagers, after launch",
       detail: "A small presence to the engager audiences once open, keeping the November diary filling." },
   ] },
-  { name: "Newsletter & nurture", note: "email, SMS, WhatsApp: where the 40 are won", c: "#907a86", items: [
+  { name: "Newsletter & nurture", note: "email + WhatsApp: where the 40 are won", c: "#907a86", items: [
     { kind: "beat", from: "2026-09-04", label: "Pre-write + load ALL sends in GHL", loc: "winch", up: true, theme: "Front-load, then monitor",
-      detail: "In build week, every email, SMS and WhatsApp for both tracks is written and loaded into GHL, with the workflows, waits and schedules set and the templates submitted for approval. The campaign then runs on monitoring, not last-minute writing." },
+      detail: "In build week, every email and WhatsApp message for both tracks is written and loaded into GHL, with the workflows, waits and schedules set and the templates submitted for approval. The campaign then runs on monitoring, not last-minute writing." },
     { kind: "bar", from: "2026-09-03", to: "2026-09-30", label: "Sort the 448", loc: "winch", theme: "Autumn, or next year?",
-      detail: "One gentle question by SMS to the whole warm list, so people sort themselves without any sense of a race. 40 a day, batched." },
+      detail: "One gentle question by WhatsApp to the whole warm list, so people sort themselves without any sense of a race. 40 a day, batched." },
     { kind: "bar", from: "2026-10-05", to: "2026-10-16", label: "Earn it", loc: "winch", theme: "What the clinic is, the honest diary",
       detail: "Two emails to the engaged: what the clinic actually is, and the honest bit about one nurse and a small diary. This is where the founding forty is framed as a fact about capacity, not a countdown." },
     { kind: "bar", from: "2026-10-19", to: "2026-10-30", label: "Select the 40", loc: "winch", theme: "Which November week? A held slot",
