@@ -50,17 +50,101 @@ const TIPS = [
   "No script needed. Say the hook, then talk to one real client as if they were in the room.",
 ];
 
-const MONTHS = [
-  { m: "September", focus: "Reboot the feed and push the free Bedhampton analysis. Winchester is a countdown, not a reveal.",
-    mon: "Rotate: the skin analysis, skin boosters, facials, what nurse-led means.", wed: "Abi's story; the Winchester journey, where we are up to.", fri: "Book your free Bedhampton analysis ahead (runs until 30 Oct). Before the scanner is in, offer as words, not analyser visuals." },
-  { m: "October", focus: "Countdown to 2 November. Behind-the-scenes fit-out. Pivot from Bedhampton to Winchester founding by mid-month.",
-    mon: "What to expect: microneedling, boosters, peels, facials.", wed: "Fit-out progress, the room taking shape, counting down.", fri: "Final Bedhampton slots (closes 30 Oct), then Winchester founding: a handful of the 40 places left." },
-  { m: "November", focus: "OPEN on 2 Nov. Founding fills, the review engine starts. Expect few fresh results yet, so lean on words and scarcity.",
-    mon: "Post-treatment care and skin-health foundations.", wed: "Opening week at 9A Jewry Street; the space; Abi in clinic.", fri: "Founding places update (honest scarcity), early client words, and a Google review ask. Once 40 are gone, the call to action becomes the spring founding waitlist (wave two)." },
-  { m: "December", focus: "Christmas and the first real retail moment. Non-prescription gifts only.",
-    mon: "Why medical-grade skincare, skincare as a gift.", wed: "The clinic at Christmas; curating non-prescription gift sets.", fri: "Vouchers and non-prescription skincare sets (never a prescription product as an off-the-shelf gift), with the last order dates." },
-  { m: "January", focus: "New year, memberships. Protect the diary before the second clinician arrives in spring.",
-    mon: "Build a plan, not a one-off.", wed: "Why clients choose a monthly membership.", fri: "Book a January analysis, or join the spring founding waitlist (wave two)." },
+// Ready-to-post calendar. Each week has three posts (Mon/Wed/Fri) with a creative
+// idea and a finished caption. Compliant: no POM named, no discounts, results carry
+// consent and the "one person's result" caveat. [Date] and [Client words] are the
+// only things to fill in before posting.
+const CALENDAR = [
+  { wc: "w/c 14 September", phase: "Reboot and Bedhampton harvest", posts: [
+    { d: "Mon", slot: "Educate", idea: "Abi to camera: the one thing before any treatment.", cap: "Before I recommend a single treatment, I do one thing: a proper skin analysis. Clinical imaging that shows what is happening beneath the surface, so your plan rests on evidence, not guesswork. Free at my Bedhampton clinic right now. Comment ANALYSIS or tap the link. #NurseLedAesthetics #HampshireSkin #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "Meet Abi, fresh angle: 16 years, prescriber, Winchester coming.", cap: "Hi, I am Abi. I trained as a nurse before I ever touched skin, and 16 years on it still shapes everything: safety first, honesty always, natural over overdone. This autumn I am opening my own clinic in Winchester, and I would love you to follow along. #NurseLed #WinchesterAesthetics #AbiPetersSkinClinic" },
+    { d: "Fri", slot: "Offer", idea: "Free analysis, offer as words (scanner not shown yet).", cap: "Your skin, properly looked at, on me. A free skin analysis is the honest first step: no pressure, and nothing sold on the day. At my Bedhampton clinic until the end of October. Book ahead, link in bio. #FreeSkinAnalysis #Bedhampton #HonestAdvice" },
+  ]},
+  { wc: "w/c 21 September", phase: "Reboot and Bedhampton harvest", posts: [
+    { d: "Mon", slot: "Educate", idea: "What a skin booster actually is.", cap: "Skin boosters, what actually are they? Not filler, they do not change your shape. Think a deep drink of water for your skin, hydration that helps it look fresher from within. Not right for everyone, which is why I start with an analysis. Curious? Link in bio. #SkinBoosters #HampshireSkin #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "Winchester journey, where we are up to (countdown, not reveal).", cap: "You know Winchester is coming, so here is where we are up to. The unit on Jewry Street is becoming somewhere calm and considered, every detail chosen so you feel at ease the second you walk in. Opening 2 November. #WinchesterAesthetics #ComingSoon #Winchester" },
+    { d: "Fri", slot: "Offer", idea: "The honest first step.", cap: "No hard sell, ever. Just an honest look at your skin and a plan that fits you. The free skin analysis is booking now at Bedhampton until the end of October. Tap the link or DM me SKIN. #FreeSkinAnalysis #HonestAdvice #Bedhampton" },
+  ]},
+  { wc: "w/c 28 September", phase: "Reboot, scanner now in", posts: [
+    { d: "Mon", slot: "Educate", idea: "Nurse-led vs high street (your strongest angle).", cap: "The real difference in medical aesthetics is the part you cannot see on Instagram. As a nurse and prescriber, the assessment and the honest no when a treatment is not right for you are where the safety lives. That is what nurse-led actually means. #NurseLedAesthetics #MedicalAesthetics #HampshireSkin" },
+    { d: "Wed", slot: "Human", idea: "Behind the scenes fit-out.", cap: "A little behind the scenes. The Winchester clinic is coming together and I cannot quite believe it. Save this and follow along, the countdown is on. #WinchesterAesthetics #BehindTheScenes #ComingSoon" },
+    { d: "Fri", slot: "Proof", idea: "The scan, what it shows (analyser now in).", cap: "This is what your free skin analysis actually shows: what is happening beneath the surface, not just what the eye sees. It is why your plan is built on evidence. Free at Bedhampton until the end of October, book ahead. #SkinAnalysis #FreeSkinAnalysis #SkinHealth" },
+  ]},
+  { wc: "w/c 5 October", phase: "Countdown", posts: [
+    { d: "Mon", slot: "Educate", idea: "Facials and peels, who they suit (broaden beyond lips).", cap: "Not everyone needs an injectable. Sometimes the honest answer is a medical-grade facial or a peel to get your skin healthy first. Skin health before anything else, always. Book an analysis and let us find out what yours needs. #MedicalFacial #ChemicalPeel #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "Room taking shape, four weeks to go.", cap: "Four weeks to go. The Winchester room is nearly there. Opening Monday 2 November on Jewry Street. #Winchester #ComingSoon #WinchesterAesthetics" },
+    { d: "Fri", slot: "Offer", idea: "Last weeks of the free Bedhampton analysis.", cap: "The free skin analysis at Bedhampton closes at the end of October, then the scanner moves to Winchester. If you have been meaning to book your honest first step, now is the time. Link in bio. #FreeSkinAnalysis #Bedhampton #LastChance" },
+  ]},
+  { wc: "w/c 12 October", phase: "Countdown and founding teaser", posts: [
+    { d: "Mon", slot: "Educate", idea: "Microneedling, what to expect (fresh angle).", cap: "What actually happens in a microneedling appointment, and why it works with your skin rather than against it. Calm, clinical, and always after a proper consultation. Questions? Drop them below. #Microneedling #SkinHealth #NurseLedAesthetics" },
+    { d: "Wed", slot: "Human", idea: "The honest no.", cap: "I will happily tell you when you do not need a treatment. That honesty is the whole reason people trust a nurse-led clinic, your skin first, never the biggest sale. #HonestAdvice #NurseLed #MedicalAesthetics" },
+    { d: "Fri", slot: "Offer", idea: "Founding teaser, scarcity begins.", cap: "Something for the first people through the Winchester door. We are capping our opening at 40 founding clients: priority booking, and founding pricing held for good. A real number are already taken. DM me FOUNDING. #Winchester #FoundingClient" },
+  ]},
+  { wc: "w/c 19 October", phase: "Countdown, final Bedhampton", posts: [
+    { d: "Mon", slot: "Educate", idea: "Polynucleotides in plain English.", cap: "The regenerative treatment everyone is asking about, explained simply: polynucleotides help your skin repair and strengthen from within. Not for everyone, and that is the point. An analysis tells us if it is right for you. #Polynucleotides #SkinHealth #HampshireSkin" },
+    { d: "Wed", slot: "Human", idea: "Shopfront and signage, nearly there.", cap: "Nearly there. Jewry Street, Winchester, opening 2 November. This still does not feel real. #Winchester #ComingSoon" },
+    { d: "Fri", slot: "Offer", idea: "Final Bedhampton and founding.", cap: "Two things this week: the free Bedhampton analysis closes 30 October, and Winchester founding places, the first 40, are filling. For your honest first step or a founding place, tap the link. #FreeSkinAnalysis #FoundingClient #Winchester" },
+  ]},
+  { wc: "w/c 26 October", phase: "Launch run-in", posts: [
+    { d: "Mon", slot: "Educate", idea: "Your skin plan, not a one-off.", cap: "The best results do not come from one appointment, they come from a plan. That is what the analysis builds: a step by step that fits your skin and your life. Start with the free scan. #SkinPlan #SkinHealth #NurseLed" },
+    { d: "Wed", slot: "Human", idea: "Opening week is here (2 Nov).", cap: "This time next week, the doors open. Monday 2 November, 9A Jewry Street, Winchester. I cannot wait to welcome you. #Winchester #OpeningSoon #AbiPetersSkinClinic" },
+    { d: "Fri", slot: "Offer", idea: "Founding, a handful left.", cap: "A handful of the 40 founding places are left before we open on Monday. Priority booking and founding pricing held for good, never a discount, just first through the door. DM FOUNDING. #FoundingClient #Winchester" },
+  ]},
+  { wc: "w/c 2 November", phase: "LAUNCH WEEK", posts: [
+    { d: "Mon", slot: "Open", idea: "Doors-open reel: the room, Abi, Jewry Street.", cap: "We are open. Abi Peters Skin Clinic is now on Jewry Street, Winchester. If you have been waiting, this is your moment. Book your place, link in bio. #Winchester #NowOpen #AbiPetersSkinClinic" },
+    { d: "Wed", slot: "Human", idea: "A walk through the clinic.", cap: "Come inside. Every corner of the Winchester clinic was chosen to make you feel calm the moment you arrive. This is where your skin journey starts. #Winchester #NurseLed #SkinClinic" },
+    { d: "Fri", slot: "Proof", idea: "First clients (with consent) and a review ask.", cap: "Our first Winchester clients, thank you. If I have looked after your skin, an honest Google review means the world to a brand-new clinic. Founding places are nearly gone. #Winchester #FoundingClient" },
+  ]},
+  { wc: "w/c 9 November", phase: "Founding fills, reviews", posts: [
+    { d: "Mon", slot: "Educate", idea: "Aftercare, get the best from your treatment.", cap: "Looked after your skin with us? Here is how to get the very best from it in the days after. Simple, honest aftercare, no fuss. #Aftercare #SkinHealth #NurseLed" },
+    { d: "Wed", slot: "Human", idea: "A client experience (with consent).", cap: "One week in, and I am so grateful. [Client's own words, shared with permission.] This is one person's experience, and everyone's skin is different. #Winchester #ClientLove" },
+    { d: "Fri", slot: "Offer", idea: "Founding full, waitlist opens.", cap: "The 40 founding places have gone, thank you. You can now join the spring founding waitlist to be first when we open more places next year. Link in bio. #Winchester #Waitlist" },
+  ]},
+  { wc: "w/c 16 November", phase: "Winchester-led", posts: [
+    { d: "Mon", slot: "Educate", idea: "Why medical-grade skincare works.", cap: "Why medical-grade skincare actually works: higher active levels, matched to your skin, not picked off a shelf. It is the foundation of every plan. #Skincare #Obagi #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "Two weeks in, thank you, review ask on Stories.", cap: "Two weeks of Winchester. Thank you for such a warm welcome. If we have looked after you, a Google review helps a new clinic more than you know. #Winchester #ThankYou" },
+    { d: "Fri", slot: "Offer", idea: "Free analysis now at Winchester too.", cap: "The free skin analysis is now at Winchester as well, through November. Your honest first step, nothing sold on the day. Book ahead. #FreeSkinAnalysis #Winchester" },
+  ]},
+  { wc: "w/c 23 November", phase: "Winchester-led, Christmas teaser", posts: [
+    { d: "Mon", slot: "Educate", idea: "Which treatment do I need? You do not have to know.", cap: "Skin boosters, a facial, microneedling, how do you know which you need? You do not have to. That is exactly what the analysis is for. Start there. #SkinHealth #NurseLed #SkinAnalysis" },
+    { d: "Wed", slot: "Human", idea: "A day in the clinic.", cap: "A day in the Winchester clinic: calm, considered, honest. Exactly what I always wanted to build. #Winchester #NurseLed" },
+    { d: "Fri", slot: "Offer", idea: "Christmas teaser.", cap: "Christmas is coming, and the nicest gift is healthy skin. Vouchers and curated skincare sets land next week. #Christmas #SkincareGift" },
+  ]},
+  { wc: "w/c 30 November", phase: "Christmas retail", posts: [
+    { d: "Mon", slot: "Educate", idea: "Skincare as a gift that does something.", cap: "The gift that actually does something: medical-grade skincare, chosen properly. Our Christmas sets are non-prescription and ready to give. #ChristmasGift #Skincare" },
+    { d: "Wed", slot: "Human", idea: "Behind the scenes, wrapping gift sets.", cap: "Wrapping up something lovely. A peek at this year's Christmas skincare sets and vouchers. #Christmas #Winchester" },
+    { d: "Fri", slot: "Offer", idea: "Vouchers and sets live.", cap: "Gift vouchers and skincare sets are here. Give healthy skin this Christmas, book or buy in the link. #ChristmasGift #SkincareSet" },
+  ]},
+  { wc: "w/c 7 December", phase: "Christmas retail", posts: [
+    { d: "Mon", slot: "Educate", idea: "How to actually use your skincare.", cap: "Got skincare for Christmas, or treating yourself? Here is the order to use it in so it actually works. Little things, big difference. #Skincare #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "The clinic at Christmas.", cap: "The Winchester clinic at Christmas. Thank you for a first month I will never forget. #Winchester #Christmas" },
+    { d: "Fri", slot: "Offer", idea: "Last order dates for gifts.", cap: "Last chance for Christmas: order gift vouchers and skincare sets by [date] to arrive in time. Link in bio. #ChristmasGift #LastOrders" },
+  ]},
+  { wc: "w/c 14 December", phase: "Christmas, winding down", posts: [
+    { d: "Mon", slot: "Educate", idea: "New-year skin starts with a plan.", cap: "Thinking about your skin for the new year? The best results start with a plan, not a one-off. Book a January analysis and begin properly. #SkinPlan #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "A thank you, and what is coming in January.", cap: "As the year closes, thank you. In January we open memberships, a simple way to look after your skin all year. More soon. #Winchester #ThankYou" },
+    { d: "Fri", slot: "Offer", idea: "Vouchers for a January treat.", cap: "Give yourself January to look forward to. Gift vouchers work on treatments and skincare. Link in bio. #Voucher #Winchester" },
+  ]},
+  { wc: "w/c 5 January", phase: "New year and memberships", posts: [
+    { d: "Mon", slot: "Educate", idea: "A plan, not a one-off.", cap: "New year, real skin goals. The results people love come from a plan over time, not a single appointment. Start with a skin analysis and we will build yours. #SkinPlan #SkinHealth #NurseLed" },
+    { d: "Wed", slot: "Human", idea: "Why clients choose a membership.", cap: "Why so many clients choose a monthly membership: their skin gets looked after all year, a pre-booked slot that is always theirs. Ask me how it works. #Membership #SkinHealth" },
+    { d: "Fri", slot: "Offer", idea: "Book a January analysis or join the waitlist.", cap: "Book your January skin analysis, your honest first step. Or, if you missed founding, join the spring waitlist for wave two. Link in bio. #FreeSkinAnalysis #Waitlist #Winchester" },
+  ]},
+  { wc: "w/c 12 January", phase: "New year and memberships", posts: [
+    { d: "Mon", slot: "Educate", idea: "Consistency beats intensity.", cap: "The secret to good skin is not one big treatment, it is consistency. That is the whole idea behind a plan and a membership. Small steps, looked after. #SkinHealth #NurseLed" },
+    { d: "Wed", slot: "Human", idea: "A member's why (with consent).", cap: "Why one of our members joined, in her words, shared with permission. This is one person's experience, everyone's skin is different. #Membership #ClientLove" },
+    { d: "Fri", slot: "Offer", idea: "Analysis and membership.", cap: "Start the year with an honest look at your skin and a plan you can actually keep up. Book your analysis, link in bio. #FreeSkinAnalysis #SkinPlan #Winchester" },
+  ]},
+  { wc: "w/c 19 January", phase: "New year and memberships", posts: [
+    { d: "Mon", slot: "Educate", idea: "What medical-grade actually means.", cap: "Medical-grade is not a marketing word. It means higher actives, prescribed to your skin by a nurse and prescriber, not guessed from a shelf. That is the difference. #Skincare #NurseLed #SkinHealth" },
+    { d: "Wed", slot: "Human", idea: "Behind the scenes, the year ahead.", cap: "A peek at what is coming this year at Winchester. Bigger plans, same honesty. Follow along. #Winchester #NurseLed" },
+    { d: "Fri", slot: "Offer", idea: "Membership close, book the analysis.", cap: "If you want your skin looked after all year, a membership is the simplest way. It starts with an analysis, so book yours. Link in bio. #Membership #FreeSkinAnalysis" },
+  ]},
+  { wc: "w/c 26 January", phase: "New year and memberships", posts: [
+    { d: "Mon", slot: "Educate", idea: "One honest question to ask any clinic.", cap: "One honest question worth asking any clinic: will you tell me when I do not need a treatment? We always will. That is nurse-led. #HonestAdvice #NurseLedAesthetics" },
+    { d: "Wed", slot: "Human", idea: "Thank you, and the waitlist.", cap: "Thank you for a brilliant few months. If you are waiting on a founding place, the spring waitlist is open, you will be first when we grow. #Winchester #Waitlist" },
+    { d: "Fri", slot: "Offer", idea: "Book your first step.", cap: "Whatever your skin needs this year, it starts the same honest way: a skin analysis. Book yours, link in bio. #FreeSkinAnalysis #SkinHealth #Winchester" },
+  ]},
 ];
 
 // From a review of the live @abipetersskinclinic feed (136 posts): what is
@@ -88,6 +172,12 @@ const RULES = [
 
 function Pill({ children }: { children: React.ReactNode }) {
   return <span className="text-[9px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5" style={{ color: ACCENT, background: `color-mix(in srgb, ${ACCENT} 14%, transparent)` }}>{children}</span>;
+}
+
+function CopyBtn({ text }: { text: string }) {
+  const [ok, setOk] = useState(false);
+  const copy = () => { try { navigator.clipboard?.writeText(text); } catch { /* ignore */ } setOk(true); setTimeout(() => setOk(false), 1400); };
+  return <button onClick={copy} className={`shrink-0 text-[10px] font-semibold border rounded px-1.5 py-0.5 transition-colors ${ok ? "text-emerald-600 border-emerald-400" : "text-muted-foreground hover:text-foreground"}`}>{ok ? "Copied" : "Copy caption"}</button>;
 }
 
 function ShotRow({ s, n, done, onToggle }: { s: { id: string; t: string; hook: string; len: string }; n: number; done: boolean; onToggle: () => void }) {
@@ -214,21 +304,26 @@ export default function SocialPlan() {
         </div>
       </div>
 
-      {/* month by month */}
+      {/* content calendar, ready to post */}
       <div className="rounded-2xl border bg-card overflow-hidden">
-        <div className="px-5 py-3.5 border-b bg-muted/[0.15]"><h3 className="text-[15px] font-bold">Month by month, to January</h3><p className="text-[11.5px] text-muted-foreground mt-0.5">Same three slots each week, themed to what the clinic is doing that month.</p></div>
+        <div className="px-5 py-3.5 border-b bg-muted/[0.15]"><h3 className="text-[15px] font-bold">Content calendar, ready to post</h3><p className="text-[11.5px] text-muted-foreground mt-0.5">Every Monday, Wednesday and Friday from mid September to end January, each with a creative idea and a finished caption. Fill in [date] and [client words], add before-and-afters only with written consent, and check any offer date before it goes out.</p></div>
         <div className="divide-y">
-          {MONTHS.map(mo => (
-            <div key={mo.m} className="px-5 py-4">
-              <div className="flex items-baseline gap-2.5 mb-2 flex-wrap">
-                <span className="text-[14px] font-bold" style={{ color: ACCENT }}>{mo.m}</span>
-                <span className="text-[12px] text-muted-foreground">{mo.focus}</span>
+          {CALENDAR.map(wk => (
+            <div key={wk.wc} className="px-4 sm:px-5 py-4">
+              <div className="flex items-baseline gap-2.5 mb-2.5 flex-wrap">
+                <span className="text-[13px] font-bold" style={{ color: ACCENT }}>{wk.wc}</span>
+                <span className="text-[11px] text-muted-foreground">{wk.phase}</span>
               </div>
-              <div className="grid sm:grid-cols-3 gap-2">
-                {[["Mon", mo.mon], ["Wed", mo.wed], ["Fri", mo.fri]].map(([d, txt]) => (
-                  <div key={d} className="rounded-lg border bg-muted/20 px-3 py-2">
-                    <span className="text-[9.5px] font-bold uppercase tracking-wide text-muted-foreground">{d}</span>
-                    <p className="text-[12px] leading-snug mt-0.5">{txt}</p>
+              <div className="space-y-2">
+                {wk.posts.map((p, i) => (
+                  <div key={i} className="rounded-xl border bg-muted/15 p-3">
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wide rounded px-1.5 py-0.5 bg-card border">{p.d}</span>
+                      <Pill>{p.slot}</Pill>
+                      <span className="ml-auto"><CopyBtn text={p.cap} /></span>
+                    </div>
+                    <p className="text-[11.5px] text-muted-foreground mb-1 italic">{p.idea}</p>
+                    <p className="text-[12.5px] leading-snug text-foreground/90 whitespace-pre-wrap">{p.cap}</p>
                   </div>
                 ))}
               </div>
