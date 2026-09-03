@@ -63,9 +63,24 @@ const MONTHS = [
     mon: "Build a plan, not a one-off.", wed: "Why clients choose a monthly membership.", fri: "Book a January analysis, or join the spring founding waitlist (wave two)." },
 ];
 
+// From a review of the live @abipetersskinclinic feed (136 posts): what is
+// already covered, so social freshens rather than repeats, and where the gaps are.
+const COVERED = [
+  "Lips and dermal-filler before-and-afters, by far the heaviest theme.",
+  "The honesty and nurse-led voice: honest guide to treatment, a longer consultation, what happens when it goes wrong.",
+  "Get to know Abi and welcome posts, personal content, the Fresha award.",
+  "Microneedling and SkinVive skin boosters.",
+];
+const WHITESPACE = [
+  "The AI Skin Analysis, your whole way in, and absent from 136 posts.",
+  "Winchester: the countdown and the opening (only in the bio today).",
+  "Founding places and honest scarcity.",
+  "Facials, chemical peels, polynucleotides, and medical-grade skincare as a system.",
+];
+
 const RULES = [
   "Never name a prescription-only treatment (or any brand of one). Talk about the concern and invite a consultation instead.",
-  "No percentage discounts, ever. The value is the free analysis, founding status, and honest advice.",
+  "No discount posts, ever (no 15% off, no new-client offer). The value is the free analysis, founding status, and honest advice.",
   "Faces and before-and-afters only with written consent on file.",
   "Any result carries the line “this is one person's result, everyone's skin is different”. Never imply a guarantee (CAP 3.11).",
   "Repurpose everything: each post also becomes a Story, and the best line becomes an email snippet or a Google post.",
@@ -103,6 +118,28 @@ export default function SocialPlan() {
           <div className="flex items-center gap-2 mb-1" style={{ color: ACCENT }}><Instagram className="w-4 h-4" /><span className="text-[11px] font-bold uppercase tracking-widest">Social, the repeatable engine</span></div>
           <h2 className="text-lg font-semibold">Back on Instagram and Facebook, three posts a week, batch filmed</h2>
           <p className="text-[12.5px] text-muted-foreground mt-1 max-w-3xl">One filming session gives weeks of content. The engine below never changes, so it is never “what do we post?” again. Social is reach and reassurance, not the booking engine, so keep it lean and repurposed.</p>
+        </div>
+      </div>
+
+      {/* already on the feed, so freshen not repeat */}
+      <div className="rounded-2xl border bg-card overflow-hidden">
+        <div className="px-5 py-3.5 border-b bg-muted/[0.15]">
+          <h3 className="text-[15px] font-bold">Already on your feed, so freshen not repeat</h3>
+          <p className="text-[11.5px] text-muted-foreground mt-0.5">@abipetersskinclinic is 136 posts in and reads as a lips-and-filler account. This plan repositions it to nurse-led skin. Settle the brand name on “Skin Clinic” and keep it consistent.</p>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-px bg-border">
+          <div className="bg-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground mb-2">Already covered, do a new angle</div>
+            <ul className="space-y-1.5">
+              {COVERED.map((c, i) => <li key={i} className="flex items-start gap-2 text-[12px] leading-snug text-muted-foreground"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 bg-muted-foreground/40" />{c}</li>)}
+            </ul>
+          </div>
+          <div className="bg-card p-4">
+            <div className="text-[11px] font-bold uppercase tracking-wide mb-2" style={{ color: ACCENT }}>White space, the plan owns this</div>
+            <ul className="space-y-1.5">
+              {WHITESPACE.map((c, i) => <li key={i} className="flex items-start gap-2 text-[12px] leading-snug"><span className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: ACCENT }} />{c}</li>)}
+            </ul>
+          </div>
         </div>
       </div>
 
