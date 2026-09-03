@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import MarketingTimeline from "@/components/marketing-timeline";
+import SocialPlan from "@/components/social-plan";
 
 const PROJECT_ID = 1;
 const API_BASE = "/api";
@@ -162,7 +163,7 @@ export default function MarketingPage() {
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
   const [showCopy, setShowCopy] = useState(false);
   const [openPhases, setOpenPhases] = useState<Set<string> | null>(null);
-  const [view, setView] = useState<"overview" | "plan">("overview");
+  const [view, setView] = useState<"overview" | "plan" | "social">("overview");
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const itemsRef = useRef<Item[]>([]);
   itemsRef.current = items;
@@ -285,6 +286,7 @@ export default function MarketingPage() {
       <div className="flex items-center gap-1 border-b border-border">
         <button onClick={() => setView("overview")} className={`px-3.5 py-2 text-[13px] font-semibold -mb-px border-b-2 transition-colors ${view === "overview" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>Overview</button>
         <button onClick={() => setView("plan")} className={`px-3.5 py-2 text-[13px] font-semibold -mb-px border-b-2 transition-colors ${view === "plan" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>The plan, day by day</button>
+        <button onClick={() => setView("social")} className={`px-3.5 py-2 text-[13px] font-semibold -mb-px border-b-2 transition-colors ${view === "social" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}>Social</button>
       </div>
 
       {view === "plan" && (<>
@@ -355,6 +357,8 @@ export default function MarketingPage() {
       {/* ── Strategy strip ──────────────────────────────────── */}
       <MarketingTimeline />
       </>)}
+
+      {view === "social" && <SocialPlan />}
 
       {view === "plan" && (<>
       <div className="grid md:grid-cols-3 gap-3">
