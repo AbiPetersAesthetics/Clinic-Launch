@@ -7,7 +7,7 @@ import {
 import { eq } from "drizzle-orm";
 import {
   validateMembershipInclusions, buildPublicMembershipExport, computeMedian, varianceFlag,
-  computeFaceValue, revenuePerHour, vatElement, detectGaps, copyComplianceIssues,
+  computeFaceValue, revenuePerHour, vatElement, detectGaps, copyComplianceIssues, parseGbp,
   type TreatmentLite, type InclusionSpec, type PriceSample, type PricePoint,
 } from "../lib/market-rules";
 import {
@@ -36,19 +36,33 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
   try {
     const projectId = parseInt(req.params.id);
 
-    // 1. Treatments (replace)
-    await db.delete(treatmentsTable);
-    let sort = 0;
-    for (const t of TREATMENTS) {
-      await db.insert(treatmentsTable).values({
-        key: t.key, displayName: t.displayName, category: t.category, isPom: t.isPom,
-        durationMinutes: t.durationMinutes, priceWinchester: t.priceWinchester, priceBedhampton: t.priceBedhampton,
-        courseSize: t.courseSize ?? null, coursePriceWinchester: t.coursePriceWinchester ?? null, coursePriceBedhampton: t.coursePriceBedhampton ?? null,
-        isNew: t.isNew ?? false, description: t.description ?? "",
-        varianceReasonWinchester: t.varianceReasonWinchester ?? "", varianceReasonBedhampton: t.varianceReasonBedhampton ?? "",
-        sortOrder: (sort += 10),
-      });
-    }
+    // 1. Treatments (replace). Manually entered actual prices are snapshotted
+    // first and restored by key, so they survive "Reload verified data".
+    // (treatments.key is a non-unique index, so an upsert is not possible.)
+    // Snapshot, delete and re-insert run in one transaction, so a mid-loop
+    // failure rolls back to the previous rows instead of losing the actual prices.
+    await db.transaction(async (tx) => {
+      const snapRows = await tx.select({
+        key: treatmentsTable.key,
+        actualPriceWinchester: treatmentsTable.actualPriceWinchester,
+        actualPriceBedhampton: treatmentsTable.actualPriceBedhampton,
+      }).from(treatmentsTable);
+      const snap = new Map(snapRows.map(r => [r.key, r]));
+      await tx.delete(treatmentsTable);
+      let sort = 0;
+      for (const t of TREATMENTS) {
+        await tx.insert(treatmentsTable).values({
+          key: t.key, displayName: t.displayName, category: t.category, isPom: t.isPom,
+          durationMinutes: t.durationMinutes, priceWinchester: t.priceWinchester, priceBedhampton: t.priceBedhampton,
+          actualPriceWinchester: snap.get(t.key)?.actualPriceWinchester ?? null,
+          actualPriceBedhampton: snap.get(t.key)?.actualPriceBedhampton ?? null,
+          courseSize: t.courseSize ?? null, coursePriceWinchester: t.coursePriceWinchester ?? null, coursePriceBedhampton: t.coursePriceBedhampton ?? null,
+          isNew: t.isNew ?? false, description: t.description ?? "",
+          varianceReasonWinchester: t.varianceReasonWinchester ?? "", varianceReasonBedhampton: t.varianceReasonBedhampton ?? "",
+          sortOrder: (sort += 10),
+        });
+      }
+    });
 
     // 2. Competitors: upsert. Exact name first, then fragment, and never match
     // a row twice (prevents "al aesthetics" claiming "Facial Aesthetics" rows).
@@ -186,6 +200,7 @@ router.get("/projects/:id/market/pricing", async (req, res) => {
       }
       const widest = perBand[`${bands[bands.length - 1]}km`];
       const ourPrice = catchment === "winchester" ? t.priceWinchester : t.priceBedhampton;
+      const ourActualPrice = catchment === "winchester" ? (t.actualPriceWinchester ?? null) : (t.actualPriceBedhampton ?? null);
       const flag = varianceFlag(ourPrice && ourPrice > 0 ? ourPrice : null, widest.median);
       const reason = catchment === "winchester" ? t.varianceReasonWinchester : t.varianceReasonBedhampton;
       const stale = tPrices.some(p => medicalIds.has(p.competitorId) && p.capturedDate && (now - new Date(p.capturedDate).getTime()) > staleCutoff);
@@ -203,7 +218,9 @@ router.get("/projects/:id/market/pricing", async (req, res) => {
         key: t.key, displayName: t.displayName, category: t.category, isPom: t.isPom, isNew: t.isNew,
         durationMinutes: t.durationMinutes,
         priceWinchester: t.priceWinchester, priceBedhampton: t.priceBedhampton,
-        ourPrice, revenuePerHour: revenuePerHour(ourPrice, t.durationMinutes),
+        actualPriceWinchester: t.actualPriceWinchester ?? null,
+        actualPriceBedhampton: t.actualPriceBedhampton ?? null,
+        ourPrice, ourActualPrice, revenuePerHour: revenuePerHour(ourPrice, t.durationMinutes),
         courseSize: t.courseSize,
         coursePrice: catchment === "winchester" ? t.coursePriceWinchester : t.coursePriceBedhampton,
         bands: perBand, varianceFlag: flag, varianceReason: reason || "",
@@ -449,6 +466,28 @@ router.patch("/projects/:id/market/referrals/:rid", async (req, res) => {
   } catch (err) {
     console.error("[referral update]", err);
     return res.status(500).json({ error: "Referral update failed" });
+  }
+});
+
+// ── Treatments: manual actual price per site (Market and Pricing green dot) ──
+router.patch("/projects/:id/market/treatments/:key", async (req, res) => {
+  try {
+    const key = req.params.key;
+    const { catchment, actualPrice } = req.body ?? {};
+    if (catchment !== "winchester" && catchment !== "bedhampton") return res.status(400).json({ error: "catchment must be winchester or bedhampton" });
+    if (actualPrice === undefined) return res.status(400).json({ error: "actualPrice required (a price, or null to clear)" });
+    let value: number | null = null;
+    if (!(actualPrice === null || (typeof actualPrice === "string" && actualPrice.trim() === ""))) {
+      value = parseGbp(actualPrice);
+      if (value === null) return res.status(400).json({ error: "actualPrice must be a price like 150 or 149.50" });
+    }
+    const patch = { [catchment === "winchester" ? "actualPriceWinchester" : "actualPriceBedhampton"]: value, updatedAt: new Date() };
+    const rows = await db.update(treatmentsTable).set(patch).where(eq(treatmentsTable.key, key)).returning();
+    if (rows.length === 0) return res.status(404).json({ error: "Treatment not found" });
+    return res.json({ treatment: rows[0] });
+  } catch (err) {
+    console.error("[treatment update]", err);
+    return res.status(500).json({ error: "Treatment update failed" });
   }
 });
 

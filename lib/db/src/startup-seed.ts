@@ -594,6 +594,7 @@ export async function runStartupSeed(): Promise<void> {
             category TEXT NOT NULL DEFAULT 'skin', is_pom BOOLEAN NOT NULL DEFAULT FALSE,
             duration_minutes INTEGER NOT NULL DEFAULT 30,
             price_winchester REAL, price_bedhampton REAL,
+            actual_price_winchester REAL, actual_price_bedhampton REAL,
             course_size INTEGER, course_price_winchester REAL, course_price_bedhampton REAL,
             is_new BOOLEAN NOT NULL DEFAULT FALSE, product_cost_estimate_gbp REAL,
             description TEXT DEFAULT '', aftercare_url TEXT DEFAULT '',
@@ -602,6 +603,11 @@ export async function runStartupSeed(): Promise<void> {
             created_at TIMESTAMP NOT NULL DEFAULT NOW(), updated_at TIMESTAMP NOT NULL DEFAULT NOW()
           )
         `);
+        // V30 migration: manual actual price per site (Market and Pricing green dot).
+        // Kept directly after the treatments CREATE TABLE so the table always exists
+        // first, and ahead of the later data-repair statements so nothing can skip it.
+        await db.execute(sql`ALTER TABLE treatments ADD COLUMN IF NOT EXISTS actual_price_winchester REAL`);
+        await db.execute(sql`ALTER TABLE treatments ADD COLUMN IF NOT EXISTS actual_price_bedhampton REAL`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS competitor_prices (
             id SERIAL PRIMARY KEY, competitor_id INTEGER NOT NULL, treatment_key TEXT NOT NULL,

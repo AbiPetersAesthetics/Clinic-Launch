@@ -148,6 +148,30 @@ export function vatElement(grossGbp: number): number {
   return Math.round((grossGbp / 6) * 100) / 100;
 }
 
+// ── GBP price parsing (manual actual price per site) ─────────────────────────
+// Accepts a number or a typed string such as "£1,250.50". Returns pounds
+// rounded to the penny, or null when the input is blank, negative, junk or
+// absurdly large. Zero is allowed (the app treats 0 as Free).
+const MAX_GBP = 1_000_000_000;
+function roundPence(v: number): number | null {
+  // Exponent form avoids binary half-penny artefacts (1.005 rounds to 1.01, not 1),
+  // and turns overflow or exponent notation into NaN, which is rejected below.
+  const r = Math.round(Number(v + "e2")) / 100;
+  return Number.isFinite(r) && r >= 0 && r <= MAX_GBP ? r : null;
+}
+export function parseGbp(input: unknown): number | null {
+  if (input == null) return null;
+  if (typeof input === "number") return Number.isFinite(input) ? roundPence(input) : null;
+  if (typeof input === "string") {
+    // Only currency furniture is stripped (pound sign, commas, spaces). What is
+    // left must be a plain decimal, so "1e5" or "12abc" is junk rather than 15 or 12.
+    const s = input.replace(/[£,\s]/g, "");
+    if (!/^\d*\.?\d*$/.test(s) || !/\d/.test(s)) return null;
+    return roundPence(Number(s));
+  }
+  return null;
+}
+
 // ── Membership price-band gap detection (≥ £30 empty bands, recomputed) ──────
 export type PricePoint = { low: number; high: number };
 export function detectGaps(points: PricePoint[], minGap = 30): { from: number; to: number; width: number }[] {

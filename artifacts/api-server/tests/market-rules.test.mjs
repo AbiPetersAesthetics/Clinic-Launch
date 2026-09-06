@@ -135,5 +135,34 @@ test("copy compliance catches banned wording", () => {
   assert.equal(lib.copyComplianceIssues("Anti-wrinkle treatment with exosomes applied topically after microneedling.").length, 0);
 });
 
+// 13. Manual actual price parsing (Market and Pricing green dot)
+test("parseGbp strips currency and rejects junk", () => {
+  assert.equal(lib.parseGbp(""), null);
+  assert.equal(lib.parseGbp("   "), null);
+  assert.equal(lib.parseGbp(null), null);
+  assert.equal(lib.parseGbp(undefined), null);
+  assert.equal(lib.parseGbp("£1,250.50"), 1250.5);
+  assert.equal(lib.parseGbp("190"), 190);
+  assert.equal(lib.parseGbp(190), 190);
+  assert.equal(lib.parseGbp("12."), 12);
+  assert.equal(lib.parseGbp("abc"), null);
+  assert.equal(lib.parseGbp("-5"), null);
+  assert.equal(lib.parseGbp(-5), null);
+  assert.equal(lib.parseGbp("1.2.3"), null);
+  assert.equal(lib.parseGbp("199.999"), 200);
+  assert.equal(lib.parseGbp(0), 0);
+  assert.equal(lib.parseGbp("1e5"), null);
+  assert.equal(lib.parseGbp("£12abc"), null);
+  assert.equal(lib.parseGbp("1 250"), 1250);
+  assert.equal(lib.parseGbp("£ 150"), 150);
+  assert.equal(lib.parseGbp(".5"), 0.5);
+  assert.equal(lib.parseGbp("."), null);
+  assert.equal(lib.parseGbp("1.005"), 1.01);
+  assert.equal(lib.parseGbp(1e307), null);
+  assert.equal(lib.parseGbp("1" + "0".repeat(39)), null);
+  assert.equal(lib.parseGbp(1000000000), 1000000000);
+  assert.equal(lib.parseGbp(1000000001), null);
+});
+
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${passed} tests passed.`);

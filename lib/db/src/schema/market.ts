@@ -16,6 +16,8 @@ export const treatmentsTable = pgTable("treatments", {
   durationMinutes: integer("duration_minutes").notNull().default(30),
   priceWinchester: real("price_winchester"),         // VAT inclusive; null = not offered at site
   priceBedhampton: real("price_bedhampton"),
+  actualPriceWinchester: real("actual_price_winchester"), // manually entered price actually charged; null = not set
+  actualPriceBedhampton: real("actual_price_bedhampton"),
   courseSize: integer("course_size"),
   coursePriceWinchester: real("course_price_winchester"),
   coursePriceBedhampton: real("course_price_bedhampton"),
