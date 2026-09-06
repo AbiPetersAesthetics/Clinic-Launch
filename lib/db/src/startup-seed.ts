@@ -608,6 +608,9 @@ export async function runStartupSeed(): Promise<void> {
         // first, and ahead of the later data-repair statements so nothing can skip it.
         await db.execute(sql`ALTER TABLE treatments ADD COLUMN IF NOT EXISTS actual_price_winchester REAL`);
         await db.execute(sql`ALTER TABLE treatments ADD COLUMN IF NOT EXISTS actual_price_bedhampton REAL`);
+        // Stock cost per treatment, net of VAT. The column is in the CREATE TABLE
+        // above but was never used, so this guarantees it on older databases.
+        await db.execute(sql`ALTER TABLE treatments ADD COLUMN IF NOT EXISTS product_cost_estimate_gbp REAL`);
         await db.execute(sql`
           CREATE TABLE IF NOT EXISTS competitor_prices (
             id SERIAL PRIMARY KEY, competitor_id INTEGER NOT NULL, treatment_key TEXT NOT NULL,

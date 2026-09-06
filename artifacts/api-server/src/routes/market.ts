@@ -7,7 +7,7 @@ import {
 import { eq } from "drizzle-orm";
 import {
   validateMembershipInclusions, buildPublicMembershipExport, computeMedian, varianceFlag,
-  computeFaceValue, revenuePerHour, vatElement, detectGaps, copyComplianceIssues, parseGbp,
+  computeFaceValue, revenuePerHour, vatElement, detectGaps, copyComplianceIssues, parseGbp, profitLine,
   type TreatmentLite, type InclusionSpec, type PriceSample, type PricePoint,
 } from "../lib/market-rules";
 import {
@@ -39,13 +39,14 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
     // 1. Treatments (replace). Manually entered actual prices are snapshotted
     // first and restored by key, so they survive "Reload verified data".
     // (treatments.key is a non-unique index, so an upsert is not possible.)
-    // Snapshot, delete and re-insert run in one transaction, so a mid-loop
-    // failure rolls back to the previous rows instead of losing the actual prices.
+    // Snapshot, delete and re-insert run in one transaction, so a mid-loop failure
+    // rolls back instead of losing the hand-entered actual prices and stock costs.
     await db.transaction(async (tx) => {
       const snapRows = await tx.select({
         key: treatmentsTable.key,
         actualPriceWinchester: treatmentsTable.actualPriceWinchester,
         actualPriceBedhampton: treatmentsTable.actualPriceBedhampton,
+        productCostEstimateGbp: treatmentsTable.productCostEstimateGbp,
       }).from(treatmentsTable);
       const snap = new Map(snapRows.map(r => [r.key, r]));
       await tx.delete(treatmentsTable);
@@ -56,6 +57,7 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
           durationMinutes: t.durationMinutes, priceWinchester: t.priceWinchester, priceBedhampton: t.priceBedhampton,
           actualPriceWinchester: snap.get(t.key)?.actualPriceWinchester ?? null,
           actualPriceBedhampton: snap.get(t.key)?.actualPriceBedhampton ?? null,
+          productCostEstimateGbp: snap.get(t.key)?.productCostEstimateGbp ?? null,
           courseSize: t.courseSize ?? null, coursePriceWinchester: t.coursePriceWinchester ?? null, coursePriceBedhampton: t.coursePriceBedhampton ?? null,
           isNew: t.isNew ?? false, description: t.description ?? "",
           varianceReasonWinchester: t.varianceReasonWinchester ?? "", varianceReasonBedhampton: t.varianceReasonBedhampton ?? "",
@@ -221,6 +223,10 @@ router.get("/projects/:id/market/pricing", async (req, res) => {
         actualPriceWinchester: t.actualPriceWinchester ?? null,
         actualPriceBedhampton: t.actualPriceBedhampton ?? null,
         ourPrice, ourActualPrice, revenuePerHour: revenuePerHour(ourPrice, t.durationMinutes),
+        // Profit runs off what we actually charge, falling back to the list price.
+        stockCostGbp: t.productCostEstimateGbp ?? null,
+        priceCharged: ourActualPrice ?? ourPrice ?? null,
+        profit: profitLine(ourActualPrice ?? ourPrice ?? null, t.productCostEstimateGbp ?? null, t.durationMinutes),
         courseSize: t.courseSize,
         coursePrice: catchment === "winchester" ? t.coursePriceWinchester : t.coursePriceBedhampton,
         bands: perBand, varianceFlag: flag, varianceReason: reason || "",
@@ -469,19 +475,35 @@ router.patch("/projects/:id/market/referrals/:rid", async (req, res) => {
   }
 });
 
-// ── Treatments: manual actual price per site (Market and Pricing green dot) ──
+// ── Treatments: manual actual price per site, and stock cost ─────────────────
+// actualPrice is per catchment (the two sites price differently); stockCost is
+// the same product either way, so it is a single value. Blank or null clears.
 router.patch("/projects/:id/market/treatments/:key", async (req, res) => {
   try {
     const key = req.params.key;
-    const { catchment, actualPrice } = req.body ?? {};
-    if (catchment !== "winchester" && catchment !== "bedhampton") return res.status(400).json({ error: "catchment must be winchester or bedhampton" });
-    if (actualPrice === undefined) return res.status(400).json({ error: "actualPrice required (a price, or null to clear)" });
-    let value: number | null = null;
-    if (!(actualPrice === null || (typeof actualPrice === "string" && actualPrice.trim() === ""))) {
-      value = parseGbp(actualPrice);
-      if (value === null) return res.status(400).json({ error: "actualPrice must be a price like 150 or 149.50" });
+    const { catchment, actualPrice, stockCost } = req.body ?? {};
+    if (actualPrice === undefined && stockCost === undefined) {
+      return res.status(400).json({ error: "actualPrice or stockCost required (a price, or null to clear)" });
     }
-    const patch = { [catchment === "winchester" ? "actualPriceWinchester" : "actualPriceBedhampton"]: value, updatedAt: new Date() };
+    const isBlank = (v: unknown) => v === null || (typeof v === "string" && v.trim() === "");
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    if (actualPrice !== undefined) {
+      if (catchment !== "winchester" && catchment !== "bedhampton") return res.status(400).json({ error: "catchment must be winchester or bedhampton" });
+      let value: number | null = null;
+      if (!isBlank(actualPrice)) {
+        value = parseGbp(actualPrice);
+        if (value === null) return res.status(400).json({ error: "actualPrice must be a price like 150 or 149.50" });
+      }
+      patch[catchment === "winchester" ? "actualPriceWinchester" : "actualPriceBedhampton"] = value;
+    }
+    if (stockCost !== undefined) {
+      let value: number | null = null;
+      if (!isBlank(stockCost)) {
+        value = parseGbp(stockCost);
+        if (value === null) return res.status(400).json({ error: "stockCost must be a cost like 40 or 12.50" });
+      }
+      patch.productCostEstimateGbp = value;
+    }
     const rows = await db.update(treatmentsTable).set(patch).where(eq(treatmentsTable.key, key)).returning();
     if (rows.length === 0) return res.status(404).json({ error: "Treatment not found" });
     return res.json({ treatment: rows[0] });

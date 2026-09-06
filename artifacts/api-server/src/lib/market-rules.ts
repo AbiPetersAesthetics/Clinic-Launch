@@ -148,6 +148,40 @@ export function vatElement(grossGbp: number): number {
   return Math.round((grossGbp / 6) * 100) / 100;
 }
 
+// ── Actual profit per treatment ──────────────────────────────────────────────
+// The price charged is VAT inclusive, so the VAT element (gross / 6 at 20 per
+// cent) belongs to HMRC and never to the clinic. Stock is held net of VAT,
+// because input VAT on consumables is reclaimed, so it is already the true cost.
+// Profit is therefore: price, less its VAT, less stock. It can be negative.
+export type ProfitLine = {
+  gross: number | null;
+  vat: number | null;
+  netRevenue: number | null;
+  stockCost: number | null;
+  profit: number | null;
+  marginPct: number | null;
+  profitPerHour: number | null;
+};
+export function profitLine(grossGbp: number | null, stockCostGbp: number | null, durationMinutes: number): ProfitLine {
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const stock = stockCostGbp ?? null;
+  if (grossGbp == null || grossGbp <= 0) {
+    return { gross: null, vat: null, netRevenue: null, stockCost: stock, profit: null, marginPct: null, profitPerHour: null };
+  }
+  const vat = vatElement(grossGbp);
+  const netRevenue = r2(grossGbp - vat);
+  const profit = r2(netRevenue - (stock ?? 0));
+  return {
+    gross: grossGbp,
+    vat,
+    netRevenue,
+    stockCost: stock,
+    profit,
+    marginPct: netRevenue > 0 ? Math.round((profit / netRevenue) * 100) : null,
+    profitPerHour: durationMinutes > 0 ? Math.round((profit / durationMinutes) * 60) : null,
+  };
+}
+
 // ── GBP price parsing (manual actual price per site) ─────────────────────────
 // Accepts a number or a typed string such as "£1,250.50". Returns pounds
 // rounded to the penny, or null when the input is blank, negative, junk or

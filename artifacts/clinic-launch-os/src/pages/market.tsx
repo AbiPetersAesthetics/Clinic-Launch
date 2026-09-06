@@ -15,6 +15,8 @@ type PricingRow = {
   durationMinutes: number; priceWinchester: number | null; priceBedhampton: number | null;
   ourPrice: number | null; revenuePerHour: number | null; courseSize: number | null; coursePrice: number | null;
   actualPriceWinchester: number | null; actualPriceBedhampton: number | null; ourActualPrice: number | null;
+  stockCostGbp: number | null; priceCharged: number | null;
+  profit: { gross: number | null; vat: number | null; netRevenue: number | null; stockCost: number | null; profit: number | null; marginPct: number | null; profitPerHour: number | null };
   bands: Record<string, MedianBand>; varianceFlag: "below" | "above" | null; varianceReason: string; varianceNeedsReason: boolean;
   stale: boolean; notOnOurMenu: boolean;
   competitors: { name: string; priceGbp: number | null; qualifier: string; medical: boolean; distanceKm: number | null; courseSize: number | null; coursePriceGbp: number | null }[];
@@ -62,7 +64,8 @@ function PricingTab() {
     queryFn: () => jget(`${API}/projects/${PROJECT_ID}/market/pricing?catchment=${catchment}`),
   });
   const [expanded, setExpanded] = useState<string | null>(null);
-  // Actual price drafts, keyed `${treatmentKey}:${catchment}`. A draft exists only while the input is dirty.
+  // Edit drafts, keyed `${treatmentKey}:${catchment}` for the price and `${treatmentKey}:stock`
+  // for the stock cost (stock is the same product at either site). A draft exists only while dirty.
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const dropDraft = (dk: string) => setDrafts(d => { const n = { ...d }; delete n[dk]; return n; });
   const qc = useQueryClient();
@@ -70,12 +73,15 @@ function PricingTab() {
   // The draft key whose save is in flight, so a second blur cannot double-submit the same row.
   const inFlight = useRef<string | null>(null);
   const mutation = useMutation({
-    mutationFn: async (vars: { key: string; catchment: "winchester" | "bedhampton"; actualPrice: number | null; dk: string; raw: string }) => {
+    mutationFn: async (vars: { key: string; field: "actualPrice" | "stockCost"; catchment: "winchester" | "bedhampton"; value: number | null; dk: string; raw: string }) => {
       inFlight.current = vars.dk;
+      const body = vars.field === "actualPrice"
+        ? { catchment: vars.catchment, actualPrice: vars.value }
+        : { stockCost: vars.value };
       const r = await fetch(`${API}/projects/${PROJECT_ID}/market/treatments/${encodeURIComponent(vars.key)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ catchment: vars.catchment, actualPrice: vars.actualPrice }),
+        body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "Save failed");
       return r.json();
@@ -91,14 +97,14 @@ function PricingTab() {
     onError: (err: Error) => toast({ title: "Save failed", description: err.message, variant: "destructive" }),
     onSettled: (_result, _err, vars) => { if (inFlight.current === vars.dk) inFlight.current = null; },
   });
-  const commit = (r: PricingRow, dk: string) => {
+  const commit = (r: PricingRow, dk: string, field: "actualPrice" | "stockCost", current: number | null) => {
     const raw = drafts[dk];
     if (raw === undefined) return;
     if (inFlight.current === dk) return;
     const parsed = parseGbpClient(raw);
-    if (raw.trim() !== "" && parsed === null) { toast({ title: "Enter a price like 150 or 149.50", variant: "destructive" }); return; }
-    if (parsed === r.ourActualPrice) { dropDraft(dk); return; }
-    mutation.mutate({ key: r.key, catchment, actualPrice: parsed, dk, raw });
+    if (raw.trim() !== "" && parsed === null) { toast({ title: "Enter a number like 150 or 149.50", variant: "destructive" }); return; }
+    if (parsed === current) { dropDraft(dk); return; }
+    mutation.mutate({ key: r.key, field, catchment, value: parsed, dk, raw });
   };
   if (error) return (
     <p className="text-sm text-rose-700 dark:text-rose-400 p-6">
@@ -141,6 +147,8 @@ function PricingTab() {
                 <th className="text-right py-2 px-2 text-blue-600">Winchester</th>
                 <th className="text-right py-2 px-2 text-orange-600">Bedhampton</th>
                 <th className="text-left py-2 px-3 w-28">Actual price <span className="normal-case tracking-normal font-normal">inc. VAT</span></th>
+                <th className="text-left py-2 px-3 w-24">Stock <span className="normal-case tracking-normal font-normal">ex VAT</span></th>
+                <th className="text-right py-2 px-2 w-32">Profit <span className="normal-case tracking-normal font-normal">after VAT and stock</span></th>
                 <th className="text-left py-2 px-3 w-52">
                   Market position ({widest})
                   <span className="ml-1.5 normal-case tracking-normal font-normal whitespace-nowrap">
@@ -156,6 +164,7 @@ function PricingTab() {
                   const band = r.bands[widest];
                   const open = expanded === r.key;
                   const dk = `${r.key}:${catchment}`;
+                  const sk = `${r.key}:stock`;
                   return (
                     <Fragment key={r.key}>
                       <tr key={r.key} className={`hover:bg-muted/30 cursor-pointer ${r.notOnOurMenu ? "border-l-2 border-l-red-400" : ""}`} onClick={() => setExpanded(open ? null : r.key)}>
@@ -180,9 +189,41 @@ function PricingTab() {
                               onChange={e => { const v = e.target.value; setDrafts(d => ({ ...d, [dk]: v })); }}
                               onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
                               onClick={e => e.stopPropagation()}
-                              onBlur={() => commit(r, dk)}
+                              onBlur={() => commit(r, dk, "actualPrice", r.ourActualPrice)}
                             />
                           </div>
+                        </td>
+                        <td className="py-1 px-3" onClick={e => e.stopPropagation()}>
+                          <div className="relative w-20">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
+                            <input
+                              key={`${r.key}-stock`}
+                              type="text"
+                              inputMode="decimal"
+                              aria-label={`Stock cost for ${r.displayName}, excluding VAT`}
+                              placeholder="not set"
+                              className="h-7 w-full text-xs pl-5 pr-2 rounded-md border border-input bg-background tabular-nums focus:outline-none focus:ring-1 focus:ring-ring"
+                              value={drafts[sk] ?? (r.stockCostGbp != null ? String(r.stockCostGbp) : "")}
+                              onChange={e => { const v = e.target.value; setDrafts(d => ({ ...d, [sk]: v })); }}
+                              onKeyDown={e => { if (e.key === "Enter") e.currentTarget.blur(); }}
+                              onClick={e => e.stopPropagation()}
+                              onBlur={() => commit(r, sk, "stockCost", r.stockCostGbp)}
+                            />
+                          </div>
+                        </td>
+                        <td
+                          className="py-2 px-2 text-right tabular-nums"
+                          title={r.priceCharged == null ? "No price set for this site" : `Based on the ${r.ourActualPrice != null ? "actual" : "list"} price of £${r.priceCharged}`}
+                        >
+                          {r.profit.profit == null ? <span className="text-[10px] text-muted-foreground">no price yet</span> : (
+                            <>
+                              <span className={`font-semibold ${r.profit.profit < 0 ? "text-rose-600 dark:text-rose-400" : "text-emerald-700 dark:text-emerald-400"}`}>£{r.profit.profit}</span>
+                              {r.profit.marginPct != null && <span className="text-[10px] text-muted-foreground"> ({r.profit.marginPct}%)</span>}
+                              <span className="block text-[9px] text-muted-foreground">
+                                VAT £{r.profit.vat}{r.stockCostGbp == null ? <span className="text-amber-600 dark:text-amber-500"> · no stock yet</span> : ` · stock £${r.stockCostGbp}`}
+                              </span>
+                            </>
+                          )}
                         </td>
                         <td className="py-1 px-3"><PositionBar row={r} band={band} /></td>
                         <td className="py-2 px-2 text-right tabular-nums">
@@ -196,7 +237,7 @@ function PricingTab() {
                         </td>
                       </tr>
                       {open && (
-                        <tr key={r.key + "-detail"}><td colSpan={8} className="px-4 py-3 bg-muted/20">
+                        <tr key={r.key + "-detail"}><td colSpan={10} className="px-4 py-3 bg-muted/20">
                           <div className="grid md:grid-cols-2 gap-3 text-xs">
                             <div>
                               <p className="font-semibold mb-1">Competitor prices in this catchment</p>

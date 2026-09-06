@@ -164,5 +164,33 @@ test("parseGbp strips currency and rejects junk", () => {
   assert.equal(lib.parseGbp(1000000001), null);
 });
 
+// 14. Actual profit after VAT and stock
+test("profitLine takes VAT off the price then stock off the rest", () => {
+  const a = lib.profitLine(190, 40, 15);
+  assert.equal(a.vat, 31.67);
+  assert.equal(a.netRevenue, 158.33);
+  assert.equal(a.profit, 118.33);
+  assert.equal(a.marginPct, 75);
+  assert.equal(a.profitPerHour, 473);
+  // Stock not set yet: profit is the whole net revenue, stockCost stays null so
+  // the UI can say so rather than implying the treatment costs nothing.
+  const b = lib.profitLine(300, null, 60);
+  assert.equal(b.vat, 50);
+  assert.equal(b.profit, 250);
+  assert.equal(b.stockCost, null);
+  assert.equal(b.profitPerHour, 250);
+  // Loss making is a real answer, not an error.
+  const c = lib.profitLine(50, 60, 30);
+  assert.equal(c.profit, -18.33);
+  assert.equal(c.marginPct, -44);
+  assert.equal(c.profitPerHour, -37);
+  // No price charged: nothing to compute, but the stock cost still reads back.
+  const d = lib.profitLine(null, 40, 30);
+  assert.equal(d.profit, null);
+  assert.equal(d.vat, null);
+  assert.equal(d.stockCost, 40);
+  assert.equal(lib.profitLine(0, 40, 30).profit, null);
+});
+
 rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${passed} tests passed.`);
