@@ -5,8 +5,8 @@ export interface PlanItem { category: string; title: string; detail: string; cha
 export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "top",
-    "title": "Read this first: the list is already full (448 leads vs 40 places)",
-    "detail": "Acquisition is not the constraint. Selection, conversion and capacity are.",
+    "title": "Read this first: the plan in one shape (three engines, buckets, one offer that shifts)",
+    "detail": "The Meta and Google plan for September to January. Convert the warm list, trickle new Winchester leads, harvest Bedhampton. Pricing is job one.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
@@ -14,20 +14,128 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 0,
     "deep": [
       {
-        "h": "STRATEGY",
-        "b": "The whole plan was written as though the job is to fill the list. The list is already full. There are 395 leads (448 opportunities in GHL) against a founding cap of 40, served by one nurse at 30 to 35 appointments a week."
+        "h": "THREE ENGINES, RUNNING AT ONCE",
+        "b": "One. Bedhampton as usual, but every ad now leads with the free AI Skin Analysis, local only, until 31 October. Two. Winchester cold trickle at £5 a day, presence and a slow list build, not the main event. Three. Founders retarget: the warm list of about 450, converted by bucketed WhatsApp and email plus a small Meta retarget. Engine three is where the money is."
       },
       {
-        "h": "WHY",
-        "b": "Acquisition is not the constraint. Selection, conversion and capacity are. Every extra lead bought from here is a lead for a place that no longer exists, at a rising price."
+        "h": "THE LIST IS NOT THE PLACES",
+        "b": "The roughly 450 warm leads are the audience you sell from. The 40 is not 450 founders, it is 40 free November skin-analysis places (23 taken, 17 left). Founders treatment pricing is uncapped: as many people as want to book treatments at the founders price are welcome. Only the free-analysis diary is finite."
       },
       {
-        "h": "KEY FIGURES",
-        "b": "395 leads captured (448 opportunities in GHL). 40 founding places. Cost per lead £5.64 over the last 7 days against £3.16 lifetime. 3.6 leads per 1,000 reached, down from 13.8 lifetime. £422 released by correcting the cold spend."
+        "h": "HOW YOU SELL",
+        "b": "No phone calls. Each bucket gets the same WhatsApp and email copy, sent once now and again in October. The bucket sets the urgency, the treatment line sets the words."
       },
       {
-        "h": "NOTE",
-        "b": "Headline state, measured 1 September 2026: Meta prospecting live and producing leads daily, no Winchester Business Profile, no Google campaigns, 62 days to launch (Monday 2 November). Read this before anything else in the plan."
+        "h": "JOB ONE",
+        "b": "Finalise pricing first (next task). Nothing downstream is written in stone until the opening list and the founders price are set."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Do first: finalise the opening price list, then set founders pricing at 20 percent below",
+    "detail": "Opening prices are already drafted in the treatments table and the Market page. Confirm them, then set the founders (introductory) price at 20 percent below each. Never shown publicly as a percentage off.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 0.1,
+    "deep": [
+      {
+        "h": "WHY IT IS FIRST",
+        "b": "Every message, ad and offer quotes a price or an introductory saving. Until the numbers are locked, nothing downstream can be finalised. This gates the bucket scripts, the ads and the November offer."
+      },
+      {
+        "h": "WHAT ALREADY EXISTS",
+        "b": "The opening prices are drafted and owner-final from 1 September, living in the treatments table (33 rows, VAT inclusive) and on the Market and Pricing page. Examples: anti-wrinkle 190 / 255 / 305, filler 1ml 300, Profhilo face 300, tear trough 430. First job is simply to confirm these are the true opening prices."
+      },
+      {
+        "h": "THE FOUNDERS PRICE",
+        "b": "Set the founders (introductory) price at 20 percent below each confirmed opening price. That is the price a founding client pays, held for their first booking. It is a price, not an offer, and it is never written as 20 percent off in public. Founding status is the value, not a discount."
+      },
+      {
+        "h": "OUTPUT",
+        "b": "One confirmed table: opening price and founders price side by side, for every treatment and the memberships. That table feeds every bucket script and every ad."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Read this first: the 40 is free November analysis places, founders pricing is uncapped",
+    "detail": "40 complimentary AI Skin Analysis slots for November (23 taken, 17 left, about 10 a week). Treatments at the founders price are open to anyone who books.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 0.2,
+    "deep": [
+      {
+        "h": "THE 40",
+        "b": "The founding cap of 40 is the number of free AI Skin Analysis places in November (normally £50). 23 are taken, 17 remain, and you can deliver about 10 a week. That is your throughput limit: do not advertise the free analysis harder than you can see people."
+      },
+      {
+        "h": "UNCAPPED",
+        "b": "Founders pricing on treatments is not capped. Anyone who books a treatment in the founders window pays the founders price. The 40 caps only the free analysis, not the number of paying founders."
+      },
+      {
+        "h": "WHY IT MATTERS",
+        "b": "It removes the old fear of buying leads for places that do not exist. More paying founders is good. The only finite thing is the free-analysis diary, and 10 a week is the gate."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Read this first: the offer shifts (founders, then free analysis, then £50)",
+    "detail": "The message moves from become a founding client, to free skin analysis when you book for November, £50 after, as the places fill. Same on Meta and Google.",
+    "channel": "meta",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 0.3,
+    "deep": [
+      {
+        "h": "PHASE 1 (now)",
+        "b": "To the warm list: become a founding client, worked bucket by bucket over WhatsApp and email. Goal, fill the 17 remaining free-analysis places and take founders-price treatment bookings."
+      },
+      {
+        "h": "PHASE 2 (as places fill, public)",
+        "b": "Meta and Google shift to: book in for November and your skin analysis is free, normally £50, then £50 after November. This is the broad public hook that keeps November filling."
+      },
+      {
+        "h": "PHASE 3 (once 40 are gone)",
+        "b": "The offer becomes the spring founders waitlist, wave two, timed to the second clinician arriving around April or May 2027. No discounting to force it."
+      },
+      {
+        "h": "BEDHAMPTON RUNS ALONGSIDE",
+        "b": "Bedhampton runs its own free-analysis harvest in parallel, local only, closing 31 October."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Cut the warm list into buckets and build them as GHL contact lists",
+    "detail": "Three form answers give the buckets: treatment interest, timeline, prior experience. Build each tier and treatment line as a smart list so one send hits the right people.",
+    "channel": "found",
+    "owner": "both",
+    "weekStart": "2026-08-30",
+    "dayDate": "2026-09-02",
+    "sortOrder": 0.4,
+    "deep": [
+      {
+        "h": "THE THREE QUESTIONS",
+        "b": "Every warm lead answered Treatment Interest (anti-wrinkle consultation, dermal filler, skin quality, medical skincare and peels, or not sure), Treatment Timeline (as soon as you open, within a few months, later, just exploring) and Prior Experience (first time, a few times, regularly). Those three answers are the buckets. The fields already exist in GHL."
+      },
+      {
+        "h": "THE FOUR TIERS",
+        "b": "Cross timeline and experience. Tier 1, experienced and ready (had it before, wants it as you open): go straight to the founders-price booking. Tier 2, new and ready (first time, wants it as you open): lead with the free analysis, then the place. Tier 3, warm and a few months out: book a November or December slot now. Tier 4, later or just exploring: keep warm, spring waitlist once the 40 are gone."
+      },
+      {
+        "h": "BUILD IN GHL",
+        "b": "Build each tier, and each treatment line within it, as a smart list, so a single WhatsApp and email send reaches exactly the right people, once now and once in October. Live counts per bucket are being pulled, so you will know how many sit in Tier 1 today before you write a word."
+      },
+      {
+        "h": "COMPLIANCE",
+        "b": "Anti-wrinkle consultation is the only public label for the toxin interest, never name the drug. And the founders price is never written as a percentage off. Both guardrails are fixed."
       }
     ]
   },
@@ -978,7 +1086,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "nurture",
     "title": "Failure branch checkpoint: Friday 16 October",
-    "detail": "Count Priority Access = Requested; 55+ proceed, under 55 phone, under 30 reconsider the cap.",
+    "detail": "Count Priority Access = Requested; 55+ proceed, under 55 send a personal WhatsApp and email, under 30 reconsider the cap.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-10-11",
@@ -991,7 +1099,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "DECISION",
-        "b": "Friday 16 October, count Priority Access = Requested. 55 or more: proceed as planned. Under 55: phone the non-repliers (not a fourth WhatsApp), pull December forward, and open founding to web and walk-in from 2 Nov. Under 30: all of that, plus reconsider whether 40 is the right cap (a real 25 beats a padded 40)."
+        "b": "Friday 16 October, count Priority Access = Requested. 55 or more: proceed as planned. Under 55: send a short personal WhatsApp and email from Abi to the non-repliers (one to one, not the templated broadcast, and not a phone call), pull December forward, and open founding to web and walk-in from 2 Nov. Under 30: all of that, plus reconsider whether 40 is the right cap (a real 25 beats a padded 40)."
       }
     ]
   },
@@ -3263,7 +3371,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "DECISION",
-        "b": "Stop and escalate rules: 40 filled before 1 Nov, pause same day; fewer than 18 at Mon 19 Oct, apply the headroom rule and add phone calls early; fewer than 25 at Mon 26 Oct, the problem is follow up not media, do not raise budget; CPM over £40 sustained, cut remaining budget by a third; if the complimentary analysis blocks fill up, stop advertising the free analysis."
+        "b": "Stop and escalate rules: 40 filled before 1 Nov, pause same day; fewer than 18 at Mon 19 Oct, apply the headroom rule and bring the personal WhatsApp and email nudges forward; fewer than 25 at Mon 26 Oct, the problem is follow up not media, do not raise budget; CPM over £40 sustained, cut remaining budget by a third; if the complimentary analysis blocks fill up, stop advertising the free analysis."
       }
     ]
   },
@@ -3337,8 +3445,8 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "retarget",
-    "title": "Abi phones the most engaged non-bookers",
-    "detail": "Ten calls a day to engaged non-bookers, about 30 minutes a day, 27 to 30 Oct.",
+    "title": "Abi's personal nudge to the most engaged non-bookers (WhatsApp and email)",
+    "detail": "A short personal WhatsApp or email from Abi to the warmest non-bookers, 27 to 30 Oct. No calls.",
     "channel": "email",
     "owner": "abi",
     "weekStart": "2026-10-25",
@@ -3347,11 +3455,11 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STEPS",
-        "b": "Tuesday 27 to Friday 30 October: Abi phones the most engaged non-bookers, 10 a day, about 30 minutes a day."
+        "b": "Tuesday 27 to Friday 30 October: Abi sends a short, personal WhatsApp or email (not the templated broadcast) to the most engaged non-bookers, a handful a day. Warm and human, one to one, not a phone call."
       },
       {
         "h": "NOTE",
-        "b": "If fewer than 18 booked at the Mon 19 Oct check, add these phone calls early."
+        "b": "If fewer than 18 booked at the Mon 19 Oct check, bring these personal nudges forward. Still WhatsApp and email, never phone."
       }
     ]
   },
@@ -3939,7 +4047,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STRATEGY",
-        "b": "You hold 395 leads (448 in GHL) and 40 founding places. Lead volume is not the constraint; conversion and clinical capacity are. Work the existing list by phone and WhatsApp on an ongoing basis from 2 September, before any Bedhampton money is released."
+        "b": "You hold a warm list of about 450 and 40 free November analysis places. Lead volume is not the constraint; conversion and clinical capacity are. Work the existing list by WhatsApp and email on an ongoing basis from 2 September, in buckets, once now and again in October. No phone calls."
       },
       {
         "h": "GATE",
