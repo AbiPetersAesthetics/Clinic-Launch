@@ -35,7 +35,9 @@ export const TREATMENTS: TreatmentSeed[] = [
   { key: "tearTrough", displayName: "Tear trough", category: "filler", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 375, isNew: true },
   { key: "temple", displayName: "Temple", category: "filler", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 375, isNew: true },
   { key: "dissolving", displayName: "Filler dissolving", category: "filler", isPom: false, durationMinutes: 30, priceWinchester: 250, priceBedhampton: 200, description: "Free for our own filler within 12 months." },
-  { key: "sculptraVial", displayName: "Sculptra, per vial", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 430, priceBedhampton: 365, isNew: true, courseSize: 3, coursePriceWinchester: 1150, coursePriceBedhampton: 975, description: "Two vials 800 Winchester, 680 Bedhampton. Three vials 1150 Winchester, 975 Bedhampton." },
+  // Sold and costed per SESSION of two vials, because a session always uses two and
+  // a per-vial line makes the stock cost and the profit read half what they really are.
+  { key: "sculptraSession", displayName: "Sculptra, per session (2 vials)", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 800, priceBedhampton: 680, isNew: true, description: "One session is two vials. Winchester 800, Bedhampton 680. A three-vial protocol (1150 Winchester, 975 Bedhampton) is quoted case by case and is not a course of sessions." },
   { key: "profhiloFace", displayName: "Profhilo, face", category: "regenerative", isPom: false, durationMinutes: 30, priceWinchester: 300, priceBedhampton: 280, courseSize: 2, coursePriceWinchester: 550, coursePriceBedhampton: 500, varianceReasonWinchester: "Fixed national price. Held at 300 Winchester because the market has a fixed national price for Profhilo." },
   { key: "profhiloFaceNeck", displayName: "Profhilo, face and neck", category: "regenerative", isPom: false, durationMinutes: 60, priceWinchester: 625, priceBedhampton: 515, courseSize: 2, coursePriceWinchester: 1000, coursePriceBedhampton: 1000 },
   { key: "skinvive", displayName: "Skinvive", category: "regenerative", isPom: false, durationMinutes: 40, priceWinchester: 275, priceBedhampton: 250 },
@@ -107,13 +109,15 @@ export const COMPETITOR_SEEDS: CompetitorSeed[] = [
 
 // ── Competitor prices. p: [match, treatmentKey, price|null, qualifier, courseSize?, coursePrice?] ──
 type P = [string, string, number | null, "exact" | "from" | "poa", number?, number?];
+// sculptraSession: competitors publish per vial, so the comparable session figure is
+// twice the captured per-vial price (450 each), not a separately captured session price.
 export const WINCHESTER_PRICES: P[] = [
   // Dr Victoria
   ["victoria", "aw1", 190, "exact"], ["victoria", "aw2", 290, "exact"], ["victoria", "aw3", 330, "exact"],
   ["victoria", "lipFlip", 120, "exact"], ["victoria", "gummySmile", 100, "exact"], ["victoria", "masseter", 400, "exact"],
   ["victoria", "platysmal", 350, "exact"], ["victoria", "hyperhidrosis", 400, "exact"],
   ["victoria", "filler05", 200, "exact"], ["victoria", "filler1", 400, "exact"], ["victoria", "filler2", 750, "exact"],
-  ["victoria", "tearTrough", 550, "exact"], ["victoria", "dissolving", 250, "exact"], ["victoria", "sculptraVial", 450, "exact"],
+  ["victoria", "tearTrough", 550, "exact"], ["victoria", "dissolving", 250, "exact"], ["victoria", "sculptraSession", 900, "exact"],
   ["victoria", "profhiloFace", 300, "exact"], ["victoria", "profhiloFaceNeck", 650, "exact"],
   ["victoria", "polyFace", 280, "exact"], ["victoria", "exoFace", 300, "exact"],
   ["victoria", "mnFace", 180, "exact"], ["victoria", "mnFaceNeck", 210, "exact"],
@@ -140,7 +144,7 @@ export const WINCHESTER_PRICES: P[] = [
   ["wessex", "lipFlip", null, "poa"], ["wessex", "gummySmile", null, "poa"], ["wessex", "masseter", null, "poa"],
   ["wessex", "platysmal", null, "poa"], ["wessex", "hyperhidrosis", null, "poa"],
   ["wessex", "filler05", null, "poa"], ["wessex", "filler1", 350, "from"], ["wessex", "filler2", null, "poa"],
-  ["wessex", "tearTrough", null, "poa"], ["wessex", "dissolving", null, "poa"], ["wessex", "sculptraVial", 450, "exact"],
+  ["wessex", "tearTrough", null, "poa"], ["wessex", "dissolving", null, "poa"], ["wessex", "sculptraSession", 900, "exact"],
   ["wessex", "profhiloFace", 300, "from"], ["wessex", "profhiloFaceNeck", null, "poa"],
   ["wessex", "polyFace", 300, "from"], ["wessex", "exoFace", 275, "from"],
   ["wessex", "mnFace", 260, "from"], ["wessex", "mnFaceNeck", null, "poa"],
