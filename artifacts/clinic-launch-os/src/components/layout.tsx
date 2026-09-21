@@ -33,6 +33,7 @@ import {
   Users,
   PoundSterling,
   Newspaper,
+  Link2,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -161,6 +162,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/risk-register", label: "Risks", icon: AlertTriangle },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
+    { href: "/backlinks", label: "Backlinks", icon: Link2 },
     { href: "/competition", label: "Competition Intel", icon: Target },
   ];
 

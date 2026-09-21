@@ -7,6 +7,11 @@
 import { db } from "./index";
 import * as schema from "./schema";
 import { eq, and, sql } from "drizzle-orm";
+import {
+  BACKLINK_OPPORTUNITIES,
+  BACKLINK_LISTING_PACK,
+  BACKLINK_TEMPLATES,
+} from "./backlink-seed-data";
 
 async function seedRisks(projectId: number) {
   const SEED_RISKS = [
@@ -36,6 +41,52 @@ async function seedRisks(projectId: number) {
 
   await db.insert(schema.risksTable).values(
     SEED_RISKS.map(r => ({ ...r, projectId, source: "Seed", status: "Not Started" }))
+  );
+}
+
+async function seedBacklinks(projectId: number) {
+  await db.insert(schema.backlinkOpportunitiesTable).values(
+    BACKLINK_OPPORTUNITIES.map(o => ({
+      projectId,
+      rank: o.rank,
+      priority: o.priority,
+      category: o.category,
+      website: o.website,
+      domain: o.domain,
+      why: o.why,
+      competitors: o.competitors,
+      groups: [...o.groups],
+      cost: o.cost,
+      applyUrl: o.applyUrl,
+      infoNeeded: o.infoNeeded,
+      template: o.template,
+      // The workbook already carried a status for some rows (Winchester BID
+      // awaiting a reply, Obagi in progress). Keep them rather than resetting.
+      status: o.status,
+      owner: o.owner,
+      notes: o.notes,
+    }))
+  );
+
+  await db.insert(schema.backlinkListingPackTable).values(
+    BACKLINK_LISTING_PACK.map(p => ({
+      projectId,
+      section: p.section,
+      field: p.field,
+      value: p.value,
+      remaining: p.remaining,
+      status: p.status,
+      sortOrder: p.sortOrder,
+    }))
+  );
+
+  await db.insert(schema.backlinkTemplatesTable).values(
+    BACKLINK_TEMPLATES.map(t => ({
+      projectId,
+      templateId: t.templateId,
+      use: t.use,
+      wording: t.wording,
+    }))
   );
 }
 
@@ -731,6 +782,15 @@ export async function runStartupSeed(): Promise<void> {
           SELECT ${projectId}, 'R026', 'Meta pixel dead since December 2025 blinds the paid-media plan', 'The Meta pixel has fired no events since December 2025. The launch cold-start mitigation (R008) leans on Meta ads, but without a working pixel there is no conversion tracking, no optimisation and no retargeting audience. Confirm the pixel state, then reinstall and verify before any spend goes live.', 'Market & Competition', 4, 3, 'Pre-Opening', 'Marketing', '["R008"]'::jsonb, TRUE, 'Audit', 'Not Started'
           WHERE NOT EXISTS (SELECT 1 FROM risks WHERE project_id = ${projectId} AND risk_id = 'R026')
         `);
+
+        // Backlink tracker: added after the original build, so an existing
+        // install reaches this branch and would otherwise never get it.
+        const existingBacklinks2 = await db.select().from(schema.backlinkOpportunitiesTable).where(eq(schema.backlinkOpportunitiesTable.projectId, projectId));
+        if (existingBacklinks2.length === 0) {
+          await seedBacklinks(projectId);
+          console.log("  ✅ Backlink tracker seeded (42 opportunities)");
+        }
+
         return;
       }
 
@@ -852,6 +912,12 @@ export async function runStartupSeed(): Promise<void> {
     const existingRisks = await db.select().from(schema.risksTable).where(eq(schema.risksTable.projectId, projectId));
     if (existingRisks.length === 0) {
       await seedRisks(projectId);
+    }
+
+    // Ensure backlink tracker exists
+    const existingBacklinks = await db.select().from(schema.backlinkOpportunitiesTable).where(eq(schema.backlinkOpportunitiesTable.projectId, projectId));
+    if (existingBacklinks.length === 0) {
+      await seedBacklinks(projectId);
     }
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);

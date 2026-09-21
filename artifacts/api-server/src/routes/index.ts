@@ -29,6 +29,7 @@ import timelineRouter from "./timeline";
 import tenderRouter from "./tender";
 import digestRouter from "./digest";
 import workforceRouter from "./workforce";
+import backlinksRouter from "./backlinks";
 
 const router: IRouter = Router();
 
@@ -62,5 +63,6 @@ router.use(timelineRouter);
 router.use(tenderRouter);
 router.use(digestRouter);
 router.use(workforceRouter);
+router.use(backlinksRouter);
 
 export default router;
