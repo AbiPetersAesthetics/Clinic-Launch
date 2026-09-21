@@ -426,6 +426,66 @@ export async function runStartupSeed(): Promise<void> {
   console.log("🌱 Running startup seed check...");
 
   try {
+    // V31 migration: backlink tracker tables.
+    //
+    // Deliberately ahead of the fresh-install / existing-install branch rather
+    // than with the other numbered migrations, because both paths go on to
+    // SELECT from these tables. On a database that has not got them yet, that
+    // select throws, the outer catch swallows it, and the whole startup seed
+    // stops. Creating them first is what makes deploying enough.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS backlink_opportunities (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        rank INTEGER NOT NULL,
+        priority TEXT NOT NULL DEFAULT 'P2 Next',
+        category TEXT NOT NULL,
+        website TEXT NOT NULL,
+        domain TEXT NOT NULL,
+        why TEXT,
+        competitors TEXT,
+        groups JSONB DEFAULT '[]'::jsonb,
+        cost TEXT,
+        apply_url TEXT,
+        info_needed TEXT,
+        template TEXT,
+        status TEXT NOT NULL DEFAULT 'Not started',
+        owner TEXT,
+        target_date DATE,
+        notes TEXT,
+        date_contacted DATE,
+        follow_up_date DATE,
+        live_url TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS backlink_listing_pack (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        section TEXT NOT NULL,
+        field TEXT NOT NULL,
+        value TEXT,
+        remaining TEXT,
+        status TEXT NOT NULL DEFAULT 'Missing',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS backlink_templates (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        template_id TEXT NOT NULL,
+        use TEXT NOT NULL,
+        wording TEXT NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
     let projectId: number;
 
     const existing = await db.select().from(schema.projectsTable).where(eq(schema.projectsTable.id, 1));
