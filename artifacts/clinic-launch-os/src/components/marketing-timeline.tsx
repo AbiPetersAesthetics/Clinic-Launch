@@ -137,7 +137,7 @@ const LANES: Lane[] = [
     { kind: "beat", from: "2026-12-19", label: "Last Christmas posting", loc: "winch", up: false,
       detail: "Last order date for posted gifts before the clinic closes 24 December to 1 January." },
     { kind: "bar", from: "2027-01-02", to: "2027-01-31", label: "January skin plans + pre-sell", loc: "winch", theme: "New-year pre-sell",
-      detail: "New-year skin plans and membership pre-sell. The founding waitlist keeps building for wave two, which opens in spring 2027 when the second, skin-focused clinician starts, not in January." },
+      detail: "New-year skin plans and membership pre-sell. The founding waitlist keeps building for wave two, which opens when Bedhampton closes and Abi is in Winchester full time, not in January." },
   ] },
 ];
 
@@ -151,7 +151,7 @@ const OFFER_ROWS: Seg[][] = [
   ],
   [
     { from: "2026-10-01", to: "2026-11-30", label: "Founding wave one: first 40, priority + pricing held 12 months", c: "#907a86", loc: "winch", theme: "Status, not a discount", detail: "The first 40 clients. Priority booking window from 26 October, founding pricing held for twelve months, a complimentary add-on with the first treatment. Never a discount. 20 already booked." },
-    { from: "2026-12-01", to: "2027-01-31", label: "Founding wave two (waitlist)", c: "#907a86", faint: true, loc: "winch", detail: "Overflow goes on the honest waitlist as wave two, opened when the second, skin-focused clinician starts. Warm Bedhampton clients who miss wave one get priority." },
+    { from: "2026-12-01", to: "2027-01-31", label: "Founding wave two (waitlist)", c: "#907a86", faint: true, loc: "winch", detail: "Overflow goes on the honest waitlist as wave two, opened when Bedhampton closes and Abi's week moves to Winchester. Warm Bedhampton clients who miss wave one get priority." },
   ],
   [
     { from: "2026-12-01", to: "2026-12-24", label: "Christmas: vouchers + gift sets", c: "#c2a672", loc: "winch", detail: "Gift vouchers and curated skincare sets, POM-safe, to drive January bookings." },

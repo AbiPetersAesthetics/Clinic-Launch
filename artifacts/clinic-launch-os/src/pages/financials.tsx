@@ -5236,7 +5236,7 @@ export default function FinancialsPage() {
                     const fyNotes: Record<string, string> = {
                       [y1.fyLabel]: `${y1.tradingMonths} trading months — Winchester opens November 2026`,
                       [y2.fyLabel]: "First full financial year — 12 trading months",
-                      [y3.fyLabel]: "Second full year — second clinician joins from November 2027",
+                      [y3.fyLabel]: "Second full year, Abi as the only clinician",
                     };
                     return (
                       <div className="space-y-5">

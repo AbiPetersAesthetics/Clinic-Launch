@@ -65,26 +65,14 @@ async function seedRosterIfEmpty(projectId: number, openMonth: string) {
     {
       projectId, name: "Abi Peters", roleType: "clinician", status: "active", isOwner: true,
       startDate: monthKey(new Date()), leadTimeWeeks: 0, annualCostGbp: 0, sortOrder: 0,
-      triggerJson: JSON.stringify({ type: "owner", note: "Founder — splits across sites as Winchester ramps" }),
+      triggerJson: JSON.stringify({ type: "owner", note: "Founder and the only clinician. Splits her week while Winchester ramps, then Bedhampton closes." }),
       allocationsJson: JSON.stringify([
         { fromMonth: monthKey(new Date()), bedhamptonDays: 5, winchesterDays: 0, chichesterDays: 0 },
         { fromMonth: M(0), bedhamptonDays: 2, winchesterDays: 3, chichesterDays: 0 },
         { fromMonth: M(6), bedhamptonDays: 1, winchesterDays: 4, chichesterDays: 0 },
         { fromMonth: M(12), bedhamptonDays: 0, winchesterDays: 5, chichesterDays: 0 },
       ]),
-      notes: "Anchors Winchester's brand from opening while tapering Bedhampton days as the second clinician takes over.",
-    },
-    {
-      projectId, name: "Bedhampton Clinician (backfill)", roleType: "clinician", status: "planned",
-      startDate: M(-1), leadTimeWeeks: 14, annualCostGbp: 42000, sortOrder: 1,
-      triggerJson: JSON.stringify({ type: "before_open", note: "Recruit ~14 weeks before Winchester opens so they shadow Abi at Bedhampton first, then hold it as she splits her week." }),
-      allocationsJson: JSON.stringify([
-        { fromMonth: M(-1), bedhamptonDays: 0, winchesterDays: 0, chichesterDays: 0 },
-        { fromMonth: M(0), bedhamptonDays: 3, winchesterDays: 0, chichesterDays: 0 },
-        { fromMonth: M(6), bedhamptonDays: 4, winchesterDays: 0, chichesterDays: 0 },
-        { fromMonth: M(12), bedhamptonDays: 5, winchesterDays: 0, chichesterDays: 0 },
-      ]),
-      notes: "The mitigation for risk R014 (Abi as sole clinician). Overlap/shadow month protects the 290+ review reputation and the £10k/mo Bedhampton cash engine.",
+      notes: "The only clinician. Anchors Winchester from opening and tapers Bedhampton; Bedhampton closes once Winchester pays its own way. No second clinician is planned.",
     },
     {
       projectId, name: "Receptionist", roleType: "reception", status: "planned",
@@ -96,16 +84,9 @@ async function seedRosterIfEmpty(projectId: number, openMonth: string) {
     {
       projectId, name: "Clinic Manager", roleType: "management", status: "planned",
       startDate: M(12), leadTimeWeeks: 8, annualCostGbp: 34000, sortOrder: 3,
-      triggerJson: JSON.stringify({ type: "team_size", note: "Once you're two clinicians + reception across two sites, someone other than Abi should own rotas, stock, compliance and HR." }),
+      triggerJson: JSON.stringify({ type: "team_size", note: "Only if reception plus a full Winchester diary outgrow what Abi can run alongside treating." }),
       allocationsJson: JSON.stringify([{ fromMonth: M(12), bedhamptonDays: 0, winchesterDays: 5, chichesterDays: 0 }]),
-      notes: "May be pulled forward by the Chichester move.",
-    },
-    {
-      projectId, name: "Second Winchester Clinician", roleType: "clinician", status: "planned",
-      startDate: M(11), leadTimeWeeks: 14, annualCostGbp: 42000, sortOrder: 4,
-      triggerJson: JSON.stringify({ type: "winchester_occupancy", occupancyPct: 80, note: "When Abi's Winchester days are ~80%+ booked and you're turning clients away — the second treatment room earns out." }),
-      allocationsJson: JSON.stringify([{ fromMonth: M(11), bedhamptonDays: 0, winchesterDays: 3, chichesterDays: 0 }]),
-      notes: "Depends on Winchester having 2 usable treatment rooms.",
+      notes: "Optional. With one clinician and one site after Bedhampton closes, this may never be needed.",
     },
   ];
   await db.insert(staffRolesTable).values(rows);
@@ -470,7 +451,7 @@ router.post("/projects/:projectId/workforce/ai-plan", async (req, res) => {
   const prompt = `You are a workforce planner for a two-site nurse-led aesthetics clinic business (Abi Peters Aesthetics). Context (JSON):
 ${JSON.stringify(ctx, null, 1)}
 
-The strategic problem: Abi is currently the ONLY clinician. Bedhampton (the existing clinic, ~£${ctx.bedhamptonMonthlyRevenueGbp}/mo) is the cash engine and must never lose coverage. Winchester opens soon but ramps slowly (cold start). We must phase: keep Bedhampton fully covered, bring Abi to Winchester to anchor its brand, backfill Bedhampton with a second clinician (recruited early and shadowed in), then add a receptionist, a clinic manager, and a second Winchester clinician as volume justifies — and eventually relocate Bedhampton to Chichester once the workforce is stable.
+The strategic problem: Abi is currently the ONLY clinician. Bedhampton (the existing clinic, ~£${ctx.bedhamptonMonthlyRevenueGbp}/mo) is the cash engine and must never lose coverage. Winchester opens soon but ramps slowly (cold start). The owner's decision: there will be NO second clinician, at either site. Abi splits her week while Winchester ramps, Bedhampton keeps paying the bills in the meantime, and once Winchester covers its own costs Bedhampton CLOSES and Abi works in Winchester full time. There is no Chichester relocation. Only non-clinical support (for example a receptionist) may be added, and only when volume justifies it. Do not propose any clinician hire.
 
 Produce a phased workforce plan. Every hire must be justified by a capacity/cash trigger, not a guessed date. Allocations are in clinician-DAYS-PER-WEEK per site. Use month keys "YYYY-MM".
 
@@ -484,7 +465,7 @@ Return ONLY valid JSON:
       "allocations": [ { "fromMonth": "YYYY-MM", "bedhamptonDays": <0-5>, "winchesterDays": <0-5>, "chichesterDays": <0-5> } ],
       "notes": "" }
   ],
-  "chichesterMoveMonth": "YYYY-MM or null",
+  "chichesterMoveMonth": null,
   "keyRisks": ["..."]
 }`;
 

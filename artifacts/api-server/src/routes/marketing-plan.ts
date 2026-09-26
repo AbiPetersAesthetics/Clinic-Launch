@@ -103,7 +103,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "PHASE 3 (once 40 are gone)",
-        "b": "The offer becomes the spring founders waitlist, wave two, timed to the second clinician arriving around April or May 2027. No discounting to force it."
+        "b": "The offer becomes the founders waitlist, wave two, which opens when Bedhampton closes and Abi's whole week moves to Winchester. There is no second clinician; the extra capacity comes from closing Bedhampton, not from a hire. No discounting to force it."
       },
       {
         "h": "BEDHAMPTON RUNS ALONGSIDE",
@@ -127,7 +127,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "THE FOUR TIERS",
-        "b": "Cross timeline and experience. Tier 1, experienced and ready (had it before, wants it as you open): go straight to the founders-price booking. Tier 2, new and ready (first time, wants it as you open): lead with the free analysis, then the place. Tier 3, warm and a few months out: book a November or December slot now. Tier 4, later or just exploring: keep warm, spring waitlist once the 40 are gone."
+        "b": "Cross timeline and experience. Tier 1, experienced and ready (had it before, wants it as you open): go straight to the founders-price booking. Tier 2, new and ready (first time, wants it as you open): lead with the free analysis, then the place. Tier 3, warm and a few months out: book a November or December slot now. Tier 4, later or just exploring: keep warm, and the wave-two waitlist once the 40 are gone."
       },
       {
         "h": "BUILD IN GHL",
@@ -634,7 +634,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "nurture",
     "title": "Founding is wave one (40). The waitlist is wave two.",
-    "detail": "20 of 40 already booked. Keep 40 a real, closing cohort; the waitlist becomes a second founding wave when the second clinician starts (planned spring 2027).",
+    "detail": "20 of 40 already booked. Keep 40 a real, closing cohort; the waitlist becomes a second founding wave when Bedhampton closes and Abi is in Winchester full time.",
     "channel": "found",
     "owner": "both",
     "weekStart": "2026-08-30",
@@ -647,15 +647,15 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "RECOMMENDATION",
-        "b": "Do not inflate 40. The whole brand, and every ad, rests on 40 being a real limit that one nurse can look after honestly. Quietly moving it to 60 breaks that promise, and the CAP Code expects a stated limit to be genuine. Instead, keep 40 as wave one, let it close cleanly (it is over half gone, which makes the scarcity true), and open a Founding wave two on the honest waitlist, released when the second, skin-focused clinician starts. That matches the cap to the capacity to serve it, and captures the overflow instead of turning warm people away."
+        "b": "Do not inflate 40. The whole brand, and every ad, rests on 40 being a real limit that one nurse can look after honestly. Quietly moving it to 60 breaks that promise, and the CAP Code expects a stated limit to be genuine. Instead, keep 40 as wave one, let it close cleanly (it is over half gone, which makes the scarcity true), and open a Founding wave two on the honest waitlist, released when Bedhampton closes and Abi's Bedhampton days move to Winchester. That matches the cap to the capacity to serve it, and captures the overflow instead of turning warm people away."
       },
       {
         "h": "HOW",
-        "b": "Everyone past 40, and everyone whose held slot lapses, goes onto the waitlist (the C4, C5 and D8 mechanic already does this). Tag them founding-wave-2. When the second, skin-focused clinician starts in spring 2027 (about April or May), open roughly another 40 places to that list first, in order. Warm Bedhampton clients who miss wave one get priority on wave two."
+        "b": "Everyone past 40, and everyone whose held slot lapses, goes onto the waitlist (the C4, C5 and D8 mechanic already does this). Tag them founding-wave-2. When Bedhampton closes and Abi is in Winchester full time, open wave two to that list first, in order, sized to the days that frees up rather than a round 40. Warm Bedhampton clients who miss wave one get priority on wave two, which also gives them a natural route across when their own clinic closes."
       },
       {
         "h": "CAPACITY NOTE",
-        "b": "Wave two cannot open until there is a second pair of hands to deliver it. The second, skin-focused clinician is planned for about April or May 2027, six or more months after opening: the first winter is deliberately for stabilising one nurse in one room, not for stretching it. So even if wave one fills fast, hold wave two for the spring rather than pulling the hire forward. Let the waitlist build in the meantime; a queue content to wait is a stronger asset than a diary that overpromises."
+        "b": "There is no second clinician: Abi is the only clinician, and the plan is to close Bedhampton once Winchester pays its own way. Wave two cannot open until that happens, because it is Abi's Bedhampton days moving to Winchester that create the room to serve it. So even if wave one fills fast, hold wave two until Bedhampton closes rather than stretching one nurse across two sites. Let the waitlist build in the meantime; a queue content to wait is a stronger asset than a diary that overpromises."
       }
     ]
   },

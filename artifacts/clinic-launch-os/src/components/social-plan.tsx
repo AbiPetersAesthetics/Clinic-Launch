@@ -4,7 +4,7 @@ import { Instagram, Video, Camera, CheckCircle2, Circle, Repeat, ShieldCheck, St
 // ─────────────────────────────────────────────────────────────────────────────
 // Social plan v2, after the three-model validation pass. Key corrections:
 // the shoot is split around the analyser arriving mid-September; Winchester is a
-// countdown, not a first reveal; founding is honest scarcity plus a spring wave-two
+// countdown, not a first reveal; founding is honest scarcity plus a wave-two
 // waitlist so we never sell places that do not exist; Monday education rotates
 // across treatments; a monthly Google-review Story ask; results carry a consent
 // and a "one person's result" caveat. British English, no dashes, no POM named,
@@ -99,7 +99,7 @@ const CALENDAR = [
   { wc: "w/c 9 November", phase: "Founding fills, reviews", posts: [
     { d: "Mon", place: "Post", media: "Carousel", slot: "Educate", title: "Aftercare", idea: "Get the best from your treatment.", cap: "Looked after your skin with us? Here is how to get the very best from it in the days after. Simple, honest aftercare, no fuss. #Aftercare #SkinHealth #NurseLed" },
     { d: "Wed", place: "Post", media: "Reel", slot: "Human", title: "A client experience", idea: "Client's own words, with consent.", cap: "One week in, and I am so grateful. [Client's own words, shared with permission.] This is one person's experience, and everyone's skin is different. #Winchester #ClientLove" },
-    { d: "Fri", place: "Post", media: "Image", slot: "Offer", title: "Founding full, waitlist open", idea: "Waitlist graphic.", cap: "The 40 founding places have gone, thank you. You can now join the spring founding waitlist to be first when we open more places next year. Link in bio. #Winchester #Waitlist" },
+    { d: "Fri", place: "Post", media: "Image", slot: "Offer", title: "Founding full, waitlist open", idea: "Waitlist graphic.", cap: "The 40 founding places have gone, thank you. You can now join the founding waitlist to be first when we open more places. Link in bio. #Winchester #Waitlist" },
   ]},
   { wc: "w/c 16 November", phase: "Winchester-led", posts: [
     { d: "Mon", place: "Post", media: "Carousel", slot: "Educate", title: "Why medical-grade skincare works", idea: "The actives explainer.", cap: "Why medical-grade skincare actually works: higher active levels, matched to your skin, not picked off a shelf. It is the foundation of every plan. #Skincare #Obagi #SkinHealth" },
@@ -129,7 +129,7 @@ const CALENDAR = [
   { wc: "w/c 5 January", phase: "New year and memberships", posts: [
     { d: "Mon", place: "Post", media: "Reel", slot: "Educate", title: "A plan, not a one-off", idea: "New-year goals, honest take.", cap: "New year, real skin goals. The results people love come from a plan over time, not a single appointment. Start with a skin analysis and we will build yours. #SkinPlan #SkinHealth #NurseLed" },
     { d: "Wed", place: "Post", media: "Reel", slot: "Human", title: "Why clients choose membership", idea: "Explain the membership simply.", cap: "Why so many clients choose a monthly membership: their skin gets looked after all year, a pre-booked slot that is always theirs. Ask me how it works. #Membership #SkinHealth" },
-    { d: "Fri", place: "Post", media: "Image", slot: "Offer", title: "Book a January analysis", idea: "Analysis or waitlist CTA.", cap: "Book your January skin analysis, your honest first step. Or, if you missed founding, join the spring waitlist for wave two. Link in bio. #FreeSkinAnalysis #Waitlist #Winchester" },
+    { d: "Fri", place: "Post", media: "Image", slot: "Offer", title: "Book a January analysis", idea: "Analysis or waitlist CTA.", cap: "Book your January skin analysis, your honest first step. Or, if you missed founding, join the waitlist for wave two. Link in bio. #FreeSkinAnalysis #Waitlist #Winchester" },
   ]},
   { wc: "w/c 12 January", phase: "New year and memberships", posts: [
     { d: "Mon", place: "Post", media: "Carousel", slot: "Educate", title: "Consistency beats intensity", idea: "Why a plan works.", cap: "The secret to good skin is not one big treatment, it is consistency. That is the whole idea behind a plan and a membership. Small steps, looked after. #SkinHealth #NurseLed" },
@@ -143,7 +143,7 @@ const CALENDAR = [
   ]},
   { wc: "w/c 26 January", phase: "New year and memberships", posts: [
     { d: "Mon", place: "Post", media: "Reel", slot: "Educate", title: "One honest question", idea: "The question to ask any clinic.", cap: "One honest question worth asking any clinic: will you tell me when I do not need a treatment? We always will. That is nurse-led. #HonestAdvice #NurseLedAesthetics" },
-    { d: "Wed", place: "Post", media: "Reel", slot: "Human", title: "Thank you and the waitlist", idea: "Gratitude, plus the waitlist nudge.", cap: "Thank you for a brilliant few months. If you are waiting on a founding place, the spring waitlist is open, you will be first when we grow. #Winchester #Waitlist" },
+    { d: "Wed", place: "Post", media: "Reel", slot: "Human", title: "Thank you and the waitlist", idea: "Gratitude, plus the waitlist nudge.", cap: "Thank you for a brilliant few months. If you are waiting on a founding place, the waitlist is open, you will be first when we grow. #Winchester #Waitlist" },
     { d: "Fri", place: "Post", media: "Image", slot: "Offer", title: "Your first step", idea: "Evergreen book graphic.", cap: "Whatever your skin needs this year, it starts the same honest way: a skin analysis. Book yours, link in bio. #FreeSkinAnalysis #SkinHealth #Winchester" },
   ]},
 ];
