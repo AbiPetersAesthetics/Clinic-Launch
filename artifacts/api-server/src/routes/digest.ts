@@ -26,7 +26,7 @@ router.get("/projects/:projectId/weekly-digest", async (req, res) => {
   const phaseName = new Map(phases.map(p => [p.id, p.name]));
 
   const baseTasks = phaseIds.length
-    ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
+    ? await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.archived, false)))
     : [];
 
   // Merge property overrides (same pattern as the dashboard)
@@ -78,8 +78,11 @@ router.get("/projects/:projectId/weekly-digest", async (req, res) => {
       plannedTotal: Math.round(tasks.reduce((s, t) => s + (t.selectedCost ?? 0), 0)),
     },
     tenders: await (async () => {
-      const quotes = await db.select({ status: supplierQuotesTable.status })
-        .from(supplierQuotesTable).where(eq(supplierQuotesTable.projectId, projectId));
+      // Quotes linked to an archived (superseded) plan line are not awaiting any decision.
+      const archivedIds = new Set((await db.select({ id: tasksTable.id }).from(tasksTable).where(eq(tasksTable.archived, true))).map(t => t.id));
+      const quotes = (await db.select({ status: supplierQuotesTable.status, taskId: supplierQuotesTable.taskId })
+        .from(supplierQuotesTable).where(eq(supplierQuotesTable.projectId, projectId)))
+        .filter(q => q.taskId == null || !archivedIds.has(q.taskId));
       const suppliers = await db.select({ status: suppliersTable.status })
         .from(suppliersTable).where(eq(suppliersTable.projectId, projectId));
       return {

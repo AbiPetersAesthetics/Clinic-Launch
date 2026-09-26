@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { projectsTable, phasesTable, tasksTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 const router = Router();
 
@@ -24,7 +24,7 @@ router.get("/projects/:projectId/timeline", async (req, res) => {
       const tasks = await db
         .select()
         .from(tasksTable)
-        .where(eq(tasksTable.phaseId, phase.id));
+        .where(and(eq(tasksTable.phaseId, phase.id), eq(tasksTable.archived, false)));
 
       const parsedTasks = tasks.map((t) => ({
         ...t,

@@ -27,7 +27,7 @@ function getSelectedCost(costTier: string, costLow: number, costMid: number, cos
 
 router.get("/phases/:phaseId/tasks", async (req, res) => {
   const phaseId = parseInt(req.params.phaseId);
-  const tasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phaseId)).orderBy(sql`${tasksTable.dueDate} ASC NULLS LAST, ${tasksTable.sortOrder} ASC`);
+  const tasks = await db.select().from(tasksTable).where(and(eq(tasksTable.phaseId, phaseId), eq(tasksTable.archived, false))).orderBy(sql`${tasksTable.dueDate} ASC NULLS LAST, ${tasksTable.sortOrder} ASC`);
   res.json(tasks.map(t => ({ ...t, dependencies: t.dependencies ? JSON.parse(t.dependencies) : [] })));
 });
 
@@ -422,6 +422,12 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
     // (strip the VAT that sits within inc-VAT lines). gross - net === reclaimableVat.
     const grossInclVat = forecastFinalCost + excVatReclaim;
     const netExVat = forecastFinalCost - incVatReclaim;
+    // Refundable outlays (the lease rent deposit) are cash out but not a project cost,
+    // so the real cost nets them off. Committed or paid figures win over the plan figure.
+    const refundableOutlays = allTasks
+      .filter(t => (t as any).refundable)
+      .reduce((s, t) => s + (((t.committedCost as number) || (t.actualCost as number) || (t.selectedCost as number)) ?? 0), 0);
+    const realCostAfterRefundable = netExVat - refundableOutlays;
     // True cost still to pay: total true cost minus the true (net-of-reclaim) value already paid out.
     const trueCostRemaining = Math.max(0, netExVat - (actualSpend - reclaimOnPaid));
     const liveForecastVsCapGbp = forecastFinalCost - davidApprovedCapGbp;
@@ -598,6 +604,8 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       netCostAfterVat: Math.round(netCostAfterVat),
       grossInclVat: Math.round(grossInclVat),
       netExVat: Math.round(netExVat),
+      refundableOutlays: Math.round(refundableOutlays),
+      realCostAfterRefundable: Math.round(realCostAfterRefundable),
       trueCostRemaining: Math.round(trueCostRemaining),
       uncommittedBudget: Math.round(uncommittedBudget),
       capHeadroomGbp: Math.round(capHeadroomGbp),
@@ -671,7 +679,7 @@ router.post("/projects/:projectId/savings-mode", async (req, res) => {
     const phaseIds = phaseRows.map((p) => p.id);
     if (phaseIds.length === 0) return res.json({ applied, updated: 0 });
 
-    const flagged = await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.savingFlag, true)));
+    const flagged = await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.savingFlag, true), eq(tasksTable.archived, false)));
     let updated = 0;
     for (const t of flagged) {
       if ((t as any).savingBaseline == null || (t as any).savingTarget == null) continue;
@@ -694,6 +702,7 @@ router.post("/tasks/:id/saving-apply", async (req, res) => {
     const propertyId: number | undefined = req.body.propertyId ? parseInt(req.body.propertyId) : undefined;
     const [t] = await db.select().from(tasksTable).where(eq(tasksTable.id, id));
     if (!t) return res.status(404).json({ error: "Not found" });
+    if ((t as any).archived) return res.status(409).json({ error: "Line is archived" });
     if ((t as any).savingBaseline == null || (t as any).savingTarget == null) {
       return res.status(400).json({ error: "Line has no downselect target to apply" });
     }

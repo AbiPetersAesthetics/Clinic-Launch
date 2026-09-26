@@ -155,6 +155,7 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
       WHERE ph.project_id = ${projectId}
         AND ph.status = 'active'
         AND COALESCE(pto.status, t.status) NOT IN ('superseded','deferred')
+        AND t.archived = false
     `),
   ]);
 

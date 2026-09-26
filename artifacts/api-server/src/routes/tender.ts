@@ -734,7 +734,7 @@ router.post("/tender-packs/:id/award", async (req, res) => {
   const requestedTasks = requestedIds.length
     ? await db.select().from(tasksTable).where(inArray(tasksTable.id, requestedIds))
     : [];
-  const validTasks = requestedTasks.filter(t => projectPhaseIds.has(t.phaseId));
+  const validTasks = requestedTasks.filter(t => projectPhaseIds.has(t.phaseId) && !t.archived);
   const validIds = validTasks.map(t => t.id);
 
   const reasonRef = pack.reference ?? `pack #${pack.id}`;
@@ -896,7 +896,7 @@ router.post("/projects/:projectId/invoice-extract", memUpload.single("file"), as
     .select({ id: tasksTable.id, title: tasksTable.title, phaseName: phasesTable.name })
     .from(tasksTable)
     .innerJoin(phasesTable, eq(phasesTable.id, tasksTable.phaseId))
-    .where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
+    .where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"), eq(tasksTable.archived, false)));
   const taskList = tasks.map(t => `${t.id}: ${t.title} (${t.phaseName})`).join("\n");
 
   const promptText = `Extract the key details from this invoice/receipt for a clinic fit-out project's spend tracker.

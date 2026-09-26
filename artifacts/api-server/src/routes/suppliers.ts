@@ -1,13 +1,21 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { suppliersTable, supplierQuotesTable, tasksTable, propertiesTable, propertyTaskOverridesTable } from "@workspace/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { claudeComplete } from "@workspace/integrations-anthropic-ai";
 
 // Apply a quoted amount to a task's base row + all existing property overrides,
 // and upsert an override for the active property if none exists yet.
 // Task costs are stored inc-VAT, so if the quote is ex-VAT (vatIncluded=false) we gross up ×1.2.
-async function applyQuotedCostToTask(taskId: number, amount: number, projectId: number, vatIncluded: boolean) {
+async function applyQuotedCostToTask(taskId: number, amount: number, projectId: number, vatIncluded: boolean): Promise<boolean> {
+  // Archived lines are superseded estimates kept for audit and for tender un-award.
+  // Never rewrite their cost or give them a new property override.
+  const [t] = await db
+    .select({ archived: tasksTable.archived })
+    .from(tasksTable)
+    .where(eq(tasksTable.id, taskId));
+  if (!t || t.archived) return false;
+
   const incVatAmount = vatIncluded ? amount : Math.round(amount * 1.2 * 100) / 100;
 
   await db
@@ -43,6 +51,8 @@ async function applyQuotedCostToTask(taskId: number, amount: number, projectId: 
       });
     }
   }
+
+  return true;
 }
 
 const router = Router();
@@ -64,10 +74,20 @@ router.get("/projects/:projectId/suppliers", async (req, res) => {
     .from(supplierQuotesTable)
     .where(eq(supplierQuotesTable.projectId, projectId));
 
-  const quotesBySupplier = new Map<number, typeof quotes>();
+  // Quotes linked to an archived (superseded) estimate line are kept for the
+  // audit trail but must not count towards any supplier total.
+  const linkedTaskIds = [...new Set(quotes.map(q => q.taskId).filter((id): id is number => id != null))];
+  const archivedTaskIds = new Set(
+    linkedTaskIds.length
+      ? (await db.select({ id: tasksTable.id }).from(tasksTable)
+          .where(and(inArray(tasksTable.id, linkedTaskIds), eq(tasksTable.archived, true)))).map(r => r.id)
+      : [],
+  );
+
+  const quotesBySupplier = new Map<number, Array<(typeof quotes)[number] & { taskArchived: boolean }>>();
   for (const q of quotes) {
     if (!quotesBySupplier.has(q.supplierId)) quotesBySupplier.set(q.supplierId, []);
-    quotesBySupplier.get(q.supplierId)!.push(q);
+    quotesBySupplier.get(q.supplierId)!.push({ ...q, taskArchived: q.taskId != null && archivedTaskIds.has(q.taskId) });
   }
 
   const result = suppliers.map(s => ({
@@ -246,14 +266,16 @@ router.post("/suppliers/:id/quotes", async (req, res) => {
   }
 
   // If quote is Accepted and linked to a task, apply the quoted amount as the task's selectedCost
+  let costNotApplied: string | undefined;
   if (quote.status === "Accepted" && quote.taskId != null && quote.amountGbp != null) {
     const amount = parseFloat(quote.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await applyQuotedCostToTask(quote.taskId, amount, supplier.projectId, quote.vatIncluded ?? false);
+      const applied = await applyQuotedCostToTask(quote.taskId, amount, supplier.projectId, quote.vatIncluded ?? false);
+      if (!applied) costNotApplied = "Linked plan line is archived or missing, so the quote was saved but not applied to the budget.";
     }
   }
 
-  return res.status(201).json(quote);
+  return res.status(201).json(costNotApplied ? { ...quote, costNotApplied } : quote);
 });
 
 // ─── PUT /quotes/:id ─────────────────────────────────────────────────────────
@@ -285,14 +307,16 @@ router.put("/quotes/:id", async (req, res) => {
   if (!updated) return res.status(404).json({ error: "Quote not found" });
 
   // If quote is now Accepted and linked to a task, apply the quoted amount as selectedCost
+  let costNotApplied: string | undefined;
   if (updated.status === "Accepted" && updated.taskId != null && updated.amountGbp != null) {
     const amount = parseFloat(updated.amountGbp);
     if (!isNaN(amount) && amount > 0) {
-      await applyQuotedCostToTask(updated.taskId, amount, updated.projectId!, updated.vatIncluded ?? false);
+      const applied = await applyQuotedCostToTask(updated.taskId, amount, updated.projectId!, updated.vatIncluded ?? false);
+      if (!applied) costNotApplied = "Linked plan line is archived or missing, so the quote was saved but not applied to the budget.";
     }
   }
 
-  return res.json(updated);
+  return res.json(costNotApplied ? { ...updated, costNotApplied } : updated);
 });
 
 // ─── DELETE /quotes/:id ───────────────────────────────────────────────────────
@@ -321,8 +345,14 @@ router.get("/projects/:projectId/suppliers/summary", async (req, res) => {
     .from(supplierQuotesTable)
     .where(eq(supplierQuotesTable.projectId, projectId));
 
-  const acceptedQuotes = quotes.filter(q => q.status === "Accepted");
-  const receivedQuotes = quotes.filter(q => q.status !== "Rejected");
+  // Quotes attached to an archived (superseded) estimate line are audit history only: never count them.
+  const archivedIds = new Set(
+    (await db.select({ id: tasksTable.id }).from(tasksTable).where(eq(tasksTable.archived, true))).map(r => r.id),
+  );
+  const liveQuotes = quotes.filter(q => q.taskId == null || !archivedIds.has(q.taskId));
+
+  const acceptedQuotes = liveQuotes.filter(q => q.status === "Accepted");
+  const receivedQuotes = liveQuotes.filter(q => q.status !== "Rejected");
 
   const totalCommittedGbp = acceptedQuotes.reduce((sum, q) => sum + (parseFloat(q.amountGbp ?? "0") || 0), 0);
   const totalPipelineGbp = receivedQuotes.reduce((sum, q) => sum + (parseFloat(q.amountGbp ?? "0") || 0), 0);
@@ -339,7 +369,7 @@ router.get("/projects/:projectId/suppliers/summary", async (req, res) => {
     totalSuppliers: suppliers.length,
     contractedCount: suppliers.filter(s => s.status === "Contracted").length,
     quotedCount: suppliers.filter(s => s.status === "Quoted").length,
-    totalQuotes: quotes.length,
+    totalQuotes: liveQuotes.length,
     acceptedQuotes: acceptedQuotes.length,
     totalCommittedGbp: Math.round(totalCommittedGbp),
     totalPipelineGbp: Math.round(totalPipelineGbp),

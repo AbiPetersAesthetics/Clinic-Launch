@@ -1004,7 +1004,7 @@ router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => 
 
   const phaseIds = projectPhases.map(p => p.id);
   const allTasks = phaseIds.length > 0
-    ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
+    ? await db.select().from(tasksTable).where(and(inArray(tasksTable.phaseId, phaseIds), eq(tasksTable.archived, false)))
     : [];
 
   const financial = financialRaw[0] ?? null;
@@ -1439,7 +1439,7 @@ router.get("/projects/:projectId/funding-analysis", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
   const rows = await db.select()
     .from(projectAiAnalysesTable)
-    .where(eq(projectAiAnalysesTable.projectId, projectId))
+    .where(and(eq(projectAiAnalysesTable.projectId, projectId), eq(projectAiAnalysesTable.analysisType, "funding")))
     .orderBy(desc(projectAiAnalysesTable.createdAt))
     .limit(1);
   if (!rows.length) return res.json(null);
@@ -1474,6 +1474,7 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
       ON pto.task_id = t.id AND pto.property_id = 11
     WHERE ph.project_id = ${projectId}
       AND ph.status = 'active'
+      AND t.archived = false
       AND COALESCE(pto.status, t.status) NOT IN ('superseded','deferred')
   `);
   const capitalSelected = (taskRows.rows as any[]).reduce((s, r) => s + Number(r.selected_cost ?? 0), 0);
@@ -1686,7 +1687,7 @@ Respond with ONLY valid JSON (no markdown, no prose outside JSON) in this exact 
 
   // ── 6. Persist ────────────────────────────────────────────────────────────
   await db.delete(projectAiAnalysesTable)
-    .where(eq(projectAiAnalysesTable.projectId, projectId));
+    .where(and(eq(projectAiAnalysesTable.projectId, projectId), eq(projectAiAnalysesTable.analysisType, "funding")));
 
   const [saved] = await db.insert(projectAiAnalysesTable).values({
     projectId,

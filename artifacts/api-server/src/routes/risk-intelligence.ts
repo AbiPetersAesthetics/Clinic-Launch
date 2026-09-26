@@ -125,7 +125,7 @@ async function buildContext(projectId: number): Promise<string> {
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
   const phaseIds = phases.map(p => p.id);
   const allTasks = phaseIds.length > 0
-    ? (await Promise.all(phaseIds.map(pid => db.select().from(tasksTable).where(eq(tasksTable.phaseId, pid))))).flat()
+    ? (await Promise.all(phaseIds.map(pid => db.select().from(tasksTable).where(and(eq(tasksTable.phaseId, pid), eq(tasksTable.archived, false)))))).flat()
     : [];
 
   const SCENARIOS: Record<string, { startOcc: number; rampMonths: number; targetOcc: number }> = {

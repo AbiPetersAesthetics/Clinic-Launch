@@ -381,7 +381,9 @@ export default function DashboardPage() {
   const allTasks = useMemo(() => {
     if (!phases) return [];
     return phases.flatMap((ph) =>
-      (ph.tasks ?? []).map((t) => ({ ...t, phaseName: ph.name }))
+      (ph.tasks ?? [])
+        .filter((t) => !(t as any).archived)
+        .map((t) => ({ ...t, phaseName: ph.name }))
     );
   }, [phases]);
 

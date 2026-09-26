@@ -61,6 +61,9 @@ export const tasksTable = pgTable("launch_tasks", {
   // Archived tasks are kept for audit + recovery but excluded from every cost total.
   archived: boolean("archived").notNull().default(false),
   archivedReason: text("archived_reason"),
+  // A refundable outlay (the lease rent deposit): real cash out, but not a cost of
+  // the project, so the "real cost after refundable deposit" figure nets it off.
+  refundable: boolean("refundable").notNull().default(false),
   // ── Downselect / saving review: owner-flagged candidates for cost saving ──
   savingFlag: boolean("saving_flag").notNull().default(false),
   savingNote: text("saving_note"), // free text: what could be downselected here

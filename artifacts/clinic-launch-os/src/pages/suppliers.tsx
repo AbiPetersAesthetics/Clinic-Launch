@@ -555,8 +555,9 @@ function SupplierCard({
 
   const Icon = CATEGORY_ICONS[supplier.category] ?? HelpCircle;
   const quotes = supplier.quotes ?? [];
-  const acceptedQuote = quotes.find(q => q.status === "Accepted");
-  const totalAmount = quotes.filter(q => q.status !== "Rejected").reduce((s, q) => s + (parseAmount(q.amountGbp) ?? 0), 0);
+  const isArchivedLine = (q: SupplierQuote) => !!(q as SupplierQuote & { taskArchived?: boolean }).taskArchived;
+  const acceptedQuote = quotes.find(q => q.status === "Accepted" && !isArchivedLine(q));
+  const totalAmount = quotes.filter(q => q.status !== "Rejected" && !isArchivedLine(q)).reduce((s, q) => s + (parseAmount(q.amountGbp) ?? 0), 0);
   const acceptedAmount = parseAmount(acceptedQuote?.amountGbp ?? null);
 
   return (
@@ -896,7 +897,8 @@ export default function SuppliersPage() {
   const { data: phases = [] } = useGetPhasesWithTasks(PROJECT_ID);
   const allTasks = useMemo(() =>
     (phases as PhaseWithTasks[]).flatMap(p =>
-      (p.tasks ?? []).map(t => ({ id: t.id, title: t.title, phaseName: p.name }))
+      // Archived (superseded) lines cannot take a quote, so they are not offered as link targets.
+      (p.tasks ?? []).filter(t => !(t as { archived?: boolean }).archived).map(t => ({ id: t.id, title: t.title, phaseName: p.name }))
     ),
     [phases],
   );

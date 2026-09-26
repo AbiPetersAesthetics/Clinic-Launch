@@ -15,7 +15,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   if (!project) return res.status(404).json({ error: "Not found" });
 
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
-  const baseTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
+  const baseTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat().filter(t => !t.archived);
 
   // Days to opening
   let daysToOpening: number | null = null;
@@ -255,7 +255,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
 
   // Phase progress
   const phaseProgress = await Promise.all(phases.map(async (phase) => {
-    const phaseTasks = await db.select().from(tasksTable).where(eq(tasksTable.phaseId, phase.id));
+    const phaseTasks = baseTasks.filter(t => t.phaseId === phase.id);
     const completed = phaseTasks.filter(t => t.status === "complete").length;
     const percentComplete = phaseTasks.length > 0 ? Math.round((completed / phaseTasks.length) * 100) : 0;
     return {
@@ -375,7 +375,7 @@ router.get("/projects/:projectId/risk-flags", async (req, res) => {
     db.select().from(risksTable).where(eq(risksTable.projectId, projectId)),
     db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"))),
   ]);
-  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
+  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat().filter(t => !t.archived);
 
   const flags: Array<{ level: string; category: string; message: string; riskId?: string; riskTitle?: string }> = [];
 
@@ -453,7 +453,7 @@ router.get("/projects/:projectId/burndown", async (req, res) => {
   if (!project) return res.status(404).json({ error: "Not found" });
 
   const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
-  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat();
+  const allTasks = (await Promise.all(phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id))))).flat().filter(t => !t.archived);
 
   const totalTasks = allTasks.length;
   if (totalTasks === 0) return res.json([]);

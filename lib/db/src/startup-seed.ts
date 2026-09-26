@@ -662,6 +662,8 @@ export async function runStartupSeed(): Promise<void> {
         // V19 migration: tender award flow — archivable estimate lines + award record
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS archived_reason TEXT`);
+        // V32 schema: refundable outlays (the rent deposit), kept beside archived so it runs early.
+        await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS refundable BOOLEAN NOT NULL DEFAULT FALSE`);
         // V20 migration: downselect / saving review — owner flag + free-text note on tasks
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_flag BOOLEAN NOT NULL DEFAULT FALSE`);
         await db.execute(sql`ALTER TABLE launch_tasks ADD COLUMN IF NOT EXISTS saving_note TEXT`);
@@ -850,6 +852,13 @@ export async function runStartupSeed(): Promise<void> {
           await seedBacklinks(projectId);
           console.log("  ✅ Backlink tracker seeded (42 opportunities)");
         }
+
+        // V32 migration: business record of 26 September 2026, group B (approved by the owner).
+        // B4: the approved June budget is 81,786, not the 80,000 placeholder. Guarded on the
+        // old value so a later edit is never overwritten.
+        await db.execute(sql`UPDATE financial_models SET david_approved_cap_gbp = 81786 WHERE project_id = ${projectId} AND david_approved_cap_gbp = 80000`);
+        // B5: the lease rent deposit is refundable, so it is netted off the real project cost.
+        await db.execute(sql`UPDATE launch_tasks SET refundable = TRUE WHERE refundable = FALSE AND title ILIKE 'Rent Deposit%' AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
 
         return;
       }

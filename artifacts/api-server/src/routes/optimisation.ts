@@ -239,7 +239,7 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
   const fin = financialsRows[0] ?? null;
 
   const baseTasks = (await Promise.all(
-    phases.map(p => db.select().from(tasksTable).where(eq(tasksTable.phaseId, p.id)))
+    phases.map(p => db.select().from(tasksTable).where(and(eq(tasksTable.phaseId, p.id), eq(tasksTable.archived, false))))
   )).flat();
 
   // Merge property overrides so cost tiers/amounts reflect property-specific selections
@@ -373,8 +373,9 @@ router.get("/projects/:projectId/optimisation-analysis", async (req, res) => {
     });
   }
 
-  // Absence checks: flag if NO task (including completed) matches the keyword
-  // Completed tasks indicate provision is already in place — do not false-flag them
+  // Absence checks: flag if NO live task (including completed) matches the keyword.
+  // Completed tasks indicate provision is already in place, so do not false-flag them.
+  // Archived (superseded) estimate lines are excluded upstream: they are not provision.
   const allTaskTitles = allTasks.map(t => t.title.toLowerCase());
   for (const rule of activeRules) {
     if (!rule.isAbsenceCheck) continue;

@@ -35,6 +35,7 @@ type AnyTask = {
   isCriticalRisk?: boolean;
   riskLevel?: string;
   selectedCost?: number;
+  archived?: boolean | null;
 };
 
 type AnyPhase = {
@@ -88,8 +89,10 @@ export default function TodayPage() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
+  // Archived tasks (superseded estimate lines) are returned by phases-with-tasks only so
+  // the Plan page can show them struck through. They must not count anywhere on Today.
   const phases: AnyPhase[] = ((phasesRaw as unknown as AnyPhase[]) ?? [])
-    .slice()
+    .map(p => ({ ...p, tasks: (p.tasks ?? []).filter(t => !t.archived) }))
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   const allTasks: (AnyTask & { phaseName: string })[] = phases.flatMap(p =>

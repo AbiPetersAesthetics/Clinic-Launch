@@ -128,11 +128,12 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
     const totalCostMid = activeTasks.reduce((sum, t) => sum + (t.costMid ?? 0), 0);
     const totalCostHigh = activeTasks.reduce((sum, t) => sum + (t.costHigh ?? 0), 0);
     const selectedCostTotal = activeTasks.reduce((sum, t) => sum + (t.selectedCost ?? 0), 0);
-    const completedTaskCount = parsedTasks.filter(t => t.status === "complete").length;
+    const liveTasks = parsedTasks.filter(t => !(t as any).archived);
+    const completedTaskCount = liveTasks.filter(t => t.status === "complete").length;
     return {
       ...phase,
       totalCostLow, totalCostMid, totalCostHigh, selectedCostTotal,
-      taskCount: parsedTasks.length, completedTaskCount,
+      taskCount: liveTasks.length, completedTaskCount,
       tasks: parsedTasks,
     };
   }));

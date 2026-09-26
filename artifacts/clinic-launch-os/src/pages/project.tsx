@@ -922,9 +922,10 @@ function computePhaseWindows(
   const sorted = [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
   const map = new Map<number, PhaseWindow>();
 
-  // Use the longest task per phase as the phase duration — tasks run in parallel within a phase.
+  // Use the longest live task per phase as the phase duration; tasks run in parallel within a phase.
+  // Archived (superseded) lines are audit history only and must never lengthen a phase window.
   const phaseDays = (phase: PhaseWithTasks) =>
-    Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+    Math.max(0, ...((phase.tasks ?? []).filter(t => !(t as any).archived).map(t => t.durationDays ?? 0)));
 
   // Backward pass: sequential phases (1–3) chain backwards from open date.
   // Parallel phases (4+) each must finish by open date but can start from Day 1.
@@ -1320,9 +1321,11 @@ export default function ProjectPage() {
         totalGbp?: number | null; vatIncluded?: boolean | null; description?: string | null;
         suggestedTaskId?: number | null; matchReason?: string | null; confidence?: string;
       };
+      const liveTaskIds = new Set((phases ?? []).flatMap(p => (p.tasks ?? []).filter(t => !(t as any).archived).map(t => t.id)));
+      const suggested = ex.suggestedTaskId != null && liveTaskIds.has(ex.suggestedTaskId) ? ex.suggestedTaskId : null;
       setRecordSpendData(d => ({
         ...d,
-        taskId: d.taskId ?? ex.suggestedTaskId ?? null,
+        taskId: d.taskId ?? suggested,
         actualCost: d.actualCost || (ex.totalGbp != null ? String(ex.totalGbp) : ""),
         invoiceRef: d.invoiceRef || (ex.invoiceRef ?? ""),
         invoiceDate: d.invoiceDate || (ex.invoiceDate ?? ""),
@@ -1331,7 +1334,7 @@ export default function ProjectPage() {
       const bits = [
         ex.supplierName && `Supplier: ${ex.supplierName}`,
         ex.description,
-        ex.suggestedTaskId && `Matched to task — ${ex.matchReason ?? "see selection"}`,
+        suggested && `Matched to task: ${ex.matchReason ?? "see selection"}`,
         ex.confidence && `Confidence: ${ex.confidence}`,
       ].filter(Boolean);
       setAiExtractNote(bits.join(" · ") || "Details extracted — please check before saving.");
@@ -1421,6 +1424,12 @@ export default function ProjectPage() {
     },
   });
 
+  // Gantt geometry must never be driven by archived (superseded) lines.
+  const livePhases = useMemo(
+    () => (phases ?? []).map(p => ({ ...p, tasks: (p.tasks ?? []).filter(t => !(t as any).archived) })),
+    [phases],
+  );
+
   const pcUrl = `/api/projects/${PROJECT_ID}/project-controls`;
   const { data: projectControls } = useQuery({
     queryKey: [pcUrl],
@@ -1486,7 +1495,7 @@ export default function ProjectPage() {
   const sortedForCritPath = phases
     ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
     : [];
-  const phaseMaxDur = (p: PhaseWithTasks) => Math.max(0, ...(p.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
+  const phaseMaxDur = (p: PhaseWithTasks) => Math.max(0, ...((p.tasks ?? []).filter(t => !(t as any).archived).map(t => t.durationDays ?? 0)));
   const propertyTrackDays = sortedForCritPath.slice(0, SEQUENTIAL_PHASE_COUNT).reduce((s, p) => s + phaseMaxDur(p), 0);
   const parallelTrackDays = sortedForCritPath.slice(SEQUENTIAL_PHASE_COUNT).reduce((mx, p) => Math.max(mx, phaseMaxDur(p)), 0);
   const totalProjectDays = Math.max(propertyTrackDays, parallelTrackDays);
@@ -1572,7 +1581,11 @@ export default function ProjectPage() {
     lines.push(`True critical path = max(Phase 1+2+3 chain = ${propertyTrackDays}d, longest parallel track = ${parallelTrackDays}d) = ${totalProjectDays} days.`);
     lines.push("");
 
-    const sorted = phases ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0)) : [];
+    const sorted = phases
+      ? [...phases]
+          .map(p => ({ ...p, tasks: (p.tasks ?? []).filter(t => !(t as any).archived) }))
+          .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+      : [];
     const SEQUENTIAL = SEQUENTIAL_PHASE_COUNT;
     const fmtD = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
@@ -1597,12 +1610,12 @@ export default function ProjectPage() {
       const phaseStart = phaseStartDates[idx];
       const phaseMax = Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
       const phaseEnd = addDays(phaseStart, phaseMax);
+      const tasks = phase.tasks ?? [];
       lines.push("---");
       lines.push(`## Phase ${idx + 1}: ${phase.name} [${track}]`);
-      lines.push(`Window: ${startDateObj ? fmtD(phaseStart) : "TBD"} → ${startDateObj ? fmtD(phaseEnd) : "TBD"} (${phaseMax}d) | Status: ${phase.status.replace("_", " ")} | Tasks: ${phase.completedTaskCount}/${phase.taskCount} complete | Selected Cost: ${formatGBP(phase.selectedCostTotal)}`);
+      lines.push(`Window: ${startDateObj ? fmtD(phaseStart) : "TBD"} → ${startDateObj ? fmtD(phaseEnd) : "TBD"} (${phaseMax}d) | Status: ${phase.status.replace("_", " ")} | Tasks: ${tasks.filter(t => t.status === "complete").length}/${tasks.length} complete | Selected Cost: ${formatGBP(phase.selectedCostTotal)}`);
       lines.push("");
 
-      const tasks = phase.tasks ?? [];
       if (tasks.length === 0) {
         lines.push("_(no tasks)_");
       } else {
@@ -1811,6 +1824,9 @@ export default function ProjectPage() {
         </tr>`;
     }).join("");
 
+    const liveRowCount = rows.filter(r => !(r.task as any).archived).length;
+    const supersededRowCount = rows.length - liveRowCount;
+
     const html = `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8">
@@ -1830,7 +1846,7 @@ export default function ProjectPage() {
   <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-end;">
     <div>
       <h1 style="font-size:17px;font-weight:700;color:#0f172a">${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "All Project Tasks"}</h1>
-      <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${rows.length} task${rows.length !== 1 ? "s" : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
+      <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${liveRowCount} task${liveRowCount !== 1 ? "s" : ""}${supersededRowCount > 0 ? ` &nbsp;·&nbsp; ${supersededRowCount} superseded line${supersededRowCount !== 1 ? "s" : ""} shown struck through, not counted` : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
     </div>
     <div style="font-size:10px;color:#94a3b8;text-align:right">Clinic Launch OS<br>Exported ${exportDate}</div>
   </div>
@@ -1885,6 +1901,7 @@ export default function ProjectPage() {
     const allTasks = new Map<string, LaunchTask>();
     for (const phase of phases ?? []) {
       for (const t of phase.tasks ?? []) {
+        if ((t as any).archived) continue; // superseded audit line, never an AI edit target
         allTasks.set(t.title.trim().toLowerCase(), t);
       }
     }
@@ -2269,6 +2286,11 @@ export default function ProjectPage() {
                     <span>reclaim <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">{formatGBP(vatReclaimable)}</span></span>
                     <span className="text-muted-foreground/50">=</span>
                     <span>true cost <span className="font-semibold tabular-nums">{formatGBP(netExVat)}</span></span>
+                    {(pc?.refundableOutlays ?? 0) > 0 && (
+                      <span title="The rent deposit is paid out but comes back at the end of the lease, so it is not a cost of the project.">
+                        real cost after refundable deposit <span className="font-semibold tabular-nums">{formatGBP(pc?.realCostAfterRefundable ?? netExVat)}</span>
+                      </span>
+                    )}
                   </div>
                   {/* Compact budget alert — amber/red only */}
                   {!isGreen && (
@@ -2959,7 +2981,7 @@ export default function ProjectPage() {
           <div className="hidden sm:block">
             <GanttView
               key={ganttKey}
-              phases={phases}
+              phases={livePhases}
               startDateObj={startDateObj}
               updateTask={updateTask}
               invalidateAfterTaskChange={invalidateAfterTaskChange}
@@ -3800,7 +3822,7 @@ export default function ProjectPage() {
                 <SelectTrigger className="w-full"><SelectValue placeholder="Select a task…" /></SelectTrigger>
                 <SelectContent className="max-h-64 overflow-y-auto">
                   {phases?.flatMap(p =>
-                    (p.tasks ?? []).map(t => ({
+                    (p.tasks ?? []).filter(t => !(t as any).archived).map(t => ({
                       id: t.id,
                       title: t.title,
                       phaseName: p.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || p.name,
@@ -4408,6 +4430,8 @@ function TaskEditSheet({
       ...p,
       tasks: (p.tasks ?? [])
         .filter((t) => t.id !== task?.id)
+        // Superseded lines cannot be picked as new dependencies, but one already selected stays visible so it can be unticked.
+        .filter((t) => !(t as any).archived || dependencies.includes(t.id))
         .filter((t) => {
           const q = depSearch.trim().toLowerCase();
           return !q || t.title.toLowerCase().includes(q);
