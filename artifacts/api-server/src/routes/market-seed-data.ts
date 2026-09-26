@@ -221,50 +221,8 @@ export const OUR_MEMBERSHIPS: OurMembershipSeed[] = [
     features: { includedTreatment: 1, retailDiscount: 10, priorityBooking: 1, cancelAnyTime: 1 },
     notes: "Cancel any time. Directly targets CJA's 12.50 tier, which gives four LED sessions a year against our twelve.",
   },
-  {
-    name: "The Skin Plan", tierRank: 2, site: "winchester", priceMonthlyGbp: 115,
-    founderPriceGbp: 95, founderPlaces: 30,
-    minCommitmentMonths: 3, noticePeriodDays: 30, isPublic: true, liveFromDate: "2027-01-01", deliveredBy: "associate",
-    includedMinutesPerMonth: 50,
-    inclusions: [
-      { choiceOf: ["obagiBlueRadiance", "fillmedBright", "apaFacial", "led"], qtyPerMonth: 1, label: "One 30 minute skin treatment monthly" },
-      { addOnKey: "led", addOnPriceW: 25, addOnPriceB: 20, label: "LED included with every peel or facial" },
-      { label: "Device skin rescan with written progress notes every fourth month" },
-      { label: "15 percent off retail" },
-      { label: "10 percent off courses" },
-    ],
-    features: { includedTreatment: 1, skinAnalysis: 1, writtenProgressNotes: 1, retailDiscount: 15, courseDiscount: 10, priorityBooking: 1, rollover: 1, pause: 1 },
-    notes: "Founder rate 95, 30 places, held for the life of the membership. One rollover month, one pause per twelve months, 30 days notice.",
-  },
-  {
-    name: "The Skin Plan", tierRank: 2, site: "bedhampton", priceMonthlyGbp: 85,
-    minCommitmentMonths: 3, noticePeriodDays: 30, isPublic: true, liveFromDate: "2027-01-01", deliveredBy: "associate",
-    includedMinutesPerMonth: 50,
-    inclusions: [
-      { choiceOf: ["obagiBlueRadiance", "fillmedBright", "apaFacial", "led"], qtyPerMonth: 1, label: "One 30 minute skin treatment monthly" },
-      { addOnKey: "led", addOnPriceW: 25, addOnPriceB: 20, label: "LED included with every peel or facial" },
-      { label: "Device skin rescan with written progress notes every fourth month" },
-      { label: "15 percent off retail" },
-      { label: "10 percent off courses" },
-    ],
-    features: { includedTreatment: 1, skinAnalysis: 1, writtenProgressNotes: 1, retailDiscount: 15, courseDiscount: 10, priorityBooking: 1, rollover: 1, pause: 1 },
-    notes: "Priced at 85 because Sarah Hartfree is 8km away at 75 for eleven treatments a year. 85 gives twelve treatments at 85 each against her 82, level on value but on a three-month term against her twelve.",
-  },
-  {
-    name: "Skin Plan Advanced", tierRank: 3, site: "winchester", priceMonthlyGbp: 185,
-    minCommitmentMonths: 6, noticePeriodDays: 30, isPublic: true, liveFromDate: "2027-04-01", deliveredBy: "associate",
-    includedMinutesPerMonth: 65,
-    inclusions: [
-      { choiceOf: ["obagiBlueRadiance", "fillmedBright", "apaFacial", "led"], qtyPerMonth: 1, label: "One 30 minute skin treatment monthly" },
-      { addOnKey: "led", addOnPriceW: 25, addOnPriceB: 20, label: "LED included with every peel or facial" },
-      { choiceOf: ["mnFace", "exoFace"], qtyPerYear: 4, label: "One microneedling or exosome session each quarter" },
-      { label: "Two full rescans a year with a written plan from Abi" },
-      { label: "20 percent off retail" },
-      { label: "15 percent off courses" },
-    ],
-    features: { includedTreatment: 1, skinAnalysis: 1, writtenProgressNotes: 1, retailDiscount: 20, courseDiscount: 15, priorityBooking: 1, rollover: 1, pause: 1 },
-    notes: "By invitation after 4 months on The Skin Plan.",
-  },
+  // The Skin Plan (Winchester 115, founder 95; Bedhampton 85) and Skin Plan Advanced (185)
+  // were removed on 26 September 2026 while the owner reworks them. See git history.
   {
     name: "Frown Free Club / APA Treatment Plan", tierRank: 9, site: "both", priceMonthlyGbp: null,
     minCommitmentMonths: 0, noticePeriodDays: 0, isPublic: false, liveFromDate: "existing", deliveredBy: "prescriber",
@@ -287,7 +245,7 @@ export const FOUNDERS_OFFER = {
     "Complimentary skin analysis consultation with Abi",
     "Founder Skin Start: medical facial plus LED, 65 against 120 list",
     "50 pounds credit on a second treatment booked within eight weeks of the first",
-    "Skin Plan founder rate 95, or Skin Circle at 15, held for the life of the membership",
+    "Skin Circle at 15, held for the life of the membership",
   ],
   rules: "Nothing on anti-wrinkle treatment. Nothing on filler. No percentages in any public copy.",
 };

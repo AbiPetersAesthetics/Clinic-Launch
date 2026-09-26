@@ -128,8 +128,8 @@ const LANES: Lane[] = [
       detail: "A founding open evening in launch week: the room, the scanner, Abi, and the founding cohort." },
   ] },
   { name: "Retail & memberships", note: "the compounding margin", c: "#5a9b90", items: [
-    { kind: "beat", from: "2026-11-02", label: "Memberships live", loc: "winch", up: true, theme: "Skin Circle £19, Skin Plan £115",
-      detail: "The public ladder from opening: Skin Circle at 19, the Skin Plan at 115 (founder 95), Advanced at 185. A member is a pre-booked recurring slot." },
+    { kind: "beat", from: "2026-11-02", label: "Memberships live", loc: "winch", up: true, theme: "Skin Circle £19",
+      detail: "Skin Circle at 19 from opening. The Skin Plan tiers are paused while they are reworked. A member is a pre-booked recurring slot." },
     { kind: "beat", from: "2026-11-02", label: "Referrals live: £25 each-way", loc: "both", up: false, theme: "Warm introductions, POM-safe",
       detail: "Founding clients introduce friends: £25 clinic credit each way, released only when the introduced person attends and pays for a first treatment. Loaded in build week; the cheapest lead you own." },
     { kind: "bar", from: "2026-12-01", to: "2026-12-24", label: "Christmas vouchers + gift sets", loc: "winch", theme: "POM-safe gifts, drive January",

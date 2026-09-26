@@ -1551,7 +1551,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "STRATEGY, THE FOUR ENGINES",
-        "b": "1. Treatment intent. The 443 warm leads already typed what they want into Treatment Interest on the Meta forms. We map that to a safe cluster and invite each person to book the thing they asked for, consultation first. 2. Memberships. Skin Circle at 19 a month, The Skin Plan at 115 Winchester with a founder rate of 95, and Skin Plan Advanced at 185 are pre-booked recurring slots, the single best way to fill white space and retain, so every warm and every new client is offered the membership as the natural next step. 3. Founding rebooking. Every founding client and every first treatment leaves with the next visit booked, so the diary compounds instead of resetting to zero. 4. The Bedhampton warm base. Existing Bedhampton clients who are local enough, or willing to follow Abi across, are invited as known paying regulars, not as cold leads."
+        "b": "1. Treatment intent. The 443 warm leads already typed what they want into Treatment Interest on the Meta forms. We map that to a safe cluster and invite each person to book the thing they asked for, consultation first. 2. Memberships. Skin Circle at 19 a month is a pre-booked recurring slot, the best way to fill white space and retain, so every warm and every new client is offered it as the natural next step. The Skin Plan tiers are paused while they are reworked. 3. Founding rebooking. Every founding client and every first treatment leaves with the next visit booked, so the diary compounds instead of resetting to zero. 4. The Bedhampton warm base. Existing Bedhampton clients who are local enough, or willing to follow Abi across, are invited as known paying regulars, not as cold leads."
       },
       {
         "h": "PARALLEL, NOT INSTEAD OF",
@@ -1699,7 +1699,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "WRITE-BACK",
-        "b": "When David marks a slot booked and attended in the weekly reconciliation, he moves the card and confirms the Diary Cluster and, for members, the tier: Skin Circle, The Skin Plan, or Skin Plan Advanced. This is the only reliable source of paid bookings by cluster, since ANS cannot report it. Keep the raw Treatment Interest out of the card title; use the cluster label only."
+        "b": "When David marks a slot booked and attended in the weekly reconciliation, he moves the card and confirms the Diary Cluster and, for members, the tier (Skin Circle for now; The Skin Plan tiers are paused). This is the only reliable source of paid bookings by cluster, since ANS cannot report it. Keep the raw Treatment Interest out of the card title; use the cluster label only."
       },
       {
         "h": "NOTE",
@@ -1879,7 +1879,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "BUILD",
-        "b": "Create tags: membership-interested, member-skin-circle, member-skin-plan, member-skin-plan-advanced, membership-offered, membership-declined. Add a custom field Membership Interest (dropdown: Skin Circle, The Skin Plan, Advanced, Not now). Build three saved smart lists: (1) attended a first paid treatment with no membership tag; (2) attended a free AI Skin Analysis with no membership tag; (3) warm leads with Marketing Opt In yes whose mapped Treatment Interest cluster is ongoing skin care and who have not booked."
+        "b": "Create tags: membership-interested, member-skin-circle, membership-offered, membership-declined. Add a custom field Membership Interest (dropdown: Skin Circle, Not now). Build three saved smart lists: (1) attended a first paid treatment with no membership tag; (2) attended a free AI Skin Analysis with no membership tag; (3) warm leads with Marketing Opt In yes whose mapped Treatment Interest cluster is ongoing skin care and who have not booked."
       },
       {
         "h": "NOTE",
@@ -1891,7 +1891,7 @@ export const PLAN_ITEMS: PlanItem[] = [
       },
       {
         "h": "CAPACITY",
-        "b": "One nurse does about 30 to 35 appointments a week. Members hold recurring slots, so cap active Skin Plan and Advanced members at what the diary can protect, starting at the thirty founder places, and let Skin Circle, which is one LED session a month, carry the overflow. Review before lifting any cap."
+        "b": "One nurse does about 30 to 35 appointments a week. Members hold recurring slots, so cap active members at what the diary can protect. Skin Circle is one LED session a month, so it is light on nurse time. The Skin Plan tiers are paused while they are reworked. Review before lifting any cap."
       }
     ]
   },
@@ -1967,7 +1967,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "TRIGGER",
-        "b": "Enrol when an opportunity reaches Treatment Attended (or a First Treatment Date is set) AND Clinic Interest is Winchester AND Marketing Opt In is yes AND the tag membership-offered is absent. Do not enrol anyone already tagged member-skin-plan or member-skin-plan-advanced."
+        "b": "Enrol when an opportunity reaches Treatment Attended (or a First Treatment Date is set) AND Clinic Interest is Winchester AND Marketing Opt In is yes AND the tag membership-offered is absent. Do not enrol anyone already tagged member-skin-circle."
       },
       {
         "h": "STRATEGY",
@@ -1995,7 +1995,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "WHAT TO WATCH",
-        "b": "Three numbers, every week. 1. Paid slots booked versus capacity: paid slots filled this week against the 18 to 23 available, and total appointments against the 30 to 35 ceiling. 2. Members signed: new Skin Circle, Skin Plan and Skin Plan Advanced sign-ups this week and the running recurring base. 3. Treatment bookings by cluster: paid bookings split across filler, boosters, skin and membership, with anti-wrinkle-concern shown as consultations booked, never as a named treatment."
+        "b": "Three numbers, every week. 1. Paid slots booked versus capacity: paid slots filled this week against the 18 to 23 available, and total appointments against the 30 to 35 ceiling. 2. Members signed: new Skin Circle sign-ups this week and the running recurring base. 3. Treatment bookings by cluster: paid bookings split across filler, boosters, skin and membership, with anti-wrinkle-concern shown as consultations booked, never as a named treatment."
       },
       {
         "h": "HOW",
@@ -2176,34 +2176,6 @@ export const PLAN_ITEMS: PlanItem[] = [
       {
         "h": "NOTE",
         "b": "Copy leads entirely with the concern the lead themselves raised and invites a consultation only. It names no treatment, toxin or brand, and promises no result. The raw Treatment Interest value is never quoted back, only the safe concern language."
-      }
-    ]
-  },
-  {
-    "category": "diary",
-    "title": "Membership invite for ongoing-care leads",
-    "detail": "October pre-book note to warm leads who want a routine, not a one-off.",
-    "channel": "email",
-    "owner": "abi",
-    "weekStart": "2026-10-18",
-    "dayDate": "2026-10-20",
-    "sortOrder": 83,
-    "deep": [
-      {
-        "h": "TRIGGER",
-        "b": "Send to saved segment 3: warm leads, Marketing Opt In yes, whose mapped Treatment Interest cluster is ongoing skin care (skin boosters, facials, skin plans, general skin). Map through the allow list only and never merge the raw Treatment Interest text into the copy."
-      },
-      {
-        "h": "STRATEGY",
-        "b": "Some people do not want a single treatment, they want someone to look after their skin over time. For them the plan is the product, offered before the doors open so a founder place is genuinely reserved."
-      },
-      {
-        "h": "EMAIL COPY",
-        "b": "Subject: A plan for your skin, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nYou got in touch about looking after your skin, and it sounds like you are after a routine rather than a one-off. That is exactly what The Skin Plan is for.\n\nIt is a monthly place kept in my diary for you: a skin treatment each month and a device rescan with written notes, so we build results steadily and you can see them. It is £115 a month, and as one of my first Winchester clients you can lock in the founder rate of £95 a month for as long as you stay. There are only thirty founder places, and they are going before we open on the first of November.\n\nIf you would like me to hold one for you, just reply and I will note your name. We will still start with a proper consultation so the plan fits your skin, never the other way round.\n\nAbi"
-      },
-      {
-        "h": "CONSENT",
-        "b": "Marketing Opt In yes only. No prescription treatment named, no result promised, a plan and a consultation only. Safe to send."
       }
     ]
   },
@@ -2429,62 +2401,6 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "Post-treatment membership invite",
-    "detail": "The message that turns a happy first treatment into a booked monthly slot.",
-    "channel": "email",
-    "owner": "abi",
-    "weekStart": "2026-11-01",
-    "dayDate": "2026-11-02",
-    "sortOrder": 91,
-    "deep": [
-      {
-        "h": "STRATEGY",
-        "b": "Lead with the plan and the protected slot, never a saving. A member is booked in before they leave, which is the recurring slot that fills the white space between the capped free analyses."
-      },
-      {
-        "h": "EMAIL COPY",
-        "b": "Subject: Keeping your results going, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nIt was lovely to look after you. Skin does best with a little and often rather than one big push, so the clients who see the steadiest results are usually the ones on a plan.\n\nThe Skin Plan is a monthly place in my diary kept just for you: one skin treatment each month, plus a device rescan with written notes so we can both see how your skin is actually changing. It is £115 a month, and as one of my first Winchester clients you can lock in the founder rate of £95 a month for as long as you stay. There are only thirty founder places.\n\nIf you would like a little more, Skin Plan Advanced at £185 a month adds a deeper quarterly session. And if you simply want to keep your glow ticking over, Skin Circle at £19 a month gives you a monthly LED session and member pricing on your skincare.\n\nNo pressure at all. Have a read, and reply here or text me and I will hold your place.\n\nAbi"
-      },
-      {
-        "h": "WHATSAPP COPY",
-        "b": "Hi {{contact.first_name}}, it was lovely to look after you. If you would like to keep your results going, The Skin Plan holds you a monthly slot with me plus a skin rescan, founder rate £95 a month for my first thirty Winchester clients. Happy to hold you a place, no pressure. Just reply here. Abi"
-      },
-      {
-        "h": "CONSENT",
-        "b": "Send only to contacts with Marketing Opt In yes. The copy names no prescription treatment and promises no result. It offers a plan and a place, which are services, so it is safe to send."
-      }
-    ]
-  },
-  {
-    "category": "diary",
-    "title": "In-clinic membership conversation",
-    "detail": "What Abi says at the end of a first treatment or analysis to offer the plan in person.",
-    "channel": "found",
-    "owner": "abi",
-    "weekStart": "2026-11-01",
-    "dayDate": "2026-11-02",
-    "sortOrder": 92,
-    "deep": [
-      {
-        "h": "STRATEGY",
-        "b": "The strongest sign-ups happen in the room, not by email. The email and WhatsApp are the safety net for anyone Abi did not get to in person. Offer it warmly, once, and let them decide."
-      },
-      {
-        "h": "SCRIPT",
-        "b": "At the end of the appointment, while writing notes: 'Your skin has responded really well. The clients who keep this going tend to do it with a plan rather than booking in fits and starts. I keep a monthly slot for plan clients, so you would have a set time with me each month and I rescan your skin so we can both see it changing. It is £115 a month, and because you are one of my first Winchester clients I can hold the founder rate of £95 for you, there are only thirty of those. Would you like me to keep one for you?' If they hesitate: 'No pressure at all, have a think. Shall I pop a place on hold for a week so you do not miss the founder rate?'"
-      },
-      {
-        "h": "WRITE-BACK",
-        "b": "If they say yes in clinic, David sets up the GoCardless plan and tags the contact member-skin-plan. If they want to think it over, tag membership-offered so the follow-up email does not repeat the ask cold."
-      },
-      {
-        "h": "NOTE",
-        "b": "This is the public ladder only. The private Frown Free Club and any prescription-only treatment stay out of this conversation entirely."
-      }
-    ]
-  },
-  {
-    "category": "diary",
     "title": "Opening-week post: why I consult before any filler",
     "detail": "Consultation-first education post for opening week, names filler and lips plainly, no before-and-after.",
     "channel": "social",
@@ -2577,34 +2493,6 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "Membership as the next step after an analysis",
-    "detail": "For clients who came for the free analysis: offer the plan, not just a single treatment.",
-    "channel": "email",
-    "owner": "abi",
-    "weekStart": "2026-11-01",
-    "dayDate": "2026-11-04",
-    "sortOrder": 96,
-    "deep": [
-      {
-        "h": "TRIGGER",
-        "b": "Enrol from segment 2: attended a free AI Skin Analysis, no membership tag, Marketing Opt In yes. Sends the day after the analysis, alongside and not instead of the normal analysis nurture."
-      },
-      {
-        "h": "STRATEGY",
-        "b": "The analysis is capped at about twelve a week and makes no money, so its job is to open a door. For anyone whose scan showed things worth working on over time, the honest next step is a plan, not a single appointment. This runs in parallel with the analysis nurture and simply adds the membership door."
-      },
-      {
-        "h": "EMAIL COPY",
-        "b": "Subject: What your scan showed us, {{contact.first_name}}\n\nHi {{contact.first_name}},\n\nThank you for coming in for your skin analysis. The things your scan picked up are the kind that respond best to steady care over a few months rather than one appointment, so I wanted to mention the plan built for exactly that.\n\nThe Skin Plan keeps you a monthly slot with me: one skin treatment a month and a device rescan with written notes, so at each visit we can both see what your skin is actually doing. It is £115 a month, with a founder rate of £95 for my first thirty Winchester clients.\n\nIf a full plan is more than you want right now, Skin Circle at £19 a month keeps things ticking over with a monthly LED session and member pricing on your skincare, a gentle way to stay in a routine.\n\nNo rush and no pressure. If you would like me to hold a place, just reply.\n\nAbi"
-      },
-      {
-        "h": "CONSENT",
-        "b": "Marketing Opt In yes only. Describes what the scan flagged in general terms, names no prescription treatment and promises no result. Safe to send."
-      }
-    ]
-  },
-  {
-    "category": "diary",
     "title": "From-opening consultation nudge, WhatsApp",
     "detail": "Gentle opening-week text to segment members who have not yet replied, offering a consultation time.",
     "channel": "email",
@@ -2665,38 +2553,6 @@ export const PLAN_ITEMS: PlanItem[] = [
   },
   {
     "category": "diary",
-    "title": "Turn skin bookings into a monthly Skin Plan",
-    "detail": "Invite opening-week skin clients into a membership to pre-book recurring slots and fill the paid white space.",
-    "channel": "email",
-    "owner": "both",
-    "weekStart": "2026-11-01",
-    "dayDate": "2026-11-06",
-    "sortOrder": 99,
-    "deep": [
-      {
-        "h": "STRATEGY",
-        "b": "A membership is a pre-booked recurring slot, the single best way to fill the white space between the free analyses and to keep a skin client past a single treatment. Offer it at the end of a first skin appointment and by this email to everyone who booked skin in opening week. David sets up the recurring billing and slot, Abi is the voice and makes the recommendation."
-      },
-      {
-        "h": "EMAIL SUBJECT",
-        "b": "The simplest way to keep your skin moving in the right direction"
-      },
-      {
-        "h": "EMAIL COPY",
-        "b": "Hello {{contact.first_name}},\n\nIt has been lovely to see your skin getting the attention it deserves. If you would like to keep it going, a membership is the easiest way, and it holds a regular slot in the diary just for you.\n\nSkin Circle, 19 a month: one LED session each month, plus member pricing on your skincare. Cancel any time. The easy first step.\n\nThe Skin Plan, founder rate 95 a month held for a full twelve months, 115 after that: a monthly skin treatment we choose together, plus a rescan on the analysis machine with written notes, so you can actually see your skin change month by month.\n\nThe Skin Plan Advanced, 185 a month: everything in The Skin Plan, with a microneedling or exosome session every quarter.\n\nThere is no lock in beyond the month you are in, and I will only ever suggest the level that genuinely suits your skin and your budget. Reply and tell me which sounds right, and I will set it up.\n\nWarmly,\nAbi"
-      },
-      {
-        "h": "SCRIPT, in-clinic ask",
-        "b": "If you enjoyed today and want to keep it up, the easiest way is our Skin Circle at 19 a month, one LED session and member pricing on your skincare. If you would like a proper plan, The Skin Plan holds you a monthly treatment and a rescan for 95 a month as a founder, held for a year. No rush at all, have a think, and I can set it up before you leave or drop you a note."
-      },
-      {
-        "h": "CAPACITY",
-        "b": "Members hold recurring slots, so cap founder Skin Plan and Skin Plan Advanced places to protect the single-nurse diary and track them against the 18 to 23 weekly paid appointments. Once the recurring diary is full, pause the monthly-treatment tiers and keep only Skin Circle open, as its LED session is quick and light on nurse time. This is exactly the retention that lets a second skin-focused clinician be justified before January."
-      }
-    ]
-  },
-  {
-    "category": "diary",
     "title": "Skin Circle as the easy yes",
     "detail": "A GBP 19 monthly on-ramp so no warm lead leaves empty-handed.",
     "channel": "email",
@@ -2707,11 +2563,11 @@ export const PLAN_ITEMS: PlanItem[] = [
     "deep": [
       {
         "h": "STRATEGY",
-        "b": "Not everyone will commit to a full monthly treatment plan, and that is fine. Skin Circle at £19 is the easy yes: a monthly LED session brings them back through the door every month, which is a booked slot and a habit, and many step up to The Skin Plan later. It keeps the relationship rather than losing the lead to nothing."
+        "b": "Not everyone will commit to a full monthly treatment plan, and that is fine. Skin Circle at £19 is the easy yes: a monthly LED session brings them back through the door every month, which is a booked slot and a habit. It keeps the relationship rather than losing the lead to nothing."
       },
       {
         "h": "TRIGGER",
-        "b": "Offer Skin Circle to anyone tagged membership-offered who declined The Skin Plan, and to direct Skin Circle enquirers. On sign-up David sets the GoCardless plan and tags member-skin-circle."
+        "b": "Offer Skin Circle to anyone tagged membership-offered, and to direct Skin Circle enquirers. On sign-up David sets the GoCardless plan and tags member-skin-circle."
       },
       {
         "h": "WHATSAPP COPY",
@@ -2752,38 +2608,6 @@ export const PLAN_ITEMS: PlanItem[] = [
       {
         "h": "CAPACITY",
         "b": "This is a soft nurture, not a push, so it is safe to send to the whole non-booked segment. Bookings still land on the honest waitlist once the fortnight's paid slots are full."
-      }
-    ]
-  },
-  {
-    "category": "diary",
-    "title": "Next step: The Skin Plan for booster clients (email)",
-    "detail": "Membership email offering booster and regenerative clients a pre-booked recurring monthly slot as their next step.",
-    "channel": "email",
-    "owner": "both",
-    "weekStart": "2026-11-08",
-    "dayDate": "2026-11-09",
-    "sortOrder": 102,
-    "deep": [
-      {
-        "h": "STRATEGY",
-        "b": "A membership is a pre-booked recurring slot, so it is the single best way to fill the paid white space and retain. Sent to booster-track contacts who have booked or attended a first appointment, positioning consistency, not a one-off, as the way to hold skin quality. Public, no POM, promotable freely."
-      },
-      {
-        "h": "SUBJECT",
-        "b": "The simplest way to keep your skin at its best"
-      },
-      {
-        "h": "EMAIL COPY",
-        "b": "Hi {{contact.first_name}},\n\nIf skin quality is your goal, the thing that makes the biggest difference is not a single treatment, it is consistency.\n\nThat is what The Skin Plan is for. It is our monthly membership for people who want to look after their skin properly over time:\n\n- A skin treatment every month, chosen for where your skin is that month\n- A device rescan with written notes, so we can see the change rather than guess at it\n- Priority booking and member pricing\n\nThe Skin Plan is 115 pounds a month in Winchester, and as a founding member you can hold the founder rate of 95 pounds a month. If you would like a lighter option, Skin Circle is 19 pounds a month, with a monthly LED session and a standing member saving on your skincare. There is also Skin Plan Advanced at 185 pounds a month, which adds a quarterly microneedling or exosome session for skin that needs a little more.\n\nNo lock-in, and you can cancel any time. We can set it up at your appointment, or reply here and I will explain how it would work for your skin.\n\nAbi"
-      },
-      {
-        "h": "CAPACITY",
-        "b": "Memberships book a recurring slot, so each one permanently reserves diary time. Onboard founding members in a staggered way so the monthly slots stay serviceable by one nurse; flag to David when recurring commitments start crowding out new-client capacity."
-      },
-      {
-        "h": "NOTE",
-        "b": "Public and no POM. No percentage figure is quoted in the copy, member benefits are stated as founder pricing and a standing member saving. The private Frown Free Club is never mentioned here. Founder rate held for 12 months per the launch terms."
       }
     ]
   },
@@ -5061,7 +4885,7 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 301,
     "deep": [
       { "h": "WHAT", "b": "Build every Winchester sequence as a GHL workflow: the founding selection fortnight, the autumn-or-next-year decision thread, the treatment-intent nurtures, and the membership invitations. Set each wait and send window so they fire on their own." },
-      { "h": "SEQUENCES", "b": "Founding selection from the scan, the honest-diary decision series, one treatment-intent thread per interest the lead ticked, and the Skin Plan and membership invitations that fill the paying diary between the free scans." },
+      { "h": "SEQUENCES", "b": "Founding selection from the scan, the honest-diary decision series, one treatment-intent thread per interest the lead ticked, and the membership invitations that fill the paying diary between the free scans." },
       { "h": "NOTE", "b": "Personalise by the interest already captured on the lead. Someone who asked about skin gets the skin thread the day we open, not a generic newsletter." }
     ]
   },
