@@ -565,6 +565,10 @@ export async function runStartupSeed(): Promise<void> {
       )
     `);
     await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS task_id INTEGER`);
+    // V36: a link per item, with the picture and title fetched from it.
+    await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS url TEXT`);
+    await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS image_url TEXT`);
+    await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS link_title TEXT`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,

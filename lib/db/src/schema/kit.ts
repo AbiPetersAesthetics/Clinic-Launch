@@ -47,6 +47,10 @@ export const kitItemsTable = pgTable("kit_items", {
   /** planned (an idea with a price), ordered (committed, not yet paid), paid. */
   status: text("status").notNull().default("planned"),
   note: text("note"),
+  /** A product page or listing. The server fetches its picture and title once. */
+  url: text("url"),
+  imageUrl: text("image_url"),
+  linkTitle: text("link_title"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

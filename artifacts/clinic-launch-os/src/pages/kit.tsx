@@ -12,14 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
-import { X } from "lucide-react";
+import { X, Link2, ExternalLink } from "lucide-react";
 
 const PROJECT_ID = 1;
 const API = "/api";
 
 type Area = { id: number; areaKey: string; name: string; covers: string | null; sortOrder: number };
 type Line = { id: number; taskId: number; areaKey: string; sortOrder: number; title: string; phase: string; budgetGbp: number; basis: string; planStatus: "paid" | "part-paid" | "committed" | "planned"; amountPaidGbp: number; savingBaseline: number | null; savingApplied: boolean; missing: boolean };
-type Item = { id: number; areaKey: string; taskId: number | null; name: string; amountGbp: number; status: "planned" | "ordered" | "paid"; note: string | null; createdAt: string };
+type Item = { id: number; areaKey: string; taskId: number | null; name: string; amountGbp: number; status: "planned" | "ordered" | "paid"; note: string | null; url: string | null; imageUrl: string | null; linkTitle: string | null; createdAt: string };
 type KitData = { areas: Area[]; lines: Line[]; items: Item[] };
 
 const STATUSES: { value: Item["status"]; label: string }[] = [
@@ -45,7 +45,7 @@ export default function KitPage() {
   const fail = (e: unknown) => toast({ title: "That did not save", description: e instanceof Error ? e.message : "Try again in a moment.", variant: "destructive" });
 
   const patchItem = useMutation({ mutationFn: ({ id, patch }: { id: number; patch: Partial<Item> }) => send("PATCH", `/projects/${PROJECT_ID}/kit/items/${id}`, patch), onSuccess: refresh, onError: fail });
-  const addItem = useMutation({ mutationFn: (body: { taskId: number; name: string; amountGbp: number; status: string }) => send("POST", `/projects/${PROJECT_ID}/kit/items`, body), onSuccess: refresh, onError: fail });
+  const addItem = useMutation({ mutationFn: (body: { taskId: number; name: string; amountGbp: number; status: string; url?: string }) => send("POST", `/projects/${PROJECT_ID}/kit/items`, body), onSuccess: refresh, onError: fail });
   const removeItem = useMutation({ mutationFn: (id: number) => send("DELETE", `/projects/${PROJECT_ID}/kit/items/${id}`), onSuccess: refresh, onError: fail });
 
   const lines = data?.lines ?? [], items = data?.items ?? [];
@@ -143,18 +143,19 @@ function AreaTotal({ lines, items }: { lines: Line[]; items: Item[] }) {
 function LineBlock({ line, items, onPatch, onAdd, onRemove }: {
   line: Line; items: Item[];
   onPatch: (id: number, patch: Partial<Item>) => void;
-  onAdd: (body: { name: string; amountGbp: number; status: string }) => void;
+  onAdd: (body: { name: string; amountGbp: number; status: string; url?: string }) => void;
   onRemove: (id: number) => void;
 }) {
-  const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [status, setStatus] = useState<Item["status"]>("planned");
+  const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [status, setStatus] = useState<Item["status"]>("planned"); const [url, setUrl] = useState("");
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [linkFor, setLinkFor] = useState<number | null>(null);
   const planned = items.reduce((s, i) => s + i.amountGbp, 0);
   const paid = items.filter(i => i.status === "paid").reduce((s, i) => s + i.amountGbp, 0);
   const ordered = items.filter(i => i.status === "ordered").reduce((s, i) => s + i.amountGbp, 0);
   const bought = paid + ordered;
   const budget = line.budgetGbp, diff = budget - planned, base = Math.max(budget, planned, 1);
   const pct = (v: number) => `${(100 * Math.max(0, v) / base).toFixed(1)}%`;
-  const submit = (e: React.FormEvent) => { e.preventDefault(); const n = name.trim(); if (!n) return; onAdd({ name: n, amountGbp: Math.round(parseFloat(amount) || 0), status }); setName(""); setAmount(""); setStatus("planned"); };
+  const submit = (e: React.FormEvent) => { e.preventDefault(); const n = name.trim(); if (!n) return; onAdd({ name: n, amountGbp: Math.round(parseFloat(amount) || 0), status, url: url.trim() || undefined }); setName(""); setAmount(""); setStatus("planned"); setUrl(""); };
   const planBadge = line.planStatus === "paid" ? <Badge variant="secondary" className="text-[10px]">paid in the plan</Badge>
     : line.planStatus === "part-paid" ? <Badge variant="secondary" className="text-[10px]">part-paid in the plan</Badge>
     : line.planStatus === "committed" ? <Badge variant="secondary" className="text-[10px]">committed in the plan</Badge> : null;
@@ -179,30 +180,49 @@ function LineBlock({ line, items, onPatch, onAdd, onRemove }: {
       </div>
       <div className="space-y-1.5">
         {items.map(it => (
-          <div key={it.id} className="grid grid-cols-[minmax(0,1fr)_88px_100px_32px] gap-1.5 items-center">
-            <Input defaultValue={it.name} className="h-8 text-sm" aria-label="Item"
-              onBlur={e => { const v = e.target.value.trim(); if (v && v !== it.name) onPatch(it.id, { name: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-            <Input type="number" min={0} step={1} defaultValue={Math.round(it.amountGbp)} className="h-8 text-sm text-right tabular-nums" aria-label="Price as paid"
-              onBlur={e => { const v = Math.round(parseFloat(e.target.value) || 0); if (v !== Math.round(it.amountGbp)) onPatch(it.id, { amountGbp: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-            <Select value={it.status} onValueChange={v => onPatch(it.id, { status: v as Item["status"] })}>
-              <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-            </Select>
-            {confirmId === it.id
-              ? <Button type="button" size="sm" variant="destructive" className="h-8 px-2 text-xs" onClick={() => { onRemove(it.id); setConfirmId(null); }} onBlur={() => setConfirmId(null)}>Sure?</Button>
-              : <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" aria-label={`Remove ${it.name}`} onClick={() => setConfirmId(it.id)}><X className="w-4 h-4" /></Button>}
+          <div key={it.id} className="space-y-1">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_88px_100px_32px_32px] gap-1.5 items-center">
+              {it.imageUrl
+                ? <a href={it.url ?? it.imageUrl} target="_blank" rel="noreferrer" title={it.linkTitle ?? it.url ?? ""} className="block w-10 h-10 rounded-sm overflow-hidden bg-muted shrink-0"><img src={it.imageUrl} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={e => { (e.currentTarget.parentElement as HTMLElement).style.display = "none"; }} /></a>
+                : <span className="block w-0 h-8" aria-hidden="true" />}
+              <Input defaultValue={it.name} className="h-8 text-sm" aria-label="Item"
+                onBlur={e => { const v = e.target.value.trim(); if (v && v !== it.name) onPatch(it.id, { name: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+              <Input type="number" min={0} step={1} defaultValue={Math.round(it.amountGbp)} className="h-8 text-sm text-right tabular-nums" aria-label="Price as paid"
+                onBlur={e => { const v = Math.round(parseFloat(e.target.value) || 0); if (v !== Math.round(it.amountGbp)) onPatch(it.id, { amountGbp: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+              <Select value={it.status} onValueChange={v => onPatch(it.id, { status: v as Item["status"] })}>
+                <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button type="button" size="sm" variant="ghost" className={`h-8 w-8 p-0 ${it.url ? "text-primary" : "text-muted-foreground"}`} aria-label={it.url ? `Change the link for ${it.name}` : `Add a link for ${it.name}`} aria-expanded={linkFor === it.id} onClick={() => setLinkFor(linkFor === it.id ? null : it.id)}><Link2 className="w-4 h-4" /></Button>
+              {confirmId === it.id
+                ? <Button type="button" size="sm" variant="destructive" className="h-8 px-2 text-xs" onClick={() => { onRemove(it.id); setConfirmId(null); }} onBlur={() => setConfirmId(null)}>Sure?</Button>
+                : <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" aria-label={`Remove ${it.name}`} onClick={() => setConfirmId(it.id)}><X className="w-4 h-4" /></Button>}
+            </div>
+            {linkFor === it.id && (
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-1.5 items-center pl-1">
+                <Input type="url" defaultValue={it.url ?? ""} placeholder="Paste the product page link" className="h-8 text-sm" aria-label={`Link for ${it.name}`} autoFocus
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); onPatch(it.id, { url: (e.target as HTMLInputElement).value.trim() }); setLinkFor(null); } if (e.key === "Escape") setLinkFor(null); }}
+                  onBlur={e => { const v = e.target.value.trim(); if (v !== (it.url ?? "")) onPatch(it.id, { url: v }); setLinkFor(null); }} />
+                {it.url && <a href={it.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary underline whitespace-nowrap"><ExternalLink className="w-3 h-3" />Open</a>}
+                <span className="text-[11px] text-muted-foreground whitespace-nowrap">Enter to save</span>
+              </div>
+            )}
+            {it.linkTitle && !it.imageUrl && it.url && <div className="pl-1 text-[11px] text-muted-foreground truncate"><a href={it.url} target="_blank" rel="noreferrer" className="underline">{it.linkTitle}</a></div>}
           </div>
         ))}
       </div>
       {!line.missing && (
-        <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)_88px_100px_auto] gap-1.5 items-center">
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="What will you buy?" className="h-8 text-sm" aria-label={`New item for ${line.title}`} />
-          <Input type="number" min={0} step={1} value={amount} onChange={e => setAmount(e.target.value)} placeholder="£ as paid" className="h-8 text-sm text-right" aria-label="Price as paid" />
-          <Select value={status} onValueChange={v => setStatus(v as Item["status"])}>
-            <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
-            <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-          </Select>
-          <Button type="submit" size="sm" className="h-8">Add</Button>
+        <form onSubmit={submit} className="space-y-1.5">
+          <div className="grid grid-cols-[minmax(0,1fr)_88px_100px_auto] gap-1.5 items-center">
+            <Input value={name} onChange={e => setName(e.target.value)} placeholder="What will you buy?" className="h-8 text-sm" aria-label={`New item for ${line.title}`} />
+            <Input type="number" min={0} step={1} value={amount} onChange={e => setAmount(e.target.value)} placeholder="£ as paid" className="h-8 text-sm text-right" aria-label="Price as paid" />
+            <Select value={status} onValueChange={v => setStatus(v as Item["status"])}>
+              <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
+              <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+            </Select>
+            <Button type="submit" size="sm" className="h-8">Add</Button>
+          </div>
+          <Input type="url" value={url} onChange={e => setUrl(e.target.value)} placeholder="Link to the product page (optional): its picture will show here" className="h-8 text-sm" aria-label={`Link for the new item under ${line.title}`} />
         </form>
       )}
     </div>

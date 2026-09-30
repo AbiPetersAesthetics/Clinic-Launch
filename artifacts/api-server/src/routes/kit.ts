@@ -14,6 +14,50 @@ function money(v: unknown): number | null {
   return Math.round(n);
 }
 
+// A link Abi adds to an item: http or https, to a public host. The server fetches
+// it once for a picture and a title, so private and local addresses are refused.
+function publicHttpUrl(v: unknown): URL | null {
+  if (typeof v !== "string") return null;
+  let u: URL; try { u = new URL(v.trim()); } catch { return null; }
+  if (!/^https?:$/.test(u.protocol)) return null;
+  const h = u.hostname.toLowerCase();
+  if (!h || h === "localhost" || h.endsWith(".local") || h.endsWith(".internal") || h.includes(":")) return null;
+  const m = h.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (m) { const a = +m[1], b = +m[2]; if (a === 10 || a === 127 || a === 0 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)) return null; }
+  return u;
+}
+
+// The picture and title a page offers for sharing (og:image and friends), or the
+// image itself when the link is one. Never throws; a page with nothing gives nulls.
+async function linkPreview(u: URL): Promise<{ imageUrl: string | null; title: string | null }> {
+  try {
+    const res = await fetch(u.toString(), { redirect: "follow", signal: AbortSignal.timeout(6000), headers: { "user-agent": "Mozilla/5.0 (compatible; LaunchOS/1.0)", accept: "text/html,application/xhtml+xml,image/*;q=0.8,*/*;q=0.5" } });
+    if (!res.ok) return { imageUrl: null, title: null };
+    const type = res.headers.get("content-type") || "";
+    const finalUrl = res.url || u.toString();
+    if (type.startsWith("image/")) return { imageUrl: finalUrl, title: null };
+    if (!/text\/html|application\/xhtml/.test(type)) return { imageUrl: null, title: null };
+    const html = (await res.text()).slice(0, 600000);
+    const meta = (names: string[]) => {
+      for (const n of names) {
+        const a = html.match(new RegExp(`<meta[^>]+(?:property|name)=["']${n}["'][^>]*>`, "i"));
+        if (a) { const c = a[0].match(/content=["']([^"']+)["']/i); if (c) return c[1]; }
+        const b = html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${n}["']`, "i"));
+        if (b) return b[1];
+      }
+      return null;
+    };
+    let img = meta(["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src"]);
+    if (!img) { const l = html.match(/<link[^>]+rel=["']image_src["'][^>]*href=["']([^"']+)["']/i); if (l) img = l[1]; }
+    if (!img) { const first = html.match(/<img[^>]+src=["']([^"']+\.(?:jpe?g|png|webp)(?:\?[^"']*)?)["']/i); if (first) img = first[1]; }
+    const rawTitle = meta(["og:title"]) || (html.match(/<title[^>]*>([^<]{1,300})<\/title>/i) || [])[1] || null;
+    let imageUrl: string | null = null;
+    if (img) { try { const abs = new URL(img.replace(/&amp;/g, "&"), finalUrl).toString(); if (/^https?:/.test(abs)) imageUrl = abs; } catch { imageUrl = null; } }
+    const title = rawTitle ? rawTitle.replace(/&amp;/g, "&").replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, "\"").replace(/\s+/g, " ").trim().slice(0, 200) : null;
+    return { imageUrl, title };
+  } catch { return { imageUrl: null, title: null }; }
+}
+
 // How the plan states a line's VAT, in words for the page.
 function vatBasis(invoice: string | null, cost: string | null): string {
   const inv = (invoice ?? "").toLowerCase();
@@ -112,7 +156,11 @@ router.post("/projects/:projectId/kit/items", async (req, res) => {
   if (!Number.isFinite(taskId)) { res.status(400).json({ error: "Which plan line is it for?" }); return; }
   const line = await lineFor(projectId, taskId);
   if (!line) { res.status(400).json({ error: "That plan line is not on the rooms and kit page" }); return; }
-  const [created] = await db.insert(kitItemsTable).values({ projectId, areaKey: line.areaKey, taskId, name, amountGbp: amount, status, note: typeof body.note === "string" ? body.note : null }).returning();
+  const rawUrl = typeof body.url === "string" ? body.url.trim() : "";
+  const u = rawUrl ? publicHttpUrl(rawUrl) : null;
+  if (rawUrl && !u) { res.status(400).json({ error: "The link needs to be a full web address, starting http or https" }); return; }
+  const preview = u ? await linkPreview(u) : { imageUrl: null, title: null };
+  const [created] = await db.insert(kitItemsTable).values({ projectId, areaKey: line.areaKey, taskId, name, amountGbp: amount, status, note: typeof body.note === "string" ? body.note : null, url: u ? u.toString() : null, imageUrl: preview.imageUrl, linkTitle: preview.title }).returning();
   res.status(201).json(created);
 });
 
@@ -126,6 +174,16 @@ router.patch("/projects/:projectId/kit/items/:itemId", async (req, res) => {
   if ("amountGbp" in body) { const m = money(body.amountGbp); if (m === null) { res.status(400).json({ error: "Price must be a number at or above zero" }); return; } patch.amountGbp = m; }
   if (typeof body.status === "string") { if (!STATUSES.includes(body.status as any)) { res.status(400).json({ error: "Status must be planned, ordered or paid" }); return; } patch.status = body.status; }
   if (typeof body.note === "string") patch.note = body.note;
+  if (typeof body.url === "string") {
+    const rawUrl = body.url.trim();
+    if (!rawUrl) { patch.url = null; patch.imageUrl = null; patch.linkTitle = null; }
+    else {
+      const u = publicHttpUrl(rawUrl);
+      if (!u) { res.status(400).json({ error: "The link needs to be a full web address, starting http or https" }); return; }
+      const preview = await linkPreview(u);
+      patch.url = u.toString(); patch.imageUrl = preview.imageUrl; patch.linkTitle = preview.title;
+    }
+  }
   if ("taskId" in body) {
     const line = await lineFor(projectId, Number(body.taskId));
     if (!line) { res.status(400).json({ error: "That plan line is not on the rooms and kit page" }); return; }
