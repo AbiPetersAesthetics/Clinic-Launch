@@ -7,20 +7,33 @@
 //   takings are VAT inclusive (gross); VAT on sales is gross x rate / (1 + rate);
 //   contribution is what is left of gross after VAT on sales and product cost;
 //   running costs, rent, rates and project costs are ex VAT. VAT on build and
-//   card-bought project items is funded personally and recovered through the
-//   VAT return, so it sits outside the company cash model.
+//   set-up bills is paid with each bill (from the bank, or on the card for card
+//   items) and comes back from HMRC through the VAT return (vatReturns). It
+//   never touches profit, only the timing of cash.
 
 export type Method = "bank" | "card";
 
-export type ProjectPayment = { month: string; amountExVat: number; method: Method; label: string; taskId?: number };
+// vat: the VAT charged on this payment, paid with it and reclaimed through the VAT return.
+export type ProjectPayment = { month: string; amountExVat: number; method: Method; label: string; taskId?: number; vat?: number };
 export type OneOff = { month: string; amount: number; method: Method; label: string; pnl: boolean };
 export type FundingIn = { month: string; amount: number; kind: "equity" | "gift"; label: string };
 export type LoanTerms = { label: string; principal: number; drawMonth: string; annualRatePct: number; holidayMonths: number; repayments: number };
-// The split week: from `from`, Abi works bedhDays at Bedhampton and wincDays at
-// Winchester. Bedhampton stays open, taking `monthly`, until moving its days to
-// Winchester would earn more than keeping them, for consecutiveMonths running, or
-// until lastMonth (the planned last trading month), whichever comes first.
-export type BedhSplit = { from: string; monthly: number; bedhDays: number; wincDays: number; consecutiveMonths: number; lastMonth?: string | null };
+// Abi's week while both clinics run. From `from`, Bedhampton opens two days a week
+// (one from oneDayFrom) and Winchester the rest of her weekDays. Bedhampton takes the
+// smaller of what its patients would book (demand.two or demand.one) and what its days
+// hold (dayCapacity a day). It closes the month after Winchester on its own takes
+// closeWhen.wincAtLeast for closeWhen.forMonths running, after closeAfter if one is
+// set, or when a single Bedhampton day averages under floorPerDay. Once it closes,
+// transferShare of its patients' return visits (demand.returns) move to Winchester.
+export type BedhPlan = {
+  from: string; weekDays: number; dayCapacity: number;
+  demand: { two: Record<string, number>; one: Record<string, number>; returns: Record<string, number> };
+  oneDayFrom?: string | null;
+  closeWhen?: { wincAtLeast: number; forMonths: number } | null;
+  closeAfter?: string | null;
+  floorPerDay?: number | null;
+  transferShare: number;
+};
 // What a Winchester day can hold: booked hours are worth perBookedHour, and a day
 // is counted full at maxBookedPct of hoursPerDay.
 export type WincCapacity = { perBookedHour: number; hoursPerDay: number; maxBookedPct: number };
@@ -29,7 +42,7 @@ export type CashInputs = {
   startMonth: string;            // "2026-10"
   months: number;                // rows to produce
   openingBank: number;           // bank plus cash at the end of the month before startMonth
-  bedh: { takings: Record<string, number>; contributionPct: number; split?: BedhSplit };
+  bedh: { takings: Record<string, number>; contributionPct: number; plan?: BedhPlan };
   winc: {
     takings: Record<string, number>;
     contributionPct: number;
@@ -46,7 +59,12 @@ export type CashInputs = {
   marketing: { monthly: number; wincFrom: string; cardFrom: string | null };
   card: { limit: number; repayMonths: number };
   cashFloor: number;
-  pay: { retention: number; capMonthly: number; niRatePct: number; niThresholdAnnual: number; gateMonths: number };
+  // retentionUntilBank: when set, the retention stops once the bank at the start of the
+  // month is at or above it, so Abi takes the profit the business no longer needs to keep.
+  pay: { retention: number; capMonthly: number; niRatePct: number; niThresholdAnnual: number; gateMonths: number; retentionUntilBank?: number | null };
+  // VAT returns: the months each VAT period ends (1 to 12) and how many months after
+  // it HMRC's refund arrives. Without this, VAT on project payments is left out.
+  vatReturns?: { periodEndMonths: number[]; refundLagMonths: number };
   projectPayments: ProjectPayment[];
   oneOffs: OneOff[];
   funding: FundingIn[];
@@ -63,9 +81,14 @@ export type CashRow = {
   rentAccrued: number; rates: number;
   operatingProfit: number;
   wincOwnProfit: number; bedhOwnProfit: number;
-  // The split week: Winchester demand, what its days can hold, and the monthly test
-  // of moving Bedhampton's days across (gain at Winchester against loss at Bedhampton).
-  bedhOpen: boolean; wincDemand: number; wincCapacity: number | null; switchGain: number; switchLoss: number;
+  // Abi's week: days at each clinic, Winchester's own demand, what its days hold, how
+  // full they are, and takings from Bedhampton patients who moved after it closed.
+  bedhDays: number | null; wincDays: number | null; bedhOpen: boolean;
+  wincDemand: number; wincCapacity: number | null; wincOccupancy: number | null; transferIn: number;
+  // Profit after James's loan interest (the interest is a cost; repaying the loan is not).
+  profitAfterInterest: number;
+  // Build VAT: paid from the bank, put on the card, refunded by HMRC, and still owed back.
+  vatPaidBank: number; vatPaidCard: number; vatRefund: number; vatOwedBack: number;
   payGate: boolean; paySalary: number; payCost: number;
   profitRetained: number;
   // Cash flow
@@ -115,11 +138,12 @@ export function wincTakings(inp: CashInputs, ym: string): number {
   return t[last] + (g.target - t[last]) * (monthsBetween(last, ym) / span);
 }
 
-// Winchester takings its days can hold in a month (weeks = 52 / 12).
-export function wincCapacityFor(inp: CashInputs, daysPerWeek: number): number {
+// Winchester takings its days can hold in a month (weeks = 52 / 12), at a share of
+// each day booked: maxBookedPct by default, 100 for occupancy.
+export function wincCapacityFor(inp: CashInputs, daysPerWeek: number, bookedPct?: number): number {
   const c = inp.winc.capacity;
   if (!c) return Infinity;
-  return daysPerWeek * (52 / 12) * c.hoursPerDay * (c.maxBookedPct / 100) * c.perBookedHour;
+  return daysPerWeek * (52 / 12) * c.hoursPerDay * ((bookedPct ?? c.maxBookedPct) / 100) * c.perBookedHour;
 }
 
 // Rent: quarterly in advance on the quarter days. The first payment falls on the
@@ -164,10 +188,10 @@ export function runCashModel(inp: CashInputs): CashResult {
   const lastYm = months[months.length - 1];
   const rentPaidMap = rentSchedule(inp, inp.startMonth, lastYm);
   const rentStartYm = inp.rent.rentStart.slice(0, 7);
-  const sp = inp.bedh.split;
-  const capSplit = sp ? wincCapacityFor(inp, sp.wincDays) : Infinity;
-  const capFull = sp ? wincCapacityFor(inp, sp.wincDays + sp.bedhDays) : Infinity;
-  let bedhOpen = true, switchRun = 0;
+  const plan = inp.bedh.plan;
+  let bedhOpen = true, closeRun = 0, closedAfter: string | null = null, closeReason = "";
+  const vatRefunds: Record<string, number> = {};
+  let vatPeriod = 0, vatOwedBack = 0;
 
   // Card: every draw is repaid in equal parts over repayMonths, starting the month after.
   const draws: { month: string; amount: number }[] = [];
@@ -180,36 +204,39 @@ export function runCashModel(inp: CashInputs): CashResult {
 
   for (const ym of months) {
     const why: Record<string, string> = {};
-    // Sites. Before the split, Bedhampton takes its entered months and Winchester its
-    // demand. During the split Winchester is held to what its days can take; once
-    // Bedhampton closes, Abi's week is all Winchester.
-    const splitOn = !!sp && ym >= sp.from;
-    if (sp?.lastMonth && ym > sp.lastMonth) bedhOpen = false;
-    const openThisMonth = bedhOpen;
+    // Sites. Before the plan starts, Bedhampton takes its entered months and Winchester
+    // its demand. From plan.from Abi's week is split, and once Bedhampton closes it is
+    // all Winchester.
+    const planOn = !!plan && ym >= plan.from;
+    if (plan?.closeAfter && bedhOpen && ym > plan.closeAfter) { bedhOpen = false; closedAfter = plan.closeAfter; closeReason = "the planned last month"; }
+    const bedhDays = !planOn ? null : !bedhOpen ? 0 : plan!.oneDayFrom && ym >= plan!.oneDayFrom ? 1 : 2;
+    const wincDays = !planOn ? null : plan!.weekDays - (bedhDays ?? 0);
     const wincDemand = wincTakings(inp, ym);
-    const wincCapacity = splitOn ? (openThisMonth ? capSplit : capFull) : null;
-    const bedhGross = splitOn && !openThisMonth ? 0 : (inp.bedh.takings[ym] ?? (splitOn ? sp!.monthly : 0));
-    const bedh = site(bedhGross, inp.bedh.contributionPct, inp.vatRate);
-    const winc = site(wincCapacity == null ? wincDemand : Math.min(wincDemand, wincCapacity), inp.winc.contributionPct, inp.vatRate);
-    // The switch test: would giving Bedhampton's days to Winchester earn more than
-    // Bedhampton makes on them? Only Winchester demand beyond its current days counts.
-    let switchGain = 0, switchLoss = 0;
-    if (splitOn && openThisMonth) {
-      switchGain = (Math.min(wincDemand, capFull) - Math.min(wincDemand, capSplit)) * inp.winc.contributionPct / 100;
-      switchLoss = bedh.contribution;
-      switchRun = switchGain > switchLoss ? switchRun + 1 : 0;
-      if (switchRun >= sp!.consecutiveMonths) bedhOpen = false; // closes from next month
+    const transferIn = planOn && bedhDays === 0 ? plan!.transferShare * (plan!.demand.returns[ym] ?? 0) : 0;
+    const wincCapacity = wincDays == null || !inp.winc.capacity ? null : wincCapacityFor(inp, wincDays);
+    const bedhCap = planOn && bedhDays ? bedhDays * (52 / 12) * plan!.dayCapacity : Infinity;
+    const bedhWants = !planOn ? inp.bedh.takings[ym] ?? 0 : bedhDays === 0 ? 0 : inp.bedh.takings[ym] ?? (bedhDays === 1 ? plan!.demand.one[ym] : plan!.demand.two[ym]) ?? 0;
+    const bedh = site(Math.min(bedhWants, bedhCap), inp.bedh.contributionPct, inp.vatRate);
+    const winc = site(Math.min(wincDemand + transferIn, wincCapacity ?? Infinity), inp.winc.contributionPct, inp.vatRate);
+    const wincOccupancy = wincDays && inp.winc.capacity ? winc.gross / wincCapacityFor(inp, wincDays, 100) : null;
+    // Closing tests at the month end, taking effect the month after.
+    if (planOn && bedhOpen) {
+      closeRun = plan!.closeWhen && wincDemand >= plan!.closeWhen.wincAtLeast ? closeRun + 1 : 0;
+      const quiet = plan!.floorPerDay != null && bedhDays === 1 && bedh.gross < plan!.floorPerDay * (52 / 12);
+      if (plan!.closeWhen && closeRun >= plan!.closeWhen.forMonths) { bedhOpen = false; closedAfter = ym; closeReason = `Winchester took ${gbp(plan!.closeWhen.wincAtLeast)} or more on its own for ${plan!.closeWhen.forMonths} months running`; }
+      else if (quiet) { bedhOpen = false; closedAfter = ym; closeReason = `its one day averaged under ${gbp(plan!.floorPerDay!)}`; }
     }
     const total: Site = {
       gross: bedh.gross + winc.gross, vat: bedh.vat + winc.vat, net: bedh.net + winc.net,
       product: bedh.product + winc.product, contribution: bedh.contribution + winc.contribution,
     };
-    why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} as entered` : (wincDemand > 0 ? `Growth line from the last entered month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
-    if (wincCapacity != null && wincDemand > wincCapacity) why.winc += `; demand ${gbp(wincDemand)} is held to the ${gbp(wincCapacity)} that ${openThisMonth ? sp!.wincDays : sp!.wincDays + sp!.bedhDays} days a week can take`;
-    why.bedh = splitOn && !openThisMonth ? (sp!.lastMonth && ym > sp!.lastMonth ? `Bedhampton closed after ${label(sp!.lastMonth)}: Abi is at Winchester full time` : "Bedhampton closed: moving its days to Winchester paid more")
-      : inp.bedh.takings[ym] != null ? `Bedhampton takings for ${label(ym)} as entered`
-      : splitOn ? `Bedhampton on ${sp!.bedhDays} days a week, Winchester on ${sp!.wincDays}` : "Bedhampton not trading";
-    if (splitOn && openThisMonth) why.switch = `Moving Bedhampton's ${sp!.bedhDays} days to Winchester would add ${gbp(switchGain)} a month there and lose ${gbp(switchLoss)} at Bedhampton: ${switchGain > switchLoss ? "worth it" : "keep Bedhampton open"}`;
+    why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} from the forecast` : (wincDemand > 0 ? `Growth line from the last forecast month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
+    if (transferIn) why.winc += `; plus ${gbp(transferIn)} from Bedhampton patients who moved`;
+    if (wincCapacity != null && wincDemand + transferIn > wincCapacity) why.winc += `; held to the ${gbp(wincCapacity)} that ${wincDays} days a week can take`;
+    if (wincOccupancy != null) why.occupancy = `Winchester about ${Math.round(wincOccupancy * 100)}% booked across ${wincDays} days a week`;
+    why.bedh = !planOn ? (inp.bedh.takings[ym] != null ? `Bedhampton takings for ${label(ym)} as entered` : "Bedhampton not trading")
+      : bedhDays === 0 ? `Bedhampton closed after ${label(closedAfter!)}: ${closeReason}`
+      : `Bedhampton ${bedhDays === 1 ? "one day" : "two days"} a week: its patients would book ${gbp(bedhWants)}${bedhWants > bedhCap ? `, and ${bedhDays === 1 ? "one day holds" : "two days hold"} ${gbp(bedhCap)}` : ""}`;
     why.vat = `VAT on sales = gross x 1/6 at both sites (${gbp(bedh.vat)} Bedhampton, ${gbp(winc.vat)} Winchester)`;
     why.contribution = `${inp.bedh.contributionPct}% of Bedhampton gross + ${inp.winc.contributionPct}% of Winchester gross, after VAT and product cost`;
 
@@ -251,36 +278,53 @@ export function runCashModel(inp: CashInputs): CashResult {
     }
     if (loanDrawn) why.loanDrawn = inp.loans.filter(l => l.drawMonth === ym).map(l => `${l.label}: ${gbp(l.principal)} drawn`).join("; ");
     if (loanRepayment) why.loanRepayment = `Level repayment after the ${inp.loans[0]?.holidayMonths ?? 0}-month holiday, interest having accrued during it`;
+    if (loanInterest) why.loanInterest = `Interest on James's loan at ${inp.loans[0]?.annualRatePct ?? 0}% a year: a cost in the profit and loss. The rest of each repayment returns the money he lent, so it is cash, not cost`;
 
     // Abi's pay: the gate opens once Winchester has made a profit for gateMonths
     // consecutive months, and stays open. Then she takes the profit above the
     // retention (after loan repayments), up to the cap, with employer NI on top.
     gateRun = wincOwnProfit >= 0 && winc.gross > 0 ? gateRun + 1 : 0;
     if (gateRun >= inp.pay.gateMonths) gateOpen = true;
-    const available = operatingProfit - loanRepayment - inp.pay.retention;
+    const retention = inp.pay.retentionUntilBank != null && bank >= inp.pay.retentionUntilBank ? 0 : inp.pay.retention;
+    const available = operatingProfit - loanRepayment - retention;
     const pay = gateOpen ? salaryFor(available, inp.pay) : { salary: 0, cost: 0 };
     why.pay = !gateOpen
       ? `No pay: Winchester has not yet made a profit for ${inp.pay.gateMonths} months running`
       : available <= 0
-        ? `No pay: profit after loan repayments ${gbp(operatingProfit - loanRepayment)} is not above the ${gbp(inp.pay.retention)} the business keeps`
-        : `Salary ${gbp(pay.salary)} (company cost ${gbp(pay.cost)} with employer NI) from the ${gbp(available)} above the ${gbp(inp.pay.retention)} retained, capped at ${gbp(inp.pay.capMonthly)}`;
+        ? `No pay: profit after loan repayments ${gbp(operatingProfit - loanRepayment)} is not above the ${gbp(retention)} the business keeps`
+        : `Salary ${gbp(pay.salary)} (company cost ${gbp(pay.cost)} with employer NI) from the ${gbp(available)} above the ${gbp(retention)} retained${retention === 0 ? " (none kept: the bank is above " + gbp(inp.pay.retentionUntilBank!) + ")" : ""}, capped at ${gbp(inp.pay.capMonthly)}`;
 
     // Card
     const projCard = inp.projectPayments.filter(p => p.month === ym && p.method === "card");
     const oneOffCard = oneOffs.filter(o => o.method === "card");
     const cardFundedCosts = (marketingOnCard ? marketing : 0) + oneOffCard.filter(o => o.pnl).reduce((s, o) => s + o.amount, 0);
-    const cardDrawn = projCard.reduce((s, p) => s + p.amountExVat, 0) + cardFundedCosts + oneOffCard.filter(o => !o.pnl).reduce((s, o) => s + o.amount, 0);
+    const vatPaidCard = inp.vatReturns ? projCard.reduce((s, p) => s + (p.vat ?? 0), 0) : 0;
+    const cardDrawn = projCard.reduce((s, p) => s + p.amountExVat, 0) + vatPaidCard + cardFundedCosts + oneOffCard.filter(o => !o.pnl).reduce((s, o) => s + o.amount, 0);
     const cardRepayment = draws.reduce((s, d) => { const k = monthsBetween(d.month, ym); return s + (k >= 1 && k <= inp.card.repayMonths ? d.amount / inp.card.repayMonths : 0); }, 0);
     if (cardDrawn) draws.push({ month: ym, amount: cardDrawn });
     const prevOwed = rows.length ? rows[rows.length - 1].cardOwed : 0;
     const cardOwed = prevOwed + cardDrawn - cardRepayment;
-    why.cardDrawn = [...projCard.map(p => `${p.label} ${gbp(p.amountExVat)}`), ...(marketingOnCard ? [`marketing ${gbp(marketing)}`] : []), ...oneOffCard.map(o => `${o.label} ${gbp(o.amount)}`)].join("; ") || "Nothing put on the card";
+    why.cardDrawn = [...projCard.map(p => `${p.label} ${gbp(p.amountExVat)}${inp.vatReturns && p.vat ? ` + VAT ${gbp(p.vat)}` : ""}`), ...(marketingOnCard ? [`marketing ${gbp(marketing)}`] : []), ...oneOffCard.map(o => `${o.label} ${gbp(o.amount)}`)].join("; ") || "Nothing put on the card";
     why.cardRepayment = `1/${inp.card.repayMonths} of each earlier draw, from the month after it`;
 
     // Bank
     const projBank = inp.projectPayments.filter(p => p.month === ym && p.method === "bank");
     const projectBank = projBank.reduce((s, p) => s + p.amountExVat, 0) + oneOffs.filter(o => o.method === "bank" && !o.pnl).reduce((s, o) => s + o.amount, 0);
     why.projectBank = projBank.map(p => `${p.label} ${gbp(p.amountExVat)}`).join("; ") || "No project payments from the bank";
+    const vatPaidBank = inp.vatReturns ? projBank.reduce((s, p) => s + (p.vat ?? 0), 0) : 0;
+    const vatRefund = vatRefunds[ym] ?? 0;
+    if (inp.vatReturns) {
+      vatPeriod += vatPaidBank + vatPaidCard;
+      if (inp.vatReturns.periodEndMonths.includes(Number(ym.slice(5))) && vatPeriod > 0) {
+        const due = addMonths(ym, inp.vatReturns.refundLagMonths);
+        vatRefunds[due] = (vatRefunds[due] ?? 0) + vatPeriod;
+        why.vatReturn = `VAT return for the period to ${label(ym)} reclaims ${gbp(vatPeriod)} of build VAT, refunded in ${label(due)}`;
+        vatPeriod = 0;
+      }
+    }
+    vatOwedBack += vatPaidBank + vatPaidCard - vatRefund;
+    if (vatPaidBank || vatPaidCard) why.vatPaid = `VAT on build bills: ${gbp(vatPaidBank)} from the bank${vatPaidCard ? `, ${gbp(vatPaidCard)} on the card` : ""}. It comes back through the VAT return`;
+    if (vatRefund) why.vatRefund = `HMRC refund of build VAT (${gbp(vatRefund)})`;
     const rentPaid = rentPaidMap[ym] ?? 0;
     why.rentPaid = rentPaid ? `Quarterly in advance on the quarter day (${gbp(rentPaid)})` : "No rent payment falls in this month";
     const funding = inp.funding.filter(f => f.month === ym);
@@ -288,19 +332,21 @@ export function runCashModel(inp: CashInputs): CashResult {
     why.fundingIn = [...funding.map(f => `${f.label} ${gbp(f.amount)} (${f.kind})`), ...(loanDrawn ? [why.loanDrawn] : [])].join("; ") || "No funding in";
 
     const bankRunning = utilities + general + (marketingOnCard ? 0 : marketing) + oneOffs.filter(o => o.pnl && o.method === "bank").reduce((s, o) => s + o.amount, 0);
-    const moneyIn = fundingIn + total.contribution;
-    const moneyOutBank = projectBank + rentPaid + rates + bankRunning + loanRepayment + cardRepayment + pay.cost;
+    const moneyIn = fundingIn + total.contribution + vatRefund;
+    const moneyOutBank = projectBank + vatPaidBank + rentPaid + rates + bankRunning + loanRepayment + cardRepayment + pay.cost;
     const openingBank = bank;
     bank = openingBank + moneyIn - moneyOutBank;
-    why.moneyOutBank = `Project ${gbp(projectBank)}, rent ${gbp(rentPaid)}, rates ${gbp(rates)}, running ${gbp(bankRunning)}, loan ${gbp(loanRepayment)}, card ${gbp(cardRepayment)}, Abi ${gbp(pay.cost)}`;
+    why.moneyOutBank = `Project ${gbp(projectBank)}${vatPaidBank ? ` + VAT ${gbp(vatPaidBank)}` : ""}, rent ${gbp(rentPaid)}, rates ${gbp(rates)}, running ${gbp(bankRunning)}, loan ${gbp(loanRepayment)}, card ${gbp(cardRepayment)}, Abi ${gbp(pay.cost)}`;
 
     rows.push({
       month: ym, label: label(ym), fy: fyOf(ym),
       bedh, winc, total,
       running: { utilities, general, marketing, oneOff: oneOffPnl, total: runningTotal },
       rentAccrued, rates, operatingProfit, wincOwnProfit, bedhOwnProfit,
-      bedhOpen: bedh.gross > 0, wincDemand, wincCapacity: wincCapacity == null || wincCapacity === Infinity ? null : wincCapacity, switchGain, switchLoss,
-      payGate: gateOpen, paySalary: pay.salary, payCost: pay.cost, profitRetained: operatingProfit - pay.cost,
+      bedhDays, wincDays, bedhOpen: bedh.gross > 0, wincDemand, wincCapacity, wincOccupancy, transferIn,
+      profitAfterInterest: operatingProfit - loanInterest,
+      vatPaidBank, vatPaidCard, vatRefund, vatOwedBack,
+      payGate: gateOpen, paySalary: pay.salary, payCost: pay.cost, profitRetained: operatingProfit - loanInterest - pay.cost,
       openingBank, fundingIn, loanDrawn, projectBank,
       cardDrawn, cardFundedCosts, cardRepayment, cardOwed,
       loanRepayment, loanInterest, loanOwed,
@@ -312,7 +358,7 @@ export function runCashModel(inp: CashInputs): CashResult {
   }
 
   // Financial-year totals (flows summed, balances taken at the year's last month)
-  const flows: (keyof CashRow)[] = ["operatingProfit", "payCost", "profitRetained", "fundingIn", "projectBank", "cardDrawn", "cardRepayment", "loanRepayment", "rentPaid", "rentAccrued", "rates", "moneyIn", "moneyOutBank", "net"];
+  const flows: (keyof CashRow)[] = ["operatingProfit", "payCost", "profitRetained", "fundingIn", "projectBank", "cardDrawn", "cardRepayment", "loanRepayment", "rentPaid", "rentAccrued", "rates", "moneyIn", "moneyOutBank", "net", "vatPaidBank", "vatPaidCard", "vatRefund", "loanInterest", "profitAfterInterest", "transferIn"];
   const fyTotals: CashResult["fyTotals"] = {};
   for (const r of rows) {
     const t = (fyTotals[r.fy] ??= {});
@@ -338,8 +384,14 @@ export function runCashModel(inp: CashInputs): CashResult {
   checks.push({ name: "Bank rolls forward", pass: rollOk, detail: "opening + money in - money out = closing, every month" });
   checks.push({ name: "Card rolls forward", pass: cardOk, detail: "owed last month + drawn - repaid = owed, every month" });
   checks.push({ name: "VAT on sales is 1/6 of gross at both sites", pass: vatOk, detail: "standard-rated at 20% from August 2026" });
-  const cashFlowTie = rows.every(r => Math.abs(r.openingBank + r.operatingProfit + r.fundingIn - r.projectBank + r.cardFundedCosts - r.cardRepayment - r.loanRepayment + r.rentTiming - r.payCost - r.closingBank) < 0.01);
-  checks.push({ name: "Cash flow ties to profit", pass: cashFlowTie, detail: "opening + operating profit + funding - project - card repayments + card-funded costs - loan + rent timing - pay = closing" });
+  const cashFlowTie = rows.every(r => Math.abs(r.openingBank + r.operatingProfit + r.fundingIn - r.projectBank - r.vatPaidBank + r.vatRefund + r.cardFundedCosts - r.cardRepayment - r.loanRepayment + r.rentTiming - r.payCost - r.closingBank) < 0.01);
+  checks.push({ name: "Cash flow ties to profit", pass: cashFlowTie, detail: "opening + operating profit + funding - project - build VAT + VAT refunds - card repayments + card-funded costs - loan + rent timing - pay = closing" });
+  if (inp.vatReturns) {
+    const paidVat = rows.reduce((s, r) => s + r.vatPaidBank + r.vatPaidCard, 0), back = rows.reduce((s, r) => s + r.vatRefund, 0);
+    const pendingAfter = Object.entries(vatRefunds).filter(([m]) => m > lastYm).reduce((s, [, v]) => s + v, 0) + vatPeriod;
+    const owedEnd = rows.length ? rows[rows.length - 1].vatOwedBack : 0;
+    checks.push({ name: "Build VAT is all reclaimed", pass: Math.abs(owedEnd - pendingAfter) < 0.01, detail: `Paid ${gbp(paidVat)}, refunded ${gbp(back)}${owedEnd > 0.5 ? `, ${gbp(owedEnd)} due after the months shown` : ""}` });
+  }
   const under = rows.filter(r => r.belowFloor).map(r => r.label);
   checks.push({ name: `Bank stays above the ${gbp(inp.cashFloor)} floor`, pass: under.length === 0, detail: under.length ? `Below in ${under.join(", ")}` : "Never below" });
   const over = rows.filter(r => r.cardOverLimit).map(r => r.label);

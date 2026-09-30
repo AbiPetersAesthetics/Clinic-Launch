@@ -18,7 +18,8 @@ type Row = {
   bedh: Site; winc: Site; total: Site;
   running: { utilities: number; general: number; marketing: number; oneOff: number; total: number };
   rentAccrued: number; rates: number; operatingProfit: number; wincOwnProfit: number; bedhOwnProfit: number;
-  bedhOpen?: boolean; wincDemand?: number; wincCapacity?: number | null; switchGain?: number; switchLoss?: number;
+  bedhDays?: number | null; wincDays?: number | null; bedhOpen?: boolean; wincDemand?: number; wincCapacity?: number | null; wincOccupancy?: number | null; transferIn?: number;
+  profitAfterInterest?: number; vatPaidBank?: number; vatPaidCard?: number; vatRefund?: number; vatOwedBack?: number;
   payGate: boolean; paySalary: number; payCost: number; profitRetained: number;
   openingBank: number; fundingIn: number; loanDrawn: number; projectBank: number;
   cardDrawn: number; cardFundedCosts: number; cardRepayment: number; cardOwed: number;
@@ -131,17 +132,18 @@ export function CashModelPanel() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-2 rounded-md bg-muted/40 border px-3 py-2">
-            Project costs are shown ex VAT. The VAT on build costs and card-bought items is funded from personal funds and recovered through the VAT return, so it sits outside the company cash model.
+            Build and set-up costs are shown before VAT. The VAT on them is paid with each bill and comes back on the monthly VAT return: see Build VAT and VAT back in the cash flow.
             Takings are entered inc VAT; every sale is standard-rated, so VAT on sales is one sixth of takings at both sites.
           </p>
-          <p className="text-xs text-muted-foreground">{data.scenarios[data.scenario]?.note} Winchester takings are as entered to June 2027, then a straight line to {gbp(c.winc.growth.target)} a month by {monthLabel(c.winc.growth.month)}, then held.</p>
+          <p className="text-xs text-muted-foreground">{data.scenarios[data.scenario]?.note}</p>
         </CardHeader>
         <CardContent className="pt-0">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
             <Tile label="Lowest bank" value={gbp(data.lowest.bank)} sub={data.lowest.month} tone={data.lowest.bank < floor ? "bad" : data.lowest.bank < floor * 1.2 ? "warn" : "good"} />
             <Tile label={`Months under ${gbp(floor)}`} value={String(belowFloor.length)} sub={belowFloor.length ? belowFloor.map(r => r.label).join(", ") : "Never below the floor"} tone={belowFloor.length ? "bad" : "good"} />
             <Tile label="Card owed at peak" value={gbp(cardPeak)} sub={`Limit ${gbp(c.card.limit)}, repaid over ${c.card.repayMonths} months`} tone={cardPeak > c.card.limit ? "bad" : "neutral"} />
             <Tile label="Abi's pay starts" value={data.firstPayMonth ?? "Not in view"} sub="Salary, under the rule below" tone="neutral" />
+            {(() => { const closed = data.rows.find(r => r.bedhDays === 0); return <Tile label="Bedhampton" value={closed ? `Closes ${closed.label}` : "Stays open"} sub={closed ? "Winchester stands alone" : "Winchester not yet standing alone"} tone="neutral" />; })()}
             <Tile label="Checks" value={`${data.checks.length - failing.length} of ${data.checks.length}`} sub={failing.length ? `${failing.length} failing` : "All passing"} tone={failing.length ? "bad" : "good"} />
           </div>
         </CardContent>
@@ -206,6 +208,7 @@ export function CashModelPanel() {
                   <Th hint="ex VAT">Running costs</Th>
                   <Th hint="no VAT on rent">Rent and rates</Th>
                   <Th hint="ex VAT">Operating profit</Th>
+                  <Th hint="interest only">James's loan interest</Th>
                   <Th hint="salary, with employer NI">Abi's pay</Th>
                   <Th hint="ex VAT">Profit retained</Th>
                 </tr>
@@ -214,7 +217,7 @@ export function CashModelPanel() {
                 {withTotals.map((x, i) => x.kind === "row" ? (
                   <tr key={x.row.month} className={`border-t border-border/40 ${x.row.belowFloor ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
                     <td className="px-2 py-1.5 font-medium sticky left-0 bg-card z-10 whitespace-nowrap">{x.row.label}</td>
-                    <Cell v={x.row.total.gross} sub={`B ${gbp(x.row.bedh.gross)} · W ${gbp(x.row.winc.gross)}`} title={[x.row.why.bedh, x.row.why.winc, x.row.why.switch].filter(Boolean).join(". ")} />
+                    <Cell v={x.row.total.gross} sub={`B ${x.row.bedhDays != null ? `${x.row.bedhDays}d ` : ""}${gbp(x.row.bedh.gross)} · W ${x.row.wincDays != null ? `${x.row.wincDays}d ` : ""}${gbp(x.row.winc.gross)}`} title={[x.row.why.bedh, x.row.why.winc, x.row.why.occupancy].filter(Boolean).join(". ")} />
                     <Cell v={-x.row.total.vat} sub={`B ${gbp(x.row.bedh.vat)} · W ${gbp(x.row.winc.vat)}`} title={x.row.why.vat} tone="muted" />
                     <Cell v={x.row.total.net} title="Gross takings less VAT on sales" />
                     <Cell v={-x.row.total.product} sub={`B ${gbp(x.row.bedh.product)} · W ${gbp(x.row.winc.product)}`} title="Net sales less contribution, at each site's contribution percentage" tone="muted" />
@@ -223,8 +226,9 @@ export function CashModelPanel() {
                       title={`Utilities ${gbp(x.row.running.utilities)}, existing running costs ${gbp(x.row.running.general)}, marketing ${gbp(x.row.running.marketing)}${x.row.running.oneOff ? `, one-off ${gbp(x.row.running.oneOff)}` : ""}`} tone="muted" />
                     <Cell v={-(x.row.rentAccrued + x.row.rates)} sub={x.row.rentAccrued ? undefined : "rent free"} title={`Rent ${gbp(x.row.rentAccrued)} (accrued monthly; paid quarterly, see cash flow) and rates ${gbp(x.row.rates)}`} tone="muted" />
                     <Cell v={x.row.operatingProfit} title={x.row.why.operatingProfit} strong />
+                    <Cell v={-x.row.loanInterest} title={x.row.why.loanInterest ?? "No loan interest this month"} tone="muted" />
                     <Cell v={-x.row.payCost} sub={x.row.paySalary ? `salary ${gbp(x.row.paySalary)}` : undefined} title={x.row.why.pay} tone="muted" />
-                    <Cell v={x.row.profitRetained} title="Operating profit less Abi's pay" strong />
+                    <Cell v={x.row.profitRetained} title="Operating profit less loan interest and Abi's pay" strong />
                   </tr>
                 ) : (
                   <tr key={`fy-${x.fy}-${i}`} className="border-t-2 border-border bg-muted/30 font-semibold">
@@ -237,6 +241,7 @@ export function CashModelPanel() {
                     <Cell v={-fy(x.fy, "runningTotal")} tone="muted" />
                     <Cell v={-(fy(x.fy, "rentAccrued") + fy(x.fy, "rates"))} tone="muted" />
                     <Cell v={fy(x.fy, "operatingProfit")} strong />
+                    <Cell v={-fy(x.fy, "loanInterest")} tone="muted" />
                     <Cell v={-fy(x.fy, "payCost")} tone="muted" />
                     <Cell v={fy(x.fy, "profitRetained")} strong />
                   </tr>
@@ -272,6 +277,8 @@ export function CashModelPanel() {
                     <Th hint="from the P&amp;L">Operating profit</Th>
                     <Th hint="equity, gift, loans">Funding in</Th>
                     <Th hint="ex VAT, bank">Project spend</Th>
+                    <Th hint="paid with the bills">Build VAT</Th>
+                    <Th hint="monthly VAT return">VAT back</Th>
                     <Th hint="costs put on the card">Card funded</Th>
                     <Th hint="1/24 of each draw">Card repaid</Th>
                     <Th>Loan repaid</Th>
@@ -290,6 +297,8 @@ export function CashModelPanel() {
                       <Cell v={x.row.operatingProfit} title={x.row.why.operatingProfit} />
                       <Cell v={x.row.fundingIn} title={x.row.why.fundingIn} tone="pos" />
                       <Cell v={-x.row.projectBank} title={x.row.why.projectBank} />
+                      <Cell v={-(x.row.vatPaidBank ?? 0)} title={x.row.why.vatPaid ?? "No build VAT paid from the bank this month"} tone="muted" />
+                      <Cell v={x.row.vatRefund ?? 0} title={[x.row.why.vatRefund, x.row.why.vatReturn].filter(Boolean).join(". ") || "No VAT refund this month"} tone="pos" />
                       <Cell v={x.row.cardFundedCosts} title="Running costs paid by card this month (added back: they leave the bank later, as repayments)" tone="muted" />
                       <Cell v={-x.row.cardRepayment} title={x.row.why.cardRepayment} />
                       <Cell v={-x.row.loanRepayment} title={x.row.why.loanRepayment ?? "No loan repayment this month"} />
@@ -306,6 +315,8 @@ export function CashModelPanel() {
                       <Cell v={fy(x.fy, "operatingProfit")} />
                       <Cell v={fy(x.fy, "fundingIn")} />
                       <Cell v={-fy(x.fy, "projectBank")} />
+                      <Cell v={-fy(x.fy, "vatPaidBank")} />
+                      <Cell v={fy(x.fy, "vatRefund")} />
                       <td />
                       <Cell v={-fy(x.fy, "cardRepayment")} />
                       <Cell v={-fy(x.fy, "loanRepayment")} />
@@ -327,7 +338,7 @@ export function CashModelPanel() {
                   {data.rows.map(r => (
                     <tr key={r.month} className={`border-t border-border/40 ${r.belowFloor ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
                       <td className="px-2 py-1.5 font-medium sticky left-0 bg-card z-10">{r.label}</td>
-                      <Cell v={r.moneyIn} title={`Contribution ${gbp(r.total.contribution)} + funding ${gbp(r.fundingIn)}`} />
+                      <Cell v={r.moneyIn} title={`Contribution ${gbp(r.total.contribution)} + funding ${gbp(r.fundingIn)}${r.vatRefund ? ` + VAT back ${gbp(r.vatRefund)}` : ""}`} />
                       <Cell v={r.moneyOutBank} title={r.why.moneyOutBank} />
                       <Cell v={r.net} strong />
                       <Cell v={r.closingBank} strong />
@@ -344,29 +355,22 @@ export function CashModelPanel() {
 
       {/* ── Abi's pay, funding and ownership ──────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-6">
-        {c.bedh?.split && c.winc?.capacity && (() => {
-          const sp = c.bedh.split, cap = c.winc.capacity;
-          const perDay = (52 / 12) * cap.hoursPerDay * (cap.maxBookedPct / 100) * cap.perBookedHour;
-          const capSplit = sp.wincDays * perDay;
-          const closeAt = capSplit + (sp.monthly * c.bedh.contributionPct / 100) / (c.winc.contributionPct / 100);
-          const closed = data.rows.find(r => r.month >= sp.from && r.bedhOpen === false);
-          const cp = c.closePlan;
-          const longDate = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+        {c.bedh?.plan && (() => {
+          const p = c.bedh.plan, cap = c.winc?.capacity;
+          const wincDaysSplit = p.weekDays - 2;
+          const closed = data.rows.find(r => r.bedhDays === 0);
+          const twoDays = data.rows.filter(r => r.bedhDays === 2).length, oneDay = data.rows.filter(r => r.bedhDays === 1).length;
+          const occ = p.closeWhen && cap ? Math.round(100 * p.closeWhen.wincAtLeast / (wincDaysSplit * (52 / 12) * cap.hoursPerDay * cap.perBookedHour)) : null;
           return (
             <Card className="shadow-sm">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">Closing Bedhampton</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Abi's week and Bedhampton</CardTitle></CardHeader>
               <CardContent className="text-xs space-y-2 text-muted-foreground">
-                <p><span className="text-foreground font-medium">1. Until then, a split week.</span> From {monthLabel(sp.from)} Abi works {sp.wincDays} days at Winchester and {sp.bedhDays} at Bedhampton. Bedhampton takes {gbp(sp.monthly)} a month on its days.</p>
-                {sp.lastMonth ? (
-                  <p><span className="text-foreground font-medium">2. Last month at Bedhampton: {monthLabel(sp.lastMonth)}.</span> The earliest close that keeps the bank above {gbp(c.cashFloor)} on all four Winchester forecasts. By then Winchester has made a profit on its own two months running.</p>
-                ) : (
-                  <p><span className="text-foreground font-medium">2. When Bedhampton closes.</span> When moving its {sp.bedhDays} days to Winchester would earn more than Bedhampton makes on them, {sp.consecutiveMonths} months running: Winchester demand of about {gbp(closeAt)} a month, against {gbp(capSplit)} that {sp.wincDays} days can hold.</p>
+                <p><span className="text-foreground font-medium">1. A split week.</span> From {monthLabel(p.from)} Abi works {wincDaysSplit} days at Winchester and 2 at Bedhampton{p.oneDayFrom ? `, then 1 at Bedhampton from ${monthLabel(p.oneDayFrom)}` : ""}. Bedhampton takes what its patients book, up to about {gbp(p.dayCapacity)} a clinic day.</p>
+                {p.closeWhen && (
+                  <p><span className="text-foreground font-medium">2. Bedhampton closes when Winchester can stand alone:</span> {gbp(p.closeWhen.wincAtLeast)} a month at Winchester on its own for {p.closeWhen.forMonths} months running. That pays its bills, James's loan and the {gbp(c.pay.retention)} the business keeps{occ != null ? `, with Winchester's ${wincDaysSplit} days about ${occ}% booked` : ""}.</p>
                 )}
-                {sp.lastMonth && cp && (
-                  <p><span className="text-foreground font-medium">3. The checkpoint, {longDate(cp.checkpoint)}.</span> If Winchester took at least {gbp(cp.wincMin)} in each of {cp.checkMonths.map(monthLabel).join(" and ")}, close as planned. If not, keep Bedhampton to the end of {monthLabel(cp.fallbackLastMonth)}.</p>
-                )}
-                <p className="text-foreground">In this view: {closed ? `Bedhampton closes from ${closed.label}.` : "Bedhampton stays open in every month shown."}</p>
-                <p>Not counted: Bedhampton patients who follow Abi to Winchester. Every one who does adds to Winchester's takings.</p>
+                <p><span className="text-foreground font-medium">3. Patients who follow.</span> When Bedhampton closes, {Math.round(p.transferShare * 100)}% of its patients' return visits are assumed to move to Winchester.</p>
+                <p className="text-foreground">In this view: {closed ? `Bedhampton closes from ${closed.label}` : "Bedhampton stays open"}, after {twoDays} months on two days{oneDay ? ` and ${oneDay} on one` : ""}.</p>
               </CardContent>
             </Card>
           );

@@ -89,7 +89,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
       : null;
     lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, remainingExVat, vatBasis: vat.basis, plan, planProblem });
     if (remainingExVat >= 0.5 && !planProblem) {
-      for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, method: p.method === "card" ? "card" : "bank", label: t.title, taskId: t.id });
+      // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
+      const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;
+      for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, vat: remainingExVat * p.share * vatRate, method: p.method === "card" ? "card" : "bank", label: t.title, taskId: t.id });
     }
   }
 
