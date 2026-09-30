@@ -6,39 +6,61 @@
 
 import { db } from "./index";
 import * as schema from "./schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, inArray } from "drizzle-orm";
 import {
   BACKLINK_OPPORTUNITIES,
   BACKLINK_LISTING_PACK,
   BACKLINK_TEMPLATES,
 } from "./backlink-seed-data";
 
-// Rooms and kit: the furniture, equipment and finishes budget by area (ex VAT,
-// savings applied, from the plan of 30 September 2026) and the plan's own lines
-// as the first items. Runs once per project: skipped when the area rows exist.
+// Rooms and kit: Abi's view. The budget lines are plan tasks (kit_lines points at
+// launch_tasks) so the figures follow the Plan & Timeline; areas only group them.
+// Each seed runs once per project and is skipped when its rows exist.
+const KIT_AREAS = [
+  { areaKey: "treatment", name: "Treatment rooms (two)", sortOrder: 1, covers: "In CBS's contract: full-height partitions and the curved frontage, two doors, two basins with mixer taps and hot water, clinical vinyl flooring, scrubbable finishes, clinical lighting, sockets and isolation, door locks." },
+  { areaKey: "reception", name: "Reception", sortOrder: 2, covers: "In CBS's contract: herringbone LVT flooring, front-of-house decoration, reception lighting, the glazed screen." },
+  { areaKey: "consult", name: "Consultation room", sortOrder: 3, covers: "In CBS's contract: decoration, flooring and lighting." },
+  { areaKey: "finish", name: "Finishing touches, whole clinic", sortOrder: 4, covers: "Decoration and finishes are in CBS's contract; these lines are the extras on top." },
+  { areaKey: "opening", name: "Opening", sortOrder: 5, covers: "Stock, kit for the two of you, and insurance." },
+];
+// The owner's list of 30 September 2026, in his order, matched to plan tasks by title.
+const KIT_LINES: { match: RegExp; areaKey: string }[] = [
+  { match: /^Joinery.*Cabinetry.*Decision/i, areaKey: "reception" },
+  { match: /^Product Display.*Retail Shelving/i, areaKey: "reception" },
+  { match: /^Joinery.*Cabinetry.*Installation/i, areaKey: "reception" },
+  { match: /^Wall Panelling.*Feature Finish/i, areaKey: "finish" },
+  { match: /^Treatment Couch/i, areaKey: "treatment" },
+  { match: /^Reception furniture and styling/i, areaKey: "reception" },
+  { match: /^Consultation Room Furniture/i, areaKey: "consult" },
+  { match: /^Treatment Room Furniture/i, areaKey: "treatment" },
+  { match: /^Wall Art, Certificates/i, areaKey: "finish" },
+  { match: /^Furniture \/ Equipment Installation and Room Dressing/i, areaKey: "finish" },
+  { match: /^Retail \/ Skincare Opening Stock/i, areaKey: "opening" },
+  { match: /^FIGS scrubs/i, areaKey: "opening" },
+  { match: /^Hamilton Fraser/i, areaKey: "opening" },
+];
 async function seedKit(projectId: number) {
   const existing = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
-  if (existing.length > 0) return false;
-  await db.insert(schema.kitAreasTable).values([
-    { projectId, areaKey: "treatment", name: "Treatment rooms (two)", budgetGbp: 1833, sortOrder: 1, covers: "In CBS's contract: full-height partitions and the curved frontage, two doors, two basins with mixer taps and hot water, clinical vinyl flooring, scrubbable finishes, clinical lighting, sockets and isolation, door locks." },
-    { projectId, areaKey: "reception", name: "Reception", budgetGbp: 2600, sortOrder: 2, covers: "In CBS's contract: herringbone LVT flooring, front-of-house decoration, reception lighting, the glazed screen. The desk and clinical cabinetry allowance (1,500) sits here." },
-    { projectId, areaKey: "consult", name: "Consultation room", budgetGbp: 250, sortOrder: 3, covers: "In CBS's contract: decoration, flooring and lighting." },
-    { projectId, areaKey: "front", name: "Shop front and signage", budgetGbp: 1593, sortOrder: 4, covers: "In CBS's contract: shopfront refurbishment and redecoration (3,185), subject to conservation consent. The sign's deposit is already paid." },
-    { projectId, areaKey: "finish", name: "Finishing touches", budgetGbp: 0, sortOrder: 5, covers: "Nothing in the plan after savings: the feature wall, wall art and picture lighting, retail shelving and LED, internal signage and photography were all cut to nil. Anything bought here is over budget unless the budget is raised." },
-  ]);
-  await db.insert(schema.kitItemsTable).values([
-    { projectId, areaKey: "treatment", name: "Treatment couch (one in the plan; the second room has none yet)", amountGbp: 1000, status: "planned" },
-    { projectId, areaKey: "treatment", name: "Stool, trolley, bins, mirrors, storage, styling", amountGbp: 833, status: "planned" },
-    { projectId, areaKey: "reception", name: "Reception desk and clinical cabinetry (joinery allowance)", amountGbp: 1500, status: "planned" },
-    { projectId, areaKey: "reception", name: "Reception furniture and styling", amountGbp: 1100, status: "planned" },
-    { projectId, areaKey: "consult", name: "Chairs and table", amountGbp: 250, status: "planned" },
-    { projectId, areaKey: "front", name: "External sign, balance (deposit paid)", amountGbp: 1593, status: "ordered" },
-    { projectId, areaKey: "finish", name: "Feature wall or panelling (was 500 before savings)", amountGbp: 0, status: "planned" },
-    { projectId, areaKey: "finish", name: "Retail shelving and LED (was 750 before savings)", amountGbp: 0, status: "planned" },
-    { projectId, areaKey: "finish", name: "Wall art, certificates, picture lighting (was 500)", amountGbp: 0, status: "planned" },
-    { projectId, areaKey: "finish", name: "Internal signage and branding (was 500)", amountGbp: 0, status: "planned" },
-  ]);
-  return true;
+  const have = new Set(existing.map(a => a.areaKey));
+  const missing = KIT_AREAS.filter(a => !have.has(a.areaKey));
+  if (missing.length) await db.insert(schema.kitAreasTable).values(missing.map(a => ({ projectId, ...a, budgetGbp: 0 })));
+  return missing.length > 0;
+}
+async function seedKitLines(projectId: number) {
+  const existing = await db.select().from(schema.kitLinesTable).where(eq(schema.kitLinesTable.projectId, projectId));
+  if (existing.length > 0) return 0;
+  const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+  if (!phases.length) return 0;
+  const tasks = (await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)))).filter(t => !t.archived);
+  const rows: { projectId: number; taskId: number; areaKey: string; sortOrder: number }[] = [];
+  KIT_LINES.forEach((l, i) => { const t = tasks.find(x => l.match.test(x.title)); if (t) rows.push({ projectId, taskId: t.id, areaKey: l.areaKey, sortOrder: i + 1 }); });
+  if (rows.length) await db.insert(schema.kitLinesTable).values(rows);
+  // The first version seeded items of its own; they are not attached to plan lines,
+  // so clear them if untouched. Anything Abi added stays.
+  const seededNames = ["Treatment couch (one in the plan; the second room has none yet)", "Stool, trolley, bins, mirrors, storage, styling", "Reception desk and clinical cabinetry (joinery allowance)", "Reception furniture and styling", "Chairs and table", "External sign, balance (deposit paid)", "Feature wall or panelling (was 500 before savings)", "Retail shelving and LED (was 750 before savings)", "Wall art, certificates, picture lighting (was 500)", "Internal signage and branding (was 500)"];
+  const items = await db.select().from(schema.kitItemsTable).where(eq(schema.kitItemsTable.projectId, projectId));
+  for (const it of items) if (it.taskId == null && seededNames.includes(it.name)) await db.delete(schema.kitItemsTable).where(eq(schema.kitItemsTable.id, it.id));
+  return rows.length;
 }
 
 async function seedRisks(projectId: number) {
@@ -530,6 +552,19 @@ export async function runStartupSeed(): Promise<void> {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    // V35: the lines Abi plans against are plan tasks; items attach to a line.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS kit_lines (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        task_id INTEGER NOT NULL,
+        area_key TEXT NOT NULL,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (project_id, task_id)
+      )
+    `);
+    await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS task_id INTEGER`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,
@@ -919,7 +954,9 @@ export async function runStartupSeed(): Promise<void> {
         }
 
         // Rooms and kit: added 30 September 2026, so an existing install gets it here.
-        if (await seedKit(projectId)) console.log("  ✅ Rooms and kit seeded (5 areas, 10 items)");
+        if (await seedKit(projectId)) console.log("  ✅ Rooms and kit areas seeded");
+        const kitLines = await seedKitLines(projectId);
+        if (kitLines) console.log(`  ✅ Rooms and kit lines matched to the plan (${kitLines} of 13)`);
 
         // V32 migration: business record of 26 September 2026, group B (approved by the owner).
         // B4: the approved June budget is 81,786, not the 80,000 placeholder. Guarded on the
@@ -1122,6 +1159,7 @@ export async function runStartupSeed(): Promise<void> {
       await seedBacklinks(projectId);
     }
     await seedKit(projectId);
+    await seedKitLines(projectId);
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
   } catch (err) {

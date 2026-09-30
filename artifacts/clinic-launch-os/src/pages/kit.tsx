@@ -1,10 +1,14 @@
-// Rooms and kit: the furniture, equipment and finishes budget by area, and what
-// Abi plans to buy against it. Amounts ex VAT. Saved in the app's database.
+// Rooms and kit: Abi's view of the furniture, equipment and finishes. The budget
+// lines are plan tasks, read live from the Plan & Timeline; her items are what she
+// plans to buy against each one. Prices as paid (inc VAT where charged), matching
+// the plan's own figures.
 import { useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +17,10 @@ import { X } from "lucide-react";
 const PROJECT_ID = 1;
 const API = "/api";
 
-type Area = { id: number; areaKey: string; name: string; budgetGbp: number; covers: string | null; sortOrder: number };
-type Item = { id: number; areaKey: string; name: string; amountGbp: number; status: "planned" | "ordered" | "paid"; note: string | null; createdAt: string };
-type KitData = { areas: Area[]; items: Item[] };
+type Area = { id: number; areaKey: string; name: string; covers: string | null; sortOrder: number };
+type Line = { id: number; taskId: number; areaKey: string; sortOrder: number; title: string; phase: string; budgetGbp: number; basis: string; planStatus: "paid" | "part-paid" | "committed" | "planned"; amountPaidGbp: number; savingBaseline: number | null; savingApplied: boolean; missing: boolean };
+type Item = { id: number; areaKey: string; taskId: number | null; name: string; amountGbp: number; status: "planned" | "ordered" | "paid"; note: string | null; createdAt: string };
+type KitData = { areas: Area[]; lines: Line[]; items: Item[] };
 
 const STATUSES: { value: Item["status"]; label: string }[] = [
   { value: "planned", label: "planned" },
@@ -40,43 +45,74 @@ export default function KitPage() {
   const fail = (e: unknown) => toast({ title: "That did not save", description: e instanceof Error ? e.message : "Try again in a moment.", variant: "destructive" });
 
   const patchItem = useMutation({ mutationFn: ({ id, patch }: { id: number; patch: Partial<Item> }) => send("PATCH", `/projects/${PROJECT_ID}/kit/items/${id}`, patch), onSuccess: refresh, onError: fail });
-  const addItem = useMutation({ mutationFn: (body: { areaKey: string; name: string; amountGbp: number; status: string }) => send("POST", `/projects/${PROJECT_ID}/kit/items`, body), onSuccess: refresh, onError: fail });
+  const addItem = useMutation({ mutationFn: (body: { taskId: number; name: string; amountGbp: number; status: string }) => send("POST", `/projects/${PROJECT_ID}/kit/items`, body), onSuccess: refresh, onError: fail });
   const removeItem = useMutation({ mutationFn: (id: number) => send("DELETE", `/projects/${PROJECT_ID}/kit/items/${id}`), onSuccess: refresh, onError: fail });
-  const patchArea = useMutation({ mutationFn: ({ id, budgetGbp }: { id: number; budgetGbp: number }) => send("PATCH", `/projects/${PROJECT_ID}/kit/areas/${id}`, { budgetGbp }), onSuccess: refresh, onError: fail });
 
+  const lines = data?.lines ?? [], items = data?.items ?? [];
   const totals = useMemo(() => {
-    const areas = data?.areas ?? [], items = data?.items ?? [];
-    const budget = areas.reduce((s, a) => s + a.budgetGbp, 0);
+    const budget = lines.reduce((s, l) => s + l.budgetGbp, 0);
     const planned = items.reduce((s, i) => s + i.amountGbp, 0);
     const bought = items.filter(i => i.status !== "planned").reduce((s, i) => s + i.amountGbp, 0);
     return { budget, planned, bought, diff: budget - planned };
-  }, [data]);
+  }, [lines, items]);
+  const areas = (data?.areas ?? []).filter(a => lines.some(l => l.areaKey === a.areaKey));
+  const orphans = items.filter(i => !i.taskId || !lines.some(l => l.taskId === i.taskId));
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Rooms & Kit" subtitle="The furniture, equipment and finishes budget by area, and what is planned against it. Prices ex VAT. The building work is in CBS's contract and listed under each area for reference." />
+      <PageHeader title="Rooms & Kit" subtitle="The furniture, equipment and finishes, by area. Each budget is a line in the Plan & Timeline and changes when the plan does. Add what you plan to buy against each one, at the price you will pay." />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Tile label="Budget" value={gbp(totals.budget)} sub="all areas, ex VAT" />
+        <Tile label="Budget, from the plan" value={gbp(totals.budget)} sub={`${lines.length} plan lines`} />
         <Tile label="Planned" value={gbp(totals.planned)} sub="everything on the lists" />
         <Tile label="Bought" value={gbp(totals.bought)} sub="ordered or paid" />
         <Tile label="Position" value={totals.diff >= 0 ? `${gbp(totals.diff)} under` : `${gbp(-totals.diff)} over`} sub="planned against budget" tone={totals.diff >= 0 ? "good" : "bad"} />
       </div>
 
-      {isLoading && <Card className="shadow-sm"><CardContent className="p-6 text-sm text-muted-foreground animate-pulse">Loading the lists…</CardContent></Card>}
+      {isLoading && <Card className="shadow-sm"><CardContent className="p-6 text-sm text-muted-foreground animate-pulse">Loading the plan lines…</CardContent></Card>}
       {error && <Card className="shadow-sm"><CardContent className="p-6 text-sm text-rose-700 dark:text-rose-400">Could not load the rooms and kit: {(error as Error).message}</CardContent></Card>}
+      {!isLoading && !error && lines.length === 0 && <Card className="shadow-sm"><CardContent className="p-6 text-sm text-muted-foreground">No plan lines are on this page yet. They are set up when the app starts; if this stays empty, the plan tasks could not be matched.</CardContent></Card>}
 
-      <div className="grid lg:grid-cols-2 2xl:grid-cols-3 gap-4 items-start">
-        {(data?.areas ?? []).map(area => (
-          <AreaCard key={area.id} area={area} items={(data?.items ?? []).filter(i => i.areaKey === area.areaKey)}
-            onBudget={b => patchArea.mutate({ id: area.id, budgetGbp: b })}
-            onPatch={(id, patch) => patchItem.mutate({ id, patch })}
-            onAdd={body => addItem.mutate({ areaKey: area.areaKey, ...body })}
-            onRemove={id => removeItem.mutate(id)} />
+      <div className="grid lg:grid-cols-2 gap-4 items-start">
+        {areas.map(area => (
+          <Card key={area.id} className="shadow-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">{area.name}</CardTitle>
+              {area.covers && <p className="text-xs text-muted-foreground">{area.covers}</p>}
+              <AreaTotal lines={lines.filter(l => l.areaKey === area.areaKey)} items={items} />
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {lines.filter(l => l.areaKey === area.areaKey).map(line => (
+                <LineBlock key={line.id} line={line} items={items.filter(i => i.taskId === line.taskId)}
+                  onPatch={(id, patch) => patchItem.mutate({ id, patch })}
+                  onAdd={body => addItem.mutate({ taskId: line.taskId, ...body })}
+                  onRemove={id => removeItem.mutate(id)} />
+              ))}
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      <p className="text-xs text-muted-foreground">Statuses: planned (an idea with a price), ordered (committed, not yet paid), paid. Bought counts ordered and paid. If a quote includes VAT, take a sixth off before entering it. Budgets come from the launch plan with savings applied; changing one here does not change the plan.</p>
+      {orphans.length > 0 && (
+        <Card className="shadow-sm border-amber-300 dark:border-amber-800">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Items not attached to a plan line</CardTitle></CardHeader>
+          <CardContent className="space-y-1.5">
+            {orphans.map(it => (
+              <div key={it.id} className="grid grid-cols-[minmax(0,1fr)_88px_minmax(200px,1fr)_32px] gap-1.5 items-center text-sm">
+                <span className="truncate">{it.name}</span>
+                <span className="text-right tabular-nums">{gbp(it.amountGbp)}</span>
+                <Select onValueChange={v => patchItem.mutate({ id: it.id, patch: { taskId: Number(v) } })}>
+                  <SelectTrigger className="h-8 text-xs" aria-label="Attach to a plan line"><SelectValue placeholder="Attach to a plan line" /></SelectTrigger>
+                  <SelectContent>{lines.filter(l => !l.missing).map(l => <SelectItem key={l.taskId} value={String(l.taskId)}>{l.title}</SelectItem>)}</SelectContent>
+                </Select>
+                <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" aria-label={`Remove ${it.name}`} onClick={() => removeItem.mutate(it.id)}><X className="w-4 h-4" /></Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-xs text-muted-foreground">Budgets are the plan's current figures: what was paid if paid, else what is committed, else the selected cost with savings applied. Change them in <Link href="/project" className="underline">Plan & Timeline</Link>. Prices here are as you pay them, VAT included where it is charged, so they compare like with like with the plan. Statuses: planned (an idea with a price), ordered (committed, not yet paid), paid.</p>
     </div>
   );
 }
@@ -92,79 +128,83 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
   );
 }
 
-function AreaCard({ area, items, onBudget, onPatch, onAdd, onRemove }: {
-  area: Area; items: Item[];
-  onBudget: (budget: number) => void;
+function AreaTotal({ lines, items }: { lines: Line[]; items: Item[] }) {
+  const budget = lines.reduce((s, l) => s + l.budgetGbp, 0);
+  const planned = items.filter(i => lines.some(l => l.taskId === i.taskId)).reduce((s, i) => s + i.amountGbp, 0);
+  const diff = budget - planned;
+  return (
+    <div className="flex justify-between text-sm pt-1">
+      <span className="text-muted-foreground">Budget {gbp(budget)}, planned {gbp(planned)}</span>
+      <span className={`font-semibold tabular-nums ${diff >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{diff >= 0 ? `${gbp(diff)} under` : `${gbp(-diff)} over`}</span>
+    </div>
+  );
+}
+
+function LineBlock({ line, items, onPatch, onAdd, onRemove }: {
+  line: Line; items: Item[];
   onPatch: (id: number, patch: Partial<Item>) => void;
   onAdd: (body: { name: string; amountGbp: number; status: string }) => void;
   onRemove: (id: number) => void;
 }) {
-  const [budgetDraft, setBudgetDraft] = useState<string | null>(null);
   const [name, setName] = useState(""); const [amount, setAmount] = useState(""); const [status, setStatus] = useState<Item["status"]>("planned");
   const [confirmId, setConfirmId] = useState<number | null>(null);
   const planned = items.reduce((s, i) => s + i.amountGbp, 0);
   const paid = items.filter(i => i.status === "paid").reduce((s, i) => s + i.amountGbp, 0);
   const ordered = items.filter(i => i.status === "ordered").reduce((s, i) => s + i.amountGbp, 0);
   const bought = paid + ordered;
-  const budget = area.budgetGbp, diff = budget - planned, base = Math.max(budget, planned, 1);
+  const budget = line.budgetGbp, diff = budget - planned, base = Math.max(budget, planned, 1);
   const pct = (v: number) => `${(100 * Math.max(0, v) / base).toFixed(1)}%`;
-
-  const commitBudget = () => { if (budgetDraft === null) return; const v = Math.round(parseFloat(budgetDraft) || 0); setBudgetDraft(null); if (v !== budget && v >= 0) onBudget(v); };
   const submit = (e: React.FormEvent) => { e.preventDefault(); const n = name.trim(); if (!n) return; onAdd({ name: n, amountGbp: Math.round(parseFloat(amount) || 0), status }); setName(""); setAmount(""); setStatus("planned"); };
+  const planBadge = line.planStatus === "paid" ? <Badge variant="secondary" className="text-[10px]">paid in the plan</Badge>
+    : line.planStatus === "part-paid" ? <Badge variant="secondary" className="text-[10px]">part-paid in the plan</Badge>
+    : line.planStatus === "committed" ? <Badge variant="secondary" className="text-[10px]">committed in the plan</Badge> : null;
 
   return (
-    <Card className="shadow-sm">
-      <CardHeader className="pb-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <CardTitle className="text-base">{area.name}</CardTitle>
-          <label className="flex items-center gap-2 text-xs text-muted-foreground whitespace-nowrap">Budget
-            <Input type="number" min={0} step={1} className="h-8 w-28 text-right tabular-nums" value={budgetDraft ?? String(Math.round(budget))}
-              onChange={e => setBudgetDraft(e.target.value)} onBlur={commitBudget} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} aria-label={`Budget for ${area.name}`} />
-          </label>
+    <div className={`rounded-md border p-3 space-y-2 ${line.missing ? "border-amber-300 dark:border-amber-800" : "border-border"}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="min-w-0">
+          <div className="text-sm font-medium leading-tight">{line.title}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {line.missing ? "This line has been removed from the plan." : <>Plan budget <span className="font-semibold text-foreground tabular-nums">{gbp(budget)}</span> {line.basis}{line.savingBaseline != null && line.savingApplied && line.savingBaseline !== budget ? `, was ${gbp(line.savingBaseline)} before savings` : ""}</>}
+            {" "}{planBadge}
+          </div>
         </div>
-        {area.covers && <p className="text-xs text-muted-foreground">{area.covers}</p>}
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="h-2 rounded-sm bg-muted overflow-hidden flex" role="img" aria-label={`${area.name}: planned ${gbp(planned)} against ${gbp(budget)}`}>
-          <i className="block h-full bg-emerald-600" style={{ width: pct(Math.min(paid, budget)) }} />
-          <i className="block h-full bg-emerald-400" style={{ width: pct(Math.min(ordered, Math.max(0, budget - paid))) }} />
-          <i className="block h-full bg-sky-400" style={{ width: pct(Math.min(planned, budget) - Math.min(bought, budget)) }} />
-          {planned > budget && <i className="block h-full bg-rose-500" style={{ width: pct(planned - budget) }} />}
-        </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-muted-foreground">Planned {gbp(planned)}{bought ? `, of which bought ${gbp(bought)}` : ""}</span>
-          <span className={`font-semibold tabular-nums ${diff >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{diff >= 0 ? `${gbp(diff)} under` : `${gbp(-diff)} over`}</span>
-        </div>
-
-        <div className="space-y-1.5">
-          {items.length === 0 && <div className="text-xs text-muted-foreground">Nothing on the list yet.</div>}
-          {items.map(it => (
-            <div key={it.id} className="grid grid-cols-[minmax(0,1fr)_88px_100px_32px] gap-1.5 items-center">
-              <Input defaultValue={it.name} className="h-8 text-sm" aria-label="Item"
-                onBlur={e => { const v = e.target.value.trim(); if (v && v !== it.name) onPatch(it.id, { name: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-              <Input type="number" min={0} step={1} defaultValue={Math.round(it.amountGbp)} className="h-8 text-sm text-right tabular-nums" aria-label="Price ex VAT"
-                onBlur={e => { const v = Math.round(parseFloat(e.target.value) || 0); if (v !== Math.round(it.amountGbp)) onPatch(it.id, { amountGbp: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
-              <Select value={it.status} onValueChange={v => onPatch(it.id, { status: v as Item["status"] })}>
-                <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
-              </Select>
-              {confirmId === it.id
-                ? <Button type="button" size="sm" variant="destructive" className="h-8 px-2 text-xs col-span-1" onClick={() => { onRemove(it.id); setConfirmId(null); }} onBlur={() => setConfirmId(null)}>Sure?</Button>
-                : <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" aria-label={`Remove ${it.name}`} onClick={() => setConfirmId(it.id)}><X className="w-4 h-4" /></Button>}
-            </div>
-          ))}
-        </div>
-
-        <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)_88px_100px_auto] gap-1.5 items-center pt-2 border-t">
-          <Input value={name} onChange={e => setName(e.target.value)} placeholder="What is it? e.g. feature wall" className="h-8 text-sm" aria-label="New item" />
-          <Input type="number" min={0} step={1} value={amount} onChange={e => setAmount(e.target.value)} placeholder="£ ex VAT" className="h-8 text-sm text-right" aria-label="Price ex VAT" />
+        <span className={`text-sm font-semibold tabular-nums whitespace-nowrap ${diff >= 0 ? "text-emerald-700 dark:text-emerald-400" : "text-rose-700 dark:text-rose-400"}`}>{diff >= 0 ? `${gbp(diff)} under` : `${gbp(-diff)} over`}</span>
+      </div>
+      <div className="h-1.5 rounded-sm bg-muted overflow-hidden flex" role="img" aria-label={`${line.title}: planned ${gbp(planned)} against ${gbp(budget)}`}>
+        <i className="block h-full bg-emerald-600" style={{ width: pct(Math.min(paid, budget)) }} />
+        <i className="block h-full bg-emerald-400" style={{ width: pct(Math.min(ordered, Math.max(0, budget - paid))) }} />
+        <i className="block h-full bg-sky-400" style={{ width: pct(Math.min(planned, budget) - Math.min(bought, budget)) }} />
+        {planned > budget && <i className="block h-full bg-rose-500" style={{ width: pct(planned - budget) }} />}
+      </div>
+      <div className="space-y-1.5">
+        {items.map(it => (
+          <div key={it.id} className="grid grid-cols-[minmax(0,1fr)_88px_100px_32px] gap-1.5 items-center">
+            <Input defaultValue={it.name} className="h-8 text-sm" aria-label="Item"
+              onBlur={e => { const v = e.target.value.trim(); if (v && v !== it.name) onPatch(it.id, { name: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            <Input type="number" min={0} step={1} defaultValue={Math.round(it.amountGbp)} className="h-8 text-sm text-right tabular-nums" aria-label="Price as paid"
+              onBlur={e => { const v = Math.round(parseFloat(e.target.value) || 0); if (v !== Math.round(it.amountGbp)) onPatch(it.id, { amountGbp: v }); }} onKeyDown={e => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} />
+            <Select value={it.status} onValueChange={v => onPatch(it.id, { status: v as Item["status"] })}>
+              <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
+              <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
+            </Select>
+            {confirmId === it.id
+              ? <Button type="button" size="sm" variant="destructive" className="h-8 px-2 text-xs" onClick={() => { onRemove(it.id); setConfirmId(null); }} onBlur={() => setConfirmId(null)}>Sure?</Button>
+              : <Button type="button" size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground" aria-label={`Remove ${it.name}`} onClick={() => setConfirmId(it.id)}><X className="w-4 h-4" /></Button>}
+          </div>
+        ))}
+      </div>
+      {!line.missing && (
+        <form onSubmit={submit} className="grid grid-cols-[minmax(0,1fr)_88px_100px_auto] gap-1.5 items-center">
+          <Input value={name} onChange={e => setName(e.target.value)} placeholder="What will you buy?" className="h-8 text-sm" aria-label={`New item for ${line.title}`} />
+          <Input type="number" min={0} step={1} value={amount} onChange={e => setAmount(e.target.value)} placeholder="£ as paid" className="h-8 text-sm text-right" aria-label="Price as paid" />
           <Select value={status} onValueChange={v => setStatus(v as Item["status"])}>
             <SelectTrigger className="h-8 text-xs" aria-label="Status"><SelectValue /></SelectTrigger>
             <SelectContent>{STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
           </Select>
           <Button type="submit" size="sm" className="h-8">Add</Button>
         </form>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }
