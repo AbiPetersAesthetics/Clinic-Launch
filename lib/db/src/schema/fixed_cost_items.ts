@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -18,6 +18,8 @@ export const fixedCostItemsTable = pgTable("fixed_cost_items", {
   // "unique" = Winchester only | "dual" = shared, counts once across both clinics
   costType: text("cost_type").notNull().default("unique"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Inactive items stay in the register for the record but are not counted.
+  active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

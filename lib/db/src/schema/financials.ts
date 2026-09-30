@@ -90,6 +90,9 @@ export const financialsTable = pgTable("financial_models", {
   davidApprovedCapGbp: real("david_approved_cap_gbp").notNull().default(60000),
   // Global savings switch: when true, flagged lines use their downselect target; when false, the original cost
   savingsApplied: boolean("savings_applied").notNull().default(true),
+  // Cash model inputs (Money page). Empty means use CASH_MODEL_DEFAULTS in the API;
+  // any key stored here overrides the default.
+  cashModelJson: text("cash_model_json").notNull().default(""),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

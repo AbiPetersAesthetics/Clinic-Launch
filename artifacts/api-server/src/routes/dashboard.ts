@@ -36,7 +36,7 @@ router.get("/projects/:projectId/dashboard", async (req, res) => {
   ] = await Promise.all([
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true))),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId)),
     db.select().from(marketingItemsTable).where(eq(marketingItemsTable.projectId, projectId)),
     db.select().from(risksTable).where(eq(risksTable.projectId, projectId)),

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { buildCashModel } from "./cash-model";
 import { db } from "@workspace/db";
 import { financialsTable, propertiesTable, projectsTable, phasesTable, tasksTable, fixedCostItemsTable, lifestylePlanTable, propertyTaskOverridesTable, investmentsTable } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
@@ -291,7 +292,7 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
   const fixedCostItems = await db
     .select()
     .from(fixedCostItemsTable)
-    .where(eq(fixedCostItemsTable.projectId, projectId));
+    .where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true)));
 
   // All fixed cost items go into Winchester's fixed cost base.
   // Dual items count once — they don't get added to Bedhampton separately.
@@ -432,522 +433,48 @@ router.post("/projects/:projectId/financial/calculate", async (req, res) => {
 // ─── GET /projects/:id/cashflow ──────────────────────────────────────────────
 
 router.get("/projects/:projectId/cashflow", async (req, res) => {
-  const projectId = parseInt(req.params.projectId);
-  const scenario = (req.query.scenario as string) ?? "realistic";
-  const rampTier = (req.query.rampTier as string) ?? "average";
-  const vatRateParam = parseFloat((req.query.vatRate as string) ?? "0.20");
-  const VAT_RATE_EFFECTIVE = isNaN(vatRateParam) ? 0.20 : Math.min(Math.max(vatRateParam, 0.05), 0.20);
-
-  let [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
-  if (!model) return res.status(404).json({ error: "No financial model found" });
-  model = await applyPropertyFallback(model as any, projectId);
-
-  // Bedhampton revenue ALWAYS comes from the manually entered model assumption.
-  // Live ANS data is displayed as reference only — never used in calculations.
-
-  // Issue 1: Derive working_days_per_month and practitioner_hours_per_day from lifestyle_plan.
-  const lifestyleScheduleCf = await deriveLifestyleSchedule(projectId);
-  if (lifestyleScheduleCf) {
-    (model as any).workingDaysPerMonth = lifestyleScheduleCf.workingDaysPerMonth;
-    (model as any).practitionerHoursPerDay = lifestyleScheduleCf.practitionerHoursPerDay;
-  }
-
-  // Fetch project for start + open dates
-  const [project] = await db.select().from(projectsTable).where(eq(projectsTable.id, projectId));
-
-  // Fetch tasks and merge property overrides to build a month-by-month cost map
-  const phases = await db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active")));
-  const phaseIds = phases.map((p) => p.id);
-  const baseTasks = phaseIds.length > 0
-    ? await db.select().from(tasksTable).where(inArray(tasksTable.phaseId, phaseIds))
-    : [];
-
-  // Load overrides for the active property so costs/dates reflect property-specific data
-  const [activeProperty] = await db.select().from(propertiesTable)
-    .where(and(eq(propertiesTable.projectId, projectId), eq(propertiesTable.isActiveForProject, true)));
-  let overrideMap = new Map<number, typeof propertyTaskOverridesTable.$inferSelect>();
-  if (activeProperty) {
-    const overrides = await db.select().from(propertyTaskOverridesTable)
-      .where(eq(propertyTaskOverridesTable.propertyId, activeProperty.id));
-    for (const o of overrides) overrideMap.set(o.taskId, o);
-  }
-
-  // Archived tasks (estimate lines superseded by an awarded tender) must not feed the
-  // month-by-month project cost map / cash burn — filter them out before the merge.
-  const allTasks = baseTasks.filter(t => !(t as any).archived).map(t => {
-    const o = overrideMap.get(t.id);
-    if (!o) return t;
-    return {
-      ...t,
-      costTier: o.costTier ?? t.costTier,
-      costLow: o.costLow ?? t.costLow,
-      costMid: o.costMid ?? t.costMid,
-      costHigh: o.costHigh ?? t.costHigh,
-      selectedCost: o.selectedCost ?? t.selectedCost,
-      startDate: o.startDate !== undefined ? o.startDate : (t as any).startDate,
-      dueDate: o.dueDate !== undefined ? o.dueDate : t.dueDate,
-      // Actuals — pull from override first, fall back to base task
-      actualCost: (o as any).actualCost ?? (t as any).actualCost ?? null,
-      committedCost: (o as any).committedCost ?? (t as any).committedCost ?? null,
-      paidStatus: (o as any).paidStatus ?? (t as any).paidStatus ?? null,
-      invoiceDate: (o as any).invoiceDate ?? (t as any).invoiceDate ?? null,
-    };
-  });
-
-  // Load dynamic fixed cost items
-  const [fixedCostItems, loanInstruments] = await Promise.all([
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
-    db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
-  ]);
-
-  // months param: cashflow window (12–36 months). Chart uses 12, P&L table uses up to 36.
-  const reqMonths = parseInt((req.query.months as string) || "12");
-  const TOTAL_MONTHS_CF = Math.min(Math.max(reqMonths, 12), 36);
-
-  const profile = applyRampTier(SCENARIO_PROFILES[scenario] ?? SCENARIO_PROFILES.realistic, rampTier);
-  const targetOcc = profile.getTargetOcc(model);
-  const acvMultiplier = profile.acvMultiplier;
-  const { startOcc, rampMonths } = profile;
-
-  // Issue 2: Apply treatment mix to override acv and slotsPerMonth if valid mix exists.
-  applyTreatmentMix(model as any);
-  // Read after potential override: wincAcvGbp may have been updated by applyTreatmentMix
-  const acv = (model.wincAcvGbp || model.averageClientValueGbp) * acvMultiplier;
-  const slotsPerMonth = ((model as any)._slotsPerMonthOverride != null && (model as any)._slotsPerMonthOverride > 0)
-    ? (model as any)._slotsPerMonthOverride
-    : model.treatmentRoomsCount * model.practitionerHoursPerDay * model.workingDaysPerMonth;
-
-  // Use dynamic fixed cost items if any exist; fall back to legacy hardcoded fields
-  const wincFixedCosts = fixedCostItems.length > 0
-    ? fixedCostItems.reduce((sum, item) => sum + (item.amountGbp || 0), 0)
-    : (model.rentGbp || 0) + (model.ratesGbp || 0) + (model.utilitiesGbp || 0) +
-      (model.internetGbp || 0) + (model.insuranceGbp || 0) + (model.accountantGbp || 0) +
-      (model.softwareGbp || 0) + (model.wasteContractGbp || 0) + (model.cleanerGbp || 0) +
-      (model.subscriptionsGbp || 0) + (model.financeRepaymentsGbp || 0);
-
-  // Free-rent period: identify rent component and compute reduced fixed costs
-  const cfRentAmount = fixedCostItems.length > 0
-    ? fixedCostItems.filter(item => /rent|lease/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
-    : (model.rentGbp || 0);
-  const cfFreeRentMonths = (model as any).freeRentMonths ?? 0;
-  const wincFixedCostsNoRent = Math.max(0, wincFixedCosts - cfRentAmount);
-
-  // Dual cost items — shared across both clinics, already counted ONCE in Winchester's fixed costs.
-  // During pre-opening months Bedhampton bears them (Winchester is not yet open / paying).
-  const dualFixedCosts = fixedCostItems
-    .filter(item => item.costType === "dual")
-    .reduce((sum, item) => sum + (item.amountGbp || 0), 0);
-
-  const variableRatio = ((model.stockPercent || 0) + (model.commissionsPercent || 0)) / 100;
-  // Variable overheads (marketing, staffing, consumables) are always deducted from Winchester P&L
-  // in addition to the fixed cost items table. These are separate concepts:
-  //   - fixedCostItems = fixed premises/overhead (rent, rates, utilities, insurance, etc.)
-  //   - fixedVariableItems = month-on-month variable spend (marketing budget, staffing, consumables)
-  const fixedVariableItems = (model.marketingGbp || 0) + (model.staffingGbp || 0) + (model.consumablesGbp || 0);
-
-  const bedhMonthlyRevenue = (model.existingClinicRevenueGbp || 0) + ((model as any).bedhMembershipRevenueGbp || 0);
-  const bedhStockPct = ((model as any).bedhStockPercent ?? 35) / 100;
-  // Bedhampton running costs: location-specific only (rent, marketing, other catch-all).
-  // Dual shared costs are handled separately — deducted from Bedh during pre-opening only.
-  // bedhProductCosts is computed per-month inside the loop using the capacity-capped revenue.
-  const bedhRunningCosts =
-    ((model as any).bedhRentGbp || 0) +
-    ((model as any).bedhMarketingGbp || 0) +
-    ((model as any).bedhamptonCostsGbp || 0);
-
-  // Bedhampton capacity ceiling: as Winchester fills slots, Bedhampton revenue tapers
-  // Use || not ?? — the DB may store 0 as "not configured" and 0 would cap revenue at £0
-  const bedhCapacityCeil = (model as any).bedhCapacityCeilGbp || 16000;
-
-  // Pre-opening property costs: rent + rates apply from lease signing, before Winchester opens
-  // IMPORTANT: use cfRentAmount (from fixedCostItems) not model.rentGbp — the active property
-  // may have rentGbp=0 which applyPropertyFallback overwrites the model field with.
-  const preOpenPropMonths = (model as any).preOpeningPropertyMonths ?? 2;
-  const cfRatesAmount = fixedCostItems.length > 0
-    ? fixedCostItems.filter(item => /rates/i.test(item.name)).reduce((sum, item) => sum + (item.amountGbp || 0), 0)
-    : (model.ratesGbp || 0);
-  const monthlyRent = cfRentAmount;   // rent from fixedCostItems (e.g. "Rent / Lease")
-  const monthlyRates = cfRatesAmount; // rates from fixedCostItems (e.g. "Business Rates")
-
-  const bufferPctCf = ((model as any).selfFundingBufferPercent ?? 20) / 100;
-  const startingCash = model.runwaySavingsGbp || 0;
-  const targetDrawings = model.ownerDrawingsGbp || model.targetDrawingsGbp || 0;
-
-  // Pre-compute monthly payment for each loan instrument
-  interface LoanSchedule { id: number; amountGbp: number; monthlyPayment: number; repaymentTermMonths: number; depositDate: string | null; firstPaymentDate: string | null; repaymentStartMonth: number; }
-  const loanSchedules: LoanSchedule[] = loanInstruments
-    .filter(inv => inv.type === "loan" && inv.repaymentTermMonths > 0)
-    .map(inv => {
-      const principal = inv.amountGbp;
-      const r = (inv.interestRatePercent || 0) / 100 / 12;
-      const n = inv.repaymentTermMonths;
-      const monthlyPayment = r > 0
-        ? principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
-        : principal / n;
-      return { id: inv.id, amountGbp: principal, monthlyPayment, repaymentTermMonths: n, depositDate: (inv as any).depositDate ?? null, firstPaymentDate: (inv as any).firstPaymentDate ?? null, repaymentStartMonth: inv.repaymentStartMonth };
-    });
-
-  // VAT — UK statutory threshold £90,000/year across the whole business (all clinics)
-  // Start tracking from the user's current rolling 12-month turnover position
-  const VAT_THRESHOLD = 90000;
-  const VAT_RATE = VAT_RATE_EFFECTIVE;
-  // Prices are VAT-inclusive, so the VAT element of gross turnover is
-  // rate/(1+rate) (= 1/6 at 20%), not the full rate.
-  const VAT_OUTPUT_RATIO = VAT_RATE > 0 ? VAT_RATE / (1 + VAT_RATE) : 0;
-  // How much of the £90k has already been used up by prior revenue
-  const vatStartingTurnover = (model as any).vatCurrentTurnoverGbp ?? 75000;
-  let vatCumulativeTurnover = vatStartingTurnover; // tracks rolling business revenue
-  let vatRegistered = false; // flips true once threshold is crossed
-  // Optional hard override: if set, VAT is active from this month regardless of threshold
-  const vatRegDateRaw: string | null = (model as any).vatRegistrationDate ?? null;
-  const vatRegPinned: { year: number; month: number } | null = vatRegDateRaw
-    ? (() => { const [y, m] = vatRegDateRaw.split("-").map(Number); return isNaN(y) || isNaN(m) ? null : { year: y, month: m - 1 }; })()
-    : null;
-
-  // Determine calendar anchor — start from the earliest of: today, the project start date,
-  // and the earliest date on which real money has actually been spent or committed.
-  // Without the last part, actuals recorded BEFORE today (e.g. a RICS survey paid in June)
-  // get clamped into the first projected month, so June spend wrongly shows in August.
-  const today = new Date();
-  const rawStart = project?.startDate ? new Date(project.startDate) : today;
-  let effectiveStart = rawStart < today ? rawStart : today;
-  // Look back no further than 18 months so a stray old date can't blow the window open.
-  const earliestAllowed = new Date(today.getFullYear(), today.getMonth() - 18, 1);
-  for (const t of allTasks) {
-    const hasRealMoney = ((t as any).actualCost ?? 0) > 0
-      || ((t as any).committedCost ?? 0) > 0
-      || ["paid", "part-paid", "committed"].includes(((t as any).paidStatus as string) ?? "");
-    const raw = (t as any).invoiceDate || (t as any).paymentDate || (t as any).startDate;
-    if (!hasRealMoney || !raw) continue;
-    const d = new Date(raw);
-    if (!isNaN(d.getTime()) && d < effectiveStart && d >= earliestAllowed) effectiveStart = d;
-  }
-  const calendarStart = new Date(effectiveStart.getFullYear(), effectiveStart.getMonth(), 1);
-
-  // Opening month index (0-based offset from calendarStart)
-  let openingMonthIndex = TOTAL_MONTHS_CF;
-  if (project?.targetOpeningDate) {
-    const openDate = new Date(project.targetOpeningDate);
-    const diff = (openDate.getFullYear() - calendarStart.getFullYear()) * 12
-      + (openDate.getMonth() - calendarStart.getMonth());
-    openingMonthIndex = Math.max(0, Math.min(diff, TOTAL_MONTHS_CF));
-  }
-
-  // ── Build month-by-month project cost map from task start dates ─────────────
-  // Priority: paid actual (by invoice_date) > committed (by invoice_date or startDate) > selected (by startDate).
-  const monthCostMap: number[] = Array(TOTAL_MONTHS_CF).fill(0);
-  const monthTaskLabels: string[][] = Array.from({ length: TOTAL_MONTHS_CF }, () => []);
-  let undatedTaskCost = 0;
-
-  for (const task of allTasks) {
-    const actual = (task as any).actualCost ?? 0;
-    const committed = (task as any).committedCost ?? 0;
-    const paidStatus = (task as any).paidStatus as string | null;
-    const invDate = (task as any).invoiceDate as string | null;
-
-    let cost: number;
-    let schedDate: string | null | undefined;
-
-    const amountPaid = (task as any).amountPaidGbp ?? 0;
-    if (paidStatus === "paid" && actual > 0) {
-      cost = actual;
-      schedDate = invDate || (task as any).startDate || task.dueDate;
-    } else if (paidStatus === "part-paid" && committed > 0) {
-      // committedCost = full invoice; drives project forecast
-      cost = committed;
-      schedDate = invDate || (task as any).startDate || task.dueDate;
-    } else if (committed > 0) {
-      cost = committed;
-      schedDate = invDate || (task as any).startDate || task.dueDate;
-    } else {
-      cost = task.selectedCost || 0;
-      schedDate = (task as any).startDate || task.dueDate;
-    }
-
-    if (!cost) continue;
-
-    if (schedDate) {
-      const d = new Date(schedDate);
-      const idx = (d.getFullYear() - calendarStart.getFullYear()) * 12
-        + (d.getMonth() - calendarStart.getMonth());
-      const clampedIdx = idx < 0 ? 0 : idx >= TOTAL_MONTHS_CF ? Math.max(0, openingMonthIndex - 1) : idx;
-      monthCostMap[clampedIdx] += cost;
-      monthTaskLabels[clampedIdx].push(task.title);
-    } else {
-      undatedTaskCost += cost;
-    }
-  }
-
-  // Spread undated costs across pre-opening months (ramp-weighted toward opening)
-  if (undatedTaskCost > 0 && openingMonthIndex > 0) {
-    const rawW = Array.from({ length: openingMonthIndex }, (_, i) => i + 1);
-    const wSum = rawW.reduce((s, w) => s + w, 0);
-    rawW.forEach((w, i) => { monthCostMap[i] += (w / wSum) * undatedTaskCost; });
-  }
-
-  // Lease signing index: rent + rates apply this many months before opening.
-  // Lease start is determined by preOpenPropMonths (when keys are received).
-  // Free rent months cannot push the start earlier — they are capped by the actual lease period.
-  const effectiveLeaseLead = preOpenPropMonths;
-  const propStartIndex = Math.max(0, openingMonthIndex - effectiveLeaseLead);
-
-  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-  // Parse additional clinicians from financial model
-  interface ExtraClinician { id?: string; name?: string; isPrimary?: boolean; startDate?: string | null; annualGrossSalaryGbp?: number; hoursPerDay?: number; daysPerMonth?: number; rooms?: number; salaryGbp?: number; }
-  let additionalClinicians: ExtraClinician[] = [];
+  // Adapter over the Money page cash model (lib/cash-model). The old engine here
+  // started in June with 32,500, charged plan costs by task date, spread undated
+  // costs, capped Bedhampton against Winchester, and applied VAT thresholds and
+  // offsets. All of that is gone: this returns the same field names the Today,
+  // Export and Money widgets read, filled from the new model.
   try {
-    const raw = (model as any).additionalCliniciansJson;
-    if (raw) {
-      const parsed = JSON.parse(String(raw));
-      if (Array.isArray(parsed)) additionalClinicians = parsed;
-    }
-  } catch {}
-
-  let cashBalance = startingCash;
-  let selfFundingMonthIndex: number | null = null;
-
-  const cashflow = Array.from({ length: TOTAL_MONTHS_CF }, (_, i) => {
-    const monthDate = new Date(calendarStart.getFullYear(), calendarStart.getMonth() + i, 1);
-    const calendarLabel = `${MONTH_NAMES[monthDate.getMonth()]} '${String(monthDate.getFullYear()).slice(2)}`;
-
-    const isPreOpening = i < openingMonthIndex;
-    const isOpeningMonth = i === openingMonthIndex;
-
-    // Project spend this month — tied to actual task due dates
-    const projectCostBurn = monthCostMap[i] ?? 0;
-    const taskLabelsThisMonth = monthTaskLabels[i] ?? [];
-
-    // ── Winchester first (Bedhampton capacity is capped against Winchester revenue) ──
-    let wincRevenue = 0;
-    let wincCosts = 0;
-    let wincNet = 0;
-    let occupancyPercent = 0;
-    let effectiveFixed = 0; // hoisted so display uses same value as net calculation
-    let additionalClinicianRevenue = 0;
-    let clinicianTotalCost = 0;
-
-    if (!isPreOpening) {
-      const wincMonth = i - openingMonthIndex; // 0-based months since opening
-      occupancyPercent = Math.round(Math.min(startOcc + (wincMonth * (targetOcc - startOcc) / rampMonths), targetOcc) * 10) / 10;
-      const bookedSlots = slotsPerMonth * (occupancyPercent / 100);
-      wincRevenue = bookedSlots * acv + (model.membershipRevenueGbp || 0);
-      // Clinicians: isPrimary (e.g. Abi) cost from opening; secondary from their startDate.
-      // Cost = total employer cost to business via PAYE (gross + employer NI + pension).
-      for (const clin of additionalClinicians) {
-        const isPrimary = clin.isPrimary === true;
-        let isActive = false;
-        let clinStartIdx = openingMonthIndex;
-
-        if (isPrimary || !clin.startDate) {
-          isActive = true; // already inside !isPreOpening block
-        } else {
-          const clinStart = new Date(clin.startDate);
-          clinStartIdx = (clinStart.getFullYear() - calendarStart.getFullYear()) * 12
-            + (clinStart.getMonth() - calendarStart.getMonth());
-          isActive = i >= clinStartIdx;
-        }
-
-        if (!isActive) continue;
-
-        // Primary practitioner cost is already tracked via target_drawings_gbp / actualDrawings.
-        // Only add cost for secondary/additional clinicians (non-primary).
-        if (!isPrimary) {
-          if (clin.annualGrossSalaryGbp != null && clin.annualGrossSalaryGbp > 0) {
-            clinicianTotalCost += calcPayeBreakdown(clin.annualGrossSalaryGbp).totalCostMonthly;
-          } else if (clin.salaryGbp != null && clin.salaryGbp > 0) {
-            clinicianTotalCost += clin.salaryGbp;
-          }
-        }
-
-        // Non-primary clinicians also generate revenue from their startDate
-        if (!isPrimary && clin.startDate) {
-          const clinMonth = i - clinStartIdx;
-          const clinHours = clin.hoursPerDay ?? ((model as any).practitionerHoursPerDay ?? 7);
-          const clinDays = clin.daysPerMonth ?? ((model as any).workingDaysPerMonth ?? 17);
-          const clinRooms = clin.rooms ?? 1;
-          const clinSlots = clinRooms * clinHours * clinDays;
-          const clinOcc = Math.min(startOcc + (clinMonth * (targetOcc - startOcc) / rampMonths), targetOcc);
-          const clinRevenue = clinSlots * (clinOcc / 100) * acv;
-          additionalClinicianRevenue += clinRevenue;
-          wincRevenue += clinRevenue;
-        }
-      }
-      const variableCosts = wincRevenue * variableRatio + fixedVariableItems;
-      // Free rent is a pre-opening (lease period) benefit — post-opening always pays full fixed costs
-      effectiveFixed = wincFixedCosts + clinicianTotalCost;
-      wincCosts = effectiveFixed + variableCosts;
-    }
-
-    // ── Bedhampton: closed flag, capacity cap, dual costs ─────────────────────
-    const bedhClosed = selfFundingMonthIndex !== null && i >= selfFundingMonthIndex;
-
-    // Capacity ceiling: as Winchester fills Abi's slots, Bedhampton revenue tapers.
-    const bedhRevenueUncapped = bedhClosed ? 0 : bedhMonthlyRevenue;
-    const bedhRevenueCapped = bedhClosed ? 0
-      : Math.max(0, Math.min(bedhRevenueUncapped, Math.max(0, bedhCapacityCeil - wincRevenue)));
-
-    // De-facto closure: Abi would not travel to Bedhampton if it can't cover its fixed
-    // running costs (rent, marketing, etc.) after variable/stock costs — it'd be loss-making.
-    // Trigger when capped revenue < fixed running costs (can't break even on fixed overhead).
-    const bedhDeFactoClosed = !bedhClosed && bedhMonthlyRevenue > 0 && bedhRevenueCapped < bedhRunningCosts;
-    const bedhRevenue = bedhDeFactoClosed ? 0 : bedhRevenueCapped;
-
-    // Variable / product costs scale with actual (capped) revenue, mirroring Winchester's treatment.
-    const bedhProductCostsMonth = bedhRevenue * bedhStockPct;
-
-    // Dual costs: borne by Bedhampton during pre-opening (Winchester not yet paying them).
-    // After opening, dual costs are already in wincFixedCosts — don't double-count.
-    const bedhDualCosts = isPreOpening ? dualFixedCosts : 0;
-    const bedhCosts = (bedhClosed || bedhDeFactoClosed) ? 0 : bedhProductCostsMonth + bedhRunningCosts + bedhDualCosts;
-
-    // Pre-opening property costs: rent + rates from lease signing date.
-    // Free rent runs from day 1 of the lease (pre-opening), NOT from opening day.
-    // e.g. freeRentMonths=3, preOpenPropMonths=2 → lease window extends to 3 months so all 3 show FREE RENT.
-    //
-    // During free-rent months Winchester is not open yet — Bedhampton bears the rates.
-    // Those rates are deducted from bedhNet below, NOT from preOpenPropertyCost,
-    // so the P&L correctly shows Bedhampton absorbing the cost.
-    const isInLeasePeriod = isPreOpening && i >= propStartIndex;
-    const leaseMonthIndex = i - propStartIndex; // 0 = first month of lease
-    const preOpenIsFreeRent = isInLeasePeriod && cfFreeRentMonths > 0 && leaseMonthIndex < cfFreeRentMonths;
-    // Free-rent months: rates borne by Bedhampton (see bedhNet below) — Winchester property cost = 0
-    // Paid-rent months: Winchester pays full rent + rates as a pre-opening property cost
-    const preOpenPropertyCost = isInLeasePeriod
-      ? (preOpenIsFreeRent ? 0 : monthlyRent + monthlyRates)
-      : 0;
-    const preOpenRentWaived = preOpenIsFreeRent ? monthlyRent : 0;
-    // Rates Bedhampton absorbs during free-rent months (Winchester not yet open to pay them)
-    const bedhFreeRentRates = preOpenIsFreeRent ? monthlyRates : 0;
-
-    // VAT — registration triggered either by a pinned date override or by crossing the £90k threshold.
-    // The P&L liability is charged to Winchester only; Bedhampton's VAT is already in bedhNet.
-    const monthTotalRevenue = bedhRevenue + wincRevenue;
-    if (vatRegPinned) {
-      // Hard override: VAT active from the user-specified month onwards
-      vatRegistered = (monthDate.getFullYear() > vatRegPinned.year) ||
-        (monthDate.getFullYear() === vatRegPinned.year && monthDate.getMonth() >= vatRegPinned.month);
-    } else if (!vatRegistered) {
-      vatCumulativeTurnover += monthTotalRevenue;
-      if (vatCumulativeTurnover >= VAT_THRESHOLD) vatRegistered = true;
-    }
-    const isVatRegistered = vatRegistered;
-    // VAT deducted from Bedhampton from the registration month onwards (July),
-    // and from Winchester from its opening month (already post-registration).
-    const bedhVat = (bedhRevenue > 0 && isVatRegistered) ? bedhRevenue * VAT_OUTPUT_RATIO : 0;
-    const wincVat = (wincRevenue > 0 && isVatRegistered) ? wincRevenue * VAT_OUTPUT_RATIO : 0;
-    const vatLiability = bedhVat + wincVat;
-
-    const bedhNet = bedhRevenue - bedhCosts - bedhVat - bedhFreeRentRates;
-
-    const wincVariableCosts = !isPreOpening ? wincRevenue * variableRatio + fixedVariableItems : 0;
-    // Use effectiveFixed (not wincFixedCosts) so displayed fixed = what actually goes into wincNet
-    const wincFixedCostsMonth = !isPreOpening ? effectiveFixed : 0;
-    wincCosts += wincVat;
-    wincNet = wincRevenue - wincCosts;
-
-    // VAT cost = revenue × effective VAT rate (set via the VAT offset selector).
-    // Starts from the registration date the user sets. No input reclaim modelling.
-    const vatInputReclaim = 0;
-    const netVatPosition = vatLiability;
-
-    // Self-funding check after VAT applied
-    if (!isPreOpening && selfFundingMonthIndex === null && wincRevenue > 0 && wincNet >= wincRevenue * bufferPctCf) {
-      selfFundingMonthIndex = i;
-    }
-
-    const isSelfFundingMonth = selfFundingMonthIndex === i;
-    const isBedhamptonCloseMonth = isSelfFundingMonth;
-
-    // ── Loan repayments & capital inflows ────────────────────────────────────
-    let loanRepayments = 0;
-    let loanInflow = 0;
-    for (const loan of loanSchedules) {
-      // Capital inflow: when the deposit date falls in this calendar month
-      if (loan.depositDate) {
-        const dep = new Date(loan.depositDate);
-        if (monthDate.getFullYear() === dep.getFullYear() && monthDate.getMonth() === dep.getMonth()) {
-          loanInflow += loan.amountGbp;
-        }
-      }
-      // Repayments: from firstPaymentDate (if set) or fall back to opening-relative repaymentStartMonth
-      let repStartIdx: number;
-      if (loan.firstPaymentDate) {
-        const fp = new Date(loan.firstPaymentDate);
-        repStartIdx = (fp.getFullYear() - calendarStart.getFullYear()) * 12 + (fp.getMonth() - calendarStart.getMonth());
-      } else {
-        repStartIdx = openingMonthIndex + (loan.repaymentStartMonth - 1);
-      }
-      const monthsElapsed = i - repStartIdx;
-      if (monthsElapsed >= 0 && monthsElapsed < loan.repaymentTermMonths) {
-        loanRepayments += loan.monthlyPayment;
-      }
-    }
-
-    // Dynamic drawings:
-    // - Pre-opening: no drawings (no Winchester revenue yet)
-    // - Post-opening (including while Bedhampton is still supporting): drawings taken from surplus
-    // - Always retain at least £3,000/month; any surplus above drawings accrues as business capital
-    const drawingsActive = !isPreOpening;
-    // Salary is based on operating net (Winchester + Bedhampton) only.
-    // Loan repayments reduce available net before the salary floor applies —
-    // the business must service the loan before Abi can draw salary.
-    // Rule: retain at least £3,000 of (operatingNet − loanRepayments); Abi draws surplus above that.
-    const operatingNet = wincNet + bedhNet;
-    const MIN_RETAINED = 3000;
-    const netForDrawings = operatingNet - loanRepayments;
-    const actualDrawings = drawingsActive ? Math.min(Math.max(0, netForDrawings - MIN_RETAINED), targetDrawings) : 0;
-    const drawingsShortfall = Math.max(0, targetDrawings - actualDrawings);
-
-    const monthlyCashflow = operatingNet - actualDrawings - projectCostBurn - preOpenPropertyCost - loanRepayments + loanInflow;
-    cashBalance += monthlyCashflow;
-
-    return {
-      month: i + 1,
-      calendarLabel,
-      monthLabel: calendarLabel,
-      isPreOpening,
-      isOpeningMonth,
-      isBedhamptonCloseMonth,
-      projectCostBurn: Math.round(projectCostBurn),
-      preOpenPropertyCost: Math.round(preOpenPropertyCost),
-      preOpenRentWaived: Math.round(preOpenRentWaived),
-      bedhFreeRentRates: Math.round(bedhFreeRentRates),
-      taskLabels: taskLabelsThisMonth,
-      vatLiability: Math.round(vatLiability),
-      vatInputReclaim: Math.round(vatInputReclaim),
-      netVatPosition: Math.round(netVatPosition),
-      isVatRegistered,
-      actualDrawings: Math.round(actualDrawings),
-      targetDrawings: Math.round(targetDrawings),
-      drawingsShortfall: Math.round(drawingsShortfall),
-      drawingsActive,
-      wincRevenue: Math.round(wincRevenue),
-      wincVariableCosts: Math.round(wincVariableCosts),
-      wincFixedCosts: Math.round(wincFixedCostsMonth),
-      wincVat: Math.round(wincVat),
-      wincCosts: Math.round(wincCosts),
-      wincNet: Math.round(wincNet),
-      additionalClinicianRevenue: Math.round(additionalClinicianRevenue),
-      additionalClinicianSalary: Math.round(clinicianTotalCost),
-      bedhRevenue: Math.round(bedhRevenue),
-      bedhDualCosts: Math.round(bedhDualCosts),
-      bedhCosts: Math.round(bedhCosts),
-      bedhVat: Math.round(bedhVat),
-      bedhNet: Math.round(bedhNet),
-      monthlyCashflow: Math.round(monthlyCashflow),
-      cashBalance: Math.round(cashBalance),
-      occupancyPercent,
-      isSelfFundingMonth,
-      bedhClosed,
-      bedhSupport: Math.round(Math.max(bedhNet, 0)),
-      combinedNet: Math.round(wincNet + bedhNet),
-      loanRepayments: Math.round(loanRepayments),
-      loanInflow: Math.round(loanInflow),
-    };
-  });
-
-  return res.json(cashflow);
+    const projectId = parseInt(req.params.projectId);
+    const months = Math.min(Math.max(parseInt((req.query.months as string) || "12"), 12), 36);
+    const m = await buildCashModel(projectId, { scenario: req.query.scenario as string | undefined, months });
+    const rows = m.rows;
+    const openIdx = rows.findIndex(r => r.winc.gross > 0);
+    const lastBedh = rows.reduce((k, r, i) => (r.bedh.gross > 0 ? i : k), -1);
+    const closeIdx = lastBedh >= 0 && lastBedh < rows.length - 1 ? lastBedh + 1 : -1;
+    const selfIdx = rows.findIndex((r, i) => r.winc.gross > 0 && r.wincOwnProfit >= 0 && rows[i + 1] && rows[i + 1].wincOwnProfit >= 0);
+    const cap = m.config.pay.capMonthly;
+    const R = (v: number) => Math.round(v);
+    res.json(rows.map((r, i) => {
+      const [mon, yy] = r.label.split(" ");
+      const lbl = `${mon} '${yy}`;
+      const wincCosts = r.winc.gross - r.wincOwnProfit;
+      return {
+        month: i + 1, calendarLabel: lbl, monthLabel: lbl,
+        isPreOpening: openIdx < 0 || i < openIdx, isOpeningMonth: i === openIdx,
+        isBedhamptonCloseMonth: i === closeIdx, bedhClosed: closeIdx >= 0 && i >= closeIdx,
+        projectCostBurn: R(r.projectBank), preOpenPropertyCost: 0, preOpenRentWaived: 0, bedhFreeRentRates: 0,
+        taskLabels: r.why.projectBank && r.projectBank ? [r.why.projectBank] : [],
+        vatLiability: R(r.total.vat), vatInputReclaim: 0, netVatPosition: R(r.total.vat), isVatRegistered: true,
+        actualDrawings: R(r.paySalary), targetDrawings: R(cap), drawingsShortfall: R(Math.max(0, cap - r.paySalary)), drawingsActive: r.payGate,
+        wincRevenue: R(r.winc.gross), wincVariableCosts: R(r.winc.product), wincFixedCosts: R(wincCosts - r.winc.vat - r.winc.product),
+        wincVat: R(r.winc.vat), wincCosts: R(wincCosts), wincNet: R(r.wincOwnProfit),
+        additionalClinicianRevenue: 0, additionalClinicianSalary: 0,
+        bedhRevenue: R(r.bedh.gross), bedhDualCosts: 0, bedhCosts: R(r.bedh.gross - r.bedhOwnProfit), bedhVat: R(r.bedh.vat), bedhNet: R(r.bedhOwnProfit),
+        monthlyCashflow: R(r.net), cashBalance: R(r.closingBank), occupancyPercent: 0,
+        isSelfFundingMonth: i === selfIdx, bedhSupport: R(Math.max(r.bedhOwnProfit, 0)), combinedNet: R(r.operatingProfit),
+        loanRepayments: R(r.loanRepayment), loanInflow: R(r.fundingIn),
+        cardOwed: R(r.cardOwed), loanOwed: R(r.loanOwed), belowFloor: r.belowFloor,
+      };
+    }));
+  } catch (err) {
+    console.error("[cashflow]", err);
+    res.status(500).json({ error: "Cashflow failed" });
+  }
 });
 
 // ─── POST /projects/:id/financial/sync-bedhampton ───────────────────────────

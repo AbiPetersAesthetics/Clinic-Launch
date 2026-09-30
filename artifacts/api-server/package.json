@@ -8,7 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps --env-file-if-exists=../../.env ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test:market": "node tests/market-rules.test.mjs"
+    "test:market": "node tests/market-rules.test.mjs",
+    "test:money": "node tests/cash-model.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

@@ -1,7 +1,15 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { investmentsTable, shareholdersTable, financialsTable, fixedCostItemsTable, projectsTable } from "@workspace/db";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, and } from "drizzle-orm";
+
+// Ownership in force going forward: the "current" rows with the latest effective date,
+// plus any undated current rows. Pending rows (agreed, not issued) are left out.
+function currentShareholders<T extends { effectiveFrom?: string | null; status?: string | null }>(rows: T[]): T[] {
+  const cur = rows.filter(r => (r.status ?? "current") === "current");
+  const latest = cur.reduce((m, r) => ((r.effectiveFrom ?? "") > m ? (r.effectiveFrom ?? "") : m), "");
+  return cur.filter(r => !r.effectiveFrom || r.effectiveFrom === latest);
+}
 import { calcCliniciansMonthlyCost, calcPayeBreakdown } from "../lib/financialEngine";
 
 const router = Router();
@@ -41,7 +49,7 @@ router.get("/projects/:projectId/investments", async (req, res) => {
   const rows = await db.select().from(investmentsTable)
     .where(eq(investmentsTable.projectId, projectId))
     .orderBy(desc(investmentsTable.createdAt));
-  return res.json(rows);
+  return res.json(req.query.all === "1" ? rows : rows.filter(r => !r.archived));
 });
 
 router.post("/projects/:projectId/investments", async (req, res) => {
@@ -96,7 +104,7 @@ router.get("/projects/:projectId/shareholders", async (req, res) => {
   const rows = await db.select().from(shareholdersTable)
     .where(eq(shareholdersTable.projectId, projectId))
     .orderBy(desc(shareholdersTable.createdAt));
-  return res.json(rows);
+  return res.json(req.query.all === "1" ? rows : currentShareholders(rows));
 });
 
 router.post("/projects/:projectId/shareholders", async (req, res) => {
@@ -140,10 +148,10 @@ router.get("/projects/:projectId/investment-summary", async (req, res) => {
   const projectId = parseInt(req.params.projectId);
 
   const [investments, shareholders, model, fixedCostItems, projectRow, taskCostRows] = await Promise.all([
-    db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
-    db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId)),
+    db.select().from(investmentsTable).where(and(eq(investmentsTable.projectId, projectId), eq(investmentsTable.archived, false))),
+    db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId)).then(currentShareholders),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).limit(1),
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true))),
     db.select().from(projectsTable).where(eq(projectsTable.id, projectId)).limit(1),
     db.execute(sql`
       SELECT

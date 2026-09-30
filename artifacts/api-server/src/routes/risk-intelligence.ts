@@ -113,7 +113,7 @@ async function buildContext(projectId: number): Promise<string> {
     if (activeProperty.vatOnRent != null) model.vatOnRent = activeProperty.vatOnRent;
   }
 
-  const fixedCostItems = await db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId));
+  const fixedCostItems = await db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true)));
   const fixedItemsRI = fixedCostItems.reduce((s, i) => s + (i.amountGbp || 0), 0);
   // Fixed base = premises + overheads only (consistent with the financials engine).
   // The 2nd Winchester clinician is not folded into the single-room fixed base — she is a

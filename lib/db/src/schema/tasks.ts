@@ -64,6 +64,10 @@ export const tasksTable = pgTable("launch_tasks", {
   // A refundable outlay (the lease rent deposit): real cash out, but not a cost of
   // the project, so the "real cost after refundable deposit" figure nets it off.
   refundable: boolean("refundable").notNull().default(false),
+  // When and how an unpaid line is paid, for the Money page cash model. JSON array of
+  // {month: "YYYY-MM", share: 0 to 1, method: "bank" | "card"}; shares sum to 1.
+  // The payment month drives the cash model, never the task's due date.
+  paymentPlanJson: text("payment_plan_json").notNull().default(""),
   // ── Downselect / saving review: owner-flagged candidates for cost saving ──
   savingFlag: boolean("saving_flag").notNull().default(false),
   savingNote: text("saving_note"), // free text: what could be downselected here

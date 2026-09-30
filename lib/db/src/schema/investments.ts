@@ -16,6 +16,10 @@ export const investmentsTable = pgTable("investments", {
   agreementStartDate: text("agreement_start_date"),
   firstPaymentDate: text("first_payment_date"),
   notes: text("notes").notNull().default(""),
+  // type is "equity" | "gift" | "loan". Superseded instruments are archived, never deleted.
+  archived: boolean("archived").notNull().default(false),
+  holidayMonths: integer("holiday_months").notNull().default(0), // repayment holiday after drawdown, interest accruing
+  equityKickerPercent: real("equity_kicker_percent").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -27,6 +31,10 @@ export const shareholdersTable = pgTable("shareholders", {
   role: text("role").notNull().default(""),
   equityPercent: real("equity_percent").notNull().default(0),
   notes: text("notes").notNull().default(""),
+  // Ownership over time: the set in force is the "current" rows with the latest
+  // effective_from. "pending" rows are agreed but not yet issued.
+  effectiveFrom: text("effective_from"),
+  status: text("status").notNull().default("current"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

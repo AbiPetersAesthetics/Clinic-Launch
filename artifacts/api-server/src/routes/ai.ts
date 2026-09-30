@@ -221,7 +221,7 @@ router.post("/projects/:projectId/go-no-go", async (req, res) => {
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(decisionsTable).where(eq(decisionsTable.projectId, projectId)),
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true))),
     fetchBedhamptonLive().catch(() => null),
     db.select().from(lifestylePlanTable).where(eq(lifestylePlanTable.projectId, projectId)).then(r => r[0] ?? null),
     db.select().from(competitorsTable).where(eq(competitorsTable.projectId, projectId))
@@ -999,7 +999,7 @@ router.post("/projects/:projectId/go-no-go/lease-strategy", async (req, res) => 
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)),
     db.select().from(propertiesTable).where(eq(propertiesTable.projectId, projectId)),
     db.select().from(phasesTable).where(and(eq(phasesTable.projectId, projectId), eq(phasesTable.status, "active"))),
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true))),
   ]);
 
   const phaseIds = projectPhases.map(p => p.id);
@@ -1453,9 +1453,9 @@ router.post("/projects/:projectId/funding-analysis", async (req, res) => {
 
   // ── 1. Load raw data ───────────────────────────────────────────────────────
   const [investments, financial, fixedCostItems] = await Promise.all([
-    db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId)),
+    db.select().from(investmentsTable).where(and(eq(investmentsTable.projectId, projectId), eq(investmentsTable.archived, false))),
     db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId)).then(r => r[0] ?? null),
-    db.select().from(fixedCostItemsTable).where(eq(fixedCostItemsTable.projectId, projectId)),
+    db.select().from(fixedCostItemsTable).where(and(eq(fixedCostItemsTable.projectId, projectId), eq(fixedCostItemsTable.active, true))),
   ]);
   const fin = financial; // both names are used below
 
