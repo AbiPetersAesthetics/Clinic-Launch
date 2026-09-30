@@ -63,6 +63,15 @@ export function wincForecast(p: PatientModel, pr: NewPatientProfile, o: {
   return t;
 }
 
+// Product cost (ex VAT) of a Winchester forecast, month by month. A treatment costs the
+// same to make at any price, so each cohort's product cost is its takings at Bedhampton
+// prices (takings / priceFactor) times productShare, the product share of Bedhampton's
+// takings.
+export function wincProductCost(p: PatientModel, pr: NewPatientProfile, o: Parameters<typeof wincForecast>[2], months: string[], productShare: number): Record<string, number> {
+  const atBedhamptonPrices = wincForecast(p, pr, { ...o, founderPrice: 1, listPrice: 1, founding: { ...o.founding, firstMonthTotal: o.founding.firstMonthTotal / o.founderPrice } }, months);
+  return Object.fromEntries(months.map(m => [m, atBedhamptonPrices[m] * productShare]));
+}
+
 // Bedhampton if it runs two days or one day a week from `from`. Its existing patients
 // keep coming back (keep.two or keep.one of them, as fewer days suit fewer people),
 // and it finds newPerMonth new patients without advertising. `returns` is what its

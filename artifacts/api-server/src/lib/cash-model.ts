@@ -29,7 +29,9 @@ export type BedhPlan = {
   from: string; weekDays: number; dayCapacity: number;
   demand: { two: Record<string, number>; one: Record<string, number>; returns: Record<string, number> };
   oneDayFrom?: string | null;
-  closeWhen?: { wincAtLeast: number; forMonths: number } | null;
+  // standsAlone: Winchester's own contribution pays its full running costs, the level
+  // loan repayment and the retention. wincAtLeast: a plain takings threshold instead.
+  closeWhen?: { standsAlone?: boolean; wincAtLeast?: number; forMonths: number } | null;
   closeAfter?: string | null;
   floorPerDay?: number | null;
   transferShare: number;
@@ -49,6 +51,10 @@ export type CashInputs = {
     // After the last explicit month, a straight line to `target` by `month`, then held.
     growth?: { target: number; month: string };
     capacity?: WincCapacity;
+    // Product cost (ex VAT) of Winchester's own takings, month by month. When set it
+    // replaces contributionPct for those takings: the same treatment costs the same to
+    // make wherever it is sold, so higher prices keep more of each pound.
+    productCost?: Record<string, number>;
   };
   vatRate: number;               // 0.2: every sale is standard-rated
   rent: { annual: number; rentStart: string; quarterDays: string[] }; // rentStart "YYYY-MM-DD"; quarterDays "MM-DD"
@@ -85,6 +91,9 @@ export type CashRow = {
   // full they are, and takings from Bedhampton patients who moved after it closed.
   bedhDays: number | null; wincDays: number | null; bedhOpen: boolean;
   wincDemand: number; wincCapacity: number | null; wincOccupancy: number | null; transferIn: number;
+  // Winchester alone: its own contribution less full running costs, the level loan
+  // repayment and the retention. At or above zero, it stands on its own.
+  wincStandMargin: number;
   // Profit after James's loan interest (the interest is a cost; repaying the loan is not).
   profitAfterInterest: number;
   // Build VAT: paid from the bank, put on the card, refunded by HMRC, and still owed back.
@@ -177,6 +186,11 @@ export function salaryFor(available: number, p: CashInputs["pay"]): { salary: nu
   return { salary: r2(s), cost: r2(costOf(s)) };
 }
 
+function siteWithProduct(gross: number, product: number, vatRate: number): Site {
+  const vat = gross * vatRate / (1 + vatRate);
+  return { gross, vat, net: gross - vat, product, contribution: gross - vat - product };
+}
+
 function site(gross: number, pct: number, vatRate: number): Site {
   const vat = gross * vatRate / (1 + vatRate);
   const contribution = gross * pct / 100;
@@ -189,6 +203,8 @@ export function runCashModel(inp: CashInputs): CashResult {
   const rentPaidMap = rentSchedule(inp, inp.startMonth, lastYm);
   const rentStartYm = inp.rent.rentStart.slice(0, 7);
   const plan = inp.bedh.plan;
+  const loanLevel = inp.loans.reduce((s, l) => { const r = l.annualRatePct / 100 / 12; const bal = l.principal * Math.pow(1 + r, l.holidayMonths); return s + (r > 0 ? bal * r / (1 - Math.pow(1 + r, -l.repayments)) : bal / l.repayments); }, 0);
+  const fullRunning = inp.rates.monthly + inp.utilities.monthly + inp.rent.annual / 12 + inp.marketing.monthly + inp.running.monthly;
   let bedhOpen = true, closeRun = 0, closedAfter: string | null = null, closeReason = "";
   const vatRefunds: Record<string, number> = {};
   let vatPeriod = 0, vatOwedBack = 0;
@@ -217,13 +233,21 @@ export function runCashModel(inp: CashInputs): CashResult {
     const bedhCap = planOn && bedhDays ? bedhDays * (52 / 12) * plan!.dayCapacity : Infinity;
     const bedhWants = !planOn ? inp.bedh.takings[ym] ?? 0 : bedhDays === 0 ? 0 : inp.bedh.takings[ym] ?? (bedhDays === 1 ? plan!.demand.one[ym] : plan!.demand.two[ym]) ?? 0;
     const bedh = site(Math.min(bedhWants, bedhCap), inp.bedh.contributionPct, inp.vatRate);
-    const winc = site(Math.min(wincDemand + transferIn, wincCapacity ?? Infinity), inp.winc.contributionPct, inp.vatRate);
+    const wincOwn = Math.min(wincDemand, wincCapacity ?? Infinity);
+    const transferTaken = Math.min(transferIn, Math.max(0, (wincCapacity ?? Infinity) - wincOwn));
+    const vatShare = inp.vatRate / (1 + inp.vatRate);
+    const ownProduct = inp.winc.productCost ? (inp.winc.productCost[ym] ?? 0) * (wincDemand > 0 ? wincOwn / wincDemand : 0) : wincOwn * (1 - vatShare - inp.winc.contributionPct / 100);
+    const transferProduct = transferTaken * (1 - vatShare - inp.bedh.contributionPct / 100);
+    const winc = siteWithProduct(wincOwn + transferTaken, ownProduct + transferProduct, inp.vatRate);
+    const wincOwnContribution = wincOwn * (1 - vatShare) - ownProduct;
+    const wincStandMargin = wincOwnContribution - fullRunning - loanLevel - inp.pay.retention;
     const wincOccupancy = wincDays && inp.winc.capacity ? winc.gross / wincCapacityFor(inp, wincDays, 100) : null;
     // Closing tests at the month end, taking effect the month after.
     if (planOn && bedhOpen) {
-      closeRun = plan!.closeWhen && wincDemand >= plan!.closeWhen.wincAtLeast ? closeRun + 1 : 0;
+      const stands = plan!.closeWhen ? (plan!.closeWhen.standsAlone ? wincStandMargin >= 0 : wincDemand >= (plan!.closeWhen.wincAtLeast ?? Infinity)) : false;
+      closeRun = stands ? closeRun + 1 : 0;
       const quiet = plan!.floorPerDay != null && bedhDays === 1 && bedh.gross < plan!.floorPerDay * (52 / 12);
-      if (plan!.closeWhen && closeRun >= plan!.closeWhen.forMonths) { bedhOpen = false; closedAfter = ym; closeReason = `Winchester took ${gbp(plan!.closeWhen.wincAtLeast)} or more on its own for ${plan!.closeWhen.forMonths} months running`; }
+      if (plan!.closeWhen && closeRun >= plan!.closeWhen.forMonths) { bedhOpen = false; closedAfter = ym; closeReason = plan!.closeWhen.standsAlone ? `Winchester stood on its own for ${plan!.closeWhen.forMonths} months running` : `Winchester took ${gbp(plan!.closeWhen.wincAtLeast ?? 0)} or more on its own for ${plan!.closeWhen.forMonths} months running`; }
       else if (quiet) { bedhOpen = false; closedAfter = ym; closeReason = `its one day averaged under ${gbp(plan!.floorPerDay!)}`; }
     }
     const total: Site = {
@@ -238,7 +262,8 @@ export function runCashModel(inp: CashInputs): CashResult {
       : bedhDays === 0 ? `Bedhampton closed after ${label(closedAfter!)}: ${closeReason}`
       : `Bedhampton ${bedhDays === 1 ? "one day" : "two days"} a week: its patients would book ${gbp(bedhWants)}${bedhWants > bedhCap ? `, and ${bedhDays === 1 ? "one day holds" : "two days hold"} ${gbp(bedhCap)}` : ""}`;
     why.vat = `VAT on sales = gross x 1/6 at both sites (${gbp(bedh.vat)} Bedhampton, ${gbp(winc.vat)} Winchester)`;
-    why.contribution = `${inp.bedh.contributionPct}% of Bedhampton gross + ${inp.winc.contributionPct}% of Winchester gross, after VAT and product cost`;
+    why.contribution = `Bedhampton keeps ${inp.bedh.contributionPct}p in the pound after VAT and products; Winchester ${winc.gross > 0 ? Math.round((100 * winc.contribution) / winc.gross) : 0}p this month${inp.winc.productCost ? ", from its product costs" : ""}`;
+    why.standAlone = `Winchester on its own: ${gbp(wincOwnContribution)} kept, less running costs ${gbp(fullRunning)}, James's loan ${gbp(loanLevel)} and the ${gbp(inp.pay.retention)} kept = ${gbp(wincStandMargin)}`;
 
     // Running costs
     const utilities = ym >= inp.utilities.from ? (ym <= inp.utilities.buildUntil ? inp.utilities.buildMonthly : inp.utilities.monthly) : 0;
@@ -343,7 +368,7 @@ export function runCashModel(inp: CashInputs): CashResult {
       bedh, winc, total,
       running: { utilities, general, marketing, oneOff: oneOffPnl, total: runningTotal },
       rentAccrued, rates, operatingProfit, wincOwnProfit, bedhOwnProfit,
-      bedhDays, wincDays, bedhOpen: bedh.gross > 0, wincDemand, wincCapacity, wincOccupancy, transferIn,
+      bedhDays, wincDays, bedhOpen: bedh.gross > 0, wincDemand, wincCapacity, wincOccupancy, transferIn, wincStandMargin,
       profitAfterInterest: operatingProfit - loanInterest,
       vatPaidBank, vatPaidCard, vatRefund, vatOwedBack,
       payGate: gateOpen, paySalary: pay.salary, payCost: pay.cost, profitRetained: operatingProfit - loanInterest - pay.cost,

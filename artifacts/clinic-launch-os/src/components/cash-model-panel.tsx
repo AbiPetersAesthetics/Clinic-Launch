@@ -360,14 +360,19 @@ export function CashModelPanel() {
           const wincDaysSplit = p.weekDays - 2;
           const closed = data.rows.find(r => r.bedhDays === 0);
           const twoDays = data.rows.filter(r => r.bedhDays === 2).length, oneDay = data.rows.filter(r => r.bedhDays === 1).length;
-          const occ = p.closeWhen && cap ? Math.round(100 * p.closeWhen.wincAtLeast / (wincDaysSplit * (52 / 12) * cap.hoursPerDay * cap.perBookedHour)) : null;
+          // Takings Winchester needs to stand on its own: full running costs, James's level
+          // repayment and the retention, at Winchester's pence kept in the pound.
+          const loanLevel = data.loans.reduce((a, l) => { const r = l.annualRatePct / 100 / 12; const bal = l.principal * Math.pow(1 + r, l.holidayMonths); return a + (r > 0 ? bal * r / (1 - Math.pow(1 + r, -l.repayments)) : bal / l.repayments); }, 0);
+          const fullRunning = c.rates.monthly + c.utilities.monthly + c.rent.annual / 12 + c.marketing.monthly + c.running.monthly;
+          const standAt = p.closeWhen?.standsAlone ? Math.round((fullRunning + loanLevel + c.pay.retention) / (c.winc.contributionPct / 100) / 100) * 100 : p.closeWhen?.wincAtLeast ?? null;
+          const occ = standAt != null && cap ? Math.round(100 * standAt / (wincDaysSplit * (52 / 12) * cap.hoursPerDay * cap.perBookedHour)) : null;
           return (
             <Card className="shadow-sm">
               <CardHeader className="pb-2"><CardTitle className="text-sm">Abi's week and Bedhampton</CardTitle></CardHeader>
               <CardContent className="text-xs space-y-2 text-muted-foreground">
                 <p><span className="text-foreground font-medium">1. A split week.</span> From {monthLabel(p.from)} Abi works {wincDaysSplit} days at Winchester and 2 at Bedhampton{p.oneDayFrom ? `, then 1 at Bedhampton from ${monthLabel(p.oneDayFrom)}` : ""}. Bedhampton takes what its patients book, up to about {gbp(p.dayCapacity)} a clinic day.</p>
                 {p.closeWhen && (
-                  <p><span className="text-foreground font-medium">2. Bedhampton closes when Winchester can stand alone:</span> {gbp(p.closeWhen.wincAtLeast)} a month at Winchester on its own for {p.closeWhen.forMonths} months running. That pays its bills, James's loan and the {gbp(c.pay.retention)} the business keeps{occ != null ? `, with Winchester's ${wincDaysSplit} days about ${occ}% booked` : ""}.</p>
+                  <p><span className="text-foreground font-medium">2. Bedhampton closes when Winchester can stand alone</span> for {p.closeWhen.forMonths} months running: its own takings pay its running costs ({gbp(fullRunning)}), James's loan ({gbp(loanLevel)}) and the {gbp(c.pay.retention)} the business keeps. At Winchester's prices that is about {gbp(standAt ?? 0)} a month{occ != null ? `, with its ${wincDaysSplit} days about ${occ}% booked` : ""}. Winchester keeps about {Math.round(c.winc.contributionPct)}p of each pound after VAT and products, Bedhampton {Math.round(c.bedh.contributionPct)}p.</p>
                 )}
                 <p><span className="text-foreground font-medium">3. Patients who follow.</span> When Bedhampton closes, {Math.round(p.transferShare * 100)}% of its patients' return visits are assumed to move to Winchester.</p>
                 <p className="text-foreground">In this view: {closed ? `Bedhampton closes from ${closed.label}` : "Bedhampton stays open"}, after {twoDays} months on two days{oneDay ? ` and ${oneDay} on one` : ""}.</p>

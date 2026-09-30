@@ -56,7 +56,7 @@ const growthFor = scenario => {
 };
 const inputs = (months = 36, scenario = "central", over = {}) => ({
   ...d, months, projectPayments, funding, loans,
-  winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: growthFor(scenario), capacity: d.winc.capacity },
+  winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, productCost: lib.WINC_SCENARIOS[scenario].productCost, growth: growthFor(scenario), capacity: d.winc.capacity },
   ...over,
 });
 const withPlan = (i, plan) => ({ ...i, bedh: { ...i.bedh, plan: { ...i.bedh.plan, ...plan } } });
@@ -68,7 +68,7 @@ const briefInputs = (months = 9, scenario = "base") => {
   const i = inputs(months, scenario);
   return { ...i, projectPayments: noVat, vatReturns: undefined,
     bedh: { takings: { "2026-10": 8000, "2026-11": 9000, "2026-12": 3000, "2027-01": 3000, "2027-02": 3000, "2027-03": 3000 }, contributionPct: 54 },
-    marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, capacity: undefined } };
+    marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, contributionPct: 58, productCost: undefined, capacity: undefined } };
 };
 const REF = [
   ["2026-10", 51320, 27777, 58543, 4683, 4683],
@@ -109,46 +109,67 @@ test("the patient model reproduces Bedhampton's March to September 2026 takings 
   assert.ok(Math.abs(total - 75646) / 75646 < 0.01, `model ${Math.round(total)}`);
 });
 
-test("David's 14,700 in June 2027 needs about 37 new patients a month from December on the patient model", () => {
-  const o = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: 1, listPrice: 1.2, founderUntil: "2027-01" };
+test("David's 14,700 in June 2027 needs about 30 new patients a month from December on the patient model", () => {
+  const o = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: lib.PRICES.foundersVsBedhampton, listPrice: lib.PRICES.listVsBedhampton, founderUntil: "2027-01" };
   const june = n => lib.wincForecast(lib.PATIENT_MODEL, { early: n, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n }, o, lib.monthsFrom("2026-10", 12))["2027-06"];
-  assert.ok(june(36) < 14700 && june(38) > 14700, `36: ${Math.round(june(36))}, 38: ${Math.round(june(38))}`);
-  assert.ok(lib.WINC_SCENARIOS.central.takings["2027-06"] < 8000, "the recommended forecast is about half David's in June 2027");
+  assert.ok(june(29) < 14700 && june(30) >= 14700, `29: ${Math.round(june(29))}, 30: ${Math.round(june(30))}`);
+  assert.ok(lib.WINC_SCENARIOS.central.takings["2027-06"] < 9500, "the recommended forecast is about 60% of David's in June 2027");
 });
 
-test("recommended forecast: Bedhampton stays on two days for all 36 months and the bank never drops below 10,000", () => {
-  assert.ok(res.rows.filter(r => r.month >= "2026-12").every(r => r.bedhDays === 2 && r.wincDays === 3));
+test("Winchester keeps more of each pound than Bedhampton: prices 1.48 times, same product costs", () => {
+  assert.equal(d.bedh.contributionPct, 52.7);
+  assert.ok(Math.abs(d.bedh.contributionPct - 100 * (1 - 1 / 6 - lib.PRICES.productShare)) < 0.05);
+  // At list prices the same treatments keep about 62.7p; founders about 57.5p.
+  const keep = pf => 100 * (1 - 1 / 6 - lib.PRICES.productShare / pf);
+  assert.ok(Math.abs(keep(lib.PRICES.listVsBedhampton) - 62.7) < 0.1 && Math.abs(keep(lib.PRICES.foundersVsBedhampton) - 57.5) < 0.1);
+  assert.ok(lib.WINC_KEEP_PCT > 61 && lib.WINC_KEEP_PCT < 63, `blended ${lib.WINC_KEEP_PCT}`);
+  // Each month Winchester keeps its takings less VAT less the product cost of what it sold.
+  for (const r of res.rows.filter(x => x.month >= "2026-12" && x.transferIn === 0)) {
+    assert.ok(Math.abs(r.winc.contribution - (r.winc.gross * 5 / 6 - lib.WINC_SCENARIOS.central.productCost[r.month])) < 1, r.month);
+  }
+  assert.equal(lib.STANDS_ALONE_TAKINGS, 14100);
+});
+
+test("recommended forecast: Bedhampton on two days until Winchester stands alone in late 2028, bank never below 10,000", () => {
+  const closed = res.rows.find(r => r.bedhDays === 0);
+  assert.equal(closed.label, "Dec 28");
+  assert.ok(res.rows.filter(r => r.month >= "2026-12" && r.month < closed.month).every(r => r.bedhDays === 2 && r.wincDays === 3));
   assert.ok(res.rows.every(r => !r.belowFloor), `lowest ${Math.round(res.lowest.bank)} in ${res.lowest.month}`);
   assert.equal(res.lowest.month, "Dec 26");
 });
 
-test("David's forecast: Bedhampton closes from October 2027, after Winchester takes 15,100 on its own in August and September", () => {
+test("Bedhampton closes the month after Winchester stands on its own for two months running (David's forecast: August 2027)", () => {
   const r = lib.runCashModel(inputs(36, "base"));
-  assert.equal(row(r, "2027-09").bedhDays, 2);
-  assert.equal(row(r, "2027-10").bedhDays, 0);
-  assert.equal(row(r, "2027-10").wincDays, 5);
-  assert.ok(row(r, "2027-07").wincDemand < 15100 && row(r, "2027-08").wincDemand >= 15100 && row(r, "2027-09").wincDemand >= 15100);
+  const k = r.rows.findIndex(x => x.bedhDays === 0);
+  assert.equal(r.rows[k].label, "Aug 27");
+  assert.equal(r.rows[k].wincDays, 5);
+  assert.ok(r.rows[k - 1].wincStandMargin >= 0 && r.rows[k - 2].wincStandMargin >= 0 && r.rows[k - 3].wincStandMargin < 0);
+  // The margin is Winchester's own contribution less full running costs, the level loan repayment and the 3,000 kept.
+  const x = r.rows[k - 1];
+  const full = d.rates.monthly + d.utilities.monthly + d.rent.annual / 12 + d.marketing.monthly + d.running.monthly;
+  assert.ok(Math.abs(x.wincStandMargin - (x.winc.contribution - full - 364.8 - d.pay.retention)) < 2, `margin ${x.wincStandMargin}`);
   // 15% of Bedhampton patients' return visits follow to Winchester once it closes.
-  const oct = row(r, "2027-10");
-  assert.ok(Math.abs(oct.transferIn - 0.15 * d.bedh.plan.demand.returns["2027-10"]) < 0.01 && oct.transferIn > 0);
-  assert.ok(r.rows.every(x => !x.belowFloor));
+  const first = r.rows[k];
+  assert.ok(Math.abs(first.transferIn - 0.15 * d.bedh.plan.demand.returns[first.month]) < 0.01 && first.transferIn > 0);
+  assert.ok(r.rows.every(y => !y.belowFloor));
 });
 
-test("two days beat one: one Bedhampton day costs Abi's pay, and on the slow forecast it runs the bank out", () => {
+test("two days beat one: one Bedhampton day costs Abi's pay, and on the slow forecast most of the bank", () => {
   const one = lib.runCashModel(withPlan(inputs(), { oneDayFrom: "2027-05" }));
   assert.ok(salary(one) < salary(res) - 10000, `two days ${Math.round(salary(res))}, one day ${Math.round(salary(one))}`);
   const slowOne = lib.runCashModel(withPlan(inputs(36, "low"), { oneDayFrom: "2027-05" }));
-  assert.ok(slowOne.rows.some(r => r.belowFloor));
   const slowTwo = lib.runCashModel(inputs(36, "low"));
-  assert.ok(slowTwo.rows.every(r => !r.belowFloor), "two days keep even the slow forecast above the floor");
+  assert.ok(slowTwo.rows[35].closingBank - slowOne.rows[35].closingBank > 20000);
+  assert.ok(slowTwo.rows.every(r => !r.belowFloor), "two days keep the slow forecast above the floor");
 });
 
-test("closing Bedhampton after April 2027 breaks the floor on the recommended forecast and pays Abi nothing", () => {
+test("closing Bedhampton on a date instead: after April 2027 halves Abi's pay on the recommended forecast and sinks the slow one", () => {
   const r = lib.runCashModel(withPlan(inputs(), { closeAfter: "2027-04" }));
   assert.equal(row(r, "2027-05").bedhDays, 0);
-  assert.ok(r.rows.some(x => x.belowFloor));
-  assert.equal(r.checks.find(c => c.name.startsWith("Bank stays above")).pass, false);
-  assert.equal(salary(r), 0);
+  assert.ok(salary(r) < salary(res) / 2, `april ${Math.round(salary(r))}, rule ${Math.round(salary(res))}`);
+  const slow = lib.runCashModel(withPlan(inputs(36, "low"), { closeAfter: "2027-04" }));
+  assert.ok(slow.rows.some(x => x.belowFloor));
+  assert.equal(slow.checks.find(c => c.name.startsWith("Bank stays above")).pass, false);
 });
 
 test("a single Bedhampton day that averages under 400 closes it the month after", () => {
@@ -158,10 +179,10 @@ test("a single Bedhampton day that averages under 400 closes it the month after"
   assert.equal(row(r, "2027-06").bedhDays, 0);
 });
 
-test("Winchester's three days hold about 27,000 a month, and 15,100 is about 45% of them booked", () => {
-  assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 3) - 27082) < 5);
-  const occ = 15100 / lib.wincCapacityFor(inputs(), 3, 100);
-  assert.ok(occ > 0.43 && occ < 0.47, `occupancy ${occ}`);
+test("Winchester's three days hold about 31,600 a month, and standing alone is about 36% of them booked", () => {
+  assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 3) - 31598) < 5, `${lib.wincCapacityFor(inputs(), 3)}`);
+  const occ = lib.STANDS_ALONE_TAKINGS / lib.wincCapacityFor(inputs(), 3, 100);
+  assert.ok(occ > 0.34 && occ < 0.38, `occupancy ${occ}`);
 });
 
 test("stopping the 3,000 retention once the bank is at 25,000 pays Abi more and still holds the floor", () => {

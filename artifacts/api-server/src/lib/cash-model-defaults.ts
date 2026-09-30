@@ -8,7 +8,7 @@
 // Project payments, funding and loans come from the plan and investments tables.
 
 import type { CashInputs, WincCapacity } from "./cash-model";
-import { bedhDemand, monthsFrom, wincForecast, type NewPatientProfile, type PatientModel } from "./growth-model";
+import { bedhDemand, monthsFrom, wincForecast, wincProductCost, type NewPatientProfile, type PatientModel } from "./growth-model";
 
 // ── The patient model (ANS export, 30 September 2026, totals only) ──
 // A new patient spends about 168 in their first month and 134 a return visit, at
@@ -36,33 +36,49 @@ export const WINC_PROFILES: Record<"low" | "central" | "high", NewPatientProfile
   central: { early: 22, earlyUntil: "2027-02", start: 16, growthPerMonth: 0.25, cap: 24 },
   high: { early: 32, earlyUntil: "2027-02", start: 26, growthPerMonth: 0.3, cap: 36 },
 };
+// Prices and product costs (ANS March to September 2026, 427 paid treatments, matched
+// to the Launch OS price list and product cost estimates). The same treatments cost
+// 1.48 times as much at the Winchester list as Bedhampton actually charged, 1.18 times
+// at founders' prices (20% off). Product costs were 30.6% of Bedhampton's takings, so
+// Bedhampton keeps 52.7p in the pound and Winchester 62.7p at list, 57.5p for founders.
+export const PRICES = { listVsBedhampton: 1.48, foundersVsBedhampton: 1.184, productShare: 0.306 };
 // The 30 founding bookings for November (mostly skin analysis, 1,184 booked). Founders
-// pay about Bedhampton prices; patients from February pay the Winchester list, about
-// 20% more once founders' prices are averaged in.
-const WINC_OPTS = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: 1.0, listPrice: 1.2, founderUntil: "2027-01" };
-const cohort = (k: keyof typeof WINC_PROFILES) => round(wincForecast(PATIENT_MODEL, WINC_PROFILES[k], WINC_OPTS, MODEL_MONTHS));
+// (November to January cohorts) pay founders' prices, later patients the list.
+const WINC_OPTS = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: PRICES.foundersVsBedhampton, listPrice: PRICES.listVsBedhampton, founderUntil: "2027-01" };
+const cohort = (k: keyof typeof WINC_PROFILES) => ({
+  takings: round(wincForecast(PATIENT_MODEL, WINC_PROFILES[k], WINC_OPTS, MODEL_MONTHS)),
+  productCost: round(wincProductCost(PATIENT_MODEL, WINC_PROFILES[k], WINC_OPTS, MODEL_MONTHS, PRICES.productShare)),
+});
+const CENTRAL = cohort("central"), LOW = cohort("low"), HIGH = cohort("high");
+// Winchester's pence kept per pound over three years on the recommended forecast (a mix
+// of founders and list prices), used for forecasts without cohorts (David's).
+const first36 = MODEL_MONTHS.slice(0, 36);
+export const WINC_KEEP_PCT = Math.round(1000 * first36.reduce((a, m) => a + CENTRAL.takings[m] * (5 / 6) - CENTRAL.productCost[m], 0) / first36.reduce((a, m) => a + CENTRAL.takings[m], 0)) / 10;
+// Takings Winchester needs to stand on its own: full running costs (5,371), James's level
+// repayment (about 364) and the 3,000 kept, at WINC_KEEP_PCT in the pound.
+export const STANDS_ALONE_TAKINGS = Math.round((5371.33 + 364.3 + 3000) / (WINC_KEEP_PCT / 100) / 100) * 100;
 
 // Winchester takings, gross inc VAT. "central" is the recommended planning case.
-export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number> }> = {
+export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number>; productCost?: Record<string, number> }> = {
   central: {
     label: "Recommended",
-    note: "Built from Bedhampton's real patients: 22 new patients a month from December to February (founders and the warm list), then 16 a month growing to 24, each spending what Bedhampton patients spend, at Winchester prices.",
-    takings: cohort("central"),
+    note: "Built from Bedhampton's real patients: 22 new patients a month from December to February (founders and the warm list), then 16 a month growing to 24, each buying what Bedhampton patients buy, at Winchester prices.",
+    ...CENTRAL,
   },
   base: {
     label: "David's forecast",
-    note: "1,500 in November to 14,700 in June 2027, then a straight line to 22,000 by February 2029. On the patient model it needs about 37 new patients a month from December.",
+    note: "1,500 in November to 14,700 in June 2027, then a straight line to 22,000 by February 2029. On the patient model it needs about 28 new patients a month from December.",
     takings: { "2026-11": 1500, "2026-12": 4000, "2027-01": 6000, "2027-02": 8000, "2027-03": 9500, "2027-04": 11000, "2027-05": 13000, "2027-06": 14700 },
   },
   low: {
     label: "Slow",
     note: "10 new patients a month after the first three months: Winchester if leads keep converting to bookings at the pre-opening rate.",
-    takings: cohort("low"),
+    ...LOW,
   },
   high: {
     label: "Fast",
     note: "26 to 36 new patients a month: better than Bedhampton has done in any month so far.",
-    takings: cohort("high"),
+    ...HIGH,
   },
 };
 
@@ -88,25 +104,27 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   openingBank: 35000,
   bedh: {
     takings: { "2026-10": 8000, "2026-11": 9000 },
-    contributionPct: 54,
+    // 52.7p in the pound: 1 less one sixth VAT less products at 30.6% (was 54, the brief).
+    contributionPct: 52.7,
     // Owner, 30 Sep: Bedhampton stays open while Winchester is not making enough,
     // in every forecast. Abi works three days at Winchester and two at Bedhampton
-    // until Winchester on its own takes 15,100 a month for two months running: enough
-    // to pay its bills (5,371), James's loan (364) and the 3,000 the business keeps, at
-    // 58p in the pound. Then Bedhampton closes and 15% of its patients follow.
+    // until Winchester stands on its own for two months running: its own takings pay
+    // its full running costs (5,371), James's loan (364) and the 3,000 the business
+    // keeps. Then Bedhampton closes and 15% of its patients follow.
     plan: {
       from: "2026-12", weekDays: 5, dayCapacity: 1750,
       demand: { two: round(BEDH_DEMAND.two), one: round(BEDH_DEMAND.one), returns: round(BEDH_DEMAND.returns) },
       oneDayFrom: null,
-      closeWhen: { wincAtLeast: 15100, forMonths: 2 },
+      closeWhen: { standsAlone: true, forMonths: 2 },
       closeAfter: null,
       floorPerDay: 400,
       transferShare: 0.15,
     },
   },
-  // Capacity: about 310 of takings per booked hour at Bedhampton, 20% more at
-  // Winchester prices; a day counts as full at 80% of 7 hours.
-  winc: { contributionPct: 58, scenario: "central", growth: { target: 22000, month: "2029-02" }, capacity: { perBookedHour: 372, hoursPerDay: 7, maxBookedPct: 80 } },
+  // Capacity: about 310 of takings per booked hour at Bedhampton, about 1.4 times that
+  // at Winchester with founders mixed in; a day counts as full at 80% of 7 hours.
+  // contributionPct applies to forecasts without product costs (David's).
+  winc: { contributionPct: WINC_KEEP_PCT, scenario: "central", growth: { target: 22000, month: "2029-02" }, capacity: { perBookedHour: 434, hoursPerDay: 7, maxBookedPct: 80 } },
   vatRate: 0.2,
   // Monthly VAT returns (owner, 30 Sep): build VAT is refunded the month after it is paid.
   vatReturns: { periodEndMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], refundLagMonths: 1 },

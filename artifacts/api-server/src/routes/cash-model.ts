@@ -118,7 +118,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const months = Math.min(Math.max(opts.months ?? 12, 9), 48);
   const inputs: CashInputs = {
     ...config, months,
-    winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, growth, capacity: config.winc.capacity },
+    winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
     projectPayments: payments, funding, loans,
   };
   const result = runCashModel(inputs);
