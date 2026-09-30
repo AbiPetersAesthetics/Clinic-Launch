@@ -25,3 +25,4 @@ export * from "./tenders";
 export * from "./workforce";
 export * from "./backlinks";
 export * from "./kit";
+export * from "./finishes";

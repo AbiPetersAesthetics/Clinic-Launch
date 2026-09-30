@@ -39,6 +39,30 @@ const KIT_LINES: { match: RegExp; areaKey: string }[] = [
   { match: /^FIGS scrubs/i, areaKey: "opening" },
   { match: /^Hamilton Fraser/i, areaKey: "opening" },
 ];
+// Colours and finishes: the surfaces Abi decides (paint inside and out, the floors),
+// each with a shortlist of options and one chosen. The role names the part of the
+// Rooms & Kit schematics a surface colours. Seeded once; she renames, adds and
+// shortlists from there. The starters are the brand colours to match, not paints.
+const FINISH_SURFACES: { zone: string; role: string; name: string; brief: string; starters?: { name: string; hex: string; note: string }[] }[] = [
+  { zone: "outside", role: "shop_main", name: "Shopfront: fascia, pilasters and stall riser", brief: "The white. Exterior eggshell or masonry paint. The lease and the conservation area can both have a say in shopfront colours, so check before the repaint is booked.", starters: [{ name: "Brand white", hex: "#FFFFFF", note: "The white to match: ask the merchant for their nearest exterior white or a colour match." }] },
+  { zone: "outside", role: "shop_trim", name: "Shopfront: door and window frames", brief: "The blue. The repaint is a plan line (contractor managed): shopfront, window frames and front door in the brand colours.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match. Have a sample colour matched or pick the nearest real colour." }] },
+  { zone: "inside", role: "feature", name: "Feature wall and panelling", brief: "The blue, behind the reception desk. Decorative moulding fitted by Abi's father; the plan carries £600 of materials.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match." }] },
+  { zone: "inside", role: "walls", name: "Reception and consultation room walls", brief: "Standard emulsion. Front of house decoration is in CBS's contract; the colour is Abi's call." },
+  { zone: "inside", role: "walls_clinical", name: "Treatment rooms and corridor walls", brief: "Antimicrobial emulsion (Dulux Sterishield or similar), two coats, as the infection control policy asks. Tinted ranges are limited, so pick from what the paint comes in." },
+  { zone: "inside", role: "woodwork", name: "Doors, frames and skirting", brief: "Eggshell or satin on the inside woodwork. The treatment rooms have coved vinyl instead of skirting." },
+  { zone: "floor", role: "floor_clinical", name: "Treatment rooms floor", brief: "Clinical safety vinyl with welded seams and 100 mm coving, in CBS's contract; Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." },
+  { zone: "floor", role: "floor_front", name: "Reception and consultation room floor", brief: "Herringbone LVT, in CBS's contract. The range and colour are Abi's to pick." },
+];
+async function seedFinishes(projectId: number) {
+  const existing = await db.select().from(schema.finishSurfacesTable).where(eq(schema.finishSurfacesTable.projectId, projectId));
+  if (existing.length > 0) return false;
+  let order = 0;
+  for (const s of FINISH_SURFACES) {
+    const [row] = await db.insert(schema.finishSurfacesTable).values({ projectId, zone: s.zone, role: s.role, name: s.name, brief: s.brief, sortOrder: ++order }).returning();
+    if (s.starters?.length) await db.insert(schema.finishOptionsTable).values(s.starters.map((o, j) => ({ projectId, surfaceId: row.id, name: o.name, brand: "Abi Peters brand", code: o.hex, hex: o.hex, note: o.note, status: "idea", sortOrder: j + 1 })));
+  }
+  return true;
+}
 async function seedKit(projectId: number) {
   const existing = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
   const have = new Set(existing.map(a => a.areaKey));
@@ -569,6 +593,42 @@ export async function runStartupSeed(): Promise<void> {
     await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS url TEXT`);
     await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS image_url TEXT`);
     await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS link_title TEXT`);
+    // V37: colours and finishes, Abi's paint and flooring shortlist per surface, and
+    // which option each surface has chosen.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS finish_surfaces (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        zone TEXT NOT NULL,
+        role TEXT,
+        name TEXT NOT NULL,
+        brief TEXT,
+        chosen_option_id INTEGER,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS finish_options (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        surface_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        brand TEXT,
+        code TEXT,
+        finish TEXT,
+        hex TEXT,
+        url TEXT,
+        image_url TEXT,
+        link_title TEXT,
+        status TEXT NOT NULL DEFAULT 'idea',
+        note TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,
@@ -962,6 +1022,8 @@ export async function runStartupSeed(): Promise<void> {
         const kitLines = await seedKitLines(projectId);
         if (kitLines) console.log(`  ✅ Rooms and kit lines matched to the plan (${kitLines} of 13)`);
 
+        if (await seedFinishes(projectId)) console.log("  ✅ Colours and finishes seeded");
+
         // V32 migration: business record of 26 September 2026, group B (approved by the owner).
         // B4: the approved June budget is 81,786, not the 80,000 placeholder. Guarded on the
         // old value so a later edit is never overwritten.
@@ -1164,6 +1226,7 @@ export async function runStartupSeed(): Promise<void> {
     }
     await seedKit(projectId);
     await seedKitLines(projectId);
+    await seedFinishes(projectId);
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
   } catch (err) {

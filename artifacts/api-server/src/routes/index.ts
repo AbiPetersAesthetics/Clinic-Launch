@@ -32,6 +32,7 @@ import digestRouter from "./digest";
 import workforceRouter from "./workforce";
 import backlinksRouter from "./backlinks";
 import kitRouter from "./kit";
+import finishesRouter from "./finishes";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(digestRouter);
 router.use(workforceRouter);
 router.use(backlinksRouter);
 router.use(kitRouter);
+router.use(finishesRouter);
 
 export default router;
