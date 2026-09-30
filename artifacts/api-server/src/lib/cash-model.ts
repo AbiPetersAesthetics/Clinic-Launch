@@ -33,7 +33,8 @@ export type CashInputs = {
   rates: { monthly: number; from: string };
   utilities: { monthly: number; buildMonthly: number; buildUntil: string; from: string };
   running: { monthly: number };
-  marketing: { monthly: number; cardFrom: string };
+  // wincFrom: the month the ads become Winchester's. cardFrom: null means never on the card.
+  marketing: { monthly: number; wincFrom: string; cardFrom: string | null };
   card: { limit: number; repayMonths: number };
   cashFloor: number;
   pay: { retention: number; capMonthly: number; niRatePct: number; niThresholdAnnual: number; gateMonths: number };
@@ -171,7 +172,8 @@ export function runCashModel(inp: CashInputs): CashResult {
     const utilities = ym >= inp.utilities.from ? (ym <= inp.utilities.buildUntil ? inp.utilities.buildMonthly : inp.utilities.monthly) : 0;
     const general = inp.running.monthly;
     const marketing = inp.marketing.monthly;
-    const marketingOnCard = ym >= inp.marketing.cardFrom;
+    const marketingOnCard = inp.marketing.cardFrom != null && ym >= inp.marketing.cardFrom;
+    const marketingIsWinc = ym >= inp.marketing.wincFrom;
     const oneOffs = inp.oneOffs.filter(o => o.month === ym);
     const oneOffPnl = oneOffs.filter(o => o.pnl).reduce((s, o) => s + o.amount, 0);
     const runningTotal = utilities + general + marketing + oneOffPnl;
@@ -181,12 +183,12 @@ export function runCashModel(inp: CashInputs): CashResult {
     why.operatingProfit = `Contribution ${gbp(total.contribution)} less running costs ${gbp(runningTotal)}, rates ${gbp(rates)} and rent ${gbp(rentAccrued)}${rentAccrued === 0 ? " (rent free)" : ""}`;
 
     // Site profit, used for the pay gate. Rates, utilities and rent are always
-    // Winchester's. Marketing is Bedhampton's until it moves to the card (the
-    // Bedhampton ads), Winchester's after. General running costs sit with
+    // Winchester's. Marketing is Bedhampton's until wincFrom (the Bedhampton
+    // ads), Winchester's after, however it is paid. General running costs sit with
     // Bedhampton while it trades and move to Winchester when it closes.
     const bedhTrading = ym <= bedhLastTrading;
-    const bedhOwnProfit = bedh.contribution - (marketingOnCard ? 0 : marketing) - (bedhTrading ? general : 0);
-    const wincOwnProfit = winc.contribution - rates - utilities - rentAccrued - oneOffPnl - (marketingOnCard ? marketing : 0) - (bedhTrading ? 0 : general);
+    const bedhOwnProfit = bedh.contribution - (marketingIsWinc ? 0 : marketing) - (bedhTrading ? general : 0);
+    const wincOwnProfit = winc.contribution - rates - utilities - rentAccrued - oneOffPnl - (marketingIsWinc ? marketing : 0) - (bedhTrading ? 0 : general);
 
     // Loans
     let loanDrawn = 0, loanRepayment = 0, loanInterest = 0, loanOwed = 0;

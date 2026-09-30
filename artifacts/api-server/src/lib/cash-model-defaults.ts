@@ -1,8 +1,8 @@
 // ── Cash model defaults ──────────────────────────────────────────────────────
 // The owner's specification of 30 September 2026, with his answers of the same
 // day applied: Winchester trades from the end of November, marketing is 600 a
-// month (by bank to November, by card from December), launch ads are reverse
-// charged, fire alarm maintenance is one payment of about 220 in October 2027.
+// month from the bank (the card is a one-off for the build and pre-opening
+// purchases, never ongoing costs), launch ads are reverse charged, fire alarm maintenance is one payment of about 220 in October 2027.
 // Stored inputs on financial_models.cash_model_json override any of these.
 // Project payments, funding and loans come from the plan and investments tables.
 
@@ -55,7 +55,8 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   rates: { monthly: 1333, from: "2026-10" },
   utilities: { monthly: 280, buildMonthly: 210, buildUntil: "2026-10", from: "2026-10" },
   running: { monthly: 450 },
-  marketing: { monthly: 600, cardFrom: "2026-12" },
+  // Bedhampton ads to November, Winchester ads from December. Always paid from the bank.
+  marketing: { monthly: 600, wincFrom: "2026-12", cardFrom: null },
   card: { limit: 20000, repayMonths: 24 },
   cashFloor: 10000,
   // Basic-rate limit 50,270 a year = 4,189.17 a month. Employer NI 15% above 5,000 a year.

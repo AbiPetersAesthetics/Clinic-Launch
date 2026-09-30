@@ -48,7 +48,10 @@ const inputs = (months = 9, scenario = "base") => {
     winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: d.winc.growth } };
 };
 
-// Reference table as updated on 30 September with the owner's answers.
+// Reference table as updated on 30 September with the owner's answers. The brief
+// put ongoing marketing on the card from December; the owner has since said the
+// card is a one-off for the build, so the default pays marketing from the bank.
+// This table is still checked, with the brief's card assumption switched back on.
 const REF = [
   ["2026-10", 51320, 27777, 58543, 4683, 4683],
   ["2026-11", 15730, 45564, 28709, 5400, 9888],
@@ -62,10 +65,11 @@ const REF = [
 ];
 
 const res = lib.runCashModel(inputs());
+const brief = lib.runCashModel({ ...inputs(), marketing: { ...lib.CASH_MODEL_DEFAULTS.marketing, cardFrom: "2026-12" } });
 
-test("reproduces the reference table within 50 pounds every month", () => {
+test("reproduces the brief's reference table within 50 pounds a month (marketing on the card, as the brief had it)", () => {
   REF.forEach(([m, inn, out, bank, drawn, owed], i) => {
-    const r = res.rows[i];
+    const r = brief.rows[i];
     assert.equal(r.month, m);
     for (const [name, got, want] of [["money in", r.moneyIn, inn], ["money out", r.moneyOutBank, out], ["bank", r.closingBank, bank], ["card drawn", r.cardDrawn, drawn], ["card owed", r.cardOwed, owed]]) {
       assert.ok(Math.abs(got - want) <= 50, `${m} ${name}: got ${Math.round(got)}, reference ${want}`);
@@ -73,10 +77,28 @@ test("reproduces the reference table within 50 pounds every month", () => {
   });
 });
 
-test("lowest bank point is December 2026, above the 10,000 floor", () => {
+test("lowest bank point is December 2026, about 10,163, only just above the 10,000 floor", () => {
   assert.equal(res.lowest.month, "Dec 26");
-  assert.ok(Math.abs(res.lowest.bank - 10765) <= 50);
+  assert.ok(Math.abs(res.lowest.bank - 10163) <= 50, `lowest ${res.lowest.bank}`);
   assert.ok(res.rows.every(r => !r.belowFloor));
+});
+
+test("the card holds build and pre-opening purchases only, and clears in December 2028", () => {
+  const long = lib.runCashModel(inputs(36));
+  const drawnTotal = long.rows.reduce((s, r) => s + r.cardDrawn, 0);
+  const buildOnCard = projectPayments.filter(p => p.method === "card").reduce((s, p) => s + p.amountExVat, 0);
+  assert.ok(Math.abs(drawnTotal - buildOnCard) < 0.01, `drawn ${drawnTotal}, build ${buildOnCard}`);
+  assert.ok(long.rows.filter(r => r.month > "2026-12").every(r => r.cardDrawn === 0 && r.cardFundedCosts === 0));
+  assert.ok(long.rows.find(r => r.month === "2028-11").cardOwed > 1);
+  assert.ok(long.rows.find(r => r.month === "2028-12").cardOwed < 0.01);
+});
+
+test("marketing counts against Bedhampton to November and Winchester from December, whoever pays", () => {
+  const nov = res.rows.find(r => r.month === "2026-11"), dec = res.rows.find(r => r.month === "2026-12");
+  const nb = brief.rows.find(r => r.month === "2026-12");
+  assert.ok(Math.abs(nov.bedhOwnProfit - (nov.bedh.contribution - 600 - 450)) < 0.01);
+  assert.ok(Math.abs(dec.wincOwnProfit - nb.wincOwnProfit) < 0.01, "moving the ads off the card must not change site profit");
+  assert.ok(Math.abs(dec.operatingProfit - nb.operatingProfit) < 0.01, "or the P&L");
 });
 
 test("every built-in check passes (roll-forwards, VAT, cash ties to profit)", () => {
