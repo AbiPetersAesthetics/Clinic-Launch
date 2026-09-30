@@ -18,6 +18,7 @@ type Row = {
   bedh: Site; winc: Site; total: Site;
   running: { utilities: number; general: number; marketing: number; oneOff: number; total: number };
   rentAccrued: number; rates: number; operatingProfit: number; wincOwnProfit: number; bedhOwnProfit: number;
+  bedhOpen?: boolean; wincDemand?: number; wincCapacity?: number | null; switchGain?: number; switchLoss?: number;
   payGate: boolean; paySalary: number; payCost: number; profitRetained: number;
   openingBank: number; fundingIn: number; loanDrawn: number; projectBank: number;
   cardDrawn: number; cardFundedCosts: number; cardRepayment: number; cardOwed: number;
@@ -213,7 +214,7 @@ export function CashModelPanel() {
                 {withTotals.map((x, i) => x.kind === "row" ? (
                   <tr key={x.row.month} className={`border-t border-border/40 ${x.row.belowFloor ? "bg-amber-50/60 dark:bg-amber-950/10" : ""}`}>
                     <td className="px-2 py-1.5 font-medium sticky left-0 bg-card z-10 whitespace-nowrap">{x.row.label}</td>
-                    <Cell v={x.row.total.gross} sub={`B ${gbp(x.row.bedh.gross)} · W ${gbp(x.row.winc.gross)}`} title={x.row.why.winc} />
+                    <Cell v={x.row.total.gross} sub={`B ${gbp(x.row.bedh.gross)} · W ${gbp(x.row.winc.gross)}`} title={[x.row.why.bedh, x.row.why.winc, x.row.why.switch].filter(Boolean).join(". ")} />
                     <Cell v={-x.row.total.vat} sub={`B ${gbp(x.row.bedh.vat)} · W ${gbp(x.row.winc.vat)}`} title={x.row.why.vat} tone="muted" />
                     <Cell v={x.row.total.net} title="Gross takings less VAT on sales" />
                     <Cell v={-x.row.total.product} sub={`B ${gbp(x.row.bedh.product)} · W ${gbp(x.row.winc.product)}`} title="Net sales less contribution, at each site's contribution percentage" tone="muted" />
@@ -342,7 +343,26 @@ export function CashModelPanel() {
       </Card>
 
       {/* ── Abi's pay, funding and ownership ──────────────────────────────── */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        {c.bedh?.split && c.winc?.capacity && (() => {
+          const sp = c.bedh.split, cap = c.winc.capacity;
+          const perDay = (52 / 12) * cap.hoursPerDay * (cap.maxBookedPct / 100) * cap.perBookedHour;
+          const capSplit = sp.wincDays * perDay;
+          const closeAt = capSplit + (sp.monthly * c.bedh.contributionPct / 100) / (c.winc.contributionPct / 100);
+          const closed = data.rows.find(r => r.month >= sp.from && r.bedhOpen === false);
+          return (
+            <Card className="shadow-sm">
+              <CardHeader className="pb-2"><CardTitle className="text-sm">How Abi's week is split</CardTitle></CardHeader>
+              <CardContent className="text-xs space-y-2 text-muted-foreground">
+                <p><span className="text-foreground font-medium">1. Bedhampton is the security.</span> From {monthLabel(sp.from)} Abi works {sp.wincDays} days at Winchester and {sp.bedhDays} at Bedhampton. Bedhampton takes {gbp(sp.monthly)} a month on its days.</p>
+                <p><span className="text-foreground font-medium">2. What Winchester's days can hold.</span> {sp.wincDays} days take up to about {gbp(capSplit)} a month: {gbp(cap.perBookedHour)} per booked hour, with a day counted full at {cap.maxBookedPct}% of {cap.hoursPerDay} hours.</p>
+                <p><span className="text-foreground font-medium">3. When Bedhampton closes.</span> Only when moving its {sp.bedhDays} days to Winchester would earn more than Bedhampton makes on them, {sp.consecutiveMonths} months running. That needs Winchester demand of about {gbp(closeAt)} a month.</p>
+                <p className="text-foreground">In this view: {closed ? `Bedhampton closes from ${closed.label}.` : "Bedhampton stays open in every month shown."}</p>
+                <p>Not counted: Bedhampton patients who follow Abi to Winchester when it closes, and an associate injector adding Winchester days.</p>
+              </CardContent>
+            </Card>
+          );
+        })()}
         <Card className="shadow-sm">
           <CardHeader className="pb-2"><CardTitle className="text-sm">How Abi's pay is worked out</CardTitle></CardHeader>
           <CardContent className="text-xs space-y-2 text-muted-foreground">

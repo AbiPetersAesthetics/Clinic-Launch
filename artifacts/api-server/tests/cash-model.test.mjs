@@ -45,13 +45,21 @@ const loans = [{ label: "James Gibbons loan", principal: 10000, drawMonth: "2026
 const inputs = (months = 9, scenario = "base") => {
   const d = lib.CASH_MODEL_DEFAULTS;
   return { ...d, months, projectPayments, funding, loans,
-    winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: d.winc.growth } };
+    winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: d.winc.growth, capacity: d.winc.capacity } };
+};
+// The brief's own setup: Bedhampton at 3,000 from December and closed from April,
+// ongoing ads on the card, and no limit on Winchester's days.
+const briefInputs = (months = 9, scenario = "base") => {
+  const i = inputs(months, scenario);
+  return { ...i,
+    bedh: { takings: { "2026-10": 8000, "2026-11": 9000, "2026-12": 3000, "2027-01": 3000, "2027-02": 3000, "2027-03": 3000 }, contributionPct: 54 },
+    marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, capacity: undefined } };
 };
 
-// Reference table as updated on 30 September with the owner's answers. The brief
-// put ongoing marketing on the card from December; the owner has since said the
-// card is a one-off for the build, so the default pays marketing from the bank.
-// This table is still checked, with the brief's card assumption switched back on.
+// Reference table as updated on 30 September with the owner's answers. Since then
+// the owner has said the card is a one-off for the build (ads come from the bank)
+// and Bedhampton stays open on two days while Winchester builds. The table is
+// still checked, in the brief's own setup.
 const REF = [
   ["2026-10", 51320, 27777, 58543, 4683, 4683],
   ["2026-11", 15730, 45564, 28709, 5400, 9888],
@@ -65,9 +73,9 @@ const REF = [
 ];
 
 const res = lib.runCashModel(inputs());
-const brief = lib.runCashModel({ ...inputs(), marketing: { ...lib.CASH_MODEL_DEFAULTS.marketing, cardFrom: "2026-12" } });
+const brief = lib.runCashModel(briefInputs());
 
-test("reproduces the brief's reference table within 50 pounds a month (marketing on the card, as the brief had it)", () => {
+test("reproduces the brief's reference table within 50 pounds a month, in the brief's setup", () => {
   REF.forEach(([m, inn, out, bank, drawn, owed], i) => {
     const r = brief.rows[i];
     assert.equal(r.month, m);
@@ -77,9 +85,9 @@ test("reproduces the brief's reference table within 50 pounds a month (marketing
   });
 });
 
-test("lowest bank point is December 2026, about 10,163, only just above the 10,000 floor", () => {
+test("lowest bank point is December 2026, about 12,593, above the 10,000 floor", () => {
   assert.equal(res.lowest.month, "Dec 26");
-  assert.ok(Math.abs(res.lowest.bank - 10163) <= 50, `lowest ${res.lowest.bank}`);
+  assert.ok(Math.abs(res.lowest.bank - 12593) <= 50, `lowest ${res.lowest.bank}`);
   assert.ok(res.rows.every(r => !r.belowFloor));
 });
 
@@ -95,7 +103,8 @@ test("the card holds build and pre-opening purchases only, and clears in Decembe
 
 test("marketing counts against Bedhampton to November and Winchester from December, whoever pays", () => {
   const nov = res.rows.find(r => r.month === "2026-11"), dec = res.rows.find(r => r.month === "2026-12");
-  const nb = brief.rows.find(r => r.month === "2026-12");
+  const onCard = lib.runCashModel({ ...inputs(), marketing: { ...lib.CASH_MODEL_DEFAULTS.marketing, cardFrom: "2026-12" } });
+  const nb = onCard.rows.find(r => r.month === "2026-12");
   assert.ok(Math.abs(nov.bedhOwnProfit - (nov.bedh.contribution - 600 - 450)) < 0.01);
   assert.ok(Math.abs(dec.wincOwnProfit - nb.wincOwnProfit) < 0.01, "moving the ads off the card must not change site profit");
   assert.ok(Math.abs(dec.operatingProfit - nb.operatingProfit) < 0.01, "or the P&L");
@@ -122,11 +131,40 @@ test("James's loan: 6-month holiday with interest, then about 365 a month from J
   assert.ok(long.rows.find(r => r.month === "2029-11").loanOwed < 0.01);
 });
 
-test("Abi is not paid in the reference period: the gate or the 3,000 retention stops it", () => {
-  assert.ok(res.rows.every(r => r.payCost === 0));
-  const jun = res.rows[8];
-  assert.ok(jun.payGate, "Winchester profitable two months running by June");
-  assert.ok(jun.operatingProfit - jun.loanRepayment < 3000);
+test("Abi's pay starts in April 2027: Winchester profitable two months running, and profit above the 3,000 kept", () => {
+  assert.ok(res.rows.filter(r => r.month < "2027-04").every(r => r.payCost === 0));
+  assert.ok(res.rows.find(r => r.month === "2027-04").paySalary > 0);
+  // In the brief's setup (Bedhampton closing in April) nothing is paid by June 2027.
+  assert.ok(brief.rows.every(r => r.payCost === 0));
+  const jun = brief.rows[8];
+  assert.ok(jun.payGate && jun.operatingProfit - jun.loanRepayment < 3000);
+});
+
+test("Bedhampton runs on two days from December at 7,500, and Winchester's three days hold 21,840", () => {
+  assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 3) - 21840) < 1);
+  assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 5) - 36400) < 1);
+  const long = lib.runCashModel(inputs(36));
+  for (const r of long.rows.filter(r => r.month >= "2026-12")) {
+    assert.equal(r.bedh.gross, 7500); assert.ok(r.bedhOpen);
+    assert.ok(r.winc.gross <= 21840 + 0.01);
+  }
+});
+
+test("Bedhampton closes only when Winchester's overflow beyond three days beats Bedhampton's profit, two months running", () => {
+  const i = inputs(36); i.winc = { ...i.winc, growth: { target: 40000, month: "2028-06" } };
+  const long = lib.runCashModel(i);
+  const k = long.rows.findIndex(r => r.month >= "2026-12" && !r.bedhOpen);
+  assert.ok(k > 0, "closes when demand runs to 40,000");
+  const passes = r => r.switchGain > r.switchLoss;
+  assert.ok(passes(long.rows[k - 1]) && passes(long.rows[k - 2]) && !passes(long.rows[k - 3]));
+  // The threshold: demand above 21,840 + (7,500 x 54%) / 58%, about 28,823.
+  assert.ok(long.rows[k - 2].wincDemand > 28822.76 && long.rows[k - 3].wincDemand <= 28822.76);
+  // After closing: no Bedhampton, and Winchester is held to five days' capacity.
+  const full = lib.wincCapacityFor(i, 5);
+  for (const r of long.rows.slice(k)) {
+    assert.equal(r.bedh.gross, 0);
+    assert.ok(Math.abs(r.winc.gross - Math.min(r.wincDemand, full)) < 0.01);
+  }
 });
 
 test("salary solver: employer NI above the threshold and the basic-rate cap", () => {
@@ -166,10 +204,12 @@ test("financial years run August to July", () => {
   assert.equal(lib.fyOf("2027-07"), "FY26/27");
 });
 
-test("the cautious ramp breaches the floor and the check says so", () => {
-  const c = lib.runCashModel(inputs(9, "cautious"));
-  assert.ok(c.rows.some(r => r.belowFloor));
-  assert.equal(c.checks.find(x => x.name.startsWith("Bank stays above")).pass, false);
+test("the floor check fires in the brief's setup on the cautious ramp; two Bedhampton days keep it above the floor", () => {
+  const b = lib.runCashModel(briefInputs(9, "cautious"));
+  assert.ok(b.rows.some(r => r.belowFloor));
+  assert.equal(b.checks.find(x => x.name.startsWith("Bank stays above")).pass, false);
+  const c = lib.runCashModel(inputs(36, "cautious"));
+  assert.ok(c.rows.every(r => !r.belowFloor), `cautious lowest ${Math.round(c.lowest.bank)}`);
 });
 
 rmSync(tmp, { recursive: true, force: true });

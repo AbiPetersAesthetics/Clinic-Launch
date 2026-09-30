@@ -6,7 +6,7 @@
 // Stored inputs on financial_models.cash_model_json override any of these.
 // Project payments, funding and loans come from the plan and investments tables.
 
-import type { CashInputs } from "./cash-model";
+import type { CashInputs, WincCapacity } from "./cash-model";
 
 // Winchester takings, gross inc VAT. "base" is the owner's ramp; the other three
 // are the evidence-led alternatives from analysis B (30 September), with the
@@ -36,7 +36,7 @@ export const WINC_SCENARIOS: Record<string, { label: string; note: string; takin
 
 export type CashModelConfig = Omit<CashInputs, "projectPayments" | "funding" | "loans" | "winc" | "months"> & {
   openingDate: string;
-  winc: { contributionPct: number; scenario: string; growth: { target: number; month: string } };
+  winc: { contributionPct: number; scenario: string; growth: { target: number; month: string }; capacity: WincCapacity };
   // Actuals before the model starts, for the collapsed history block only.
   history: { bedhTakings: Record<string, number>; source: string };
 };
@@ -46,10 +46,18 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   openingDate: "2026-09-30",
   openingBank: 35000,
   bedh: {
-    takings: { "2026-10": 8000, "2026-11": 9000, "2026-12": 3000, "2027-01": 3000, "2027-02": 3000, "2027-03": 3000 },
+    takings: { "2026-10": 8000, "2026-11": 9000 },
     contributionPct: 54,
+    // Owner, 30 Sep: Bedhampton is the security. While Winchester builds, Abi works
+    // three days at Winchester and two at Bedhampton, and Bedhampton only closes
+    // once moving to Winchester full time makes financial sense. 7,500 a month on
+    // two days: ANS shows about 750 per clinic day now with only 2.5 hours booked,
+    // so the regulars fit into two days (about 10 booked hours a week against 14).
+    split: { from: "2026-12", monthly: 7500, bedhDays: 2, wincDays: 3, consecutiveMonths: 2 },
   },
-  winc: { contributionPct: 58, scenario: "base", growth: { target: 22000, month: "2029-02" } },
+  // Capacity: ANS shows about 300 of takings per booked hour at Bedhampton (Mar to Sep
+  // 2026); a day counts as full at 80% of 7 hours. Three days hold about 21,840 a month.
+  winc: { contributionPct: 58, scenario: "base", growth: { target: 22000, month: "2029-02" }, capacity: { perBookedHour: 300, hoursPerDay: 7, maxBookedPct: 80 } },
   vatRate: 0.2,
   rent: { annual: 32500, rentStart: "2027-01-02", quarterDays: ["03-25", "06-24", "09-29", "12-25"] },
   rates: { monthly: 1333, from: "2026-10" },

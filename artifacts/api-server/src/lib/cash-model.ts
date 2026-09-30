@@ -16,17 +16,25 @@ export type ProjectPayment = { month: string; amountExVat: number; method: Metho
 export type OneOff = { month: string; amount: number; method: Method; label: string; pnl: boolean };
 export type FundingIn = { month: string; amount: number; kind: "equity" | "gift"; label: string };
 export type LoanTerms = { label: string; principal: number; drawMonth: string; annualRatePct: number; holidayMonths: number; repayments: number };
+// The split week: from `from`, Abi works bedhDays at Bedhampton and wincDays at
+// Winchester. Bedhampton stays open, taking `monthly`, until moving its days to
+// Winchester would earn more than keeping them, for consecutiveMonths running.
+export type BedhSplit = { from: string; monthly: number; bedhDays: number; wincDays: number; consecutiveMonths: number };
+// What a Winchester day can hold: booked hours are worth perBookedHour, and a day
+// is counted full at maxBookedPct of hoursPerDay.
+export type WincCapacity = { perBookedHour: number; hoursPerDay: number; maxBookedPct: number };
 
 export type CashInputs = {
   startMonth: string;            // "2026-10"
   months: number;                // rows to produce
   openingBank: number;           // bank plus cash at the end of the month before startMonth
-  bedh: { takings: Record<string, number>; contributionPct: number };
+  bedh: { takings: Record<string, number>; contributionPct: number; split?: BedhSplit };
   winc: {
     takings: Record<string, number>;
     contributionPct: number;
     // After the last explicit month, a straight line to `target` by `month`, then held.
     growth?: { target: number; month: string };
+    capacity?: WincCapacity;
   };
   vatRate: number;               // 0.2: every sale is standard-rated
   rent: { annual: number; rentStart: string; quarterDays: string[] }; // rentStart "YYYY-MM-DD"; quarterDays "MM-DD"
@@ -54,6 +62,9 @@ export type CashRow = {
   rentAccrued: number; rates: number;
   operatingProfit: number;
   wincOwnProfit: number; bedhOwnProfit: number;
+  // The split week: Winchester demand, what its days can hold, and the monthly test
+  // of moving Bedhampton's days across (gain at Winchester against loss at Bedhampton).
+  bedhOpen: boolean; wincDemand: number; wincCapacity: number | null; switchGain: number; switchLoss: number;
   payGate: boolean; paySalary: number; payCost: number;
   profitRetained: number;
   // Cash flow
@@ -103,6 +114,13 @@ export function wincTakings(inp: CashInputs, ym: string): number {
   return t[last] + (g.target - t[last]) * (monthsBetween(last, ym) / span);
 }
 
+// Winchester takings its days can hold in a month (weeks = 52 / 12).
+export function wincCapacityFor(inp: CashInputs, daysPerWeek: number): number {
+  const c = inp.winc.capacity;
+  if (!c) return Infinity;
+  return daysPerWeek * (52 / 12) * c.hoursPerDay * (c.maxBookedPct / 100) * c.perBookedHour;
+}
+
 // Rent: quarterly in advance on the quarter days. The first payment falls on the
 // last quarter day on or before rentStart and covers rentStart to the next quarter
 // day, apportioned by days; after that each quarter day pays a quarter's rent.
@@ -145,7 +163,10 @@ export function runCashModel(inp: CashInputs): CashResult {
   const lastYm = months[months.length - 1];
   const rentPaidMap = rentSchedule(inp, inp.startMonth, lastYm);
   const rentStartYm = inp.rent.rentStart.slice(0, 7);
-  const bedhLastTrading = Object.entries(inp.bedh.takings).filter(([, v]) => v > 0).map(([k]) => k).sort().pop() ?? "";
+  const sp = inp.bedh.split;
+  const capSplit = sp ? wincCapacityFor(inp, sp.wincDays) : Infinity;
+  const capFull = sp ? wincCapacityFor(inp, sp.wincDays + sp.bedhDays) : Infinity;
+  let bedhOpen = true, switchRun = 0;
 
   // Card: every draw is repaid in equal parts over repayMonths, starting the month after.
   const draws: { month: string; amount: number }[] = [];
@@ -158,13 +179,35 @@ export function runCashModel(inp: CashInputs): CashResult {
 
   for (const ym of months) {
     const why: Record<string, string> = {};
-    const bedh = site(inp.bedh.takings[ym] ?? 0, inp.bedh.contributionPct, inp.vatRate);
-    const winc = site(wincTakings(inp, ym), inp.winc.contributionPct, inp.vatRate);
+    // Sites. Before the split, Bedhampton takes its entered months and Winchester its
+    // demand. During the split Winchester is held to what its days can take; once
+    // Bedhampton closes, Abi's week is all Winchester.
+    const splitOn = !!sp && ym >= sp.from;
+    const openThisMonth = bedhOpen;
+    const wincDemand = wincTakings(inp, ym);
+    const wincCapacity = splitOn ? (openThisMonth ? capSplit : capFull) : null;
+    const bedhGross = splitOn && !openThisMonth ? 0 : (inp.bedh.takings[ym] ?? (splitOn ? sp!.monthly : 0));
+    const bedh = site(bedhGross, inp.bedh.contributionPct, inp.vatRate);
+    const winc = site(wincCapacity == null ? wincDemand : Math.min(wincDemand, wincCapacity), inp.winc.contributionPct, inp.vatRate);
+    // The switch test: would giving Bedhampton's days to Winchester earn more than
+    // Bedhampton makes on them? Only Winchester demand beyond its current days counts.
+    let switchGain = 0, switchLoss = 0;
+    if (splitOn && openThisMonth) {
+      switchGain = (Math.min(wincDemand, capFull) - Math.min(wincDemand, capSplit)) * inp.winc.contributionPct / 100;
+      switchLoss = bedh.contribution;
+      switchRun = switchGain > switchLoss ? switchRun + 1 : 0;
+      if (switchRun >= sp!.consecutiveMonths) bedhOpen = false; // closes from next month
+    }
     const total: Site = {
       gross: bedh.gross + winc.gross, vat: bedh.vat + winc.vat, net: bedh.net + winc.net,
       product: bedh.product + winc.product, contribution: bedh.contribution + winc.contribution,
     };
-    why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} as entered` : (winc.gross > 0 ? `Growth line from the last entered month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
+    why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} as entered` : (wincDemand > 0 ? `Growth line from the last entered month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
+    if (wincCapacity != null && wincDemand > wincCapacity) why.winc += `; demand ${gbp(wincDemand)} is held to the ${gbp(wincCapacity)} that ${openThisMonth ? sp!.wincDays : sp!.wincDays + sp!.bedhDays} days a week can take`;
+    why.bedh = splitOn && !openThisMonth ? "Bedhampton closed: moving its days to Winchester paid more"
+      : inp.bedh.takings[ym] != null ? `Bedhampton takings for ${label(ym)} as entered`
+      : splitOn ? `Bedhampton on ${sp!.bedhDays} days a week, Winchester on ${sp!.wincDays}` : "Bedhampton not trading";
+    if (splitOn && openThisMonth) why.switch = `Moving Bedhampton's ${sp!.bedhDays} days to Winchester would add ${gbp(switchGain)} a month there and lose ${gbp(switchLoss)} at Bedhampton: ${switchGain > switchLoss ? "worth it" : "keep Bedhampton open"}`;
     why.vat = `VAT on sales = gross x 1/6 at both sites (${gbp(bedh.vat)} Bedhampton, ${gbp(winc.vat)} Winchester)`;
     why.contribution = `${inp.bedh.contributionPct}% of Bedhampton gross + ${inp.winc.contributionPct}% of Winchester gross, after VAT and product cost`;
 
@@ -186,7 +229,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     // Winchester's. Marketing is Bedhampton's until wincFrom (the Bedhampton
     // ads), Winchester's after, however it is paid. General running costs sit with
     // Bedhampton while it trades and move to Winchester when it closes.
-    const bedhTrading = ym <= bedhLastTrading;
+    const bedhTrading = bedh.gross > 0;
     const bedhOwnProfit = bedh.contribution - (marketingIsWinc ? 0 : marketing) - (bedhTrading ? general : 0);
     const wincOwnProfit = winc.contribution - rates - utilities - rentAccrued - oneOffPnl - (marketingIsWinc ? marketing : 0) - (bedhTrading ? 0 : general);
 
@@ -254,6 +297,7 @@ export function runCashModel(inp: CashInputs): CashResult {
       bedh, winc, total,
       running: { utilities, general, marketing, oneOff: oneOffPnl, total: runningTotal },
       rentAccrued, rates, operatingProfit, wincOwnProfit, bedhOwnProfit,
+      bedhOpen: bedh.gross > 0, wincDemand, wincCapacity: wincCapacity == null || wincCapacity === Infinity ? null : wincCapacity, switchGain, switchLoss,
       payGate: gateOpen, paySalary: pay.salary, payCost: pay.cost, profitRetained: operatingProfit - pay.cost,
       openingBank, fundingIn, loanDrawn, projectBank,
       cardDrawn, cardFundedCosts, cardRepayment, cardOwed,
