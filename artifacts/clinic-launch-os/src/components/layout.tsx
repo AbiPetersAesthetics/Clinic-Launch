@@ -34,6 +34,7 @@ import {
   PoundSterling,
   Newspaper,
   Link2,
+  Armchair,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -155,6 +156,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
     { href: "/financials", label: "Money", icon: Calculator },
+    { href: "/kit", label: "Rooms & Kit", icon: Armchair },
     { href: "/market", label: "Market & Pricing", icon: PoundSterling },
     { href: "/people", label: "People & Capacity", icon: Users },
     { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },

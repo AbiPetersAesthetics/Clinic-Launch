@@ -13,6 +13,34 @@ import {
   BACKLINK_TEMPLATES,
 } from "./backlink-seed-data";
 
+// Rooms and kit: the furniture, equipment and finishes budget by area (ex VAT,
+// savings applied, from the plan of 30 September 2026) and the plan's own lines
+// as the first items. Runs once per project: skipped when the area rows exist.
+async function seedKit(projectId: number) {
+  const existing = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
+  if (existing.length > 0) return false;
+  await db.insert(schema.kitAreasTable).values([
+    { projectId, areaKey: "treatment", name: "Treatment rooms (two)", budgetGbp: 1833, sortOrder: 1, covers: "In CBS's contract: full-height partitions and the curved frontage, two doors, two basins with mixer taps and hot water, clinical vinyl flooring, scrubbable finishes, clinical lighting, sockets and isolation, door locks." },
+    { projectId, areaKey: "reception", name: "Reception", budgetGbp: 2600, sortOrder: 2, covers: "In CBS's contract: herringbone LVT flooring, front-of-house decoration, reception lighting, the glazed screen. The desk and clinical cabinetry allowance (1,500) sits here." },
+    { projectId, areaKey: "consult", name: "Consultation room", budgetGbp: 250, sortOrder: 3, covers: "In CBS's contract: decoration, flooring and lighting." },
+    { projectId, areaKey: "front", name: "Shop front and signage", budgetGbp: 1593, sortOrder: 4, covers: "In CBS's contract: shopfront refurbishment and redecoration (3,185), subject to conservation consent. The sign's deposit is already paid." },
+    { projectId, areaKey: "finish", name: "Finishing touches", budgetGbp: 0, sortOrder: 5, covers: "Nothing in the plan after savings: the feature wall, wall art and picture lighting, retail shelving and LED, internal signage and photography were all cut to nil. Anything bought here is over budget unless the budget is raised." },
+  ]);
+  await db.insert(schema.kitItemsTable).values([
+    { projectId, areaKey: "treatment", name: "Treatment couch (one in the plan; the second room has none yet)", amountGbp: 1000, status: "planned" },
+    { projectId, areaKey: "treatment", name: "Stool, trolley, bins, mirrors, storage, styling", amountGbp: 833, status: "planned" },
+    { projectId, areaKey: "reception", name: "Reception desk and clinical cabinetry (joinery allowance)", amountGbp: 1500, status: "planned" },
+    { projectId, areaKey: "reception", name: "Reception furniture and styling", amountGbp: 1100, status: "planned" },
+    { projectId, areaKey: "consult", name: "Chairs and table", amountGbp: 250, status: "planned" },
+    { projectId, areaKey: "front", name: "External sign, balance (deposit paid)", amountGbp: 1593, status: "ordered" },
+    { projectId, areaKey: "finish", name: "Feature wall or panelling (was 500 before savings)", amountGbp: 0, status: "planned" },
+    { projectId, areaKey: "finish", name: "Retail shelving and LED (was 750 before savings)", amountGbp: 0, status: "planned" },
+    { projectId, areaKey: "finish", name: "Wall art, certificates, picture lighting (was 500)", amountGbp: 0, status: "planned" },
+    { projectId, areaKey: "finish", name: "Internal signage and branding (was 500)", amountGbp: 0, status: "planned" },
+  ]);
+  return true;
+}
+
 async function seedRisks(projectId: number) {
   const SEED_RISKS = [
     { riskId: "R001", title: "VAT threshold breach within 1–2 months of opening", description: "The business is already close to the £90k VAT registration threshold. Winchester revenue could push it over within weeks of opening, requiring immediate VAT registration. This would add 20% to all cosmetic treatment prices or absorb cost directly, materially affecting the financial model.", category: "Financial", likelihood: 5, impact: 4, pipelineStage: "Pre-Lease", linkedModelSection: "Financials — VAT", linkedRiskIds: ["R008", "R014"] },
@@ -474,6 +502,34 @@ export async function runStartupSeed(): Promise<void> {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    // V34: rooms and kit tables, created ahead of the branch for the same reason.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS kit_areas (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        area_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        budget_gbp REAL NOT NULL DEFAULT 0,
+        covers TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (project_id, area_key)
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS kit_items (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        area_key TEXT NOT NULL,
+        name TEXT NOT NULL,
+        amount_gbp REAL NOT NULL DEFAULT 0,
+        status TEXT NOT NULL DEFAULT 'planned',
+        note TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,
@@ -862,6 +918,9 @@ export async function runStartupSeed(): Promise<void> {
           console.log("  ✅ Backlink tracker seeded (42 opportunities)");
         }
 
+        // Rooms and kit: added 30 September 2026, so an existing install gets it here.
+        if (await seedKit(projectId)) console.log("  ✅ Rooms and kit seeded (5 areas, 10 items)");
+
         // V32 migration: business record of 26 September 2026, group B (approved by the owner).
         // B4: the approved June budget is 81,786, not the 80,000 placeholder. Guarded on the
         // old value so a later edit is never overwritten.
@@ -1062,6 +1121,7 @@ export async function runStartupSeed(): Promise<void> {
     if (existingBacklinks.length === 0) {
       await seedBacklinks(projectId);
     }
+    await seedKit(projectId);
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
   } catch (err) {

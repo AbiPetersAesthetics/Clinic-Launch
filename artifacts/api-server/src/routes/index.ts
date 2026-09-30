@@ -31,6 +31,7 @@ import tenderRouter from "./tender";
 import digestRouter from "./digest";
 import workforceRouter from "./workforce";
 import backlinksRouter from "./backlinks";
+import kitRouter from "./kit";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(tenderRouter);
 router.use(digestRouter);
 router.use(workforceRouter);
 router.use(backlinksRouter);
+router.use(kitRouter);
 
 export default router;

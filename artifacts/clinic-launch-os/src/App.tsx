@@ -29,6 +29,7 @@ import TendersPage from "@/pages/tenders";
 import DigestPage from "@/pages/digest";
 import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
+import KitPage from "@/pages/kit";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -157,6 +158,7 @@ function Router() {
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/backlinks" component={BacklinksPage} />
+        <Route path="/kit" component={KitPage} />
         <Route path="/competition" component={CompetitionPage} />
         <Route path="/market" component={MarketPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />
