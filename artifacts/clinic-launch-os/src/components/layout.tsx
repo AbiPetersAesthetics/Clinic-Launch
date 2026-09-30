@@ -35,6 +35,7 @@ import {
   Newspaper,
   Link2,
   Armchair,
+  LayoutTemplate,
 } from "lucide-react";
 import { formatGBP, formatPercent } from "@/lib/format";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -152,6 +153,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Execution — what running the project to opening day and beyond actually needs
   const executionItems = [
+    { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
     { href: "/", label: "Today", icon: LayoutDashboard },
     { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },

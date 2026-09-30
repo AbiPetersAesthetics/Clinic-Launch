@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en-GB" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Winchester Build Cash Board</title>
+<style>html, body { margin: 0; }</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
+<style>
+/* Layout: an A3 landscape board (1587px wide at full size), a controls rail down the left, panels in a grid that stacks on narrow screens. Brand navy ink, slate for money out, sage for money in. */
+:root {
+  --bg: #F6F8FB; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #5C6577; --line: #C3CCD9; --slate: #445B72; --sage: #A7C0B6; --sage-deep: #7FA49A;
+  --good: #3F7A68; --watch: #8A5A12; --watch-bg: #F6EEDF; --bad: #A33A3A; --bad-bg: #F8E6E6;
+  --c-start: #2a78d6; --c-james: #1baf7a; --c-bill: #5dcaa5; --c-loan: #eb6834; --c-card: #eda100; --c-vatback: #888780; --c-netb: #9085e9; --c-netw: #6250d6; --c-topup: #e87ba4;
+  --c-project: #5f5e5a; --c-vatout: #b4b2a9; --c-fixed: #85b7eb; --c-cardrep: #f0997b; --c-loanrep: #c98500; --c-left: #008300;
+  --font-display: "Source Serif 4", "Minion Pro", Georgia, serif; --font-body: "Mulish", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F1522; --sheet: #151C2C; --panel: #1C2537; --ink: #E8EDF4; --muted: #A6B0C2; --line: #34405A; --slate: #9FB3CB; --sage: #7FA49A; --sage-deep: #A7C0B6;
+  --good: #8CC7B3; --watch: #E6B866; --watch-bg: #2A2618; --bad: #EE9A9A; --bad-bg: #3A2020; --c-project: #8f8e88; --c-left: #4fbf4f; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0F1522; --sheet: #151C2C; --panel: #1C2537; --ink: #E8EDF4; --muted: #A6B0C2; --line: #34405A; --slate: #9FB3CB; --sage: #7FA49A; --sage-deep: #A7C0B6;
+  --good: #8CC7B3; --watch: #E6B866; --watch-bg: #2A2618; --bad: #EE9A9A; --bad-bg: #3A2020; --c-project: #8f8e88; --c-left: #4fbf4f; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding-inline: 16px; padding-block: 20px 48px; }
+.board { max-width: 1587px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 2px; padding: 22px 24px 26px; display: grid; gap: 16px; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 600; margin: 0; line-height: 1.15; text-wrap: balance; }
+h1 { font-size: clamp(26px, 3vw, 36px); } h2 { font-size: 17px; } h3 { font-size: 15px; }
+p { margin: 0; }
+.eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--slate); font-weight: 700; }
+.head { display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr) auto; align-items: end; }
+.head p { color: var(--muted); max-width: 90ch; }
+.tag { font-size: 11px; color: var(--muted); text-align: right; }
+.grid { display: grid; gap: 16px; grid-template-columns: 250px minmax(0, 1fr); align-items: start; }
+@media (max-width: 1000px) { .grid { grid-template-columns: minmax(0, 1fr); } .head { grid-template-columns: minmax(0, 1fr); } .tag { text-align: left; } }
+.rail { display: grid; gap: 12px; position: sticky; top: env(safe-area-inset-top, 0px); }
+@media (max-width: 1000px) { .rail { position: static; } }
+.ctl { border: 1px solid var(--line); border-radius: 2px; padding: 10px 12px; display: grid; gap: 6px; background: var(--sheet); }
+.ctl .lbl { font-weight: 700; font-size: 12.5px; }
+.ctl .hint { font-size: 11.5px; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { font: inherit; font-size: 12px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 2px; background: var(--sheet); color: var(--ink); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.seg button:hover { border-color: var(--slate); }
+.slide { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.slide input[type="range"] { width: 100%; accent-color: var(--slate); }
+.slide output { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; font-size: 13px; }
+input[type="number"] { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--line); border-radius: 2px; background: var(--sheet); color: var(--ink); width: 100%; }
+.presets { display: flex; flex-wrap: wrap; gap: 4px; }
+.presets button { font: inherit; font-size: 12px; padding: 5px 9px; border: 1px solid var(--sage-deep); border-radius: 2px; background: var(--sheet); color: var(--ink); cursor: pointer; }
+.presets button:hover { background: var(--panel); }
+.main { display: grid; gap: 16px; min-width: 0; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { background: var(--panel); border-radius: 2px; padding: 10px 12px; display: grid; gap: 2px; align-content: start; }
+.kpi span { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+.kpi b { font-family: var(--font-display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums lining-nums; line-height: 1.15; }
+.kpi em { font-style: normal; font-size: 12px; color: var(--muted); }
+.kpi.bad b { color: var(--bad); } .kpi.warn b { color: var(--watch); } .kpi.good b { color: var(--good); }
+.row { display: grid; gap: 16px; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.row2 { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); }
+@media (max-width: 900px) { .row, .row2 { grid-template-columns: minmax(0, 1fr); } }
+.card { border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.card .q { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--sage-deep); font-weight: 700; }
+.chart { position: relative; width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.legend i.line { height: 0; border-top: 2px solid var(--c-start); border-radius: 0; width: 16px; vertical-align: 3px; }
+.legend i.dash { height: 0; border-top: 2px dashed var(--muted); border-radius: 0; width: 16px; vertical-align: 3px; }
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 2px; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 5px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; background: var(--panel); position: sticky; top: 0; }
+tbody tr:last-child td { border-bottom: 0; }
+tr.total td { font-weight: 700; border-top: 2px solid var(--line); }
+tr.sub td { color: var(--muted); font-size: 12px; background: var(--panel); text-align: left; }
+td.low { background: var(--watch-bg); color: var(--watch); font-weight: 700; }
+td.under { background: var(--bad-bg); color: var(--bad); font-weight: 700; }
+td.in { color: var(--good); } td.out { color: var(--muted); }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; font-size: 13px; }
+.steps li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.steps li:last-child { border-bottom: 0; } .steps li.sum { font-weight: 700; }
+.steps li b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.items { display: grid; gap: 0; font-size: 12.5px; }
+.item { display: grid; grid-template-columns: minmax(0, 1fr) 62px 52px 96px; gap: 6px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.item:last-child { border-bottom: 0; }
+.item .n { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.item .amt { text-align: right; font-variant-numeric: tabular-nums; }
+.item .when { color: var(--muted); font-size: 11.5px; }
+.item .seg button { padding: 2px 7px; font-size: 11px; }
+.item .lock { font-size: 11px; color: var(--muted); }
+.grp { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 0 3px; border-bottom: 1px solid var(--line); font-weight: 700; }
+.grp .sub { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+.det { display: grid; grid-template-columns: minmax(0, 1fr) 68px; gap: 8px; padding: 3px 0 3px 10px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.det:last-child { border-bottom: 0; } .det .amt { text-align: right; font-variant-numeric: tabular-nums; } .det .w { color: var(--muted); font-size: 11.5px; }
+.item.head { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 700; border-bottom: 1px solid var(--line); }
+.note { font-size: 12px; color: var(--muted); }
+ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 13px; }
+.chip { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; background: var(--panel); color: var(--slate); border: 1px solid var(--line); }
+.chip.watch { background: var(--watch-bg); color: var(--watch); border-color: transparent; }
+/* Pages */
+.abi { display: grid; gap: 16px; }
+.abi .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
+@media (max-width: 800px) { .abi .intro { grid-template-columns: minmax(0, 1fr); } }
+.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 16px; align-items: start; }
+.area { border: 1px solid var(--line); border-radius: 2px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.area h3 { font-size: 17px; }
+.area .covers { font-size: 12px; color: var(--muted); }
+.meter { height: 8px; background: var(--panel); border-radius: 2px; overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; } .meter .bought { background: var(--sage-deep); } .meter .ordered { background: var(--sage); } .meter .planned { background: var(--c-fixed); } .meter .over { background: var(--bad); }
+.verdict { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; }
+.verdict b { font-variant-numeric: tabular-nums; } .verdict .under { color: var(--good); } .verdict .overb { color: var(--bad); }
+.rows { display: grid; gap: 4px; }
+.rowi { display: grid; grid-template-columns: minmax(0, 1fr) 84px 96px 28px; gap: 6px; align-items: center; font-size: 13px; }
+.rowi input, .rowi select, .addf input, .addf select, .bud input { font: inherit; font-size: 13px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 2px; background: var(--sheet); color: var(--ink); width: 100%; min-width: 0; }
+.rowi input[type="number"], .addf input[type="number"], .bud input { text-align: right; font-variant-numeric: tabular-nums; }
+.rowi .x { font: inherit; border: 1px solid var(--line); border-radius: 2px; background: var(--sheet); color: var(--muted); cursor: pointer; height: 30px; }
+.rowi .x:hover { color: var(--bad); border-color: var(--bad); }
+.addf { display: grid; grid-template-columns: minmax(0, 1fr) 84px 96px auto; gap: 6px; align-items: center; padding-top: 6px; border-top: 1px solid var(--line); }
+.addf button { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--ink); border-radius: 2px; background: var(--ink); color: var(--sheet); cursor: pointer; white-space: nowrap; }
+.bud { display: flex; align-items: center; gap: 8px; font-size: 13px; } .bud input { width: 100px; }
+.abi .state { border: 1px dashed var(--line); border-radius: 2px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
+.readonly .addf, .readonly .rowi .x, .readonly .bud input { display: none; }
+.readonly .rowi input, .readonly .rowi select { border-color: transparent; background: transparent; pointer-events: none; }
+footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
+:focus-visible { outline: 2px solid var(--sage-deep); outline-offset: 2px; }
+</style>
+
+<div class="board">
+<div class="head">
+  <div>
+    <div class="eyebrow">Abi Peters Skin Clinic · Winchester build · 30 September 2026</div>
+    <h1>Winchester Build Cash Board</h1>
+    <p>Where the money comes from, what it pays for, and how the bank stays above the £10,000 safety net through the build. Everything recalculates as you change the assumptions on the left. All figures ex VAT unless labelled, and "net from patients" means takings after VAT on sales and the products used.</p>
+  </div>
+  <div class="tag">The 30 September planning snapshot. Hover any bar for its figure. The live model is the Money tab.</div>
+</div>
+
+<div class="grid">
+<aside class="rail" aria-label="Assumptions">
+  <div class="ctl"><span class="lbl">Try a version</span>
+    <div class="presets" id="presets">
+      <button type="button" data-p="plan">As planned</button><button type="button" data-p="nocard">No card at all</button><button type="button" data-p="loan15">Loan £15k</button><button type="button" data-p="late">VAT through the bank, HMRC late</button><button type="button" data-p="sep">VAT through the bank</button><button type="button" data-p="topup">£10k personal top-up</button>
+    </div></div>
+  <div class="ctl"><label class="lbl" for="start">Bank at the end of September</label><input id="start" type="number" step="500" value="34000" min="0"><span class="hint">Business account, before anything lands.</span></div>
+  <div class="ctl"><span class="lbl" id="l-loan">James's loan</span>
+    <div class="slide"><input id="loan" type="range" min="0" max="20000" step="1000" value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output></div>
+    <div class="seg" role="group" aria-label="When the loan lands" data-key="loanMonth"><button type="button" data-v="1" aria-pressed="true">1 October</button><button type="button" data-v="2" aria-pressed="false">End of November</button></div>
+    <span class="hint">5% a year, six months' holiday, then 30 monthly repayments.</span></div>
+  <div class="ctl"><span class="lbl">VAT on the build</span>
+    <div class="seg" role="group" aria-label="VAT treatment" data-key="vat"><button type="button" data-v="separate" aria-pressed="true">A separate pot: paid by you, repaid as a director's loan</button><button type="button" data-v="through" aria-pressed="false">Paid and reclaimed through the business bank</button></div>
+    <div class="seg" role="group" aria-label="HMRC refund timing" data-key="lag"><button type="button" data-v="1" aria-pressed="true">Refund the month after</button><button type="button" data-v="2" aria-pressed="false">A month late</button></div><span class="hint">As a separate pot, a late refund changes what the company owes you, not the bank.</span></div>
+  <div class="ctl"><span class="lbl">The credit card</span>
+    <div class="seg" role="group" aria-label="Card use" data-key="card"><button type="button" data-v="plan" aria-pressed="true">As planned</button><button type="button" data-v="none" aria-pressed="false">Not used</button></div>
+    <span class="hint">Or move single items between bank and card in the cost list.</span></div>
+  <div class="ctl"><span class="lbl" id="l-top">Personal top-up in December</span>
+    <div class="slide"><input id="topup" type="range" min="0" max="15000" step="1000" value="0" aria-labelledby="l-top"><output id="topup-out">£0</output></div>
+    <span class="hint">Paid back to you in March.</span></div>
+  <div class="ctl"><span class="lbl" id="l-b">Bedhampton against plan</span>
+    <div class="slide"><input id="bscale" type="range" min="60" max="120" step="5" value="100" aria-labelledby="l-b"><output id="bscale-out">100%</output></div>
+    <span class="lbl" id="l-w">Winchester against plan</span>
+    <div class="slide"><input id="wscale" type="range" min="40" max="140" step="5" value="100" aria-labelledby="l-w"><output id="wscale-out">100%</output></div>
+    <span class="hint">Scales what each clinic nets each month.</span></div>
+</aside>
+
+<div class="main">
+  <div class="kpis" aria-live="polite">
+    <div class="kpi" id="k-low"><span>Lowest bank</span><b id="k-low-v">£0</b><em id="k-low-m"></em></div>
+    <div class="kpi" id="k-dec"><span>Bank at Christmas</span><b id="k-dec-v">£0</b><em>end of December</em></div>
+    <div class="kpi" id="k-nocard"><span>Without the card, December would be</span><b id="k-nocard-v">£0</b><em id="k-nocard-m"></em></div>
+    <div class="kpi"><span>Still to pay</span><b id="k-pay-v">£0</b><em id="k-pay-m"></em></div>
+    <div class="kpi"><span>Money in</span><b id="k-in-v">£0</b><em id="k-in-m"></em></div>
+    <div class="kpi" id="k-card"><span>Card at its peak</span><b id="k-card-v">£0</b><em id="k-card-m"></em></div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="q">Month by month</div><h2>Money in, money out and the bank, September to June</h2>
+      <div class="legend" id="legend-main"></div>
+      <div class="chart" style="height: 360px"><canvas id="ch-main" role="img" aria-label="Stacked bars of money in and money out each month from October 2026 to June 2027, with the bank balance line and the 10,000 safety net.">Money in and out each month with the bank balance.</canvas></div>
+    </div>
+    <div class="card">
+      <div class="q">The question</div><h2>How does the bank not run out, when in is about the same as out?</h2>
+      <ol class="steps" id="bridge"></ol>
+      <p class="note" id="bridge-note"></p>
+    </div>
+  </div>
+
+  <div class="card">
+      <div class="q">What pays for what</div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+        <h2 id="sankey-h2">Where it comes from, where it sits, what it pays for: October to the end of the build</h2>
+        <div class="seg" role="group" aria-label="Window" data-key="win"><button type="button" data-v="3" aria-pressed="true">To the end of the build, December</button><button type="button" data-v="9" aria-pressed="false">To June 2027</button></div>
+      </div>
+      <div class="chart" id="sankey-wrap"><svg id="sankey" viewBox="0 0 1000 440" width="100%" role="img" aria-label="Funding pots on the left flow into what they pay for on the right."><title>Funding pots and their uses</title></svg></div>
+      <p class="note" id="sankey-note"></p>
+  </div>
+
+  <div class="row2">
+    <div class="card">
+      <div class="q">The card</div><h2>Is the card holding us up?</h2>
+      <div class="legend"><span><i style="background: var(--c-card)"></i>Drawn</span><span><i style="background: var(--c-cardrep)"></i>Repaid</span><span><i class="line" style="border-color: var(--c-loanrep)"></i>Owed</span><span><i class="dash"></i>£20,000 limit</span></div>
+      <div class="chart" style="height: 200px"><canvas id="ch-card" role="img" aria-label="Credit card drawn and repaid each month with the balance owed against the 20,000 limit.">Card drawn, repaid and owed.</canvas></div>
+      <ul class="plain" id="card-notes"></ul>
+    </div>
+    <div class="card">
+      <div class="q">Does it all add up?</div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
+        <h2 id="items-h2">Every unpaid line, and where each is paid from</h2>
+        <div class="seg" role="group" aria-label="Cost view" data-key="itemsView"><button type="button" data-v="pay" aria-pressed="true">By payment</button><button type="button" data-v="buy" aria-pressed="false">What it buys</button></div>
+      </div>
+      <div class="items" id="items"></div>
+      <div class="items" id="detail" hidden></div>
+      <p class="note" id="items-note">Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="q">The reconciliation</div><h2>Each month, line by line</h2>
+    <div class="table-wrap"><table id="recon"><thead></thead><tbody></tbody></table></div>
+    <p class="note">Amber marks the lowest month; red marks any month below the £10,000 safety net. Net from patients: 52.7p in the pound at Bedhampton, about 57p to 61p at Winchester depending on how many are founders.</p>
+  </div>
+
+  <footer id="cash-footer">
+    <div>Sources: the Launch OS Money page (build schedule, running costs, rent from 2 January 2027 paid quarterly in advance, James's loan terms) and the ANS patient records for the clinics' net takings, 30 September 2026. Card: £20,000 at 0%, each draw repaid in 24 equal parts from the month after.</div>
+    <div>Two things to check on the card before relying on it: the 0% period runs to at least December 2028, and whether it carries a personal guarantee. Build VAT: the invoices are the company's, so the company reclaims the VAT on its monthly return whoever pays the bill; money you pay on the company's behalf is a director's loan, repaid when the refund lands.</div>
+  </footer>
+</div>
+</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+(function () {
+  const MONTHS = ["Sep 26", "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
+  const ITEMS = [
+    { id: "deposit", name: "Rent deposit", ex: 5416, vat: false, method: "bank", m: 1, locked: true, group: "lease" },
+    { id: "solicitor", name: "Solicitor, balance", ex: 2140, vat: true, method: "bank", m: 1, locked: true, group: "lease" },
+    { id: "sign", name: "Shop sign, balance", ex: 1593.33, vat: true, method: "bank", m: 1, group: "kit" },
+    { id: "croma", name: "Fire alarm works (Croma)", ex: 1800, vat: true, method: "bank", m: 1, group: "kit" },
+    { id: "cbs1", name: "CBS stage 1 (20%)", ex: 14235.4, vat: true, method: "bank", m: 1, locked: true, group: "cbs" },
+    { id: "cbs2", name: "CBS stage 2 (60%)", ex: 42706.2, vat: true, method: "bank", m: 2, locked: true, group: "cbs" },
+    { id: "cbs3", name: "CBS stage 3 (17%)", ex: 12100.09, vat: true, method: "bank", m: 3, locked: true, group: "cbs" },
+    { id: "cbs4", name: "CBS retention (3%), after snagging", ex: 2135.31, vat: true, method: "bank", m: 8, locked: true, group: "cbs" },
+    { id: "joinery", name: "Joinery materials", ex: 1500, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "furniture", name: "Furniture, four lines", ex: 3183.33, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "stock", name: "Opening stock", ex: 2000, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "insurance", name: "Insurance, annual (no VAT)", ex: 950, vat: false, method: "card", m: 2, group: "kit" },
+    { id: "checks", name: "Pre-opening checks", ex: 1025, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "broadband", name: "Broadband, deep clean, scrubs", ex: 425, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "meta", name: "Launch adverts, Meta (no VAT)", ex: 1000, vat: false, method: "card", m: 2, group: "kit" },
+    { id: "google", name: "Launch adverts, Google (no VAT)", ex: 500, vat: false, method: "card", m: 3, group: "kit" },
+  ];
+  // What the money buys, ex VAT, grouped for Abi. The CBS lines are the contract by
+  // trade (69,598 plus the 1,579 firestopping variation); the kit is the plan's lines
+  // split to rooms. Every pound here is one of the 16 payment lines above.
+  const DETAIL = [
+    { name: "The building work (CBS), by trade", sub: "whole clinic: two treatment rooms, reception, utility, two WCs", lines: [
+      ["Partitions and walls", 10165, "treatment-room partitions and the glazed screen"], ["Curved frontage to the two treatment rooms", 2230, ""], ["Two doors to the treatment rooms", 1896, "frames and architraves"],
+      ["Plumbing and drainage", 4399, "two treatment-room basins, staff sink, hot water"], ["Heating, cooling and fresh air", 13860, "existing system zoned, extra units, fresh-air supply"], ["Electrics and M&E design", 10395, "small power, isolation, emergency stop, sockets"],
+      ["Lighting", 2620, "reception, clinical and practical"], ["Flooring", 5734, "herringbone LVT front of house, clinical vinyl in the treatment rooms"], ["Decoration and finishes", 7285, "premium front of house, scrubbable in clinical areas"],
+      ["Shopfront refurbishment", 3185, "subject to conservation consent"], ["Security and access", 835, "treatment-room locks, alarm adaptation"], ["Strip-out and demolition", 2535, ""], ["Preliminaries", 3790, "site set-up, management, welfare"],
+      ["Building Regs coordination and M&E CAD", 669, ""], ["Firestopping variation", 1579, "ceiling access and fire-stopping"] ] },
+    { name: "Treatment rooms, kit", sub: "", lines: [["Treatment couch", 1000, ""], ["Furniture, equipment and styling", 833, "stool, trolley, bins, mirrors, storage"]] },
+    { name: "Reception and consultation room, kit", sub: "", lines: [["Reception desk and clinical cabinetry (joinery)", 1500, "shared with the treatment rooms"], ["Reception furniture and styling", 1100, ""], ["Consultation room furniture", 250, "chairs, table"]] },
+    { name: "Shop front", sub: "", lines: [["External sign, balance", 1593, "the deposit is already paid"]] },
+    { name: "Safety and compliance", sub: "", lines: [["Fire alarm works (Croma)", 1800, ""], ["Fire risk assessment after the fit-out", 475, ""], ["Emergency drugs and equipment", 200, ""], ["Legionella assessment", 175, ""], ["Clinical waste contract", 125, ""], ["PAT testing", 50, ""]] },
+    { name: "Opening", sub: "", lines: [["Opening injectable stock", 1250, ""], ["Clinical smallwares and consumables", 750, ""], ["Insurance for the year", 950, "no VAT"], ["Launch adverts, Meta", 1000, "no VAT"], ["Launch adverts, Google", 500, "no VAT"], ["Scrubs and trainers", 292, ""], ["Broadband set-up", 100, ""], ["Deep clean materials", 33, ""]] },
+    { name: "Lease", sub: "", lines: [["Rent deposit", 5416, "no VAT"], ["Solicitor, balance", 2140, ""]] },
+  ];
+  const PAID = [["Skin analysis platform and training", 4250], ["Design and Building Regulations lead", 2419], ["Building Control submission", 1350], ["RICS schedule of condition", 980], ["Brand identity and visual assets", 490], ["Asbestos survey", 495], ["External sign, deposit", 292], ["CAD drawing pack", 250], ["Advertisement consent", 174], ["ACE membership", 60]];
+  const NET_B = [0, 4216, 4743, 4076, 3887, 3712, 3657, 3598, 3571, 3532];
+  const NET_W = [0, 0, 681, 3433, 3983, 5208, 4818, 5062, 5265, 5509];
+  const FIXED = [0, 2593, 2663, 2663, 2663, 2663, 2663, 2663, 2663, 2663];
+  const RENT = [0, 0, 0, 7301, 0, 0, 8125, 0, 0, 8125];
+  const CAPITAL = { james: 37000, bill: 10000 };
+  const FLOOR = 10000, LIMIT = 20000, VAT = 0.2, N = MONTHS.length;
+
+  const S = { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, win: 3, itemsView: "pay", card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) };
+  const gbp = v => (v < 0 ? "−" : "") + "£" + Math.abs(Math.round(v)).toLocaleString("en-GB");
+  const pmt = A => { const r = 0.05 / 12; const bal = A * Math.pow(1 + r, 6); return A > 0 ? bal * r / (1 - Math.pow(1 + r, -30)) : 0; };
+
+  function compute(s) {
+    const methodOf = i => (s.card === "none" ? "bank" : s.methods[i.id]);
+    const through = s.vat === "through";
+    const r = { bankProject: Array(N).fill(0), cardProject: Array(N).fill(0), vatBank: Array(N).fill(0), vatCard: Array(N).fill(0), vatBack: Array(N).fill(0),
+      cardDrawn: Array(N).fill(0), cardRepay: Array(N).fill(0), cardOwed: Array(N).fill(0), loanIn: Array(N).fill(0), loanRepay: Array(N).fill(0), capital: Array(N).fill(0),
+      netB: NET_B.map(v => v * s.bscale / 100), netW: NET_W.map(v => v * s.wscale / 100), fixed: FIXED.slice(), rent: RENT.slice(), topup: Array(N).fill(0), bank: Array(N).fill(0) };
+    r.vatPersonal = Array(N).fill(0); r.vatPersonalBack = Array(N).fill(0);
+    for (const i of ITEMS) { const mth = methodOf(i); const v = i.vat && through ? i.ex * VAT : 0; if (mth === "card") { r.cardProject[i.m] += i.ex; r.vatCard[i.m] += v; } else { r.bankProject[i.m] += i.ex; r.vatBank[i.m] += v; } if (i.vat && !through) r.vatPersonal[i.m] += i.ex * VAT; }
+    if (!through) { for (let m = 1; m < N; m++) { const due = m + s.lag; if (r.vatPersonal[m] && due < N) r.vatPersonalBack[due] += r.vatPersonal[m]; } let owed = 0; r.vatPersonalPeak = 0; for (let m = 1; m < N; m++) { owed += r.vatPersonal[m] - r.vatPersonalBack[m]; r.vatPersonalPeak = Math.max(r.vatPersonalPeak, owed); } }
+    if (through) for (let m = 1; m < N; m++) { const due = m + s.lag; const v = r.vatBank[m] + r.vatCard[m]; if (v && due < N) r.vatBack[due] += v; }
+    for (let m = 1; m < N; m++) r.cardDrawn[m] = r.cardProject[m] + r.vatCard[m];
+    for (let m = 1; m < N; m++) for (let d = 1; d < m; d++) if (m - d <= 24) r.cardRepay[m] += r.cardDrawn[d] / 24;
+    let owed = 0; for (let m = 1; m < N; m++) { owed += r.cardDrawn[m] - r.cardRepay[m]; r.cardOwed[m] = owed; }
+    r.capital[1] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan; r.loanRepay[9] = pmt(s.loan);
+    r.topup[3] = s.topup; r.topup[6] = -s.topup;
+    let bank = s.start; r.bank[0] = bank;
+    for (let m = 1; m < N; m++) {
+      bank += r.capital[m] + r.loanIn[m] + r.netB[m] + r.netW[m] + r.vatBack[m] + r.topup[m] - r.bankProject[m] - r.vatBank[m] - r.fixed[m] - r.rent[m] - r.cardRepay[m] - r.loanRepay[m];
+      r.bank[m] = bank;
+    }
+    let lowI = 1; for (let m = 1; m < N; m++) if (r.bank[m] < r.bank[lowI]) lowI = m;
+    r.lowI = lowI; r.peakCard = Math.max(...r.cardOwed);
+    r.vatPaidTotal = r.vatBank.reduce((a, v) => a + v, 0) + r.vatCard.reduce((a, v) => a + v, 0); r.vatBackTotal = r.vatBack.reduce((a, v) => a + v, 0);
+    return r;
+  }
+
+  // ── charts ──
+  let chMain = null, chCard = null;
+  const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function drawCharts(r) {
+    if (!window.Chart) return;
+    const C = k => tok("--c-" + k), line = tok("--line"), muted = tok("--muted"), ink = tok("--ink");
+    Chart.defaults.font.family = tok("--font-body"); Chart.defaults.color = muted;
+    const labels = MONTHS.slice(1);
+    const bar = (label, data, color, stack) => ({ type: "bar", label, data: data.slice(1).map(v => Math.round(v)), backgroundColor: color, stack, maxBarThickness: 40, borderSkipped: false, borderRadius: 2 });
+    const neg = a => a.map(v => -v);
+    const common = { responsive: true, maintainAspectRatio: false, animation: false, interaction: { mode: "index", intersect: false }, plugins: { legend: { display: false }, tooltip: { filter: i => Math.round(i.raw) !== 0, callbacks: { label: c => c.dataset.label + ": " + gbp(c.raw) } } } };
+    const yax = { stacked: true, grid: { color: c => (c.tick.value === 0 ? muted : line) }, border: { display: false }, ticks: { callback: v => (v < 0 ? "−" : "") + "£" + Math.abs(v / 1000) + "k", font: { size: 11 } } };
+    const xax = { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } };
+    const mainData = { labels, datasets: [
+      { type: "line", label: "Bank at month end", data: r.bank.slice(1).map(Math.round), borderColor: C("start"), backgroundColor: C("start"), borderWidth: 2.5, pointRadius: r.bank.slice(1).map((v, i) => (i + 1 === r.lowI ? 6 : 3)), pointBackgroundColor: C("start"), order: 0, stack: "l1" },
+      { type: "line", label: "Safety net", data: labels.map(() => FLOOR), borderColor: muted, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, order: 1, stack: "l2" },
+      bar("Capital: James £37k, Bill £10k", r.capital, C("james"), "in"), bar("James's loan", r.loanIn, C("loan"), "in"), bar("Net from Bedhampton patients", r.netB, C("netb"), "in"), bar("Net from Winchester patients", r.netW, C("netw"), "in"), bar("VAT back from HMRC", r.vatBack, C("vatback"), "in"), bar("Personal top-up", r.topup.map(v => Math.max(0, v)), C("topup"), "in"),
+      bar("Project costs from the bank", neg(r.bankProject), C("project"), "out"), bar("VAT on project bills", neg(r.vatBank), C("vatout"), "out"), bar("Fixed costs, rent and rates", neg(r.fixed.map((v, i) => v + r.rent[i])), C("fixed"), "out"), bar("Card repayments", neg(r.cardRepay), C("cardrep"), "out"), bar("Loan repayment", neg(r.loanRepay), C("loanrep"), "out"), bar("Top-up returned", r.topup.map(v => Math.min(0, v)), C("topup"), "out"),
+    ] };
+    if (chMain) { chMain.data = mainData; chMain.update("none"); } else chMain = new Chart(document.getElementById("ch-main"), { data: mainData, options: { ...common, scales: { x: xax, y: yax } } });
+    const cardData = { labels, datasets: [
+      { type: "line", label: "Owed", data: r.cardOwed.slice(1).map(Math.round), borderColor: C("loanrep"), borderWidth: 2.5, pointRadius: 3, pointBackgroundColor: C("loanrep"), order: 0, stack: "l1" },
+      { type: "line", label: "Limit", data: labels.map(() => LIMIT), borderColor: muted, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, order: 1, stack: "l2" },
+      bar("Drawn", r.cardDrawn, C("card"), "c"), bar("Repaid", neg(r.cardRepay), C("cardrep"), "c") ] };
+    if (chCard) { chCard.data = cardData; chCard.update("none"); } else chCard = new Chart(document.getElementById("ch-card"), { data: cardData, options: { ...common, scales: { x: xax, y: { ...yax, min: -2000, max: 22000 } } } });
+    document.getElementById("legend-main").innerHTML = [["james", "Capital: James £37k, Bill £10k"], ["loan", "James's loan"], ["netb", "Net from Bedhampton patients"], ["netw", "Net from Winchester patients"], ["vatback", "VAT back"], ["topup", "Personal top-up"], ["project", "Project costs from the bank"], ["vatout", "VAT on project bills"], ["fixed", "Fixed costs, rent, rates"], ["cardrep", "Card repayments"], ["loanrep", "Loan repayment"]].map(([k, n]) => `<span><i style="background: var(--c-${k})"></i>${n}</span>`).join("") + `<span><i class="line"></i>Bank at month end</span><span><i class="dash"></i>£10,000 safety net</span>`;
+  }
+
+  // ── sankey: where it comes from, where it sits, what it pays for, to a chosen month ──
+  function drawSankey(r, s) {
+    const W = s.win || 3;
+    const upTo = a => a.slice(1, W + 1).reduce((x, y) => x + y, 0);
+    const through = s.vat === "through";
+    const C = k => tok("--c-" + k);
+    const inWin = i => i.m <= W;
+    const methodOf = i => (s.card === "none" ? "bank" : s.methods[i.id]);
+    const cbs = ITEMS.filter(i => i.group === "cbs" && inWin(i)).reduce((a, i) => a + i.ex, 0);
+    const lease = ITEMS.filter(i => i.group === "lease" && inWin(i)).reduce((a, i) => a + i.ex, 0);
+    const kitBank = ITEMS.filter(i => i.group === "kit" && inWin(i) && methodOf(i) === "bank").reduce((a, i) => a + i.ex, 0);
+    const kitCard = ITEMS.filter(i => i.group === "kit" && inWin(i) && methodOf(i) === "card").reduce((a, i) => a + i.ex, 0);
+    const cardDrawn = upTo(r.cardDrawn), cardVat = upTo(r.vatCard), bankVat = upTo(r.vatBank), vatBack = through ? upTo(r.vatBack) : 0;
+    const vatYou = through ? 0 : upTo(r.vatPersonal), net = upTo(r.netB) + upTo(r.netW);
+    const loanIn = s.loanMonth <= W ? s.loan : 0, topIn = W >= 3 ? s.topup : 0, topBack = W >= 6 ? s.topup : 0;
+    const bills = upTo(r.fixed) + upTo(r.rent), repay = upTo(r.cardRepay) + upTo(r.loanRepay) + topBack;
+    const SRC = [
+      ["In the bank at the start", s.start, C("start"), "bank"], ["James, for 10%", CAPITAL.james, C("james"), "bank"], ["Bill, a gift", CAPITAL.bill, C("bill"), "bank"], ["James's loan", loanIn, C("loan"), "bank"],
+      ["Net from patients", net, C("netw"), "bank"], ["VAT back from HMRC", vatBack, C("vatback"), "bank"], ["You, a top-up", topIn, C("topup"), "bank"],
+      ["Credit card, drawn", cardDrawn, C("card"), "card"], ["You, for the VAT", vatYou, C("topup"), "you"],
+    ].filter(d => d[1] > 0.5);
+    const USE = [
+      ["CBS building work", cbs, [["bank", cbs]], C("project")],
+      ["Fit-out, kit and adverts", kitBank + kitCard, [["bank", kitBank], ["card", kitCard]], C("project")],
+      ["Rent deposit and solicitor", lease, [["bank", lease]], C("project")],
+      ["VAT on the build", through ? bankVat + cardVat : vatYou, through ? [["bank", bankVat], ["card", cardVat]] : [["you", vatYou]], through ? C("vatout") : C("topup")],
+      ["Rent, rates and bills", bills, [["bank", bills]], C("fixed")],
+      ["Repayments", repay, [["bank", repay]], C("cardrep")],
+      ["Left in the bank, " + MONTHS[W], r.bank[W], [["bank", r.bank[W]]], C("left")],
+    ].filter(d => d[1] > 0.5);
+    const MID = { bank: ["Business bank", C("start")], card: ["Credit card", C("card")], you: ["Your pocket", C("topup")] };
+    const midVal = { bank: 0, card: 0, you: 0 }; SRC.forEach(d => { midVal[d[3]] += d[1]; });
+    const midKeys = ["bank", "card", "you"].filter(k => midVal[k] > 0.5);
+    const svg = document.getElementById("sankey"); while (svg.lastChild && svg.lastChild.tagName !== "title") svg.removeChild(svg.lastChild);
+    const NS = "http://www.w3.org/2000/svg", H = 440, pad = 24, gap = 9, bw = 12, xL = 300, xM = 500, xR = 700;
+    const total = SRC.reduce((a, d) => a + d[1], 0), totR = USE.reduce((a, d) => a + d[1], 0);
+    if (typeof globalThis !== "undefined") globalThis.__sk = { total, totR };
+    const k = (H - 2 * pad - (Math.max(SRC.length, USE.length) - 1) * gap) / Math.max(total, totR);
+    const stack = (arr, valOf) => { const h = arr.reduce((a, d) => a + valOf(d) * k, 0) + (arr.length - 1) * gap; let y = (H - h) / 2; return arr.map(d => { const n = { d, y, h: valOf(d) * k }; y += n.h + gap; return n; }); };
+    const Ln = stack(SRC, d => d[1]), Rn = stack(USE, d => d[1]), Mn = stack(midKeys, key => midVal[key]);
+    const M = {}; Mn.forEach(n => { M[n.d] = Object.assign(n, { inY: n.y, outY: n.y }); });
+    const el = (t, a, txt) => { const e = document.createElementNS(NS, t); for (const q in a) e.setAttribute(q, a[q]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; };
+    const band = (x0, y0, x1, y1, h, fill, op) => { const c = (x0 + x1) / 2; el("path", { d: `M${x0},${y0}C${c},${y0} ${c},${y1} ${x1},${y1}L${x1},${y1 + h}C${c},${y1 + h} ${c},${y0 + h} ${x0},${y0 + h}Z`, fill, "fill-opacity": op }); };
+    Ln.forEach(n => { const m = M[n.d[3]]; if (!m) return; band(xL + bw, n.y, xM, m.inY, n.h, n.d[2], 0.32); m.inY += n.h; });
+    Rn.forEach(n => { let y = n.y; n.d[2].forEach(([key, v]) => { const m = M[key]; if (!m || v < 0.5) return; const h = v * k; band(xM + bw, m.outY, xR, y, h, MID[key][1], 0.26); m.outY += h; y += h; }); });
+    Ln.forEach(n => el("rect", { x: xL, y: n.y, width: bw, height: Math.max(1, n.h), fill: n.d[2], rx: 2 }));
+    Mn.forEach(n => el("rect", { x: xM, y: n.y, width: bw, height: Math.max(1, n.h), fill: MID[n.d][1], rx: 2 }));
+    Rn.forEach(n => el("rect", { x: xR, y: n.y, width: bw, height: Math.max(1, n.h), fill: n.d[3], rx: 2 }));
+    const ink = tok("--ink"), muted = tok("--muted"), sheet = tok("--sheet"), font = tok("--font-body");
+    const txt = (x, y, anchor, str, size, weight, fill, extra) => el("text", Object.assign({ x, y, "text-anchor": anchor, fill, "font-size": size, "font-weight": weight, "font-family": font }, extra || {}), str);
+    Ln.forEach(n => { const cy = n.y + n.h / 2; txt(xL - 8, cy - 1, "end", n.d[0], "12", "600", ink); txt(xL - 8, cy + 12, "end", gbp(n.d[1]), "11", "400", muted); });
+    Rn.forEach(n => { const cy = n.y + n.h / 2; txt(xR + bw + 8, cy - 1, "start", n.d[0], "12", "600", ink); txt(xR + bw + 8, cy + 12, "start", gbp(n.d[1]), "11", "400", muted); });
+    Mn.forEach(n => { const cy = n.y + n.h / 2; if (n.h < 26) return; txt(xM + bw / 2, cy + 3.5, "middle", MID[n.d][0] + " " + gbp(midVal[n.d]), "11", "600", ink, { transform: `rotate(-90 ${xM + bw / 2} ${cy + 3.5})`, style: `paint-order: stroke; stroke: ${sheet}; stroke-width: 4px; stroke-linejoin: round` }); });
+    txt(xL + bw / 2, pad - 9, "middle", "Where it comes from", "11", "600", muted); txt(xM + bw / 2, pad - 9, "middle", "Where it sits", "11", "600", muted); txt(xR + bw / 2, pad - 9, "middle", "What it pays for", "11", "600", muted);
+
+    // What is still open at the end of the window: the card, the VAT and the bills not yet due.
+    const owed = r.cardOwed[W], repaidSoFar = upTo(r.cardRepay);
+    const later = ITEMS.filter(i => !inWin(i)).map(i => `${i.name} ${gbp(i.ex)} in ${MONTHS[i.m]}`);
+    const parts = [];
+    if (cardDrawn > 0.5) parts.push(`The card: ${gbp(cardDrawn)} drawn by ${MONTHS[W]}, ${gbp(repaidSoFar)} repaid, so ${gbp(owed)} still owed. It clears in December 2028 at about ${gbp(Math.max(...r.cardRepay))} a month.`);
+    if (!through && vatYou > 0.5) { const back = upTo(r.vatPersonalBack); parts.push(`The VAT: you have paid ${gbp(vatYou)} and ${gbp(back)} has come back to the company, so it owes you ${gbp(vatYou - back)}${vatYou - back > 0.5 ? `, due back in ${MONTHS[Math.min(N - 1, W + s.lag)]}` : ""}.`); }
+    if (through && bankVat + cardVat > 0.5) parts.push(`The VAT: ${gbp(bankVat + cardVat)} paid, ${gbp(vatBack)} back from HMRC so far; ${gbp(bankVat + cardVat - vatBack)} comes back in ${MONTHS[Math.min(N - 1, W + s.lag)]}.`);
+    if (later.length) parts.push(`Not yet due: ${later.join("; ")}.`);
+    document.getElementById("sankey-note").textContent = parts.join(" ");
+    document.getElementById("sankey-h2").textContent = W <= 3 ? "Where it comes from, where it sits, what it pays for: October to the end of the build" : `Where it comes from, where it sits, what it pays for: October to ${MONTHS[W]}`;
+  }
+
+  // ── panels ──
+  function render() {
+    const r = compute(S), noCard = compute({ ...S, card: "none" });
+    const K = (id, v) => { document.getElementById(id).textContent = v; };
+    const low = r.bank[r.lowI]; const lowBox = document.getElementById("k-low"); lowBox.className = "kpi " + (low < FLOOR ? "bad" : low < FLOOR * 1.25 ? "warn" : "good");
+    K("k-low-v", gbp(low)); K("k-low-m", MONTHS[r.lowI] + (low < FLOOR ? ", below the safety net" : ", above the £10,000 safety net"));
+    const decBox = document.getElementById("k-dec"); decBox.className = "kpi " + (r.bank[3] < FLOOR ? "bad" : r.bank[3] < FLOOR * 1.25 ? "warn" : "good"); K("k-dec-v", gbp(r.bank[3]));
+    const nc = document.getElementById("k-nocard"); nc.className = "kpi " + (noCard.bank[3] < FLOOR ? "bad" : "good"); K("k-nocard-v", gbp(noCard.bank[3])); K("k-nocard-m", S.card === "none" ? "the card is already off" : "every item paid from the bank instead");
+    const bankTotal = ITEMS.filter(i => S.card === "none" || S.methods[i.id] === "bank").reduce((a, i) => a + i.ex, 0), cardTotal = ITEMS.reduce((a, i) => a + i.ex, 0) - bankTotal;
+    K("k-pay-v", gbp(bankTotal + cardTotal)); K("k-pay-m", `bank ${gbp(bankTotal)}, card ${gbp(cardTotal)}, ex VAT`);
+    K("k-in-v", gbp(S.start + CAPITAL.james + CAPITAL.bill + S.loan)); K("k-in-m", `capital ${gbp(S.start + CAPITAL.james + CAPITAL.bill)} (yours ${gbp(S.start)}, James £37,000, Bill £10,000) plus loan ${gbp(S.loan)}`);
+    const cb = document.getElementById("k-card"); cb.className = "kpi " + (r.peakCard > LIMIT ? "bad" : "neutral"); K("k-card-v", gbp(r.peakCard)); K("k-card-m", r.peakCard > 0 ? `owed at most; ${gbp(LIMIT - r.peakCard)} of the £20,000 left as an emergency line` : "not used");
+
+    // The bridge: how December holds.
+    const moneyInByDec = S.start + CAPITAL.james + CAPITAL.bill + (S.loanMonth <= 3 ? S.loan : 0) + S.topup;
+    const buildBankByDec = r.bankProject.slice(1, 4).reduce((a, v) => a + v, 0);
+    const trading = [1, 2, 3].reduce((a, m) => a + r.netB[m] + r.netW[m] - r.fixed[m] - r.rent[m] - r.cardRepay[m], 0);
+    const vatNet = [1, 2, 3].reduce((a, m) => a + r.vatBack[m] - r.vatBank[m], 0);
+    const cardByDec = r.cardProject.slice(1, 4).reduce((a, v) => a + v, 0), retention = ITEMS.find(i => i.id === "cbs4").ex;
+    const li = (t, v, cls) => `<li${cls ? ` class="${cls}"` : ""}><span>${t}</span><b>${v}</b></li>`;
+    document.getElementById("bridge").innerHTML = [
+      li(`Money in by December: yours ${gbp(S.start)}, James and Bill £47,000${S.loanMonth <= 3 ? `, the loan ${gbp(S.loan)}` : ""}${S.topup ? `, top-up ${gbp(S.topup)}` : ""}`, gbp(moneyInByDec)),
+      li("Build paid from the bank by December", gbp(-buildBankByDec)),
+      li("What that leaves", gbp(moneyInByDec - buildBankByDec), "sum"),
+      li("Clinics' net takings, October to December, less bills, the first rent and card repayments", gbp(trading)),
+      li(S.vat === "through" ? "VAT paid on bills less VAT refunded, by December" : "VAT: a separate pot, nothing through the bank", gbp(vatNet)),
+      li("Bank at the end of December", gbp(r.bank[3]), "sum"),
+    ].join("");
+    const vatLine = S.vat === "separate" ? ` VAT on the build is paid by you and repaid to you when HMRC refunds the company: ${[1, 2, 3, 8].filter(m => r.vatPersonal[m] > 0.5).map(m => `${gbp(r.vatPersonal[m])} in ${MONTHS[m]}`).join(", ")}. The company owes you at most ${gbp(r.vatPersonalPeak)} at any one time${S.lag > 1 ? " with HMRC a month late" : ""}.` : "";
+    document.getElementById("bridge-note").textContent = vatLine + ` Not paid from the bank by December: ${gbp(cardByDec)} of kit on the card and the ${gbp(retention)} CBS retention, due in May. Those two, plus the clinics trading through the build, are what keep December at ${gbp(r.bank[3])} rather than ${gbp(r.bank[3] - cardByDec - retention - Math.max(0, trading))}.`;
+
+    // Card notes.
+    const drawn = r.cardDrawn.reduce((a, v) => a + v, 0);
+    document.getElementById("card-notes").innerHTML = (drawn > 0.5 ? [
+      `Carries ${gbp(drawn)} of fit-out and opening kit${S.vat === "through" ? " including its VAT" : ""}: never the building work.`,
+      `Repaid at about ${gbp(Math.max(...r.cardRepay))} a month; the last of it clears in ${S.vat === "through" ? "December 2028" : "December 2028"}.`,
+      `Without it, December would be ${gbp(noCard.bank[3])}. So yes, in December the card is doing about ${gbp(r.bank[3] - noCard.bank[3])} of work.`,
+      `<span class="chip watch">Check</span>The 0% period must run to December 2028, and you should know whether the card carries a personal guarantee.`,
+    ] : [`The card is not used. December is ${gbp(r.bank[3])}, and every item is paid from the bank.`, `Switch it back on in the controls, or move single items to the card in the cost list.`]).map(t => `<li>${t}</li>`).join("");
+
+    // Items list.
+    const items = document.getElementById("items");
+    items.innerHTML = `<div class="item head"><span>Line</span><span class="amt">Ex VAT</span><span>When</span><span>Paid from</span></div>` + ITEMS.map(i => {
+      const mth = S.card === "none" ? "bank" : S.methods[i.id];
+      const ctl = i.locked ? `<span class="lock">bank</span>` : `<div class="seg" data-item="${i.id}"><button type="button" data-v="bank" aria-pressed="${mth === "bank"}">Bank</button><button type="button" data-v="card" aria-pressed="${mth === "card"}"${S.card === "none" ? " disabled" : ""}>Card</button></div>`;
+      return `<div class="item"><span class="n" title="${i.name}">${i.name}</span><span class="amt">${gbp(i.ex)}</span><span class="when">${MONTHS[i.m]}</span>${ctl}</div>`;
+    }).join("") + `<div class="item" style="font-weight:700"><span class="n">Total still to pay</span><span class="amt">${gbp(ITEMS.reduce((a, i) => a + i.ex, 0))}</span><span class="when"></span><span class="lock">bank ${gbp(bankTotal)} · card ${gbp(cardTotal)}</span></div>`;
+    // "What it buys": the same money grouped by what it is for.
+    const det = document.getElementById("detail");
+    const grand = DETAIL.reduce((a, g) => a + g.lines.reduce((x, l) => x + l[1], 0), 0);
+    det.innerHTML = DETAIL.map(g => { const t = g.lines.reduce((x, l) => x + l[1], 0); return `<div class="grp"><span>${g.name}${g.sub ? `<span class="sub"> · ${g.sub}</span>` : ""}</span><span>${gbp(t)}</span></div>` + g.lines.map(l => `<div class="det"><span>${l[0]}${l[2] ? `<span class="w"> · ${l[2]}</span>` : ""}</span><span class="amt">${gbp(l[1])}</span></div>`).join(""); }).join("")
+      + `<div class="grp"><span>Total still to pay</span><span>${gbp(grand)}</span></div>`
+      + `<div class="grp"><span>Already paid before October<span class="sub"> · not in the model</span></span><span>${gbp(PAID.reduce((a, p) => a + p[1], 0))}</span></div>` + PAID.map(p => `<div class="det"><span>${p[0]}</span><span class="amt">${gbp(p[1])}</span></div>`).join("");
+    const buy = S.itemsView === "buy";
+    items.hidden = buy; det.hidden = !buy;
+    document.getElementById("items-h2").textContent = buy ? "What the money buys, by area" : "Every unpaid line, and where each is paid from";
+    document.getElementById("items-note").textContent = buy ? "Ex VAT, grouped from the same 16 payment lines. The builder's trades cover the whole clinic; the kit is split by room." : "Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.";
+    items.querySelectorAll(".seg[data-item]").forEach(g => g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled) return; S.methods[g.dataset.item] = b.dataset.v; render(); }));
+
+    // Reconciliation table.
+    const thead = document.querySelector("#recon thead"), tbody = document.querySelector("#recon tbody");
+    thead.innerHTML = `<tr><th></th>${MONTHS.slice(1).map(m => `<th>${m}</th>`).join("")}</tr>`;
+    const rowOf = (name, arr, sign, cls) => `<tr><td>${name}</td>${arr.slice(1).map(v => `<td class="${cls}">${Math.abs(v) < 0.5 ? "" : gbp(sign * v)}</td>`).join("")}</tr>`;
+    tbody.innerHTML = [
+      rowOf("Bank at the start", [0, ...r.bank.slice(0, N - 1)], 1, ""),
+      rowOf("Capital in (James £37,000, Bill £10,000)", r.capital, 1, "in"), rowOf("James's loan", r.loanIn, 1, "in"),
+      rowOf("Net from Bedhampton patients", r.netB, 1, "in"), rowOf("Net from Winchester patients", r.netW, 1, "in"), rowOf("VAT back from HMRC", r.vatBack, 1, "in"),
+      rowOf("Personal top-up (returned in March)", r.topup, 1, "in"),
+      rowOf("Project costs from the bank, ex VAT", r.bankProject, -1, "out"), rowOf("VAT on those project bills", r.vatBank, -1, "out"),
+      rowOf("Fixed costs: rates, utilities, running costs, adverts", r.fixed, -1, "out"), rowOf("Rent, quarterly in advance", r.rent, -1, "out"),
+      rowOf("Card repayments", r.cardRepay, -1, "out"), rowOf("James's loan repayment", r.loanRepay, -1, "out"),
+      `<tr class="total"><td>Bank at the end</td>${r.bank.slice(1).map((v, i) => `<td class="${v < FLOOR ? "under" : i + 1 === r.lowI ? "low" : ""}">${gbp(v)}</td>`).join("")}</tr>`,
+      `<tr class="sub"><td colspan="${N}">Card owed at month end: ${r.cardOwed.slice(1).map((v, i) => `${MONTHS[i + 1]} ${gbp(v)}`).join(" · ")}</td></tr>`,
+    ].join("");
+
+    drawCharts(r); drawSankey(r, S);
+  }
+
+  // ── controls ──
+  const setSeg = (key, v) => document.querySelectorAll(`.seg[data-key="${key}"] button`).forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === String(v))));
+  document.querySelectorAll(".seg[data-key]").forEach(g => g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; const v = b.dataset.v; S[g.dataset.key] = isNaN(+v) ? v : +v; setSeg(g.dataset.key, v); render(); }));
+  const bind = (id, fn, fmt) => { const el = document.getElementById(id), out = document.getElementById(id + "-out"); el.addEventListener("input", () => { fn(+el.value); if (out) out.textContent = fmt(+el.value); render(); }); };
+  bind("start", v => { S.start = v; }, v => gbp(v)); bind("loan", v => { S.loan = v; }, v => gbp(v)); bind("topup", v => { S.topup = v; }, v => gbp(v));
+  bind("bscale", v => { S.bscale = v; }, v => v + "%"); bind("wscale", v => { S.wscale = v; }, v => v + "%");
+  const setSlider = (id, v, fmt) => { document.getElementById(id).value = v; const o = document.getElementById(id + "-out"); if (o) o.textContent = fmt(v); };
+  const PRESETS = {
+    plan: () => { Object.assign(S, { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) }); },
+    nocard: () => { PRESETS.plan(); S.card = "none"; },
+    loan15: () => { PRESETS.plan(); S.loan = 15000; },
+    late: () => { PRESETS.plan(); S.vat = "through"; S.lag = 2; },
+    sep: () => { PRESETS.plan(); S.vat = "through"; },
+    topup: () => { PRESETS.plan(); S.topup = 10000; },
+  };
+  document.getElementById("presets").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; PRESETS[b.dataset.p]();
+    document.getElementById("start").value = S.start; setSlider("loan", S.loan, gbp); setSlider("topup", S.topup, gbp); setSlider("bscale", S.bscale, v => v + "%"); setSlider("wscale", S.wscale, v => v + "%");
+    setSeg("loanMonth", S.loanMonth); setSeg("vat", S.vat); setSeg("lag", S.lag); setSeg("card", S.card); render(); });
+  render();
+  try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (chMain) { chMain.destroy(); chMain = null; } if (chCard) { chCard.destroy(); chCard = null; } render(); }); } catch (e) {}
+
+  try { new MutationObserver(() => { if (chMain) { chMain.destroy(); chMain = null; } if (chCard) { chCard.destroy(); chCard = null; } render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (e) {}
+})();
+</script>
+
+</body>
+</html>
