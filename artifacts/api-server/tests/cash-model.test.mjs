@@ -45,8 +45,15 @@ const loans = [{ label: "James Gibbons loan", principal: 10000, drawMonth: "2026
 const inputs = (months = 9, scenario = "base") => {
   const d = lib.CASH_MODEL_DEFAULTS;
   return { ...d, months, projectPayments, funding, loans,
-    winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: d.winc.growth, capacity: d.winc.capacity } };
+    winc: { contributionPct: d.winc.contributionPct, takings: lib.WINC_SCENARIOS[scenario].takings, growth: scaledGrowth(scenario), capacity: d.winc.capacity } };
 };
+// As the route does: each scenario's growth target scales with its June 2027 level.
+function scaledGrowth(scenario) {
+  const d = lib.CASH_MODEL_DEFAULTS, t = lib.WINC_SCENARIOS[scenario].takings, b = lib.WINC_SCENARIOS.base.takings;
+  const last = Object.keys(t).sort().pop();
+  return { month: d.winc.growth.month, target: Math.round(d.winc.growth.target * t[last] / b[last]) };
+}
+const withBedh = (i, split) => ({ ...i, bedh: { ...i.bedh, split: { ...i.bedh.split, ...split } } });
 // The brief's own setup: Bedhampton at 3,000 from December and closed from April,
 // ongoing ads on the card, and no limit on Winchester's days.
 const briefInputs = (months = 9, scenario = "base") => {
@@ -140,18 +147,38 @@ test("Abi's pay starts in April 2027: Winchester profitable two months running, 
   assert.ok(jun.payGate && jun.operatingProfit - jun.loanRepayment < 3000);
 });
 
-test("Bedhampton runs on two days from December at 7,500, and Winchester's three days hold 21,840", () => {
+test("Bedhampton runs on two days at 7,500 from December to April 2027, then closes", () => {
   assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 3) - 21840) < 1);
   assert.ok(Math.abs(lib.wincCapacityFor(inputs(), 5) - 36400) < 1);
   const long = lib.runCashModel(inputs(36));
-  for (const r of long.rows.filter(r => r.month >= "2026-12")) {
-    assert.equal(r.bedh.gross, 7500); assert.ok(r.bedhOpen);
-    assert.ok(r.winc.gross <= 21840 + 0.01);
+  for (const r of long.rows.filter(r => r.month >= "2026-12" && r.month <= "2027-04")) { assert.equal(r.bedh.gross, 7500); assert.ok(r.bedhOpen); }
+  for (const r of long.rows.filter(r => r.month >= "2027-05")) { assert.equal(r.bedh.gross, 0); assert.equal(r.bedhOpen, false); }
+});
+
+test("why April 2027: every forecast stays above the floor; closing after March breaks it on the cautious one", () => {
+  for (const scen of ["base", "evidence", "cautious", "strong"]) {
+    const r = lib.runCashModel(inputs(36, scen));
+    assert.ok(r.rows.every(x => !x.belowFloor), `${scen}: lowest ${Math.round(r.lowest.bank)} in ${r.lowest.month}`);
+  }
+  const march = lib.runCashModel(withBedh(inputs(36, "cautious"), { lastMonth: "2027-03" }));
+  assert.ok(march.rows.some(x => x.belowFloor));
+  // Winchester has made a profit on its own in March and April 2027 (your forecast).
+  const base = lib.runCashModel(inputs(36));
+  assert.ok(base.rows.find(x => x.month === "2027-03").wincOwnProfit > 0 && base.rows.find(x => x.month === "2027-04").wincOwnProfit > 0);
+});
+
+test("the 1 March checkpoint: 5,000 in January and February separates the cautious forecast, and its June fallback holds the floor", () => {
+  const cp = lib.CASH_MODEL_DEFAULTS.closePlan;
+  for (const scen of ["base", "evidence", "strong"]) assert.ok(cp.checkMonths.every(m => lib.WINC_SCENARIOS[scen].takings[m] >= cp.wincMin), scen);
+  assert.ok(cp.checkMonths.every(m => lib.WINC_SCENARIOS.cautious.takings[m] < cp.wincMin));
+  for (const monthly of [6000, 7500]) {
+    const r = lib.runCashModel(withBedh(inputs(36, "cautious"), { lastMonth: cp.fallbackLastMonth, monthly }));
+    assert.ok(r.rows.every(x => !x.belowFloor), `fallback at ${monthly}: lowest ${Math.round(r.lowest.bank)}`);
   }
 });
 
 test("Bedhampton closes only when Winchester's overflow beyond three days beats Bedhampton's profit, two months running", () => {
-  const i = inputs(36); i.winc = { ...i.winc, growth: { target: 40000, month: "2028-06" } };
+  const i = withBedh(inputs(36), { lastMonth: null }); i.winc = { ...i.winc, growth: { target: 40000, month: "2028-06" } };
   const long = lib.runCashModel(i);
   const k = long.rows.findIndex(r => r.month >= "2026-12" && !r.bedhOpen);
   assert.ok(k > 0, "closes when demand runs to 40,000");

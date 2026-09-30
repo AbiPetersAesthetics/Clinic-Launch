@@ -350,15 +350,23 @@ export function CashModelPanel() {
           const capSplit = sp.wincDays * perDay;
           const closeAt = capSplit + (sp.monthly * c.bedh.contributionPct / 100) / (c.winc.contributionPct / 100);
           const closed = data.rows.find(r => r.month >= sp.from && r.bedhOpen === false);
+          const cp = c.closePlan;
+          const longDate = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
           return (
             <Card className="shadow-sm">
-              <CardHeader className="pb-2"><CardTitle className="text-sm">How Abi's week is split</CardTitle></CardHeader>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Closing Bedhampton</CardTitle></CardHeader>
               <CardContent className="text-xs space-y-2 text-muted-foreground">
-                <p><span className="text-foreground font-medium">1. Bedhampton is the security.</span> From {monthLabel(sp.from)} Abi works {sp.wincDays} days at Winchester and {sp.bedhDays} at Bedhampton. Bedhampton takes {gbp(sp.monthly)} a month on its days.</p>
-                <p><span className="text-foreground font-medium">2. What Winchester's days can hold.</span> {sp.wincDays} days take up to about {gbp(capSplit)} a month: {gbp(cap.perBookedHour)} per booked hour, with a day counted full at {cap.maxBookedPct}% of {cap.hoursPerDay} hours.</p>
-                <p><span className="text-foreground font-medium">3. When Bedhampton closes.</span> Only when moving its {sp.bedhDays} days to Winchester would earn more than Bedhampton makes on them, {sp.consecutiveMonths} months running. That needs Winchester demand of about {gbp(closeAt)} a month.</p>
+                <p><span className="text-foreground font-medium">1. Until then, a split week.</span> From {monthLabel(sp.from)} Abi works {sp.wincDays} days at Winchester and {sp.bedhDays} at Bedhampton. Bedhampton takes {gbp(sp.monthly)} a month on its days.</p>
+                {sp.lastMonth ? (
+                  <p><span className="text-foreground font-medium">2. Last month at Bedhampton: {monthLabel(sp.lastMonth)}.</span> The earliest close that keeps the bank above {gbp(c.cashFloor)} on all four Winchester forecasts. By then Winchester has made a profit on its own two months running.</p>
+                ) : (
+                  <p><span className="text-foreground font-medium">2. When Bedhampton closes.</span> When moving its {sp.bedhDays} days to Winchester would earn more than Bedhampton makes on them, {sp.consecutiveMonths} months running: Winchester demand of about {gbp(closeAt)} a month, against {gbp(capSplit)} that {sp.wincDays} days can hold.</p>
+                )}
+                {sp.lastMonth && cp && (
+                  <p><span className="text-foreground font-medium">3. The checkpoint, {longDate(cp.checkpoint)}.</span> If Winchester took at least {gbp(cp.wincMin)} in each of {cp.checkMonths.map(monthLabel).join(" and ")}, close as planned. If not, keep Bedhampton to the end of {monthLabel(cp.fallbackLastMonth)}.</p>
+                )}
                 <p className="text-foreground">In this view: {closed ? `Bedhampton closes from ${closed.label}.` : "Bedhampton stays open in every month shown."}</p>
-                <p>Not counted: Bedhampton patients who follow Abi to Winchester when it closes, and an associate injector adding Winchester days.</p>
+                <p>Not counted: Bedhampton patients who follow Abi to Winchester. Every one who does adds to Winchester's takings.</p>
               </CardContent>
             </Card>
           );

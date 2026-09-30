@@ -39,6 +39,9 @@ export type CashModelConfig = Omit<CashInputs, "projectPayments" | "funding" | "
   winc: { contributionPct: number; scenario: string; growth: { target: number; month: string }; capacity: WincCapacity };
   // Actuals before the model starts, for the collapsed history block only.
   history: { bedhTakings: Record<string, number>; source: string };
+  // The decision on 1 March: close Bedhampton after split.lastMonth if Winchester has
+  // taken at least wincMin in each of the checkMonths; otherwise after fallbackLastMonth.
+  closePlan: { checkpoint: string; checkMonths: string[]; wincMin: number; fallbackLastMonth: string };
 };
 
 export const CASH_MODEL_DEFAULTS: CashModelConfig = {
@@ -48,13 +51,19 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   bedh: {
     takings: { "2026-10": 8000, "2026-11": 9000 },
     contributionPct: 54,
-    // Owner, 30 Sep: Bedhampton is the security. While Winchester builds, Abi works
-    // three days at Winchester and two at Bedhampton, and Bedhampton only closes
-    // once moving to Winchester full time makes financial sense. 7,500 a month on
-    // two days: ANS shows about 750 per clinic day now with only 2.5 hours booked,
-    // so the regulars fit into two days (about 10 booked hours a week against 14).
-    split: { from: "2026-12", monthly: 7500, bedhDays: 2, wincDays: 3, consecutiveMonths: 2 },
+    // Owner, 30 Sep: Abi cannot work both sites for long, so Bedhampton closes, and
+    // the model picks the month. Until then she works three days at Winchester and
+    // two at Bedhampton. 7,500 a month on two days: ANS shows about 750 per clinic
+    // day now with only 2.5 hours booked, so the regulars fit into two days.
+    // Last month April 2027: the earliest close that keeps the bank above the floor
+    // on all four Winchester forecasts, with Winchester profitable on its own in
+    // March and April. Closing after March breaks the floor on the cautious one.
+    split: { from: "2026-12", monthly: 7500, bedhDays: 2, wincDays: 3, consecutiveMonths: 2, lastMonth: "2027-04" },
   },
+  // At 5,000 a month in January and February Winchester is ahead of the cautious
+  // forecast (3,134 and 3,414). If it is behind, keeping Bedhampton to June holds
+  // the floor even with Bedhampton at 6,000 on its two days.
+  closePlan: { checkpoint: "2027-03-01", checkMonths: ["2027-01", "2027-02"], wincMin: 5000, fallbackLastMonth: "2027-06" },
   // Capacity: ANS shows about 300 of takings per booked hour at Bedhampton (Mar to Sep
   // 2026); a day counts as full at 80% of 7 hours. Three days hold about 21,840 a month.
   winc: { contributionPct: 58, scenario: "base", growth: { target: 22000, month: "2029-02" }, capacity: { perBookedHour: 300, hoursPerDay: 7, maxBookedPct: 80 } },

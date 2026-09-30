@@ -18,8 +18,9 @@ export type FundingIn = { month: string; amount: number; kind: "equity" | "gift"
 export type LoanTerms = { label: string; principal: number; drawMonth: string; annualRatePct: number; holidayMonths: number; repayments: number };
 // The split week: from `from`, Abi works bedhDays at Bedhampton and wincDays at
 // Winchester. Bedhampton stays open, taking `monthly`, until moving its days to
-// Winchester would earn more than keeping them, for consecutiveMonths running.
-export type BedhSplit = { from: string; monthly: number; bedhDays: number; wincDays: number; consecutiveMonths: number };
+// Winchester would earn more than keeping them, for consecutiveMonths running, or
+// until lastMonth (the planned last trading month), whichever comes first.
+export type BedhSplit = { from: string; monthly: number; bedhDays: number; wincDays: number; consecutiveMonths: number; lastMonth?: string | null };
 // What a Winchester day can hold: booked hours are worth perBookedHour, and a day
 // is counted full at maxBookedPct of hoursPerDay.
 export type WincCapacity = { perBookedHour: number; hoursPerDay: number; maxBookedPct: number };
@@ -183,6 +184,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     // demand. During the split Winchester is held to what its days can take; once
     // Bedhampton closes, Abi's week is all Winchester.
     const splitOn = !!sp && ym >= sp.from;
+    if (sp?.lastMonth && ym > sp.lastMonth) bedhOpen = false;
     const openThisMonth = bedhOpen;
     const wincDemand = wincTakings(inp, ym);
     const wincCapacity = splitOn ? (openThisMonth ? capSplit : capFull) : null;
@@ -204,7 +206,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     };
     why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} as entered` : (wincDemand > 0 ? `Growth line from the last entered month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
     if (wincCapacity != null && wincDemand > wincCapacity) why.winc += `; demand ${gbp(wincDemand)} is held to the ${gbp(wincCapacity)} that ${openThisMonth ? sp!.wincDays : sp!.wincDays + sp!.bedhDays} days a week can take`;
-    why.bedh = splitOn && !openThisMonth ? "Bedhampton closed: moving its days to Winchester paid more"
+    why.bedh = splitOn && !openThisMonth ? (sp!.lastMonth && ym > sp!.lastMonth ? `Bedhampton closed after ${label(sp!.lastMonth)}: Abi is at Winchester full time` : "Bedhampton closed: moving its days to Winchester paid more")
       : inp.bedh.takings[ym] != null ? `Bedhampton takings for ${label(ym)} as entered`
       : splitOn ? `Bedhampton on ${sp!.bedhDays} days a week, Winchester on ${sp!.wincDays}` : "Bedhampton not trading";
     if (splitOn && openThisMonth) why.switch = `Moving Bedhampton's ${sp!.bedhDays} days to Winchester would add ${gbp(switchGain)} a month there and lose ${gbp(switchLoss)} at Bedhampton: ${switchGain > switchLoss ? "worth it" : "keep Bedhampton open"}`;
