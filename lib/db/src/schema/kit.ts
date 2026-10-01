@@ -32,6 +32,8 @@ export const kitLinesTable = pgTable("kit_lines", {
   taskId: integer("task_id").notNull(),
   areaKey: text("area_key").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
+  /** The line's name on Abi's board; the plan keeps its own title. Null shows the plan title. */
+  label: text("label"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -51,6 +53,8 @@ export const kitItemsTable = pgTable("kit_items", {
   url: text("url"),
   imageUrl: text("image_url"),
   linkTitle: text("link_title"),
+  /** For paint: the colour on the Colours & finishes shortlist this tin is, so the board shows its swatch. */
+  finishOptionId: integer("finish_option_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });

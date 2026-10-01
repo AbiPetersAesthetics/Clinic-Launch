@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
 import { db } from "@workspace/db";
-import { finishSurfacesTable, finishOptionsTable } from "@workspace/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { finishSurfacesTable, finishOptionsTable, kitItemsTable } from "@workspace/db/schema";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { publicHttpUrl, linkPreview } from "../lib/link-preview";
 
 // Colours and finishes on Abi's Rooms & Kit page: the paint and flooring shortlist
@@ -85,7 +85,8 @@ router.delete("/projects/:projectId/finishes/surfaces/:surfaceId", async (req, r
   const surfaceId = parseInt(req.params.surfaceId as string);
   const [row] = await db.delete(finishSurfacesTable).where(and(eq(finishSurfacesTable.projectId, projectId), eq(finishSurfacesTable.id, surfaceId))).returning();
   if (!row) { res.status(404).json({ error: "Surface not found" }); return; }
-  await db.delete(finishOptionsTable).where(and(eq(finishOptionsTable.projectId, projectId), eq(finishOptionsTable.surfaceId, surfaceId)));
+  const gone = await db.delete(finishOptionsTable).where(and(eq(finishOptionsTable.projectId, projectId), eq(finishOptionsTable.surfaceId, surfaceId))).returning({ id: finishOptionsTable.id });
+  if (gone.length) await db.update(kitItemsTable).set({ finishOptionId: null, updatedAt: new Date() }).where(and(eq(kitItemsTable.projectId, projectId), inArray(kitItemsTable.finishOptionId, gone.map(o => o.id))));
   res.json({ ok: true });
 });
 
@@ -154,6 +155,7 @@ router.delete("/projects/:projectId/finishes/options/:optionId", async (req, res
   const [row] = await db.delete(finishOptionsTable).where(and(eq(finishOptionsTable.projectId, projectId), eq(finishOptionsTable.id, optionId))).returning();
   if (!row) { res.status(404).json({ error: "Option not found" }); return; }
   await db.update(finishSurfacesTable).set({ chosenOptionId: null, updatedAt: new Date() }).where(and(eq(finishSurfacesTable.projectId, projectId), eq(finishSurfacesTable.chosenOptionId, optionId)));
+  await db.update(kitItemsTable).set({ finishOptionId: null, updatedAt: new Date() }).where(and(eq(kitItemsTable.projectId, projectId), eq(kitItemsTable.finishOptionId, optionId)));
   res.json({ ok: true });
 });
 

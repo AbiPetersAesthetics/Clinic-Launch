@@ -15,23 +15,24 @@ import {
 
 // Rooms and kit: Abi's view. The budget lines are plan tasks (kit_lines points at
 // launch_tasks) so the figures follow the Plan & Timeline; areas only group them.
-// Each seed runs once per project and is skipped when its rows exist.
+// Each seed runs once per project and is skipped when its rows exist. The paint pot
+// comes from migrateKitV38, which also gives every line its board label and order.
 const KIT_AREAS = [
-  { areaKey: "treatment", name: "Treatment rooms (two)", sortOrder: 1, covers: "In CBS's contract: full-height partitions and the curved frontage, two doors, two basins with mixer taps and hot water, clinical vinyl flooring, scrubbable finishes, clinical lighting, sockets and isolation, door locks." },
-  { areaKey: "reception", name: "Reception", sortOrder: 2, covers: "In CBS's contract: herringbone LVT flooring, front-of-house decoration, reception lighting, the glazed screen." },
-  { areaKey: "consult", name: "Consultation room", sortOrder: 3, covers: "In CBS's contract: decoration, flooring and lighting." },
-  { areaKey: "finish", name: "Finishing touches, whole clinic", sortOrder: 4, covers: "Decoration and finishes are in CBS's contract; these lines are the extras on top." },
+  { areaKey: "treatment", name: "Treatment rooms", sortOrder: 1, covers: "Two treatment rooms; room 2 is the one the plan calls the consultation room. CBS's contract covers the partitions, doors, basins, clinical vinyl floors, lighting and locks." },
+  { areaKey: "reception", name: "Reception", sortOrder: 2, covers: "CBS's contract covers the herringbone floor, the decoration, the lighting and the glazed screen." },
+  { areaKey: "finish", name: "Finishing touches", sortOrder: 4, covers: "Extras on top of the build. Where the plan shows £0, the line was cut in the savings or carries no cost of its own: raise it in the plan before buying." },
   { areaKey: "opening", name: "Opening", sortOrder: 5, covers: "Stock, kit for the two of you, and insurance." },
 ];
-// The owner's list of 30 September 2026, in his order, matched to plan tasks by title.
+// The owner's list of 30 September 2026 as tidied on 1 October: the joinery decision
+// line repeated the installation line and is off the board, and the consultation room
+// is treatment room 2. Matched to plan tasks by title.
 const KIT_LINES: { match: RegExp; areaKey: string }[] = [
-  { match: /^Joinery.*Cabinetry.*Decision/i, areaKey: "reception" },
   { match: /^Product Display.*Retail Shelving/i, areaKey: "reception" },
   { match: /^Joinery.*Cabinetry.*Installation/i, areaKey: "reception" },
   { match: /^Wall Panelling.*Feature Finish/i, areaKey: "finish" },
   { match: /^Treatment Couch/i, areaKey: "treatment" },
   { match: /^Reception furniture and styling/i, areaKey: "reception" },
-  { match: /^Consultation Room Furniture/i, areaKey: "consult" },
+  { match: /^Consultation Room Furniture/i, areaKey: "treatment" },
   { match: /^Treatment Room Furniture/i, areaKey: "treatment" },
   { match: /^Wall Art, Certificates/i, areaKey: "finish" },
   { match: /^Furniture \/ Equipment Installation and Room Dressing/i, areaKey: "finish" },
@@ -45,13 +46,13 @@ const KIT_LINES: { match: RegExp; areaKey: string }[] = [
 // shortlists from there. The starters are the brand colours to match, not paints.
 const FINISH_SURFACES: { zone: string; role: string; name: string; brief: string; starters?: { name: string; hex: string; note: string }[] }[] = [
   { zone: "outside", role: "shop_main", name: "Shopfront: fascia, pilasters and stall riser", brief: "The white. Exterior eggshell or masonry paint. The lease and the conservation area can both have a say in shopfront colours, so check before the repaint is booked.", starters: [{ name: "Brand white", hex: "#FFFFFF", note: "The white to match: ask the merchant for their nearest exterior white or a colour match." }] },
-  { zone: "outside", role: "shop_trim", name: "Shopfront: door and window frames", brief: "The blue. The repaint is a plan line (contractor managed): shopfront, window frames and front door in the brand colours.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match. Have a sample colour matched or pick the nearest real colour." }] },
-  { zone: "inside", role: "feature", name: "Feature wall and panelling", brief: "The blue, behind the reception desk. Decorative moulding fitted by Abi's father; the plan carries £600 of materials.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match." }] },
-  { zone: "inside", role: "walls", name: "Reception and consultation room walls", brief: "Standard emulsion. Front of house decoration is in CBS's contract; the colour is Abi's call." },
-  { zone: "inside", role: "walls_clinical", name: "Treatment rooms and corridor walls", brief: "Antimicrobial emulsion (Dulux Sterishield or similar), two coats, as the infection control policy asks. Tinted ranges are limited, so pick from what the paint comes in." },
+  { zone: "outside", role: "shop_trim", name: "Shopfront: door and window frames", brief: "The blue. CBS refurbish the shopfront (Ref 17); the paint for it sits in the Paint pot.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match. Have a sample colour matched or pick the nearest real colour." }] },
+  { zone: "inside", role: "feature", name: "Feature wall and panelling", brief: "The blue, behind the reception desk. Decorative moulding fitted by Abi's father; the materials are the wall panelling line.", starters: [{ name: "Brand navy", hex: "#1F2A44", note: "The logo navy, the colour to match." }] },
+  { zone: "inside", role: "walls", name: "Reception walls", brief: "Emulsion. Front of house decoration is in CBS's contract (Ref 14); the colour is Abi's call." },
+  { zone: "inside", role: "walls_clinical", name: "Treatment rooms and corridor walls", brief: "Antimicrobial emulsion (Dulux Sterishield or similar), two coats, in both treatment rooms and the corridor, as the infection control policy asks. Tinted ranges are limited, so pick from what the paint comes in." },
   { zone: "inside", role: "woodwork", name: "Doors, frames and skirting", brief: "Eggshell or satin on the inside woodwork. The treatment rooms have coved vinyl instead of skirting." },
-  { zone: "floor", role: "floor_clinical", name: "Treatment rooms floor", brief: "Clinical safety vinyl with welded seams and 100 mm coving, in CBS's contract; Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." },
-  { zone: "floor", role: "floor_front", name: "Reception and consultation room floor", brief: "Herringbone LVT, in CBS's contract. The range and colour are Abi's to pick." },
+  { zone: "floor", role: "floor_clinical", name: "Treatment rooms floor", brief: "Clinical safety vinyl with welded seams and 100 mm coving in both treatment rooms, in CBS's contract (Ref 13); Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." },
+  { zone: "floor", role: "floor_front", name: "Reception floor", brief: "Herringbone LVT, in CBS's contract (Ref 13). The range and colour are Abi's to pick." },
 ];
 async function seedFinishes(projectId: number) {
   const existing = await db.select().from(schema.finishSurfacesTable).where(eq(schema.finishSurfacesTable.projectId, projectId));
@@ -61,6 +62,113 @@ async function seedFinishes(projectId: number) {
     const [row] = await db.insert(schema.finishSurfacesTable).values({ projectId, zone: s.zone, role: s.role, name: s.name, brief: s.brief, sortOrder: ++order }).returning();
     if (s.starters?.length) await db.insert(schema.finishOptionsTable).values(s.starters.map((o, j) => ({ projectId, surfaceId: row.id, name: o.name, brand: "Abi Peters brand", code: o.hex, hex: o.hex, note: o.note, status: "idea", sortOrder: j + 1 })));
   }
+  return true;
+}
+// V38, 1 October 2026: the owner's tidy of Abi's board. The joinery decision line
+// repeated the installation line, so it leaves the board (the plan keeps it). The
+// consultation room is treatment room 2, so its line joins the treatment rooms. A
+// paint pot, outside and inside, arrives as two plan lines at £0 for the owner to
+// price. Every line gets a short board label and a place in the room order, and the
+// area and surface texts catch up. Runs once: the paint area is written last, as the
+// marker, so a run cut short finishes on the next boot.
+const KIT_V38_PAINT = [
+  { title: "Paint: outside (shopfront white and blue)", notes: "The paint for the shopfront: the white (fascia, pilasters, stall riser) and the blue (door and window frames), chosen on Abi's Rooms & Kit board. At £0 until priced. CBS's Ref 17 covers the shopfront refurbishment: confirm which paint their price already includes." },
+  { title: "Paint: inside (walls, feature blue, woodwork)", notes: "The paint for inside: the reception walls, the feature wall blue, the antimicrobial emulsion for the treatment rooms and corridor, and the woodwork, chosen on Abi's Rooms & Kit board. At £0 until priced. CBS's Ref 14 covers the decoration: confirm which paint their price already includes." },
+];
+const KIT_V38_PAINT_AREA = { name: "Paint", covers: "The paint you buy for the decorators, outside and in. CBS's contract covers the decorating (Ref 14) and the shopfront (Ref 17): check which paint their price already includes, so this pot holds only what you choose on top." };
+const KIT_V38_AREA_ORDER: Record<string, number> = { treatment: 1, reception: 2, paint: 3, finish: 4, opening: 5, consult: 90, front: 91 };
+const KIT_V38_ORDER: { match: RegExp; label: string }[] = [
+  { match: /^Treatment Couch/i, label: "Treatment couch" },
+  { match: /^Treatment Room Furniture/i, label: "Treatment room 1: furniture, equipment and styling" },
+  { match: /^Consultation Room Furniture/i, label: "Treatment room 2: furniture and styling" },
+  { match: /^Joinery.*Cabinetry.*Installation/i, label: "Reception desk and clinical cabinetry" },
+  { match: /^Reception furniture and styling/i, label: "Reception furniture and styling" },
+  { match: /^Product Display.*Retail Shelving/i, label: "Retail shelving, display and LED" },
+  { match: /^Paint: outside/i, label: "Outside: the shopfront white and blue" },
+  { match: /^Paint: inside/i, label: "Inside: walls, the feature blue and woodwork" },
+  { match: /^Wall Panelling.*Feature Finish/i, label: "Wall panelling and feature moulding" },
+  { match: /^Wall Art, Certificates/i, label: "Wall art, certificates and picture lights" },
+  { match: /^Furniture \/ Equipment Installation and Room Dressing/i, label: "Installation and room dressing" },
+  { match: /^Retail \/ Skincare Opening Stock/i, label: "Retail and skincare opening stock" },
+  { match: /^FIGS scrubs/i, label: "Scrubs and trainers for Abi and David" },
+  { match: /^Hamilton Fraser/i, label: "Insurance: indemnity and premises" },
+];
+// Surface texts that named the consultation room or a figure that has since moved;
+// each changes only while it still reads as first seeded.
+const FINISH_V38: { role: string; from: { name?: string; brief?: string }; to: { name?: string; brief: string } }[] = [
+  { role: "shop_trim", from: { brief: "The blue. The repaint is a plan line (contractor managed): shopfront, window frames and front door in the brand colours." }, to: { brief: "The blue. CBS refurbish the shopfront (Ref 17); the paint for it sits in the Paint pot." } },
+  { role: "feature", from: { brief: "The blue, behind the reception desk. Decorative moulding fitted by Abi's father; the plan carries £600 of materials." }, to: { brief: "The blue, behind the reception desk. Decorative moulding fitted by Abi's father; the materials are the wall panelling line." } },
+  { role: "walls", from: { name: "Reception and consultation room walls" }, to: { name: "Reception walls", brief: "Emulsion. Front of house decoration is in CBS's contract (Ref 14); the colour is Abi's call." } },
+  { role: "walls_clinical", from: { brief: "Antimicrobial emulsion (Dulux Sterishield or similar), two coats, as the infection control policy asks. Tinted ranges are limited, so pick from what the paint comes in." }, to: { brief: "Antimicrobial emulsion (Dulux Sterishield or similar), two coats, in both treatment rooms and the corridor, as the infection control policy asks. Tinted ranges are limited, so pick from what the paint comes in." } },
+  { role: "floor_clinical", from: { brief: "Clinical safety vinyl with welded seams and 100 mm coving, in CBS's contract; Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." }, to: { brief: "Clinical safety vinyl with welded seams and 100 mm coving in both treatment rooms, in CBS's contract (Ref 13); Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." } },
+  { role: "floor_front", from: { name: "Reception and consultation room floor" }, to: { name: "Reception floor", brief: "Herringbone LVT, in CBS's contract (Ref 13). The range and colour are Abi's to pick." } },
+];
+async function migrateKitV38(projectId: number) {
+  const areas = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
+  if (areas.some(a => a.areaKey === "paint")) return false;
+  const lines = await db.select().from(schema.kitLinesTable).where(eq(schema.kitLinesTable.projectId, projectId));
+  if (!lines.length) return false;
+  const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+  if (!phases.length) return false;
+  const tasks = await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)));
+  const live = tasks.filter(t => !t.archived);
+  const titleOf = new Map(tasks.map(t => [t.id, t.title]));
+  const lineFor = (re: RegExp) => lines.find(l => re.test(titleOf.get(l.taskId) ?? ""));
+
+  // 1. The decision line leaves the board; anything on it moves to the installation line.
+  const decision = lineFor(/^Joinery.*Cabinetry.*Decision/i), install = lineFor(/^Joinery.*Cabinetry.*Installation/i);
+  if (decision) {
+    if (install) await db.update(schema.kitItemsTable).set({ taskId: install.taskId, areaKey: install.areaKey, updatedAt: new Date() }).where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.taskId, decision.taskId)));
+    await db.delete(schema.kitLinesTable).where(eq(schema.kitLinesTable.id, decision.id));
+  }
+
+  // 2. The consultation room is treatment room 2.
+  await db.update(schema.kitLinesTable).set({ areaKey: "treatment" }).where(and(eq(schema.kitLinesTable.projectId, projectId), eq(schema.kitLinesTable.areaKey, "consult")));
+  await db.update(schema.kitItemsTable).set({ areaKey: "treatment", updatedAt: new Date() }).where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.areaKey, "consult")));
+
+  // 3. The paint pot: two plan lines at £0, at the end of the phase that holds CBS's decoration line.
+  const anchor = live.find(t => /^Ref 14 - Decoration/i.test(t.title)) ?? live.find(t => /^Wall Panelling/i.test(t.title)) ?? live.find(t => lines.some(l => l.taskId === t.id));
+  if (!anchor) return false;
+  let sortOrder = tasks.filter(t => t.phaseId === anchor.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0);
+  for (const p of KIT_V38_PAINT) {
+    let task = live.find(t => t.title === p.title);
+    if (!task) [task] = await db.insert(schema.tasksTable).values({ phaseId: anchor.phaseId, title: p.title, notes: p.notes, owner: "Abi + David", status: "not_started", riskLevel: "low", costTier: "low", selectedCost: 0, costVatStatus: "inc_vat", supplyScope: "to_confirm", procurementStatus: "to_specify", priority: "medium", budgetStatus: "not_set", includeInLaunchBudget: true, includeInRiskView: true, sortOrder: ++sortOrder }).returning();
+    if (!task) continue;
+    titleOf.set(task.id, task.title);
+    await db.insert(schema.kitLinesTable).values({ projectId, taskId: task.id, areaKey: "paint", sortOrder: 0 }).onConflictDoNothing();
+  }
+
+  // 4. Board labels and the room order. A line the order does not name keeps its place after the rest.
+  const now = await db.select().from(schema.kitLinesTable).where(eq(schema.kitLinesTable.projectId, projectId));
+  const placed = new Set<number>();
+  let n = 0;
+  for (const spec of KIT_V38_ORDER) {
+    const l = now.find(x => !placed.has(x.id) && spec.match.test(titleOf.get(x.taskId) ?? ""));
+    if (!l) continue;
+    placed.add(l.id);
+    await db.update(schema.kitLinesTable).set({ sortOrder: ++n, label: l.label ?? spec.label }).where(eq(schema.kitLinesTable.id, l.id));
+  }
+  for (const l of now.filter(x => !placed.has(x.id)).sort((a, b) => a.sortOrder - b.sortOrder)) await db.update(schema.kitLinesTable).set({ sortOrder: ++n }).where(eq(schema.kitLinesTable.id, l.id));
+
+  // 5. Area names, texts and order. The consultation room and the old shop front areas
+  // have no lines now, so the page leaves them out; they sort last.
+  for (const a of areas) {
+    const seeded = KIT_AREAS.find(x => x.areaKey === a.areaKey);
+    const order = KIT_V38_AREA_ORDER[a.areaKey];
+    if (!seeded && order == null) continue;
+    await db.update(schema.kitAreasTable).set({ ...(seeded ? { name: seeded.name, covers: seeded.covers } : {}), ...(order != null ? { sortOrder: order } : {}), updatedAt: new Date() }).where(eq(schema.kitAreasTable.id, a.id));
+  }
+
+  // 6. Surface texts.
+  for (const f of FINISH_V38) {
+    const conds = [eq(schema.finishSurfacesTable.projectId, projectId), eq(schema.finishSurfacesTable.role, f.role)];
+    if (f.from.name) conds.push(eq(schema.finishSurfacesTable.name, f.from.name));
+    if (f.from.brief) conds.push(eq(schema.finishSurfacesTable.brief, f.from.brief));
+    await db.update(schema.finishSurfacesTable).set({ ...f.to, updatedAt: new Date() }).where(and(...conds));
+  }
+
+  // 7. The marker, last.
+  await db.insert(schema.kitAreasTable).values({ projectId, areaKey: "paint", name: KIT_V38_PAINT_AREA.name, covers: KIT_V38_PAINT_AREA.covers, sortOrder: KIT_V38_AREA_ORDER.paint, budgetGbp: 0 });
   return true;
 }
 async function seedKit(projectId: number) {
@@ -629,6 +737,9 @@ export async function runStartupSeed(): Promise<void> {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    // V38: a board label per kit line, and the shortlisted colour a paint item is.
+    await db.execute(sql`ALTER TABLE kit_lines ADD COLUMN IF NOT EXISTS label TEXT`);
+    await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS finish_option_id INTEGER`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,
@@ -1020,9 +1131,11 @@ export async function runStartupSeed(): Promise<void> {
         // Rooms and kit: added 30 September 2026, so an existing install gets it here.
         if (await seedKit(projectId)) console.log("  ✅ Rooms and kit areas seeded");
         const kitLines = await seedKitLines(projectId);
-        if (kitLines) console.log(`  ✅ Rooms and kit lines matched to the plan (${kitLines} of 13)`);
+        if (kitLines) console.log(`  ✅ Rooms and kit lines matched to the plan (${kitLines} of ${KIT_LINES.length})`);
 
         if (await seedFinishes(projectId)) console.log("  ✅ Colours and finishes seeded");
+        // V38, 1 October 2026: the owner's tidy of Abi's board (see migrateKitV38).
+        if (await migrateKitV38(projectId)) console.log("  ✅ Rooms and kit tidied: paint pot, treatment room 2, board labels");
 
         // V32 migration: business record of 26 September 2026, group B (approved by the owner).
         // B4: the approved June budget is 81,786, not the 80,000 placeholder. Guarded on the
@@ -1227,6 +1340,7 @@ export async function runStartupSeed(): Promise<void> {
     await seedKit(projectId);
     await seedKitLines(projectId);
     await seedFinishes(projectId);
+    await migrateKitV38(projectId);
 
     console.log(`🎉 Startup seed complete: 7 phases, ${totalTasks} tasks (Winchester V5)`);
   } catch (err) {

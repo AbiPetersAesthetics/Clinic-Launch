@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { kitAreasTable, kitLinesTable, kitItemsTable, tasksTable, phasesTable, propertiesTable, propertyTaskOverridesTable } from "@workspace/db/schema";
+import { kitAreasTable, kitLinesTable, kitItemsTable, finishOptionsTable, tasksTable, phasesTable, propertiesTable, propertyTaskOverridesTable } from "@workspace/db/schema";
 import { eq, and, asc, inArray } from "drizzle-orm";
 import { publicHttpUrl, linkPreview } from "../lib/link-preview";
 
@@ -29,7 +29,7 @@ function vatBasis(invoice: string | null, cost: string | null): string {
 
 export type KitLineView = {
   id: number; taskId: number; areaKey: string; sortOrder: number;
-  title: string; phase: string;
+  title: string; label: string | null; phase: string;
   /** The figure Abi plans against: actual if paid, else committed, else selected. */
   budgetGbp: number; basis: string;
   planStatus: "paid" | "part-paid" | "committed" | "planned"; amountPaidGbp: number;
@@ -50,7 +50,7 @@ async function loadLines(projectId: number): Promise<KitLineView[]> {
   if (prop) for (const o of await db.select().from(propertyTaskOverridesTable).where(eq(propertyTaskOverridesTable.propertyId, prop.id))) ovr.set(o.taskId, o);
   return lines.map(l => {
     const t = tasks.find(x => x.id === l.taskId);
-    if (!t || t.archived) return { id: l.id, taskId: l.taskId, areaKey: l.areaKey, sortOrder: l.sortOrder, title: "Plan line no longer in the plan", phase: "", budgetGbp: 0, basis: "", planStatus: "planned" as const, amountPaidGbp: 0, savingBaseline: null, savingApplied: false, missing: true };
+    if (!t || t.archived) return { id: l.id, taskId: l.taskId, areaKey: l.areaKey, sortOrder: l.sortOrder, title: "Plan line no longer in the plan", label: l.label ?? null, phase: "", budgetGbp: 0, basis: "", planStatus: "planned" as const, amountPaidGbp: 0, savingBaseline: null, savingApplied: false, missing: true };
     const o = ovr.get(t.id) ?? {};
     const pick = (k: string) => (o[k] != null ? o[k] : (t as any)[k]);
     const selected = Number(pick("selectedCost") ?? 0), committed = Number(pick("committedCost") ?? 0), actual = Number(pick("actualCost") ?? 0);
@@ -58,7 +58,7 @@ async function loadLines(projectId: number): Promise<KitLineView[]> {
     const budget = paid === "paid" && actual > 0 ? actual : committed > 0 ? committed : selected;
     const planStatus = paid === "paid" ? "paid" : paid === "part-paid" ? "part-paid" : committed > 0 ? "committed" : "planned";
     return {
-      id: l.id, taskId: t.id, areaKey: l.areaKey, sortOrder: l.sortOrder, title: t.title, phase: phaseName.get(t.phaseId) ?? "",
+      id: l.id, taskId: t.id, areaKey: l.areaKey, sortOrder: l.sortOrder, title: t.title, label: l.label ?? null, phase: phaseName.get(t.phaseId) ?? "",
       budgetGbp: Math.round(budget), basis: vatBasis(pick("invoiceVatStatus"), pick("costVatStatus")),
       planStatus, amountPaidGbp: Math.round(Number(pick("amountPaidGbp") ?? 0) || (paid === "paid" ? budget : 0)),
       savingBaseline: t.savingBaseline != null ? Math.round(Number(t.savingBaseline)) : null, savingApplied: !!t.savingApplied,
@@ -95,6 +95,16 @@ router.patch("/projects/:projectId/kit/areas/:areaId", async (req, res) => {
   res.json(updated);
 });
 
+// A colour from the Colours & finishes shortlist, for paint: its id, null for none, or
+// "bad" when the id is not one of this project's options.
+async function shortlistColour(projectId: number, v: unknown): Promise<number | null | "bad"> {
+  if (v === null || v === undefined || v === "") return null;
+  const id = Number(v);
+  if (!Number.isInteger(id)) return "bad";
+  const [o] = await db.select({ id: finishOptionsTable.id }).from(finishOptionsTable).where(and(eq(finishOptionsTable.projectId, projectId), eq(finishOptionsTable.id, id)));
+  return o ? o.id : "bad";
+}
+
 async function lineFor(projectId: number, taskId: number) {
   const [line] = await db.select().from(kitLinesTable).where(and(eq(kitLinesTable.projectId, projectId), eq(kitLinesTable.taskId, taskId)));
   return line ?? null;
@@ -116,8 +126,10 @@ router.post("/projects/:projectId/kit/items", async (req, res) => {
   const rawUrl = typeof body.url === "string" ? body.url.trim() : "";
   const u = rawUrl ? publicHttpUrl(rawUrl) : null;
   if (rawUrl && !u) { res.status(400).json({ error: "The link needs to be a full web address, starting http or https" }); return; }
+  const colour = await shortlistColour(projectId, body.finishOptionId);
+  if (colour === "bad") { res.status(400).json({ error: "That colour is not on the Colours & finishes shortlist" }); return; }
   const preview = u ? await linkPreview(u) : { imageUrl: null, title: null };
-  const [created] = await db.insert(kitItemsTable).values({ projectId, areaKey: line.areaKey, taskId, name, amountGbp: amount, status, note: typeof body.note === "string" ? body.note : null, url: u ? u.toString() : null, imageUrl: preview.imageUrl, linkTitle: preview.title }).returning();
+  const [created] = await db.insert(kitItemsTable).values({ projectId, areaKey: line.areaKey, taskId, name, amountGbp: amount, status, note: typeof body.note === "string" ? body.note : null, url: u ? u.toString() : null, imageUrl: preview.imageUrl, linkTitle: preview.title, finishOptionId: colour }).returning();
   res.status(201).json(created);
 });
 
@@ -140,6 +152,11 @@ router.patch("/projects/:projectId/kit/items/:itemId", async (req, res) => {
       const preview = await linkPreview(u);
       patch.url = u.toString(); patch.imageUrl = preview.imageUrl; patch.linkTitle = preview.title;
     }
+  }
+  if ("finishOptionId" in body) {
+    const colour = await shortlistColour(projectId, body.finishOptionId);
+    if (colour === "bad") { res.status(400).json({ error: "That colour is not on the Colours & finishes shortlist" }); return; }
+    patch.finishOptionId = colour;
   }
   if ("taskId" in body) {
     const line = await lineFor(projectId, Number(body.taskId));
