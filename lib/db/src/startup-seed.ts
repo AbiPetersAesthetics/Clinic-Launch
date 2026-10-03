@@ -740,6 +740,46 @@ export async function runStartupSeed(): Promise<void> {
     // V38: a board label per kit line, and the shortlisted colour a paint item is.
     await db.execute(sql`ALTER TABLE kit_lines ADD COLUMN IF NOT EXISTS label TEXT`);
     await db.execute(sql`ALTER TABLE kit_items ADD COLUMN IF NOT EXISTS finish_option_id INTEGER`);
+    // V39: the credit cards register and what is on each card.
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS credit_cards (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        holder TEXT,
+        account TEXT NOT NULL DEFAULT 'business',
+        last4 TEXT,
+        credit_limit_gbp REAL NOT NULL DEFAULT 0,
+        apr_pct REAL,
+        offers_json TEXT NOT NULL DEFAULT '[]',
+        min_payment_pct REAL,
+        min_payment_floor_gbp REAL,
+        statement_day INTEGER,
+        due_day INTEGER,
+        direct_debit TEXT NOT NULL DEFAULT 'none',
+        direct_debit_gbp REAL,
+        notes TEXT,
+        status TEXT NOT NULL DEFAULT 'open',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await db.execute(sql`
+      CREATE TABLE IF NOT EXISTS card_entries (
+        id SERIAL PRIMARY KEY,
+        project_id INTEGER NOT NULL,
+        card_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        kind TEXT NOT NULL DEFAULT 'purchase',
+        description TEXT NOT NULL,
+        amount_gbp REAL NOT NULL DEFAULT 0,
+        task_id INTEGER,
+        note TEXT,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,

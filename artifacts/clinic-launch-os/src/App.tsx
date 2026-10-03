@@ -31,6 +31,7 @@ import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
 import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
+import CardsPage from "@/pages/cards";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -161,6 +162,7 @@ function Router() {
         <Route path="/backlinks" component={BacklinksPage} />
         <Route path="/kit" component={KitPage} />
         <Route path="/build-cash" component={BuildCashPage} />
+        <Route path="/cards" component={CardsPage} />
         <Route path="/competition" component={CompetitionPage} />
         <Route path="/market" component={MarketPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />

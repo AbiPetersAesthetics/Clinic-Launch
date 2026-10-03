@@ -12,6 +12,7 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 import { runCashModel, addMonths, type CashInputs, type ProjectPayment, type CashCheck } from "../lib/cash-model";
 import { CASH_MODEL_DEFAULTS, WINC_SCENARIOS, type CashModelConfig } from "../lib/cash-model-defaults";
+import { exVatOf } from "../lib/vat-basis";
 
 const router = Router();
 
@@ -25,18 +26,6 @@ function mergeDeep<T>(base: T, over: unknown): T {
 }
 
 // Ex VAT value of a plan line. Invoice status wins; otherwise the planning flag.
-function exVatOf(amount: number, invoiceVat: string | null, costVat: string | null): { ex: number; basis: string } {
-  const inv = (invoiceVat ?? "").toLowerCase();
-  if (inv === "inc") return { ex: amount / 1.2, basis: "inc VAT on the invoice" };
-  if (inv === "exc") return { ex: amount, basis: "ex VAT on the invoice" };
-  if (inv === "exempt") return { ex: amount, basis: "no VAT" };
-  const c = (costVat ?? "").toLowerCase();
-  if (/exempt|vat_na|n\/a|no vat|not applicable/.test(c)) return { ex: amount, basis: "no VAT" };
-  if (/inc/.test(c)) return { ex: amount / 1.2, basis: "planned inc VAT" };
-  if (/ex_vat|ex vat|exc/.test(c)) return { ex: amount, basis: "planned ex VAT" };
-  return { ex: amount / 1.2, basis: "VAT basis not set, assumed inc VAT" };
-}
-
 export type ProjectLine = {
   taskId: number; title: string; phase: string; status: "paid" | "part-paid" | "unpaid";
   recorded: number; paid: number; remainingExVat: number; vatBasis: string;

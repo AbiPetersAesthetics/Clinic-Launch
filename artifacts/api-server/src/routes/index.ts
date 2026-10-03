@@ -33,6 +33,7 @@ import workforceRouter from "./workforce";
 import backlinksRouter from "./backlinks";
 import kitRouter from "./kit";
 import finishesRouter from "./finishes";
+import cardsRouter from "./cards";
 
 const router: IRouter = Router();
 
@@ -70,5 +71,6 @@ router.use(workforceRouter);
 router.use(backlinksRouter);
 router.use(kitRouter);
 router.use(finishesRouter);
+router.use(cardsRouter);
 
 export default router;
