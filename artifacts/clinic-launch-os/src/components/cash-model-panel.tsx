@@ -3,7 +3,9 @@
 // financial-year (August to July) totals. Every cell's hover says where its
 // number came from. Numbers come from GET /api/projects/:id/cash-model.
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ReferenceDot, ResponsiveContainer, Legend,
 } from "recharts";
@@ -38,6 +40,8 @@ type CashModel = {
   loans: { label: string; principal: number; drawMonth: string; annualRatePct: number; holidayMonths: number; repayments: number }[];
   ownership: { from: string | null; status: string; holders: { name: string; equityPercent: number }[] }[];
   history: { bedhTakings: Record<string, number>; source: string };
+  bank: { balanceGbp: number; asAt: string; inBalance: number[]; startMonth: string; elapsedShare: number; tradedSoFar: number; openingUsed: number } | null;
+  fundingOptions: { id: number; label: string; month: string; amount: number }[];
 };
 
 // Money: whole pounds, a true minus sign for negatives.
@@ -47,6 +51,86 @@ const gbp = (v: number | null | undefined) => {
   return `${r < 0 ? "−" : ""}£${Math.abs(r).toLocaleString("en-GB")}`;
 };
 const monthLabel = (ym: string) => { const [y, m] = ym.split("-").map(Number); return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][m - 1]} ${String(y).slice(2)}`; };
+
+const todayIso = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+const longDate = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); };
+
+// The bank today: the owner enters the balance and its date, and ticks any funding that has
+// already landed in it. The model starts from here; lines marked paid are already in it.
+function BankCard({ data }: { data: CashModel }) {
+  const qc = useQueryClient();
+  const bank = data.bank;
+  const [editing, setEditing] = useState(!bank);
+  const [amount, setAmount] = useState(bank ? String(bank.balanceGbp) : "");
+  const [asAt, setAsAt] = useState(bank?.asAt ?? todayIso());
+  const [inBalance, setInBalance] = useState<number[]>(bank?.inBalance ?? []);
+  const [error, setError] = useState<string | null>(null);
+  const due = data.fundingOptions.filter(f => f.month <= asAt.slice(0, 7));
+  const save = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
+      const r = await fetch(`/api/projects/${PROJECT_ID}/cash-model/bank`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? "Could not save the balance");
+      return r.json();
+    },
+    onSuccess: () => { setError(null); setEditing(false); qc.invalidateQueries({ queryKey: ["cash-model"] }); },
+    onError: (e: unknown) => setError(e instanceof Error ? e.message : "Could not save the balance"),
+  });
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const n = parseFloat(amount.replace(/[£,\s]/g, ""));
+    if (!Number.isFinite(n)) { setError("Enter the balance in pounds"); return; }
+    save.mutate({ balanceGbp: n, asAt, inBalance: inBalance.filter(id => due.some(f => f.id === id)) });
+  };
+  const month = bank ? monthLabel(bank.startMonth) : "";
+  return (
+    <Card className="shadow-sm border-primary/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-[220px]">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Bank today</div>
+            {bank
+              ? <div className="text-2xl font-semibold tabular-nums leading-tight">{gbp(bank.balanceGbp)} <span className="text-sm font-normal text-muted-foreground">on {longDate(bank.asAt)}</span></div>
+              : <div className="text-sm mt-0.5">Not entered yet: the model starts from the planned {gbp(data.config.openingBank)} on {longDate(data.config.openingDate)}.</div>}
+            {bank && (
+              <p className="text-xs text-muted-foreground mt-1 max-w-3xl leading-relaxed">
+                The model starts from this balance. Lines marked paid in the plan are already in it; everything unpaid is still to come
+                {bank.elapsedShare > 0 ? <>, and {month}'s day-to-day trading counts only from {longDate(bank.asAt)} (about {gbp(bank.tradedSoFar)} of it is taken as already in the balance, so {month} opens at {gbp(bank.openingUsed)} in the table)</> : null}.
+                {due.length > 0 && <> Funding due by then: {due.map(f => `${f.label} ${gbp(f.amount)} ${bank.inBalance.includes(f.id) ? "(in this balance)" : "(still to come)"}`).join("; ")}.</>}
+              </p>
+            )}
+          </div>
+          {!editing && <Button type="button" size="sm" variant="outline" onClick={() => { setAmount(bank ? String(bank.balanceGbp) : ""); setAsAt(todayIso()); setInBalance(bank?.inBalance ?? []); setEditing(true); }}>Update the balance</Button>}
+        </div>
+        {editing && (
+          <form onSubmit={submit} className="rounded-md border bg-muted/30 p-3 space-y-3">
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">Balance (£)
+                <Input autoFocus type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} className="h-9 w-40 bg-background text-foreground tabular-nums" />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">As at
+                <Input type="date" value={asAt} onChange={e => setAsAt(e.target.value)} className="h-9 w-44 bg-background text-foreground" />
+              </label>
+              <Button type="submit" size="sm" className="h-9" disabled={save.isPending}>{save.isPending ? "Saving…" : "Save the balance"}</Button>
+              {bank && <Button type="button" size="sm" variant="ghost" className="h-9" onClick={() => setEditing(false)}>Cancel</Button>}
+            </div>
+            {due.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-xs font-medium text-muted-foreground">Funding due by then: tick any that is already in this balance</div>
+                {due.map(f => (
+                  <label key={f.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" className="h-4 w-4" checked={inBalance.includes(f.id)} onChange={e => setInBalance(list => e.target.checked ? [...list, f.id] : list.filter(id => id !== f.id))} />
+                    <span>{f.label}</span><span className="tabular-nums text-muted-foreground">{gbp(f.amount)}, due {monthLabel(f.month)}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {error && <p className="text-xs text-rose-700">{error}</p>}
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 function Cell({ v, title, strong, tone, sub }: { v: number; title?: string; strong?: boolean; tone?: "neg" | "pos" | "muted"; sub?: string }) {
   const colour = tone === "muted" ? "text-muted-foreground" : v < -0.5 ? "text-rose-600 dark:text-rose-400" : tone === "pos" ? "text-emerald-700 dark:text-emerald-400" : "";
@@ -107,6 +191,8 @@ export function CashModelPanel() {
 
   return (
     <div className="space-y-6">
+      <BankCard data={data} />
+
       {/* ── Header, controls and summary ─────────────────────────────────── */}
       <Card className="shadow-sm">
         <CardHeader className="pb-3">

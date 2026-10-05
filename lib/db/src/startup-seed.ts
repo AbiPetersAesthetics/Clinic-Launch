@@ -1248,6 +1248,21 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`UPDATE launch_tasks SET archived = TRUE, archived_reason = 'Not using Croma: Arundel does the fire alarm (owner, 5 October 2026).', updated_at = NOW() WHERE title ILIKE 'Instruct Croma for fire alarm works%' AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         const V42_NOTE = "Arundel fire alarm (total): 1,368, taken as inc VAT (1,140 plus VAT); confirm against Arundel's quote. Payment terms: 30% deposit on booking, 70% when the works are complete. This line was Variation 1, Firestopping works (T&J), on the CBS contract at 1,579 ex VAT (1,894.80 inc VAT). It is no longer a variation and not CBS's work: Arundel will do it, and the Croma fire alarm line has come out of the plan. Changed 5 October 2026.";
         await db.execute(sql`UPDATE launch_tasks SET payment_plan_json = '[{"month":"2026-10","share":0.3,"method":"bank"},{"month":"2026-11","share":0.7,"method":"bank"}]', notes = ${V42_NOTE}, updated_at = NOW() WHERE title = 'Arundel fire alarm (total)' AND payment_plan_json LIKE '%"2027-05"%' AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
+        // V43, 5 October 2026 (owner): the bank today is 27,000; James's 37,000 and Bill's 10,000
+        // are not in it yet. Set once (bankSeeded marks it), so a balance the owner later enters,
+        // changes or clears on the Money page is never overwritten.
+        {
+          const [fm] = await db.select().from(schema.financialsTable).where(eq(schema.financialsTable.projectId, projectId));
+          if (fm) {
+            let stored: Record<string, unknown> | null = {};
+            try { stored = JSON.parse((fm as any).cashModelJson || "{}") || {}; } catch { stored = null; }
+            if (stored && !stored.bankSeeded && !stored.bank) {
+              stored.bank = { balanceGbp: 27000, asAt: "2026-10-05", inBalance: [], savedAt: "2026-10-05T20:30:00.000Z" };
+              stored.bankSeeded = true;
+              await db.update(schema.financialsTable).set({ cashModelJson: JSON.stringify(stored) } as any).where(eq(schema.financialsTable.projectId, projectId));
+            }
+          }
+        }
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.

@@ -109,6 +109,11 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     for (const key of mutableKeys) {
       if (body[key] !== undefined) patch[key] = body[key];
     }
+    // A line marked paid has its amount paid equal to its actual cost, whichever the form sent.
+    if (patch.paidStatus === "paid") {
+      if (patch.actualCost == null && patch.amountPaidGbp != null) patch.actualCost = patch.amountPaidGbp;
+      if (patch.amountPaidGbp === undefined && patch.actualCost != null) patch.amountPaidGbp = patch.actualCost;
+    }
 
     // Recalculate selectedCost using override → base fallback chain
     const tier = (body.costTier ?? existing_override?.costTier ?? existing.costTier) as string;
@@ -145,6 +150,11 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     if (body.savingApplied !== undefined)   globalUpdates.savingApplied = body.savingApplied;
     if (body.savingOrder !== undefined)     globalUpdates.savingOrder = body.savingOrder;
     if (body.phaseId !== undefined)         globalUpdates.phaseId = body.phaseId;
+    // Spend goes onto the line itself as well, so every page reads the same figures and a
+    // cleared payment is cleared everywhere.
+    for (const key of ["actualCost", "committedCost", "paidStatus", "amountPaidGbp", "paymentDate", "invoiceRef", "invoiceDate", "varianceNote", "invoiceVatStatus", "invoiceFileUrl"] as const) {
+      if (patch[key] !== undefined) globalUpdates[key] = patch[key];
+    }
     if (body.dependencies !== undefined) {
       globalUpdates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;
     }

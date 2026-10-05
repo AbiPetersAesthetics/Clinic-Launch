@@ -3379,17 +3379,12 @@ export default function ProjectPage() {
               if (!aDate && bDate) return 1;
               return 0;
             });
-          // Paid so far in this group: full actual for paid lines, partial for part-paid.
-          const paidTotal = (phase.tasks ?? []).reduce((s, t) => {
-            const ta = t as any;
-            if (ta.archived) return s;
-            const paid = ta.paidStatus === "paid" ? (ta.actualCost ?? 0)
-              : ta.paidStatus === "part-paid" ? (ta.amountPaidGbp ?? 0)
-              : 0;
-            return s + (paid || 0);
-          }, 0);
-          // Never negative: if a group is paid over its selected estimate, nothing is left to pay.
-          const remainingCost = Math.max(0, phase.selectedCostTotal - paidTotal);
+          // The group at its live figure and what is left to pay, from the same figures as the
+          // tiles at the top, so the groups add up to them: each line at what was paid if paid,
+          // else what is committed, else its selected cost.
+          const phaseLive = (projectControls as any)?.categoryBreakdown?.find((c: any) => c.phaseId === phase.id);
+          const liveCost = phaseLive ? phaseLive.forecastFinal : phase.selectedCostTotal;
+          const remainingCost = phaseLive ? Math.max(0, phaseLive.forecastFinal - phaseLive.actualSpend) : phase.selectedCostTotal;
           if (sortedTasks.length === 0) return null;
 
           return (
@@ -3424,12 +3419,12 @@ export default function ProjectPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                      Selected Cost
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1" title={`Each line at what was paid if paid, else what is committed, else its selected cost. Selected estimates: ${formatGBP(phase.selectedCostTotal)}.`}>
+                      Live / Actual
                     </p>
-                    <p className="font-semibold">{formatGBP(phase.selectedCostTotal)}</p>
+                    <p className="font-semibold tabular-nums">{formatGBP(liveCost)}</p>
                     <p className="text-[11px] text-muted-foreground uppercase tracking-wider mt-1.5">
-                      Remaining
+                      Remaining to pay
                     </p>
                     <p className="text-sm font-medium tabular-nums">{formatGBP(remainingCost)}</p>
                   </div>

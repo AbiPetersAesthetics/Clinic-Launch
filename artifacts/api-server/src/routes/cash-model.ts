@@ -32,11 +32,46 @@ export type ProjectLine = {
   plan: { month: string; share: number; method: "bank" | "card" }[]; planProblem: string | null;
 };
 
+// The bank today, entered on the Money page: the balance, its date, and the funding the owner
+// has ticked as already in it. Stored in cash_model_json under "bank".
+export type BankBalance = { balanceGbp: number; asAt: string; inBalance: number[] };
+function readBank(stored: unknown): BankBalance | null {
+  const b = (stored as any)?.bank;
+  if (!b || typeof b.balanceGbp !== "number" || !Number.isFinite(b.balanceGbp) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.asAt ?? ""))) return null;
+  return { balanceGbp: b.balanceGbp, asAt: String(b.asAt), inBalance: Array.isArray(b.inBalance) ? b.inBalance.map(Number).filter(Number.isInteger) : [] };
+}
+
+// The opening for the model's first month when the balance is entered part-way through it:
+// the balance, less the day-to-day trading of the days already gone (takings kept after VAT
+// and products, less running costs paid from the bank and rates), so the month counts only
+// what is still to come. Dated items (unpaid plan bills, funding, loans, rent, VAT, Abi's
+// pay) count in full; lines marked paid are already in the balance.
+function openFromBank(inputs: CashInputs, bank: BankBalance) {
+  const ym = inputs.startMonth;
+  let elapsedShare = 0;
+  if (bank.asAt.slice(0, 7) === ym) {
+    const day = Number(bank.asAt.slice(8, 10));
+    const daysInMonth = new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0).getDate();
+    elapsedShare = Math.min(1, Math.max(0, (day - 1) / daysInMonth));
+  }
+  let tradedSoFar = 0;
+  if (elapsedShare > 0) {
+    const first = runCashModel({ ...inputs, openingBank: 0 }).rows[0];
+    const marketingOnCard = inputs.marketing.cardFrom != null && ym >= inputs.marketing.cardFrom;
+    const dayToDay = first.total.contribution - first.running.utilities - first.running.general - (marketingOnCard ? 0 : first.running.marketing) - first.rates;
+    tradedSoFar = Math.round(elapsedShare * dayToDay * 100) / 100;
+  }
+  return { ...bank, startMonth: ym, elapsedShare, tradedSoFar, openingUsed: Math.round((bank.balanceGbp - tradedSoFar) * 100) / 100 };
+}
+
 export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number } = {}) {
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   let stored: unknown = {};
   try { stored = JSON.parse((model as any)?.cashModelJson || "{}"); } catch { stored = {}; }
   const config = mergeDeep<CashModelConfig>(CASH_MODEL_DEFAULTS, stored);
+  // The bank today, when entered, is where the model starts.
+  const bank = readBank(stored);
+  if (bank && bank.asAt.slice(0, 7) > config.startMonth) config.startMonth = bank.asAt.slice(0, 7);
   const scenarioKey = opts.scenario && WINC_SCENARIOS[opts.scenario] ? opts.scenario : (WINC_SCENARIOS[config.winc.scenario] ? config.winc.scenario : "base");
   const scen = WINC_SCENARIOS[scenarioKey];
   // Alternatives follow the same growth shape, scaled to their own June 2027 level.
@@ -87,10 +122,12 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   // ── Funding and loans ──
   const inv = (await db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId))).filter(i => !(i as any).archived);
   const ym = (d: string | null) => (d ? d.slice(0, 7) : config.startMonth);
-  const funding: CashInputs["funding"] = inv.filter(i => i.type === "equity" || i.type === "gift")
+  // Funding ticked as already in the bank balance is not counted again.
+  const funding: CashInputs["funding"] = inv.filter(i => (i.type === "equity" || i.type === "gift") && !bank?.inBalance.includes(i.id))
     .map(i => ({ month: ym(i.depositDate), amount: i.amountGbp, kind: i.type as "equity" | "gift", label: i.name }));
   const loans: CashInputs["loans"] = inv.filter(i => i.type === "loan")
     .map(i => ({ label: i.name, principal: i.amountGbp, drawMonth: ym(i.depositDate), annualRatePct: i.interestRatePercent, holidayMonths: (i as any).holidayMonths ?? 0, repayments: i.repaymentTermMonths }));
+  const fundingOptions = inv.filter(i => i.type === "equity" || i.type === "gift").map(i => ({ id: i.id, label: i.name, month: ym(i.depositDate), amount: i.amountGbp }));
 
   // ── Ownership over time ──
   const sh = await db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId));
@@ -105,11 +142,13 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const ownership = [...periods.values()].sort((a, b) => (a.from ?? "").localeCompare(b.from ?? ""));
 
   const months = Math.min(Math.max(opts.months ?? 12, 9), 48);
-  const inputs: CashInputs = {
+  const planned: CashInputs = {
     ...config, months,
     winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
     projectPayments: payments, funding, loans,
   };
+  const bankView = bank ? openFromBank(planned, bank) : null;
+  const inputs: CashInputs = bankView ? { ...planned, openingBank: bankView.openingUsed } : planned;
   const result = runCashModel(inputs);
 
   // Sanity check 5: every unpaid pound has exactly one payment month.
@@ -131,7 +170,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   return {
     scenario: scenarioKey,
     scenarios: Object.fromEntries(Object.entries(WINC_SCENARIOS).map(([k, v]) => [k, { label: v.label, note: v.note }])),
-    config: { ...config, winc: { ...config.winc, scenario: scenarioKey, growth } },
+    config: { ...config, ...(bankView ? { openingBank: bankView.balanceGbp, openingDate: bankView.asAt } : {}), winc: { ...config.winc, scenario: scenarioKey, growth } },
     rows: result.rows, fyTotals: result.fyTotals,
     checks: [...result.checks, coverage],
     lowest: result.lowest,
@@ -139,6 +178,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     projectLines: lines.sort((a, b) => a.phase.localeCompare(b.phase) || a.title.localeCompare(b.title)),
     paidToDate,
     funding, loans, ownership,
+    bank: bankView, fundingOptions,
     history: config.history,
   };
 }
@@ -153,6 +193,33 @@ router.get("/projects/:projectId/cash-model", async (req, res) => {
   } catch (err) {
     console.error("[cash-model]", err);
     res.status(500).json({ error: "Cash model failed" });
+  }
+});
+
+// PUT /projects/:id/cash-model/bank { balanceGbp, asAt, inBalance } sets the bank today;
+// { balanceGbp: null } clears it, and the model goes back to its planned opening.
+router.put("/projects/:projectId/cash-model/bank", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+    if (!model) { res.status(404).json({ error: "There is no financial model for this project" }); return; }
+    let stored: Record<string, unknown> = {};
+    try { stored = JSON.parse((model as any).cashModelJson || "{}") || {}; } catch { stored = {}; }
+    if (body.balanceGbp === null) delete stored.bank;
+    else {
+      const n = typeof body.balanceGbp === "number" ? body.balanceGbp : parseFloat(String(body.balanceGbp ?? "").replace(/[£,\s]/g, ""));
+      if (!Number.isFinite(n) || Math.abs(n) > 10_000_000) { res.status(400).json({ error: "The balance must be a number of pounds" }); return; }
+      const asAt = String(body.asAt ?? "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(asAt) || Number.isNaN(Date.parse(asAt))) { res.status(400).json({ error: "Give the date of the balance" }); return; }
+      const inBalance = Array.isArray(body.inBalance) ? body.inBalance.map(Number).filter(Number.isInteger) : [];
+      stored.bank = { balanceGbp: Math.round(n * 100) / 100, asAt, inBalance, savedAt: new Date().toISOString() };
+    }
+    await db.update(financialsTable).set({ cashModelJson: JSON.stringify(stored) } as any).where(eq(financialsTable.projectId, projectId));
+    res.json({ ok: true, bank: (stored as any).bank ?? null });
+  } catch (err) {
+    console.error("[cash-model bank]", err);
+    res.status(500).json({ error: "Could not save the balance" });
   }
 });
 
