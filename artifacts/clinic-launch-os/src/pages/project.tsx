@@ -213,6 +213,41 @@ interface GanttProps {
   onTaskClick: (task: LaunchTask) => void;
 }
 
+// Whether a line is marked paid, part paid or not, for reading down the plan. The status
+// the line is marked with decides; a payment recorded against a line marked otherwise is
+// noted beneath, so it can be put right in the line's spend details.
+function PaymentCell({ task }: { task: LaunchTask }) {
+  const t = task as any;
+  if (t.archived) return <span className="text-[10px] text-muted-foreground/60">not counted</span>;
+  const ps: string = t.paidStatus ?? "";
+  const actual = Number(t.actualCost) || 0, committed = Number(t.committedCost) || 0, selected = Number(t.selectedCost) || 0;
+  const paidSoFar = Number(t.amountPaidGbp) || (ps === "part-paid" ? actual : 0);
+  const pill = "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap w-max";
+  if (ps === "paid") {
+    const amount = actual || committed || selected;
+    return (
+      <div className="flex flex-col gap-0.5">
+        <span className={`${pill} bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700`}>✓ Paid</span>
+        {amount > 0 && <span className="text-[10px] text-muted-foreground tabular-nums">{formatGBP(amount)}</span>}
+      </div>
+    );
+  }
+  if (ps === "part-paid") return (
+    <div className="flex flex-col gap-0.5">
+      <span className={`${pill} bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700`}>Part paid</span>
+      <span className="text-[10px] text-muted-foreground tabular-nums">{formatGBP(paidSoFar)} of {formatGBP(committed || selected)}</span>
+    </div>
+  );
+  if (!actual && !committed && !selected && !paidSoFar) return <span className="text-[10px] text-muted-foreground/60">No cost</span>;
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className={`${pill} bg-muted text-muted-foreground border-border`}>Not paid</span>
+      {committed > 0 && <span className="text-[10px] text-blue-700 dark:text-blue-400 tabular-nums">{formatGBP(committed)} committed</span>}
+      {paidSoFar > 0 && <span className="text-[10px] text-amber-700 dark:text-amber-400">{formatGBP(paidSoFar)} recorded as paid: mark it part paid?</span>}
+    </div>
+  );
+}
+
 function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange, onTaskClick }: GanttProps) {
   const [dayWidth, setDayWidth] = useState(9);
   // taskOffsets: absolute day offset from project day-0 for each task (overrides computed phase start)
@@ -3091,12 +3126,12 @@ export default function ProjectPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[260px]">Task</TableHead>
+                    <TableHead>Paid?</TableHead>
                     <TableHead>Phase</TableHead>
                     <TableHead>Owner</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Priority</TableHead>
                     <TableHead>Cost Tier</TableHead>
-                    <TableHead>Actuals</TableHead>
                     <TableHead>
                       <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={() => setListSortBy(s => s === "startDate" ? "dueDate" : "startDate")}>
                         {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
@@ -3129,6 +3164,7 @@ export default function ProjectPage() {
                             </div>
                           </TaskDetailTooltip>
                         </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap"><PaymentCell task={task} /></TableCell>
                         <TableCell>
                           <span className="inline-flex items-center gap-1.5 text-xs font-medium whitespace-nowrap" style={{ color: color.bar }}>
                             <span style={{ width: 8, height: 8, borderRadius: 2, background: color.bar, flexShrink: 0, display: "inline-block" }} />
@@ -3170,26 +3206,6 @@ export default function ProjectPage() {
                               ))}
                             </div>
                           )}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {(() => {
-                            const ac = (task as any).actualCost;
-                            const cc = (task as any).committedCost;
-                            const ps = (task as any).paidStatus;
-                            if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
-                            if (ps === "part-paid" && cc > 0) return (
-                              <div className="flex flex-col gap-0.5">
-                                <Badge variant="outline" className="text-[10px] h-4 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700 w-max">{formatGBP(cc)}</Badge>
-                                {ac > 0 && <span className="text-[9px] text-muted-foreground">£{ac.toLocaleString()} paid</span>}
-                              </div>
-                            );
-                            return (
-                              <div className="flex flex-col gap-0.5">
-                                {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
-                                {cc > 0 && !ac && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700 w-max">{formatGBP(cc)}</Badge>}
-                              </div>
-                            );
-                          })()}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                           {task.startDate ? (
@@ -3387,11 +3403,11 @@ export default function ProjectPage() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[300px]">Task</TableHead>
+                        <TableHead>Paid?</TableHead>
                         <TableHead>Owner</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Priority</TableHead>
                         <TableHead>Cost Tier Selection</TableHead>
-                        <TableHead>Actuals</TableHead>
                         <TableHead>
                           <button className="flex items-center gap-1 hover:text-foreground transition-colors" onClick={(e) => { e.stopPropagation(); setListSortBy(s => s === "startDate" ? "dueDate" : "startDate"); }}>
                             {listSortBy === "startDate" ? "Start date ↑" : "Due date ↑"}
@@ -3447,6 +3463,7 @@ export default function ProjectPage() {
                               </div>
                             </TaskDetailTooltip>
                           </TableCell>
+                          <TableCell className="text-xs whitespace-nowrap"><PaymentCell task={task} /></TableCell>
                           <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Select
@@ -3523,26 +3540,6 @@ export default function ProjectPage() {
                                 )}
                               </div>
                             )}
-                          </TableCell>
-                          <TableCell className="text-xs">
-                            {(() => {
-                              const ac = (task as any).actualCost;
-                              const cc = (task as any).committedCost;
-                              const ps = (task as any).paidStatus;
-                              if (!ac && !cc) return <span className="text-muted-foreground/30">—</span>;
-                              if (ps === "part-paid" && cc > 0) return (
-                                <div className="flex flex-col gap-0.5">
-                                  <Badge variant="outline" className="text-[10px] h-4 py-0 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700 w-max">{formatGBP(cc)}</Badge>
-                                  {ac > 0 && <span className="text-[9px] text-muted-foreground">£{ac.toLocaleString()} paid</span>}
-                                </div>
-                              );
-                              return (
-                                <div className="flex flex-col gap-0.5">
-                                  {ac > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-700 w-max">✓ {formatGBP(ac)}</Badge>}
-                                  {cc > 0 && !ac && <Badge variant="outline" className="text-[10px] h-4 py-0 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-700 w-max">{formatGBP(cc)}</Badge>}
-                                </div>
-                              );
-                            })()}
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                             {task.startDate ? (

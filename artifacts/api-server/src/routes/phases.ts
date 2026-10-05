@@ -108,6 +108,8 @@ router.get("/projects/:projectId/phases-with-tasks", async (req, res) => {
         actualCost: o.actualCost !== undefined ? o.actualCost : (t as any).actualCost,
         committedCost: o.committedCost !== undefined ? o.committedCost : (t as any).committedCost,
         paidStatus: o.paidStatus !== undefined ? o.paidStatus : (t as any).paidStatus,
+        // As the Money page reads it: the property's figure where recorded, else the line's own.
+        amountPaidGbp: o.amountPaidGbp ?? (t as any).amountPaidGbp,
         paymentDate: o.paymentDate !== undefined ? o.paymentDate : (t as any).paymentDate,
         invoiceRef: o.invoiceRef !== undefined ? o.invoiceRef : (t as any).invoiceRef,
         invoiceDate: o.invoiceDate !== undefined ? o.invoiceDate : (t as any).invoiceDate,
