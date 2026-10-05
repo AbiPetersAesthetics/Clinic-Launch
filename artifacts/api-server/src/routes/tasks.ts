@@ -315,6 +315,21 @@ router.delete("/projects/:projectId/tasks/:taskId/line-items/:itemId", async (re
 // Returns planned vs actual vs committed vs forecast, variance, category
 // breakdown (by phase), monthly spend array, and task-level actuals list.
 
+// Rounds each figure to whole pounds so that together they add up exactly to their rounded
+// total: every figure is rounded down, then the pounds still short go to the largest pence.
+function roundToTotal(values: number[]): number[] {
+  const pence = values.map(v => Math.round(v * 100));
+  const out = pence.map(p => Math.floor(p / 100));
+  let short = Math.round(pence.reduce((s, p) => s + p, 0) / 100) - out.reduce((s, n) => s + n, 0);
+  const byPence = pence.map((p, i) => ({ i, left: p - out[i] * 100 })).sort((a, b) => b.left - a.left);
+  for (const { i, left } of byPence) {
+    if (short <= 0 || left === 0) break;
+    out[i] += 1;
+    short -= 1;
+  }
+  return out;
+}
+
 router.get("/projects/:projectId/project-controls", async (req, res) => {
   try {
     const projectId = parseInt(req.params.projectId);
@@ -400,14 +415,16 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
       } else if (paid === "part-paid" && committed > 0) {
-        // committedCost = full invoice; actualCost = cash paid so far; remainder is still owed
+        // committedCost = full invoice; actualCost = cash paid so far; remainder is still owed.
+        // The VAT on the whole invoice comes back, as on a committed line; only the paid
+        // share of it is already reclaimed.
         const cashPaid = actual > 0 ? actual : (amountPaid > 0 ? amountPaid : 0);
         const stillOwed = committed - cashPaid;
         actualSpend += cashPaid;
         if (stillOwed > 0) committedCosts += stillOwed;
         forecastFinalCost += committed;
-        if (vatStatus === "inc") { reclaimableVat += actual / 6; incVatReclaim += actual / 6; reclaimOnPaid += actual / 6; }
-        else if (vatStatus === "exc") { reclaimableVat += actual * 0.20; excVatReclaim += actual * 0.20; reclaimOnPaid += actual * 0.20; }
+        if (vatStatus === "inc") { reclaimableVat += committed / 6; incVatReclaim += committed / 6; reclaimOnPaid += cashPaid / 6; }
+        else if (vatStatus === "exc") { reclaimableVat += committed * 0.20; excVatReclaim += committed * 0.20; reclaimOnPaid += cashPaid * 0.20; }
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
       } else if (committed > 0) {
@@ -425,22 +442,11 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
 
     const varianceGbp = forecastFinalCost - plannedBudget;
     const variancePct = plannedBudget > 0 ? (varianceGbp / plannedBudget) * 100 : 0;
-    const uncommittedBudget = plannedBudget - actualSpend - committedCosts;
-    const capHeadroomGbp = davidApprovedCapGbp - forecastFinalCost;
-    const netCostAfterVat = forecastFinalCost - reclaimableVat;
-    // Gross = cash out (add the VAT that sits on top of ex-VAT lines); net = true cost
-    // (strip the VAT that sits within inc-VAT lines). gross - net === reclaimableVat.
-    const grossInclVat = forecastFinalCost + excVatReclaim;
-    const netExVat = forecastFinalCost - incVatReclaim;
     // Refundable outlays (the lease rent deposit) are cash out but not a project cost,
     // so the real cost nets them off. Committed or paid figures win over the plan figure.
     const refundableOutlays = allTasks
       .filter(t => (t as any).refundable)
       .reduce((s, t) => s + (((t.committedCost as number) || (t.actualCost as number) || (t.selectedCost as number)) ?? 0), 0);
-    const realCostAfterRefundable = netExVat - refundableOutlays;
-    // True cost still to pay: total true cost minus the true (net-of-reclaim) value already paid out.
-    const trueCostRemaining = Math.max(0, netExVat - (actualSpend - reclaimOnPaid));
-    const liveForecastVsCapGbp = forecastFinalCost - davidApprovedCapGbp;
     const outerLimitGbp = davidApprovedCapGbp * (7 / 6); // stretch zone = +1/6 above cap (e.g. £80k → £93.3k)
 
     const hasSomeActuals = actualSpend > 0 || committedCosts > 0;
@@ -462,7 +468,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       : 0;
 
     // ── Category breakdown by phase ────────────────────────────────────────────
-    const categoryBreakdown = activePhases.map(phase => {
+    const phaseRaw = activePhases.map(phase => {
       const phaseTasks = allTasks.filter(t => t.phaseId === phase.id);
       let pPlanned = 0, pActual = 0, pCommitted = 0, pForecast = 0;
       for (const task of phaseTasks) {
@@ -476,27 +482,50 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         else if (paid === "part-paid" && committed > 0) {
           const cashPaid = actual > 0 ? actual : (amtPaid > 0 ? amtPaid : 0);
           pActual += cashPaid;
-          pCommitted += committed - cashPaid;
+          pCommitted += Math.max(0, committed - cashPaid);
           pForecast += committed;
         }
         else if (committed > 0) { pCommitted += committed; pForecast += committed; }
         else { pForecast += planned; }
       }
-      const pVarianceGbp = pForecast - pPlanned;
-      const pVariancePct = pPlanned > 0 ? (pVarianceGbp / pPlanned) * 100 : 0;
+      return { phase, phaseTasks, pPlanned, pActual, pCommitted, pForecast };
+    });
+    // Whole pounds that add up: each phase's paid, committed and still-to-pay figures are
+    // rounded so the phases sum exactly to the totals at the top, which are their sums.
+    const phasePaid = roundToTotal(phaseRaw.map(p => p.pActual));
+    const phaseCommitted = roundToTotal(phaseRaw.map(p => p.pCommitted));
+    const phaseToPay = roundToTotal(phaseRaw.map(p => p.pForecast - p.pActual));
+    const categoryBreakdown = phaseRaw.map((p, i) => {
+      const pVarianceGbp = p.pForecast - p.pPlanned;
+      const pVariancePct = p.pPlanned > 0 ? (pVarianceGbp / p.pPlanned) * 100 : 0;
       return {
-        phaseId: phase.id,
-        phaseName: phase.name,
-        planned: Math.round(pPlanned),
-        actualSpend: Math.round(pActual),
-        committed: Math.round(pCommitted),
-        forecastFinal: Math.round(pForecast),
+        phaseId: p.phase.id,
+        phaseName: p.phase.name,
+        planned: Math.round(p.pPlanned),
+        actualSpend: phasePaid[i],
+        committed: phaseCommitted[i],
+        forecastFinal: phasePaid[i] + phaseToPay[i],
         varianceGbp: Math.round(pVarianceGbp),
         variancePct: Math.round(pVariancePct * 10) / 10,
-        taskCount: phaseTasks.length,
-        completedCount: phaseTasks.filter(t => t.status === "complete").length,
+        taskCount: p.phaseTasks.length,
+        completedCount: p.phaseTasks.filter(t => t.status === "complete").length,
       };
     });
+
+    // The top in the same whole pounds. Gross = cash out (add the VAT that sits on top of
+    // ex-VAT lines); net = true cost (strip the VAT within inc-VAT lines); gross less net is
+    // the reclaim, so "pay out less reclaim = true cost" adds up to the pound on the page.
+    const sumGbp = (ns: number[]) => ns.reduce((s, n) => s + n, 0);
+    const paidGbp = sumGbp(phasePaid);
+    const committedGbp = sumGbp(phaseCommitted);
+    const liveGbp = paidGbp + sumGbp(phaseToPay);
+    const reclaimGbp = Math.round(reclaimableVat);
+    const grossGbp = liveGbp + Math.round(excVatReclaim);
+    const netGbp = grossGbp - reclaimGbp;
+    const refundableGbp = Math.round(refundableOutlays);
+    // True cost still to pay: total true cost minus the true (net-of-reclaim) value already paid out.
+    const trueCostRemainingGbp = Math.max(0, netGbp - Math.round(actualSpend - reclaimOnPaid));
+    const capGbp = Math.round(davidApprovedCapGbp);
 
     // ── Task actuals (only tasks with recorded spend) ──────────────────────────
     const taskActuals = allTasks
@@ -599,26 +628,27 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
       // Original baseline (frozen — sum of selectedCost, never affected by actuals)
       originalBaselineCost: Math.round(plannedBudget),
       plannedBudget: Math.round(plannedBudget),        // kept for backward compat
-      actualSpend: Math.round(actualSpend),
-      committedCosts: Math.round(committedCosts),
-      // Live Forecast Final — updates as actuals/committed are recorded
-      forecastFinalCost: Math.round(forecastFinalCost), // kept for backward compat
-      liveForecastFinal: Math.round(forecastFinalCost),
-      varianceGbp: Math.round(varianceGbp),
+      // Whole pounds that add up: the phases in categoryBreakdown sum exactly to these.
+      actualSpend: paidGbp,
+      committedCosts: committedGbp,
+      // Live Forecast Final: updates as actuals/committed are recorded
+      forecastFinalCost: liveGbp, // kept for backward compat
+      liveForecastFinal: liveGbp,
+      varianceGbp: liveGbp - Math.round(plannedBudget),
       variancePct: Math.round(variancePct * 10) / 10,
-      liveForecastVsCapGbp: Math.round(liveForecastVsCapGbp),
+      liveForecastVsCapGbp: liveGbp - capGbp,
       budgetStatus,
       davidApprovedCapGbp,
       savingsApplied: (model as any)?.savingsApplied ?? true,
-      reclaimableVat: Math.round(reclaimableVat),
-      netCostAfterVat: Math.round(netCostAfterVat),
-      grossInclVat: Math.round(grossInclVat),
-      netExVat: Math.round(netExVat),
-      refundableOutlays: Math.round(refundableOutlays),
-      realCostAfterRefundable: Math.round(realCostAfterRefundable),
-      trueCostRemaining: Math.round(trueCostRemaining),
-      uncommittedBudget: Math.round(uncommittedBudget),
-      capHeadroomGbp: Math.round(capHeadroomGbp),
+      reclaimableVat: reclaimGbp,
+      netCostAfterVat: liveGbp - reclaimGbp,
+      grossInclVat: grossGbp,
+      netExVat: netGbp,
+      refundableOutlays: refundableGbp,
+      realCostAfterRefundable: netGbp - refundableGbp,
+      trueCostRemaining: trueCostRemainingGbp,
+      uncommittedBudget: Math.round(plannedBudget) - paidGbp - committedGbp,
+      capHeadroomGbp: capGbp - liveGbp,
       outerLimitGbp: Math.round(outerLimitGbp),
       savingsCaptured: Math.round(savingsCaptured),
       unknownVatTaskCount,
