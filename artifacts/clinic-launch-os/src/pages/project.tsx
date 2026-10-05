@@ -2760,18 +2760,53 @@ export default function ProjectPage() {
               </p>
             </div>
 
-            {/* Warning: tasks with unknown VAT status */}
+            {/* Warning: lines with no VAT status, each with the money on it, and what that
+                means for the actual spend. Click a line to open it. */}
             {(() => {
-              const vatUnknownCount = phases?.flatMap(p => p.tasks ?? []).filter(t => !(t as any).archived && (!(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown")).length ?? 0;
-              return vatUnknownCount > 0 ? (
+              const unknown = (phases ?? []).flatMap(p => p.tasks ?? []).filter(t => !(t as any).archived && (!(t as any).costVatStatus || (t as any).costVatStatus === "vat_unknown"));
+              if (!unknown.length) return null;
+              const words = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+              const say = (n: number) => words[n] ?? String(n);
+              const INVOICE_VAT: Record<string, string> = { inc: "invoice inc VAT", exc: "invoice ex VAT", exempt: "invoice: no VAT" };
+              const rows = unknown.map(t => {
+                const a = t as any;
+                const ps = String(a.paidStatus ?? "");
+                const committed = Number(a.committedCost) || 0, selected = Number(a.selectedCost) || 0;
+                const paid = ps === "paid" ? (Number(a.actualCost) || committed || selected) : ps === "part-paid" ? (Number(a.amountPaidGbp) || Number(a.actualCost) || 0) : 0;
+                const spend = paid > 0 ? `${formatGBP(paid)} paid` : committed > 0 ? `${formatGBP(committed)} committed` : selected > 0 ? `${formatGBP(selected)} planned` : "£0";
+                return { t, paid, carries: paid > 0 || committed > 0 || selected > 0, spend, invoice: INVOICE_VAT[String(a.invoiceVatStatus ?? "")] ?? null };
+              }).sort((x, y) => Number(y.carries) - Number(x.carries) || y.paid - x.paid);
+              const money = rows.filter(r => r.carries);
+              const paidKnown = rows.filter(r => r.paid > 0 && r.invoice);
+              const paidUnknown = rows.filter(r => r.paid > 0 && !r.invoice).reduce((s, r) => s + r.paid, 0);
+              const notPaid = money.filter(r => r.paid === 0).length;
+              const zero = rows.length - money.length;
+              const notes: string[] = [];
+              if (!money.length) notes.push("None of them carries any money, so no total is affected.");
+              if (paidKnown.length) notes.push(`${formatGBP(paidKnown.reduce((s, r) => s + r.paid, 0))} of the actual spend is on ${paidKnown.length === 1 ? "one of them" : `${say(paidKnown.length)} of them`}, with its VAT recorded on the invoice, so that spend is right.`);
+              if (paidUnknown > 0) notes.push(`${formatGBP(paidUnknown)} of the actual spend has no VAT status on the line or the invoice: if it was ex VAT, the actual spend is understated by up to ${formatGBP(paidUnknown * 0.2)}.`);
+              if (notPaid) notes.push(`${notPaid === 1 ? "One line not yet paid" : `${say(notPaid)[0].toUpperCase() + say(notPaid).slice(1)} lines not yet paid`} may be understated in the selected total if ex VAT.`);
+              if (money.length && zero) notes.push(`${zero === 1 ? "The other is a £0 line" : `The other ${say(zero)} are £0 lines`} and change no total.`);
+              return (
                 <div className="flex items-start gap-2.5 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3">
                   <span className="text-amber-600 dark:text-amber-400 text-base shrink-0">⚠</span>
-                  <div>
-                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{vatUnknownCount} task{vatUnknownCount !== 1 ? "s" : ""} with unknown VAT status</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">The selected total above may be understated if some costs are ex-VAT. Open each task and confirm VAT status before finalising the budget.</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-amber-800 dark:text-amber-300">{unknown.length} task{unknown.length !== 1 ? "s" : ""} with unknown VAT status</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">{notes.join(" ")} Open each to set its VAT status.</p>
+                    <ul className="mt-2 space-y-0.5">
+                      {rows.map(r => (
+                        <li key={r.t.id}>
+                          <button type="button" onClick={() => setEditingTask(r.t)} className="w-full text-left flex flex-wrap items-baseline gap-x-2 text-xs rounded px-1 -mx-1 py-0.5 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400">
+                            <span className="font-medium text-amber-900 dark:text-amber-200 underline underline-offset-2 decoration-amber-300">{r.t.title}</span>
+                            <span className="tabular-nums text-amber-800/80 dark:text-amber-300/80">{r.spend}</span>
+                            {r.invoice && <span className="text-emerald-700 dark:text-emerald-400">{r.invoice}</span>}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              ) : null;
+              );
             })()}
           </div>
         </CardContent>
