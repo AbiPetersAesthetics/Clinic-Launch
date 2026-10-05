@@ -1315,6 +1315,9 @@ export default function ProjectPage() {
   const [listGrouped, setListGrouped] = useState(true);
   const [listSortBy, setListSortBy] = useState<"startDate" | "dueDate">("startDate");
   const [listOwnerFilter, setListOwnerFilter] = useState("");
+  // Removed lines (the old MJT lines superseded by the CBS tender, and lines taken out of the
+  // plan) stay on record but are hidden from the list and its PDF unless asked for.
+  const [showRemovedLines, setShowRemovedLines] = useState(false);
   const [localStartDate, setLocalStartDate] = useState("");
   const [localOpenDate, setLocalOpenDate] = useState("");
   const [datesDirty, setDatesDirty] = useState(false);
@@ -1747,7 +1750,8 @@ export default function ProjectPage() {
 
   const handleExportPDF = () => {
     const ownerMatch = (t: LaunchTask) =>
-      !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase());
+      (showRemovedLines || !(t as any).archived) &&
+      (!listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()));
 
     const getDate = (t: LaunchTask) => {
       const ta = t as any;
@@ -1809,7 +1813,7 @@ export default function ProjectPage() {
       `<span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;white-space:nowrap;${style}">${text}</span>`;
 
     const propertyName = activeProperty
-      ? `${activeProperty.address}${activeProperty.postcode ? ", " + activeProperty.postcode : ""}`
+      ? `${activeProperty.address}${activeProperty.postcode && !(activeProperty.address ?? "").includes(activeProperty.postcode) ?", " + activeProperty.postcode : ""}`
       : "Clinic Launch OS";
     const exportDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
@@ -1849,7 +1853,7 @@ export default function ProjectPage() {
           <td style="padding:11px 8px 11px 10px;color:#9ca3af;font-size:10px;vertical-align:top;white-space:nowrap">${num}</td>
           <td style="padding:11px 14px 11px 10px;vertical-align:top;">
             <div style="font-weight:600;font-size:12px;color:${isArchived ? "#9ca3af" : "#111827"};line-height:1.45;${isArchived ? "text-decoration:line-through" : ""}">${task.title}</div>
-            ${isArchived ? `<div style="margin-top:3px;font-size:9px;color:#9ca3af">Superseded by awarded tender</div>` : ""}
+            ${isArchived ? `<div style="margin-top:3px;font-size:9px;color:#9ca3af">${ta.archivedReason && !/^Superseded/i.test(ta.archivedReason) ? "Removed from the plan" : "Superseded by awarded tender"}</div>` : ""}
             ${flags ? `<div style="margin-top:3px">${flags}</div>` : ""}
             ${phaseLabel}
           </td>
@@ -1884,7 +1888,7 @@ export default function ProjectPage() {
   <div style="margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:flex-end;">
     <div>
       <h1 style="font-size:17px;font-weight:700;color:#0f172a">${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "All Project Tasks"}</h1>
-      <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${liveRowCount} task${liveRowCount !== 1 ? "s" : ""}${supersededRowCount > 0 ? ` &nbsp;·&nbsp; ${supersededRowCount} superseded line${supersededRowCount !== 1 ? "s" : ""} shown struck through, not counted` : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
+      <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${liveRowCount} task${liveRowCount !== 1 ? "s" : ""}${supersededRowCount > 0 ? ` &nbsp;·&nbsp; ${supersededRowCount} removed line${supersededRowCount !== 1 ? "s" : ""} shown struck through, not counted` : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
     </div>
     <div style="font-size:10px;color:#94a3b8;text-align:right">Clinic Launch OS<br>Exported ${exportDate}</div>
   </div>
@@ -3079,6 +3083,8 @@ export default function ProjectPage() {
         )].sort();
         const filteredTaskCount = (phases ?? []).flatMap(p => p.tasks ?? [])
           .filter(t => !(t as any).archived && (!listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))).length;
+        const removedLineCount = (phases ?? []).flatMap(p => p.tasks ?? [])
+          .filter(t => (t as any).archived && (!listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))).length;
         return (
           <div className="no-print flex items-center gap-3 flex-wrap">
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sort by</span>
@@ -3120,11 +3126,23 @@ export default function ProjectPage() {
                 <span className="text-xs text-muted-foreground">{filteredTaskCount} tasks</span>
               )}
             </div>
+            {removedLineCount > 0 && (
+              <>
+                <div className="h-4 w-px bg-border" />
+                <button
+                  onClick={() => setShowRemovedLines(v => !v)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium transition-colors ${showRemovedLines ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
+                  title="Lines superseded by the CBS tender or taken out of the plan. They are kept on record and never counted."
+                >
+                  {showRemovedLines ? `Hide removed lines (${removedLineCount})` : `Show removed lines (${removedLineCount})`}
+                </button>
+              </>
+            )}
             <div className="h-4 w-px bg-border" />
             <button
               onClick={handleExportPDF}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              title={listOwnerFilter ? `Export PDF — ${listOwnerFilter}'s tasks` : "Export PDF — all tasks"}
+              title={listOwnerFilter ? `Export PDF: ${listOwnerFilter}'s tasks` : "Export PDF: all tasks"}
             >
               <Printer className="h-3.5 w-3.5" />
               {listOwnerFilter ? `Export ${listOwnerFilter}'s tasks` : "Export PDF"}
@@ -3145,6 +3163,7 @@ export default function ProjectPage() {
           .flatMap((ph, phIdx) =>
             (ph.tasks ?? []).map((t, taskIdx) => ({ task: t, phase: ph, phIdx, taskIdx }))
           )
+          .filter(({ task }) => showRemovedLines || !(task as any).archived)
           .filter(({ task }) => !listOwnerFilter || (task.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))
           .sort((a, b) => {
             const aDate = getDate(a.task);
@@ -3370,6 +3389,7 @@ export default function ProjectPage() {
               : (t.dueDate || ta.startDate || null);
           };
           const sortedTasks = [...(phase.tasks ?? [])]
+            .filter(t => showRemovedLines || !(t as any).archived)
             .filter(t => !listOwnerFilter || (t.owner ?? "").toLowerCase().includes(listOwnerFilter.toLowerCase()))
             .sort((a, b) => {
               const aDate = getTaskDate(a);
