@@ -1431,9 +1431,7 @@ export default function ProjectPage() {
       { id: taskId },
       {
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: [phasesUrl] });
-          queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
-          queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
+          invalidateAfterTaskChange();
           setConfirmDeleteId(null);
         },
       }
@@ -1501,6 +1499,11 @@ export default function ProjectPage() {
     queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
     queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}/project-controls`] });
+    queryClient.invalidateQueries({ queryKey: getGetProjectTimelineQueryKey(PROJECT_ID) });
+    // Money, Rooms & Kit and Credit Cards read plan lines too.
+    queryClient.invalidateQueries({ queryKey: ["cash-model"] });
+    queryClient.invalidateQueries({ queryKey: ["kit", PROJECT_ID] });
+    queryClient.invalidateQueries({ queryKey: ["cards", PROJECT_ID] });
   };
 
   const handleCostTierChange = (task: LaunchTask, newTier: "low" | "mid" | "high") => {
@@ -3190,7 +3193,7 @@ export default function ProjectPage() {
                             <div>
                               <div className={`font-medium text-foreground ${(task as any).archived ? "line-through text-muted-foreground" : ""}`}>{task.title}</div>
                               <div className="flex gap-2 mt-1 flex-wrap">
-                                {(task as any).archived && <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground">Superseded by tender</Badge>}
+                                {(task as any).archived && <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground" title={(task as any).archivedReason ?? undefined}>{(task as any).archivedReason && !/^Superseded/i.test((task as any).archivedReason) ? "Removed from the plan" : "Superseded by tender"}</Badge>}
                                 {task.isNonNegotiable && <Badge variant="outline" className="text-[10px] h-4 py-0">Must Do</Badge>}
                                 {task.isCriticalRisk && <Badge variant="destructive" className="text-[10px] h-4 py-0 bg-destructive/10 text-destructive border-transparent">⚠ Risk</Badge>}
                                 {((task as any).costVatStatus === "vat_unknown" || !(task as any).costVatStatus) && (task.costMid ?? 0) > 0 && <Badge variant="outline" className="text-[10px] h-4 py-0 border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/30">VAT?</Badge>}
@@ -3465,8 +3468,8 @@ export default function ProjectPage() {
                                 <div className={`font-medium text-foreground ${(task as any).archived ? "line-through text-muted-foreground" : ""}`}>{task.title}</div>
                                 <div className="flex gap-2 mt-1.5 flex-wrap">
                                   {(task as any).archived && (
-                                    <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground">
-                                      Superseded by tender
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0 border-muted-foreground/40 text-muted-foreground" title={(task as any).archivedReason ?? undefined}>
+                                      {(task as any).archivedReason && !/^Superseded/i.test((task as any).archivedReason) ? "Removed from the plan" : "Superseded by tender"}
                                     </Badge>
                                   )}
                                   {task.isNonNegotiable && (
@@ -4586,6 +4589,10 @@ function TaskEditSheet({
           queryClient.invalidateQueries({ queryKey: getGetProjectDashboardQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetOptimisationAnalysisQueryKey(PROJECT_ID) });
           queryClient.invalidateQueries({ queryKey: getGetProjectTimelineQueryKey(PROJECT_ID) });
+          queryClient.invalidateQueries({ queryKey: [`/api/projects/${PROJECT_ID}/project-controls`] });
+          queryClient.invalidateQueries({ queryKey: ["cash-model"] });
+          queryClient.invalidateQueries({ queryKey: ["kit", PROJECT_ID] });
+          queryClient.invalidateQueries({ queryKey: ["cards", PROJECT_ID] });
           toast({ title: "Task saved" });
           onClose();
         },
