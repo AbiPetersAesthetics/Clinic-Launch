@@ -1263,6 +1263,52 @@ export async function runStartupSeed(): Promise<void> {
             }
           }
         }
+        // V44, 11 October 2026 (owner): the 9A layout pack (10 October) prices reception and
+        // treatment room 1 item by item. Abi's items take the chosen products and prices, the
+        // items the pack adds join their plan lines, and those two plan lines move to the sum
+        // of their items. Each item changes only while it still has its old name, so an edit
+        // made since is kept; the new items go in once (the Lucia chair, added last, marks it).
+        // Only on the install that has Abi's items (the sofa, item 12).
+        {
+          const [sofa] = await db.select().from(schema.kitItemsTable).where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.id, 12)));
+          const [done] = await db.select().from(schema.kitItemsTable).where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.name, "Lucia cane swivel desk chair, Daals")));
+          if (sofa && !done) {
+            const PACK = "From the 9A layout pack, 10 October 2026.";
+            const upd: [number, string, string, number | null, string][] = [
+              [12, "Sofa", "Amboise curved 3-seater sofa, Daals", 699.99, "Ecru boucle, black legs. " + PACK],
+              [17, "Side table", "Ingrid round side table, Cult Furniture", 179, "Natural travertine effect, pre-order. " + PACK],
+              [29, "Rug", "Rocco round rug, benuta", 129, "1.5 m, cream wool, sale price; non-slip pad under. " + PACK],
+              [23, "Pendant lighting", "Tala triple pendant, oak (over the desk)", 345, "3 Sphere IV bulbs. " + PACK],
+              [30, "Arm Chair", "Jeanne cane chair (lobby, by the coffee station)", 149.99, "Moved from reception to the lobby. " + PACK],
+              [13, "Desk", "Maru 1-drawer writing desk, greige oak, Daals", 319.99, PACK],
+              [14, "Desk chairs x2", "Fulbourn boucle chairs x2, Daals", null, "Taupe boucle. Price to confirm. " + PACK],
+              [15, "Trolley", "Adexa 3-tier trolley, 2 drawers", 165.6, PACK],
+              [16, "Treatment light", "Daylight Omega 7 magnifier lamp", 244.99, "Plus a floor stand, price to add. " + PACK],
+            ];
+            for (const [id, was, name, amount, note] of upd) {
+              await db.update(schema.kitItemsTable).set({ name, ...(amount != null ? { amountGbp: amount } : {}), note, updatedAt: new Date() } as any)
+                .where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.id, id), eq(schema.kitItemsTable.name, was)));
+            }
+            await db.update(schema.kitItemsTable).set({ note: "The layout pack has the Artisan Deco curved fluted desk at 1,035, made to order. Kept at 0 here because David is paying for it.", updatedAt: new Date() } as any)
+              .where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.id, 21), eq(schema.kitItemsTable.name, "Reception Desk (Paid by David)")));
+            const add: [string, number, string, number, string][] = [
+              ["reception", 337, "Tala linear triple pendant, brass (over the sofa)", 367.5, "490 list, 367.50 true cost. " + PACK],
+              ["reception", 337, "Amboise storage pouffe, Daals", 129.99, "Ecru boucle, spare seat. " + PACK],
+              ["treatment", 339, "Tork soap and towel dispensers, black", 121, "S4 foam soap about 68, H2 towels 53. " + PACK],
+              ["treatment", 339, "Arezzo basins and Alberta taps, both rooms", 319.8, "79.95 each, two basins and two taps; we supply, CBS fit. Ask CBS for the credit on 10.1 (3,005). " + PACK],
+              ["reception", 337, "Lucia cane swivel desk chair, Daals", 209.99, "Black frame. " + PACK],
+            ];
+            for (const [areaKey, taskId, name, amountGbp, note] of add) {
+              await db.insert(schema.kitItemsTable).values({ projectId, areaKey, taskId, name, amountGbp, status: "planned", note } as any);
+            }
+            // The two plan lines take the sum of their items: reception furniture 2,210.46
+            // (was 1,320) and treatment room furniture 1,571.38 (was 1,000, its saving target).
+            // The property's copy first (V33's lesson), each only while it holds the old figure.
+            await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 2210.46, updated_at = NOW() WHERE task_id = 337 AND selected_cost = 1320`);
+            await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 1571.38, updated_at = NOW() WHERE task_id = 339 AND selected_cost = 1000`);
+            await db.execute(sql`UPDATE launch_tasks SET saving_target = 1571.38, updated_at = NOW() WHERE id = 339 AND saving_target = 1000`);
+          }
+        }
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
