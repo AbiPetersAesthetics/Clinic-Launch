@@ -103,6 +103,86 @@ const FINISH_V38: { role: string; from: { name?: string; brief?: string }; to: {
   { role: "floor_clinical", from: { brief: "Clinical safety vinyl with welded seams and 100 mm coving, in CBS's contract; Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." }, to: { brief: "Clinical safety vinyl with welded seams and 100 mm coving in both treatment rooms, in CBS's contract (Ref 13); Tarkett iQ Granit and Polyflor were the plan's candidates. The range and colour are Abi's to pick." } },
   { role: "floor_front", from: { name: "Reception and consultation room floor" }, to: { name: "Reception floor", brief: "Herringbone LVT, in CBS's contract (Ref 13). The range and colour are Abi's to pick." } },
 ];
+// V47, 11 October 2026 (owner): everything in the 9A layout pack (10 October) that the plan
+// and the board did not yet hold goes in uncosted, at £0 with "price to come", so nothing in
+// the design is missing. Building extras and gaps are plan lines in the building works
+// phase; furniture and kit are items on Abi's board under their plan line; the lobby and
+// utility get their own area and two plan lines. Each line or item goes in once, by name.
+const V47_SRC = "From the 9A layout pack, 10 October 2026.";
+const V47_BUILD: { title: string; notes: string }[] = [
+  { title: "Emergency lights and exit signs (price needed)", notes: "Not in CBS's price (Q2002C) and not in Arundel's fire alarm commissioning. Layout pack point 10: price needed from CBS or Arundel. " + V47_SRC },
+  { title: "Ramp edge guarding (price needed)", notes: "The glass ramp panel is out of CBS's price, so the platform edge has no guarding: a handrail, an upstand or the panel back. Layout pack point 11 and the reception plan, note 17. " + V47_SRC },
+  { title: "LED strips: reception shelves and treatment room cupboards (CBS variation)", notes: "Warm LED under the three reception shelves (about 3 m, dimmer D3) and under the wall cupboards in both treatment rooms (about 2.9 m). Not in Q2002C: price separately (sheet 32). " + V47_SRC },
+  { title: "Hang and power the two Tala pendants, with dimmers (CBS variation)", notes: "Our two Tala pendants (over the sofa and the desk), two Tala-compatible dimmers, the window pendant on its own switch. Small extra, first fix (point 5). " + V47_SRC },
+  { title: "Two high sockets for audio (CBS variation)", notes: "Omitted from Q2002C. Small extra, first fix (point 6). " + V47_SRC },
+  { title: "Reception desk power module and cable tray (CBS variation)", notes: "Two sockets and USB-C under the worktop, and a cable tray. Small extra, first fix (point 7). " + V47_SRC },
+  { title: "Utility door re-hung to open out, with a closer (CBS variation)", notes: "Hinged on the WC1 side, opening into the lobby. Small extra, second fix (point 8). " + V47_SRC },
+  { title: "Fixings for our items: mirror, art, hooks, worktop timber (CBS)", notes: "Mirror and art into masonry, coat hooks, the Room 2 worktop wall timber. Small extra, first fix (point 17). " + V47_SRC },
+  { title: "Coffee sink and tap in the lobby (CBS variation)", notes: "Compact sink unit (K3) on the existing services; not in CBS's price. " + V47_SRC },
+  { title: "Switches and sockets in BG Nexus black nickel (extra over white)", notes: "Same finish throughout, with Tala-compatible dimmers to match. Tell CBS before they order (point 13). " + V47_SRC },
+  { title: "Herringbone LVT in the treatment rooms, not clinical vinyl (difference to agree)", notes: "Karndean Korlok Texas White Ash in every room. Agree the difference with CBS and check the floor against their allowance (points 1 and 14). " + V47_SRC },
+  { title: "Credit due from CBS: basins and taps (Ref 10.1)", notes: "We supply the Arezzo basins and Alberta taps; CBS fit. Ask for the credit against 10.1 (3,005 in all). A credit, so it will bring the total down (point 2). " + V47_SRC },
+  { title: "Credit due from CBS: clinical fixings", notes: "We fit the dispensers and sharps brackets. Ask for the credit (point 3). " + V47_SRC },
+  { title: "Laser supply and stop button: keep or omit (credit if omitted)", notes: "The laser is not bought. Keep points 47 and 55 as provision, or omit them for a credit. David to decide (point 9). " + V47_SRC },
+];
+const V47_LOBBY_LINES: { title: string; label: string; notes: string }[] = [
+  { title: "Lobby coffee station: machine, fridge, wine cooler, cupboards", label: "Lobby coffee station", notes: "The coffee station in the lobby bay: bean to cup machine, under-counter fridge, slimline wine cooler, Howdens units with a Calacatta top, mirror. Ours, not in CBS. At £0 until priced. " + V47_SRC },
+  { title: "Utility storage: clinical waste cupboard, lockers, COSHH cupboard", label: "Utility: waste, lockers, cleaning", notes: "Lockable vented clinical waste cupboard, 8 staff lockers, lockable COSHH cupboard. Ours, not in CBS (CBS 16 at £0). At £0 until priced. " + V47_SRC },
+];
+const V47_ITEMS: { line: RegExp | string; area: string; name: string; note: string }[] = [
+  { line: /^Reception furniture and styling/i, area: "reception", name: "Wall art: plaster relief face, black frame (Etsy, made to order)", note: "800 wide by 1,000 high, centred on the cabinet, 2 fixings into masonry. Chosen. Price to come." },
+  { line: /^Reception furniture and styling/i, area: "reception", name: "Floor plant, faux, about 1.2 m, stone pot", note: "To choose. Price to come." },
+  { line: /^Reception furniture and styling/i, area: "reception", name: "Coat hooks: a rail of 4, landing wall", note: "To choose. Price to come." },
+  { line: /^Reception furniture and styling/i, area: "reception", name: "Desk styling: vase of stems, tray, reed diffuser", note: "To choose. Price to come." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Practitioner stool, room 1", note: "To choose. Price to come." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Sharps bin, room 1", note: "Still to choose. Price to come." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Floor stand for the Omega 7 lamp", note: "Sold separately from the lamp. Price to come." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Mirror and screen or tablet arm, over the room 1 desk", note: "At seated eye height. Price to come." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Lec Pharmacy Plus fridge, 47 L, glass door", note: "Marked bought in the pack: add what it cost and where it was paid." },
+  { line: /^Treatment Room Furniture/i, area: "treatment", name: "Skin analyser on its own trolley", note: "To choose. Check whether this is the skin analysis platform already paid (4,250). Price to come." },
+  { line: /^Consultation Room Furniture/i, area: "treatment", name: "Room 2: Lapis bed (deferred)", note: "Deferred: waits for the second clinician." },
+  { line: /^Consultation Room Furniture/i, area: "treatment", name: "Room 2: stool, Omega 7 lamp, trolley, fridge, dispensers (deferred)", note: "Deferred: waits for the second clinician. The cupboards, worktop, basin and tap go in now, as room 1." },
+  { line: "Lobby coffee station: machine, fridge, wine cooler, cupboards", area: "lobby", name: "Coffee machine, bean to cup", note: "On the worktop, open shelf above. To choose. Price to come." },
+  { line: "Lobby coffee station: machine, fridge, wine cooler, cupboards", area: "lobby", name: "Under-counter fridge, 600 wide (milk and staff)", note: "Front-venting. To choose. Price to come." },
+  { line: "Lobby coffee station: machine, fridge, wine cooler, cupboards", area: "lobby", name: "Slimline wine cooler, 300 wide", note: "Front-venting, built under. To choose. Price to come." },
+  { line: "Lobby coffee station: machine, fridge, wine cooler, cupboards", area: "lobby", name: "Howdens units and worktop: navy base, white wall, Calacatta top", note: "Who fits to agree with CBS (point 29). Price to come." },
+  { line: "Lobby coffee station: machine, fridge, wine cooler, cupboards", area: "lobby", name: "Full-length mirror, 500 by 1,500, safety backed", note: "Outside the WCs, security fixings. To choose. Price to come." },
+  { line: "Utility storage: clinical waste cupboard, lockers, COSHH cupboard", area: "lobby", name: "Clinical waste cupboard, lockable and vented", note: "700 by 400, full height. Price to come." },
+  { line: "Utility storage: clinical waste cupboard, lockers, COSHH cupboard", area: "lobby", name: "Staff lockers, 8 (4 by 2)", note: "1,200 by 450 by 1,800. Price to come." },
+  { line: "Utility storage: clinical waste cupboard, lockers, COSHH cupboard", area: "lobby", name: "COSHH and cleaning cupboard, lockable", note: "Price to come." },
+];
+async function migratePackGapsV47(projectId: number) {
+  const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+  if (!phases.length) return;
+  const tasks = (await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)))).filter(t => !t.archived);
+  const build = tasks.find(t => t.title === "Arundel fire alarm (total)") ?? tasks.find(t => /^Ref 14 - Decoration/i.test(t.title));
+  const ffe = tasks.find(t => /^Treatment Room Furniture/i.test(t.title));
+  if (!build || !ffe) return;
+  const base = { owner: "Abi + David", status: "not_started", riskLevel: "low", costTier: "low", selectedCost: 0, costVatStatus: "inc_vat", supplyScope: "to_confirm", procurementStatus: "to_specify", priority: "medium", budgetStatus: "not_set", includeInLaunchBudget: true, includeInRiskView: true };
+  let bOrder = tasks.filter(t => t.phaseId === build.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0);
+  for (const b of V47_BUILD) {
+    if (tasks.some(t => t.title === b.title)) continue;
+    const [row] = await db.insert(schema.tasksTable).values({ ...base, phaseId: build.phaseId, title: b.title, notes: b.notes, owner: "David", supplier: /CBS/.test(b.title) ? "CBS" : null, sortOrder: ++bOrder } as any).returning();
+    tasks.push(row);
+  }
+  let fOrder = tasks.filter(t => t.phaseId === ffe.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0);
+  for (const l of V47_LOBBY_LINES) {
+    let task = tasks.find(t => t.title === l.title);
+    if (!task) { [task] = await db.insert(schema.tasksTable).values({ ...base, phaseId: ffe.phaseId, title: l.title, notes: l.notes, sortOrder: ++fOrder } as any).returning(); tasks.push(task); }
+    const [linked] = await db.select().from(schema.kitLinesTable).where(and(eq(schema.kitLinesTable.projectId, projectId), eq(schema.kitLinesTable.taskId, task.id)));
+    if (!linked) await db.insert(schema.kitLinesTable).values({ projectId, taskId: task.id, areaKey: "lobby", sortOrder: V47_LOBBY_LINES.indexOf(l), label: l.label } as any);
+  }
+  const items = await db.select().from(schema.kitItemsTable).where(eq(schema.kitItemsTable.projectId, projectId));
+  for (const it of V47_ITEMS) {
+    if (items.some(x => x.name === it.name)) continue;
+    const task = typeof it.line === "string" ? tasks.find(t => t.title === it.line) : tasks.find(t => (it.line as RegExp).test(t.title));
+    if (!task) continue;
+    await db.insert(schema.kitItemsTable).values({ projectId, areaKey: it.area, taskId: task.id, name: it.name, amountGbp: 0, status: "planned", note: it.note + " " + V47_SRC } as any);
+  }
+  // The area last: it marks the step as done for anyone reading the board.
+  const [area] = await db.select().from(schema.kitAreasTable).where(and(eq(schema.kitAreasTable.projectId, projectId), eq(schema.kitAreasTable.areaKey, "lobby")));
+  if (!area) await db.insert(schema.kitAreasTable).values({ projectId, areaKey: "lobby", name: "Lobby, coffee and utility", covers: "The coffee station in the lobby bay, the lobby mirror, and the utility's clinical waste cupboard, lockers and cleaning cupboard. All ours: none of it is in CBS's contract. At £0 until priced.", sortOrder: 3, budgetGbp: 0 } as any);
+}
 async function migrateKitV38(projectId: number) {
   const areas = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
   if (areas.some(a => a.areaKey === "paint")) return false;
@@ -1329,6 +1409,7 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 11914.8, committed_cost = 11914.8, updated_at = NOW() WHERE committed_cost = 12198 AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Ref 3 - Partitions and walls' AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         await db.execute(sql`UPDATE launch_tasks SET selected_cost = 11914.8, committed_cost = 11914.8, notes = ${V46_NOTE}, updated_at = NOW() WHERE title = 'Ref 3 - Partitions and walls' AND committed_cost = 12198 AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE tender_awards SET contract_sum_gbp = 69362 WHERE project_id = ${projectId} AND contractor_name LIKE 'CBS%' AND contract_sum_gbp = 69598`);
+        await migratePackGapsV47(projectId);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
