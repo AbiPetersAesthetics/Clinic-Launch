@@ -1,12 +1,4 @@
-<!doctype html>
-<html lang="en-GB" data-theme="light">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Winchester Build Cash Board</title>
-<style>html, body { margin: 0; }</style>
-</head>
-<body>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
@@ -104,6 +96,9 @@ ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 1
 .chip { display: inline-block; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 1px 6px; border-radius: 2px; margin-right: 5px; vertical-align: 1px; background: var(--panel); color: var(--slate); border: 1px solid var(--line); }
 .chip.watch { background: var(--watch-bg); color: var(--watch); border-color: transparent; }
 /* Pages */
+.tabs { display: flex; gap: 4px; margin: 0 0 4px; }
+.tabs button { font: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border: 1px solid var(--line); border-bottom: none; border-radius: 2px 2px 0 0; background: var(--panel); color: var(--muted); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--sheet); color: var(--ink); border-color: var(--sage-deep); }
 .abi { display: grid; gap: 16px; }
 .abi .intro { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; }
 @media (max-width: 800px) { .abi .intro { grid-template-columns: minmax(0, 1fr); } }
@@ -127,30 +122,23 @@ ul.plain { margin: 0; padding-left: 1.1em; display: grid; gap: 4px; font-size: 1
 .abi .state { border: 1px dashed var(--line); border-radius: 2px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
 .readonly .addf, .readonly .rowi .x, .readonly .bud input { display: none; }
 .readonly .rowi input, .readonly .rowi select { border-color: transparent; background: transparent; pointer-events: none; }
-.lsk-wrap { overflow-x: auto; }
-.lsk-wrap svg { min-width: 1000px; display: block; }
-.lsk-pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 0 7px; border-radius: 8px; margin-right: 5px; line-height: 14px; border: 1px solid var(--ink); }
-.lsk-pill.cap { color: var(--ink); } .lsk-pill.card { color: var(--sheet); background: var(--ink); } .lsk-pill.unset { color: var(--muted); border: 1px dashed var(--muted); }
-.lsk-key { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 12px; color: var(--muted); }
-.lsk-sum { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; background: var(--panel); border-radius: 2px; padding: 8px 12px; font-size: 13px; color: var(--muted); }
-.lsk-sum b { font-family: var(--font-display); font-size: 22px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums lining-nums; }
-.lsk-sum .lbl { font-weight: 700; color: var(--ink); }
-.lsk-key i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
-:root { --s-paid: #3F7A68; --s-com: #2a78d6; --s-est: #c98500; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --s-paid: #8CC7B3; --s-com: #6aa5ec; --s-est: #E6B866; } }
-:root[data-theme="dark"] { --s-paid: #8CC7B3; --s-com: #6aa5ec; --s-est: #E6B866; }
 footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border-top: 1px solid var(--line); padding-top: 10px; }
 :focus-visible { outline: 2px solid var(--sage-deep); outline-offset: 2px; }
 </style>
 
 <div class="board">
+<div class="tabs" role="tablist" aria-label="Pages">
+  <button type="button" role="tab" id="tab-cash" aria-selected="true" aria-controls="page-cash">The cash</button>
+  <button type="button" role="tab" id="tab-abi" aria-selected="false" aria-controls="page-abi">Abi's page: rooms and kit</button>
+</div>
+<div id="page-cash">
 <div class="head">
   <div>
-    <div class="eyebrow">Abi Peters Skin Clinic · Winchester build · 11 October 2026, bank as at 5 October</div>
+    <div class="eyebrow">Abi Peters Skin Clinic · Winchester build · 30 September 2026</div>
     <h1>Winchester Build Cash Board</h1>
-    <p>Where the money comes from, what it pays for, and how the bank stays above the £10,000 safety net through the build. Everything recalculates as you change the assumptions on the left. All figures ex VAT unless labelled, and "net from patients" means takings after VAT on sales and the products used.</p>
+    <p>Two pages: the cash, and Abi's page for the rooms and the kit (the tab above). This page: where the money comes from, what it pays for, and how the bank stays above the £10,000 safety net through the build. Everything recalculates as you change the assumptions on the left. All figures ex VAT unless labelled, and "net from patients" means takings after VAT on sales and the products used.</p>
   </div>
-  <div class="tag">The 11 October snapshot, bank as at 5 October. Hover any bar for its figure. The live model is the Money tab.</div>
+  <div class="tag">Designed for A3 landscape. Hover any bar for its figure.</div>
 </div>
 
 <div class="grid">
@@ -159,10 +147,10 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
     <div class="presets" id="presets">
       <button type="button" data-p="plan">As planned</button><button type="button" data-p="nocard">No card at all</button><button type="button" data-p="loan15">Loan £15k</button><button type="button" data-p="late">VAT through the bank, HMRC late</button><button type="button" data-p="sep">VAT through the bank</button><button type="button" data-p="topup">£10k personal top-up</button>
     </div></div>
-  <div class="ctl"><label class="lbl" for="start">Bank on 5 October</label><input id="start" type="number" step="500" value="27000" min="0"><span class="hint">Business account, after what is already paid and before James's and Bill's money lands.</span></div>
+  <div class="ctl"><label class="lbl" for="start">Bank at the end of September</label><input id="start" type="number" step="500" value="34000" min="0"><span class="hint">Business account, before anything lands.</span></div>
   <div class="ctl"><span class="lbl" id="l-loan">James's loan</span>
     <div class="slide"><input id="loan" type="range" min="0" max="20000" step="1000" value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output></div>
-    <div class="seg" role="group" aria-label="When the loan lands" data-key="loanMonth"><button type="button" data-v="1" aria-pressed="false">October</button><button type="button" data-v="2" aria-pressed="true">End of November</button></div>
+    <div class="seg" role="group" aria-label="When the loan lands" data-key="loanMonth"><button type="button" data-v="1" aria-pressed="true">1 October</button><button type="button" data-v="2" aria-pressed="false">End of November</button></div>
     <span class="hint">5% a year, six months' holiday, then 30 monthly repayments.</span></div>
   <div class="ctl"><span class="lbl">VAT on the build</span>
     <div class="seg" role="group" aria-label="VAT treatment" data-key="vat"><button type="button" data-v="separate" aria-pressed="true">A separate pot: paid by you, repaid as a director's loan</button><button type="button" data-v="through" aria-pressed="false">Paid and reclaimed through the business bank</button></div>
@@ -192,7 +180,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
 
   <div class="row">
     <div class="card">
-      <div class="q">Month by month</div><h2>Money in, money out and the bank, 5 October to June</h2>
+      <div class="q">Month by month</div><h2>Money in, money out and the bank, September to June</h2>
       <div class="legend" id="legend-main"></div>
       <div class="chart" style="height: 360px"><canvas id="ch-main" role="img" aria-label="Stacked bars of money in and money out each month from October 2026 to June 2027, with the bank balance line and the 10,000 safety net.">Money in and out each month with the bank balance.</canvas></div>
     </div>
@@ -213,19 +201,6 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
       <p class="note" id="sankey-note"></p>
   </div>
 
-  <div class="card">
-      <div class="q">Every line of spend</div>
-      <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px">
-        <h2>The whole project, line by line: paid, committed or still an estimate (with VAT)</h2>
-        <div class="seg" role="group" aria-label="Show" id="lsk-filter"><button type="button" data-v="all" aria-pressed="true">All lines</button><button type="button" data-v="paid" aria-pressed="false">Paid</button><button type="button" data-v="com" aria-pressed="false">Committed, not paid</button><button type="button" data-v="est" aria-pressed="false">Estimates</button><button type="button" data-v="capital" aria-pressed="false">From capital</button><button type="button" data-v="card" aria-pressed="false">On the card</button><button type="button" data-v="unc" aria-pressed="false">Uncosted</button></div>
-      </div>
-      <div class="lsk-key"><span><i style="background: var(--s-paid)"></i>Paid</span><span><i style="background: var(--s-com)"></i>Committed (quoted and agreed), not yet paid</span><span><i style="background: var(--s-est)"></i>Estimate, not yet committed</span><span><b class="lsk-pill cap">Capital</b>paid from the business bank</span><span><b class="lsk-pill card">Card</b>on the credit card</span><span><b class="lsk-pill unset">Not set</b>no payment month yet</span><span><i style="background: var(--bad)"></i><span style="color: var(--bad); font-weight: 700">Uncosted</span>&nbsp;in the plan at £0, price to come</span><span>Hover any band or line for its figure.</span></div>
-      <p class="note">Every figure in this chart includes VAT, as the plan does. The rest of the board is before VAT, so the same line reads lower there: the joinery, desk and cabinetry is £1,800 here and £1,500 in What it buys.</p>
-      <div class="lsk-sum" id="lsk-sum" aria-live="polite"></div>
-      <div class="lsk-wrap"><svg id="lines-sankey" viewBox="0 0 1100 900" width="100%" role="img" aria-label="The project total flows into paid, committed and estimate, then into each phase, then into every costed line."><title>Every line of spend by status</title></svg></div>
-      <p class="note" id="lsk-note"></p>
-  </div>
-
   <div class="row2">
     <div class="card">
       <div class="q">The card</div><h2>Is the card holding us up?</h2>
@@ -241,7 +216,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
       </div>
       <div class="items" id="items"></div>
       <div class="items" id="detail" hidden></div>
-      <p class="note" id="items-note">Bank and card can be swapped on the unlocked lines. CBS's four stages stay on the bank. On top of these, £19,390 ex VAT has already been paid (£20,941 as invoiced) and is in the starting bank: see What it buys. Not in the figures yet, because they have no payment month: retail shelving and LED and retail and skincare opening stock (£1,583 ex VAT).</p>
+      <p class="note" id="items-note">Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.</p>
     </div>
   </div>
 
@@ -252,58 +227,81 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
   </div>
 
   <footer id="cash-footer">
-    <div>Sources: the Launch OS Money page (build schedule, running costs, rent from 2 January 2027 paid quarterly in advance, James's loan terms) and the ANS patient records for the clinics' net takings, as on 11 October 2026 with the bank as at 5 October. October counts only the trading after 5 October. Card: £20,000 at 0%, each draw repaid in 24 equal parts from the month after.</div>
+    <div>Sources: the Launch OS Money page (build schedule, running costs, rent from 2 January 2027 paid quarterly in advance, James's loan terms) and the ANS patient records for the clinics' net takings, 30 September 2026. Card: £20,000 at 0%, each draw repaid in 24 equal parts from the month after.</div>
     <div>Two things to check on the card before relying on it: the 0% period runs to at least December 2028, and whether it carries a personal guarantee. Build VAT: the invoices are the company's, so the company reclaims the VAT on its monthly return whoever pays the bill; money you pay on the company's behalf is a director's loan, repaid when the refund lands.</div>
   </footer>
 </div>
 </div>
 </div>
 
+<div id="page-abi" class="abi" hidden>
+  <div class="intro">
+    <div>
+      <div class="eyebrow">Abi's page · budget by area · ex VAT</div>
+      <h1>The rooms and the kit</h1>
+      <p style="color: var(--muted); max-width: 80ch">Each area has the budget the plan allows for its furniture, kit and finishes. Add what you want to buy, put a price on it, and each area shows whether it is under or over. The building work itself (partitions, basins, flooring, lighting, decoration) is in CBS's contract and listed under each area for reference; it is not part of these budgets.</p>
+    </div>
+    <div class="kpis" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); min-width: min(100%, 520px)">
+      <div class="kpi"><span>Budget</span><b id="a-budget">£0</b><em>all areas, ex VAT</em></div>
+      <div class="kpi"><span>Planned</span><b id="a-planned">£0</b><em>everything on the lists</em></div>
+      <div class="kpi"><span>Bought</span><b id="a-bought">£0</b><em id="a-bought-m">ordered or paid</em></div>
+      <div class="kpi" id="a-verdict-box"><span>Position</span><b id="a-verdict">£0</b><em id="a-verdict-m">against budget</em></div>
+    </div>
+  </div>
+  <div class="state" id="abi-state">Loading the saved lists…</div>
+  <div class="areas" id="areas"></div>
+  <p class="note">Statuses: planned (an idea with a price), ordered (committed, not yet paid), paid. Bought counts ordered and paid. Prices ex VAT; if a quote includes VAT, take a sixth off. Budgets come from the Launch OS plan with savings applied; changing one here does not change the plan.</p>
+</div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 (function () {
-  const MONTHS = ["5 Oct 26", "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
+  const MONTHS = ["Sep 26", "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
   const ITEMS = [
+    { id: "deposit", name: "Rent deposit", ex: 5416, vat: false, method: "bank", m: 1, locked: true, group: "lease" },
+    { id: "solicitor", name: "Solicitor, balance", ex: 2140, vat: true, method: "bank", m: 1, locked: true, group: "lease" },
     { id: "sign", name: "Shop sign, balance", ex: 1593.33, vat: true, method: "bank", m: 1, group: "kit" },
-    { id: "cbs1", name: "CBS stage 1 (20%)", ex: 13872.4, vat: true, method: "bank", m: 1, locked: true, group: "cbs" },
-    { id: "cbs2", name: "CBS stage 2 (60%)", ex: 41617.2, vat: true, method: "bank", m: 2, locked: true, group: "cbs" },
-    { id: "arundel2", name: "Fire alarm (Arundel), 70% when finished", ex: 798, vat: true, method: "bank", m: 2, group: "kit" },
-    { id: "cbs3", name: "CBS stage 3 (17%)", ex: 11791.54, vat: true, method: "bank", m: 3, locked: true, group: "cbs" },
-    { id: "cbs4", name: "CBS retention (3%), after snagging", ex: 2080.86, vat: true, method: "bank", m: 8, locked: true, group: "cbs" },
-    { id: "joinery", name: "Joinery, desk and cabinetry", ex: 1500, vat: true, method: "card", m: 1, group: "kit" },
-    { id: "furniture", name: "Furniture and the couch, four lines", ex: 4567.03, vat: true, method: "card", m: 1, group: "kit" },
-    { id: "stock", name: "Opening stock, consumables, scrubs", ex: 2291.67, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "croma", name: "Fire alarm works (Croma)", ex: 1800, vat: true, method: "bank", m: 1, group: "kit" },
+    { id: "cbs1", name: "CBS stage 1 (20%)", ex: 14235.4, vat: true, method: "bank", m: 1, locked: true, group: "cbs" },
+    { id: "cbs2", name: "CBS stage 2 (60%)", ex: 42706.2, vat: true, method: "bank", m: 2, locked: true, group: "cbs" },
+    { id: "cbs3", name: "CBS stage 3 (17%)", ex: 12100.09, vat: true, method: "bank", m: 3, locked: true, group: "cbs" },
+    { id: "cbs4", name: "CBS retention (3%), after snagging", ex: 2135.31, vat: true, method: "bank", m: 8, locked: true, group: "cbs" },
+    { id: "joinery", name: "Joinery materials", ex: 1500, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "furniture", name: "Furniture, four lines", ex: 3183.33, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "stock", name: "Opening stock", ex: 2000, vat: true, method: "card", m: 2, group: "kit" },
     { id: "insurance", name: "Insurance, annual (no VAT)", ex: 950, vat: false, method: "card", m: 2, group: "kit" },
-    { id: "checks", name: "Pre-opening checks, waste, emergency kit", ex: 1025, vat: true, method: "card", m: 2, group: "kit" },
-    { id: "broadband", name: "Broadband and deep clean", ex: 133.33, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "checks", name: "Pre-opening checks", ex: 1025, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "broadband", name: "Broadband, deep clean, scrubs", ex: 425, vat: true, method: "card", m: 2, group: "kit" },
     { id: "meta", name: "Launch adverts, Meta (no VAT)", ex: 1000, vat: false, method: "card", m: 2, group: "kit" },
     { id: "google", name: "Launch adverts, Google (no VAT)", ex: 500, vat: false, method: "card", m: 3, group: "kit" },
   ];
   // What the money buys, ex VAT, grouped for Abi. The CBS lines are the contract by
-  // trade (69,362, CBS's revised Q2002C of 6 October); the kit is the plan's lines split to rooms. Every pound here is one
-  // of the 14 payment lines above.
+  // trade (69,598 plus the 1,579 firestopping variation); the kit is the plan's lines
+  // split to rooms. Every pound here is one of the 16 payment lines above.
   const DETAIL = [
     { name: "The building work (CBS), by trade", sub: "whole clinic: two treatment rooms, reception, utility, two WCs", lines: [
-      ["Partitions and walls", 9929, "treatment-room partitions; the glass ramp panel is out (CBS revised price)"], ["Curved frontage to the two treatment rooms", 2230, ""], ["Two doors to the treatment rooms", 1896, "frames and architraves"],
+      ["Partitions and walls", 10165, "treatment-room partitions and the glazed screen"], ["Curved frontage to the two treatment rooms", 2230, ""], ["Two doors to the treatment rooms", 1896, "frames and architraves"],
       ["Plumbing and drainage", 4399, "two treatment-room basins, staff sink, hot water"], ["Heating, cooling and fresh air", 13860, "existing system zoned, extra units, fresh-air supply"], ["Electrics and M&E design", 10395, "small power, isolation, emergency stop, sockets"],
       ["Lighting", 2620, "reception, clinical and practical"], ["Flooring", 5734, "herringbone LVT front of house, clinical vinyl in the treatment rooms"], ["Decoration and finishes", 7285, "premium front of house, scrubbable in clinical areas"],
       ["Shopfront refurbishment", 3185, "subject to conservation consent"], ["Security and access", 835, "treatment-room locks, alarm adaptation"], ["Strip-out and demolition", 2535, ""], ["Preliminaries", 3790, "site set-up, management, welfare"],
-      ["Building Regs coordination and M&E CAD", 669, ""] ] },
-    { name: "Treatment rooms, kit", sub: "", lines: [["Treatment couch", 1166, ""], ["Room 1 furniture and equipment", 1309, "Maru desk, two chairs, trolley, Omega 7 lamp, dispensers, basins and taps"], ["Treatment room 2 furniture", 250, "chairs, table"]] },
-    { name: "Reception, kit", sub: "", lines: [["Reception desk and clinical cabinetry (joinery)", 1500, "shared with the treatment rooms"], ["Reception furniture and styling", 1842, "Amboise sofa and pouffe, rug, side table, two Tala pendants, Lucia chair, the lobby chair"]] },
+      ["Building Regs coordination and M&E CAD", 669, ""], ["Firestopping variation", 1579, "ceiling access and fire-stopping"] ] },
+    { name: "Treatment rooms, kit", sub: "", lines: [["Treatment couch", 1000, ""], ["Furniture, equipment and styling", 833, "stool, trolley, bins, mirrors, storage"]] },
+    { name: "Reception and consultation room, kit", sub: "", lines: [["Reception desk and clinical cabinetry (joinery)", 1500, "shared with the treatment rooms"], ["Reception furniture and styling", 1100, ""], ["Consultation room furniture", 250, "chairs, table"]] },
     { name: "Shop front", sub: "", lines: [["External sign, balance", 1593, "the deposit is already paid"]] },
-    { name: "Safety and compliance", sub: "", lines: [["Fire alarm (Arundel), the 70% balance", 798, "commissioning; the 30% deposit is paid"], ["Fire risk assessment after the fit-out", 475, ""], ["Emergency drugs and equipment", 200, ""], ["Legionella assessment", 175, ""], ["Clinical waste contract", 125, ""], ["PAT testing", 50, ""]] },
+    { name: "Safety and compliance", sub: "", lines: [["Fire alarm works (Croma)", 1800, ""], ["Fire risk assessment after the fit-out", 475, ""], ["Emergency drugs and equipment", 200, ""], ["Legionella assessment", 175, ""], ["Clinical waste contract", 125, ""], ["PAT testing", 50, ""]] },
     { name: "Opening", sub: "", lines: [["Opening injectable stock", 1250, ""], ["Clinical smallwares and consumables", 750, ""], ["Insurance for the year", 950, "no VAT"], ["Launch adverts, Meta", 1000, "no VAT"], ["Launch adverts, Google", 500, "no VAT"], ["Scrubs and trainers", 292, ""], ["Broadband set-up", 100, ""], ["Deep clean materials", 33, ""]] },
+    { name: "Lease", sub: "", lines: [["Rent deposit", 5416, "no VAT"], ["Solicitor, balance", 2140, ""]] },
   ];
-  const PAID = [["Rent deposit", 5416], ["Skin analysis platform and training", 4250], ["Solicitor", 2830], ["Design and Building Regulations lead", 2419], ["Building Control submission", 1350], ["RICS schedule of condition", 980], ["Asbestos survey", 495], ["Brand identity and visual assets", 490], ["Fire alarm (Arundel), 30% deposit", 342], ["External sign, deposit", 292], ["CAD drawing pack", 250], ["Advertisement consent", 216], ["ACE membership", 60]];
-  const NET_B = [0, 3672, 4743, 4076, 3887, 3712, 3657, 3598, 3571, 3532];
-  const NET_W = [0, 0, 681, 3434, 3983, 5207, 4818, 5063, 5265, 5509];
-  const FIXED = [0, 2258, 2663, 2663, 2663, 2663, 2663, 2663, 2663, 2663];
+  const PAID = [["Skin analysis platform and training", 4250], ["Design and Building Regulations lead", 2419], ["Building Control submission", 1350], ["RICS schedule of condition", 980], ["Brand identity and visual assets", 490], ["Asbestos survey", 495], ["External sign, deposit", 292], ["CAD drawing pack", 250], ["Advertisement consent", 174], ["ACE membership", 60]];
+  const NET_B = [0, 4216, 4743, 4076, 3887, 3712, 3657, 3598, 3571, 3532];
+  const NET_W = [0, 0, 681, 3433, 3983, 5208, 4818, 5062, 5265, 5509];
+  const FIXED = [0, 2593, 2663, 2663, 2663, 2663, 2663, 2663, 2663, 2663];
   const RENT = [0, 0, 0, 7301, 0, 0, 8125, 0, 0, 8125];
   const CAPITAL = { james: 37000, bill: 10000 };
   const FLOOR = 10000, LIMIT = 20000, VAT = 0.2, N = MONTHS.length;
 
-  const S = { start: 27000, loan: 10000, loanMonth: 2, vat: "separate", lag: 1, win: 3, itemsView: "pay", card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) };
+  const S = { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, win: 3, itemsView: "pay", card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) };
   const gbp = v => (v < 0 ? "−" : "") + "£" + Math.abs(Math.round(v)).toLocaleString("en-GB");
   const pmt = A => { const r = 0.05 / 12; const bal = A * Math.pow(1 + r, 6); return A > 0 ? bal * r / (1 - Math.pow(1 + r, -30)) : 0; };
 
@@ -428,91 +426,6 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
     document.getElementById("sankey-h2").textContent = W <= 3 ? "Where it comes from, where it sits, what it pays for: October to the end of the build" : `Where it comes from, where it sits, what it pays for: October to ${MONTHS[W]}`;
   }
 
-  // ── every line of spend: total, then paid / committed / estimate, then phase, then line ──
-  // [phase, line, paid, committed not paid, estimate not committed], the plan's own figures, inc VAT where the line carries it, as at 11 October 2026.
-  const LINES = [["Due diligence","Asbestos survey",495,0,0,"capital"],["Legal and lease","Solicitor, lease",3396,0,0,"capital"],["Legal and lease","RICS schedule of condition",980,0,0,"capital"],["Legal and lease","Rent deposit",5416,0,0,"capital"],["Design and approvals","Design and Building Regs lead",2903,0,0,"capital"],["Design and approvals","Building Control",1620,0,0,"capital"],["Design and approvals","Advertisement consent",259,0,0,"capital"],["Design and approvals","Brand identity",490,0,0,"capital"],["Design and approvals","CAD drawing pack",300,0,0,"capital"],["Building works","Joinery, desk and cabinetry",0,0,1800,"card"],["Building works","Shop sign",350,1912,0,"capital"],["Building works","Retail shelving and LED",0,0,400,"unset"],["Building works","CBS ref 1: Preliminaries",0,4548,0,"capital"],["Building works","CBS ref 2: Strip-out and demolition",0,3042,0,"capital"],["Building works","CBS ref 3: Partitions and walls",0,11914.8,0,"capital"],["Building works","CBS ref 4: Partitions, curved frontage",0,2676,0,"capital"],["Building works","CBS ref 6: Internal doors (two)",0,2275.2,0,"capital"],["Building works","CBS ref 7: Electrics and M&E CAD",0,12474,0,"capital"],["Building works","CBS ref 8: Lighting (core)",0,3144,0,"capital"],["Building works","CBS ref 10: Plumbing and drainage",0,5278.8,0,"capital"],["Building works","CBS ref 11: HVAC",0,16632,0,"capital"],["Building works","CBS ref 13: Flooring",0,6880.8,0,"capital"],["Building works","CBS ref 14: Decoration and finishes",0,8742,0,"capital"],["Building works","CBS ref 17: Shopfront refurbishment",0,3822,0,"capital"],["Building works","CBS ref 18: Security and access",0,1002,0,"capital"],["Building works","CBS ref 21: Building Regs and M&E CAD",0,802.8,0,"capital"],["Building works","Fire alarm (Arundel)",410.4,957.6,0,"capital"],["Furniture and equipment","Treatment couch",0,0,1398.6,"card"],["Furniture and equipment","Reception furniture",0,0,2210.46,"card"],["Furniture and equipment","Treatment room 2 furniture",0,0,300,"card"],["Furniture and equipment","Treatment room furniture",0,0,1571.38,"card"],["Furniture and equipment","Skin analysis platform",4250,0,0,"capital"],["Clinical compliance","ACE membership",72,0,0,"capital"],["Clinical compliance","Clinical waste contract",0,0,150,"card"],["Clinical compliance","Fire risk assessment",0,0,570,"card"],["Clinical compliance","Emergency drugs kit",0,0,240,"card"],["Stock and set-up","Opening injectable stock",0,0,1500,"card"],["Stock and set-up","Smallwares and consumables",0,0,900,"card"],["Stock and set-up","Retail and skincare stock",0,0,1500,"unset"],["Stock and set-up","Scrubs and trainers",0,0,350,"card"],["Insurance and admin","Insurance, Hamilton Fraser",0,0,950,"card"],["Insurance and admin","Broadband",0,0,120,"card"],["Insurance and admin","Legionella assessment",0,0,210,"card"],["Insurance and admin","PAT testing",0,0,60,"card"],["Launch adverts","Meta launch adverts",0,0,1000,"card"],["Launch adverts","Google launch adverts",0,0,500,"card"],["Handover","Deep clean materials",0,0,40,"card"],["Building works","Emergency lights and exit signs",0,0,0,"unset",1],["Building works","Ramp edge guarding",0,0,0,"unset",1],["Building works","LED strips, shelves and cupboards",0,0,0,"unset",1],["Building works","Tala pendants: hang, power, dimmers",0,0,0,"unset",1],["Building works","Two high sockets for audio",0,0,0,"unset",1],["Building works","Desk power module and cable tray",0,0,0,"unset",1],["Building works","Utility door re-hung, with a closer",0,0,0,"unset",1],["Building works","Fixings for our items",0,0,0,"unset",1],["Building works","Coffee sink and tap",0,0,0,"unset",1],["Building works","Black nickel switches (extra)",0,0,0,"unset",1],["Building works","Herringbone LVT, treatment rooms",0,0,0,"unset",1],["Building works","CBS credit: basins and taps",0,0,0,"unset",1],["Building works","CBS credit: clinical fixings",0,0,0,"unset",1],["Building works","Laser supply: keep or omit",0,0,0,"unset",1],["Furniture and equipment","Lobby coffee station",0,0,0,"unset",1],["Furniture and equipment","Utility storage",0,0,0,"unset",1]];
-  let lskFilter = "all";
-  function drawLines() {
-    const svg = document.getElementById("lines-sankey"); if (!svg) return;
-    while (svg.lastChild && svg.lastChild.tagName !== "title") svg.removeChild(svg.lastChild);
-    const NS = "http://www.w3.org/2000/svg", W = 1100, top = 30, bw = 10, xT = 10, xS = 190, xP = 420, xL = 640, slot = 15, gGap = 10;
-    const ST = [["paid", "Paid", 2], ["com", "Committed, not paid", 3], ["est", "Estimate", 4]];
-    const col = k => tok("--s-" + k), ink = tok("--ink"), muted = tok("--muted"), sheet = tok("--sheet"), font = tok("--font-body");
-    const phases = [...new Set(LINES.map(l => l[0]))];
-    const val = l => l[2] + l[3] + l[4];
-    const unc = l => l[6] === 1, red = tok("--bad");
-    const rank = l => unc(l) ? 3 : l[2] > 0 ? 0 : l[3] > 0 ? 1 : 2;
-    const byPhase = phases.map(p => ({ p, lines: LINES.filter(l => l[0] === p).sort((a, b) => rank(a) - rank(b) || val(b) - val(a)) }));
-    const total = LINES.reduce((a, l) => a + val(l), 0);
-    // Scale: line slots are at least 15px so every label reads; bands keep their true width.
-    let k = 0.006; for (let i = 0; i < 30; i++) { const h = LINES.reduce((a, l) => a + Math.max(val(l) * k, slot), 0) + (phases.length - 1) * gGap; k *= ((820 + LINES.filter(unc).length * slot) / h); }
-    const lineNodes = []; let y = top;
-    byPhase.forEach(g => { g.y0 = y; g.lines.forEach(l => { const h = val(l) * k, sl = Math.max(h, slot); lineNodes.push({ l, y: y + (sl - h) / 2, h, mid: y + sl / 2 }); y += sl; }); g.y1 = y; y += gGap; });
-    const H = y + 10; svg.setAttribute("viewBox", "0 0 " + W + " " + H);
-    const el = (t, a, txt) => { const e = document.createElementNS(NS, t); for (const q in a) e.setAttribute(q, a[q]); if (txt != null) e.textContent = txt; svg.appendChild(e); return e; };
-    const tip = (e, t) => { const ti = document.createElementNS(NS, "title"); ti.textContent = t; e.appendChild(ti); return e; };
-    const isM = lskFilter === "capital" || lskFilter === "card", isU = lskFilter === "unc";
-    const band = (x0, y0, x1, y1, h, key, t, mk) => { const c = (x0 + x1) / 2; const on = lskFilter === "all" || lskFilter === key || (isM && mk === lskFilter);
-      return tip(el("path", { d: `M${x0},${y0}C${c},${y0} ${c},${y1} ${x1},${y1}L${x1},${y1 + h}C${c},${y1 + h} ${c},${y0 + h} ${x0},${y0 + h}Z`, fill: col(key), "fill-opacity": on ? 0.34 : isM && !mk ? 0.12 : 0.05 }), t); };
-    const txt = (x, yy, anchor, str, size, weight, fill, op) => el("text", { x, y: yy, "text-anchor": anchor, fill, "font-size": size, "font-weight": weight, "font-family": font, opacity: op ?? 1, style: `paint-order: stroke; stroke: ${sheet}; stroke-width: 3px; stroke-linejoin: round` }, str);
-    // Phase nodes sit level with their lines; status nodes stack on the left; the total spans them.
-    const phaseNodes = byPhase.map(g => { const v = g.lines.reduce((a, l) => a + val(l), 0), h = v * k; return { g, v, h, y: (g.y0 + g.y1) / 2 - h / 2 }; });
-    const stVal = ST.map(([key, , i]) => LINES.reduce((a, l) => a + l[i], 0));
-    const stH = stVal.map(v => v * k), stGap = 26, stTot = stH.reduce((a, b) => a + b, 0) + stGap * 2;
-    let sy = (top + H - 10) / 2 - stTot / 2; const stY = stH.map(h => { const yy = sy; sy += h + stGap; return yy; });
-    const totH = total * k, totY = (top + H - 10) / 2 - totH / 2;
-    // Total to status.
-    let ty = totY; ST.forEach(([key, name], i) => { band(xT + bw, ty, xS, stY[i], stH[i], key, `${name}: ${gbp(stVal[i])}`); ty += stH[i]; });
-    // Status to phase, and phase to line.
-    const stOut = stY.slice(), phIn = phaseNodes.map(n => n.y);
-    phaseNodes.forEach((n, pi) => ST.forEach(([key, name, i]) => { const v = n.g.lines.reduce((a, l) => a + l[i], 0); if (v < 0.5) return; const h = v * k;
-      band(xS + bw, stOut[ST.findIndex(s => s[0] === key)], xP, phIn[pi], h, key, `${n.g.p}, ${name.toLowerCase()}: ${gbp(v)}`); stOut[ST.findIndex(s => s[0] === key)] += h; phIn[pi] += h; }));
-    const phOut = phaseNodes.map(n => n.y);
-    lineNodes.forEach(ln => { const pi = phases.indexOf(ln.l[0]); let yy = ln.y; ST.forEach(([key, name, i]) => { const v = ln.l[i]; if (v < 0.5) return; const h = v * k;
-      band(xP + bw, phOut[pi], xL, yy, h, key, `${ln.l[1]}, ${name.toLowerCase()}: ${gbp(v)}`, ln.l[5]); phOut[pi] += h; yy += h; }); });
-    // Nodes and labels.
-    tip(el("rect", { x: xT, y: totY, width: bw, height: totH, fill: ink, rx: 2 }), "Whole project: " + gbp(total));
-    txt(xT + bw + 6, totY - 8, "start", "Whole project " + gbp(total), "12", "700", ink);
-    ST.forEach(([key, name], i) => { tip(el("rect", { x: xS, y: stY[i], width: bw, height: Math.max(2, stH[i]), fill: col(key), rx: 2 }), name + ": " + gbp(stVal[i]));
-      const on = lskFilter === "all" || lskFilter === key || isM || isU; txt(xS + bw + 6, stY[i] + stH[i] / 2 - 2, "start", name, "12", "700", ink, on ? 1 : 0.35); txt(xS + bw + 6, stY[i] + stH[i] / 2 + 12, "start", gbp(stVal[i]) + " · " + Math.round(100 * stVal[i] / total) + "%", "11", "400", muted, on ? 1 : 0.35); });
-    phaseNodes.forEach(n => { tip(el("rect", { x: xP, y: n.y, width: bw, height: Math.max(2, n.h), fill: muted, rx: 2 }), n.g.p + ": " + gbp(n.v));
-      txt(xP + bw + 6, n.y + n.h / 2 - 2, "start", n.g.p, "11.5", "700", ink); txt(xP + bw + 6, n.y + n.h / 2 + 11, "start", gbp(n.v), "10.5", "400", muted); });
-    lineNodes.forEach(ln => { const l = ln.l, key = l[2] > 0 && l[3] + l[4] < 0.5 ? "paid" : l[3] > 0 && l[2] < 0.5 ? "com" : l[4] > 0 ? "est" : "com";
-      const parts = ST.filter(([, , i]) => l[i] > 0.5), on = lskFilter === "all" || parts.some(([k2]) => k2 === lskFilter) || (isM && l[5] === lskFilter) || (isU && unc(l)), mk = l[5];
-      if (unc(l)) {
-        tip(el("rect", { x: xL, y: ln.mid - 1.5, width: bw, height: 3, fill: red, rx: 1, opacity: on ? 1 : 0.3 }), `${l[1]}: uncosted, price to come`);
-        tip(txt(xL + bw + 6, ln.mid + 4, "start", `${l[1]}  price to come`, "11", "600", red, on ? 1 : 0.3), `${l[1]}: in the plan at £0 until it has a price (from the 9A layout pack)`);
-        txt(W - 4, ln.mid + 4, "end", "uncosted", "10.5", "700", red, on ? 1 : 0.3);
-        return;
-      }
-      let yy = ln.y; parts.forEach(([k2, , i]) => { const h = Math.max(1.5, l[i] * k); tip(el("rect", { x: xL, y: yy, width: bw, height: h, fill: col(k2), rx: 1 }), `${l[1]}: ${gbp(l[i])}`); yy += l[i] * k; });
-      const how = parts.map(([k2, name, i]) => parts.length > 1 ? `${name.toLowerCase()} ${gbp(l[i])}` : name.toLowerCase()).join(", ");
-      tip(txt(xL + bw + 6, ln.mid + 4, "start", `${l[1]}  ${gbp(val(l))}`, "11", "600", ink, on ? 1 : 0.3), `${l[1]}: ${gbp(val(l))} (${how}; ${mk === "card" ? "on the credit card" : mk === "capital" ? "from capital" : "payment not set yet"})`);
-      const px = W - 112, pw = 50, pill = { capital: ["Capital", "none", ink, ink, ""], card: ["Card", ink, ink, sheet, ""], unset: ["Not set", "none", muted, muted, "3 2"] }[mk];
-      tip(el("rect", { x: px, y: ln.mid - 7, width: pw, height: 14, rx: 7, fill: pill[1], stroke: pill[2], "stroke-width": 1, "stroke-dasharray": pill[4], opacity: on ? 1 : 0.3 }), mk === "card" ? "On the credit card" : mk === "capital" ? "Paid from capital (the business bank)" : "No payment month or method set yet");
-      el("text", { x: px + pw / 2, y: ln.mid + 3.5, "text-anchor": "middle", fill: pill[3], "font-size": "9.5", "font-weight": "700", "font-family": font, opacity: on ? 1 : 0.3 }, pill[0]);
-      txt(W - 4, ln.mid + 4, "end", parts.length > 1 ? "part paid" : parts[0][1].replace("Committed, not paid", "committed").toLowerCase(), "10.5", "400", col(key), on ? 1 : 0.3); });
-    txt(xT, 16, "start", "The project", "11", "600", muted); txt(xS, 16, "start", "Where each pound stands", "11", "600", muted); txt(xP, 16, "start", "Phase", "11", "600", muted); txt(xL, 16, "start", "Every line", "11", "600", muted); txt(W - 112 + 25, 16, "middle", "Paid from", "11", "600", muted);
-    // The bucket picked by the buttons, in pounds, with its paid / committed / estimate split.
-    {
-      const costed = LINES.filter(l => !unc(l));
-      if (isU) { const u = LINES.filter(unc); document.getElementById("lsk-sum").innerHTML = `<span class="lbl" style="color: ${red}">Uncosted</span><b style="color: ${red}">${u.length} lines</b><span>in the plan at £0, price to come: ${u.map(l => l[1]).join(", ")}</span>`; }
-      else {
-      const pick = lskFilter === "all" ? costed : lskFilter === "capital" || lskFilter === "card" ? costed.filter(l => l[5] === lskFilter) : costed.filter(l => l[ST.find(s => s[0] === lskFilter)[2]] > 0.5);
-      const part = i => pick.reduce((a, l) => a + l[i], 0);
-      const name = { all: "Whole project", paid: "Paid", com: "Committed, not yet paid", est: "Estimates, not yet committed", capital: "From capital", card: "On the credit card" }[lskFilter];
-      const amount = lskFilter === "paid" ? part(2) : lskFilter === "com" ? part(3) : lskFilter === "est" ? part(4) : pick.reduce((a, l) => a + val(l), 0);
-      const split = ST.map(([k2, n2, i]) => [n2, part(i)]).filter(([, v]) => v > 0.5);
-      const showSplit = lskFilter === "all" || lskFilter === "capital" || lskFilter === "card";
-      document.getElementById("lsk-sum").innerHTML = `<span class="lbl">${name}</span><b>${gbp(amount)}</b><span>${pick.length} line${pick.length === 1 ? "" : "s"}${showSplit && split.length ? ": " + split.map(([n2, v]) => n2.toLowerCase().replace("committed, not paid", "committed") + " " + gbp(v)).join(", ") : ""}${lskFilter === "capital" || lskFilter === "card" ? ` · ${Math.round(100 * amount / total)}% of the project` : ""}${lskFilter === "all" ? ` · plus ${LINES.filter(unc).length} uncosted lines in red` : ""}</span>`;
-      }
-    }
-    const [p, c, e] = stVal;
-    document.getElementById("lsk-note").textContent = `${LINES.filter(l => !unc(l)).length} costed lines, ${gbp(total)} in all, the same as the top of the Plan page: ${gbp(p)} paid, ${gbp(c)} committed but not yet paid, ${gbp(e)} still estimates. From capital ${gbp(LINES.filter(l => l[5] === "capital").reduce((a, l) => a + val(l), 0))}, on the card ${gbp(LINES.filter(l => l[5] === "card").reduce((a, l) => a + val(l), 0))}${LINES.some(l => l[5] === "unset" && !unc(l)) ? `, not set yet ${gbp(LINES.filter(l => l[5] === "unset" && !unc(l)).reduce((a, l) => a + val(l), 0))}` : ""}. The shop sign is part paid (£350 of £2,262). Inc VAT where the line carries it, as in the plan. The 16 uncosted lines from the layout pack (at £0, price to come: the building extras and gaps, the CBS credits, the lobby and utility) are drawn in red: they are in the plan at £0 until they have a price. The plan as at 11 October 2026.`;
-  }
-  document.getElementById("lsk-filter").addEventListener("click", ev => { const b = ev.target.closest("button"); if (!b) return; lskFilter = b.dataset.v;
-    document.querySelectorAll("#lsk-filter button").forEach(x => x.setAttribute("aria-pressed", String(x === b))); drawLines(); });
-
   // ── panels ──
   function render() {
     const r = compute(S), noCard = compute({ ...S, card: "none" });
@@ -565,11 +478,11 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
     const grand = DETAIL.reduce((a, g) => a + g.lines.reduce((x, l) => x + l[1], 0), 0);
     det.innerHTML = DETAIL.map(g => { const t = g.lines.reduce((x, l) => x + l[1], 0); return `<div class="grp"><span>${g.name}${g.sub ? `<span class="sub"> · ${g.sub}</span>` : ""}</span><span>${gbp(t)}</span></div>` + g.lines.map(l => `<div class="det"><span>${l[0]}${l[2] ? `<span class="w"> · ${l[2]}</span>` : ""}</span><span class="amt">${gbp(l[1])}</span></div>`).join(""); }).join("")
       + `<div class="grp"><span>Total still to pay</span><span>${gbp(grand)}</span></div>`
-      + `<div class="grp"><span>Already paid by 5 October<span class="sub"> · in the starting bank</span></span><span>${gbp(PAID.reduce((a, p) => a + p[1], 0))}</span></div>` + PAID.map(p => `<div class="det"><span>${p[0]}</span><span class="amt">${gbp(p[1])}</span></div>`).join("");
+      + `<div class="grp"><span>Already paid before October<span class="sub"> · not in the model</span></span><span>${gbp(PAID.reduce((a, p) => a + p[1], 0))}</span></div>` + PAID.map(p => `<div class="det"><span>${p[0]}</span><span class="amt">${gbp(p[1])}</span></div>`).join("");
     const buy = S.itemsView === "buy";
     items.hidden = buy; det.hidden = !buy;
     document.getElementById("items-h2").textContent = buy ? "What the money buys, by area" : "Every unpaid line, and where each is paid from";
-    document.getElementById("items-note").textContent = buy ? "Ex VAT, grouped from the same 14 payment lines. The builder's trades cover the whole clinic; the kit is split by room." : "Bank and card can be swapped on the unlocked lines. CBS's four stages stay on the bank. On top of these, £19,390 ex VAT has already been paid (£20,941 as invoiced) and is in the starting bank: see What it buys. Not in the figures yet, because they have no payment month: retail shelving and LED and retail and skincare opening stock (£1,583 ex VAT).";
+    document.getElementById("items-note").textContent = buy ? "Ex VAT, grouped from the same 16 payment lines. The builder's trades cover the whole clinic; the kit is split by room." : "Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.";
     items.querySelectorAll(".seg[data-item]").forEach(g => g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled) return; S.methods[g.dataset.item] = b.dataset.v; render(); }));
 
     // Reconciliation table.
@@ -588,7 +501,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
       `<tr class="sub"><td colspan="${N}">Card owed at month end: ${r.cardOwed.slice(1).map((v, i) => `${MONTHS[i + 1]} ${gbp(v)}`).join(" · ")}</td></tr>`,
     ].join("");
 
-    drawCharts(r); drawSankey(r, S); drawLines();
+    drawCharts(r); drawSankey(r, S);
   }
 
   // ── controls ──
@@ -599,7 +512,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
   bind("bscale", v => { S.bscale = v; }, v => v + "%"); bind("wscale", v => { S.wscale = v; }, v => v + "%");
   const setSlider = (id, v, fmt) => { document.getElementById(id).value = v; const o = document.getElementById(id + "-out"); if (o) o.textContent = fmt(v); };
   const PRESETS = {
-    plan: () => { Object.assign(S, { start: 27000, loan: 10000, loanMonth: 2, vat: "separate", lag: 1, card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) }); },
+    plan: () => { Object.assign(S, { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) }); },
     nocard: () => { PRESETS.plan(); S.card = "none"; },
     loan15: () => { PRESETS.plan(); S.loan = 15000; },
     late: () => { PRESETS.plan(); S.vat = "through"; S.lag = 2; },
@@ -612,9 +525,99 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
   render();
   try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { if (chMain) { chMain.destroy(); chMain = null; } if (chCard) { chCard.destroy(); chCard = null; } render(); }); } catch (e) {}
 
+  // ── Pages ──
+  const pages = { cash: document.getElementById("page-cash"), abi: document.getElementById("page-abi") };
+  function showPage(k) {
+    for (const [name, el] of Object.entries(pages)) { el.hidden = name !== k; document.getElementById("tab-" + name).setAttribute("aria-selected", String(name === k)); }
+    document.getElementById("cash-footer").hidden = k !== "cash";
+    try { localStorage.setItem("board-page", k); } catch (e) {}
+    if (k === "cash") { if (chMain) chMain.resize(); if (chCard) chCard.resize(); }
+  }
+  document.getElementById("tab-cash").addEventListener("click", () => showPage("cash"));
+  document.getElementById("tab-abi").addEventListener("click", () => showPage("abi"));
+  let startPage = "cash"; try { startPage = location.hash === "#abi" ? "abi" : (localStorage.getItem("board-page") || "cash"); } catch (e) {}
+  if (startPage === "abi") showPage("abi");
+
+  // ── Abi's page: budgets by area, items saved in the artifact's shared database ──
+  const AREAS = [
+    { id: "treatment", name: "Treatment rooms (two)", budget: 1833, covers: "In CBS's contract: full-height partitions and the curved frontage, two doors, two basins with mixer taps and hot water, clinical vinyl flooring, scrubbable finishes, clinical lighting, sockets and isolation, door locks." },
+    { id: "reception", name: "Reception", budget: 2600, covers: "In CBS's contract: herringbone LVT flooring, front-of-house decoration, reception lighting, the glazed screen. The desk and clinical cabinetry allowance (£1,500) sits here." },
+    { id: "consult", name: "Consultation room", budget: 250, covers: "In CBS's contract: decoration, flooring and lighting." },
+    { id: "front", name: "Shop front and signage", budget: 1593, covers: "In CBS's contract: shopfront refurbishment and redecoration (£3,185), subject to conservation consent. The sign's deposit is already paid." },
+    { id: "finish", name: "Finishing touches", budget: 0, covers: "Nothing in the plan after savings: the feature wall, wall art and picture lighting, retail shelving and LED, internal signage and photography were all cut to £0. Anything bought here is over budget unless the budget is raised." },
+  ];
+  const STATUSES = [["planned", "planned"], ["ordered", "ordered"], ["paid", "paid"]];
+  const abi = { db: null, canWrite: null, budgets: {}, items: [], unsubs: [] };
+  const stateEl = document.getElementById("abi-state"), areasEl = document.getElementById("areas");
+  const esc = t => String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+  function renderAbi() {
+    const byArea = Object.fromEntries(AREAS.map(a => [a.id, []]));
+    for (const it of abi.items) (byArea[it.area] || (byArea[it.area] = [])).push(it);
+    let tb = 0, tp = 0, tbought = 0;
+    areasEl.innerHTML = AREAS.map(a => {
+      const budget = abi.budgets[a.id] ?? a.budget, rows = byArea[a.id] || [];
+      const planned = rows.reduce((x, r) => x + (+r.amount || 0), 0), bought = rows.filter(r => r.status !== "planned").reduce((x, r) => x + (+r.amount || 0), 0);
+      tb += budget; tp += planned; tbought += bought;
+      const diff = budget - planned, base = Math.max(budget, planned, 1);
+      const paidPart = rows.filter(r => r.status === "paid").reduce((x, r) => x + (+r.amount || 0), 0), ordPart = bought - paidPart, planPart = Math.min(planned, budget) - Math.min(bought, budget);
+      const meter = `<div class="meter" role="img" aria-label="${esc(a.name)}: planned ${gbp(planned)} against ${gbp(budget)}"><i class="bought" style="width:${(100 * Math.min(paidPart, budget) / base).toFixed(1)}%"></i><i class="ordered" style="width:${(100 * Math.max(0, Math.min(ordPart, budget - paidPart)) / base).toFixed(1)}%"></i><i class="planned" style="width:${(100 * Math.max(0, planPart) / base).toFixed(1)}%"></i>${planned > budget ? `<i class="over" style="width:${(100 * (planned - budget) / base).toFixed(1)}%"></i>` : ""}</div>`;
+      const list = rows.sort((x, y) => (x.createdAt || "").localeCompare(y.createdAt || "")).map(r => `<div class="rowi" data-id="${esc(r.id)}"><input type="text" data-f="name" value="${esc(r.name)}" aria-label="Item"><input type="number" data-f="amount" step="1" min="0" value="${Math.round(+r.amount || 0)}" aria-label="Price ex VAT"><select data-f="status" aria-label="Status">${STATUSES.map(([v, l]) => `<option value="${v}"${r.status === v ? " selected" : ""}>${l}</option>`).join("")}</select><button type="button" class="x" data-del="${esc(r.id)}" aria-label="Remove ${esc(r.name)}">×</button></div>`).join("");
+      return `<section class="area" data-area="${a.id}">
+        <div style="display:flex; justify-content:space-between; gap:8px; align-items:baseline"><h3>${esc(a.name)}</h3><span class="bud"><label for="bud-${a.id}" class="muted">Budget</label><input id="bud-${a.id}" type="number" step="1" min="0" value="${Math.round(budget)}" data-budget="${a.id}"><span class="muted" id="budv-${a.id}" hidden>${gbp(budget)}</span></span></div>
+        <p class="covers">${esc(a.covers)}</p>
+        ${meter}
+        <div class="verdict"><span>Planned ${gbp(planned)}${bought ? `, of which bought ${gbp(bought)}` : ""}</span><b class="${diff >= 0 ? "under" : "overb"}">${diff >= 0 ? gbp(diff) + " under" : gbp(-diff) + " over"}</b></div>
+        <div class="rows">${list || '<div class="note">Nothing on the list yet.</div>'}</div>
+        <form class="addf" data-add="${a.id}"><input type="text" name="name" placeholder="What is it? e.g. feature wall" required aria-label="New item"><input type="number" name="amount" step="1" min="0" placeholder="£ ex VAT" required aria-label="Price ex VAT"><select name="status" aria-label="Status">${STATUSES.map(([v, l]) => `<option value="${v}">${l}</option>`).join("")}</select><button type="submit">Add</button></form>
+      </section>`;
+    }).join("");
+    document.getElementById("a-budget").textContent = gbp(tb); document.getElementById("a-planned").textContent = gbp(tp); document.getElementById("a-bought").textContent = gbp(tbought);
+    const v = tb - tp, vb = document.getElementById("a-verdict-box"); vb.className = "kpi " + (v >= 0 ? "good" : "bad");
+    document.getElementById("a-verdict").textContent = v >= 0 ? gbp(v) + " under" : gbp(-v) + " over"; document.getElementById("a-verdict-m").textContent = "planned against budget, all areas";
+    if (abi.canWrite === false) pages.abi.classList.add("readonly");
+  }
+
+  async function withDb(fn) { try { await fn(); } catch (e) { if (e && e.code === "invalid_argument" && abi.canWrite !== true) { abi.canWrite = false; pages.abi.classList.add("readonly"); stateEl.hidden = false; stateEl.textContent = "You can see the lists but not change them. Ask David to make you a Contributor on this page."; } else { stateEl.hidden = false; stateEl.textContent = "That change did not save (" + ((e && e.code) || "error") + "). Try again in a moment."; } } }
+  const saving = new Map();
+  function saveField(id, patch) {
+    const prev = saving.get(id) || Promise.resolve();
+    const p = prev.then(() => withDb(() => abi.db.collection("items").doc(id).update(patch)));
+    saving.set(id, p); return p;
+  }
+  areasEl.addEventListener("submit", e => {
+    const form = e.target.closest("form[data-add]"); if (!form || !abi.db) return; e.preventDefault();
+    const name = form.name.value.trim(), amount = Math.round(+form.amount.value || 0), status = form.status.value;
+    if (!name) { form.name.focus(); return; }
+    const doc = { area: form.dataset.add, name, amount, status, createdAt: new Date().toISOString() };
+    withDb(() => abi.db.collection("items").add(doc)).then(() => form.reset());
+  });
+  areasEl.addEventListener("change", e => {
+    const t = e.target; if (!abi.db) return;
+    const row = t.closest(".rowi[data-id]");
+    if (row && t.dataset.f) { const f = t.dataset.f; saveField(row.dataset.id, { [f]: f === "amount" ? Math.round(+t.value || 0) : t.value }); }
+    if (t.dataset.budget) { const id = t.dataset.budget; withDb(() => abi.db.collection("areas").doc(id).set({ budget: Math.round(+t.value || 0) })); }
+  });
+  areasEl.addEventListener("click", e => {
+    const b = e.target.closest("button[data-del]"); if (!b || !abi.db) return;
+    const row = b.closest(".rowi"); const name = row.querySelector('[data-f="name"]').value;
+    if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Remove?"; b.style.width = "auto"; b.style.gridColumn = "4"; setTimeout(() => { b.dataset.confirm = ""; b.textContent = "×"; b.style.width = ""; }, 3000); return; }
+    withDb(() => abi.db.collection("items").doc(b.dataset.del).delete()); void name;
+  });
+
+  (async () => {
+    renderAbi();
+    const use = window.claude && window.claude.use ? n => window.claude.use(n) : () => Promise.resolve(null);
+    const [db, user] = await Promise.all([use("db"), use("user")]);
+    if (!db) { stateEl.textContent = "The saved lists need the claude.ai view of this page (and a sign-in). The budgets above are the plan's; nothing you type here will be kept."; pages.abi.classList.add("readonly"); abi.canWrite = false; renderAbi(); return; }
+    abi.db = db;
+    try { abi.canWrite = user ? await user.can("data.write") : null; } catch (e) { abi.canWrite = null; }
+    if (abi.canWrite === false) { pages.abi.classList.add("readonly"); stateEl.textContent = "You can see the lists but not change them. Ask David to make you a Contributor on this page."; } else stateEl.hidden = true;
+    let gotAreas = false, gotItems = false;
+    const done = () => { if (gotAreas && gotItems && abi.canWrite !== false) stateEl.hidden = true; renderAbi(); };
+    abi.unsubs.push(db.collection("areas").onSnapshot(snap => { abi.budgets = {}; snap.docs.forEach(d => { const b = d.data(); if (b && typeof b.budget === "number") abi.budgets[d.id] = b.budget; }); gotAreas = true; done(); }, err => { stateEl.hidden = false; stateEl.textContent = "The saved budgets could not be loaded (" + err.code + ")."; }));
+    abi.unsubs.push(db.collection("items").onSnapshot(snap => { abi.items = snap.docs.map(d => ({ id: d.id, ...d.data() })); gotItems = true; done(); }, err => { stateEl.hidden = false; stateEl.textContent = "The saved lists could not be loaded (" + err.code + ")."; }));
+  })();
   try { new MutationObserver(() => { if (chMain) { chMain.destroy(); chMain = null; } if (chCard) { chCard.destroy(); chCard = null; } render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] }); } catch (e) {}
 })();
 </script>
-
-</body>
-</html>

@@ -34,6 +34,7 @@ import backlinksRouter from "./backlinks";
 import kitRouter from "./kit";
 import finishesRouter from "./finishes";
 import cardsRouter from "./cards";
+import boardsRouter from "./boards";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(backlinksRouter);
 router.use(kitRouter);
 router.use(finishesRouter);
 router.use(cardsRouter);
+router.use(boardsRouter);
 
 export default router;

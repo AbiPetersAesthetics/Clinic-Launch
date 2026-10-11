@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build as esbuild } from "esbuild";
 import esbuildPluginPino from "esbuild-plugin-pino";
-import { rm } from "node:fs/promises";
+import { rm, writeFile } from "node:fs/promises";
 
 // Plugins (e.g. 'esbuild-plugin-pino') may use `require` to resolve dependencies
 globalThis.require = createRequire(import.meta.url);
@@ -13,6 +13,24 @@ const artifactDir = path.dirname(fileURLToPath(import.meta.url));
 async function buildAll() {
   const distDir = path.resolve(artifactDir, "dist");
   await rm(distDir, { recursive: true, force: true });
+
+  // The money engine as a browser script (global CM), for the Money Plan's "Try it yourself".
+  // Built from the same source as the server, so the page and the Money page always agree.
+  const engine = await esbuild({
+    stdin: {
+      contents: 'export * from "./lib/cash-model"; export * from "./lib/cash-model-defaults"; export * from "./lib/growth-model";',
+      resolveDir: path.resolve(artifactDir, "src"),
+      loader: "ts",
+    },
+    bundle: true,
+    format: "iife",
+    globalName: "CM",
+    minify: true,
+    platform: "browser",
+    write: false,
+    logLevel: "warning",
+  });
+  await writeFile(path.resolve(artifactDir, "src/boards/engine.gen.txt"), engine.outputFiles[0].text);
 
   await esbuild({
     entryPoints: [path.resolve(artifactDir, "src/index.ts")],
@@ -102,6 +120,8 @@ async function buildAll() {
       "electron",
       "is-network-error",
     ],
+    // The board and plan templates and the browser engine are bundled as text.
+    loader: { ".html": "text", ".txt": "text" },
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it

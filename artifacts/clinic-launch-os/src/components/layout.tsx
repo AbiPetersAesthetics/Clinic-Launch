@@ -155,6 +155,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Execution — what running the project to opening day and beyond actually needs
   const executionItems = [
     { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
+    { href: "/money-plan", label: "Money Plan", icon: BookOpen },
     { href: "/", label: "Today", icon: LayoutDashboard },
     { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
