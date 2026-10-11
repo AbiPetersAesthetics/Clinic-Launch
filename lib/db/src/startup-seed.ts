@@ -1309,6 +1309,17 @@ export async function runStartupSeed(): Promise<void> {
             await db.execute(sql`UPDATE launch_tasks SET saving_target = 1571.38, updated_at = NOW() WHERE id = 339 AND saving_target = 1000`);
           }
         }
+        // V45, 11 October 2026 (owner): David is paying for the reception desk from his own money
+        // as a gift to the business. It stays at 0 in the kit and the plan, as no business money
+        // pays for it; the name and note say so. Only while it still has its old name.
+        await db.update(schema.kitItemsTable).set({ name: "Reception desk, Artisan Deco: David's gift (£1,035)", note: "David's gift: he pays for it from his own money, so it costs the business nothing and is kept at 0 here. Curved fluted desk, 1,035, made to order, from the 9A layout pack (10 October 2026). For the accountant: an asset given to the company.", updatedAt: new Date() } as any)
+          .where(and(eq(schema.kitItemsTable.projectId, projectId), eq(schema.kitItemsTable.id, 21), eq(schema.kitItemsTable.name, "Reception Desk (Paid by David)")));
+        // V45 (owner, same day): Arundel commission the fire alarm; they are not doing the
+        // fire-stopping, which stays with CBS inside their revised price. The line's figure and
+        // payment plan are right; its note said otherwise. Only while the old wording is there.
+        const V45_ARUNDEL = "Arundel fire alarm (total): commissioning the fire alarm, 1,368, taken as inc VAT (1,140 plus VAT); confirm against Arundel's quote. Arundel are not doing the fire-stopping: that is CBS's work, inside their revised price (Q2002C, 69,362 ex VAT, 6 October 2026). Emergency lights and exit signs are a separate gap still to price (layout pack, point 10). Payment terms: 30% deposit on booking, 70% when the works are complete. Corrected 11 October 2026.";
+        await db.execute(sql`UPDATE property_task_overrides SET notes = ${V45_ARUNDEL}, updated_at = NOW() WHERE notes LIKE '%Firestopping works (T&J), on the CBS contract%' AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Arundel fire alarm (total)' AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
+        await db.execute(sql`UPDATE launch_tasks SET notes = ${V45_ARUNDEL}, updated_at = NOW() WHERE title = 'Arundel fire alarm (total)' AND notes LIKE '%Firestopping works (T&J), on the CBS contract%' AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
