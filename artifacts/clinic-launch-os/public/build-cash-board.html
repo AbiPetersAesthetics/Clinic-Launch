@@ -134,11 +134,11 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
 <div class="board">
 <div class="head">
   <div>
-    <div class="eyebrow">Abi Peters Skin Clinic · Winchester build · 30 September 2026</div>
+    <div class="eyebrow">Abi Peters Skin Clinic · Winchester build · 11 October 2026, bank as at 5 October</div>
     <h1>Winchester Build Cash Board</h1>
     <p>Where the money comes from, what it pays for, and how the bank stays above the £10,000 safety net through the build. Everything recalculates as you change the assumptions on the left. All figures ex VAT unless labelled, and "net from patients" means takings after VAT on sales and the products used.</p>
   </div>
-  <div class="tag">The 30 September planning snapshot. Hover any bar for its figure. The live model is the Money tab.</div>
+  <div class="tag">The 11 October snapshot, bank as at 5 October. Hover any bar for its figure. The live model is the Money tab.</div>
 </div>
 
 <div class="grid">
@@ -147,10 +147,10 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
     <div class="presets" id="presets">
       <button type="button" data-p="plan">As planned</button><button type="button" data-p="nocard">No card at all</button><button type="button" data-p="loan15">Loan £15k</button><button type="button" data-p="late">VAT through the bank, HMRC late</button><button type="button" data-p="sep">VAT through the bank</button><button type="button" data-p="topup">£10k personal top-up</button>
     </div></div>
-  <div class="ctl"><label class="lbl" for="start">Bank at the end of September</label><input id="start" type="number" step="500" value="34000" min="0"><span class="hint">Business account, before anything lands.</span></div>
+  <div class="ctl"><label class="lbl" for="start">Bank on 5 October</label><input id="start" type="number" step="500" value="27000" min="0"><span class="hint">Business account, after what is already paid and before James's and Bill's money lands.</span></div>
   <div class="ctl"><span class="lbl" id="l-loan">James's loan</span>
     <div class="slide"><input id="loan" type="range" min="0" max="20000" step="1000" value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output></div>
-    <div class="seg" role="group" aria-label="When the loan lands" data-key="loanMonth"><button type="button" data-v="1" aria-pressed="true">1 October</button><button type="button" data-v="2" aria-pressed="false">End of November</button></div>
+    <div class="seg" role="group" aria-label="When the loan lands" data-key="loanMonth"><button type="button" data-v="1" aria-pressed="false">October</button><button type="button" data-v="2" aria-pressed="true">End of November</button></div>
     <span class="hint">5% a year, six months' holiday, then 30 monthly repayments.</span></div>
   <div class="ctl"><span class="lbl">VAT on the build</span>
     <div class="seg" role="group" aria-label="VAT treatment" data-key="vat"><button type="button" data-v="separate" aria-pressed="true">A separate pot: paid by you, repaid as a director's loan</button><button type="button" data-v="through" aria-pressed="false">Paid and reclaimed through the business bank</button></div>
@@ -180,7 +180,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
 
   <div class="row">
     <div class="card">
-      <div class="q">Month by month</div><h2>Money in, money out and the bank, September to June</h2>
+      <div class="q">Month by month</div><h2>Money in, money out and the bank, 5 October to June</h2>
       <div class="legend" id="legend-main"></div>
       <div class="chart" style="height: 360px"><canvas id="ch-main" role="img" aria-label="Stacked bars of money in and money out each month from October 2026 to June 2027, with the bank balance line and the 10,000 safety net.">Money in and out each month with the bank balance.</canvas></div>
     </div>
@@ -216,7 +216,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
       </div>
       <div class="items" id="items"></div>
       <div class="items" id="detail" hidden></div>
-      <p class="note" id="items-note">Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.</p>
+      <p class="note" id="items-note">Bank and card can be swapped on the unlocked lines. CBS's four stages stay on the bank. On top of these, £19,048 ex VAT has already been paid (£20,531 as invoiced) and is in the starting bank: see What it buys. Not in the figures yet, because they have no payment month: retail shelving and LED and retail and skincare opening stock (£1,583 ex VAT).</p>
     </div>
   </div>
 
@@ -227,7 +227,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
   </div>
 
   <footer id="cash-footer">
-    <div>Sources: the Launch OS Money page (build schedule, running costs, rent from 2 January 2027 paid quarterly in advance, James's loan terms) and the ANS patient records for the clinics' net takings, 30 September 2026. Card: £20,000 at 0%, each draw repaid in 24 equal parts from the month after.</div>
+    <div>Sources: the Launch OS Money page (build schedule, running costs, rent from 2 January 2027 paid quarterly in advance, James's loan terms) and the ANS patient records for the clinics' net takings, as on 11 October 2026 with the bank as at 5 October. October counts only the trading after 5 October. Card: £20,000 at 0%, each draw repaid in 24 equal parts from the month after.</div>
     <div>Two things to check on the card before relying on it: the 0% period runs to at least December 2028, and whether it carries a personal guarantee. Build VAT: the invoices are the company's, so the company reclaims the VAT on its monthly return whoever pays the bill; money you pay on the company's behalf is a director's loan, repaid when the refund lands.</div>
   </footer>
 </div>
@@ -237,51 +237,49 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 (function () {
-  const MONTHS = ["Sep 26", "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
+  const MONTHS = ["5 Oct 26", "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
   const ITEMS = [
-    { id: "deposit", name: "Rent deposit", ex: 5416, vat: false, method: "bank", m: 1, locked: true, group: "lease" },
-    { id: "solicitor", name: "Solicitor, balance", ex: 2140, vat: true, method: "bank", m: 1, locked: true, group: "lease" },
     { id: "sign", name: "Shop sign, balance", ex: 1593.33, vat: true, method: "bank", m: 1, group: "kit" },
-    { id: "croma", name: "Fire alarm works (Croma)", ex: 1800, vat: true, method: "bank", m: 1, group: "kit" },
-    { id: "cbs1", name: "CBS stage 1 (20%)", ex: 14235.4, vat: true, method: "bank", m: 1, locked: true, group: "cbs" },
-    { id: "cbs2", name: "CBS stage 2 (60%)", ex: 42706.2, vat: true, method: "bank", m: 2, locked: true, group: "cbs" },
-    { id: "cbs3", name: "CBS stage 3 (17%)", ex: 12100.09, vat: true, method: "bank", m: 3, locked: true, group: "cbs" },
-    { id: "cbs4", name: "CBS retention (3%), after snagging", ex: 2135.31, vat: true, method: "bank", m: 8, locked: true, group: "cbs" },
-    { id: "joinery", name: "Joinery materials", ex: 1500, vat: true, method: "card", m: 1, group: "kit" },
-    { id: "furniture", name: "Furniture, four lines", ex: 3183.33, vat: true, method: "card", m: 1, group: "kit" },
-    { id: "stock", name: "Opening stock", ex: 2000, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "arundel1", name: "Fire alarm (Arundel), 30% on booking", ex: 342, vat: true, method: "bank", m: 1, group: "kit" },
+    { id: "cbs1", name: "CBS stage 1 (20%)", ex: 13919.6, vat: true, method: "bank", m: 1, locked: true, group: "cbs" },
+    { id: "cbs2", name: "CBS stage 2 (60%)", ex: 41758.8, vat: true, method: "bank", m: 2, locked: true, group: "cbs" },
+    { id: "arundel2", name: "Fire alarm (Arundel), 70% when finished", ex: 798, vat: true, method: "bank", m: 2, group: "kit" },
+    { id: "cbs3", name: "CBS stage 3 (17%)", ex: 11831.66, vat: true, method: "bank", m: 3, locked: true, group: "cbs" },
+    { id: "cbs4", name: "CBS retention (3%), after snagging", ex: 2087.94, vat: true, method: "bank", m: 8, locked: true, group: "cbs" },
+    { id: "joinery", name: "Joinery, desk and cabinetry", ex: 1500, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "furniture", name: "Furniture and the couch, four lines", ex: 3348.83, vat: true, method: "card", m: 1, group: "kit" },
+    { id: "stock", name: "Opening stock, consumables, scrubs", ex: 2291.67, vat: true, method: "card", m: 2, group: "kit" },
     { id: "insurance", name: "Insurance, annual (no VAT)", ex: 950, vat: false, method: "card", m: 2, group: "kit" },
-    { id: "checks", name: "Pre-opening checks", ex: 1025, vat: true, method: "card", m: 2, group: "kit" },
-    { id: "broadband", name: "Broadband, deep clean, scrubs", ex: 425, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "checks", name: "Pre-opening checks, waste, emergency kit", ex: 1025, vat: true, method: "card", m: 2, group: "kit" },
+    { id: "broadband", name: "Broadband and deep clean", ex: 133.33, vat: true, method: "card", m: 2, group: "kit" },
     { id: "meta", name: "Launch adverts, Meta (no VAT)", ex: 1000, vat: false, method: "card", m: 2, group: "kit" },
     { id: "google", name: "Launch adverts, Google (no VAT)", ex: 500, vat: false, method: "card", m: 3, group: "kit" },
   ];
   // What the money buys, ex VAT, grouped for Abi. The CBS lines are the contract by
-  // trade (69,598 plus the 1,579 firestopping variation); the kit is the plan's lines
-  // split to rooms. Every pound here is one of the 16 payment lines above.
+  // trade (69,598); the kit is the plan's lines split to rooms. Every pound here is one
+  // of the 15 payment lines above.
   const DETAIL = [
     { name: "The building work (CBS), by trade", sub: "whole clinic: two treatment rooms, reception, utility, two WCs", lines: [
       ["Partitions and walls", 10165, "treatment-room partitions and the glazed screen"], ["Curved frontage to the two treatment rooms", 2230, ""], ["Two doors to the treatment rooms", 1896, "frames and architraves"],
       ["Plumbing and drainage", 4399, "two treatment-room basins, staff sink, hot water"], ["Heating, cooling and fresh air", 13860, "existing system zoned, extra units, fresh-air supply"], ["Electrics and M&E design", 10395, "small power, isolation, emergency stop, sockets"],
       ["Lighting", 2620, "reception, clinical and practical"], ["Flooring", 5734, "herringbone LVT front of house, clinical vinyl in the treatment rooms"], ["Decoration and finishes", 7285, "premium front of house, scrubbable in clinical areas"],
       ["Shopfront refurbishment", 3185, "subject to conservation consent"], ["Security and access", 835, "treatment-room locks, alarm adaptation"], ["Strip-out and demolition", 2535, ""], ["Preliminaries", 3790, "site set-up, management, welfare"],
-      ["Building Regs coordination and M&E CAD", 669, ""], ["Firestopping variation", 1579, "ceiling access and fire-stopping"] ] },
-    { name: "Treatment rooms, kit", sub: "", lines: [["Treatment couch", 1000, ""], ["Furniture, equipment and styling", 833, "stool, trolley, bins, mirrors, storage"]] },
-    { name: "Reception and consultation room, kit", sub: "", lines: [["Reception desk and clinical cabinetry (joinery)", 1500, "shared with the treatment rooms"], ["Reception furniture and styling", 1100, ""], ["Consultation room furniture", 250, "chairs, table"]] },
+      ["Building Regs coordination and M&E CAD", 669, ""] ] },
+    { name: "Treatment rooms, kit", sub: "", lines: [["Treatment couch", 1166, ""], ["Furniture, equipment and styling", 833, "stool, trolley, bins, mirrors, storage"], ["Treatment room 2 furniture", 250, "chairs, table"]] },
+    { name: "Reception, kit", sub: "", lines: [["Reception desk and clinical cabinetry (joinery)", 1500, "shared with the treatment rooms"], ["Reception furniture and styling", 1100, ""]] },
     { name: "Shop front", sub: "", lines: [["External sign, balance", 1593, "the deposit is already paid"]] },
-    { name: "Safety and compliance", sub: "", lines: [["Fire alarm works (Croma)", 1800, ""], ["Fire risk assessment after the fit-out", 475, ""], ["Emergency drugs and equipment", 200, ""], ["Legionella assessment", 175, ""], ["Clinical waste contract", 125, ""], ["PAT testing", 50, ""]] },
+    { name: "Safety and compliance", sub: "", lines: [["Fire alarm (Arundel)", 1140, "30% on booking, 70% when finished"], ["Fire risk assessment after the fit-out", 475, ""], ["Emergency drugs and equipment", 200, ""], ["Legionella assessment", 175, ""], ["Clinical waste contract", 125, ""], ["PAT testing", 50, ""]] },
     { name: "Opening", sub: "", lines: [["Opening injectable stock", 1250, ""], ["Clinical smallwares and consumables", 750, ""], ["Insurance for the year", 950, "no VAT"], ["Launch adverts, Meta", 1000, "no VAT"], ["Launch adverts, Google", 500, "no VAT"], ["Scrubs and trainers", 292, ""], ["Broadband set-up", 100, ""], ["Deep clean materials", 33, ""]] },
-    { name: "Lease", sub: "", lines: [["Rent deposit", 5416, "no VAT"], ["Solicitor, balance", 2140, ""]] },
   ];
-  const PAID = [["Skin analysis platform and training", 4250], ["Design and Building Regulations lead", 2419], ["Building Control submission", 1350], ["RICS schedule of condition", 980], ["Brand identity and visual assets", 490], ["Asbestos survey", 495], ["External sign, deposit", 292], ["CAD drawing pack", 250], ["Advertisement consent", 174], ["ACE membership", 60]];
-  const NET_B = [0, 4216, 4743, 4076, 3887, 3712, 3657, 3598, 3571, 3532];
-  const NET_W = [0, 0, 681, 3433, 3983, 5208, 4818, 5062, 5265, 5509];
-  const FIXED = [0, 2593, 2663, 2663, 2663, 2663, 2663, 2663, 2663, 2663];
+  const PAID = [["Rent deposit", 5416], ["Skin analysis platform and training", 4250], ["Solicitor", 2830], ["Design and Building Regulations lead", 2419], ["Building Control submission", 1350], ["RICS schedule of condition", 980], ["Asbestos survey", 495], ["Brand identity and visual assets", 490], ["External sign, deposit", 292], ["CAD drawing pack", 250], ["Advertisement consent", 216], ["ACE membership", 60]];
+  const NET_B = [0, 3672, 4743, 4076, 3887, 3712, 3657, 3598, 3571, 3532];
+  const NET_W = [0, 0, 681, 3434, 3983, 5207, 4818, 5063, 5265, 5509];
+  const FIXED = [0, 2258, 2663, 2663, 2663, 2663, 2663, 2663, 2663, 2663];
   const RENT = [0, 0, 0, 7301, 0, 0, 8125, 0, 0, 8125];
   const CAPITAL = { james: 37000, bill: 10000 };
   const FLOOR = 10000, LIMIT = 20000, VAT = 0.2, N = MONTHS.length;
 
-  const S = { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, win: 3, itemsView: "pay", card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) };
+  const S = { start: 27000, loan: 10000, loanMonth: 2, vat: "separate", lag: 1, win: 3, itemsView: "pay", card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) };
   const gbp = v => (v < 0 ? "−" : "") + "£" + Math.abs(Math.round(v)).toLocaleString("en-GB");
   const pmt = A => { const r = 0.05 / 12; const bal = A * Math.pow(1 + r, 6); return A > 0 ? bal * r / (1 - Math.pow(1 + r, -30)) : 0; };
 
@@ -458,11 +456,11 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
     const grand = DETAIL.reduce((a, g) => a + g.lines.reduce((x, l) => x + l[1], 0), 0);
     det.innerHTML = DETAIL.map(g => { const t = g.lines.reduce((x, l) => x + l[1], 0); return `<div class="grp"><span>${g.name}${g.sub ? `<span class="sub"> · ${g.sub}</span>` : ""}</span><span>${gbp(t)}</span></div>` + g.lines.map(l => `<div class="det"><span>${l[0]}${l[2] ? `<span class="w"> · ${l[2]}</span>` : ""}</span><span class="amt">${gbp(l[1])}</span></div>`).join(""); }).join("")
       + `<div class="grp"><span>Total still to pay</span><span>${gbp(grand)}</span></div>`
-      + `<div class="grp"><span>Already paid before October<span class="sub"> · not in the model</span></span><span>${gbp(PAID.reduce((a, p) => a + p[1], 0))}</span></div>` + PAID.map(p => `<div class="det"><span>${p[0]}</span><span class="amt">${gbp(p[1])}</span></div>`).join("");
+      + `<div class="grp"><span>Already paid by 5 October<span class="sub"> · in the starting bank</span></span><span>${gbp(PAID.reduce((a, p) => a + p[1], 0))}</span></div>` + PAID.map(p => `<div class="det"><span>${p[0]}</span><span class="amt">${gbp(p[1])}</span></div>`).join("");
     const buy = S.itemsView === "buy";
     items.hidden = buy; det.hidden = !buy;
     document.getElementById("items-h2").textContent = buy ? "What the money buys, by area" : "Every unpaid line, and where each is paid from";
-    document.getElementById("items-note").textContent = buy ? "Ex VAT, grouped from the same 16 payment lines. The builder's trades cover the whole clinic; the kit is split by room." : "Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.";
+    document.getElementById("items-note").textContent = buy ? "Ex VAT, grouped from the same 15 payment lines. The builder's trades cover the whole clinic; the kit is split by room." : "Bank and card can be swapped on the unlocked lines. CBS's four stages stay on the bank. On top of these, £19,048 ex VAT has already been paid (£20,531 as invoiced) and is in the starting bank: see What it buys. Not in the figures yet, because they have no payment month: retail shelving and LED and retail and skincare opening stock (£1,583 ex VAT).";
     items.querySelectorAll(".seg[data-item]").forEach(g => g.addEventListener("click", e => { const b = e.target.closest("button"); if (!b || b.disabled) return; S.methods[g.dataset.item] = b.dataset.v; render(); }));
 
     // Reconciliation table.
@@ -492,7 +490,7 @@ footer { font-size: 11.5px; color: var(--muted); display: grid; gap: 4px; border
   bind("bscale", v => { S.bscale = v; }, v => v + "%"); bind("wscale", v => { S.wscale = v; }, v => v + "%");
   const setSlider = (id, v, fmt) => { document.getElementById(id).value = v; const o = document.getElementById(id + "-out"); if (o) o.textContent = fmt(v); };
   const PRESETS = {
-    plan: () => { Object.assign(S, { start: 34000, loan: 10000, loanMonth: 1, vat: "separate", lag: 1, card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) }); },
+    plan: () => { Object.assign(S, { start: 27000, loan: 10000, loanMonth: 2, vat: "separate", lag: 1, card: "plan", topup: 0, bscale: 100, wscale: 100, methods: Object.fromEntries(ITEMS.map(i => [i.id, i.method])) }); },
     nocard: () => { PRESETS.plan(); S.card = "none"; },
     loan15: () => { PRESETS.plan(); S.loan = 15000; },
     late: () => { PRESETS.plan(); S.vat = "through"; S.lag = 2; },
