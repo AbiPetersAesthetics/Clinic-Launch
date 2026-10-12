@@ -4,7 +4,7 @@
 // how each is paid (capital or card) and the uncosted lines from the layout pack in red.
 // L: the plan lines with the active property's figures (planLines in routes/boards.ts);
 // projectLines: the Money page's lines, for how each is paid.
-export function boardLines(html: string, L, projectLines, asOf: string): string {
+export function boardLines(html: string, L, projectLines, asOf: string, extra: { items: any[]; card: any[] } = { items: [], card: [] }): string {
 const PL = new Map(projectLines.map(l => [l.taskId, l]));
 // How each line is paid: the plan's method. Lines already paid came from the bank (nothing
 // is recorded on the cards); lines with no payment plan yet are "unset".
@@ -38,7 +38,7 @@ for (const x of L) {
   else if (x.paid === "part-paid" && (a > 0 || m > 0)) { p = a > 0 ? a : m; e = Math.max(0, sel - p); } else if (c > 0) cm = c; else e = sel;
   if (p + cm + e < 0.5) continue;
   const how = methodOf(x);
-  lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how]);
+  lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how, 0, x.id]);
 }
 const PACK_GAP = /(price needed)|(CBS variation)|^Credit due from CBS|^Lobby coffee station|^Utility storage|^Fixings for our items|BG Nexus black nickel|^Herringbone LVT in the treatment rooms|^Laser supply and stop button/;
 const ZERO = L.filter(x => PACK_GAP.test(x.title) && !(+x.sel > 0) && !(+x.com > 0) && !(+x.act > 0)).length;
@@ -49,13 +49,38 @@ const UNC_NAME = [[/^Emergency lights/, "Emergency lights and exit signs"], [/^R
 for (const x of L) {
   if (!PACK_GAP.test(x.title) || +x.sel > 0 || +x.com > 0 || +x.act > 0) continue;
   const n = UNC_NAME.find(([re]) => re.test(x.title));
-  lines.push([PHASE[x.phase] ?? x.phase, n ? n[1] : x.title, 0, 0, 0, "unset", 1]);
+  lines.push([PHASE[x.phase] ?? x.phase, n ? n[1] : x.title, 0, 0, 0, "unset", 1, x.id]);
 }
 const dashRe = new RegExp("\\s*[" + String.fromCharCode(0x2013, 0x2014) + "]\\s*", "g");
 for (const l of lines) l[1] = l[1].replace(dashRe, ": ");
 
+// What each line is made of, for the hover: its items on Abi's board, what the card register
+// holds against it, and when the rest is due. Keyed by plan line id.
+const MSHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ym = v => { const [y, m] = String(v).split("-").map(Number); return MSHORT[m - 1] + " " + String(y).slice(2); };
+const dm = v => { const [, m, d] = String(v).split("-").map(Number); return d + " " + MSHORT[m - 1]; };
+const LDETAIL = {};
+for (const l of lines) {
+  const id = l[7]; if (id == null) continue;
+  const its = extra.items.filter(i => i.task_id === id).map(i => [String(i.name).replace(dashRe, ": "), r2(+i.amount_gbp || 0), i.status]);
+  const cd = extra.card.filter(c => c.task_id === id).map(c => [dm(c.date), String(c.description).replace(dashRe, ": "), r2(+c.amount_gbp || 0), c.card, c.kind]);
+  const pl = PL.get(id); const left = pl && pl.remainingExVat >= 0.5 && pl.plan.length ? pl.plan : [];
+  const how = left.length ? left.map(p => (left.length > 1 ? Math.round(p.share * 100) + "% " : "") + ym(p.month)).join(", ") + (left.every(p => p.method === "card") ? ", on the card" : left.every(p => p.method !== "card") ? ", from the business bank" : "") : "";
+  if (its.length || cd.length || how) LDETAIL[id] = { items: its, card: cd, due: how };
+}
+
 // 1. Styles.
-rep(`footer { font-size: 11.5px;`, `.lsk-wrap { overflow-x: auto; }
+rep(`footer { font-size: 11.5px;`, `.lsk-wrap { overflow-x: auto; position: relative; }
+.lsk-tip { position: fixed; z-index: 50; width: 330px; max-height: calc(100vh - 16px); overflow: hidden; max-width: calc(100vw - 32px); box-sizing: border-box; background: var(--sheet); color: var(--ink); border: 1px solid var(--muted); border-radius: 4px; box-shadow: 0 6px 22px rgba(0,0,0,0.16); padding: 9px 11px; font-size: 11.5px; line-height: 1.35; pointer-events: none; }
+.lsk-tip[hidden] { display: none; }
+.lsk-tip .t { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+.lsk-tip .h { font-weight: 700; color: var(--muted); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; margin-top: 8px; }
+.lsk-tip .r { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+.lsk-tip .r span:first-child { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lsk-tip .r span:last-child { white-space: nowrap; }
+.lsk-tip .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.lsk-tip .ok { color: var(--s-paid); font-weight: 700; } .lsk-tip .todo { color: var(--s-est); font-weight: 700; } .lsk-tip .none { color: var(--bad); font-weight: 700; }
+.lsk-tip .m { color: var(--muted); }
 .lsk-wrap svg { min-width: 1000px; display: block; }
 .lsk-pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 0 7px; border-radius: 8px; margin-right: 5px; line-height: 14px; border: 1px solid var(--ink); }
 .lsk-pill.cap { color: var(--ink); } .lsk-pill.card { color: var(--sheet); background: var(--ink); } .lsk-pill.unset { color: var(--muted); border: 1px dashed var(--muted); }
@@ -80,10 +105,10 @@ rep(`      <p class="note" id="sankey-note"></p>
         <h2>The whole project, line by line: paid, committed or still an estimate (with VAT)</h2>
         <div class="seg" role="group" aria-label="Show" id="lsk-filter"><button type="button" data-v="all" aria-pressed="true">All lines</button><button type="button" data-v="paid" aria-pressed="false">Paid</button><button type="button" data-v="com" aria-pressed="false">Committed, not paid</button><button type="button" data-v="est" aria-pressed="false">Estimates</button><button type="button" data-v="capital" aria-pressed="false">From capital</button><button type="button" data-v="card" aria-pressed="false">On the card</button><button type="button" data-v="unc" aria-pressed="false">Uncosted</button></div>
       </div>
-      <div class="lsk-key"><span><i style="background: var(--s-paid)"></i>Paid</span><span><i style="background: var(--s-com)"></i>Committed (quoted and agreed), not yet paid</span><span><i style="background: var(--s-est)"></i>Estimate, not yet committed</span><span><b class="lsk-pill cap">Capital</b>paid from the business bank</span><span><b class="lsk-pill card">Card</b>on the credit card</span><span><b class="lsk-pill unset">Not set</b>no payment month yet</span><span><i style="background: var(--bad)"></i><span style="color: var(--bad); font-weight: 700">Uncosted</span>&nbsp;in the plan at £0, price to come</span><span>Hover any band or line for its figure.</span></div>
+      <div class="lsk-key"><span><i style="background: var(--s-paid)"></i>Paid</span><span><i style="background: var(--s-com)"></i>Committed (quoted and agreed), not yet paid</span><span><i style="background: var(--s-est)"></i>Estimate, not yet committed</span><span><b class="lsk-pill cap">Capital</b>paid from the business bank</span><span><b class="lsk-pill card">Card</b>on the credit card</span><span><b class="lsk-pill unset">Not set</b>no payment month yet</span><span><i style="background: var(--bad)"></i><span style="color: var(--bad); font-weight: 700">Uncosted</span>&nbsp;in the plan at £0, price to come</span><span>Hover any line to see what it is made of: what is paid, what is still to buy.</span></div>
       <p class="note">Every figure in this chart includes VAT, as the plan does. The rest of the board is before VAT, so the same line reads lower there: the joinery, desk and cabinetry is £1,800 here and £1,500 in What it buys.</p>
       <div class="lsk-sum" id="lsk-sum" aria-live="polite"></div>
-      <div class="lsk-wrap"><svg id="lines-sankey" viewBox="0 0 1100 900" width="100%" role="img" aria-label="The project total flows into paid, committed and estimate, then into each phase, then into every costed line."><title>Every line of spend by status</title></svg></div>
+      <div class="lsk-wrap"><div class="lsk-tip" id="lsk-tip" role="tooltip" hidden></div><svg id="lines-sankey" viewBox="0 0 1100 900" width="100%" role="img" aria-label="The project total flows into paid, committed and estimate, then into each phase, then into every costed line."><title>Every line of spend by status</title></svg></div>
       <p class="note" id="lsk-note"></p>
   </div>`);
 
@@ -91,7 +116,54 @@ rep(`      <p class="note" id="sankey-note"></p>
 rep(`  // ── panels ──`, `  // ── every line of spend: total, then paid / committed / estimate, then phase, then line ──
   // [phase, line, paid, committed not paid, estimate not committed], the plan's own figures, inc VAT where the line carries it, as at ${asOfLong}.
   const LINES = ${JSON.stringify(lines)};
+  // What each line is made of: items on Abi's board, what the card register holds, when the rest is due.
+  const LDETAIL = ${JSON.stringify(LDETAIL).replace(/</g, "\\u003c")};
   let lskFilter = "all";
+  function lskTip(ev, l) {
+    const box = document.getElementById("lsk-tip"); if (!box) return;
+    const wrap = box.parentElement, d = LDETAIL[l[7]] || { items: [], card: [], due: "" };
+    box.replaceChildren();
+    const add = (cls, parent) => { const e = document.createElement("div"); if (cls) e.className = cls; (parent || box).appendChild(e); return e; };
+    const span = (parent, text, cls, style) => { const e = document.createElement("span"); e.textContent = text; if (cls) e.className = cls; if (style) e.setAttribute("style", style); parent.appendChild(e); return e; };
+    const row = (left, right, rcls) => { const r = add("r"); const a = span(r, ""); a.append(...[].concat(left)); span(r, right, rcls); return r; };
+    const unc = l[6] === 1, total = l[2] + l[3] + l[4];
+    add("t").textContent = l[1] + "   " + (unc ? "price to come" : gbp(total));
+    if (unc) { add("m").textContent = "In the plan at £0 until it has a price (from the 9A layout pack)."; }
+    else {
+      const sw = k => { const e = document.createElement("span"); e.className = "sw"; e.style.background = tok("--s-" + k); return e; };
+      [["paid", "Paid", 2], ["com", "Committed, not yet paid", 3], ["est", "Still to buy or price (estimate)", 4]].forEach(([k, n, i]) => { if (l[i] > 0.5) row([sw(k), n], gbp(l[i])); });
+      add("m").textContent = l[5] === "card" ? "On the credit card" : l[5] === "capital" ? "From capital (the business bank)" : "No payment month set yet";
+    }
+    if (d.items.length) {
+      add("h").textContent = "Made up of";
+      d.items.forEach(([n, a, st]) => { const r = row(n, ""); r.lastChild.replaceChildren();
+        const right = r.lastChild; if (st === "paid") { span(right, gbp(a) + "  ", ""); span(right, "paid", "ok"); }
+        else if (a > 0) { span(right, gbp(a) + "  ", ""); span(right, st === "ordered" ? "ordered" : "to buy", "todo"); }
+        else span(right, "price to come", "none"); });
+      const paidItems = d.items.filter(i => i[2] === "paid").reduce((a, i) => a + i[1], 0), open = d.items.filter(i => i[2] !== "paid").reduce((a, i) => a + i[1], 0);
+      add("m").textContent = "Items: " + gbp(paidItems) + " paid, " + gbp(open) + " still to buy" + (d.items.some(i => i[2] !== "paid" && !(i[1] > 0)) ? ", and some still to price" : "") + ".";
+    }
+    if (d.card.length && d.items.length) {
+      const net = d.card.reduce((a, c) => a + (c[4] === "refund" ? -c[2] : c[2]), 0);
+      add("h").textContent = "On the card";
+      add("").textContent = d.card.length + (d.card.length === 1 ? " charge, " : " charges, ") + gbp(net) + ", on the " + d.card[0][3] + " (" + d.card.map(c => c[0]).filter((v, i, a) => a.indexOf(v) === i).join(", ") + ")";
+    } else if (d.card.length) {
+      add("h").textContent = "On the card";
+      d.card.forEach(([when, what, a, card, kind]) => row(when + "  " + what, (kind === "refund" ? "-" : "") + gbp(a)));
+      add("m").textContent = d.card[0][3];
+    }
+    if (d.due) { add("h").textContent = "Still to pay"; add("").textContent = d.due; }
+    box.hidden = false;
+    // Placed against the window, beside the pointer, and kept on screen.
+    const bw2 = box.offsetWidth, bh = box.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
+    let x = ev.clientX + 16, y = ev.clientY - bh / 2;
+    if (x + bw2 > vw - 8) x = ev.clientX - bw2 - 16;
+    x = Math.max(8, Math.min(x, vw - bw2 - 8)); y = Math.max(8, Math.min(y, vh - bh - 8));
+    box.style.left = x + "px"; box.style.top = y + "px";
+  }
+  function lskTipHide() { const box = document.getElementById("lsk-tip"); if (box) box.hidden = true; }
+  document.addEventListener("click", ev => { if (!ev.target.closest || !ev.target.closest("#lines-sankey")) lskTipHide(); });
+  window.addEventListener("scroll", lskTipHide, { passive: true });
   function drawLines() {
     const svg = document.getElementById("lines-sankey"); if (!svg) return;
     while (svg.lastChild && svg.lastChild.tagName !== "title") svg.removeChild(svg.lastChild);
@@ -152,6 +224,8 @@ rep(`  // ── panels ──`, `  // ── every line of spend: total, then p
       tip(el("rect", { x: px, y: ln.mid - 7, width: pw, height: 14, rx: 7, fill: pill[1], stroke: pill[2], "stroke-width": 1, "stroke-dasharray": pill[4], opacity: on ? 1 : 0.3 }), mk === "card" ? "On the credit card" : mk === "capital" ? "Paid from capital (the business bank)" : "No payment month or method set yet");
       el("text", { x: px + pw / 2, y: ln.mid + 3.5, "text-anchor": "middle", fill: pill[3], "font-size": "9.5", "font-weight": "700", "font-family": font, opacity: on ? 1 : 0.3 }, pill[0]);
       txt(W - 4, ln.mid + 4, "end", parts.length > 1 ? "part paid" : parts[0][1].replace("Committed, not paid", "committed").toLowerCase(), "10.5", "400", col(key), on ? 1 : 0.3); });
+    lineNodes.forEach(ln => { const hit = el("rect", { x: xL - 4, y: ln.mid - slot / 2, width: W - xL + 4, height: slot, fill: "transparent", style: "cursor: help" });
+      hit.addEventListener("mousemove", ev => lskTip(ev, ln.l)); hit.addEventListener("mouseleave", lskTipHide); hit.addEventListener("click", ev => { ev.stopPropagation(); lskTip(ev, ln.l); }); });
     txt(xT, 16, "start", "The project", "11", "600", muted); txt(xS, 16, "start", "Where each pound stands", "11", "600", muted); txt(xP, 16, "start", "Phase", "11", "600", muted); txt(xL, 16, "start", "Every line", "11", "600", muted); txt(W - 112 + 25, 16, "middle", "Paid from", "11", "600", muted);
     // The bucket picked by the buttons, in pounds, with its paid / committed / estimate split.
     {

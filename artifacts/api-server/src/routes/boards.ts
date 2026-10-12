@@ -37,6 +37,14 @@ async function planLines(projectId: number) {
   return (r as any).rows ?? r;
 }
 
+// What each plan line is made of, for the hover on the board's line chart: the items on Abi's
+// Rooms & Kit board under it, and what the card register holds against it.
+async function lineDetail(projectId: number) {
+  const items = await db.execute(sql`SELECT task_id, name, amount_gbp, status FROM kit_items WHERE project_id = ${projectId} AND task_id IS NOT NULL ORDER BY task_id, id`);
+  const card = await db.execute(sql`SELECT e.task_id, e.date, e.description, e.amount_gbp, e.kind, c.name AS card FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.task_id IS NOT NULL ORDER BY e.task_id, e.date, e.id`);
+  return { items: ((items as any).rows ?? items) as any[], card: ((card as any).rows ?? card) as any[] };
+}
+
 const page = (res: any, html: string) => { res.setHeader("Cache-Control", "no-store"); res.type("html").send(html); };
 const failed = (res: any, what: string, err: unknown) => {
   console.error(`[boards ${what}]`, err);
@@ -50,7 +58,7 @@ router.get("/projects/:projectId/boards/build-cash", async (req, res) => {
     const asOf = today();
     const J = await buildCashModel(projectId, { months: 36 });
     let html = boardRefresh(BOARD_TEMPLATE, J, asOf);
-    html = boardLines(html, await planLines(projectId), J.projectLines, asOf);
+    html = boardLines(html, await planLines(projectId), J.projectLines, asOf, await lineDetail(projectId));
     page(res, embedBoard(html));
   } catch (err) { failed(res, "Build Cash Board", err); }
 });
