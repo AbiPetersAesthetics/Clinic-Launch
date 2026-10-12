@@ -154,19 +154,24 @@ const V47_ITEMS: { line: RegExp | string; area: string; name: string; note: stri
 async function migratePackGapsV47(projectId: number) {
   const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
   if (!phases.length) return;
-  const tasks = (await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)))).filter(t => !t.archived);
+  // Every line, archived ones too, decides what already went in: a line archived later
+  // (V49) must not come back on the next boot.
+  const all = await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)));
+  const gone = new Set(all.filter(t => t.archived).map(t => t.title));
+  const tasks = all.filter(t => !t.archived);
   const build = tasks.find(t => t.title === "Arundel fire alarm (total)") ?? tasks.find(t => /^Ref 14 - Decoration/i.test(t.title));
   const ffe = tasks.find(t => /^Treatment Room Furniture/i.test(t.title));
   if (!build || !ffe) return;
   const base = { owner: "Abi + David", status: "not_started", riskLevel: "low", costTier: "low", selectedCost: 0, costVatStatus: "inc_vat", supplyScope: "to_confirm", procurementStatus: "to_specify", priority: "medium", budgetStatus: "not_set", includeInLaunchBudget: true, includeInRiskView: true };
   let bOrder = tasks.filter(t => t.phaseId === build.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0);
   for (const b of V47_BUILD) {
-    if (tasks.some(t => t.title === b.title)) continue;
+    if (gone.has(b.title) || tasks.some(t => t.title === b.title)) continue;
     const [row] = await db.insert(schema.tasksTable).values({ ...base, phaseId: build.phaseId, title: b.title, notes: b.notes, owner: "David", supplier: /CBS/.test(b.title) ? "CBS" : null, sortOrder: ++bOrder } as any).returning();
     tasks.push(row);
   }
   let fOrder = tasks.filter(t => t.phaseId === ffe.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0);
   for (const l of V47_LOBBY_LINES) {
+    if (gone.has(l.title)) continue;
     let task = tasks.find(t => t.title === l.title);
     if (!task) { [task] = await db.insert(schema.tasksTable).values({ ...base, phaseId: ffe.phaseId, title: l.title, notes: l.notes, sortOrder: ++fOrder } as any).returning(); tasks.push(task); }
     const [linked] = await db.select().from(schema.kitLinesTable).where(and(eq(schema.kitLinesTable.projectId, projectId), eq(schema.kitLinesTable.taskId, task.id)));
@@ -182,6 +187,101 @@ async function migratePackGapsV47(projectId: number) {
   // The area last: it marks the step as done for anyone reading the board.
   const [area] = await db.select().from(schema.kitAreasTable).where(and(eq(schema.kitAreasTable.projectId, projectId), eq(schema.kitAreasTable.areaKey, "lobby")));
   if (!area) await db.insert(schema.kitAreasTable).values({ projectId, areaKey: "lobby", name: "Lobby, coffee and utility", covers: "The coffee station in the lobby bay, the lobby mirror, and the utility's clinical waste cupboard, lockers and cleaning cupboard. All ours: none of it is in CBS's contract. At £0 until priced.", sortOrder: 3, budgetGbp: 0 } as any);
+}
+// V49, 12 October 2026 (owner): the 9A pack re-issued as three sets (the full pack, CBS
+// Issue 2 and the design pack), still Rev DS of 10 October. No price moved. The points to
+// discuss were renumbered and four changed: CBS take the emergency lights and exit signs
+// (agreed verbally); the desk power module and the clinical fixings credit are dropped;
+// replacing the WCs is new and open. The notes follow the new numbering, the two dropped
+// lines are archived (not deleted), the WCs and the take-home shelf go in at £0, and Abi's
+// finishes board takes the finishes the pack has chosen. Every step only while the line,
+// item or surface still reads as V47 or the first seed left it.
+const V49_SRC = "Checked against the 9A packs re-issued 12 October 2026 (Rev DS, CBS Issue 2).";
+const V49_NOTES: Record<string, string> = {
+  "Emergency lights and exit signs (price needed)": "CBS are doing the emergency lights and exit signs, agreed verbally (point 8; the lighting sheet says \"Emergency lighting: yours\"). Get it in writing, with whether it is inside Q2002C or an extra. The fire alarm itself is Arundel's.",
+  "Ramp edge guarding (price needed)": "The glass ramp panel is out of CBS's price, so the platform edge has no guarding: a handrail, an upstand or the panel back (point 9; reception plan, note 17).",
+  "LED strips: reception shelves and treatment room cupboards (CBS variation)": "Warm LED under the three reception shelves (dimmer D3) and under the wall cupboards in both treatment rooms (U1, own switch by the door). Not in Q2002C: CBS to price (point 24).",
+  "Hang and power the two Tala pendants, with dimmers (CBS variation)": "Our two Tala pendants (over the sofa and the desk), two Tala-compatible dimmers, the window pendant on its own switch. First fix (point 5).",
+  "Two high sockets for audio (CBS variation)": "Omitted from Q2002C. First fix (point 6).",
+  "Utility door re-hung to open out, with a closer (CBS variation)": "The utility door opens out into the lobby with a closer fitted (design pack, critical dimension 17; the closer matches the ironmongery, point 10). No longer a separate point: confirm with CBS whether it is in their price.",
+  "Fixings for our items: mirror, art, hooks, worktop timber (CBS)": "Backing timber in the partitions for our dispensers, sharps brackets and cupboards (point 3), fixings for the take-home shelf (point 23), mirror and art into masonry, coat hooks. Confirm with CBS what their price covers.",
+  "Coffee sink and tap in the lobby (CBS variation)": "Our sink and tap on the existing services, CBS to connect (lobby sheet). Not in CBS's price.",
+  "Switches and sockets in BG Nexus black nickel (extra over white)": "BG Nexus Metal black nickel throughout, with Tala-compatible dimmers to match; closest match is fine. Tell CBS before second fix (point 11).",
+  "Herringbone LVT in the treatment rooms, not clinical vinyl (difference to agree)": "Karndean Korlok Texas White Ash herringbone (Howdens SDH1210) in every room, the WCs and utility included, chosen 10 October. CBS priced clinical vinyl in the treatment rooms (13.2): agree the difference (points 1 and 12).",
+  "Credit due from CBS: basins and taps (Ref 10.1)": "We supply the Arezzo basins and Alberta taps; CBS connect at plumbing second fix (point 2). Ask for the credit against 10.1 (3,005 in all). A credit, so it will bring the total down.",
+  "Laser supply and stop button: keep or omit (credit if omitted)": "The laser is not bought. Keep points 47 and 55 as provision, or omit them for a credit. David to decide (point 7).",
+};
+const V49_ARCHIVE: Record<string, string> = {
+  "Reception desk power module and cable tray (CBS variation)": "Dropped in the 12 October 2026 re-issue: no longer a point to discuss, and the reception plan has a double socket at the desk wall end (note 18).",
+  "Credit due from CBS: clinical fixings": "Dropped in the 12 October 2026 re-issue: the dispensers and sharps brackets are ours (point 3), and CBS's Q2002C already omits the clinical fixing sundries (ref 16), so there is no credit to ask for.",
+};
+const V49_WCS = { title: "WCs: replace the existing WCs and basins (to discuss, price needed)", notes: "Point 25, new in the 12 October re-issue: take out the existing WCs and basins for new ones, which we may cost in. The WC and finishes sheets still say they are kept: decide, then get CBS's price. " + V49_SRC };
+const V49_PAINT_IN = { from: "Paint: inside (walls, feature blue, woodwork)", to: "Paint: inside (walls, ceilings, woodwork)", label: "Inside: walls, ceilings and woodwork", notes: "Wimborne White No. 239 on the walls (Diamond Matt; Sterishield in the treatment rooms and corridor) and the ceilings (Vinyl Matt), Railings No. 31 on the inside face of the shopfront frames, all Dulux colour matched; the door colour is to follow. The pack has no feature wall. CBS's Ref 14 covers the decoration, finishes to their advice: confirm their price includes the paint, then this line closes at £0. " + V49_SRC };
+const V49_PAINT_OUT = { title: "Paint: outside (shopfront white and blue)", notes: "All White No. 2005 on the fascia and surround and Railings No. 31 on the door and window frames, Dulux colour matched, finishes to CBS's advice; both need listed building consent. CBS's Ref 17 refurbishes the shopfront: confirm their price includes the paint, then this line closes at £0. " + V49_SRC };
+const V49_SHELF = { name: "Take-home shelf over the room 1 desk, made by Bill", note: "800 by 200, white, underside at 1,450, for 3 to 5 sealed take-home products; fixings into the wall (point 23). Bill makes it; materials price to come. " + V49_SRC };
+const V49_HOWDENS = { name: "Howdens units and worktop: navy base, white wall, Calacatta top", from: "Who fits to agree with CBS (point 29). Price to come. " + V47_SRC, to: "Ours, not CBS's (point 3); CBS connect the sink. Price to come. " + V49_SRC };
+// The finishes the pack has chosen, as options on Abi's board. Swatches are approximate.
+const V49_FINISHES: { role: string; option?: { name: string; brand: string; finish: string; hex: string; note: string }; brief?: { from: string; to: string } }[] = [
+  { role: "shop_main", option: { name: "All White No. 2005", brand: "Farrow & Ball, Dulux colour match", finish: "Weathershield Exterior Satin (CBS to advise)", hex: "#F3F1EA", note: "Fascia and surround. Needs listed building consent. Chosen in the 9A pack." } },
+  { role: "shop_trim", option: { name: "Railings No. 31", brand: "Farrow & Ball, Dulux colour match", finish: "Weathershield Satin outside, Diamond Eggshell inside (CBS to advise)", hex: "#3B4049", note: "Door and window frames, both faces. Outside needs listed building consent. Chosen in the 9A pack." } },
+  { role: "feature", brief: { from: FINISH_V38[1].to.brief, to: "Not in the 9A pack re-issued on 12 October: the walls are Wimborne White throughout, with no feature wall or moulding. Keep this only if Abi still wants one; the wall panelling line is at £0." } },
+  { role: "walls", option: { name: "Wimborne White No. 239", brand: "Farrow & Ball, Dulux colour match", finish: "Diamond Matt; ceilings Vinyl Matt (CBS to advise)", hex: "#EDE9DF", note: "Walls and ceilings throughout. Chosen in the 9A pack." } },
+  { role: "walls_clinical", option: { name: "Wimborne White No. 239", brand: "Farrow & Ball, Dulux colour match", finish: "Sterishield Diamond Matt (CBS to advise)", hex: "#EDE9DF", note: "Treatment rooms and corridor, wipeable. Chosen in the 9A pack." } },
+  { role: "floor_clinical", option: { name: "Texas White Ash herringbone", brand: "Karndean Korlok (Howdens SDH1210)", finish: "Herringbone click LVT, 708 by 177, 6.5 mm, Class 33", hex: "#E3DBCD", note: "Every room, as reception. CBS priced clinical vinyl here (13.2): the difference is a variation to agree." }, brief: { from: FINISH_V38[4].to.brief, to: "Herringbone LVT, as reception: Karndean Korlok Texas White Ash, chosen 10 October. CBS priced clinical safety vinyl here (Ref 13.2), so the difference is a variation to agree (a plan line)." } },
+  { role: "floor_front", option: { name: "Texas White Ash herringbone", brand: "Karndean Korlok (Howdens SDH1210)", finish: "Herringbone click LVT, 708 by 177, 6.5 mm, Class 33", hex: "#E3DBCD", note: "Reception, ramp, landing, corridor, lobby, utility and WCs. Chosen in the 9A pack." } },
+];
+async function migratePackReissueV49(projectId: number) {
+  const phases = await db.select().from(schema.phasesTable).where(eq(schema.phasesTable.projectId, projectId));
+  if (!phases.length) return;
+  const all = await db.select().from(schema.tasksTable).where(inArray(schema.tasksTable.phaseId, phases.map(p => p.id)));
+  const live = all.filter(t => !t.archived);
+  const seeded = new Map(V47_BUILD.map(b => [b.title, b.notes]));
+  // 1. Notes on the new numbering, while each still holds V47's note.
+  for (const [title, note] of Object.entries(V49_NOTES)) {
+    const t = live.find(x => x.title === title && x.notes === seeded.get(title));
+    if (t) await db.update(schema.tasksTable).set({ notes: note + " " + V49_SRC, updatedAt: new Date() }).where(eq(schema.tasksTable.id, t.id));
+  }
+  // 2. The two dropped lines, archived while still uncosted and as V47 left them.
+  for (const [title, reason] of Object.entries(V49_ARCHIVE)) {
+    const t = live.find(x => x.title === title && x.notes === seeded.get(title));
+    if (!t || +(t.selectedCost ?? 0) > 0 || +(t.committedCost ?? 0) > 0 || +(t.actualCost ?? 0) > 0) continue;
+    await db.update(schema.tasksTable).set({ archived: true, archivedReason: reason, updatedAt: new Date() } as any).where(eq(schema.tasksTable.id, t.id));
+  }
+  // 3. Arundel's note no longer calls the emergency lights a gap.
+  await db.execute(sql`UPDATE launch_tasks SET notes = replace(notes, 'Emergency lights and exit signs are a separate gap still to price (layout pack, point 10).', 'Emergency lights and exit signs are CBS''s, agreed verbally (point 8 in the 12 October re-issue): get it in writing.'), updated_at = NOW() WHERE title = 'Arundel fire alarm (total)' AND notes LIKE '%a separate gap still to price (layout pack, point 10)%' AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
+  // 4. The WCs, at £0, once, in the phase that holds CBS's lines.
+  const build = live.find(t => t.title === "Arundel fire alarm (total)") ?? live.find(t => /^Ref 14 - Decoration/i.test(t.title));
+  if (build && !all.some(t => t.title === V49_WCS.title)) {
+    const sortOrder = all.filter(t => t.phaseId === build.phaseId).reduce((m, t) => Math.max(m, t.sortOrder), 0) + 1;
+    await db.insert(schema.tasksTable).values({ phaseId: build.phaseId, title: V49_WCS.title, notes: V49_WCS.notes, owner: "David", supplier: "CBS", status: "not_started", riskLevel: "low", costTier: "low", selectedCost: 0, costVatStatus: "inc_vat", supplyScope: "to_confirm", procurementStatus: "to_specify", priority: "medium", budgetStatus: "not_set", includeInLaunchBudget: true, includeInRiskView: true, sortOrder } as any);
+  }
+  // 5. The paint lines: the pack's colours, and no feature blue inside.
+  const seedNote = (title: string) => KIT_V38_PAINT.find(p => p.title === title)?.notes;
+  const pin = live.find(t => t.title === V49_PAINT_IN.from && t.notes === seedNote(V49_PAINT_IN.from));
+  if (pin) {
+    await db.update(schema.tasksTable).set({ title: V49_PAINT_IN.to, notes: V49_PAINT_IN.notes, updatedAt: new Date() }).where(eq(schema.tasksTable.id, pin.id));
+    await db.update(schema.kitLinesTable).set({ label: V49_PAINT_IN.label }).where(and(eq(schema.kitLinesTable.taskId, pin.id), eq(schema.kitLinesTable.label, "Inside: walls, the feature blue and woodwork")));
+  }
+  const pout = live.find(t => t.title === V49_PAINT_OUT.title && t.notes === seedNote(V49_PAINT_OUT.title));
+  if (pout) await db.update(schema.tasksTable).set({ notes: V49_PAINT_OUT.notes, updatedAt: new Date() }).where(eq(schema.tasksTable.id, pout.id));
+  // 6. Abi's board: the take-home shelf, and the Howdens units' note.
+  const items = await db.select().from(schema.kitItemsTable).where(eq(schema.kitItemsTable.projectId, projectId));
+  const room1 = live.find(t => /^Treatment Room Furniture/i.test(t.title));
+  if (room1 && !items.some(x => x.name === V49_SHELF.name)) await db.insert(schema.kitItemsTable).values({ projectId, areaKey: "treatment", taskId: room1.id, name: V49_SHELF.name, amountGbp: 0, status: "planned", note: V49_SHELF.note } as any);
+  const howdens = items.find(x => x.name === V49_HOWDENS.name && x.note === V49_HOWDENS.from);
+  if (howdens) await db.update(schema.kitItemsTable).set({ note: V49_HOWDENS.to, updatedAt: new Date() }).where(eq(schema.kitItemsTable.id, howdens.id));
+  // 7. The finishes: each chosen option once, chosen only where nothing is chosen yet.
+  const surfaces = await db.select().from(schema.finishSurfacesTable).where(eq(schema.finishSurfacesTable.projectId, projectId));
+  const options = await db.select().from(schema.finishOptionsTable).where(eq(schema.finishOptionsTable.projectId, projectId));
+  for (const f of V49_FINISHES) {
+    const s = surfaces.find(x => x.role === f.role);
+    if (!s) continue;
+    if (f.brief && s.brief === f.brief.from) await db.update(schema.finishSurfacesTable).set({ brief: f.brief.to, updatedAt: new Date() }).where(eq(schema.finishSurfacesTable.id, s.id));
+    if (!f.option || options.some(o => o.surfaceId === s.id && o.name === f.option!.name)) continue;
+    const order = options.filter(o => o.surfaceId === s.id).reduce((m, o) => Math.max(m, o.sortOrder), 0) + 1;
+    const [opt] = await db.insert(schema.finishOptionsTable).values({ projectId, surfaceId: s.id, ...f.option, status: "idea", sortOrder: order } as any).returning();
+    if (opt && s.chosenOptionId == null) await db.update(schema.finishSurfacesTable).set({ chosenOptionId: opt.id, updatedAt: new Date() }).where(eq(schema.finishSurfacesTable.id, s.id));
+  }
 }
 async function migrateKitV38(projectId: number) {
   const areas = await db.select().from(schema.kitAreasTable).where(eq(schema.kitAreasTable.projectId, projectId));
@@ -1416,6 +1516,7 @@ export async function runStartupSeed(): Promise<void> {
         // twice. The property's copy first; each only while the line is still unpaid.
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 410.4, amount_paid_gbp = 410.4, payment_date = '2026-10-11', updated_at = NOW() WHERE coalesce(paid_status, 'committed') = 'committed' AND amount_paid_gbp IS NULL AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Arundel fire alarm (total)' AND coalesce(paid_status, 'committed') = 'committed' AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 410.4, amount_paid_gbp = 410.4, payment_date = '2026-10-11', payment_plan_json = '[{"month":"2026-11","share":1,"method":"bank"}]', updated_at = NOW() WHERE title = 'Arundel fire alarm (total)' AND coalesce(paid_status, 'committed') = 'committed' AND amount_paid_gbp IS NULL AND committed_cost = 1368 AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
+        await migratePackReissueV49(projectId);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
