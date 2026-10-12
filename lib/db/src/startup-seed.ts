@@ -1549,6 +1549,22 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`UPDATE kit_items SET amount_gbp = 441, status = 'paid', note = ${"Brass, 3 Sphere IV bulbs, over the sofa. " + V52_NOTE}, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Tala linear triple pendant, brass (over the sofa)' AND round(amount_gbp::numeric, 2) = 367.5 AND status = 'planned'`);
         await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 2438.62, updated_at = NOW() WHERE round(selected_cost::numeric, 2) = 2399.62 AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Reception furniture and styling (verified schedule)' AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         await db.execute(sql`UPDATE launch_tasks SET selected_cost = 2438.62, updated_at = NOW() WHERE title = 'Reception furniture and styling (verified schedule)' AND archived = FALSE AND round(selected_cost::numeric, 2) = 2399.62 AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
+        // V53, 12 October 2026 (owner): the rest of reception bought. Cult Furniture, the Ingrid
+        // side table, 193.95 with 14.95 delivery (tax invoice 377725, to the company, VAT 32.32,
+        // Virgin card ending 6965). Daals, one order of 1,039.97 with free delivery: the Amboise
+        // sofa, the Amboise pouffe and the Lucia desk chair, each at its listed price. All marked
+        // paid; the reception line rises by the side table's delivery, 14.95, to 2,453.57, and
+        // stays on its October card plan (see V51).
+        const V53_DAALS = "Bought 12 October 2026 in one Daals order of 1,039.97, free economy delivery to 4 Masons Avenue, paid by David. Ask Daals for a VAT invoice to Abi Peters Aesthetics Ltd (GB 523 3501 30): 173.34 VAT on the order.";
+        const V53_ITEMS: [string, number, number, string][] = [
+          ["Ingrid round side table, Cult Furniture", 179, 193.95, "Bought 12 October 2026 from Cult Furniture: 179 plus 14.95 delivery, 193.95 on David's Virgin Money card (ending 6965). Tax invoice 377725 to Abi Peters Aesthetics Ltd, VAT 32.32. Pre-order, dispatch from 17 November."],
+          ["Amboise curved 3-seater sofa, Daals", 699.99, 699.99, "Ecru boucle, ball cushions. " + V53_DAALS],
+          ["Amboise storage pouffe, Daals", 129.99, 129.99, "Ecru boucle. " + V53_DAALS],
+          ["Lucia cane swivel desk chair, Daals", 209.99, 209.99, "Black frame. " + V53_DAALS],
+        ];
+        for (const [name, was, now, note] of V53_ITEMS) await db.execute(sql`UPDATE kit_items SET amount_gbp = ${now}, status = 'paid', note = ${note}, updated_at = NOW() WHERE project_id = ${projectId} AND name = ${name} AND round(amount_gbp::numeric, 2) = ${was} AND status = 'planned'`);
+        await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 2453.57, updated_at = NOW() WHERE round(selected_cost::numeric, 2) = 2438.62 AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Reception furniture and styling (verified schedule)' AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
+        await db.execute(sql`UPDATE launch_tasks SET selected_cost = 2453.57, updated_at = NOW() WHERE title = 'Reception furniture and styling (verified schedule)' AND archived = FALSE AND round(selected_cost::numeric, 2) = 2438.62 AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
