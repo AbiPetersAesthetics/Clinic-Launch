@@ -25,7 +25,7 @@ const NAME = [[/^Ref (\d+) - (.*)$/, (m, n, t) => `CBS ref ${n}: ${t}`], [/Asbes
   [/Arundel/, "Fire alarm (Arundel)"], [/Treatment Couch/, "Treatment couch"], [/Reception furniture/, "Reception furniture"], [/Consultation Room Furniture/, "Treatment room 2 furniture"],
   [/Treatment Room Furniture/, "Treatment room furniture"], [/Skin Analysis/, "Skin analysis platform"], [/ACE Group/, "ACE membership"], [/Clinical Waste/, "Clinical waste contract"],
   [/Fire Risk/, "Fire risk assessment"], [/Emergency Drugs/, "Emergency drugs kit"], [/Opening Injectable/, "Opening injectable stock"], [/Smallwares/, "Smallwares and consumables"],
-  [/Retail \/ Skincare/, "Retail and skincare stock"], [/FIGS/, "Scrubs and trainers"], [/Hamilton Fraser/, "Insurance, Hamilton Fraser"], [/Broadband/, "Broadband"], [/Legionella/, "Legionella assessment"],
+  [/Retail \/ Skincare/, "Retail and skincare stock"], [/FIGS/, "Scrubs (FIGS)"], [/^Trainers/, "Work trainers"], [/Hamilton Fraser/, "Insurance, Hamilton Fraser"], [/Broadband/, "Broadband"], [/Legionella/, "Legionella assessment"],
   [/PAT Testing/, "PAT testing"], [/Meta Ads/, "Meta launch adverts"], [/Google Ads/, "Google launch adverts"], [/deep clean/i, "Deep clean materials"]];
 const nameOf = t => { if (/^Ref 21 /.test(t)) return "CBS ref 21: Building Regs and M&E CAD"; for (const [re, n] of NAME) if (re.test(t)) return typeof n === "function" ? t.replace(re, n) : n; return t; };
 const r2 = v => Math.round(v * 100) / 100;

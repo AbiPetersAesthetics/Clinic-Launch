@@ -33,8 +33,8 @@ const KIT: [RegExp, string, string, string][] = [
   [/^Fire Risk/i, "safety", "Fire risk assessment after the fit-out", ""], [/^Emergency Drugs/i, "safety", "Emergency drugs and equipment", ""],
   [/^Legionella/i, "safety", "Legionella assessment", ""], [/^Clinical Waste/i, "safety", "Clinical waste contract", ""], [/^PAT Testing/i, "safety", "PAT testing", ""],
   [/^Opening Injectable/i, "open", "Opening injectable stock", ""], [/Smallwares/i, "open", "Clinical smallwares and consumables", ""], [/^Hamilton Fraser/i, "open", "Insurance for the year", "no VAT"],
-  [/^Meta Ads/i, "open", "Launch adverts, Meta", "no VAT"], [/^Google Ads/i, "open", "Launch adverts, Google", "no VAT"], [/^FIGS/i, "open", "Scrubs and trainers", ""],
-  [/^Broadband/i, "open", "Broadband set-up", ""], [/deep clean/i, "open", "Deep clean materials", ""],
+  [/^Meta Ads/i, "open", "Launch adverts, Meta", "no VAT"], [/^Google Ads/i, "open", "Launch adverts, Google", "no VAT"], [/^FIGS/i, "open", "Scrubs (FIGS)", ""],
+  [/^Trainers/i, "open", "Work trainers", ""], [/^Broadband/i, "open", "Broadband set-up", ""], [/deep clean/i, "open", "Deep clean materials", ""],
 ];
 const GROUPS: [string, string, string][] = [["cbs", "The building work (CBS), by trade", "whole clinic: two treatment rooms, reception, utility, two WCs"], ["treat", "Treatment rooms, kit", ""], ["recep", "Reception, kit", ""],
   ["front", "Shop front", ""], ["safety", "Safety and compliance", ""], ["open", "Opening", ""], ["other", "Other", ""]];
@@ -78,10 +78,14 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
     : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
     : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
-    : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch, four lines", "kit"] : /Injectable|Smallwares|FIGS/.test(t) ? ["stock", "Opening stock, consumables, scrubs", "kit"]
+    : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch, four lines", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
     : /Meta Ads/.test(t) ? ["meta", "Launch adverts, Meta (no VAT)", "kit"] : /Google Ads/.test(t) ? ["google", "Launch adverts, Google (no VAT)", "kit"]
     : ["checks", "Pre-opening checks, waste, emergency kit", "kit"];
+  // A group's lines are one payment while they share a month, a method and a VAT basis. A
+  // line that differs (moved to another month, put on the bank, no VAT) becomes its own
+  // payment beside the group, named with its month, rather than stopping the board.
+  const MNAME = { 1: "October", 2: "November", 3: "December", 4: "January", 5: "February", 6: "March", 7: "April", 8: "May", 9: "June" };
   const items = new Map(); const unsched = [];
   for (const l of J.projectLines) {
     if (l.remainingExVat < 0.5) continue;
@@ -89,14 +93,19 @@ export function boardRefresh(template: string, J, asOf: string): string {
     for (const p of l.plan) {
       const m = IDX[p.month]; if (!m) throw new Error("A payment falls outside October to June: " + l.title + ", " + p.month);
       const [id, name, group, locked] = itemOf(l.title, l.phase, m);
-      const it = items.get(id) ?? { id, name, ex: 0, vatEx: 0, method: p.method === "card" ? "card" : "bank", m, locked: !!locked, group };
-      if (it.m !== m || it.method !== (p.method === "card" ? "card" : "bank")) throw new Error("The board shows " + id + " as one payment, but its lines differ in month or method.");
-      it.ex += l.remainingExVat * p.share; if (l.vatBasis !== "no VAT") it.vatEx += l.remainingExVat * p.share; items.set(id, it);
+      const method = p.method === "card" ? "card" : "bank", vat = l.vatBasis !== "no VAT";
+      const fits = (x) => x.m === m && x.method === method && (x.ex < 0.01 || x.vat === vat);
+      let it = items.get(id);
+      if (it && !fits(it)) {
+        const key = `${id}_${m}_${method}${vat ? "" : "_novat"}`;
+        it = items.get(key) ?? { id: key, base: id, name: `${name}, ${MNAME[m]}${method !== it.method ? ` (${method})` : ""}`, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
+      }
+      it = it ?? { id, base: id, name, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
+      it.ex += l.remainingExVat * p.share; if (vat) it.vatEx += l.remainingExVat * p.share; items.set(it.id, it);
     }
   }
-  const ORDER = ["sign", "arundel1", "cbs1", "cbs2", "arundel2", "cbs3", "cbs4", "joinery", "furniture", "stock", "insurance", "checks", "broadband", "meta", "google"];
-  const list = [...items.values()].sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
-  for (const i of list) if (i.vatEx > 0.01 && Math.abs(i.vatEx - i.ex) > 0.01) throw new Error("The board shows " + i.id + " as one payment, but its lines differ on VAT.");
+  const ORDER = ["sign", "arundel1", "cbs1", "cbs2", "arundel2", "cbs3", "cbs4", "joinery", "furniture", "scrubs", "stock", "insurance", "checks", "broadband", "meta", "google"];
+  const list = [...items.values()].sort((a, b) => ORDER.indexOf(a.base) - ORDER.indexOf(b.base) || a.m - b.m);
   const itemsJs = list.map(i => `    { id: "${i.id}", name: "${i.name}", ex: ${r2(i.ex)}, vat: ${i.vatEx > 0.01}, method: "${i.method}", m: ${i.m},${i.locked ? " locked: true," : ""} group: "${i.group}" },`).join("\n");
 
   // 2. Already paid, ex VAT (it is in the bank balance).
