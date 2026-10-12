@@ -1592,6 +1592,15 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`INSERT INTO kit_items (project_id, area_key, task_id, name, amount_gbp, status, note)
           SELECT ${projectId}, 'opening', t.id, 'Work trainers, Abi and David', 90.8, 'planned', 'Not yet bought. Buy on the Virgin card by 29 October 2026 for the 0%.'
           FROM launch_tasks t WHERE t.title = ${V55_TRAINERS} AND t.archived = FALSE AND NOT EXISTS (SELECT 1 FROM kit_items i WHERE i.project_id = ${projectId} AND i.name = 'Work trainers, Abi and David')`);
+        // V56, 12 October 2026 (owner): show what is spent against its lines. Reception is part
+        // paid, 2,284.23 of 2,434.22 (all but the lobby chair), and the FIGS scrubs are paid,
+        // 259.20, both on David's Virgin card. The cash model counts money on the card register
+        // as card spend still to repay, not as out of the bank, so marking them paid leaves the
+        // bank and card figures as they were. The property's copy first; each only while unpaid.
+        for (const [title, status, paid] of [["Reception furniture and styling (verified schedule)", "part-paid", 2284.23], ["FIGS scrubs - Abi and David", "paid", 259.2]] as const) {
+          await db.execute(sql`UPDATE property_task_overrides SET paid_status = ${status}, actual_cost = ${paid}, amount_paid_gbp = ${paid}, payment_date = '2026-10-12', updated_at = NOW() WHERE coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${title} AND archived = FALSE AND coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
+          await db.execute(sql`UPDATE launch_tasks SET paid_status = ${status}, actual_cost = ${paid}, amount_paid_gbp = ${paid}, payment_date = '2026-10-12', updated_at = NOW() WHERE title = ${title} AND archived = FALSE AND coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
+        }
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.

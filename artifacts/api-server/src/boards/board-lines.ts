@@ -32,7 +32,10 @@ const r2 = v => Math.round(v * 100) / 100;
 const lines = [];
 for (const x of L) {
   const a = +x.act || 0, c = +x.com || 0, sel = +x.sel || 0, m = +x.amt || 0; let p = 0, cm = 0, e = 0;
-  if (x.paid === "paid" && a > 0) p = a; else if (x.paid === "part-paid" && c > 0) { p = a > 0 ? a : m; cm = Math.max(0, c - p); } else if (c > 0) cm = c; else e = sel;
+  // Part paid against an estimate (no committed figure, as with furniture bought item by item):
+  // what is paid shows as paid, the rest of the estimate as still to come.
+  if (x.paid === "paid" && a > 0) p = a; else if (x.paid === "part-paid" && c > 0) { p = a > 0 ? a : m; cm = Math.max(0, c - p); }
+  else if (x.paid === "part-paid" && (a > 0 || m > 0)) { p = a > 0 ? a : m; e = Math.max(0, sel - p); } else if (c > 0) cm = c; else e = sel;
   if (p + cm + e < 0.5) continue;
   const how = methodOf(x);
   lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how]);
@@ -42,7 +45,7 @@ const ZERO = L.filter(x => PACK_GAP.test(x.title) && !(+x.sel > 0) && !(+x.com >
 const UNC_NAME = [[/^Emergency lights/, "Emergency lights and exit signs"], [/^Ramp edge guarding/, "Ramp edge guarding"], [/^LED strips/, "LED strips, shelves and cupboards"], [/^Hang and power the two Tala/, "Tala pendants: hang, power, dimmers"],
   [/^Two high sockets/, "Two high sockets for audio"], [/^Reception desk power module/, "Desk power module and cable tray"], [/^Utility door re-hung/, "Utility door re-hung, with a closer"], [/^Fixings for our items/, "Fixings for our items"],
   [/^Coffee sink and tap/, "Coffee sink and tap"], [/BG Nexus black nickel/, "Black nickel switches (extra)"], [/^Herringbone LVT in the treatment rooms/, "Herringbone LVT, treatment rooms"], [/^Credit due from CBS: basins/, "CBS credit: basins and taps"],
-  [/^Credit due from CBS: clinical/, "CBS credit: clinical fixings"], [/^Laser supply and stop button/, "Laser supply: keep or omit"], [/^Lobby coffee station/, "Lobby coffee station"], [/^Utility storage/, "Utility storage"]];
+  [/^Credit due from CBS: clinical/, "CBS credit: clinical fixings"], [/^Laser supply and stop button/, "Laser supply: keep or omit"], [/^WCs: replace/, "Replace the WCs (to discuss)"], [/^Lobby coffee station/, "Lobby coffee station"], [/^Utility storage/, "Utility storage"]];
 for (const x of L) {
   if (!PACK_GAP.test(x.title) || +x.sel > 0 || +x.com > 0 || +x.act > 0) continue;
   const n = UNC_NAME.find(([re]) => re.test(x.title));

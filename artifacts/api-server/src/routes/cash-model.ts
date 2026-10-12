@@ -7,7 +7,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import {
   financialsTable, phasesTable, tasksTable, propertiesTable, propertyTaskOverridesTable,
-  investmentsTable, shareholdersTable,
+  investmentsTable, shareholdersTable, cardEntriesTable,
 } from "@workspace/db";
 import { eq, and, inArray } from "drizzle-orm";
 import { runCashModel, addMonths, type CashInputs, type ProjectPayment, type CashCheck } from "../lib/cash-model";
@@ -28,7 +28,9 @@ function mergeDeep<T>(base: T, over: unknown): T {
 // Ex VAT value of a plan line. Invoice status wins; otherwise the planning flag.
 export type ProjectLine = {
   taskId: number; title: string; phase: string; status: "paid" | "part-paid" | "unpaid";
-  recorded: number; paid: number; remainingExVat: number; vatBasis: string;
+  /** paid: from the bank, so already in the bank balance. paidOnCard: paid by a card on the
+   *  card register; still owed on the card, so the model keeps it as card spend to repay. */
+  recorded: number; paid: number; paidOnCard: number; remainingExVat: number; vatBasis: string;
   plan: { month: string; share: number; method: "bank" | "card" }[]; planProblem: string | null;
 };
 
@@ -89,6 +91,15 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const ovr = new Map<number, any>();
   if (prop) for (const o of await db.select().from(propertyTaskOverridesTable).where(eq(propertyTaskOverridesTable.propertyId, prop.id))) ovr.set(o.taskId, o);
 
+  // What the card register holds against each plan line: purchases less refunds. A line paid
+  // by card is still owed on the card, not out of the bank, so that much of its payment
+  // counts as unpaid card spend, in the line's own card plan.
+  const onCard = new Map<number, number>();
+  for (const e of await db.select().from(cardEntriesTable).where(eq(cardEntriesTable.projectId, projectId))) {
+    if (e.taskId == null || (e.kind !== "purchase" && e.kind !== "refund")) continue;
+    onCard.set(e.taskId, (onCard.get(e.taskId) ?? 0) + (e.kind === "refund" ? -e.amountGbp : e.amountGbp));
+  }
+
   const lines: ProjectLine[] = [];
   const payments: ProjectPayment[] = [];
   for (const t of baseTasks) {
@@ -101,7 +112,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     if (!recorded) continue;
     const vat = exVatOf(recorded, pick("invoiceVatStatus"), pick("costVatStatus"));
     const status: ProjectLine["status"] = paidStatus === "paid" ? "paid" : paidStatus === "part-paid" ? "part-paid" : "unpaid";
-    const paid = status === "paid" ? recorded : status === "part-paid" ? (amountPaid || actual) : 0;
+    const paidAll = status === "paid" ? recorded : status === "part-paid" ? (amountPaid || actual) : 0;
+    const paidOnCard = Math.min(paidAll, Math.max(0, onCard.get(t.id) ?? 0));
+    const paid = paidAll - paidOnCard;
     const remainingRecorded = Math.max(0, recorded - paid);
     const remainingExVat = remainingRecorded * (vat.ex / recorded);
     let plan: ProjectLine["plan"] = [];
@@ -111,7 +124,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
       : !plan.length ? "No payment month set"
       : Math.abs(shares - 1) > 0.001 ? `Payment shares add up to ${Math.round(shares * 100)}%, not 100%`
       : null;
-    lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, remainingExVat, vatBasis: vat.basis, plan, planProblem });
+    lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, paidOnCard, remainingExVat, vatBasis: vat.basis, plan, planProblem });
     if (remainingExVat >= 0.5 && !planProblem) {
       // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
       const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;

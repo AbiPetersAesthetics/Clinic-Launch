@@ -427,6 +427,12 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
         else if (vatStatus === "exc") { reclaimableVat += committed * 0.20; excVatReclaim += committed * 0.20; reclaimOnPaid += cashPaid * 0.20; }
         if (vatStatus === null || vatStatus === "unknown") unknownVatTaskCount++;
         if (actual < planned) savingsCaptured += planned - actual;
+      } else if (paid === "part-paid" && (actual > 0 || amountPaid > 0)) {
+        // Part paid against an estimate, with no invoice committed (furniture bought item by
+        // item): what is paid is spend; the line's figure stays the forecast, the rest an estimate.
+        const cashPaid = actual > 0 ? actual : amountPaid;
+        actualSpend += cashPaid;
+        forecastFinalCost += Math.max(planned, cashPaid);
       } else if (committed > 0) {
         committedCosts += committed;
         forecastFinalCost += committed;
@@ -485,6 +491,7 @@ router.get("/projects/:projectId/project-controls", async (req, res) => {
           pCommitted += Math.max(0, committed - cashPaid);
           pForecast += committed;
         }
+        else if (paid === "part-paid" && (actual > 0 || amtPaid > 0)) { const cashPaid = actual > 0 ? actual : amtPaid; pActual += cashPaid; pForecast += Math.max(planned, cashPaid); }
         else if (committed > 0) { pCommitted += committed; pForecast += committed; }
         else { pForecast += planned; }
       }
