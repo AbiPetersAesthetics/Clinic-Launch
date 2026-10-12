@@ -60,7 +60,9 @@ function last4(v: unknown): string | null {
   if (!/^\d{4}$/.test(s)) throw new Bad("Only the last four digits of the card go here, nothing more");
   return s;
 }
-type Offer = { kind: (typeof OFFER_KINDS)[number]; ratePct: number; start: string | null; end: string; feePct: number | null };
+// buyBy: the last day a new purchase or transfer gets the offer's rate. Many cards give the
+// 0% only on what is spent in the first 60 or 90 days, long before the offer itself ends.
+type Offer = { kind: (typeof OFFER_KINDS)[number]; ratePct: number; start: string | null; end: string; feePct: number | null; buyBy: string | null };
 function offers(v: unknown): string {
   if (!Array.isArray(v)) throw new Bad("Offers must be a list");
   if (v.length > 4) throw new Bad("Four offers at most");
@@ -68,7 +70,10 @@ function offers(v: unknown): string {
     const n = i + 1;
     const start = date(o?.start, `Offer ${n} start`), end = date(o?.end, `Offer ${n} end`, true)!;
     if (start && start > end) throw new Bad(`Offer ${n} ends before it starts`);
-    return { kind: oneOf(o?.kind, OFFER_KINDS, `Offer ${n} type`), ratePct: percent(o?.ratePct ?? 0, `Offer ${n} rate`) ?? 0, start, end, feePct: percent(o?.feePct, `Offer ${n} fee`) };
+    const buyBy = date(o?.buyBy, `Offer ${n} buy by date`);
+    if (buyBy && buyBy > end) throw new Bad(`Offer ${n}: the buy by date is after the offer ends`);
+    if (buyBy && start && buyBy < start) throw new Bad(`Offer ${n}: the buy by date is before the offer starts`);
+    return { kind: oneOf(o?.kind, OFFER_KINDS, `Offer ${n} type`), ratePct: percent(o?.ratePct ?? 0, `Offer ${n} rate`) ?? 0, start, end, feePct: percent(o?.feePct, `Offer ${n} fee`), buyBy };
   });
   return JSON.stringify(list);
 }

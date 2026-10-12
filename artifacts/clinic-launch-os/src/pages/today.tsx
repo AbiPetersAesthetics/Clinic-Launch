@@ -22,6 +22,7 @@ import {
   CircleDollarSign,
 } from "lucide-react";
 import { formatGBP } from "@/lib/format";
+import { purchaseWindows, plannedAgainstWindow, CLOSING_DAYS, type WindowCard, type WindowPlanned, type WindowEntry } from "@/lib/card-windows";
 
 const PROJECT_ID = 1;
 
@@ -85,6 +86,17 @@ export default function TodayPage() {
       return r.json();
     },
   });
+
+  // The 0% buying windows on the cards: shown here from three weeks before one closes.
+  const { data: cardsData } = useQuery<{ cards: WindowCard[]; planned: WindowPlanned[]; entries: WindowEntry[] }>({
+    queryKey: ["cards", PROJECT_ID],
+    queryFn: async () => {
+      const r = await fetch(`/api/projects/${PROJECT_ID}/cards`);
+      if (!r.ok) throw new Error("cards fetch failed");
+      return r.json();
+    },
+  });
+  const closingWindows = purchaseWindows(cardsData?.cards ?? []).filter(w => w.days >= 0 && w.days <= CLOSING_DAYS);
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -176,6 +188,34 @@ export default function TodayPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── 0% buying windows closing ── */}
+      {closingWindows.length > 0 && (
+        <Card className="border-amber-300">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 text-amber-700">
+                <AlertTriangle className="w-3.5 h-3.5" />0% buying window closing
+              </p>
+              <Link href="/cards" className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                Credit cards <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <ul className="mt-2 space-y-1">
+              {closingWindows.map(w => {
+                const a = plannedAgainstWindow(cardsData?.planned ?? [], cardsData?.entries ?? [], w.buyBy);
+                const when = new Date(w.buyBy + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long" });
+                return (
+                  <li key={`${w.cardId}-${w.buyBy}`} className={`text-sm ${w.days <= 7 ? "text-destructive font-medium" : ""}`}>
+                    {w.card}: 0% only on purchases made by {when} ({w.days === 0 ? "today" : `${w.days} ${w.days === 1 ? "day" : "days"} left`}).
+                    {a.after > 0 ? ` ${formatGBP(a.after)} of the plan's card spend is planned after that: buy it by then or move it to the bank.` : ""}
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Hiring triggers ── */}
       {!!hiringTriggers?.triggers?.length && (

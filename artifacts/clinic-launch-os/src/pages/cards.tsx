@@ -11,13 +11,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PageHeader } from "@/components/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, X, Pencil, CreditCard as CardIcon, ShieldCheck } from "lucide-react";
+import { purchaseWindows, lastBuyBy, timing, plannedAgainstWindow, CLOSING_DAYS } from "@/lib/card-windows";
 
 const PROJECT_ID = 1;
 const API = "/api";
 const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
 type OfferKind = "purchases" | "balance transfers" | "money transfers";
-type Offer = { kind: OfferKind; ratePct: number; start: string | null; end: string; feePct: number | null };
+type Offer = { kind: OfferKind; ratePct: number; start: string | null; end: string; feePct: number | null; buyBy?: string | null };
 type CardRow = {
   id: number; name: string; holder: string | null; account: "business" | "personal"; last4: string | null;
   creditLimitGbp: number; aprPct: number | null; offers: Offer[]; minPaymentPct: number | null; minPaymentFloorGbp: number | null;
@@ -173,6 +174,15 @@ export default function CardsPage() {
   );
 }
 
+// The buy by date of an offer as a chip: green while there is time, amber in the last
+// three weeks, red once it has passed and new purchases are charged the standard rate.
+function BuyByChip({ buyBy, kind }: { buyBy: string; kind: OfferKind }) {
+  const days = daysUntil(buyBy);
+  const what = kind === "purchases" ? "Buy by" : "Transfer by";
+  const tone = days < 0 ? "bg-rose-50 text-rose-800" : days <= CLOSING_DAYS ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800";
+  return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{days < 0 ? `${what} ${longDate(buyBy)}: closed` : `${what} ${longDate(buyBy)}: ${days === 0 ? "today" : `${days} ${days === 1 ? "day" : "days"} left`}`}</span>;
+}
+
 function Tile({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "warn" | "bad" }) {
   const colour = tone === "bad" ? "text-rose-700" : tone === "warn" ? "text-amber-700" : "";
   return (
@@ -193,8 +203,10 @@ function Totals({ cards, stats }: { cards: CardRow[]; stats: Map<number, Stats> 
   const offers = all.flatMap(x => x.s.plans.map(p => ({ card: x.c.name, p }))).sort((a, b) => a.p.offer.end.localeCompare(b.p.offer.end));
   const nextOffer = offers.find(x => x.p.under > 0) ?? offers[0];
   const days = nextOffer ? nextOffer.p.days : null;
+  const open = purchaseWindows(cards).find(w => w.days >= 0) ?? null;
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className={`grid grid-cols-2 ${open ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}>
+      {open && <Tile label="Last day for 0% purchases" value={longDate(open.buyBy)} sub={`${open.card}, ${open.days === 0 ? "today" : `${open.days} days left`}. Bought later, it is charged the standard rate.`} tone={open.days <= CLOSING_DAYS ? "warn" : undefined} />}
       <Tile label="On the cards" value={gbp(balance)} sub={limit ? `of ${gbp(limit)} in limits` : "no limits set yet"} />
       <Tile label="Still available" value={gbp(limit - balance)} sub={limit ? `${Math.round((100 * balance) / limit)}% used` : undefined} tone={limit && balance / limit > 0.9 ? "bad" : undefined} />
       <Tile label="Minimum payments" value={minimums.length ? `about ${gbp(minimums.reduce((t, x) => t + (x.s.minimum ?? 0), 0))}` : "not set"} sub={dues.length ? `next due ${longDate(dues[0])}` : "add the due dates"} />
@@ -231,6 +243,7 @@ function CardFace({ card, s, selected, onSelect }: { card: CardRow; s: Stats; se
         </div>
         <div className="h-1.5 rounded-full bg-white/15 overflow-hidden"><div className={`h-full rounded-full ${used > 0.9 ? "bg-rose-300" : used > 0.7 ? "bg-amber-200" : "bg-[#A7C0B6]"}`} style={{ width: `${(used * 100).toFixed(1)}%` }} /></div>
         <div className="text-[11px] text-white/80 truncate">{s.next ? `${s.next.offer.ratePct}% on ${s.next.offer.kind} until ${longDate(s.next.offer.end)}, ${s.next.days} days` : "No 0% offer running"}</div>
+        {(() => { const w = purchaseWindows([card]).find(x => x.days >= 0); return w ? <div className={`text-[11px] font-semibold truncate ${w.days <= CLOSING_DAYS ? "text-amber-200" : "text-white/90"}`}>0% only on purchases made by {longDate(w.buyBy)}, {w.days === 0 ? "today" : `${w.days} days left`}</div> : null; })()}
       </div>
     </button>
   );
@@ -298,7 +311,8 @@ function Facts({ card, s }: { card: CardRow; s: Stats }) {
           {s.plans.map((p, i) => (
             <div key={`live-${i}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-sm">
               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${p.days <= 60 && p.under > 0 ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"}`}>{p.days} days left</span>
-              <span><span className="font-medium">{p.offer.ratePct}% on {p.offer.kind}</span>{p.offer.start ? ` from ${longDate(p.offer.start)}` : ""} until {longDate(p.offer.end)}{p.offer.feePct ? `, ${p.offer.feePct}% fee` : ""}</span>
+              {p.offer.buyBy && <BuyByChip buyBy={p.offer.buyBy} kind={p.offer.kind} />}
+              <span><span className="font-medium">{p.offer.ratePct}% on {p.offer.kind}</span>{p.offer.start ? ` from ${longDate(p.offer.start)}` : ""} until {longDate(p.offer.end)}{p.offer.feePct ? `, ${p.offer.feePct}% fee` : ""}{p.offer.buyBy ? `, on what is ${p.offer.kind === "purchases" ? "bought" : "moved"} by ${longDate(p.offer.buyBy)}` : ""}</span>
               <span className="text-muted-foreground">{p.under > 0 ? <>{gbp(p.under)} under it: about <span className="font-semibold text-foreground">{gbp(p.perMonth)} a month</span> clears it by then ({p.months} {p.months === 1 ? "month" : "months"})</> : "nothing under it"}</span>
             </div>
           ))}
@@ -429,8 +443,10 @@ function EntryForm({ initial, kind, planned, empty, onSubmit, onCancel }: { init
   );
 }
 
-type OfferDraft = { kind: OfferKind; ratePct: string; start: string; end: string; feePct: string };
-const toDraft = (o: Offer): OfferDraft => ({ kind: o.kind, ratePct: String(o.ratePct ?? 0), start: o.start ?? "", end: o.end, feePct: o.feePct != null ? String(o.feePct) : "" });
+type OfferDraft = { kind: OfferKind; ratePct: string; start: string; end: string; feePct: string; buyBy: string };
+const toDraft = (o: Offer): OfferDraft => ({ kind: o.kind, ratePct: String(o.ratePct ?? 0), start: o.start ?? "", end: o.end, feePct: o.feePct != null ? String(o.feePct) : "", buyBy: o.buyBy ?? "" });
+// A date some days after another, as yyyy-mm-dd: the buy by date from the opening date.
+const plusDays = (s: string, n: number) => { const d = asDate(s); d.setDate(d.getDate() + n); return iso(d); };
 const str = (v: number | null | undefined) => (v == null ? "" : String(v));
 const num = (v: string) => (v.trim() === "" ? null : Number(v));
 
@@ -461,7 +477,7 @@ function CardForm({ initial, creating, onSubmit, onCancel }: { initial?: CardRow
     onSubmit({
       name: name.trim(), holder: holder.trim() || null, account, last4: last4 || null,
       creditLimitGbp: num(limit) ?? 0, aprPct: num(apr),
-      offers: offers.filter(o => o.end).map(o => ({ kind: o.kind, ratePct: num(o.ratePct) ?? 0, start: o.start || null, end: o.end, feePct: num(o.feePct) })),
+      offers: offers.filter(o => o.end).map(o => ({ kind: o.kind, ratePct: num(o.ratePct) ?? 0, start: o.start || null, end: o.end, feePct: num(o.feePct), buyBy: o.buyBy || null })),
       minPaymentPct: num(minPct), minPaymentFloorGbp: num(minFloor), statementDay: num(statementDay), dueDay: num(dueDay),
       directDebit: debit, directDebitGbp: debit === "fixed" ? num(debitGbp) : null, notes: notes.trim() || null,
       ...(creating && opening.trim() ? { openingBalanceGbp: num(opening), openingDate } : {}),
@@ -494,7 +510,7 @@ function CardForm({ initial, creating, onSubmit, onCancel }: { initial?: CardRow
         <legend className="text-sm font-semibold mb-1">0% offers</legend>
         {offers.length === 0 && <p className="text-xs text-muted-foreground">None yet. Many cards have two, on purchases and on balance transfers, ending on different dates.</p>}
         {offers.map((o, i) => (
-          <div key={i} className="grid grid-cols-2 sm:grid-cols-[180px_90px_150px_150px_90px_auto] gap-2 items-end rounded-md border bg-background/60 p-2">
+          <div key={i} className="grid grid-cols-2 sm:grid-cols-[170px_80px_145px_145px_145px_80px_auto] gap-2 items-end rounded-md border bg-background/60 p-2">
             <Field label="On">
               <Select value={o.kind} onValueChange={v => setOffer(i, { kind: v as OfferKind })}>
                 <SelectTrigger className={field} aria-label={`Offer ${i + 1} covers`}><SelectValue /></SelectTrigger>
@@ -504,11 +520,19 @@ function CardForm({ initial, creating, onSubmit, onCancel }: { initial?: CardRow
             <Field label="Rate %"><Input type="number" min={0} max={100} step="0.01" value={o.ratePct} onChange={e => setOffer(i, { ratePct: e.target.value })} className={`${field} tabular-nums`} /></Field>
             <Field label="Starts"><Input type="date" value={o.start} onChange={e => setOffer(i, { start: e.target.value })} className={field} /></Field>
             <Field label="Ends"><Input type="date" value={o.end} onChange={e => setOffer(i, { end: e.target.value })} className={field} required /></Field>
+            <Field label={o.kind === "purchases" ? "Buy by" : "Transfer by"}><Input type="date" value={o.buyBy} min={o.start || undefined} max={o.end || undefined} onChange={e => setOffer(i, { buyBy: e.target.value })} className={field} /></Field>
             <Field label="Fee %"><Input type="number" min={0} max={100} step="0.01" value={o.feePct} onChange={e => setOffer(i, { feePct: e.target.value })} className={`${field} tabular-nums`} /></Field>
             <Button type="button" size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground" aria-label={`Remove offer ${i + 1}`} onClick={() => setOffers(list => list.filter((_, j) => j !== i))}><X className="w-4 h-4" /></Button>
           </div>
         ))}
-        {offers.length < 4 && <Button type="button" size="sm" variant="ghost" className="h-8 px-2 -ml-2 w-fit text-xs" onClick={() => setOffers(list => [...list, { kind: list.some(x => x.kind === "purchases") ? "balance transfers" : "purchases", ratePct: "0", start: "", end: "", feePct: "" }])}><Plus className="w-3.5 h-3.5 mr-1.5" />Add an offer</Button>}
+        <p className="text-[11px] text-muted-foreground">Buy by: the last day a new {"purchase or transfer"} gets the offer's rate. Many cards give the 0% only on what is spent in the first 60 or 90 days; anything later is charged the standard rate straight away.</p>
+        {offers.map((o, i) => o.start && !o.buyBy ? (
+          <p key={`hint-${i}`} className="text-[11px] text-muted-foreground">
+            Offer {i + 1}, set the buy by date to{" "}
+            {[60, 90].map(n => <button key={n} type="button" className="underline mr-2 hover:text-foreground" onClick={() => setOffer(i, { buyBy: plusDays(o.start, n) })}>{n} days from the start ({longDate(plusDays(o.start, n))})</button>)}
+          </p>
+        ) : null)}
+        {offers.length < 4 && <Button type="button" size="sm" variant="ghost" className="h-8 px-2 -ml-2 w-fit text-xs" onClick={() => setOffers(list => [...list, { kind: list.some(x => x.kind === "purchases") ? "balance transfers" : "purchases", ratePct: "0", start: "", end: "", feePct: "", buyBy: "" }])}><Plus className="w-3.5 h-3.5 mr-1.5" />Add an offer</Button>}
       </fieldset>
 
       <fieldset className="grid gap-3">
@@ -565,6 +589,8 @@ function FromThePlan({ planned, entries, cards, onRecord }: { planned: Planned[]
   }, [entries]);
   const nameOf = new Map(cards.map(c => [c.id, c.name]));
   const total = planned.reduce((s, p) => s + p.cardGbp, 0);
+  const buyBy = lastBuyBy(cards);
+  const against = buyBy ? plannedAgainstWindow(planned, entries, buyBy) : null;
   const recorded = planned.reduce((s, p) => s + Math.min(p.cardGbp, onCards.get(p.taskId)?.amount ?? 0), 0);
   return (
     <Card className="shadow-sm">
@@ -573,6 +599,12 @@ function FromThePlan({ planned, entries, cards, onRecord }: { planned: Planned[]
           <div className="min-w-[220px] flex-1">
             <h2 className="text-2xl font-semibold leading-tight" style={SERIF}>Going on the cards, from the plan</h2>
             <p className="text-xs text-muted-foreground mt-1 max-w-3xl">The plan lines whose payment plan says card. When one goes on a card, record it there, so the card's balance and the plan agree.</p>
+            {buyBy && against && (against.after > 0 || against.edge > 0) && (
+              <p className={`text-sm mt-2 max-w-3xl ${against.after > 0 ? "text-rose-700" : "text-amber-800"}`}>
+                {against.after > 0 && <><span className="font-semibold">{gbp(against.after)}</span> on {against.afterLines} {against.afterLines === 1 ? "line is" : "lines is"} planned after the last day for 0% purchases ({longDate(buyBy)}), so it would be charged the standard rate. Buy it by then, or move it to the bank in <Link href="/project" className="underline">Plan & Timeline</Link>. </>}
+                {against.edge > 0 && <><span className="font-semibold">{gbp(against.edge)}</span> is planned in the month the window closes: 0% only if it is charged by {longDate(buyBy)}.</>}
+              </p>
+            )}
           </div>
           <div className="text-sm tabular-nums sm:text-right"><span className="font-semibold">{gbp(total)}</span> <span className="text-muted-foreground">planned on cards</span><div className="text-xs text-muted-foreground">{gbp(recorded)} recorded so far</div></div>
         </div>
@@ -598,7 +630,13 @@ function FromThePlan({ planned, entries, cards, onRecord }: { planned: Planned[]
                     const left = Math.round((p.cardGbp - (on?.amount ?? 0)) * 100) / 100;
                     return (
                       <tr key={p.taskId} className="align-top">
-                        <td className="px-3 py-2 whitespace-nowrap">{p.parts.map(x => monthName(x.month)).join(", ")}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {p.parts.map(x => monthName(x.month)).join(", ")}
+                          {buyBy && left > 0.5 && p.planStatus !== "paid" && (() => {
+                            const t = p.parts.some(x => timing(x.month, buyBy) === "after") ? "after" : p.parts.some(x => timing(x.month, buyBy) === "edge") ? "edge" : null;
+                            return t ? <div className={`text-[11px] font-semibold ${t === "after" ? "text-rose-700" : "text-amber-800"}`}>{t === "after" ? "After the 0% window" : `0% only if charged by ${longDate(buyBy)}`}</div> : null;
+                          })()}
+                        </td>
                         <td className="px-3 py-2 min-w-[200px]">
                           <div className="font-medium">{tidy(p.title)}</div>
                           <div className="text-xs text-muted-foreground">{p.phase}{p.planStatus !== "unpaid" ? ` · ${p.planStatus} in the plan` : ""}</div>
