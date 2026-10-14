@@ -19,7 +19,7 @@ const API = "/api";
 const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
 
 type Receipt = "none" | "receipt" | "vat_invoice" | "invoice_no_vat";
-type CardRow = { id: number; name: string; holder: string | null; account: "business" | "personal"; status: string };
+type CardRow = { id: number; name: string; holder: string | null; account: "business" | "personal"; status: string; last4: string | null; creditLimitGbp: number };
 type Entry = { id: number; cardId: number; date: string; kind: string; description: string; amountGbp: number; taskId: number | null; note: string | null; vatGbp: number | null; receipt: Receipt; booked: boolean; repaidDate: string | null };
 type CardsData = { cards: CardRow[]; entries: Entry[]; lineTitles?: Record<string, string> };
 type Patch = Partial<Pick<Entry, "vatGbp" | "receipt" | "booked" | "repaidDate">>;
@@ -30,6 +30,13 @@ const RECEIPTS: { value: Receipt; label: string }[] = [
   { value: "vat_invoice", label: "VAT invoice" },
   { value: "invoice_no_vat", label: "Invoice, no VAT" },
 ];
+const isCard = (c: CardRow) => !!c.last4 || (c.creditLimitGbp ?? 0) > 0 || /card/i.test(c.name);
+// "Credit card: Virgin Money, ending 6965" or "Current account: Monzo", the account's own name trimmed of the owner.
+const methodOf = (c: CardRow) => {
+  const name = c.name.replace(/^[A-Z][a-z]+:\s*/, "").replace(/\s*\(director's loan\)\s*/i, "").trim();
+  return isCard(c) ? { kind: "Credit card", detail: name.replace(/\s*credit card$/i, "") + (c.last4 ? `, ending ${c.last4}` : "") } : { kind: "Current account", detail: name.replace(/^personal current account\s*/i, "").replace(/^\((.*)\)$/, "$1") || "personal" };
+};
+const methodText = (c: CardRow) => { const m = methodOf(c); return m.kind + ": " + m.detail; };
 const gbp = (v: number) => `${v < 0 ? "−" : ""}£${Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const longDate = (s: string) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }); };
@@ -77,7 +84,7 @@ export default function OwedPage() {
     const q = (v: string) => `"${v.replace(/"/g, '""')}"`;
     const head = ["Date", "Supplier and item", "Paid with", "Director", "Plan line", "Amount inc VAT", "VAT", "Net of VAT", "Proof", "In the books", "Paid back on"];
     const lines = rows.map(e => { const c = byCard.get(e.cardId)!; const vat = e.vatGbp ?? 0;
-      return [e.date, q(e.description), q(c.name), q(c.holder || ""), q(e.taskId != null ? titles[e.taskId] ?? "" : ""), owedOf(e).toFixed(2), (e.kind === "refund" ? -vat : vat).toFixed(2), (owedOf(e) - (e.kind === "refund" ? -vat : vat)).toFixed(2), q(RECEIPTS.find(r => r.value === e.receipt)?.label ?? ""), e.booked ? "Yes" : "No", e.repaidDate ?? ""].join(","); });
+      return [e.date, q(e.description), q(methodText(c)), q(c.holder || ""), q(e.taskId != null ? titles[e.taskId] ?? "" : ""), owedOf(e).toFixed(2), (e.kind === "refund" ? -vat : vat).toFixed(2), (owedOf(e) - (e.kind === "refund" ? -vat : vat)).toFixed(2), q(RECEIPTS.find(r => r.value === e.receipt)?.label ?? ""), e.booked ? "Yes" : "No", e.repaidDate ?? ""].join(","); });
     const blob = new Blob([[head.join(","), ...lines].join("\r\n")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `owed-to-directors-${iso(new Date())}.csv`; a.click(); URL.revokeObjectURL(a.href);
   };
@@ -97,6 +104,24 @@ export default function OwedPage() {
           <Tile label="VAT waiting on proof" value={gbp(vatWaiting)} sub={vatWaiting > 0.005 ? "ask the supplier for a VAT invoice in the company's name" : "nothing waiting"} tone={vatWaiting > 0.005 ? "warn" : undefined} />
           <Tile label="Not in the books yet" value={String(unbooked.length)} sub={unbooked.length ? `${gbp(unbooked.reduce((s, e) => s + owedOf(e), 0))} to record with the company` : "all recorded"} tone={unbooked.length ? "warn" : undefined} />
         </div>
+      )}
+
+      {data && personal.length > 0 && (
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2"><h2 className="text-lg font-semibold" style={SERIF}>Still owed, by how it was paid</h2></CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {personal.map(c => { const mine = open.filter(e => e.cardId === c.id); const m = methodOf(c);
+              return (
+                <div key={c.id} className="rounded-md border p-3">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">{m.kind}</div>
+                  <div className="text-sm font-medium">{m.detail}</div>
+                  <div className="text-xs text-muted-foreground">{c.holder || "A director"}</div>
+                  <div className="text-xl font-semibold tabular-nums mt-1">{gbp(mine.reduce((t, e) => t + owedOf(e), 0))}</div>
+                  <div className="text-xs text-muted-foreground">{mine.length} {mine.length === 1 ? "item" : "items"} not yet paid back</div>
+                </div>
+              ); })}
+          </CardContent>
+        </Card>
       )}
 
       <Card className="shadow-sm">
@@ -140,6 +165,7 @@ export default function OwedPage() {
                   <tr>
                     <th scope="col" className="text-left font-medium px-3 py-2">Date</th>
                     <th scope="col" className="text-left font-medium px-3 py-2">What</th>
+                    <th scope="col" className="text-left font-medium px-3 py-2">Paid with</th>
                     <th scope="col" className="text-right font-medium px-3 py-2">Amount</th>
                     <th scope="col" className="text-right font-medium px-3 py-2">VAT</th>
                     <th scope="col" className="text-left font-medium px-3 py-2">Proof</th>
@@ -152,7 +178,7 @@ export default function OwedPage() {
                 </tbody>
                 <tfoot className="bg-muted/30 font-semibold">
                   <tr>
-                    <td className="px-3 py-2" colSpan={2}>{shown.length} {shown.length === 1 ? "item" : "items"}</td>
+                    <td className="px-3 py-2" colSpan={3}>{shown.length} {shown.length === 1 ? "item" : "items"}</td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">{gbp(shown.reduce((s, e) => s + owedOf(e), 0))}</td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">{gbp(shown.reduce((s, e) => s + vatOf(e), 0))}</td>
                     <td colSpan={3} className="px-3 py-2 text-xs font-normal text-muted-foreground">{vatUnknown ? `${vatUnknown} with the VAT not entered yet` : ""}</td>
@@ -195,7 +221,13 @@ function Row({ e, card, line, onPatch }: { e: Entry; card: CardRow; line?: strin
       <td className="px-3 py-2 whitespace-nowrap">{longDate(e.date)}</td>
       <td className="px-3 py-2 min-w-[220px]">
         <div className="font-medium">{e.description}{e.kind === "refund" ? " (refund)" : ""}</div>
-        <div className="text-xs text-muted-foreground">{card.name}{line ? ` · ${line}` : ""}</div>
+        {line && <div className="text-xs text-muted-foreground">{line}</div>}
+      </td>
+      <td className="px-3 py-2 min-w-[150px]">
+        {(() => { const m = methodOf(card); return (<>
+          <span className={`inline-block text-[10px] font-semibold uppercase tracking-wide rounded px-1.5 py-0.5 ${m.kind === "Credit card" ? "bg-primary text-primary-foreground" : "border border-primary/40 text-primary"}`}>{m.kind}</span>
+          <div className="text-xs mt-0.5">{m.detail}</div>
+        </>); })()}
       </td>
       <td className="px-3 py-2 text-right whitespace-nowrap font-medium">{gbp(owedOf(e))}</td>
       <td className="px-3 py-1.5 text-right">
