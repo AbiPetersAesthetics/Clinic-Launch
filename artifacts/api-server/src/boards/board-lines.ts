@@ -22,7 +22,7 @@ const PHASE = { "Pre-Lease Due Diligence": "Due diligence", "Legal, Lease & Hand
 const NAME = [[/^Ref (\d+) - (.*)$/, (m, n, t) => `CBS ref ${n}: ${t}`], [/Asbestos/, "Asbestos survey"], [/Solicitor/, "Solicitor, lease"], [/RICS/, "RICS schedule of condition"],
   [/Rent Deposit/, "Rent deposit"], [/Design \/ Building Regulations/, "Design and Building Regs lead"], [/Building Control/, "Building Control"], [/Advertisement Consent/, "Advertisement consent"],
   [/Brand Identity/, "Brand identity"], [/CAD Drawings/, "CAD drawing pack"], [/Joinery/, "Joinery, desk and cabinetry"], [/External Signage/, "Shop sign"], [/Retail Shelving/, "Retail shelving and LED"],
-  [/Arundel/, "Fire alarm (Arundel)"], [/Treatment Couch/, "Treatment couch"], [/Reception furniture/, "Reception furniture"], [/Consultation Room Furniture/, "Treatment room 2 furniture"],
+  [/Arundel/, "Fire alarm (Arundel)"], [/Treatment Couch/, "Treatment couch"], [/^Reception desk, Artisan/, "Reception desk (Artisan Deco)"], [/Reception furniture/, "Reception furniture"], [/Consultation Room Furniture/, "Treatment room 2 furniture"],
   [/Treatment Room Furniture/, "Treatment room furniture"], [/Skin Analysis/, "Skin analysis platform"], [/ACE Group/, "ACE membership"], [/Clinical Waste/, "Clinical waste contract"],
   [/Fire Risk/, "Fire risk assessment"], [/Emergency Drugs/, "Emergency drugs kit"], [/Opening Injectable/, "Opening injectable stock"], [/Smallwares/, "Smallwares and consumables"],
   [/Retail \/ Skincare/, "Retail and skincare stock"], [/FIGS/, "Scrubs (FIGS)"], [/^Trainers/, "Work trainers"], [/Hamilton Fraser/, "Insurance, Hamilton Fraser"], [/Broadband/, "Broadband"], [/Legionella/, "Legionella assessment"],
@@ -65,7 +65,7 @@ for (const l of lines) {
   const its = extra.items.filter(i => i.task_id === id).map(i => [String(i.name).replace(dashRe, ": "), r2(+i.amount_gbp || 0), i.status]);
   const cd = extra.card.filter(c => c.task_id === id).map(c => [dm(c.date), String(c.description).replace(dashRe, ": "), r2(+c.amount_gbp || 0), c.card, c.kind]);
   const pl = PL.get(id); const left = pl && pl.remainingExVat >= 0.5 && pl.plan.length ? pl.plan : [];
-  const how = left.length ? left.map(p => (left.length > 1 ? Math.round(p.share * 100) + "% " : "") + ym(p.month)).join(", ") + (left.every(p => p.method === "card") ? ", on the card" : left.every(p => p.method !== "card") ? ", from the business bank" : "") : "";
+  const how = left.length ? left.map(p => (left.length > 1 ? Math.round(p.share * 1000) / 10 + "% " : "") + ym(p.month)).join(", ") + (left.every(p => p.method === "card") ? ", on the card" : left.every(p => p.method !== "card") ? ", from the business bank" : "") : "";
   if (its.length || cd.length || how) LDETAIL[id] = { items: its, card: cd, due: how };
 }
 
@@ -140,15 +140,16 @@ rep(`  // ── panels ──`, `  // ── every line of spend: total, then p
         const right = r.lastChild; if (st === "paid") { span(right, gbp(a) + "  ", ""); span(right, "paid", "ok"); }
         else if (a > 0) { span(right, gbp(a) + "  ", ""); span(right, st === "ordered" ? "ordered" : "to buy", "todo"); }
         else span(right, "price to come", "none"); });
-      const paidItems = d.items.filter(i => i[2] === "paid").reduce((a, i) => a + i[1], 0), open = d.items.filter(i => i[2] !== "paid").reduce((a, i) => a + i[1], 0);
-      add("m").textContent = "Items: " + gbp(paidItems) + " paid, " + gbp(open) + " still to buy" + (d.items.some(i => i[2] !== "paid" && !(i[1] > 0)) ? ", and some still to price" : "") + ".";
+      const sum = st => d.items.filter(i => i[2] === st).reduce((a, i) => a + i[1], 0);
+      const paidItems = sum("paid"), ordered = sum("ordered"), open = d.items.filter(i => i[2] !== "paid" && i[2] !== "ordered").reduce((a, i) => a + i[1], 0);
+      add("m").textContent = "Items: " + [paidItems > 0.5 ? gbp(paidItems) + " paid" : "", ordered > 0.5 ? gbp(ordered) + " ordered" : "", open > 0.5 ? gbp(open) + " still to buy" : ""].filter(Boolean).join(", ") + (d.items.some(i => i[2] !== "paid" && !(i[1] > 0)) ? (paidItems + ordered + open > 0.5 ? ", and some still to price" : "still to price") : "") + ".";
     }
     if (d.card.length && d.items.length) {
       const net = d.card.reduce((a, c) => a + (c[4] === "refund" ? -c[2] : c[2]), 0);
-      add("h").textContent = "On the card";
+      add("h").textContent = /card/i.test(d.card[0][3]) ? "On the card" : "Paid personally, owed back by the company";
       add("").textContent = d.card.length + (d.card.length === 1 ? " charge, " : " charges, ") + gbp(net) + ", on the " + d.card[0][3] + " (" + d.card.map(c => c[0]).filter((v, i, a) => a.indexOf(v) === i).join(", ") + ")";
     } else if (d.card.length) {
-      add("h").textContent = "On the card";
+      add("h").textContent = /card/i.test(d.card[0][3]) ? "On the card" : "Paid personally, owed back by the company";
       d.card.forEach(([when, what, a, card, kind]) => row(when + "  " + what, (kind === "refund" ? "-" : "") + gbp(a)));
       add("m").textContent = d.card[0][3];
     }
