@@ -21,7 +21,7 @@ const PHASE = { "Pre-Lease Due Diligence": "Due diligence", "Legal, Lease & Hand
   "Stock, Suppliers & Clinical Setup": "Stock and set-up", "Finance, Insurance & Admin": "Insurance and admin", "Marketing & Launch": "Launch adverts", "Handover, Snagging & Opening": "Handover" };
 const NAME = [[/^Ref (\d+) - (.*)$/, (m, n, t) => `CBS ref ${n}: ${t}`], [/Asbestos/, "Asbestos survey"], [/Solicitor/, "Solicitor, lease"], [/RICS/, "RICS schedule of condition"],
   [/Rent Deposit/, "Rent deposit"], [/Design \/ Building Regulations/, "Design and Building Regs lead"], [/Building Control/, "Building Control"], [/Advertisement Consent/, "Advertisement consent"],
-  [/Brand Identity/, "Brand identity"], [/CAD Drawings/, "CAD drawing pack"], [/Joinery/, "Joinery, desk and cabinetry"], [/External Signage/, "Shop sign"], [/Retail Shelving/, "Retail shelving and LED"],
+  [/Brand Identity/, "Brand identity"], [/CAD Drawings/, "CAD drawing pack"], [/Joinery/, "Clinical cabinetry (Howdens)"], [/External Signage/, "Shop sign"], [/Retail Shelving/, "Floating shelves (Bespoke Nature)"], [/^Lobby coffee station/, "Lobby coffee station"],
   [/Arundel/, "Fire alarm (Arundel)"], [/Treatment Couch/, "Treatment couch"], [/^Reception desk, Artisan/, "Reception desk (Artisan Deco)"], [/Reception furniture/, "Reception furniture"], [/Consultation Room Furniture/, "Treatment room 2 furniture"],
   [/Treatment Room Furniture/, "Treatment room furniture"], [/Skin Analysis/, "Skin analysis platform"], [/ACE Group/, "ACE membership"], [/Clinical Waste/, "Clinical waste contract"],
   [/Fire Risk/, "Fire risk assessment"], [/Emergency Drugs/, "Emergency drugs kit"], [/Opening Injectable/, "Opening injectable stock"], [/Smallwares/, "Smallwares and consumables"],
@@ -41,13 +41,13 @@ for (const x of L) {
   lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how, 0, x.id]);
 }
 const PACK_GAP = /(price needed)|(CBS variation)|^Credit due from CBS|^Lobby coffee station|^Utility storage|^Fixings for our items|BG Nexus black nickel|^Herringbone LVT in the treatment rooms|^Laser supply and stop button/;
-const ZERO = L.filter(x => PACK_GAP.test(x.title) && !(+x.sel > 0) && !(+x.com > 0) && !(+x.act > 0)).length;
+const ZERO = L.filter(x => PACK_GAP.test(x.title) && x.status !== "deferred" && !(+x.sel > 0) && !(+x.com > 0) && !(+x.act > 0)).length;
 const UNC_NAME = [[/^Emergency lights/, "Emergency lights and exit signs"], [/^Ramp edge guarding/, "Ramp edge guarding"], [/^LED strips/, "LED strips, shelves and cupboards"], [/^Hang and power the two Tala/, "Tala pendants: hang, power, dimmers"],
   [/^Two high sockets/, "Two high sockets for audio"], [/^Reception desk power module/, "Desk power module and cable tray"], [/^Utility door re-hung/, "Utility door re-hung, with a closer"], [/^Fixings for our items/, "Fixings for our items"],
   [/^Coffee sink and tap/, "Coffee sink and tap"], [/BG Nexus black nickel/, "Black nickel switches (extra)"], [/^Herringbone LVT in the treatment rooms/, "Herringbone LVT, treatment rooms"], [/^Credit due from CBS: basins/, "CBS credit: basins and taps"],
   [/^Credit due from CBS: clinical/, "CBS credit: clinical fixings"], [/^Laser supply and stop button/, "Laser supply: keep or omit"], [/^WCs: replace/, "Replace the WCs (to discuss)"], [/^Lobby coffee station/, "Lobby coffee station"], [/^Utility storage/, "Utility storage"]];
 for (const x of L) {
-  if (!PACK_GAP.test(x.title) || +x.sel > 0 || +x.com > 0 || +x.act > 0) continue;
+  if (!PACK_GAP.test(x.title) || x.status === "deferred" || +x.sel > 0 || +x.com > 0 || +x.act > 0) continue;
   const n = UNC_NAME.find(([re]) => re.test(x.title));
   lines.push([PHASE[x.phase] ?? x.phase, n ? n[1] : x.title, 0, 0, 0, "unset", 1, x.id]);
 }

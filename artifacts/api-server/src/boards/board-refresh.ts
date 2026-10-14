@@ -26,14 +26,16 @@ const KIT: [RegExp, string, string, string][] = [
   [/^Treatment Couch/i, "treat", "Treatment couch", ""],
   [/^Treatment Room Furniture/i, "treat", "Room 1 furniture and equipment", "Maru desk, two chairs, trolley, Omega 7 lamp, dispensers, basins and taps"],
   [/^Consultation Room Furniture/i, "treat", "Treatment room 2 furniture", "chairs, table"],
-  [/^Joinery/i, "recep", "Reception desk and clinical cabinetry (joinery)", "shared with the treatment rooms"],
+  [/^Joinery/i, "recep", "Clinical cabinetry (Howdens)", "both treatment rooms and the reception recess; Bill fits"],
+  [/Retail Shelving/i, "recep", "Floating shelves (Bespoke Nature)", "3 in reception, 1 in room 1"],
+  [/^Lobby coffee station/i, "recep", "Lobby coffee station", "units, sink and tap, mirror, chair"],
   [/^Reception desk, Artisan/i, "recep", "Reception desk (Artisan Deco)", "no VAT; David paid the deposit, the company pays him back"],
   [/^Reception furniture/i, "recep", "Reception furniture and styling", "Amboise sofa and pouffe, rug, side table, two Tala pendants, Lucia chair, the lobby chair"],
   [/^External Signage/i, "front", "External sign, balance", "the deposit is already paid"],
   [/^Arundel/i, "safety", "Fire alarm (Arundel)", ""],
   [/^Fire Risk/i, "safety", "Fire risk assessment after the fit-out", ""], [/^Emergency Drugs/i, "safety", "Emergency drugs and equipment", ""],
   [/^Legionella/i, "safety", "Legionella assessment", ""], [/^Clinical Waste/i, "safety", "Clinical waste contract", ""], [/^PAT Testing/i, "safety", "PAT testing", ""],
-  [/^Opening Injectable/i, "open", "Opening injectable stock", ""], [/Smallwares/i, "open", "Clinical smallwares and consumables", ""], [/^Hamilton Fraser/i, "open", "Insurance for the year", "no VAT"],
+  [/^Opening Injectable/i, "open", "Opening injectable stock", ""], [/^Retail \/ Skincare/i, "open", "Retail and skincare opening stock", "Obagi core set"], [/Smallwares/i, "open", "Clinical smallwares and consumables", ""], [/^Hamilton Fraser/i, "open", "Insurance for the year", "no VAT"],
   [/^Meta Ads/i, "open", "Launch adverts, Meta", "no VAT"], [/^Google Ads/i, "open", "Launch adverts, Google", "no VAT"], [/^FIGS/i, "open", "Scrubs (FIGS)", ""],
   [/^Trainers/i, "open", "Work trainers", ""], [/^Broadband/i, "open", "Broadband set-up", ""], [/deep clean/i, "open", "Deep clean materials", ""],
 ];
@@ -78,7 +80,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const STAGE = { 1: ["cbs1", "CBS stage 1 (20%)"], 2: ["cbs2", "CBS stage 2 (60%)"], 3: ["cbs3", "CBS stage 3 (17%)"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
   const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
     : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
-    : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
+    : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Floating shelves (Bespoke Nature)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
     : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch, four lines", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
     : /Meta Ads/.test(t) ? ["meta", "Launch adverts, Meta (no VAT)", "kit"] : /Google Ads/.test(t) ? ["google", "Launch adverts, Google (no VAT)", "kit"]
@@ -105,7 +107,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
       it.ex += l.remainingExVat * p.share; if (vat) it.vatEx += l.remainingExVat * p.share; items.set(it.id, it);
     }
   }
-  const ORDER = ["sign", "arundel1", "cbs1", "cbs2", "arundel2", "cbs3", "cbs4", "joinery", "desk", "furniture", "scrubs", "stock", "insurance", "checks", "broadband", "meta", "google"];
+  const ORDER = ["sign", "arundel1", "cbs1", "cbs2", "arundel2", "cbs3", "cbs4", "joinery", "desk", "shelving", "furniture", "retail", "scrubs", "stock", "insurance", "checks", "broadband", "meta", "google"];
   const list = [...items.values()].sort((a, b) => ORDER.indexOf(a.base) - ORDER.indexOf(b.base) || a.m - b.m);
   const itemsJs = list.map(i => `    { id: "${i.id}", name: "${i.name}", ex: ${r2(i.ex)}, vat: ${i.vatEx > 0.01}, method: "${i.method}", m: ${i.m},${i.locked ? " locked: true," : ""} group: "${i.group}" },`).join("\n");
 

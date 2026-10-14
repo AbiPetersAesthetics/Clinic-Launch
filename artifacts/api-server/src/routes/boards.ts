@@ -27,7 +27,7 @@ async function planLines(projectId: number) {
     SELECT t.id, p.name AS phase, p.sort_order, t.title,
       coalesce(o.selected_cost, t.selected_cost) AS sel, coalesce(o.committed_cost, t.committed_cost) AS com,
       coalesce(o.actual_cost, t.actual_cost) AS act, coalesce(o.amount_paid_gbp, t.amount_paid_gbp) AS amt,
-      coalesce(o.paid_status, t.paid_status) AS paid
+      coalesce(o.paid_status, t.paid_status) AS paid, coalesce(o.status, t.status) AS status
     FROM launch_tasks t
     JOIN launch_phases p ON p.id = t.phase_id AND p.status = 'active' AND p.project_id = ${projectId}
     LEFT JOIN property_task_overrides o ON o.task_id = t.id

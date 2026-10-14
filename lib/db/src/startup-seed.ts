@@ -1638,6 +1638,65 @@ export async function runStartupSeed(): Promise<void> {
         await db.execute(sql`INSERT INTO kit_lines (project_id, task_id, area_key, sort_order, label)
           SELECT ${projectId}, t.id, 'reception', 4, 'Reception desk (Artisan Deco)' FROM launch_tasks t WHERE t.title = ${V59_DESK} AND t.archived = FALSE AND NOT EXISTS (SELECT 1 FROM kit_lines l WHERE l.task_id = t.id)`);
         await db.execute(sql`UPDATE kit_lines SET label = 'Clinical cabinetry and joinery' WHERE project_id = ${projectId} AND label = 'Reception desk and clinical cabinetry'`);
+        // V61, 14 October 2026 (owner, line by line): every plan line made to add up to the items
+        // under it, with the owner's answers. Cabinetry 1,800 is the allowance until the Howdens
+        // quote. Shelving: the LEDs are CBS's line, so their 1,000 goes; the shelves are Bespoke
+        // Nature's at 500 until the quote, the room 1 take-home shelf among them, October on the
+        // card. Room 2 is deferred, so its line goes to 0. The Obagi opening stock goes in
+        // October on the card. The couch item takes the line's 1,398.60. The Jeanne chair moves
+        // to the lobby. Coffee station: machine and fridge owned, wine cooler dropped, units 600,
+        // mirror 120, sink and tap 150. Utility storage deferred until after opening. Room 1:
+        // the Lec fridge owned, the analyser trolley inside the paid platform, stool, sharps bin,
+        // lamp stand and mirror arm at estimates. Reception styling at estimates. Each step only
+        // while the line or item still holds what it held.
+        const V61_PHASES = sql`(SELECT id FROM launch_phases WHERE project_id = ${projectId})`;
+        const v61Ovr = (title: string, from: number, to: number) => db.execute(sql`UPDATE property_task_overrides SET selected_cost = ${to}, updated_at = NOW() WHERE round(selected_cost::numeric, 2) = ${from} AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${title} AND archived = FALSE AND phase_id IN ${V61_PHASES})`);
+        const v61Base = (title: string, from: number, to: number) => db.execute(sql`UPDATE launch_tasks SET selected_cost = ${to}, updated_at = NOW() WHERE title = ${title} AND archived = FALSE AND round(selected_cost::numeric, 2) = ${from} AND phase_id IN ${V61_PHASES}`);
+        const v61Plan = (title: string, plan: string) => db.execute(sql`UPDATE launch_tasks SET payment_plan_json = ${plan}, updated_at = NOW() WHERE title = ${title} AND archived = FALSE AND coalesce(payment_plan_json, '') IN ('', '[]') AND phase_id IN ${V61_PHASES}`);
+        const V61_OCT_CARD = '[{"month":"2026-10","share":1,"method":"card"}]';
+        const V61_SHELF = "Product Display / Retail Shelving / LED Setup", V61_ROOM2 = "Consultation Room Furniture and Styling Package", V61_OBAGI = "Retail / Skincare Opening Stock";
+        const V61_RECEP = "Reception furniture and styling (verified schedule)", V61_ROOM1 = "Treatment Room Furniture, Equipment and Styling Package";
+        const V61_LOBBY = "Lobby coffee station: machine, fridge, wine cooler, cupboards", V61_UTIL = "Utility storage: clinical waste cupboard, lockers, COSHH cupboard";
+        await v61Ovr(V61_SHELF, 400, 500); await v61Plan(V61_SHELF, V61_OCT_CARD);
+        await v61Ovr(V61_ROOM2, 300, 0);
+        await v61Plan(V61_OBAGI, V61_OCT_CARD);
+        await v61Ovr(V61_RECEP, 2434.22, 2464.23); await v61Base(V61_RECEP, 2434.22, 2464.23);
+        await v61Ovr(V61_ROOM1, 1571.38, 1871.38);
+        await v61Base(V61_LOBBY, 0, 1019.99); await v61Plan(V61_LOBBY, V61_OCT_CARD);
+        await db.execute(sql`UPDATE launch_tasks SET status = 'deferred', notes = coalesce(notes, '') || ' Deferred by the owner, 14 October 2026: done in the months after opening, to keep cash in the bank.', updated_at = NOW() WHERE title = ${V61_UTIL} AND archived = FALSE AND status = 'not_started' AND phase_id IN ${V61_PHASES}`);
+        // The items. [name now, amount now, new name or null, new amount, new status or null, note or null]
+        const V61_EST = "Estimate (owner, 14 October 2026); replace with the real price when bought.";
+        const V61_ITEMS: [string, number, string | null, number, string | null, string | null][] = [
+          ["Clinical Cabinetry", 1500, "Howdens cupboards and Calacatta worktops: both treatment rooms and the reception recess", 1800, null, "Allowance until the Howdens quote: Clerkenwell navy base, white wall units, Calacatta laminate tops, and the two white base units in the reception recess. Bill fits them, free."],
+          ["Retail Shelving (Reception and Treatment Rooms)", 500, "Floating shelves, Bespoke Nature: 3 in reception, 1 take-home shelf in room 1 (primed)", 500, null, "Bespoke Nature, made to measure: 3 at 1,000 by 250 by 38 for the reception recess (LED groove), 1 at 800 by 200 for room 1. Primed, painted by us in the wall colour. Estimate until their quote; the LEDs are CBS's line."],
+          ["Lapis Electric Clinic Bed", 1399, null, 1398.6, null, null],
+          ["Floor plant, faux, about 1.2 m, stone pot", 0, null, 80, null, V61_EST],
+          ["Coat hooks: a rail of 4, landing wall", 0, null, 40, null, V61_EST],
+          ["Desk styling: vase of stems, tray, reed diffuser", 0, null, 60, null, V61_EST],
+          ["Practitioner stool, room 1", 0, null, 120, null, V61_EST],
+          ["Sharps bin, room 1", 0, null, 10, null, V61_EST],
+          ["Floor stand for the Omega 7 lamp", 0, null, 70, null, V61_EST],
+          ["Mirror and screen or tablet arm, over the room 1 desk", 0, null, 100, null, V61_EST],
+          ["Lec Pharmacy Plus fridge, 47 L, glass door", 0, "Lec Pharmacy Plus fridge, 47 L, glass door (already owned)", 0, "paid", "Already owned: not a Winchester cost (owner, 14 October 2026)."],
+          ["Skin analyser on its own trolley", 0, "Skin analyser trolley (with the platform)", 0, "paid", "Included in the skin analysis platform, 4,250, already paid (owner, 14 October 2026)."],
+          ["Coffee machine, bean to cup", 0, "Coffee machine, bean to cup (already owned)", 0, "paid", "Already owned: not a Winchester cost (owner, 14 October 2026)."],
+          ["Under-counter fridge, 600 wide (milk and staff)", 0, "Under-counter fridge, 600 wide (already owned)", 0, "paid", "Already owned: not a Winchester cost (owner, 14 October 2026)."],
+          ["Howdens units and worktop: navy base, white wall, Calacatta top", 0, null, 600, null, V61_EST + " Ours, not CBS's (point 3)."],
+          ["Full-length mirror, 500 by 1,500, safety backed", 0, null, 120, null, V61_EST],
+          ["Clinical waste cupboard, lockable and vented", 0, null, 0, null, "Deferred until after opening, to keep cash (owner, 14 October 2026). 700 by 400, full height."],
+          ["Staff lockers, 8 (4 by 2)", 0, null, 0, null, "Deferred until after opening, to keep cash (owner, 14 October 2026). 1,200 by 450 by 1,800."],
+          ["COSHH and cleaning cupboard, lockable", 0, null, 0, null, "Deferred until after opening, to keep cash (owner, 14 October 2026)."],
+        ];
+        for (const [name, was, rename, amount, status, note] of V61_ITEMS) {
+          await db.execute(sql`UPDATE kit_items SET name = coalesce(${rename}, name), amount_gbp = ${amount}, status = coalesce(${status}, status), note = coalesce(${note}, note), updated_at = NOW() WHERE project_id = ${projectId} AND name = ${name} AND round(amount_gbp::numeric, 2) = ${was} AND status = 'planned'`);
+        }
+        // Dropped by the owner: the LEDs (CBS's line), the wine cooler, and the take-home shelf now in the Bespoke Nature order.
+        await db.execute(sql`DELETE FROM kit_items WHERE project_id = ${projectId} AND status = 'planned' AND ((name = 'LED Installs' AND round(amount_gbp::numeric, 2) = 1000) OR (name = 'Slimline wine cooler, 300 wide' AND amount_gbp = 0) OR (name = 'Take-home shelf over the room 1 desk, made by Bill' AND amount_gbp = 0))`);
+        // The Jeanne chair to the lobby, and the coffee station's sink and tap.
+        await db.execute(sql`UPDATE kit_items SET task_id = (SELECT id FROM launch_tasks WHERE title = ${V61_LOBBY} AND archived = FALSE LIMIT 1), area_key = 'lobby', updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Jeanne cane chair (lobby, by the coffee station)' AND area_key = 'reception' AND EXISTS (SELECT 1 FROM launch_tasks WHERE title = ${V61_LOBBY} AND archived = FALSE)`);
+        await db.execute(sql`INSERT INTO kit_items (project_id, area_key, task_id, name, amount_gbp, status, note)
+          SELECT ${projectId}, 'lobby', t.id, 'Compact sink and tap for the coffee station', 150, 'planned', ${V61_EST + " Ours; CBS connect it to the existing services."}
+          FROM launch_tasks t WHERE t.title = ${V61_LOBBY} AND t.archived = FALSE AND NOT EXISTS (SELECT 1 FROM kit_items i WHERE i.project_id = ${projectId} AND i.name = 'Compact sink and tap for the coffee station') LIMIT 1`);
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
