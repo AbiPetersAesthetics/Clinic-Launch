@@ -33,6 +33,7 @@ import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
 import CardsPage from "@/pages/cards";
+import OwedPage from "@/pages/owed";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -165,6 +166,7 @@ function Router() {
         <Route path="/build-cash" component={BuildCashPage} />
         <Route path="/money-plan" component={MoneyPlanPage} />
         <Route path="/cards" component={CardsPage} />
+        <Route path="/owed" component={OwedPage} />
         <Route path="/competition" component={CompetitionPage} />
         <Route path="/market" component={MarketPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />

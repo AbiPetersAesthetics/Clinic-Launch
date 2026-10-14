@@ -960,6 +960,13 @@ export async function runStartupSeed(): Promise<void> {
         updated_at TIMESTAMP NOT NULL DEFAULT NOW()
       )
     `);
+    // V60: what the company owes a director for what they paid personally. For each entry on a
+    // personal account: the VAT on it, the proof in hand, whether it is in the company's books,
+    // and the day the company paid it back.
+    await db.execute(sql`ALTER TABLE card_entries ADD COLUMN IF NOT EXISTS vat_gbp REAL`);
+    await db.execute(sql`ALTER TABLE card_entries ADD COLUMN IF NOT EXISTS receipt TEXT NOT NULL DEFAULT 'none'`);
+    await db.execute(sql`ALTER TABLE card_entries ADD COLUMN IF NOT EXISTS booked BOOLEAN NOT NULL DEFAULT FALSE`);
+    await db.execute(sql`ALTER TABLE card_entries ADD COLUMN IF NOT EXISTS repaid_date TEXT`);
     await db.execute(sql`
       CREATE TABLE IF NOT EXISTS backlink_templates (
         id SERIAL PRIMARY KEY,

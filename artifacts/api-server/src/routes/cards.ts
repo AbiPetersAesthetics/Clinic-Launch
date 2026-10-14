@@ -14,6 +14,7 @@ const DEBITS = ["none", "minimum", "fixed", "full"] as const;
 const STATUSES = ["open", "closed"] as const;
 const OFFER_KINDS = ["purchases", "balance transfers", "money transfers"] as const;
 const ENTRY_KINDS = ["opening", "purchase", "transfer", "fee", "interest", "payment", "refund"] as const;
+const RECEIPTS = ["none", "receipt", "vat_invoice", "invoice_no_vat"] as const;
 
 const projectOf = (req: Request) => parseInt(req.params.projectId as string);
 class Bad extends Error {}
@@ -117,6 +118,11 @@ async function entryPatch(projectId: number, body: Record<string, unknown>, crea
   if (creating || body.amountGbp !== undefined) { const a = pounds(body.amountGbp, "Amount"); if (a === null) throw new Bad("Give the amount"); p.amountGbp = a; }
   if (body.taskId !== undefined) p.taskId = await planTask(projectId, body.taskId);
   if (body.note !== undefined) p.note = text(body.note, "Note", 500);
+  // What the company owes for it (Owed to directors): VAT, proof, in the books, paid back.
+  if (body.vatGbp !== undefined) p.vatGbp = pounds(body.vatGbp, "VAT");
+  if (body.receipt !== undefined) p.receipt = oneOf(body.receipt, RECEIPTS, "Proof");
+  if (body.booked !== undefined) { if (typeof body.booked !== "boolean") throw new Bad("In the books must be yes or no"); p.booked = body.booked; }
+  if (body.repaidDate !== undefined) p.repaidDate = date(body.repaidDate, "Paid back on");
   if (body.cardId !== undefined) {
     const [c] = await db.select({ id: creditCardsTable.id }).from(creditCardsTable).where(and(eq(creditCardsTable.projectId, projectId), eq(creditCardsTable.id, Number(body.cardId))));
     if (!c) throw new Bad("That card is not on the register");
@@ -180,7 +186,11 @@ router.get("/projects/:projectId/cards", handle(async (req, res) => {
     db.select().from(cardEntriesTable).where(eq(cardEntriesTable.projectId, projectId)).orderBy(asc(cardEntriesTable.date), asc(cardEntriesTable.id)),
     plannedCardLines(projectId),
   ]);
-  res.json({ cards: cards.map(c => ({ ...c, offers: safeOffers(c.offersJson) })), entries, planned });
+  // The plan line each entry pays for, by name, including lines not planned for a card.
+  const ids = [...new Set(entries.map(e => e.taskId).filter((v): v is number => v != null))];
+  const titled = ids.length ? await db.select({ id: tasksTable.id, title: tasksTable.title }).from(tasksTable).where(inArray(tasksTable.id, ids)) : [];
+  const lineTitles = Object.fromEntries(titled.map(t => [t.id, t.title]));
+  res.json({ cards: cards.map(c => ({ ...c, offers: safeOffers(c.offersJson) })), entries, planned, lineTitles });
 }));
 function safeOffers(json: string): Offer[] { try { const v = JSON.parse(json || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } }
 

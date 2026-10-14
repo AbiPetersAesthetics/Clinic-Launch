@@ -1,4 +1,4 @@
-import { pgTable, serial, integer, text, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, text, real, timestamp, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -54,6 +54,13 @@ export const cardEntriesTable = pgTable("card_entries", {
   /** The plan line it pays for, when there is one. */
   taskId: integer("task_id"),
   note: text("note"),
+  /** On a personal account, what the company owes the director for it: the VAT to reclaim,
+   *  the proof in hand (none, receipt, vat_invoice, invoice_no_vat), whether it is in the
+   *  company's books, and the day the company paid it back (yyyy-mm-dd). */
+  vatGbp: real("vat_gbp"),
+  receipt: text("receipt").notNull().default("none"),
+  booked: boolean("booked").notNull().default(false),
+  repaidDate: text("repaid_date"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
