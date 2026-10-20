@@ -1763,6 +1763,36 @@ export async function runStartupSeed(): Promise<void> {
             await db.execute(sql`UPDATE launch_tasks SET selected_cost = 2424.23, updated_at = NOW() WHERE title = 'Reception furniture and styling (verified schedule)' AND archived = FALSE AND round(selected_cost::numeric, 2) = 2464.23 AND phase_id IN ${V61_PHASES}`);
           });
         }
+        // V65, 20 October 2026 (owner): the hand-wash dispensers and the first soap bought, all on
+        // David's Virgin card (the card register holds the payments). Cleaning Supplies Shop, 120.79:
+        // two Tork S4 soap dispensers, one per treatment room, and two Tork Extra Mild foam soaps for
+        // the consumables line. Viking, 35.99: one Tork H2 towel dispenser for room 1, with a free pack
+        // of H2 towels; room 2's towel dispenser is still to order, at the same 35.99. Room 1 swaps its
+        // 121 allowance for 68.11 bought and falls to 1,818.49; room 2 goes from 0 to 68.12, its
+        // soap dispenser bought; consumables part paid 56.54. Each only while it holds what it did.
+        await step("V65 dispensers", async () => {
+          const ROOM1 = "Treatment Room Furniture, Equipment and Styling Package", ROOM2 = "Consultation Room Furniture and Styling Package", CONS = "Clinical Smallwares and Consumables";
+          const SHOP = "Cleaning Supplies Shop order, 20 October 2026, on David's Virgin Money card: one of two S4 soap dispensers (64.25 for both) and two Extra Mild foam soaps, 120.79 in all. Takes Tork S4 sealed refills: Extra Mild foam soap 520701.";
+          await db.execute(sql`UPDATE kit_items SET name = 'Tork S4 soap dispenser, black (room 1)', amount_gbp = 32.12, status = 'paid', note = ${"Bought 20 October 2026, 32.12 with VAT. " + SHOP}, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Tork soap and towel dispensers, black' AND round(amount_gbp::numeric, 2) = 121 AND status = 'planned'`);
+          await db.execute(sql`INSERT INTO kit_items (project_id, area_key, task_id, name, amount_gbp, status, note)
+            SELECT ${projectId}, 'treatment', t.id, 'Tork H2 towel dispenser, black (room 1)', 35.99, 'paid', 'Bought 20 October 2026 from Viking (order GB-VK-804384271W), 35.99 with VAT, on David''s Virgin Money card, with a free pack of Tork H2 brown 2-ply towels. Ask Viking for the invoice in the company''s name.' FROM launch_tasks t WHERE t.title = ${ROOM1} AND t.archived = FALSE AND t.phase_id IN ${V61_PHASES} AND NOT EXISTS (SELECT 1 FROM kit_items i WHERE i.project_id = ${projectId} AND i.name = 'Tork H2 towel dispenser, black (room 1)') LIMIT 1`);
+          await db.execute(sql`INSERT INTO kit_items (project_id, area_key, task_id, name, amount_gbp, status, note)
+            SELECT ${projectId}, 'treatment', t.id, v.n, v.a, v.s, v.note FROM launch_tasks t, (VALUES
+              ('Tork S4 soap dispenser, black (room 2)', 32.13, 'paid', ${"Bought 20 October 2026, 32.13 with VAT. " + SHOP}),
+              ('Tork H2 towel dispenser, black (room 2)', 35.99, 'planned', 'Still to order: the same Viking dispenser as room 1, 35.99 with VAT (owner, 20 October 2026).')
+            ) AS v(n, a, s, note) WHERE t.title = ${ROOM2} AND t.archived = FALSE AND t.phase_id IN ${V61_PHASES} AND NOT EXISTS (SELECT 1 FROM kit_items i WHERE i.project_id = ${projectId} AND i.name = v.n)`);
+          await db.execute(sql`UPDATE kit_items SET name = 'Room 2: stool, Omega 7 lamp, trolley, fridge (deferred)', updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Room 2: stool, Omega 7 lamp, trolley, fridge, dispensers (deferred)'`);
+          // Room 1: the allowance swapped for what was bought; 233.71 paid on the card in all.
+          await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 1818.49, actual_cost = 233.71, amount_paid_gbp = 233.71, payment_date = '2026-10-20', updated_at = NOW() WHERE round(selected_cost::numeric, 2) = 1871.38 AND round(amount_paid_gbp::numeric, 2) = 165.6 AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${ROOM1} AND archived = FALSE AND phase_id IN ${V61_PHASES})`);
+          await db.execute(sql`UPDATE launch_tasks SET actual_cost = 233.71, amount_paid_gbp = 233.71, payment_date = '2026-10-20', updated_at = NOW() WHERE title = ${ROOM1} AND archived = FALSE AND round(amount_paid_gbp::numeric, 2) = 165.6 AND phase_id IN ${V61_PHASES}`);
+          // Room 2: its two dispensers, the soap one bought.
+          await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 68.12, paid_status = 'part-paid', actual_cost = 32.13, amount_paid_gbp = 32.13, payment_date = '2026-10-20', updated_at = NOW() WHERE coalesce(selected_cost, 0) = 0 AND coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${ROOM2} AND archived = FALSE AND phase_id IN ${V61_PHASES})`);
+          await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 32.13, amount_paid_gbp = 32.13, payment_date = '2026-10-20', updated_at = NOW() WHERE title = ${ROOM2} AND archived = FALSE AND coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND phase_id IN ${V61_PHASES}`);
+          // Consumables: the first soap refills.
+          const CONS_NOTE = " Bought 20 October 2026 on David's Virgin card: 2 Tork Extra Mild foam soaps, 1 litre (520701), 56.54 with VAT, from Cleaning Supplies Shop; a free pack of Tork H2 brown 2-ply towels (21 packs of 180) came with Viking's towel dispenser. Repeat soap: a 6-pack is cheaper (Smart UK, about 16.50 a litre with VAT).";
+          await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 56.54, amount_paid_gbp = 56.54, payment_date = '2026-10-20', notes = coalesce(notes, (SELECT notes FROM launch_tasks WHERE id = property_task_overrides.task_id), '') || ${CONS_NOTE}, updated_at = NOW() WHERE coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${CONS} AND archived = FALSE AND phase_id IN ${V61_PHASES})`);
+          await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 56.54, amount_paid_gbp = 56.54, payment_date = '2026-10-20', notes = coalesce(notes, '') || ${CONS_NOTE}, updated_at = NOW() WHERE title = ${CONS} AND archived = FALSE AND coalesce(paid_status, '') NOT IN ('paid', 'part-paid') AND phase_id IN ${V61_PHASES}`);
+        });
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.

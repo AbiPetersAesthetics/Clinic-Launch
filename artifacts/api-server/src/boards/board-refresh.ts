@@ -25,7 +25,7 @@ const TRADE_ORDER = [3, 4, 6, 10, 11, 7, 8, 13, 14, 17, 18, 2, 1, 21];
 const KIT: [RegExp, string, string, string][] = [
   [/^Treatment Couch/i, "treat", "Treatment couch", ""],
   [/^Treatment Room Furniture/i, "treat", "Room 1 furniture and equipment", "Maru desk, two chairs, trolley, Omega 7 lamp, dispensers, basins and taps"],
-  [/^Consultation Room Furniture/i, "treat", "Treatment room 2 furniture", "chairs, table"],
+  [/^Consultation Room Furniture/i, "treat", "Treatment room 2", "the towel dispenser; the rest waits for a second clinician"],
   [/^Joinery/i, "treat", "Clinical cabinetry (Howdens)", "both treatment rooms; Bill fits"],
   [/Retail Shelving/i, "recep", "Reception shelving unit", "4 Bespoke Nature shelves with LEDs fitted, and the B&Q cabinet"],
   [/^Lobby coffee station/i, "recep", "Lobby coffee station", "units, sink and tap, mirror, chair"],
