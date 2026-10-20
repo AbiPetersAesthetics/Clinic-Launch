@@ -20,9 +20,16 @@ const invoiceUpload = multer({
 
 function getSelectedCost(costTier: string, costLow: number, costMid: number, costHigh: number, currentSelectedCost = 0): number {
   if (costTier === "quoted") return currentSelectedCost; // preserve quote-applied amount
-  if (costTier === "low") return costLow;
-  if (costTier === "high") return costHigh;
-  return costMid;
+  const v = costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
+  // Many lines were costed by migration with no low, mid or high figures; an empty tier keeps the cost.
+  return v == null ? currentSelectedCost : v;
+}
+
+// Whether a save changes the cost tier or one of its figures. The edit form sends all four on every
+// save, with an empty figure as 0, so a save that only touches notes or status must not re-cost the line.
+const TIER_KEYS = ["costTier", "costLow", "costMid", "costHigh"] as const;
+function tierChanged(body: Record<string, any>, stored: (k: string) => unknown): boolean {
+  return TIER_KEYS.some((k) => body[k] !== undefined && (k === "costTier" ? body[k] !== (stored(k) ?? "mid") : Number(body[k] ?? 0) !== Number(stored(k) ?? 0)));
 }
 
 router.get("/phases/:phaseId/tasks", async (req, res) => {
@@ -121,7 +128,8 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
     const mid = body.costMid ?? existing_override?.costMid ?? existing.costMid;
     const high = body.costHigh ?? existing_override?.costHigh ?? existing.costHigh;
     const currentSelectedCost = body.selectedCost ?? existing_override?.selectedCost ?? existing.selectedCost;
-    patch.selectedCost = getSelectedCost(tier, low, mid, high, currentSelectedCost);
+    const stored = (k: string) => (existing_override as any)?.[k] ?? (existing as any)[k];
+    patch.selectedCost = tierChanged(body, stored) ? getSelectedCost(tier, low, mid, high, currentSelectedCost) : currentSelectedCost;
 
     if (existing_override) {
       await db.update(propertyTaskOverridesTable)
@@ -189,7 +197,7 @@ async function handleTaskUpdate(req: import("express").Request, res: import("exp
   const updates: Record<string, unknown> = { ...body, updatedAt: new Date() };
   delete updates.propertyId;
   // For "quoted" tier, preserve the quote-set selectedCost unless explicitly overridden
-  updates.selectedCost = getSelectedCost(tier, low, mid, high, body.selectedCost ?? existing.selectedCost);
+  updates.selectedCost = tierChanged(body, (k) => (existing as any)[k]) ? getSelectedCost(tier, low, mid, high, body.selectedCost ?? existing.selectedCost) : (body.selectedCost ?? existing.selectedCost);
 
   if (body.dependencies !== undefined) {
     updates.dependencies = body.dependencies ? JSON.stringify(body.dependencies) : null;

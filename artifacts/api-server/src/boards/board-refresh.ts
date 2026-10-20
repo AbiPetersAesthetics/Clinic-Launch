@@ -26,8 +26,8 @@ const KIT: [RegExp, string, string, string][] = [
   [/^Treatment Couch/i, "treat", "Treatment couch", ""],
   [/^Treatment Room Furniture/i, "treat", "Room 1 furniture and equipment", "Maru desk, two chairs, trolley, Omega 7 lamp, dispensers, basins and taps"],
   [/^Consultation Room Furniture/i, "treat", "Treatment room 2 furniture", "chairs, table"],
-  [/^Joinery/i, "recep", "Clinical cabinetry (Howdens)", "both treatment rooms and the reception recess; Bill fits"],
-  [/Retail Shelving/i, "recep", "Floating shelves (Bespoke Nature)", "3 in reception, 1 in room 1"],
+  [/^Joinery/i, "treat", "Clinical cabinetry (Howdens)", "both treatment rooms; Bill fits"],
+  [/Retail Shelving/i, "recep", "Reception shelving unit", "4 Bespoke Nature shelves with LEDs fitted, and the B&Q cabinet"],
   [/^Lobby coffee station/i, "recep", "Lobby coffee station", "units, sink and tap, mirror, chair"],
   [/^Reception desk, Artisan/i, "recep", "Reception desk (Artisan Deco)", "no VAT; David paid the deposit, the company pays him back"],
   [/^Reception furniture/i, "recep", "Reception furniture and styling", "Amboise sofa and pouffe, rug, side table, two Tala pendants, Lucia chair, the lobby chair"],
@@ -80,7 +80,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const STAGE = { 1: ["cbs1", "CBS stage 1 (20%)"], 2: ["cbs2", "CBS stage 2 (60%)"], 3: ["cbs3", "CBS stage 3 (17%)"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
   const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
     : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
-    : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Floating shelves (Bespoke Nature)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
+    : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
     : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch, four lines", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
     : /Meta Ads/.test(t) ? ["meta", "Launch adverts, Meta (no VAT)", "kit"] : /Google Ads/.test(t) ? ["google", "Launch adverts, Google (no VAT)", "kit"]

@@ -4472,7 +4472,9 @@ function TaskEditSheet({
     }
   }, [task?.id]);
 
-  const previewSelectedCost = costTier === "quoted" ? (task?.selectedCost ?? 0) : costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
+  // An untouched tier keeps the line's cost, as the server does: many lines have no tier figures.
+  const tierUntouched = !!task && costTier === ((task.costTier as string) ?? "mid") && costLow === (task.costLow ?? 0) && costMid === (task.costMid ?? 0) && costHigh === (task.costHigh ?? 0);
+  const previewSelectedCost = costTier === "quoted" || tierUntouched ? (task?.selectedCost ?? 0) : costTier === "low" ? costLow : costTier === "high" ? costHigh : costMid;
 
   const taskPhaseIndex = allPhases.findIndex((p) => (p.tasks ?? []).some((t) => t.id === task?.id));
   const depPhases = allPhases
