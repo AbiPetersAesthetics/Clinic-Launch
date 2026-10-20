@@ -30,6 +30,7 @@ const KIT: [RegExp, string, string, string][] = [
   [/Retail Shelving/i, "recep", "Reception shelving unit", "4 Bespoke Nature shelves with LEDs fitted, and the B&Q cabinet"],
   [/^Lobby coffee station/i, "recep", "Lobby coffee station", "units, sink and tap, mirror, chair"],
   [/^Reception desk, Artisan/i, "recep", "Reception desk (Artisan Deco)", "no VAT; David paid the deposit, the company pays him back"],
+  [/^Reception coat stand/i, "recep", "Reception coat stand (Homary)", "black poles, white marble base"],
   [/^Reception furniture/i, "recep", "Reception furniture and styling", "Amboise sofa and pouffe, rug, side table, two Tala pendants, Lucia chair, the lobby chair"],
   [/^External Signage/i, "front", "External sign, balance", "the deposit is already paid"],
   [/^Arundel/i, "safety", "Fire alarm (Arundel)", ""],
@@ -83,7 +84,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
     : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
     : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
-    : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch, four lines", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
+    : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
     : /Meta Ads/.test(t) ? ["meta", "Launch adverts, Meta (no VAT)", "kit"] : /Google Ads/.test(t) ? ["google", "Launch adverts, Google (no VAT)", "kit"]
     : ["checks", "Pre-opening checks, waste, emergency kit", "kit"];
@@ -106,10 +107,13 @@ export function boardRefresh(template: string, J, asOf: string): string {
         it = items.get(key) ?? { id: key, base: id, name: `${name}, ${MNAME[m]}${method !== it.method ? ` (${method})` : ""}`, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
       }
       it = it ?? { id, base: id, name, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
-      it.ex += l.remainingExVat * p.share; if (vat) it.vatEx += l.remainingExVat * p.share; items.set(it.id, it);
+      it.ex += l.remainingExVat * p.share; if (vat) it.vatEx += l.remainingExVat * p.share; (it.lines ??= new Set()).add(l.taskId); items.set(it.id, it);
     }
   }
   const ORDER = ["sign", "arundel1", "cbs1", "cbs2", "arundel2", "cbs3", "cbs4", "joinery", "desk", "shelving", "furniture", "retail", "scrubs", "stock", "insurance", "checks", "broadband", "meta", "google"];
+  // The furniture payment says how many plan lines it holds, as the published board did.
+  const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
+  for (const it of items.values()) if (it.base === "furniture" && it.lines) it.name = it.name.replace("Furniture and the couch", `Furniture and the couch, ${WORDS[it.lines.size] ?? it.lines.size} line${it.lines.size === 1 ? "" : "s"}`);
   const list = [...items.values()].sort((a, b) => ORDER.indexOf(a.base) - ORDER.indexOf(b.base) || a.m - b.m);
   const itemsJs = list.map(i => `    { id: "${i.id}", name: "${i.name}", ex: ${r2(i.ex)}, vat: ${i.vatEx > 0.01}, method: "${i.method}", m: ${i.m},${i.locked ? " locked: true," : ""} group: "${i.group}" },`).join("\n");
 
