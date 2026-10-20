@@ -75,6 +75,8 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const IDX = { "2026-10": 1, "2026-11": 2, "2026-12": 3, "2027-01": 4, "2027-02": 5, "2027-03": 6, "2027-04": 7, "2027-05": 8, "2027-06": 9 };
   if (J.rows[0].month !== "2026-10") throw new Error("The board covers October 2026 to June 2027 and needs the Money page to start in October; it now starts in " + J.rows[0].label + ".");
   const bankAt = J.bank ? J.bank.asAt : (J.config.openingDate || "2026-10-05");
+  // The bank figure is today's only when the Money page holds a balance saved for today.
+  const bankToday = !!J.bank && bankAt === asOf;
 
   // 1. The unpaid lines, grouped as the board shows them.
   const STAGE = { 1: ["cbs1", "CBS stage 1 (20%)"], 2: ["cbs2", "CBS stage 2 (60%)"], 3: ["cbs3", "CBS stage 3 (17%)"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
@@ -148,7 +150,7 @@ ${itemsJs}
   const paidNote = `On top of these, £${paidEx.toLocaleString("en-GB")} ex VAT has already been paid (£${paidInc.toLocaleString("en-GB")} as invoiced) and is in the starting bank: see What it buys.${unschedText}`;
   rep(`Abi Peters Skin Clinic · Winchester build · 30 September 2026`, `Abi Peters Skin Clinic · Winchester build · ${longDate(asOf)}, bank as at ${dayMonth(bankAt)}`);
   rep(`<label class="lbl" for="start">Bank at the end of September</label><input id="start" type="number" step="500" value="34000" min="0"><span class="hint">Business account, before anything lands.</span>`,
-      `<label class="lbl" for="start">Bank on ${dayMonth(bankAt)}</label><input id="start" type="number" step="500" value="${startBank}" min="0"><span class="hint">Business account, after what is already paid and before James's and Bill's money lands.</span>`);
+      `<label class="lbl" for="start">${bankToday ? "Bank today" : `Bank on ${dayMonth(bankAt)}`}</label><input id="start" type="number" step="500" value="${startBank}" min="0"><span class="hint">${bankToday ? "" : `Out of date: this is the balance saved on ${dayMonth(bankAt)}. Save today's under Bank today on the Money page and the board starts from it. `}Business account, after what is already paid and before James's and Bill's money lands.</span>`);
   rep(`<button type="button" data-v="1" aria-pressed="true">1 October</button><button type="button" data-v="2" aria-pressed="false">End of November</button>`,
       `<button type="button" data-v="1" aria-pressed="${loanMonth === 1}">October</button><button type="button" data-v="2" aria-pressed="${loanMonth === 2}">End of November</button>`);
   rep(`Money in, money out and the bank, September to June`, `Money in, money out and the bank, ${dayMonth(bankAt)} to June`);
