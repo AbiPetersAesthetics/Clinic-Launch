@@ -342,7 +342,7 @@ ${buildRows}
     <tbody>
       <tr><td>Rent</td><td>${f(rentM)}</td><td class="wrap-cell">£32,500 a year, paid three months ahead: £7,301 on 25 December 2026, then £8,125 on 25 March, 24 June, 29 September and 25 December.</td></tr>
       <tr><td>Business rates</td><td>${f(CFG.rates.monthly)}</td><td class="wrap-cell">From October 2026.</td></tr>
-      <tr><td>Electricity, water and heating</td><td>${f(CFG.utilities.monthly)}</td><td class="wrap-cell">Electricity on EDF's fixed tariff to October 2029, 26.2p a unit and 65p a day: about £184 a month at 7,500 units a year. Water about £20, broadband £40. ${f(CFG.utilities.buildMonthly)} during the build.</td></tr>
+      <tr><td>Electricity, water and heating</td><td>${f(CFG.utilities.monthly)}</td><td class="wrap-cell">Electricity on EDF's fixed tariff to October 2029, 26.2p a unit and 65p a day: about £184 a month at 7,500 units a year. Water about £20. Broadband from Vodafone from 17 November, £32, rising about £3 each April. ${f(CFG.utilities.buildMonthly)} during the build.</td></tr>
       <tr><td>Everyday business costs</td><td>${f(CFG.running.monthly)}</td><td class="wrap-cell">Software, accountant, bank, card machine.</td></tr>
       <tr><td>Advertising</td><td>${f(CFG.marketing.monthly)}</td><td class="wrap-cell">From the bank. Bedhampton's adverts to November, Winchester's from December.</td></tr>
       <tr class="group"><td><strong>Total</strong></td><td><strong>${f(running)}</strong></td><td class="wrap-cell">Plus fire alarm servicing, about £220 once a year.</td></tr>

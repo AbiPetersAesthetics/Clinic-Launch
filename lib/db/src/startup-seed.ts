@@ -1887,6 +1887,18 @@ export async function runStartupSeed(): Promise<void> {
           await db.execute(sql`UPDATE fixed_cost_items SET name = 'Utilities - Electricity (EDF fixed to Oct 2029, 26.2p a kWh, 65p a day)', amount_gbp = 184, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Utilities - Electricity' AND round(amount_gbp::numeric, 2) = 180`);
           await db.execute(sql`UPDATE fixed_cost_items SET amount_gbp = 20, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Utilities - Water and Sewerage' AND round(amount_gbp::numeric, 2) = 30`);
         });
+        // V72, 21 October 2026 (owner): broadband is Vodafone Business Pro II Full Fibre 910 from 17
+        // November 2026 for 36 months, with nothing upfront: 32 a month before VAT to March 2027, then
+        // 34.92, 37.84 and 40.76 from each April, about 1,320 in all before VAT. The 120 set-up line
+        // goes to 0 (saving 120 on the card) and the monthly cost is a running cost, so the Money page's
+        // list takes 32 for its 40 allowance. Each only while it holds what it did.
+        await step("V72 broadband", async () => {
+          const LINE = "Broadband Availability / Setup";
+          const NOTE = " Vodafone Business Pro II Full Fibre 910 from 17 November 2026, 36 months to 17 November 2029, nothing upfront: 32.00 a month before VAT (38.40 with) to March 2027, 34.92 from April 2027, 37.84 from April 2028, 40.76 from April 2029, about 1,320 before VAT over the contract. Set-up is 0, so this line is 0 and the monthly cost is in running costs (owner, 21 October 2026).";
+          await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 0, status = 'in_progress', supplier = 'Vodafone', notes = coalesce(notes, (SELECT notes FROM launch_tasks WHERE id = property_task_overrides.task_id), '') || ${NOTE}, updated_at = NOW() WHERE round(selected_cost::numeric, 2) = 120 AND task_id IN (SELECT id FROM launch_tasks WHERE title = ${LINE} AND archived = FALSE AND phase_id IN ${V61_PHASES})`);
+          await db.execute(sql`UPDATE launch_tasks SET selected_cost = 0, cost_tier = 'quoted', status = 'in_progress', supplier = 'Vodafone', notes = coalesce(notes, '') || ${NOTE}, updated_at = NOW() WHERE title = ${LINE} AND archived = FALSE AND round(selected_cost::numeric, 2) = 100 AND phase_id IN ${V61_PHASES}`);
+          await db.execute(sql`UPDATE fixed_cost_items SET name = 'Utilities - Broadband (Vodafone Full Fibre 910, from 17 Nov 2026, rises each April)', amount_gbp = 32, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Utilities - Internet' AND round(amount_gbp::numeric, 2) = 40`);
+        });
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
