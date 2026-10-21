@@ -68,6 +68,8 @@ const briefInputs = (months = 9, scenario = "base") => {
   const i = inputs(months, scenario);
   return { ...i, projectPayments: noVat, vatReturns: undefined,
     bedh: { takings: { "2026-10": 8000, "2026-11": 9000, "2026-12": 3000, "2027-01": 3000, "2027-02": 3000, "2027-03": 3000 }, contributionPct: 54 },
+    // The brief was worked out at 280 a month for utilities, before EDF fixed the tariff (21 October 2026).
+    utilities: { ...i.utilities, monthly: 280 },
     marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, contributionPct: 58, productCost: undefined, capacity: undefined } };
 };
 const REF = [
@@ -127,7 +129,8 @@ test("Winchester keeps more of each pound than Bedhampton: prices 1.48 times, sa
   for (const r of res.rows.filter(x => x.month >= "2026-12" && x.transferIn === 0)) {
     assert.ok(Math.abs(r.winc.contribution - (r.winc.gross * 5 / 6 - lib.WINC_SCENARIOS.central.productCost[r.month])) < 1, r.month);
   }
-  assert.equal(lib.STANDS_ALONE_TAKINGS, 14100);
+  // 14,100 until EDF fixed the electricity tariff (21 October 2026), 14,000 since.
+  assert.equal(lib.STANDS_ALONE_TAKINGS, 14000);
 });
 
 test("recommended forecast: Bedhampton on two days until Winchester stands alone in late 2028, bank never below 10,000", () => {

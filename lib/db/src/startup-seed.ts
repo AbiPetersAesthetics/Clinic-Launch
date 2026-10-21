@@ -1879,6 +1879,14 @@ export async function runStartupSeed(): Promise<void> {
             await db.execute(sql`UPDATE kit_items SET note = coalesce(note, '') || ${add}, updated_at = NOW() WHERE project_id = ${projectId} AND name = ${name} AND coalesce(note, '') NOT LIKE '%orders tracker, 21 October%'`);
           }
         });
+        // V71, 21 October 2026 (owner): the Fixed Monthly Costs list on the Money page follows the
+        // utilities the model now uses. Electricity on EDF's Fixed Online 3 Year tariff from 24 October
+        // (26.2p a kWh, 65p a day, before VAT) at about 7,500 kWh a year is 183.52 a month: 184. Water
+        // and sewerage about 20. Each only while it holds the old figure.
+        await step("V71 utilities", async () => {
+          await db.execute(sql`UPDATE fixed_cost_items SET name = 'Utilities - Electricity (EDF fixed to Oct 2029, 26.2p a kWh, 65p a day)', amount_gbp = 184, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Utilities - Electricity' AND round(amount_gbp::numeric, 2) = 180`);
+          await db.execute(sql`UPDATE fixed_cost_items SET amount_gbp = 20, updated_at = NOW() WHERE project_id = ${projectId} AND name = 'Utilities - Water and Sewerage' AND round(amount_gbp::numeric, 2) = 30`);
+        });
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.

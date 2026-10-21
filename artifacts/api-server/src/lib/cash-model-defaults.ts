@@ -54,9 +54,9 @@ const CENTRAL = cohort("central"), LOW = cohort("low"), HIGH = cohort("high");
 // of founders and list prices), used for forecasts without cohorts (David's).
 const first36 = MODEL_MONTHS.slice(0, 36);
 export const WINC_KEEP_PCT = Math.round(1000 * first36.reduce((a, m) => a + CENTRAL.takings[m] * (5 / 6) - CENTRAL.productCost[m], 0) / first36.reduce((a, m) => a + CENTRAL.takings[m], 0)) / 10;
-// Takings Winchester needs to stand on its own: full running costs (5,371), James's level
+// Takings Winchester needs to stand on its own: full running costs (5,335), James's level
 // repayment (about 364) and the 3,000 kept, at WINC_KEEP_PCT in the pound.
-export const STANDS_ALONE_TAKINGS = Math.round((5371.33 + 364.3 + 3000) / (WINC_KEEP_PCT / 100) / 100) * 100;
+export const STANDS_ALONE_TAKINGS = Math.round((5335.33 + 364.3 + 3000) / (WINC_KEEP_PCT / 100) / 100) * 100;
 
 // Winchester takings, gross inc VAT. "central" is the recommended planning case.
 export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number>; productCost?: Record<string, number> }> = {
@@ -109,7 +109,7 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
     // Owner, 30 Sep: Bedhampton stays open while Winchester is not making enough,
     // in every forecast. Abi works three days at Winchester and two at Bedhampton
     // until Winchester stands on its own for two months running: its own takings pay
-    // its full running costs (5,371), James's loan (364) and the 3,000 the business
+    // its full running costs (5,335), James's loan (364) and the 3,000 the business
     // keeps. Then Bedhampton closes and 15% of its patients follow.
     plan: {
       from: "2026-12", weekDays: 5, dayCapacity: 1750,
@@ -130,7 +130,11 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   vatReturns: { periodEndMonths: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], refundLagMonths: 1 },
   rent: { annual: 32500, rentStart: "2027-01-02", quarterDays: ["03-25", "06-24", "09-29", "12-25"] },
   rates: { monthly: 1333, from: "2026-10" },
-  utilities: { monthly: 280, buildMonthly: 210, buildUntil: "2026-10", from: "2026-10" },
+  // Utilities, 21 October 2026 (owner): electricity on EDF's Fixed Online 3 Year tariff from
+  // 24 October 2026 (26.2p a kWh and 65p a day, before VAT and CCL, fixed to October 2029).
+  // At about 7,500 kWh a year that is 1,965 plus 237.25 standing, 2,202.25 a year, 183.52 a
+  // month before VAT; water and sewerage about 20; broadband 40 until its quote. 244 in all.
+  utilities: { monthly: 244, buildMonthly: 210, buildUntil: "2026-10", from: "2026-10" },
   running: { monthly: 450 },
   // Bedhampton ads to November, Winchester ads from December. Always paid from the bank.
   marketing: { monthly: 600, wincFrom: "2026-12", cardFrom: null },

@@ -25,7 +25,9 @@ const C36 = lib.monthsFrom("2026-10", 36), CS = lib.WINC_SCENARIOS.central;
 const blendPf = C36.reduce((a, m) => a + CS.takings[m], 0) / C36.reduce((a, m) => a + CS.productCost[m] / PR.productShare, 0);
 const perVisitB = 75408 / 561, perVisitW = perVisitB * blendPf;
 const perWeek = t => t / perVisitW / (52 / 12);
-const running = 5371.33, loanLevel = 364.3, kept3000 = 3000, salaryCost = 4755;
+// The monthly bills, from the model itself.
+const CFG = LIVE.config, rentM = CFG.rent.annual / 12;
+const running = rentM + CFG.rates.monthly + CFG.utilities.monthly + CFG.running.monthly + CFG.marketing.monthly, loanLevel = 364.3, kept3000 = 3000, salaryCost = 4755;
 const billsAt = Math.round(running / (keepW / 100) / 100) * 100, salaryAt = Math.round((running + loanLevel + kept3000 + salaryCost) / (keepW / 100) / 100) * 100;
 const flatO = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: PR.foundersVsBedhampton, listPrice: PR.listVsBedhampton, founderUntil: "2027-01" };
 const flatAt = (n, m) => lib.wincForecast(M, { early: n, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n }, flatO, lib.monthsFrom("2026-10", 24))[m];
@@ -334,16 +336,16 @@ ${buildRows}
 
 <section id="running" data-title="What Winchester costs to run">
   <div class="ch-head"><span class="ch-num">5</span><div><div class="q">The monthly bills</div><h2>What Winchester costs to run, and when it stands on its own</h2></div></div>
-  <p class="answer"><strong>Short answer:</strong> £5,371 a month, plus James's £364 from June 2027 and the £3,000 the business keeps. Winchester covers all of that on its own at about ${f(standAt)} a month of takings.</p>
+  <p class="answer"><strong>Short answer:</strong> ${f(running)} a month, plus James's £364 from June 2027 and the £3,000 the business keeps. Winchester covers all of that on its own at about ${f(standAt)} a month of takings.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Cost</th><th>A month</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td>Rent</td><td>£2,708</td><td class="wrap-cell">£32,500 a year, paid three months ahead: £7,301 on 25 December 2026, then £8,125 on 25 March, 24 June, 29 September and 25 December.</td></tr>
-      <tr><td>Business rates</td><td>£1,333</td><td class="wrap-cell">From October 2026.</td></tr>
-      <tr><td>Electricity, water and heating</td><td>£280</td><td class="wrap-cell">£210 during the build.</td></tr>
-      <tr><td>Everyday business costs</td><td>£450</td><td class="wrap-cell">Software, accountant, bank, card machine.</td></tr>
-      <tr><td>Advertising</td><td>£600</td><td class="wrap-cell">From the bank. Bedhampton's adverts to November, Winchester's from December.</td></tr>
-      <tr class="group"><td><strong>Total</strong></td><td><strong>£5,371</strong></td><td class="wrap-cell">Plus fire alarm servicing, about £220 once a year.</td></tr>
+      <tr><td>Rent</td><td>${f(rentM)}</td><td class="wrap-cell">£32,500 a year, paid three months ahead: £7,301 on 25 December 2026, then £8,125 on 25 March, 24 June, 29 September and 25 December.</td></tr>
+      <tr><td>Business rates</td><td>${f(CFG.rates.monthly)}</td><td class="wrap-cell">From October 2026.</td></tr>
+      <tr><td>Electricity, water and heating</td><td>${f(CFG.utilities.monthly)}</td><td class="wrap-cell">Electricity on EDF's fixed tariff to October 2029, 26.2p a unit and 65p a day: about £184 a month at 7,500 units a year. Water about £20, broadband £40. ${f(CFG.utilities.buildMonthly)} during the build.</td></tr>
+      <tr><td>Everyday business costs</td><td>${f(CFG.running.monthly)}</td><td class="wrap-cell">Software, accountant, bank, card machine.</td></tr>
+      <tr><td>Advertising</td><td>${f(CFG.marketing.monthly)}</td><td class="wrap-cell">From the bank. Bedhampton's adverts to November, Winchester's from December.</td></tr>
+      <tr class="group"><td><strong>Total</strong></td><td><strong>${f(running)}</strong></td><td class="wrap-cell">Plus fire alarm servicing, about £220 once a year.</td></tr>
     </tbody>
   </table></div>
   <div class="figures">
