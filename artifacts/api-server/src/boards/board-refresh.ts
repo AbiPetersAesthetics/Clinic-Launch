@@ -80,7 +80,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const bankToday = !!J.bank && bankAt === asOf;
 
   // 1. The unpaid lines, grouped as the board shows them.
-  const STAGE = { 1: ["cbs1", "CBS stage 1 (20%)"], 2: ["cbs2", "CBS stage 2 (60%)"], 3: ["cbs3", "CBS stage 3 (17%)"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
+  const STAGE = { 1: ["cbs1", "CBS, October valuation"], 2: ["cbs2", "CBS, November valuation"], 3: ["cbs3", "CBS, December valuation"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
   const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
     : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
     : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
@@ -121,8 +121,12 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const NAMES = [[/Skin Analysis/, "Skin analysis platform and training"], [/Rent Deposit/, "Rent deposit"], [/Solicitor/, "Solicitor"], [/Design \/ Building Regulations/, "Design and Building Regulations lead"],
     [/Building Control/, "Building Control submission"], [/RICS/, "RICS schedule of condition"], [/Asbestos/, "Asbestos survey"], [/Brand Identity/, "Brand identity and visual assets"],
     [/External Signage/, "External sign, deposit"], [/CAD Drawings/, "CAD drawing pack"], [/Advertisement Consent/, "Advertisement consent"], [/ACE Group/, "ACE membership"], [/Arundel/, "Fire alarm (Arundel), 30% deposit"]];
-  const paid = J.projectLines.filter(l => l.paid > 0).map(l => { const n = NAMES.find(([re]) => re.test(l.title)); const ex = /^no VAT/.test(l.vatBasis) ? l.paid : l.paid / 1.2;
-    return [n ? n[1] : l.title, Math.round(ex), l.paid]; }).sort((a, b) => b[1] - a[1]);
+  // CBS's lines are one payment: its work valued is what was paid in all, the VAT Abi lent included.
+  const paidRows = J.projectLines.filter(l => l.paid > 0).map(l => { const cbs = /^Ref \d/.test(l.title), all = cbs ? l.paid + (l.paidOnCard || 0) : l.paid;
+    const n = cbs ? [null, "CBS interim payment 1, less the 3% retention"] : NAMES.find(([re]) => re.test(l.title)); const ex = /^no VAT/.test(l.vatBasis) ? all : all / 1.2;
+    return [n ? n[1] : l.title, ex, all]; });
+  const merged = new Map(); for (const [n, ex, inc] of paidRows) { const m = merged.get(n) ?? [n, 0, 0]; m[1] += ex; m[2] += inc; merged.set(n, m); }
+  const paid = [...merged.values()].map(([n, ex, inc]) => [n, Math.round(ex), inc]).sort((a, b) => b[1] - a[1]);
   const paidEx = paid.reduce((a, p) => a + p[1], 0), paidInc = Math.round(paid.reduce((a, p) => a + p[2], 0));
   const paidJs = "[" + paid.map(p => `[${JSON.stringify(p[0])}, ${p[1]}]`).join(", ") + "]";
 
