@@ -31,6 +31,8 @@ export type ProjectLine = {
   /** paid: from the bank, so already in the bank balance. paidOnCard: paid by a card on the
    *  card register; still owed on the card, so the model keeps it as card spend to repay. */
   recorded: number; paid: number; paidOnCard: number; remainingExVat: number; vatBasis: string;
+  /** recorded, ex VAT: the board's phase hover splits each line into ex VAT and VAT with it. */
+  exVat: number;
   plan: { month: string; share: number; method: "bank" | "card" }[]; planProblem: string | null;
 };
 
@@ -124,7 +126,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
       : !plan.length ? "No payment month set"
       : Math.abs(shares - 1) > 0.001 ? `Payment shares add up to ${Math.round(shares * 100)}%, not 100%`
       : null;
-    lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, paidOnCard, remainingExVat, vatBasis: vat.basis, plan, planProblem });
+    lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, paidOnCard, remainingExVat, vatBasis: vat.basis, exVat: vat.ex, plan, planProblem });
     if (remainingExVat >= 0.5 && !planProblem) {
       // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
       const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;

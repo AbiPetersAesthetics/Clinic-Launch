@@ -38,7 +38,9 @@ for (const x of L) {
   else if (x.paid === "part-paid" && (a > 0 || m > 0)) { p = a > 0 ? a : m; e = Math.max(0, sel - p); } else if (c > 0) cm = c; else e = sel;
   if (p + cm + e < 0.5) continue;
   const how = methodOf(x);
-  lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how, 0, x.id]);
+  // The share of the line that is ex VAT, from the Money page's VAT basis (1 where it carries none).
+  const pl = PL.get(x.id), exFrac = pl && pl.recorded > 0 && pl.exVat > 0 ? Math.min(1, pl.exVat / pl.recorded) : 1;
+  lines.push([PHASE[x.phase] ?? x.phase, nameOf(x.title), r2(p), r2(cm), r2(e), how === "mixed" ? "capital" : how, 0, x.id, Math.round(exFrac * 10000) / 10000]);
 }
 const PACK_GAP = /(price needed)|(CBS variation)|^Credit due from CBS|^Lobby coffee station|^Utility storage|^Fixings for our items|BG Nexus black nickel|^Herringbone LVT in the treatment rooms|^Laser supply and stop button/;
 const ZERO = L.filter(x => PACK_GAP.test(x.title) && x.status !== "deferred" && !(+x.sel > 0) && !(+x.com > 0) && !(+x.act > 0)).length;
@@ -49,7 +51,7 @@ const UNC_NAME = [[/^Emergency lights/, "Emergency lights and exit signs"], [/^R
 for (const x of L) {
   if (!PACK_GAP.test(x.title) || x.status === "deferred" || +x.sel > 0 || +x.com > 0 || +x.act > 0) continue;
   const n = UNC_NAME.find(([re]) => re.test(x.title));
-  lines.push([PHASE[x.phase] ?? x.phase, n ? n[1] : x.title, 0, 0, 0, "unset", 1, x.id]);
+  lines.push([PHASE[x.phase] ?? x.phase, n ? n[1] : x.title, 0, 0, 0, "unset", 1, x.id, 1]);
 }
 const dashRe = new RegExp("\\s*[" + String.fromCharCode(0x2013, 0x2014) + "]\\s*", "g");
 for (const l of lines) l[1] = l[1].replace(dashRe, ": ");
@@ -81,6 +83,12 @@ rep(`footer { font-size: 11.5px;`, `.lsk-wrap { overflow-x: auto; position: rela
 .lsk-tip .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
 .lsk-tip .ok { color: var(--s-paid); font-weight: 700; } .lsk-tip .todo { color: var(--s-est); font-weight: 700; } .lsk-tip .none { color: var(--bad); font-weight: 700; }
 .lsk-tip .m { color: var(--muted); }
+.lsk-tip table { width: 100%; border-collapse: collapse; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.lsk-tip th { font-size: 10px; font-weight: 700; color: var(--muted); text-align: right; padding: 0 0 3px 8px; letter-spacing: 0.03em; text-transform: uppercase; }
+.lsk-tip th:first-child, .lsk-tip td:first-child { text-align: left; padding-left: 0; }
+.lsk-tip td { text-align: right; padding: 2px 0 2px 8px; white-space: nowrap; }
+.lsk-tip tr.tot td { border-top: 1px solid var(--muted); font-weight: 700; padding-top: 4px; }
+.lsk-tip .bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin-top: 7px; background: var(--panel); }
 .lsk-wrap svg { min-width: 1000px; display: block; }
 .lsk-pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 0 7px; border-radius: 8px; margin-right: 5px; line-height: 14px; border: 1px solid var(--ink); }
 .lsk-pill.cap { color: var(--ink); } .lsk-pill.card { color: var(--sheet); background: var(--ink); } .lsk-pill.unset { color: var(--muted); border: 1px dashed var(--muted); }
@@ -105,7 +113,7 @@ rep(`      <p class="note" id="sankey-note"></p>
         <h2>The whole project, line by line: paid, committed or still an estimate (with VAT)</h2>
         <div class="seg" role="group" aria-label="Show" id="lsk-filter"><button type="button" data-v="all" aria-pressed="true">All lines</button><button type="button" data-v="paid" aria-pressed="false">Paid</button><button type="button" data-v="com" aria-pressed="false">Committed, not paid</button><button type="button" data-v="est" aria-pressed="false">Estimates</button><button type="button" data-v="capital" aria-pressed="false">From capital</button><button type="button" data-v="card" aria-pressed="false">On the card</button><button type="button" data-v="unc" aria-pressed="false">Uncosted</button></div>
       </div>
-      <div class="lsk-key"><span><i style="background: var(--s-paid)"></i>Paid</span><span><i style="background: var(--s-com)"></i>Committed (quoted and agreed), not yet paid</span><span><i style="background: var(--s-est)"></i>Estimate, not yet committed</span><span><b class="lsk-pill cap">Capital</b>paid from the business bank</span><span><b class="lsk-pill card">Card</b>on the credit card</span><span><b class="lsk-pill unset">Not set</b>no payment month yet</span><span><i style="background: var(--bad)"></i><span style="color: var(--bad); font-weight: 700">Uncosted</span>&nbsp;in the plan at £0, price to come</span><span>Hover any line to see what it is made of: what is paid, what is still to buy.</span></div>
+      <div class="lsk-key"><span><i style="background: var(--s-paid)"></i>Paid</span><span><i style="background: var(--s-com)"></i>Committed (quoted and agreed), not yet paid</span><span><i style="background: var(--s-est)"></i>Estimate, not yet committed</span><span><b class="lsk-pill cap">Capital</b>paid from the business bank</span><span><b class="lsk-pill card">Card</b>on the credit card</span><span><b class="lsk-pill unset">Not set</b>no payment month yet</span><span><i style="background: var(--bad)"></i><span style="color: var(--bad); font-weight: 700">Uncosted</span>&nbsp;in the plan at £0, price to come</span><span>Hover any line to see what it is made of, or a phase or the whole project for paid and still to pay, with and without VAT.</span></div>
       <p class="note">Every figure in this chart includes VAT, as the plan does. The rest of the board is before VAT, so the same line reads lower there: the joinery, desk and cabinetry is £1,800 here and £1,500 in What it buys.</p>
       <div class="lsk-sum" id="lsk-sum" aria-live="polite"></div>
       <div class="lsk-wrap"><div class="lsk-tip" id="lsk-tip" role="tooltip" hidden></div><svg id="lines-sankey" viewBox="0 0 1100 900" width="100%" role="img" aria-label="The project total flows into paid, committed and estimate, then into each phase, then into every costed line."><title>Every line of spend by status</title></svg></div>
@@ -114,7 +122,7 @@ rep(`      <p class="note" id="sankey-note"></p>
 
 // 3. Data and drawing, next to the funding Sankey's code.
 rep(`  // ── panels ──`, `  // ── every line of spend: total, then paid / committed / estimate, then phase, then line ──
-  // [phase, line, paid, committed not paid, estimate not committed], the plan's own figures, inc VAT where the line carries it, as at ${asOfLong}.
+  // [phase, line, paid, committed not paid, estimate not committed, method, uncosted, plan id, ex VAT share], the plan's own figures, inc VAT where the line carries it, as at ${asOfLong}.
   const LINES = ${JSON.stringify(lines)};
   // What each line is made of: items on Abi's board, what the card register holds, when the rest is due.
   const LDETAIL = ${JSON.stringify(LDETAIL).replace(/</g, "\\u003c")};
@@ -154,13 +162,39 @@ rep(`  // ── panels ──`, `  // ── every line of spend: total, then p
       add("m").textContent = d.card[0][3];
     }
     if (d.due) { add("h").textContent = "Still to pay"; add("").textContent = d.due; }
+    lskPlace(ev, box);
+  }
+  // Placed against the window, beside the pointer, and kept on screen.
+  function lskPlace(ev, box) {
     box.hidden = false;
-    // Placed against the window, beside the pointer, and kept on screen.
     const bw2 = box.offsetWidth, bh = box.offsetHeight, vw = window.innerWidth, vh = window.innerHeight;
     let x = ev.clientX + 16, y = ev.clientY - bh / 2;
     if (x + bw2 > vw - 8) x = ev.clientX - bw2 - 16;
     x = Math.max(8, Math.min(x, vw - bw2 - 8)); y = Math.max(8, Math.min(y, vh - bh - 8));
     box.style.left = x + "px"; box.style.top = y + "px";
+  }
+  // A phase, or the whole project: paid and still to pay against the total, each with and without VAT.
+  function lskGroupTip(ev, name, ls) {
+    const box = document.getElementById("lsk-tip"); if (!box) return;
+    box.replaceChildren();
+    const add = (tag, cls, parent, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; (parent || box).appendChild(e); return e; };
+    const costed = ls.filter(l => l[6] !== 1);
+    const sum = f => costed.reduce((a, l) => a + f(l), 0);
+    const inc = i => sum(l => l[i]), ex = i => sum(l => l[i] * (l[8] ?? 1));
+    const paidI = inc(2), comI = inc(3), estI = inc(4), totI = paidI + comI + estI;
+    const paidE = ex(2), remE = ex(3) + ex(4), totE = paidE + remE;
+    add("div", "t", null, name + "   " + gbp(totI));
+    add("div", "m", null, costed.length + " costed line" + (costed.length === 1 ? "" : "s") + (totI > 0.5 ? ", " + Math.round(100 * paidI / totI) + "% paid" : ""));
+    if (totI > 0.5) { const bar = add("div", "bar"); [["paid", paidI], ["com", comI], ["est", estI]].forEach(([k, v]) => { if (v < 0.5) return; const seg = add("span", "", bar); seg.style.width = (100 * v / totI) + "%"; seg.style.background = tok("--s-" + k); }); }
+    const tb = add("table"), hr = add("tr", "", tb); ["", "Inc VAT", "Ex VAT", "VAT"].forEach(h => add("th", "", hr, h));
+    const row = (label, i, e, cls) => { const r = add("tr", cls || "", tb); add("td", "", r, label); add("td", "", r, gbp(i)); add("td", "", r, gbp(e)); add("td", "", r, gbp(i - e)); };
+    row("Paid", paidI, paidE);
+    row("Still to pay", comI + estI, remE);
+    row("Total", totI, totE, "tot");
+    if (comI + estI > 0.5) add("div", "m", null, "Still to pay: " + [comI > 0.5 ? gbp(comI) + " committed" : "", estI > 0.5 ? gbp(estI) + " still an estimate" : ""].filter(Boolean).join(", ") + ", inc VAT.");
+    const unc = ls.length - costed.length; if (unc) { const u = add("div", "m", null, "Plus " + unc + " uncosted line" + (unc === 1 ? "" : "s") + " at £0, price to come."); u.style.color = tok("--bad"); }
+    add("div", "m", null, "VAT comes back on the VAT return. Lines that carry none, such as the rent deposit, insurance and adverts, count as ex VAT.");
+    lskPlace(ev, box);
   }
   function lskTipHide() { const box = document.getElementById("lsk-tip"); if (box) box.hidden = true; }
   document.addEventListener("click", ev => { if (!ev.target.closest || !ev.target.closest("#lines-sankey")) lskTipHide(); });
@@ -204,12 +238,17 @@ rep(`  // ── panels ──`, `  // ── every line of spend: total, then p
     lineNodes.forEach(ln => { const pi = phases.indexOf(ln.l[0]); let yy = ln.y; ST.forEach(([key, name, i]) => { const v = ln.l[i]; if (v < 0.5) return; const h = v * k;
       band(xP + bw, phOut[pi], xL, yy, h, key, \`\${ln.l[1]}, \${name.toLowerCase()}: \${gbp(v)}\`, ln.l[5]); phOut[pi] += h; yy += h; }); });
     // Nodes and labels.
-    tip(el("rect", { x: xT, y: totY, width: bw, height: totH, fill: ink, rx: 2 }), "Whole project: " + gbp(total));
+    el("rect", { x: xT, y: totY, width: bw, height: totH, fill: ink, rx: 2 });
     txt(xT + bw + 6, totY - 8, "start", "Whole project " + gbp(total), "12", "700", ink);
     ST.forEach(([key, name], i) => { tip(el("rect", { x: xS, y: stY[i], width: bw, height: Math.max(2, stH[i]), fill: col(key), rx: 2 }), name + ": " + gbp(stVal[i]));
       const on = lskFilter === "all" || lskFilter === key || isM || isU; txt(xS + bw + 6, stY[i] + stH[i] / 2 - 2, "start", name, "12", "700", ink, on ? 1 : 0.35); txt(xS + bw + 6, stY[i] + stH[i] / 2 + 12, "start", gbp(stVal[i]) + " · " + Math.round(100 * stVal[i] / total) + "%", "11", "400", muted, on ? 1 : 0.35); });
-    phaseNodes.forEach(n => { tip(el("rect", { x: xP, y: n.y, width: bw, height: Math.max(2, n.h), fill: muted, rx: 2 }), n.g.p + ": " + gbp(n.v));
-      txt(xP + bw + 6, n.y + n.h / 2 - 2, "start", n.g.p, "11.5", "700", ink); txt(xP + bw + 6, n.y + n.h / 2 + 11, "start", gbp(n.v), "10.5", "400", muted); });
+    // Hover a phase, or the whole project, for paid and still to pay with and without VAT.
+    const groupHit = (x, y0, w, h, name, ls) => { const hit = el("rect", { x, y: y0, width: w, height: h, fill: "transparent", style: "cursor: help" });
+      hit.addEventListener("mousemove", ev => lskGroupTip(ev, name, ls)); hit.addEventListener("mouseleave", lskTipHide); hit.addEventListener("click", ev => { ev.stopPropagation(); lskGroupTip(ev, name, ls); }); };
+    phaseNodes.forEach(n => { el("rect", { x: xP, y: n.y, width: bw, height: Math.max(2, n.h), fill: muted, rx: 2 });
+      txt(xP + bw + 6, n.y + n.h / 2 - 2, "start", n.g.p, "11.5", "700", ink); txt(xP + bw + 6, n.y + n.h / 2 + 11, "start", gbp(n.v), "10.5", "400", muted);
+      const hh = Math.max(n.h, 30); groupHit(xP - 4, n.y + n.h / 2 - hh / 2, 170, hh, n.g.p, n.g.lines); });
+    groupHit(xT - 4, totY - 22, 170, totH + 22, "Whole project", LINES);
     lineNodes.forEach(ln => { const l = ln.l, key = l[2] > 0 && l[3] + l[4] < 0.5 ? "paid" : l[3] > 0 && l[2] < 0.5 ? "com" : l[4] > 0 ? "est" : "com";
       const parts = ST.filter(([, , i]) => l[i] > 0.5), on = lskFilter === "all" || parts.some(([k2]) => k2 === lskFilter) || (isM && l[5] === lskFilter) || (isU && unc(l)), mk = l[5];
       if (unc(l)) {
