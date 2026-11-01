@@ -18,7 +18,7 @@ export function makeRun(J) {
     const lastKey = Object.keys(S.takings).sort().pop();
     const scale = S.takings[lastKey] / (WINC_SCENARIOS.base.takings[lastKey] || S.takings[lastKey]);
     const growth = { month: cfg.winc.growth.month, target: Math.round(cfg.winc.growth.target * scale) };
-    return runCashModel({ ...cfg, months: o.months ?? 36, projectPayments: payments, funding: J.funding, loans: J.loans,
+    return runCashModel({ ...cfg, months: o.months ?? 36, projectPayments: payments, funding: J.funding, loans: J.loans, oneOffs: J.oneOffs ?? cfg.oneOffs,
       pay: { ...cfg.pay, ...(o.pay ?? {}) },
       bedh: { ...cfg.bedh, plan: { ...cfg.bedh.plan, ...(o.plan ?? {}) } },
       winc: { contributionPct: cfg.winc.contributionPct, takings: S.takings, productCost: S.productCost, growth, capacity: cfg.winc.capacity } });

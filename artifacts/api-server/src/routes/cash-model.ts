@@ -9,7 +9,7 @@ import {
   financialsTable, phasesTable, tasksTable, propertiesTable, propertyTaskOverridesTable,
   investmentsTable, shareholdersTable, cardEntriesTable,
 } from "@workspace/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { eq, and, inArray, sql } from "drizzle-orm";
 import { runCashModel, addMonths, type CashInputs, type ProjectPayment, type CashCheck } from "../lib/cash-model";
 import { CASH_MODEL_DEFAULTS, WINC_SCENARIOS, type CashModelConfig } from "../lib/cash-model-defaults";
 import { exVatOf } from "../lib/vat-basis";
@@ -117,11 +117,11 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     const paidAll = status === "paid" ? recorded : status === "part-paid" ? (amountPaid || actual) : 0;
     const paidOnCard = Math.min(paidAll, Math.max(0, onCard.get(t.id) ?? 0));
     const paid = paidAll - paidOnCard;
-    // Owner, 1 November 2026: Abi pays the VAT on CBS's build costs and reclaims it, repaid from
-    // the refund. For the bank a CBS line is its work before VAT: what she paid counts as paid,
-    // and no VAT is paid from the bank or refunded to it.
-    const vatByAbi = /^Ref \d+ - /.test(t.title);
-    const remainingRecorded = Math.max(0, recorded - (vatByAbi ? paidAll : paid));
+    // CBS: Tide pays each valuation in full, VAT and all, and reclaims the VAT. Abi lends the VAT
+    // into Tide the month it is paid and is repaid when the refund lands (owner, 1 November
+    // 2026; her October loan went into Tide on the 26th). Her loan is modelled below.
+    const isCbs = /^Ref \d+ - /.test(t.title);
+    const remainingRecorded = Math.max(0, recorded - (isCbs ? paidAll : paid));
     const remainingExVat = remainingRecorded * (vat.ex / recorded);
     let plan: ProjectLine["plan"] = [];
     try { const p = JSON.parse((t as any).paymentPlanJson || "[]"); if (Array.isArray(p)) plan = p; } catch { plan = []; }
@@ -136,7 +136,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, paidOnCard, remainingExVat, vatBasis: vat.basis, exVat: vat.ex, plan, planProblem });
     if (remainingExVat >= 0.5 && !planProblem) {
       // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
-      const vatRate = vat.basis === "no VAT" || vatByAbi ? 0 : config.vatRate;
+      const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;
       for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, vat: remainingExVat * p.share * vatRate, method: p.method === "card" ? "card" : "bank", label: t.title, taskId: t.id });
     }
   }
@@ -150,6 +150,23 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const loans: CashInputs["loans"] = inv.filter(i => i.type === "loan")
     .map(i => ({ label: i.name, principal: i.amountGbp, drawMonth: ym(i.depositDate), annualRatePct: i.interestRatePercent, holidayMonths: (i as any).holidayMonths ?? 0, repayments: i.repaymentTermMonths }));
   const fundingOptions = inv.filter(i => i.type === "equity" || i.type === "gift").map(i => ({ id: i.id, label: i.name, month: ym(i.depositDate), amount: i.amountGbp }));
+
+  // Abi's VAT loans: for each month with CBS VAT to pay from the bank, she lends that VAT into
+  // Tide (money in) and is repaid the month the refund lands (money out). Her 26 October loan is
+  // already in the bank today, so only its repayment is modelled, when October's VAT comes back.
+  const abiLoans: CashInputs["funding"] = [], abiRepay: CashInputs["oneOffs"] = [];
+  const cbsVatByMonth = new Map<string, number>();
+  for (const p of payments) if (/^Ref \d+ - /.test(p.label) && p.method === "bank" && (p.vat ?? 0) > 0) cbsVatByMonth.set(p.month, (cbsVatByMonth.get(p.month) ?? 0) + (p.vat ?? 0));
+  const lag = config.vatReturns?.refundLagMonths ?? 1;
+  for (const [m, v] of cbsVatByMonth) {
+    const amt = Math.round(v * 100) / 100;
+    abiLoans.push({ month: m, amount: amt, kind: "gift", label: "Abi lends the VAT on CBS's bill (director's loan)" });
+    abiRepay.push({ month: addMonths(m, lag), amount: amt, method: "bank", label: "Abi repaid her VAT loan from the refund", pnl: false });
+  }
+  const octRow = ((await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %'`)) as any).rows?.[0];
+  const octVat = Number(octRow?.v ?? 0);
+  if (octVat > 0 && addMonths("2026-10", lag) >= config.startMonth) abiRepay.push({ month: addMonths("2026-10", lag), amount: Math.round(octVat * 100) / 100, method: "bank", label: "Abi repaid her October VAT loan from the refund", pnl: false });
+  const fundingAll = [...funding, ...abiLoans], oneOffsAll = [...(config.oneOffs ?? []), ...abiRepay];
 
   // ── Ownership over time ──
   const sh = await db.select().from(shareholdersTable).where(eq(shareholdersTable.projectId, projectId));
@@ -167,7 +184,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const planned: CashInputs = {
     ...config, months,
     winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
-    projectPayments: payments, funding, loans,
+    projectPayments: payments, funding: fundingAll, loans, oneOffs: oneOffsAll,
   };
   const bankView = bank ? openFromBank(planned, bank) : null;
   const inputs: CashInputs = bankView ? { ...planned, openingBank: bankView.openingUsed } : planned;
@@ -199,7 +216,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     firstPayMonth: firstPay ? firstPay.label : null,
     projectLines: lines.sort((a, b) => a.phase.localeCompare(b.phase) || a.title.localeCompare(b.title)),
     paidToDate,
-    funding, loans, ownership,
+    funding: fundingAll, loans, ownership, oneOffs: oneOffsAll,
     bank: bankView, fundingOptions,
     history: config.history,
   };

@@ -163,17 +163,19 @@ ${itemsJs}
   rep(`value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output>`, `value="${loanAmt}" aria-labelledby="l-loan"><output id="loan-out">£${loanAmt.toLocaleString("en-GB")}</output>`);
   rep(`r.capital[1] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan; r.loanRepay[9] = pmt(s.loan);`,
       `r.capital[${capIdx}] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan;${repayIdx ? ` r.loanRepay[${repayIdx}] = pmt(s.loan);` : ""}`);
-  rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""}`);
+  // Abi's VAT loans: in the month CBS is paid, out the month the refund lands. Tide paid CBS in
+  // full on 26 October; her October loan is already in the bank, so only its repayment shows.
+  const abiIn = (J.funding || []).filter(f => /^Abi lends/.test(f.label)).map(f => [IDX[f.month], f.amount]).filter(([i]) => i);
+  const abiOut = (J.oneOffs || []).filter(o => /^Abi repaid/.test(o.label)).map(o => [IDX[o.month], o.amount]).filter(([i]) => i);
+  const abiJs = [...abiIn.map(([i, a]) => `r.capital[${i}] += ${r2(a)};`), ...abiOut.map(([i, a]) => `r.bankProject[${i}] += ${r2(a)};`)].join(" ");
+  rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""} ${abiJs}`);
   rep(`from October 2026 to June 2027`, `from ${FIRST} ${NINE[0].slice(0, 4)} to ${LAST} ${NINE[8].slice(0, 4)}`, true);
   rep(`October to the end of the build`, `${FIRST} to the end of the build`, true);
   // The board's script reads December as column 3, which it was when it started in October.
   rep(`r.bank[3]`, `r.bank[${decIdx}]`, true);
-  rep(`const v = i.vat && through ? i.ex * VAT : 0;`, `const v = i.vat && (through || i.group !== "cbs") ? i.ex * VAT : 0;`);
-  rep(`if (i.vat && !through) r.vatPersonal[i.m] += i.ex * VAT;`, `if (i.vat && !through && i.group === "cbs") r.vatPersonal[i.m] += i.ex * VAT;`);
-  rep(`if (through) for (let m = 1; m < N; m++) { const due = m + s.lag; const v = r.vatBank[m] + r.vatCard[m];`, `for (let m = 1; m < N; m++) { const due = m + s.lag; const v = r.vatBank[m] + r.vatCard[m];`);
-  rep(`vatBack = through ? upTo(r.vatBack) : 0`, `vatBack = upTo(r.vatBack)`);
-  rep(`A separate pot: paid by you, repaid as a director's loan`, `CBS's VAT paid by Abi, repaid as a director's loan`, true);
-  rep(`"VAT: a separate pot, nothing through the bank"`, `"VAT by December: CBS's paid by Abi; the rest paid and refunded"`);
+  rep(`<button type="button" data-v="separate" aria-pressed="true">A separate pot: paid by you, repaid as a director's loan</button><button type="button" data-v="through" aria-pressed="false">Paid and reclaimed through the business bank</button>`,
+      `<button type="button" data-v="through" aria-pressed="true">Paid from the bank and reclaimed the month after. Abi lends CBS's VAT in and is repaid from the refund.</button>`);
+  rep(`vat: "separate",`, `vat: "through",`, true);
   rep(`[1, 2, 3].reduce((a, m) => a + r.vatBack[m] - r.vatBank[m], 0)`, `Array.from({ length: ${decIdx} }, (_, k) => k + 1).reduce((a, m) => a + r.vatBack[m] - r.vatBank[m], 0)`);
   // Of what is left on the lines, how much repays a director for something already bought on a
   // personal card or account (the register), rather than money still to spend. CBS VAT that Abi
