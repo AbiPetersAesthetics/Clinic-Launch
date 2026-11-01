@@ -73,16 +73,20 @@ export function boardRefresh(template: string, J, asOf: string): string {
   function rep(o, n, all?) { if (!s.includes(o)) throw new Error("board template: missing " + o.slice(0, 90)); s = all ? s.split(o).join(n) : s.replace(o, () => n); }
   const cut = (a, b, n) => { const i = s.indexOf(a), j = s.indexOf(b, i); if (i < 0 || j < 0) throw new Error("board template: markers missing " + a.slice(0, 60)); s = s.slice(0, i) + n + s.slice(j); };
   const r2 = v => Math.round(v * 100) / 100;
-  const IDX = { "2026-10": 1, "2026-11": 2, "2026-12": 3, "2027-01": 4, "2027-02": 5, "2027-03": 6, "2027-04": 7, "2027-05": 8, "2027-06": 9 };
-  if (J.rows[0].month !== "2026-10") throw new Error("The board covers October 2026 to June 2027 and needs the Money page to start in October; it now starts in " + J.rows[0].label + ".");
+  // The board's nine months are the model's first nine: October to June when the bank was
+  // last saved in October, November to July once it is saved in November, and so on.
+  const NINE = J.rows.slice(0, 9).map(r => r.month);
+  const IDX = Object.fromEntries(NINE.map((m, i) => [m, i + 1]));
+  const monLong = ym => MONTH_LONG[+ym.slice(5, 7) - 1], monShort = ym => MONTH_SHORT[+ym.slice(5, 7) - 1] + " " + ym.slice(2, 4);
+  const FIRST = monLong(NINE[0]), LAST = monLong(NINE[8]), NEXT = monLong(NINE[1]);
   const bankAt = J.bank ? J.bank.asAt : (J.config.openingDate || "2026-10-05");
   // The bank figure is today's only when the Money page holds a balance saved for today.
   const bankToday = !!J.bank && bankAt === asOf;
 
   // 1. The unpaid lines, grouped as the board shows them.
-  const STAGE = { 1: ["cbs1", "CBS, October valuation"], 2: ["cbs2", "CBS, November valuation"], 3: ["cbs3", "CBS, December valuation"], 8: ["cbs4", "CBS retention (3%), after snagging"] };
-  const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? [...STAGE[m], "cbs", true]
-    : /Arundel/.test(t) ? (m === 1 ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
+  const STAGE = { "2026-10": ["cbs1", "CBS, October valuation"], "2026-11": ["cbs2", "CBS, November valuation"], "2026-12": ["cbs3", "CBS, December valuation"], "2027-05": ["cbs4", "CBS retention (3%), after snagging"] };
+  const itemOf = (t, ph, ym) => /^Ref \d/.test(t) ? [...(STAGE[ym] ?? [`cbs_${ym}`, `CBS, ${monLong(ym)}`]), "cbs", true]
+    : /Arundel/.test(t) ? (ym === "2026-10" ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
     : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
     : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
@@ -91,14 +95,14 @@ export function boardRefresh(template: string, J, asOf: string): string {
   // A group's lines are one payment while they share a month, a method and a VAT basis. A
   // line that differs (moved to another month, put on the bank, no VAT) becomes its own
   // payment beside the group, named with its month, rather than stopping the board.
-  const MNAME = { 1: "October", 2: "November", 3: "December", 4: "January", 5: "February", 6: "March", 7: "April", 8: "May", 9: "June" };
+  const MNAME = Object.fromEntries(NINE.map((m, i) => [i + 1, monLong(m)]));
   const items = new Map(); const unsched = [];
   for (const l of J.projectLines) {
     if (l.remainingExVat < 0.5) continue;
     if (l.planProblem) { unsched.push(l); continue; }
     for (const p of l.plan) {
-      const m = IDX[p.month]; if (!m) throw new Error("A payment falls outside October to June: " + l.title + ", " + p.month);
-      const [id, name, group, locked] = itemOf(l.title, l.phase, m);
+      const m = IDX[p.month]; if (!m) throw new Error(`A payment falls outside ${FIRST} to ${LAST}: ` + l.title + ", " + p.month);
+      const [id, name, group, locked] = itemOf(l.title, l.phase, p.month);
       const method = p.method === "card" ? "card" : "bank", vat = l.vatBasis !== "no VAT";
       const fits = (x) => x.m === m && x.method === method && (x.ex < 0.01 || x.vat === vat);
       let it = items.get(id);
@@ -139,8 +143,10 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const RENT = "[0, " + rows.map(r => Math.round(r.rentPaid)).join(", ") + "]";
   const startBank = J.bank ? J.bank.balanceGbp : J.config.openingBank;
   const loanMonth = IDX[J.loans[0]?.drawMonth] === 2 ? 2 : 1;
+  // Where the funding, the loan's first repayment and the top-up fall among the nine months.
+  const capIdx = IDX[(J.fundingOptions || [])[0]?.month] ?? 1, repayIdx = IDX["2027-06"], topIn = IDX["2026-12"], topOut = IDX["2027-03"];
 
-  cut(`  const MONTHS = [`, `  const DETAIL = [`, `  const MONTHS = [${JSON.stringify(shortDate(bankAt))}, "Oct 26", "Nov 26", "Dec 26", "Jan 27", "Feb 27", "Mar 27", "Apr 27", "May 27", "Jun 27"];
+  cut(`  const MONTHS = [`, `  const DETAIL = [`, `  const MONTHS = [${JSON.stringify(shortDate(bankAt))}, ${NINE.map(m => JSON.stringify(monShort(m))).join(", ")}];
   const ITEMS = [
 ${itemsJs}
   ];
@@ -152,6 +158,12 @@ ${itemsJs}
   cut(`  const PAID = [`, `  const NET_B = [`, `  const PAID = ${paidJs};\n`);
   cut(`  const NET_B = [`, `  const CAPITAL = {`, `  const NET_B = ${NET_B};\n  const NET_W = ${NET_W};\n  const FIXED = ${FIXED};\n  const RENT = ${RENT};\n`);
   rep(`start: 34000, loan: 10000, loanMonth: 1,`, `start: ${startBank}, loan: 10000, loanMonth: ${loanMonth},`, true);
+  rep(`r.capital[1] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan; r.loanRepay[9] = pmt(s.loan);`,
+      `r.capital[${capIdx}] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan;${repayIdx ? ` r.loanRepay[${repayIdx}] = pmt(s.loan);` : ""}`);
+  rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""}`);
+  rep(`from October 2026 to June 2027`, `from ${FIRST} ${NINE[0].slice(0, 4)} to ${LAST} ${NINE[8].slice(0, 4)}`, true);
+  rep(`October to the end of the build`, `${FIRST} to the end of the build`, true);
+  rep(`Clinics' net takings, October to December,`, `Clinics' net takings, ${FIRST} to ${monLong(NINE[2])},`, true);
 
   // 4. The words.
   const unschedText = unsched.length ? ` Not in the figures yet, because they have no payment month: ${unsched.map(l => /Shelving/.test(l.title) ? "retail shelving and LED" : /Retail \/ Skincare/.test(l.title) ? "retail and skincare opening stock" : l.title).join(" and ")} (${"£" + Math.round(unsched.reduce((a, l) => a + l.remainingExVat, 0)).toLocaleString("en-GB")} ex VAT).` : "";
@@ -160,8 +172,8 @@ ${itemsJs}
   rep(`<label class="lbl" for="start">Bank at the end of September</label><input id="start" type="number" step="500" value="34000" min="0"><span class="hint">Business account, before anything lands.</span>`,
       `<label class="lbl" for="start">${bankToday ? "Bank today" : `Bank on ${dayMonth(bankAt)}`}</label><input id="start" type="number" step="500" value="${startBank}" min="0"><span class="hint">${bankToday ? "" : `Out of date: this is the balance saved on ${dayMonth(bankAt)}. Save today's under Bank today on the Money page and the board starts from it. `}Business account, after what is already paid and before James's and Bill's money lands.</span>`);
   rep(`<button type="button" data-v="1" aria-pressed="true">1 October</button><button type="button" data-v="2" aria-pressed="false">End of November</button>`,
-      `<button type="button" data-v="1" aria-pressed="${loanMonth === 1}">October</button><button type="button" data-v="2" aria-pressed="${loanMonth === 2}">End of November</button>`);
-  rep(`Money in, money out and the bank, September to June`, `Money in, money out and the bank, ${dayMonth(bankAt)} to June`);
+      `<button type="button" data-v="1" aria-pressed="${loanMonth === 1}">${FIRST}</button><button type="button" data-v="2" aria-pressed="${loanMonth === 2}">End of ${NEXT}</button>`);
+  rep(`Money in, money out and the bank, September to June`, `Money in, money out and the bank, ${dayMonth(bankAt)} to ${LAST}`);
   rep(`Bank and card can be swapped on the unlocked lines. CBS's four stages and the deposit stay on the bank. On top of these, £10,760 ex VAT has already been paid (£11,634 as invoiced): see What it buys.`,
       `Bank and card can be swapped on the unlocked lines. CBS's four stages stay on the bank. ${paidNote}`, true);
   rep(`grouped from the same 16 payment lines.`, `grouped from the same ${list.length} payment lines.`);

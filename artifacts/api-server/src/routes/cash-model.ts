@@ -121,6 +121,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     const remainingExVat = remainingRecorded * (vat.ex / recorded);
     let plan: ProjectLine["plan"] = [];
     try { const p = JSON.parse((t as any).paymentPlanJson || "[]"); if (Array.isArray(p)) plan = p; } catch { plan = []; }
+    // A payment planned for a month that has gone (the bank today moves the start on) is still
+    // owed: it falls in the first month the model shows, rather than out of the model.
+    plan = plan.map(p => (p.month && p.month < config.startMonth ? { ...p, month: config.startMonth } : p));
     const shares = plan.reduce((s, p) => s + (Number(p.share) || 0), 0);
     const planProblem = remainingExVat < 0.5 ? null
       : !plan.length ? "No payment month set"
