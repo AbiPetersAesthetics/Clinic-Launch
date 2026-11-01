@@ -25,9 +25,16 @@ const C36 = lib.monthsFrom("2026-10", 36), CS = lib.WINC_SCENARIOS.central;
 const blendPf = C36.reduce((a, m) => a + CS.takings[m], 0) / C36.reduce((a, m) => a + CS.productCost[m] / PR.productShare, 0);
 const perVisitB = 75408 / 561, perVisitW = perVisitB * blendPf;
 const perWeek = t => t / perVisitW / (52 / 12);
+// James's loan, from the model: its size, when it is drawn, and the level repayment after the holiday.
+const LN = (LIVE.loans || [])[0] || { principal: 0, drawMonth: "2026-12", annualRatePct: 5, holidayMonths: 6, repayments: 30 };
+const lnR = LN.annualRatePct / 100 / 12, lnBal = LN.principal * Math.pow(1 + lnR, LN.holidayMonths);
+const loanLevel = lnR > 0 ? lnBal * lnR / (1 - Math.pow(1 + lnR, -LN.repayments)) : lnBal / LN.repayments;
+const addM = (ym, k) => { const [y, m] = ym.split("-").map(Number); const t = y * 12 + (m - 1) + k; return Math.floor(t / 12) + "-" + String(t % 12 + 1).padStart(2, "0"); };
+const monthYear = ym => MONTH_LONG[+ym.slice(5, 7) - 1] + " " + ym.slice(0, 4), monthYearShort = ym => MONTH_SHORT[+ym.slice(5, 7) - 1] + " " + ym.slice(0, 4);
+const lnFirst = addM(LN.drawMonth, LN.holidayMonths + 1), lnLast = addM(lnFirst, LN.repayments - 1);
 // The monthly bills, from the model itself.
 const CFG = LIVE.config, rentM = CFG.rent.annual / 12;
-const running = rentM + CFG.rates.monthly + CFG.utilities.monthly + CFG.running.monthly + CFG.marketing.monthly, loanLevel = 364.3, kept3000 = 3000, salaryCost = 4755;
+const running = rentM + CFG.rates.monthly + CFG.utilities.monthly + CFG.running.monthly + CFG.marketing.monthly, kept3000 = 3000, salaryCost = 4755;
 const billsAt = Math.round(running / (keepW / 100) / 100) * 100, salaryAt = Math.round((running + loanLevel + kept3000 + salaryCost) / (keepW / 100) / 100) * 100;
 const flatO = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: PR.foundersVsBedhampton, listPrice: PR.listVsBedhampton, founderUntil: "2027-01" };
 const flatAt = (n, m) => lib.wincForecast(M, { early: n, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n }, flatO, lib.monthsFrom("2026-10", 24))[m];
@@ -284,7 +291,7 @@ a { color: var(--slate); }
     <dt>The forecast</dt><dd>Our estimate of Winchester's takings month by month as it gets busier. <span>It has nothing to do with the £10,000 below.</span></dd>
     <dt>The £10,000 safety net</dt><dd>The least we ever want in the business bank account.</dd>
     <dt>Standing on its own</dt><dd>Winchester's own takings pay all the running costs, James's loan and the £3,000 a month the business keeps: about ${f(standAt)} a month.</dd>
-    <dt>Interest and repayment</dt><dd>James's loan costs 5% a year. The interest, about £40 a month, is a cost in the profit and loss. The rest of each £364 repayment hands back the money he lent: real money leaving the bank, but not a cost.</dd>
+    <dt>Interest and repayment</dt><dd>James's loan costs 5% a year. The interest, about ${f(LN.principal * LN.annualRatePct / 100 / 12)} a month, is a cost in the profit and loss. The rest of each ${f(loanLevel)} repayment hands back the money he lent: real money leaving the bank, but not a cost.</dd>
     <dt>Cash and profit</dt><dd>Profit is what we earn in a month; cash is what is in the bank. Rent paid three months at a time, VAT on the build coming back a month later, and the loan and card being repaid slowly all make them differ.</dd>
   </dl>
 </section>
@@ -320,7 +327,7 @@ ${treatRows}
       <tr><td>Business bank account</td><td>${f(BANK)}</td><td>${dmyShort(BANK_AT)}</td><td class="wrap-cell">Already ours, after the ${f(PAID)} already paid (rent deposit, solicitor, design and Building Control, surveys, brand design, the skin analysis platform and the sign deposit).</td></tr>
       <tr><td>James Gibbons, for shares</td><td>£37,000</td><td>Oct 2026</td><td class="wrap-cell">James owns 10% of the company. Nothing to pay back.</td></tr>
       <tr><td>Bill Peters, a gift</td><td>£10,000</td><td>Oct 2026</td><td class="wrap-cell">Nothing to pay back.</td></tr>
-      <tr><td>James Gibbons, a loan</td><td>£10,000</td><td>End Nov 2026</td><td class="wrap-cell">5% a year. Nothing to pay for six months, then about £364 a month for 30 months (June 2027 to November 2029): about £10,929 in total. James also gets 1% more of the company.</td></tr>
+      <tr><td>James Gibbons, a loan</td><td>${f(LN.principal)}</td><td>${monthYearShort(LN.drawMonth)}</td><td class="wrap-cell">5% a year. Nothing to pay for six months, then about ${f(loanLevel)} a month for ${LN.repayments} months (${monthYear(lnFirst)} to ${monthYear(lnLast)}): about ${f(loanLevel * LN.repayments)} in total. James also gets 1% more of the company.</td></tr>
       <tr><td>Credit card at 0%</td><td>${f(cardEx + cardVat)}</td><td>Oct to Dec 2026</td><td class="wrap-cell">Build and opening purchases only (${f(cardEx)} plus ${f(cardVat)} VAT, which comes back). Repaid at about ${f((cardEx + cardVat) / 24)} a month, cleared by ${cardClears ? cardClears.replace(/(\w+) (\d+)/, (x, mo, y) => ({ Jan: "January", Feb: "February", Mar: "March", Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August", Sep: "September", Oct: "October", Nov: "November", Dec: "December" })[mo] + " 20" + y) : "the end"}.</td></tr>
     </tbody>
   </table></div>
@@ -336,7 +343,7 @@ ${buildRows}
 
 <section id="running" data-title="What Winchester costs to run">
   <div class="ch-head"><span class="ch-num">5</span><div><div class="q">The monthly bills</div><h2>What Winchester costs to run, and when it stands on its own</h2></div></div>
-  <p class="answer"><strong>Short answer:</strong> ${f(running)} a month, plus James's £364 from June 2027 and the £3,000 the business keeps. Winchester covers all of that on its own at about ${f(standAt)} a month of takings.</p>
+  <p class="answer"><strong>Short answer:</strong> ${f(running)} a month, plus James's ${f(loanLevel)} from ${monthYear(lnFirst)} and the £3,000 the business keeps. Winchester covers all of that on its own at about ${f(standAt)} a month of takings.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Cost</th><th>A month</th><th>Notes</th></tr></thead>
     <tbody>

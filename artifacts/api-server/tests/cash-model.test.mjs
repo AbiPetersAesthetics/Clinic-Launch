@@ -129,8 +129,9 @@ test("Winchester keeps more of each pound than Bedhampton: prices 1.48 times, sa
   for (const r of res.rows.filter(x => x.month >= "2026-12" && x.transferIn === 0)) {
     assert.ok(Math.abs(r.winc.contribution - (r.winc.gross * 5 / 6 - lib.WINC_SCENARIOS.central.productCost[r.month])) < 1, r.month);
   }
-  // 14,100 until EDF fixed the electricity tariff (21 October 2026), 14,000 since.
-  assert.equal(lib.STANDS_ALONE_TAKINGS, 14000);
+  // 14,100 until EDF fixed the electricity tariff (21 October 2026), 14,000 after it, and 14,200 since
+  // James's loan became 13,000 (1 November 2026).
+  assert.equal(lib.STANDS_ALONE_TAKINGS, 14200);
 });
 
 test("recommended forecast: Bedhampton on two days until Winchester stands alone in late 2028, bank never below 10,000", () => {

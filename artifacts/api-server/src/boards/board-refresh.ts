@@ -158,7 +158,9 @@ ${itemsJs}
   cut(`  const DETAIL = [`, `  const PAID = [`, detailJs(J.projectLines));
   cut(`  const PAID = [`, `  const NET_B = [`, `  const PAID = ${paidJs};\n`);
   cut(`  const NET_B = [`, `  const CAPITAL = {`, `  const NET_B = ${NET_B};\n  const NET_W = ${NET_W};\n  const FIXED = ${FIXED};\n  const RENT = ${RENT};\n`);
-  rep(`start: 34000, loan: 10000, loanMonth: 1,`, `start: ${startBank}, loan: 10000, loanMonth: ${loanMonth},`, true);
+  const loanAmt = Math.round((J.loans || [])[0]?.principal ?? 10000);
+  rep(`start: 34000, loan: 10000, loanMonth: 1,`, `start: ${startBank}, loan: ${loanAmt}, loanMonth: ${loanMonth},`, true);
+  rep(`value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output>`, `value="${loanAmt}" aria-labelledby="l-loan"><output id="loan-out">£${loanAmt.toLocaleString("en-GB")}</output>`);
   rep(`r.capital[1] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan; r.loanRepay[9] = pmt(s.loan);`,
       `r.capital[${capIdx}] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan;${repayIdx ? ` r.loanRepay[${repayIdx}] = pmt(s.loan);` : ""}`);
   rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""}`);

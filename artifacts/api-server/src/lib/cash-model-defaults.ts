@@ -55,8 +55,8 @@ const CENTRAL = cohort("central"), LOW = cohort("low"), HIGH = cohort("high");
 const first36 = MODEL_MONTHS.slice(0, 36);
 export const WINC_KEEP_PCT = Math.round(1000 * first36.reduce((a, m) => a + CENTRAL.takings[m] * (5 / 6) - CENTRAL.productCost[m], 0) / first36.reduce((a, m) => a + CENTRAL.takings[m], 0)) / 10;
 // Takings Winchester needs to stand on its own: full running costs (5,327), James's level
-// repayment (about 364) and the 3,000 kept, at WINC_KEEP_PCT in the pound.
-export const STANDS_ALONE_TAKINGS = Math.round((5327.33 + 364.3 + 3000) / (WINC_KEEP_PCT / 100) / 100) * 100;
+// repayment (about 474 on 13,000) and the 3,000 kept, at WINC_KEEP_PCT in the pound.
+export const STANDS_ALONE_TAKINGS = Math.round((5327.33 + 473.55 + 3000) / (WINC_KEEP_PCT / 100) / 100) * 100;
 
 // Winchester takings, gross inc VAT. "central" is the recommended planning case.
 export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number>; productCost?: Record<string, number> }> = {
@@ -109,7 +109,7 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
     // Owner, 30 Sep: Bedhampton stays open while Winchester is not making enough,
     // in every forecast. Abi works three days at Winchester and two at Bedhampton
     // until Winchester stands on its own for two months running: its own takings pay
-    // its full running costs (5,327), James's loan (364) and the 3,000 the business
+    // its full running costs (5,327), James's loan (about 474) and the 3,000 the business
     // keeps. Then Bedhampton closes and 15% of its patients follow.
     plan: {
       from: "2026-12", weekDays: 5, dayCapacity: 1750,
