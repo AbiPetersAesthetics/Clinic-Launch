@@ -144,6 +144,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const startBank = J.bank ? J.bank.balanceGbp : J.config.openingBank;
   const loanMonth = IDX[J.loans[0]?.drawMonth] === 2 ? 2 : 1;
   // Where the funding, the loan's first repayment and the top-up fall among the nine months.
+  const decIdx = IDX["2026-12"] ?? 1;
   const capIdx = IDX[(J.fundingOptions || [])[0]?.month] ?? 1, repayIdx = IDX["2027-06"], topIn = IDX["2026-12"], topOut = IDX["2027-03"];
 
   cut(`  const MONTHS = [`, `  const DETAIL = [`, `  const MONTHS = [${JSON.stringify(shortDate(bankAt))}, ${NINE.map(m => JSON.stringify(monShort(m))).join(", ")}];
@@ -163,6 +164,13 @@ ${itemsJs}
   rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""}`);
   rep(`from October 2026 to June 2027`, `from ${FIRST} ${NINE[0].slice(0, 4)} to ${LAST} ${NINE[8].slice(0, 4)}`, true);
   rep(`October to the end of the build`, `${FIRST} to the end of the build`, true);
+  // The board's script reads December as column 3, which it was when it started in October.
+  rep(`r.bank[3]`, `r.bank[${decIdx}]`, true);
+  rep(`noCard.bank[3]`, `noCard.bank[${decIdx}]`, true);
+  rep(`S.loanMonth <= 3`, `S.loanMonth <= ${decIdx}`, true);
+  rep(`.slice(1, 4)`, `.slice(1, ${decIdx + 1})`, true);
+  rep(`W <= 3 ?`, `W <= ${decIdx} ?`, true);
+  rep("what it pays for: October to ${MONTHS[W]}", `what it pays for: ${FIRST} to ` + "${MONTHS[W]}", true);
   rep(`Clinics' net takings, October to December,`, `Clinics' net takings, ${FIRST} to ${monLong(NINE[2])},`, true);
 
   // 4. The words.
