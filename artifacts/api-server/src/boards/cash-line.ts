@@ -71,9 +71,13 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
         const day = CARD_DAYS[l.taskId] ?? 10;
         add(at(m, day), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on the M&S card: the bank does not move");
         if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
+      } else if (/Reception desk/.test(l.title)) {
+        // David pays Artisan Deco himself, as he did the deposit: the bank does not move and
+        // the company owes him the whole desk as a director's loan.
+        add(at(m, 9), name, "Artisan Deco", "personal", -amt, `David pays this himself, as he did the ${gbp(l.paidOnCard || 0)} deposit: the bank does not move. The company owes him ${gbp((l.paidOnCard || 0) + amt)} for the desk in all.`);
       } else {
-        const day = /Arundel/.test(l.title) ? 3 : /Signage/.test(l.title) ? 5 : /Reception desk/.test(l.title) ? 9 : 15;
-        add(at(m, day), name, /Arundel/.test(l.title) ? "Arundel Fire and Security" : /Signage/.test(l.title) ? "Signs Express" : /Reception desk/.test(l.title) ? "Artisan Deco" : l.phase, "bank", -amt);
+        const day = /Arundel/.test(l.title) ? 3 : /Signage/.test(l.title) ? 5 : 15;
+        add(at(m, day), name, /Arundel/.test(l.title) ? "Arundel Fire and Security" : /Signage/.test(l.title) ? "Signs Express" : l.phase, "bank", -amt);
         if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
       }
     }
@@ -115,6 +119,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
   const totalIn = rows.filter(r => r.amount > 0 && r.how !== "card").reduce((s, r) => s + r.amount, 0);
   const totalBank = -rows.filter(r => r.amount < 0 && r.how !== "card" && r.how !== "personal").reduce((s, r) => s + r.amount, 0);
   const totalCard = -rows.filter(r => r.how === "card").reduce((s, r) => s + r.amount, 0);
+  const totalPersonal = -rows.filter(r => r.how === "personal").reduce((s, r) => s + r.amount, 0);
   const christmas = rows.filter(r => r.date <= endYm + "-25").slice(-1)[0]?.balance ?? startBal;
 
   // 7. The chart: a step line of the balance for every day, the floor, the lowest point.
@@ -128,16 +133,27 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
   const ticks = []; for (let v = 0; v <= maxV; v += 10000) ticks.push(v);
   const weekLabels = days.map((d, i) => [d, i]).filter(([d]) => d.endsWith("-01") || new Date(d + "T00:00:00Z").getUTCDay() === 1);
   const lowI = days.indexOf(low.date);
-  const chart = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="The bank balance day by day from ${long(start)} to ${long(endDate)}">
+  // A mark on the line for every day something happens: solid where the bank moves, hollow
+  // where only a card or personal payment falls. The hover reads the same rows by day.
+  const byDay = new Map(); for (const r of rows) { if (!byDay.has(r.date)) byDay.set(r.date, []); byDay.get(r.date).push(r); }
+  const marks = days.map((d, i) => { const rs = byDay.get(d); if (!rs) return ""; const moves = rs.some(r => r.how !== "card" && r.how !== "personal"), me = rs.some(r => r.how === "personal");
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(series[i]).toFixed(1)}" r="${moves ? 3.2 : 3.6}" fill="${moves ? "var(--c-start)" : "var(--sheet)"}" stroke="${moves ? "var(--sheet)" : me ? "var(--me)" : "var(--card)"}" stroke-width="${moves ? 1.2 : 2}" />`; }).join("");
+  const chart = `<svg id="cl-chart" viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="The bank balance day by day from ${long(start)} to ${long(endDate)}">
     ${ticks.map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--line)" stroke-width="1" /><text x="${L - 8}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--muted)">${gbp0(v)}</text>`).join("")}
     <line x1="${L}" x2="${W - R}" y1="${y(FLOOR).toFixed(1)}" y2="${y(FLOOR).toFixed(1)}" stroke="var(--bad)" stroke-dasharray="6 5" stroke-width="1.5" /><text x="${W - R}" y="${(y(FLOOR) - 6).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--bad)">${gbp0(FLOOR)} safety net</text>
     <path d="${area}" fill="var(--c-start)" opacity="0.08" /><path d="${path}" fill="none" stroke="var(--c-start)" stroke-width="2.2" />
     ${weekLabels.map(([d, i]) => `<line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${H - B}" y2="${H - B + 5}" stroke="var(--line)" /><text x="${x(i).toFixed(1)}" y="${H - B + 18}" text-anchor="middle" font-size="10.5" fill="var(--muted)">${d.endsWith("-01") ? MONTH_LONG[+d.slice(5, 7) - 1].slice(0, 3) : +d.slice(8)}</text>`).join("")}
+    ${marks}
     <circle cx="${x(lowI).toFixed(1)}" cy="${y(low.bal).toFixed(1)}" r="5" fill="${low.bal < FLOOR ? "var(--bad)" : "var(--watch)"}" /><text x="${x(lowI).toFixed(1)}" y="${(y(low.bal) - 10).toFixed(1)}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--ink)">lowest ${gbp0(low.bal)}, ${long(low.date)}</text>
+    <line id="cl-guide" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden" /><circle id="cl-dot" cx="0" cy="0" r="5.5" fill="var(--sheet)" stroke="var(--ink)" stroke-width="2" visibility="hidden" />
+    <rect x="${L}" y="${T}" width="${W - L - R}" height="${H - T - B}" fill="transparent" style="cursor: crosshair" id="cl-hit" />
   </svg>`;
+  // What the hover needs: each day, the balance at its end, and the rows that fall on it.
+  const json = v => JSON.stringify(v).replace(/</g, "\\u003c");
+  const hoverData = `const START = ${startBal}, FLOOR = ${FLOOR}, W = ${W}, L = ${L}, R = ${R}, DAYS = ${json(days)}, SERIES = ${json(series)}, ROWS = ${json(rows.map(r => [r.date, r.what, r.who, r.how, r.amount, r.note]))};`;
 
   // 8. The table.
-  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends into Tide", "abi"], "abi-out": ["Tide repays Abi", "abi"], card: ["M&S card", "card"], personal: ["Personal", "card"] };
+  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends into Tide", "abi"], "abi-out": ["Tide repays Abi", "abi"], card: ["M&S card", "card"], personal: ["David pays personally", "me"] };
   const trs = rows.map(r => { const [label, cls] = HOW[r.how]; const flat = r.how === "card" || r.how === "personal"; return `<tr class="${cls}${flat ? " flat" : ""}${r.balance < FLOOR && !flat ? " under" : ""}">
       <td class="d">${long(r.date)}</td><td><b>${esc(r.what)}</b>${r.note ? `<span class="n">${esc(r.note)}</span>` : ""}</td><td class="w">${esc(r.who)}</td><td><span class="pill ${cls}">${label}</span></td>
       <td class="n-in">${r.amount > 0 && !flat ? gbp(r.amount) : ""}</td><td class="n-out">${r.amount < 0 ? gbp(-r.amount) : ""}</td><td class="bal">${flat ? `<span class="same">${gbp(r.balance)}</span>` : gbp(r.balance)}</td></tr>`; }).join("\n");
@@ -147,7 +163,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
     `James's £37,000 on the 5th of its month, Bill's £10,000 on the 19th, James's loan on the 1st of December.`,
     `CBS: the balance less the 3% retention, half on ${long(v2)} and half on ${long(v3)} (two and a half weeks after the last payment, then again). Abi lends the VAT into Tide the same day.`,
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
-    `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands), the desk balance on the 9th.`,
+    `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
     `Card buys spread through November on the M&S card (3rd couch, 4th Obagi, 6th room 1 and the desk tray, 10th injectables and consumables, 13th emergency kit, 17th PAT, 20th insurance, 24th deep clean), the Google adverts on 1 December. None of these move the bank.`,
     `Rates and advertising on the 1st, everyday running costs on the 10th, utilities on the 24th, rent on 25 December, the company's repayment to David on the 28th.`,
     `The clinics' net takings from the Money page, paid in on Mondays.`,
@@ -161,7 +177,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap">
 <style>
-:root { --bg: #F6F8FB; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #5C6577; --line: #C3CCD9; --slate: #445B72; --good: #3F7A68; --watch: #8A5A12; --watch-bg: #F6EEDF; --bad: #A33A3A; --bad-bg: #F8E6E6; --c-start: #2a78d6; --in: #1baf7a; --in-bg: #E6F6EF; --card: #eda100; --card-bg: #FBF1DA; --abi: #6250d6; --abi-bg: #ECE9FA; --font-display: "Source Serif 4", Georgia, serif; --font-body: "Mulish", "Segoe UI", system-ui, sans-serif; color-scheme: light; }
+:root { --bg: #F6F8FB; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #5C6577; --line: #C3CCD9; --slate: #445B72; --good: #3F7A68; --watch: #8A5A12; --watch-bg: #F6EEDF; --bad: #A33A3A; --bad-bg: #F8E6E6; --c-start: #2a78d6; --in: #1baf7a; --in-bg: #E6F6EF; --card: #eda100; --card-bg: #FBF1DA; --abi: #6250d6; --abi-bg: #ECE9FA; --me: #B4457A; --me-bg: #F8E8F0; --font-display: "Source Serif 4", Georgia, serif; --font-body: "Mulish", "Segoe UI", system-ui, sans-serif; color-scheme: light; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.5; padding: 20px 16px 48px; }
 .sheet { max-width: 1400px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 2px; padding: 22px 24px 26px; display: grid; gap: 18px; }
@@ -181,7 +197,18 @@ td.n-in, td.n-out, td.bal, th.r { text-align: right; white-space: nowrap; } td.n
 tr.flat td { color: var(--muted); } tr.flat td b { font-weight: 600; color: var(--muted); } tr.flat td.n-out { color: var(--muted); } .same { font-weight: 400; color: var(--muted); }
 tr.under td.bal { color: var(--bad); } .n { display: block; font-size: 12px; color: var(--muted); }
 .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
-.pill.in { background: var(--in-bg); color: var(--good); } .pill.bank { background: var(--panel); color: var(--slate); } .pill.abi { background: var(--abi-bg); color: var(--abi); } .pill.card { background: var(--card-bg); color: var(--watch); }
+.pill.in { background: var(--in-bg); color: var(--good); } .pill.bank { background: var(--panel); color: var(--slate); } .pill.abi { background: var(--abi-bg); color: var(--abi); } .pill.card { background: var(--card-bg); color: var(--watch); } .pill.me { background: var(--me-bg); color: var(--me); }
+tr.me td b { color: var(--me); } tr.me td.n-out { color: var(--me); }
+.cl-wrap { position: relative; } .cl-hint { font-size: 12px; color: var(--muted); }
+.cl-tip { position: absolute; z-index: 5; width: 400px; max-width: calc(100% - 8px); background: var(--sheet); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; box-shadow: 0 8px 26px rgba(31, 42, 68, 0.18); padding: 10px 12px; font-size: 12px; line-height: 1.4; pointer-events: none; }
+.cl-tip[hidden] { display: none; } .cl-tip.pin { pointer-events: auto; border-color: var(--ink); }
+.cl-tip .dt { font-weight: 700; font-size: 13px; } .cl-tip .bal { font-family: var(--font-display); font-size: 24px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums lining-nums; } .cl-tip .bal.under { color: var(--bad); }
+.cl-tip .chg { color: var(--muted); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.cl-tip .sec { font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-top: 8px; padding-bottom: 2px; border-bottom: 1px solid var(--line); }
+.cl-tip .r { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-bottom: 1px solid var(--line); } .cl-tip .r:last-child { border-bottom: 0; }
+.cl-tip .r .w { min-width: 0; flex: 1; } .cl-tip .r .w small { display: block; color: var(--muted); font-size: 11px; } .cl-tip .r .w .pill { margin-right: 5px; font-size: 10px; padding: 0 6px; vertical-align: 1px; }
+.cl-tip .a { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 700; } .cl-tip .a.in { color: var(--good); } .cl-tip .a.out { color: var(--bad); } .cl-tip .a.flat { color: var(--muted); font-weight: 600; } .cl-tip .a.me { color: var(--me); }
+.cl-tip .nx { color: var(--muted); margin-top: 6px; } .cl-tip .pinned { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
 ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px; } ol li { padding-left: 2px; }
 .foot { font-size: 11px; color: var(--muted); }
 @media (max-width: 720px) { td.w { display: none; } }
@@ -198,16 +225,73 @@ ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px
     <div class="kpi"><span>In</span><b>${gbp0(totalIn)}</b><em>funding, refunds, takings</em></div>
     <div class="kpi"><span>Out of the bank</span><b>${gbp0(totalBank)}</b><em>build, bills, rent, repayments</em></div>
     <div class="kpi"><span>On the cards</span><b>${gbp0(totalCard)}</b><em>does not move the line</em></div>
+    <div class="kpi"><span>David pays personally</span><b style="color: var(--me)">${gbp0(totalPersonal)}</b><em>the desk balance; the company owes him</em></div>
   </div>
-  <div class="panel"><h2>The balance, day by day</h2>${chart}
-    <div class="legend"><span><i style="background: var(--c-start)"></i>Tide balance</span><span><i style="background: var(--bad)"></i>£10,000 safety net</span></div></div>
+  <div class="panel"><h2>The balance, day by day</h2>
+    <p class="cl-hint">Move along the line for what lands or leaves on each day and the balance after it. Click a day to hold it open; click again to let go.</p>
+    <div class="cl-wrap">${chart}<div class="cl-tip" id="cl-tip" role="tooltip" hidden></div></div>
+    <div class="legend"><span><i style="background: var(--c-start)"></i>Tide balance</span><span><i style="background: var(--bad)"></i>£10,000 safety net</span><span><i style="background: var(--c-start); border-radius: 50%"></i>a day the bank moves</span><span><i style="background: var(--sheet); border: 2px solid var(--card); border-radius: 50%"></i>a card day: the line stays put</span><span><i style="background: var(--sheet); border: 2px solid var(--me); border-radius: 50%"></i>David pays personally: the line stays put</span></div></div>
   <div class="panel"><h2>Every payment, in date order</h2>
-    <div class="legend"><span class="pill in">Bank, in</span><span class="pill bank">Bank, out</span><span class="pill abi">Abi's VAT loan</span><span class="pill card">M&S card: the line does not move</span></div>
+    <div class="legend"><span class="pill in">Bank, in</span><span class="pill bank">Bank, out</span><span class="pill abi">Abi's VAT loan</span><span class="pill card">M&S card: the line does not move</span><span class="pill me">David pays personally: the line does not move</span></div>
     <table><thead><tr><th>Date</th><th>What</th><th>To or from</th><th>How</th><th class="r">In</th><th class="r">Out</th><th class="r">Balance</th></tr></thead><tbody>
       <tr><td class="d">${long(start)}</td><td><b>Bank today</b><span class="n">All Tide accounts as one</span></td><td class="w">Tide</td><td></td><td class="n-in"></td><td class="n-out"></td><td class="bal">${gbp(startBal)}</td></tr>
 ${trs}
     </tbody></table></div>
   <div class="panel"><h2>The dates this line assumes</h2><ol>${assumptions.map(a => `<li>${a}</li>`).join("")}</ol>
     <p class="foot">Winchester only: Bedhampton's day-to-day costs and card are not in the plan, as the owner asked. Built from the Launch OS plan on ${long(asOf)}; change a line, its month or the bank balance and this page follows.</p></div>
-</div></body></html>`;
+</div>
+<script>
+(function () {
+  ${hoverData}
+  const DAYN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const long = d => { const [y, m, dd] = d.split("-").map(Number); return DAYN[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()] + " " + dd + " " + MON[m - 1]; };
+  const gbp = v => (v < 0 ? "\\u2212" : "") + "\\u00a3" + Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends", "abi"], "abi-out": ["Repays Abi", "abi"], card: ["M&S card", "card"], personal: ["David, personally", "me"] };
+  const svg = document.getElementById("cl-chart"), hit = document.getElementById("cl-hit"), wrap = svg.parentElement, tip = document.getElementById("cl-tip"), guide = document.getElementById("cl-guide"), dot = document.getElementById("cl-dot");
+  const byDay = new Map(); ROWS.forEach(r => { if (!byDay.has(r[0])) byDay.set(r[0], []); byDay.get(r[0]).push(r); });
+  const el = (tag, cls, text, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; (parent || tip).appendChild(e); return e; };
+  let pinned = -1, shown = -1;
+  const dayAt = ev => { const b = svg.getBoundingClientRect(), sx = b.width / W; const f = (ev.clientX - b.left - L * sx) / ((W - L - R) * sx); return Math.max(0, Math.min(DAYS.length - 1, Math.round(f * (DAYS.length - 1)))); };
+  const xOf = i => L + (i / (DAYS.length - 1)) * (W - L - R);
+  function build(i) {
+    const d = DAYS[i], rs = byDay.get(d) || [], bal = SERIES[i], prev = i ? SERIES[i - 1] : START, moves = rs.filter(r => r[3] !== "card" && r[3] !== "personal"), flat = rs.filter(r => r[3] === "card" || r[3] === "personal");
+    tip.replaceChildren();
+    el("div", "dt", long(d) + (i === 0 ? " \\u00b7 today" : ""));
+    el("div", "bal" + (bal < FLOOR ? " under" : ""), gbp(bal));
+    const chg = bal - prev;
+    el("div", "chg", Math.abs(chg) < 0.005 ? (i === 0 ? "the bank as saved on the Money page" : "no change to the bank") : "from " + gbp(prev) + ", " + (chg > 0 ? "up " : "down ") + gbp(Math.abs(chg)) + (bal < FLOOR ? ", below the \\u00a310,000 safety net" : ""));
+    const rowOf = r => { const [, what, who, how, amt, note] = r, e = el("div", "r"), w = el("div", "w", null, e); const p = el("span", "pill " + HOW[how][1], HOW[how][0], w); w.appendChild(document.createTextNode(what)); if (who || note) el("small", "", [who, note].filter(Boolean).join(" \\u00b7 "), w);
+      const isFlat = how === "card" || how === "personal"; el("div", "a " + (isFlat ? (how === "personal" ? "me" : "flat") : amt > 0 ? "in" : "out"), (isFlat ? "" : amt > 0 ? "+ " : "\\u2212 ") + gbp(Math.abs(amt)) + (isFlat ? " (line stays)" : ""), e); };
+    if (moves.length) { el("div", "sec", "Through the bank"); moves.forEach(rowOf); }
+    if (flat.length) { el("div", "sec", "Not from the bank"); flat.forEach(rowOf); }
+    if (!rs.length) {
+      const nx = DAYS.slice(i + 1).find(x => byDay.has(x)), pv = DAYS.slice(0, i).reverse().find(x => byDay.has(x));
+      el("div", "nx", "Nothing due this day." + (pv ? " Last: " + long(pv) + ", " + byDay.get(pv).map(r => r[1]).join("; ") + "." : "") + (nx ? " Next: " + long(nx) + ", " + byDay.get(nx).map(r => r[1]).join("; ") + "." : ""));
+    }
+    if (pinned === i) el("div", "pinned", "Held open: click the chart again to let go.");
+  }
+  function place(i, ev) {
+    const b = svg.getBoundingClientRect(), wb = wrap.getBoundingClientRect(), sx = b.width / W, sy = b.height / VB.height;
+    const px = (b.left - wb.left) + xOf(i) * sx;
+    guide.setAttribute("x1", xOf(i).toFixed(1)); guide.setAttribute("x2", xOf(i).toFixed(1)); guide.setAttribute("visibility", "visible");
+    const yv = yOf(SERIES[i]); dot.setAttribute("cx", xOf(i).toFixed(1)); dot.setAttribute("cy", yv.toFixed(1)); dot.setAttribute("visibility", "visible");
+    tip.hidden = false;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    let left = px + 16; if (left + tw > wb.width - 4) left = px - tw - 16; left = Math.max(4, left);
+    let top = (b.top - wb.top) + yv * sy - th / 2; top = Math.max(0, Math.min(top, wb.height - th));
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  // The chart's y scale, read back from the SVG so the dot sits on the line.
+  const VB = svg.viewBox.baseVal; const maxV = Math.max.apply(null, SERIES.concat([FLOOR])) * 1.08, minV = Math.min.apply(null, [0].concat(SERIES)), T = 16, B = 34;
+  const yOf = v => T + (1 - (v - minV) / (maxV - minV)) * (VB.height - T - B);
+  function show(i, ev) { if (i === shown && !tip.hidden) { place(i, ev); return; } shown = i; build(i); place(i, ev); }
+  function hide() { if (pinned >= 0) return; tip.hidden = true; guide.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); shown = -1; }
+  hit.addEventListener("mousemove", ev => { if (pinned >= 0) return; show(dayAt(ev), ev); });
+  hit.addEventListener("mouseleave", hide);
+  hit.addEventListener("click", ev => { const i = dayAt(ev); if (pinned === i) { pinned = -1; tip.classList.remove("pin"); shown = -1; show(i, ev); } else { pinned = i; tip.classList.add("pin"); shown = -1; show(i, ev); } });
+  document.addEventListener("click", ev => { if (pinned >= 0 && !ev.target.closest("#cl-chart") && !ev.target.closest("#cl-tip")) { pinned = -1; tip.classList.remove("pin"); hide(); } });
+  hit.addEventListener("touchstart", ev => { const t = ev.touches[0]; pinned = -1; show(dayAt(t), t); }, { passive: true });
+})();
+</script>
+</body></html>`;
 }
