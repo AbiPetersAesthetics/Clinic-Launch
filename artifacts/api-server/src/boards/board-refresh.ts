@@ -32,7 +32,7 @@ const KIT: [RegExp, string, string, string][] = [
   [/^Reception desk, Artisan/i, "recep", "Reception desk (Artisan Deco)", "no VAT; David paid the deposit, the company pays him back"],
   [/^Reception coat stand/i, "recep", "Reception coat stand (Homary)", "black poles, white marble base"],
   [/^Reception furniture/i, "recep", "Reception furniture and styling", "Amboise sofa and pouffe, rug, side table, two Tala pendants, Lucia chair, the lobby chair"],
-  [/^External Signage/i, "front", "External sign, balance", "the deposit is already paid"],
+  [/^External Signage/i, "front", "Shop sign (Signs Express)", "metal fascia letters, projecting sign, window graphics"],
   [/^Arundel/i, "safety", "Fire alarm (Arundel)", ""],
   [/^Fire Risk/i, "safety", "Fire risk assessment after the fit-out", ""], [/^Emergency Drugs/i, "safety", "Emergency drugs and equipment", ""],
   [/^Legionella/i, "safety", "Legionella assessment", ""], [/^Clinical Waste/i, "safety", "Clinical waste contract", ""], [/^PAT Testing/i, "safety", "PAT testing", ""],
@@ -87,7 +87,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const STAGE = { "2026-10": ["cbs1", "CBS, October valuation"], "2026-11": ["cbs2", "CBS, November valuation"], "2026-12": ["cbs3", "CBS, December valuation"], "2027-05": ["cbs4", "CBS retention (3%), after snagging"] };
   const itemOf = (t, ph, ym) => /^Ref \d/.test(t) ? [...(STAGE[ym] ?? [`cbs_${ym}`, `CBS, ${monLong(ym)}`]), "cbs", true]
     : /Arundel/.test(t) ? (ym === "2026-10" ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
-    : /Signage Package/.test(t) ? ["sign", "Shop sign, balance", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
+    : /Signage Package/.test(t) ? ["sign", "Shop sign (Signs Express)", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
     : /^FF&E/.test(ph) ? ["furniture", "Furniture and the couch", "kit"] : /^(FIGS|Trainers)/.test(t) ? ["scrubs", "Scrubs and trainers", "kit"] : /Injectable|Smallwares/.test(t) ? ["stock", "Opening stock and consumables", "kit"]
     : /Hamilton Fraser/.test(t) ? ["insurance", "Insurance, annual (no VAT)", "kit"] : /Broadband|deep clean/i.test(t) ? ["broadband", "Broadband and deep clean", "kit"]
     : /Meta Ads/.test(t) ? ["meta", "Launch adverts, Meta (no VAT)", "kit"] : /Google Ads/.test(t) ? ["google", "Launch adverts, Google (no VAT)", "kit"]
@@ -124,7 +124,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   // 2. Already paid, ex VAT (it is in the bank balance).
   const NAMES = [[/Skin Analysis/, "Skin analysis platform and training"], [/Rent Deposit/, "Rent deposit"], [/Solicitor/, "Solicitor"], [/Design \/ Building Regulations/, "Design and Building Regulations lead"],
     [/Building Control/, "Building Control submission"], [/RICS/, "RICS schedule of condition"], [/Asbestos/, "Asbestos survey"], [/Brand Identity/, "Brand identity and visual assets"],
-    [/External Signage/, "External sign, deposit"], [/CAD Drawings/, "CAD drawing pack"], [/Advertisement Consent/, "Advertisement consent"], [/ACE Group/, "ACE membership"], [/Arundel/, "Fire alarm (Arundel), 30% deposit"]];
+    [/External Signage/, "Shop sign"], [/^Temporary signage/, "Temporary signage"], [/CAD Drawings/, "CAD drawing pack"], [/Advertisement Consent/, "Advertisement consent"], [/ACE Group/, "ACE membership"], [/Arundel/, "Fire alarm (Arundel), 30% deposit"]];
   // CBS's lines are one payment: its work valued is what was paid in all, the VAT Abi lent included.
   const paidRows = J.projectLines.filter(l => l.paid > 0).map(l => { const cbs = /^Ref \d/.test(l.title), all = cbs ? l.paid + (l.paidOnCard || 0) : l.paid;
     const n = cbs ? [null, "CBS interim payment 1, less the 3% retention"] : NAMES.find(([re]) => re.test(l.title)); const ex = /^no VAT/.test(l.vatBasis) ? all : all / 1.2;

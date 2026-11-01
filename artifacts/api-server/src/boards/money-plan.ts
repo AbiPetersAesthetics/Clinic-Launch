@@ -56,7 +56,7 @@ const bar100 = (key, name, sub) => { const x = P100[key];
 const STAGE = { "2026-10": "first stage (20%)", "2026-11": "main stage (60%)", "2026-12": "final stage (17%)", "2027-05": "retention, held until snags are fixed (3%)" };
 const itemOf = (t, ph, m) => /^Ref \d/.test(t) ? "CBS building work, " + (STAGE[m] || m)
   : /Arundel/.test(t) ? (m === "2026-10" ? "Fire alarm (Arundel), 30% on booking" : "Fire alarm (Arundel), 70% when finished")
-  : /Signage Package/.test(t) ? "Shop sign, balance" : /Joinery/.test(t) ? "Joinery, reception desk and cabinetry"
+  : /Signage Package/.test(t) ? "Shop sign (Signs Express)" : /Joinery/.test(t) ? "Joinery, reception desk and cabinetry"
   : /^FF&E/.test(ph) ? "Furniture and the couch" : /Injectable|Smallwares|FIGS/.test(t) ? "Opening stock, consumables and scrubs"
   : /Hamilton Fraser/.test(t) ? "Insurance for the year" : /Broadband|deep clean/i.test(t) ? "Broadband and deep clean"
   : /Meta Ads/.test(t) ? "Opening adverts, Facebook and Instagram" : /Google Ads/.test(t) ? "Opening adverts, Google"
