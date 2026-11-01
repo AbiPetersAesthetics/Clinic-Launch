@@ -26,7 +26,7 @@ const KIT: [RegExp, string, string, string][] = [
   [/^Treatment Couch/i, "treat", "Treatment couch", ""],
   [/^Treatment Room Furniture/i, "treat", "Room 1 furniture and equipment", "Maru desk, two chairs, trolley, Luxamed lamp, dispensers, basins and taps"],
   [/^Consultation Room Furniture/i, "treat", "Treatment room 2", "dispensers bought; the rest waits for a second clinician"],
-  [/^Joinery/i, "treat", "Clinical cabinetry (Howdens)", "both treatment rooms; Bill fits"],
+  [/^Joinery/i, "treat", "Clinical cabinetry (Howdens)", "both treatment rooms and the coffee station; Bill fits"],
   [/Retail Shelving/i, "recep", "Reception shelving unit", "4 Bespoke Nature shelves with LEDs fitted, and the B&Q cabinet"],
   [/^Lobby coffee station/i, "recep", "Lobby coffee station", "the Jeanne chair; the units, sink and mirror wait for the quote"],
   [/^Reception desk, Artisan/i, "recep", "Reception desk (Artisan Deco)", "no VAT; David paid the deposit, the company pays him back"],
