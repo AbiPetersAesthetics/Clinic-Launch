@@ -42,9 +42,13 @@ export const WINC_PROFILES: Record<"low" | "central" | "high", NewPatientProfile
 // at founders' prices (20% off). Product costs were 30.6% of Bedhampton's takings, so
 // Bedhampton keeps 52.7p in the pound and Winchester 62.7p at list, 57.5p for founders.
 export const PRICES = { listVsBedhampton: 1.48, foundersVsBedhampton: 1.184, productShare: 0.306 };
-// The 30 founding bookings for November (mostly skin analysis, 1,184 booked). Founders
-// (November to January cohorts) pay founders' prices, later patients the list.
-const WINC_OPTS = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: PRICES.foundersVsBedhampton, listPrice: PRICES.listVsBedhampton, founderUntil: "2027-01" };
+// Winchester opens on 8 December 2026 (model days 2 and 3 December): nothing is taken in
+// November. The founding cohort is December as booked in ANS on 1 November: about 60
+// people (13 model-day patients, 6 opening-fortnight treatments, 47 consultations) and
+// 4,400 booked. Their return visits from January are the consultations converting. The
+// monthly cohorts start in January. Founders (to January) pay founders' prices, later
+// patients the list.
+export const WINC_OPTS = { founding: { month: "2026-12", patients: 60, firstMonthTotal: 4400 }, firstCohort: "2027-01", founderPrice: PRICES.foundersVsBedhampton, listPrice: PRICES.listVsBedhampton, founderUntil: "2027-01" };
 const cohort = (k: keyof typeof WINC_PROFILES) => ({
   takings: round(wincForecast(PATIENT_MODEL, WINC_PROFILES[k], WINC_OPTS, MODEL_MONTHS)),
   productCost: round(wincProductCost(PATIENT_MODEL, WINC_PROFILES[k], WINC_OPTS, MODEL_MONTHS, PRICES.productShare)),
@@ -62,13 +66,13 @@ export const STANDS_ALONE_TAKINGS = Math.round((5327.33 + 473.55 + 3000) / (WINC
 export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number>; productCost?: Record<string, number> }> = {
   central: {
     label: "Recommended",
-    note: "Built from Bedhampton's real patients: 22 new patients a month from December to February (founders and the warm list), then 16 a month growing to 24, each buying what Bedhampton patients buy, at Winchester prices.",
+    note: "Built from Bedhampton's real patients: December as booked (about 60 people, 4,400), then 22 new patients a month in January and February (founders and the warm list), then 16 a month growing to 24, each buying what Bedhampton patients buy, at Winchester prices.",
     ...CENTRAL,
   },
   base: {
     label: "David's forecast",
-    note: "1,500 in November to 14,700 in June 2027, then a straight line to 22,000 by February 2029. On the patient model it needs about 28 new patients a month from December.",
-    takings: { "2026-11": 1500, "2026-12": 4000, "2027-01": 6000, "2027-02": 8000, "2027-03": 9500, "2027-04": 11000, "2027-05": 13000, "2027-06": 14700 },
+    note: "Nothing in November (the clinic opens on 8 December), 4,000 in December to 14,700 in June 2027, then a straight line to 22,000 by February 2029. On the patient model it needs about 28 new patients a month from January.",
+    takings: { "2026-11": 0, "2026-12": 4000, "2027-01": 6000, "2027-02": 8000, "2027-03": 9500, "2027-04": 11000, "2027-05": 13000, "2027-06": 14700 },
   },
   low: {
     label: "Slow",

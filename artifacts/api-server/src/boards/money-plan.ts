@@ -36,7 +36,7 @@ const lnFirst = addM(LN.drawMonth, LN.holidayMonths + 1), lnLast = addM(lnFirst,
 const CFG = LIVE.config, rentM = CFG.rent.annual / 12;
 const running = rentM + CFG.rates.monthly + CFG.utilities.monthly + CFG.running.monthly + CFG.marketing.monthly, kept3000 = 3000, salaryCost = 4755;
 const billsAt = Math.round(running / (keepW / 100) / 100) * 100, salaryAt = Math.round((running + loanLevel + kept3000 + salaryCost) / (keepW / 100) / 100) * 100;
-const flatO = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: PR.foundersVsBedhampton, listPrice: PR.listVsBedhampton, founderUntil: "2027-01" };
+const flatO = lib.WINC_OPTS;
 const flatAt = (n, m) => lib.wincForecast(M, { early: n, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n }, flatO, lib.monthsFrom("2026-10", 24))[m];
 const extra5 = flatAt(21, "2027-12") - flatAt(16, "2027-12");
 const fyKeys = ["FY26/27", "FY27/28", "FY28/29"];
@@ -377,7 +377,7 @@ ${buildRows}
   <p><strong>We checked it against real takings.</strong> Run through the model, Bedhampton's own new patients give £75,646 for March to September 2026, exactly what Bedhampton took. Single months wobble by a couple of thousand, as real months do.</p>
   <div class="legend" aria-hidden="true"><span><i style="background: var(--sage)"></i>What Bedhampton took</span><span><i style="background: var(--slate)"></i>What the model says</span></div>
   <div class="chart" style="height:210px"><canvas id="calib" role="img" aria-label="Bedhampton takings March to September 2026, actual against the model: seven months total 75,646 both ways.">Actual and model both £75,646.</canvas></div>
-  <p><strong>Then Winchester.</strong> It starts with the 30 founding bookings in November. Founders (November to January) pay founders' prices; everyone after pays the list.</p>
+  <p><strong>Then Winchester.</strong> Nothing in November: the clinic opens on 8 December, after the model days on the 2nd and 3rd. December is as booked in ANS (about 60 people, 4,400), and their return visits from January are the consultations converting. Founders (to January) pay founders' prices; everyone after pays the list.</p>
   <div class="legend" aria-hidden="true"><span><i style="background: var(--ink)"></i>Recommended</span><span><i style="background: var(--int)"></i>David's forecast</span><span><i style="background: var(--sage-deep)"></i>Fast</span><span><i style="background: var(--prod)"></i>Slow</span><span><i class="line"></i>Stands on its own</span></div>
   <div class="chart"><canvas id="forecasts" role="img" aria-label="Winchester monthly takings under four forecasts against the ${standAt} a month it needs to stand on its own.">Recommended crosses the line in late 2028; David's in summer 2027.</canvas></div>
   <div class="table-wrap"><table>
@@ -387,8 +387,8 @@ ${forecastRows}
     </tbody>
   </table></div>
   <div class="callout"><h3><span class="chip good">Recommended</span>Plan on the middle forecast</h3>
-    <p>It assumes Winchester finds new patients at about Bedhampton's rate: 22 a month for the first three months, helped by the founders and the warm list, then 16 a month growing to 24 as word spreads. That matches what we can see: Bedhampton finds 23 a month after two years, and Winchester has 30 founding bookings, none since 26 September.</p>
-    <p>David's forecast needs about 30 a month from December. It's possible, and if the first three months show that pace we switch to it.</p></div>
+    <p>It assumes Winchester finds new patients at about Bedhampton's rate: December as booked, then 22 a month in January and February, helped by the founders and the warm list, then 16 a month growing to 24 as word spreads. That matches what we can see: Bedhampton finds 23 a month after two years, and Winchester had about 60 people booked for December by 1 November.</p>
+    <p>David's forecast needs about 30 a month from January. It's possible, and if the first three months show that pace we switch to it.</p></div>
   <div class="discuss"><strong>To talk about:</strong> what would get Winchester to 25 or more new patients a month? Every extra 5 new patients a month adds about ${f(Math.round(extra5 / 100) * 100)} a month of takings within a year.</div>
 </section>
 
@@ -565,7 +565,7 @@ ${cashRows}
     let takings, productCost, growth;
     if (state.forecast === "custom") {
       const pr = { early: state.n + 6, earlyUntil: "2027-02", start: state.n, growthPerMonth: 0.25, cap: state.n + 8 };
-      const o = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: CM.PRICES.foundersVsBedhampton, listPrice: CM.PRICES.listVsBedhampton, founderUntil: "2027-01" };
+      const o = CM.WINC_OPTS;
       takings = CM.wincForecast(CM.PATIENT_MODEL, pr, o, months); productCost = CM.wincProductCost(CM.PATIENT_MODEL, pr, o, months, CM.PRICES.productShare);
     } else {
       const s = CM.WINC_SCENARIOS[state.forecast]; takings = s.takings; productCost = s.productCost;

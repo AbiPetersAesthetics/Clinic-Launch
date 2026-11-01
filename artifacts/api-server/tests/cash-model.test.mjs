@@ -70,7 +70,8 @@ const briefInputs = (months = 9, scenario = "base") => {
     bedh: { takings: { "2026-10": 8000, "2026-11": 9000, "2026-12": 3000, "2027-01": 3000, "2027-02": 3000, "2027-03": 3000 }, contributionPct: 54 },
     // The brief was worked out at 280 a month for utilities, before EDF fixed the tariff (21 October 2026).
     utilities: { ...i.utilities, monthly: 280 },
-    marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, contributionPct: 58, productCost: undefined, capacity: undefined } };
+    // The brief had Winchester taking 1,500 in November; it opens on 8 December, so the live forecast has none.
+    marketing: { ...i.marketing, cardFrom: "2026-12" }, winc: { ...i.winc, takings: { ...i.winc.takings, "2026-11": 1500 }, contributionPct: 58, productCost: undefined, capacity: undefined } };
 };
 const REF = [
   ["2026-10", 51320, 27777, 58543, 4683, 4683],
@@ -111,8 +112,10 @@ test("the patient model reproduces Bedhampton's March to September 2026 takings 
   assert.ok(Math.abs(total - 75646) / 75646 < 0.01, `model ${Math.round(total)}`);
 });
 
-test("David's 14,700 in June 2027 needs about 30 new patients a month from December on the patient model", () => {
-  const o = { founding: { month: "2026-11", patients: 30, firstMonthTotal: 1184 }, firstCohort: "2026-12", founderPrice: lib.PRICES.foundersVsBedhampton, listPrice: lib.PRICES.listVsBedhampton, founderUntil: "2027-01" };
+test("Winchester takes nothing in November; December is as booked; David's 14,700 in June 2027 needs about 30 new patients a month from January", () => {
+  for (const k of ["central", "base", "low", "high"]) assert.equal(lib.WINC_SCENARIOS[k].takings["2026-11"], 0, k + " in November");
+  assert.equal(lib.WINC_SCENARIOS.central.takings["2026-12"], 4400);
+  const o = lib.WINC_OPTS;
   const june = n => lib.wincForecast(lib.PATIENT_MODEL, { early: n, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n }, o, lib.monthsFrom("2026-10", 12))["2027-06"];
   assert.ok(june(29) < 14700 && june(30) >= 14700, `29: ${Math.round(june(29))}, 30: ${Math.round(june(30))}`);
   assert.ok(lib.WINC_SCENARIOS.central.takings["2027-06"] < 9500, "the recommended forecast is about 60% of David's in June 2027");
