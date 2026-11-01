@@ -145,7 +145,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const loanMonth = IDX[J.loans[0]?.drawMonth] === 2 ? 2 : 1;
   // Where the funding, the loan's first repayment and the top-up fall among the nine months.
   const decIdx = IDX["2026-12"] ?? 1;
-  const capIdx = IDX[(J.fundingOptions || [])[0]?.month] ?? 1, repayIdx = IDX["2027-06"], topIn = IDX["2026-12"], topOut = IDX["2027-03"];
+  const capIdx = IDX[(J.fundingOptions || [])[0]?.month] ?? 1, repayIdx = (() => { const l = (J.loans || [])[0]; if (!l) return undefined; const [y, m] = l.drawMonth.split("-").map(Number); const t = y * 12 + (m - 1) + (l.holidayMonths ?? 6) + 1; return IDX[Math.floor(t / 12) + "-" + String(t % 12 + 1).padStart(2, "0")]; })(), topIn = IDX["2026-12"], topOut = IDX["2027-03"];
 
   cut(`  const MONTHS = [`, `  const DETAIL = [`, `  const MONTHS = [${JSON.stringify(shortDate(bankAt))}, ${NINE.map(m => JSON.stringify(monShort(m))).join(", ")}];
   const ITEMS = [
@@ -168,6 +168,31 @@ ${itemsJs}
   rep(`October to the end of the build`, `${FIRST} to the end of the build`, true);
   // The board's script reads December as column 3, which it was when it started in October.
   rep(`r.bank[3]`, `r.bank[${decIdx}]`, true);
+  rep(`const v = i.vat && through ? i.ex * VAT : 0;`, `const v = i.vat && (through || i.group !== "cbs") ? i.ex * VAT : 0;`);
+  rep(`if (i.vat && !through) r.vatPersonal[i.m] += i.ex * VAT;`, `if (i.vat && !through && i.group === "cbs") r.vatPersonal[i.m] += i.ex * VAT;`);
+  rep(`if (through) for (let m = 1; m < N; m++) { const due = m + s.lag; const v = r.vatBank[m] + r.vatCard[m];`, `for (let m = 1; m < N; m++) { const due = m + s.lag; const v = r.vatBank[m] + r.vatCard[m];`);
+  rep(`vatBack = through ? upTo(r.vatBack) : 0`, `vatBack = upTo(r.vatBack)`);
+  rep(`A separate pot: paid by you, repaid as a director's loan`, `CBS's VAT paid by Abi, repaid as a director's loan`, true);
+  rep(`"VAT: a separate pot, nothing through the bank"`, `"VAT by December: CBS's paid by Abi; the rest paid and refunded"`);
+  rep(`[1, 2, 3].reduce((a, m) => a + r.vatBack[m] - r.vatBank[m], 0)`, `Array.from({ length: ${decIdx} }, (_, k) => k + 1).reduce((a, m) => a + r.vatBack[m] - r.vatBank[m], 0)`);
+  // Of what is left on the lines, how much repays a director for something already bought on a
+  // personal card or account (the register), rather than money still to spend. CBS VAT that Abi
+  // paid is not in what is left, so it is not counted here.
+  let owedBank = 0, owedCard = 0;
+  for (const l of J.projectLines) {
+    if (/^Ref \d+ - /.test(l.title) || !(l.paidOnCard > 0) || l.remainingExVat < 0.5) continue;
+    const ex = l.paidOnCard * l.remainingExVat / Math.max(0.01, l.recorded - l.paid);
+    if ((l.plan || []).some(p => p.method === "card")) owedCard += ex; else owedBank += ex;
+  }
+  rep('const FLOOR = 10000,', 'const OWED_BANK = ' + Math.round(owedBank) + ', OWED_CARD = ' + Math.round(owedCard) + '; const FLOOR = 10000,');
+  rep('K("k-pay-v", gbp(bankTotal + cardTotal)); K("k-pay-m", `bank ${gbp(bankTotal)}, card ${gbp(cardTotal)}, ex VAT`);',
+      'K("k-pay-v", gbp(bankTotal + cardTotal - OWED_BANK - OWED_CARD)); K("k-pay-m", `still to buy: bank ${gbp(bankTotal - OWED_BANK)}, card ${gbp(cardTotal - OWED_CARD)}, ex VAT. On top, ${gbp(OWED_BANK + OWED_CARD)} repays what is already bought on your cards`);');
+  rep(`LIMIT = 20000,`, `LIMIT = ${J.config.card?.limit ?? 20000},`);
+  rep(`of the £20,000 left as an emergency line`, `of the £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit left`, true);
+  rep(`£20,000 limit`, `£${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`, true);
+  rep(`Card: £20,000 at 0%`, `Card: £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} across the Virgin and M&S cards, at 0%`, true);
+  rep(`against the 20,000 limit`, `against the ${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`);
+  rep(`topIn = W >= 3 ? s.topup : 0, topBack = W >= 6 ? s.topup : 0`, `topIn = W >= ${topIn ?? 99} ? s.topup : 0, topBack = W >= ${topOut ?? 99} ? s.topup : 0`);
   rep(`noCard.bank[3]`, `noCard.bank[${decIdx}]`, true);
   rep(`S.loanMonth <= 3`, `S.loanMonth <= ${decIdx}`, true);
   rep(`.slice(1, 4)`, `.slice(1, ${decIdx + 1})`, true);

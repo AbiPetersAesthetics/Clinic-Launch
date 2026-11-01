@@ -117,7 +117,11 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     const paidAll = status === "paid" ? recorded : status === "part-paid" ? (amountPaid || actual) : 0;
     const paidOnCard = Math.min(paidAll, Math.max(0, onCard.get(t.id) ?? 0));
     const paid = paidAll - paidOnCard;
-    const remainingRecorded = Math.max(0, recorded - paid);
+    // Owner, 1 November 2026: Abi pays the VAT on CBS's build costs and reclaims it, repaid from
+    // the refund. For the bank a CBS line is its work before VAT: what she paid counts as paid,
+    // and no VAT is paid from the bank or refunded to it.
+    const vatByAbi = /^Ref \d+ - /.test(t.title);
+    const remainingRecorded = Math.max(0, recorded - (vatByAbi ? paidAll : paid));
     const remainingExVat = remainingRecorded * (vat.ex / recorded);
     let plan: ProjectLine["plan"] = [];
     try { const p = JSON.parse((t as any).paymentPlanJson || "[]"); if (Array.isArray(p)) plan = p; } catch { plan = []; }
@@ -132,7 +136,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     lines.push({ taskId: t.id, title: t.title, phase: phaseName.get(t.phaseId) ?? "", status, recorded, paid, paidOnCard, remainingExVat, vatBasis: vat.basis, exVat: vat.ex, plan, planProblem });
     if (remainingExVat >= 0.5 && !planProblem) {
       // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
-      const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;
+      const vatRate = vat.basis === "no VAT" || vatByAbi ? 0 : config.vatRate;
       for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, vat: remainingExVat * p.share * vatRate, method: p.method === "card" ? "card" : "bank", label: t.title, taskId: t.id });
     }
   }

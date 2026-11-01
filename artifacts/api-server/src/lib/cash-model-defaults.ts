@@ -140,7 +140,8 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
   running: { monthly: 450 },
   // Bedhampton ads to November, Winchester ads from December. Always paid from the bank.
   marketing: { monthly: 600, wincFrom: "2026-12", cardFrom: null },
-  card: { limit: 20000, repayMonths: 24 },
+  // Virgin Money 11,400 and M&S 7,200 (owner, 1 November 2026); the M&S card is still to arrive.
+  card: { limit: 18600, repayMonths: 24 },
   cashFloor: 10000,
   // Basic-rate limit 50,270 a year = 4,189.17 a month. Employer NI 15% above 5,000 a year.
   pay: { retention: 3000, capMonthly: 4189.17, niRatePct: 15, niThresholdAnnual: 5000, gateMonths: 2, retentionUntilBank: null },
