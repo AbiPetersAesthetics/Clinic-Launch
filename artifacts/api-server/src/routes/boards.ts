@@ -15,6 +15,7 @@ import { embedBoard } from "../boards/board-embed";
 import { makeRun } from "../boards/plan-run";
 import { planData } from "../boards/plan-data";
 import { renderMoneyPlan } from "../boards/money-plan";
+import { renderCashLine } from "../boards/cash-line";
 
 const router = Router();
 
@@ -73,6 +74,20 @@ router.get("/projects/:projectId/boards/money-plan", async (req, res) => {
     // The same page frame the plan was published in, pinned light as Launch OS is.
     page(res, `<!doctype html><html lang="en-GB" data-theme="light"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>${html}</body></html>`);
   } catch (err) { failed(res, "Money Plan", err); }
+});
+
+// The Cash Line: the balance day by day to the end of December, from the same model.
+router.get("/projects/:projectId/boards/cash-line", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const asOf = today();
+    const J = await buildCashModel(projectId, { months: 12 });
+    const last = await db.execute(sql`SELECT max(coalesce(o.payment_date, t.payment_date)) AS d FROM launch_tasks t LEFT JOIN property_task_overrides o ON o.task_id = t.id WHERE t.title ~ '^Ref [0-9]+ - ' AND NOT t.archived`);
+    const cbsLastPaid = String(((last as any).rows ?? last)[0]?.d ?? asOf).slice(0, 10);
+    const oct = await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %'`);
+    const octVatLoan = Number(((oct as any).rows ?? oct)[0]?.v ?? 0);
+    page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }));
+  } catch (err) { failed(res, "Cash Line", err); }
 });
 
 export default router;

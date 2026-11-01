@@ -32,6 +32,7 @@ import BacklinksPage from "@/pages/backlinks";
 import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
+import CashLinePage from "@/pages/cash-line";
 import CardsPage from "@/pages/cards";
 import OwedPage from "@/pages/owed";
 
@@ -165,6 +166,7 @@ function Router() {
         <Route path="/kit" component={KitPage} />
         <Route path="/build-cash" component={BuildCashPage} />
         <Route path="/money-plan" component={MoneyPlanPage} />
+        <Route path="/cash-line" component={CashLinePage} />
         <Route path="/cards" component={CardsPage} />
         <Route path="/owed" component={OwedPage} />
         <Route path="/competition" component={CompetitionPage} />

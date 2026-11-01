@@ -157,6 +157,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const executionItems = [
     { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
     { href: "/money-plan", label: "Money Plan", icon: BookOpen },
+    { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
     { href: "/", label: "Today", icon: LayoutDashboard },
     { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
