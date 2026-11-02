@@ -2059,6 +2059,13 @@ export async function runStartupSeed(): Promise<void> {
           await db.execute(sql`UPDATE property_task_overrides SET selected_cost = 1728.9, updated_at = NOW() WHERE round(selected_cost::numeric, 2) = 1398.60 AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'Treatment Couch x1' AND phase_id IN ${V61_PHASES})`);
           await db.execute(sql`UPDATE launch_tasks SET selected_cost = 1728.9, supplier = 'Direct Salon Furniture', payment_plan_json = '[{"month":"2026-11","share":1,"method":"card"}]', updated_at = NOW() WHERE title = 'Treatment Couch x1' AND archived = FALSE AND coalesce(paid_status, 'committed') <> 'paid' AND phase_id IN ${V61_PHASES}`);
         });
+        // V83, 2 November 2026 (owner): the Virgin card's 0% ended for new buys on 29 October and
+        // the Barclaycard is 6,500, so the insurance and the Google launch adverts move off the card
+        // to the bank, both on 1 December, after James's money and before the 2 December model days.
+        await step("V83 insurance and ads to the bank", async () => {
+          const DEC_BANK = '[{"month":"2026-12","share":1,"method":"bank"}]';
+          await db.execute(sql`UPDATE launch_tasks SET payment_plan_json = ${DEC_BANK}, updated_at = NOW() WHERE archived = FALSE AND coalesce(paid_status, 'committed') <> 'paid' AND (title ILIKE 'Hamilton Fraser%' OR title ILIKE 'Google Ads%Winchester Launch%') AND payment_plan_json LIKE '%card%' AND phase_id IN ${V61_PHASES}`);
+        });
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND NOT EXISTS (SELECT 1 FROM launch_tasks ts WHERE ts.title = 'Temporary signage') AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND NOT EXISTS (SELECT 1 FROM launch_tasks ts WHERE ts.title = 'Temporary signage') AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
