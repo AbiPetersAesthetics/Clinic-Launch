@@ -18,9 +18,9 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 const mondays = ym => { const [y, m] = ym.split("-").map(Number); const out = []; for (let d = 1; d <= 31; d++) { const dt = new Date(Date.UTC(y, m - 1, d)); if (dt.getUTCMonth() !== m - 1) break; if (dt.getUTCDay() === 1) out.push(iso(dt)); } return out; };
 
 // The day each card buy is made (plan line id), spread through November as the owner asked.
-const CARD_DAYS = { 335: 3, 369: 4, 339: 6, 337: 6, 367: 10, 368: 10, 360: 13, 379: 17, 373: 20, 403: 24, 389: 1 };
+const CARD_DAYS = { 335: 10, 369: 4, 339: 6, 337: 6, 367: 10, 368: 10, 360: 13, 379: 17, 373: 20, 403: 24, 389: 1 };
 // Plain names for the plan's lines.
-const NAMES = [[/^Treatment Couch/, "Treatment couch (Lapis electric bed)"], [/^Retail \/ Skincare/, "Obagi retail stock"], [/^Treatment Room Furniture/, "Room 1: Maru desk, two chairs, stool"],
+const NAMES = [[/^Treatment Couch/, "Treatment couch (Clinic 4 Motor)"], [/^Retail \/ Skincare/, "Obagi retail stock"], [/^Treatment Room Furniture/, "Room 1: Maru desk, two chairs, stool"],
   [/^Reception furniture/, "Reception: desk tray and reed diffuser"], [/Smallwares/, "Clinical smallwares and consumables"], [/^Opening Injectable/, "Opening injectable stock"], [/^Emergency Drugs/, "Emergency drugs and equipment kit"],
   [/^PAT Testing/, "PAT testing"], [/Hamilton Fraser/, "Insurance (Hamilton Fraser), no VAT"], [/deep clean/i, "Deep clean materials"], [/^Google Ads/, "Google launch adverts, no VAT"],
   [/^External Signage/, "Shop sign (Signs Express)"], [/^Reception desk, Artisan/, "Reception desk balance, no VAT"], [/Arundel/, "Fire alarm, 70% balance"]];
@@ -164,7 +164,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
     `CBS: the balance less the 3% retention, half on ${long(v2)} and half on ${long(v3)} (two and a half weeks after the last payment, then again). Abi lends the VAT into Tide the same day.`,
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
     `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
-    `Card buys spread through November on the credit cards (3rd couch, 4th Obagi, 6th room 1 and the desk tray, 10th injectables and consumables, 13th emergency kit, 17th PAT, 20th insurance, 24th deep clean), the Google adverts on 1 December. None of these move the bank.`,
+    `Card buys spread through November on the credit cards (4th Obagi, 6th room 1 and the desk tray, 10th the couch, injectables and consumables, 13th emergency kit, 17th PAT, 20th insurance, 24th deep clean), the Google adverts on 1 December. None of these move the bank.`,
     `Rates and advertising on the 1st, everyday running costs on the 10th, utilities on the 24th, rent on 25 December, the company's repayment to David on the 28th.`,
     `The clinics' net takings from the Money page, paid in on Mondays.`,
   ];
