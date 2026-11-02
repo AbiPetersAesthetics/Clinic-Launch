@@ -2066,6 +2066,12 @@ export async function runStartupSeed(): Promise<void> {
           const DEC_BANK = '[{"month":"2026-12","share":1,"method":"bank"}]';
           await db.execute(sql`UPDATE launch_tasks SET payment_plan_json = ${DEC_BANK}, updated_at = NOW() WHERE archived = FALSE AND coalesce(paid_status, 'committed') <> 'paid' AND (title ILIKE 'Hamilton Fraser%' OR title ILIKE 'Google Ads%Winchester Launch%') AND payment_plan_json LIKE '%card%' AND phase_id IN ${V61_PHASES}`);
         });
+        // V84, 2 November 2026 (owner): Signs Express paid from the bank, 2,506.48, the permanent sign
+        // (quote MM30938/4) in full. Only while the line is still unpaid at that figure.
+        await step("V84 Signs Express paid", async () => {
+          await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'paid', actual_cost = 2506.48, amount_paid_gbp = 2506.48, payment_date = '2026-11-02', updated_at = NOW() WHERE paid_status = 'committed' AND round(committed_cost::numeric, 2) = 2506.48 AND task_id IN (SELECT id FROM launch_tasks WHERE title = 'External Signage Package' AND phase_id IN ${V61_PHASES})`);
+          await db.execute(sql`UPDATE launch_tasks SET paid_status = 'paid', actual_cost = 2506.48, amount_paid_gbp = 2506.48, payment_date = '2026-11-02', payment_plan_json = '[]', updated_at = NOW() WHERE title = 'External Signage Package' AND archived = FALSE AND paid_status = 'committed' AND round(committed_cost::numeric, 2) = 2506.48 AND phase_id IN ${V61_PHASES}`);
+        });
         await db.execute(sql`UPDATE launch_tasks SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE title ILIKE 'External Signage Package%' AND NOT EXISTS (SELECT 1 FROM launch_tasks ts WHERE ts.title = 'Temporary signage') AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId})`);
         await db.execute(sql`UPDATE property_task_overrides SET paid_status = 'part-paid', actual_cost = 350, amount_paid_gbp = 350 WHERE task_id IN (SELECT id FROM launch_tasks WHERE title ILIKE 'External Signage Package%' AND NOT EXISTS (SELECT 1 FROM launch_tasks ts WHERE ts.title = 'Temporary signage') AND coalesce(paid_status, '') NOT IN ('part-paid', 'paid') AND archived = FALSE AND phase_id IN (SELECT id FROM launch_phases WHERE project_id = ${projectId}))`);
         // (d) Insurance carries insurance premium tax, not VAT.
