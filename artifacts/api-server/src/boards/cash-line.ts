@@ -99,8 +99,11 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
   // 5. Running costs, rent and the clinics' takings, from the Money page's months.
   for (const r of J.rows) {
     const m = r.month; if (m < firstYm || m > endYm) continue;
-    if (r.rates) add(at(m, 1), "Business rates", "Winchester City Council", "bank", -r.rates, "", 0);
-    if (r.running.marketing) add(at(m, 1), "Advertising", "Meta and Google", "bank", -r.running.marketing);
+    // A bill due on the 1st of the bank's own month is not in the saved balance yet (the owner
+    // keeps this month's rates aside in a pot), so it counts as paid on the bank's date.
+    const due1 = at(m, 1) < start ? start : at(m, 1), early = at(m, 1) < start ? "due on the 1st, counted as spent: keep it aside" : "";
+    if (r.rates) add(due1, "Business rates", "Winchester City Council", "bank", -r.rates, early, 0);
+    if (r.running.marketing) add(due1, "Advertising", "Meta and Google", "bank", -r.running.marketing, early);
     if (r.running.general) add(at(m, 10), "Everyday running costs", "accountant, software, bank, card machine", "bank", -r.running.general);
     if (r.running.utilities) add(at(m, 24), "Electricity, water and broadband", "EDF, Southern Water, Vodafone", "bank", -r.running.utilities);
     if (r.rentPaid) add(at(m, 25), "Rent, quarter in advance", "Rosemary (the landlord)", "bank", -r.rentPaid);
@@ -211,7 +214,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
     `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
     `Card buys spread through November on the Barclaycard (4th Obagi, 6th room 1 and the desk tray, 10th the couch, injectables and consumables, 13th emergency kit, 17th PAT, 24th deep clean). None of these move the bank. The insurance and the Google launch adverts are paid from the bank on 1 December.`,
-    `Rates and advertising on the 1st, everyday running costs on the 10th, utilities on the 24th, rent on 25 December, the company's repayment to David on the 28th.`,
+    `Rates and advertising on the 1st (in the bank's own month, counted as spent on the bank's date, as they are not out of the balance yet), everyday running costs on the 10th, utilities on the 24th, rent on 25 December, the company's repayment to David on the 28th.`,
     `The clinics' net takings from the Money page, paid in on Mondays.`,
   ];
 
