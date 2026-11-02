@@ -69,7 +69,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
       const name = nm ? nm[1] : l.title.replace(/\s+[—–-]\s+.*$/, "").replace(/ \(.*\)$/, "");
       if (p.method === "card") {
         const day = CARD_DAYS[l.taskId] ?? 10;
-        add(at(m, day), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on the M&S card: the bank does not move");
+        add(at(m, day), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on a credit card: the bank does not move");
         if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
       } else if (/Reception desk/.test(l.title)) {
         // David pays Artisan Deco himself, as he did the deposit: the bank does not move and
@@ -153,7 +153,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
   const hoverData = `const START = ${startBal}, FLOOR = ${FLOOR}, W = ${W}, L = ${L}, R = ${R}, DAYS = ${json(days)}, SERIES = ${json(series)}, ROWS = ${json(rows.map(r => [r.date, r.what, r.who, r.how, r.amount, r.note]))};`;
 
   // 8. The table.
-  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends into Tide", "abi"], "abi-out": ["Tide repays Abi", "abi"], card: ["M&S card", "card"], personal: ["David pays personally", "me"] };
+  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends into Tide", "abi"], "abi-out": ["Tide repays Abi", "abi"], card: ["Credit card", "card"], personal: ["David pays personally", "me"] };
   const trs = rows.map(r => { const [label, cls] = HOW[r.how]; const flat = r.how === "card" || r.how === "personal"; return `<tr class="${cls}${flat ? " flat" : ""}${r.balance < FLOOR && !flat ? " under" : ""}">
       <td class="d">${long(r.date)}</td><td><b>${esc(r.what)}</b>${r.note ? `<span class="n">${esc(r.note)}</span>` : ""}</td><td class="w">${esc(r.who)}</td><td><span class="pill ${cls}">${label}</span></td>
       <td class="n-in">${r.amount > 0 && !flat ? gbp(r.amount) : ""}</td><td class="n-out">${r.amount < 0 ? gbp(-r.amount) : ""}</td><td class="bal">${flat ? `<span class="same">${gbp(r.balance)}</span>` : gbp(r.balance)}</td></tr>`; }).join("\n");
@@ -164,7 +164,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
     `CBS: the balance less the 3% retention, half on ${long(v2)} and half on ${long(v3)} (two and a half weeks after the last payment, then again). Abi lends the VAT into Tide the same day.`,
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
     `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
-    `Card buys spread through November on the M&S card (3rd couch, 4th Obagi, 6th room 1 and the desk tray, 10th injectables and consumables, 13th emergency kit, 17th PAT, 20th insurance, 24th deep clean), the Google adverts on 1 December. None of these move the bank.`,
+    `Card buys spread through November on the credit cards (3rd couch, 4th Obagi, 6th room 1 and the desk tray, 10th injectables and consumables, 13th emergency kit, 17th PAT, 20th insurance, 24th deep clean), the Google adverts on 1 December. None of these move the bank.`,
     `Rates and advertising on the 1st, everyday running costs on the 10th, utilities on the 24th, rent on 25 December, the company's repayment to David on the 28th.`,
     `The clinics' net takings from the Money page, paid in on Mondays.`,
   ];
@@ -232,7 +232,7 @@ ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px
     <div class="cl-wrap">${chart}<div class="cl-tip" id="cl-tip" role="tooltip" hidden></div></div>
     <div class="legend"><span><i style="background: var(--c-start)"></i>Tide balance</span><span><i style="background: var(--bad)"></i>£10,000 safety net</span><span><i style="background: var(--c-start); border-radius: 50%"></i>a day the bank moves</span><span><i style="background: var(--sheet); border: 2px solid var(--card); border-radius: 50%"></i>a card day: the line stays put</span><span><i style="background: var(--sheet); border: 2px solid var(--me); border-radius: 50%"></i>David pays personally: the line stays put</span></div></div>
   <div class="panel"><h2>Every payment, in date order</h2>
-    <div class="legend"><span class="pill in">Bank, in</span><span class="pill bank">Bank, out</span><span class="pill abi">Abi's VAT loan</span><span class="pill card">M&S card: the line does not move</span><span class="pill me">David pays personally: the line does not move</span></div>
+    <div class="legend"><span class="pill in">Bank, in</span><span class="pill bank">Bank, out</span><span class="pill abi">Abi's VAT loan</span><span class="pill card">Credit card: the line does not move</span><span class="pill me">David pays personally: the line does not move</span></div>
     <table><thead><tr><th>Date</th><th>What</th><th>To or from</th><th>How</th><th class="r">In</th><th class="r">Out</th><th class="r">Balance</th></tr></thead><tbody>
       <tr><td class="d">${long(start)}</td><td><b>Bank today</b><span class="n">All Tide accounts as one</span></td><td class="w">Tide</td><td></td><td class="n-in"></td><td class="n-out"></td><td class="bal">${gbp(startBal)}</td></tr>
 ${trs}
@@ -246,7 +246,7 @@ ${trs}
   const DAYN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const long = d => { const [y, m, dd] = d.split("-").map(Number); return DAYN[new Date(Date.UTC(y, m - 1, dd)).getUTCDay()] + " " + dd + " " + MON[m - 1]; };
   const gbp = v => (v < 0 ? "\\u2212" : "") + "\\u00a3" + Math.abs(v).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends", "abi"], "abi-out": ["Repays Abi", "abi"], card: ["M&S card", "card"], personal: ["David, personally", "me"] };
+  const HOW = { in: ["Bank, in", "in"], bank: ["Bank, out", "bank"], "abi-in": ["Abi lends", "abi"], "abi-out": ["Repays Abi", "abi"], card: ["Credit card", "card"], personal: ["David, personally", "me"] };
   const svg = document.getElementById("cl-chart"), hit = document.getElementById("cl-hit"), wrap = svg.parentElement, tip = document.getElementById("cl-tip"), guide = document.getElementById("cl-guide"), dot = document.getElementById("cl-dot");
   const byDay = new Map(); ROWS.forEach(r => { if (!byDay.has(r[0])) byDay.set(r[0], []); byDay.get(r[0]).push(r); });
   const el = (tag, cls, text, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; (parent || tip).appendChild(e); return e; };

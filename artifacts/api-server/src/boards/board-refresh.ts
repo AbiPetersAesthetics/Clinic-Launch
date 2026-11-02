@@ -192,7 +192,7 @@ ${itemsJs}
   rep(`LIMIT = 20000,`, `LIMIT = ${J.config.card?.limit ?? 20000},`);
   rep(`of the £20,000 left as an emergency line`, `of the £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit left`, true);
   rep(`£20,000 limit`, `£${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`, true);
-  rep(`Card: £20,000 at 0%`, `Card: £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} across the Virgin and M&S cards, at 0%`, true);
+  rep(`Card: £20,000 at 0%`, `Card: £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} across the Virgin Money and Barclaycard cards, at 0%`, true);
   rep(`against the 20,000 limit`, `against the ${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`);
   rep(`topIn = W >= 3 ? s.topup : 0, topBack = W >= 6 ? s.topup : 0`, `topIn = W >= ${topIn ?? 99} ? s.topup : 0, topBack = W >= ${topOut ?? 99} ? s.topup : 0`);
   rep(`noCard.bank[3]`, `noCard.bank[${decIdx}]`, true);
