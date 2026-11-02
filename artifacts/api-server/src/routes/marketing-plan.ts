@@ -142,7 +142,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "top",
     "title": "Q1 Google Ads: not started, verification still gates launch",
-    "detail": "Account 431-745-4350, zero campaigns, both conversion actions Needs attention.",
+    "detail": "SUPERSEDED, mark done: Google Ads has been live since 22 October. The current Google tasks are dated 2 November onwards.",
     "channel": "google",
     "owner": "david",
     "weekStart": "2026-08-30",
@@ -150,12 +150,12 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 1,
     "deep": [
       {
-        "h": "STATUS",
-        "b": "Not started. Account 431-745-4350 is still named Abi Peters Aesthetics. Zero campaigns exist, brand or non-brand. The only conversion actions are the two Business Profile defaults, both showing Needs attention with zero recorded results."
+        "h": "STATUS (2 November)",
+        "b": "Done. Account 431-745-4350 runs two Winchester Search campaigns, Treatments and Concerns, at £14 a day each, live since 22 October. Verification cleared and conversion tracking is set up. This September snapshot is kept only for history."
       },
       {
-        "h": "NOTE",
-        "b": "Advertiser verification still gates any launch, so start verification early. Nothing can spend on Google until it clears."
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "See the Google tasks dated 2 November onwards in this phase: 'DONE: Google Ads live with the founding offer', 'Every Monday: read the Google Ads report and fill in the funnel', 'Decide: call tracking and the Booked appointment conversion' and 'Decide on 16 November: is the founding offer converting?'."
       }
     ]
   },
@@ -506,7 +506,7 @@ export const PLAN_ITEMS: PlanItem[] = [
   {
     "category": "top",
     "title": "Build: finish advertiser verification, then brand-defence Search only",
-    "detail": "Verification gates any Google launch; run brand Search only once cleared.",
+    "detail": "SUPERSEDED, mark done: verification cleared and the account went past brand-only. Treatments and Concerns Search campaigns have run since 22 October.",
     "channel": "google",
     "owner": "david",
     "weekStart": "2026-09-06",
@@ -514,19 +514,19 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 19,
     "deep": [
       {
-        "h": "STEPS",
-        "b": "1. Complete Google advertiser verification (it gates any launch). 2. Once cleared, run brand-defence Search only, protecting Abi Peters and clinic-name queries. Nothing non-brand and no spend before verification and the conversion-action repair are done."
+        "h": "STATUS (2 November)",
+        "b": "Done and overtaken. Advertiser verification cleared. Instead of brand defence only, two non-brand Winchester Search campaigns went live on 22 October (Treatments and Concerns, £14 a day each)."
       },
       {
-        "h": "NOTE",
-        "b": "Account 431-745-4350 has zero campaigns today. Brand defence is the only Google spend contemplated pre-launch."
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "See 'DONE: Google Ads live with the founding offer' and the other Google tasks dated 2 November onwards."
       }
     ]
   },
   {
     "category": "top",
     "title": "Build: repair the two Needs attention conversion actions before any spend",
-    "detail": "Both Business Profile default actions show Needs attention with zero results.",
+    "detail": "SUPERSEDED, mark done: the website conversions were set up in October. Two loose ends remain in 'Decide: call tracking and the Booked appointment conversion'.",
     "channel": "google",
     "owner": "david",
     "weekStart": "2026-09-06",
@@ -534,12 +534,124 @@ export const PLAN_ITEMS: PlanItem[] = [
     "sortOrder": 20,
     "deep": [
       {
-        "h": "STEPS",
-        "b": "The only conversion actions in the Google account are the two Business Profile defaults, both showing Needs attention with zero recorded results. Fix them so conversions record properly before any Google spend goes live."
+        "h": "STATUS (2 November)",
+        "b": "Done. The primary conversions are now Website lead form sent, WhatsApp tap and Phone tap. Booking diary opened was moved to secondary on 26 October, because it was inflating the count: 8 of the first 11 conversions were diary opens, not enquiries."
       },
       {
-        "h": "NOTE",
-        "b": "Sequence: advertiser verification, then repair these actions, then brand-defence Search. Do not spend with broken conversion tracking."
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "What is still open is in 'Decide: call tracking and the Booked appointment conversion', dated 12 November."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "DONE: Google Ads live with the founding offer (2 November)",
+    "detail": "Every ad and every Winchester landing page now leads with one offer and one button: book by 7 December, keep the founding price for any date, free AI Skin Analysis included.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-11-01",
+    "dayDate": "2026-11-02",
+    "sortOrder": 20.1,
+    "deep": [
+      {
+        "h": "WHAT IS LIVE",
+        "b": "Two Search campaigns in account 431-745-4350: Treatments and Concerns, £14 a day each. Twelve ad groups, each with a new founding offer ad running next to its old ad (all twelve saved 2 November, no policy issues). Shared headlines include 'Book by 7 Dec, Treat Any Date', 'Free Skin Analysis, Worth £50' and 'New Clinic on Jewry Street'. Treatment ads quote the founding price in pounds; concern ads say 'Subject to consultation' and never quote a price. Full copy: ads/google/founding-offer-ads-2026-11.md in the website repo."
+      },
+      {
+        "h": "THE OFFER",
+        "b": "Anyone who books a Winchester treatment by 7 December keeps the founding price for an appointment on any later date, and gets the free AI Skin Analysis and written treatment plan (normally £50). A request through the landing page form by 7 December counts as booking. The unsure can choose the skin analysis first. Never shown as a percentage off, no countdown, and the consultation always comes first."
+      },
+      {
+        "h": "ONE BUTTON",
+        "b": "Each landing page has one call to action: the 'Claim my founding price' form. The diary, WhatsApp and phone alternatives were removed from these pages, so every enquiry is measurable, carries the Google click ID and lands in GHL with the treatment it came from (the enquiry_about field)."
+      },
+      {
+        "h": "LANDING PAGES (Treatments campaign)",
+        "b": "Clinic (Ad group 1): abipetersskinclinic.co.uk/winchester/. Profhilo: /winchester-profhilo/. Skin boosters: /winchester-skin-boosters/. SkinVive: /winchester-skinvive/. Polynucleotides: /winchester-polynucleotides/. Fillers: /winchester-fillers/."
+      },
+      {
+        "h": "LANDING PAGES (Concerns campaign)",
+        "b": "Sagging skin and jowls: /winchester-sagging-skin/. Under-eye: /winchester-under-eye/. Dull and tired skin: /winchester-dull-skin/. Volume loss: /winchester-volume-loss/. Acne scars and texture: /winchester-acne-scars/. Crepey skin: /winchester-crepey-skin/."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Every Monday: read the Google Ads report and fill in the funnel",
+    "detail": "Ten minutes each Monday: open the Google Ads report in Data Studio, check the four things below, then enter last week's real enquiries and bookings on the funnel board.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-11-08",
+    "dayDate": "2026-11-09",
+    "sortOrder": 20.2,
+    "deep": [
+      {
+        "h": "WHERE",
+        "b": "Data Studio report 'Abi Peters Aesthetics - Google Ads Campaign Report': datastudio.google.com/reporting/41b0d924-b30e-4908-a57d-03cb16afb45f (signed in as the clinic Google account). Set the date picker to last 7 days, then last 28 days."
+      },
+      {
+        "h": "WHAT TO CHECK",
+        "b": "1. Overview: spend, clicks, conversions and cost per conversion, Treatments against Concerns. 2. Ad groups and landing pages: which pages take money without enquiries. 3. Search terms: anything clearly irrelevant (other towns, jobs, courses, DIY) becomes a negative keyword. 4. Conversions: only Website lead form sent, WhatsApp tap and Phone tap are real enquiries; ignore Booking diary opened and Local actions."
+      },
+      {
+        "h": "READ WITH CARE",
+        "b": "Google's conversion count is not the patient count. A WhatsApp tap can be a sales rep or a tap without a message, so check each one against GHL before calling it a patient. Page 5 (GA4) only sees about half of the ad visitors, because visitors who do not accept cookies are not counted, so use it to compare landing pages, not for totals."
+      },
+      {
+        "h": "THEN FILL IN THE FUNNEL",
+        "b": "On the Google Ads funnel board (claude.ai artifact 8MtzSKW7jmw7xhbz2B9VXc), add the week's real patient enquiries and the bookings they became, per campaign. Google cannot see ANS bookings, so this is the only place clicks are tied to booked patients. Or tell Claude the numbers and it will add them."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Decide: call tracking and the Booked appointment conversion",
+    "detail": "Two loose ends in Google's conversion setup. Both are owner decisions; nothing is changed until you say.",
+    "channel": "google",
+    "owner": "david",
+    "weekStart": "2026-11-08",
+    "dayDate": "2026-11-12",
+    "sortOrder": 20.3,
+    "deep": [
+      {
+        "h": "1. CALLS FROM THE AD",
+        "b": "The phone number shows on the ads as a call button, but calls straight from the ad are not counted as conversions. Phone tap (calls from the website) has never fired. Decide whether to switch on Google's call conversion for the ad's call button, so an ad that produces calls is not judged as a failure."
+      },
+      {
+        "h": "2. BOOKED APPOINTMENT (GHL)",
+        "b": "This primary conversion action is set up but misconfigured, and ANS cannot send booking data back to Google. Decide whether to fix it, move it to secondary, or remove it, so it cannot distort the count. Booked patients are tracked by hand on the funnel board instead."
+      },
+      {
+        "h": "ALSO ON 12 NOVEMBER",
+        "b": "Compare the two campaigns over their first three weeks (Overview page of the report): cost per real patient enquiry for Treatments against Concerns. Any budget move needs your yes."
+      }
+    ]
+  },
+  {
+    "category": "top",
+    "title": "Decide on 16 November: is the founding offer converting?",
+    "detail": "Two weeks after the offer went live, judge it on real patient enquiries in GHL, not on Google's conversion count.",
+    "channel": "google",
+    "owner": "both",
+    "weekStart": "2026-11-15",
+    "dayDate": "2026-11-16",
+    "sortOrder": 20.4,
+    "deep": [
+      {
+        "h": "THE BASELINE",
+        "b": "Before the offer, 26 October to 1 November: about £206 of Google spend and 2 real patient enquiries, roughly £100 each. Launch week (22 to 25 October) produced none."
+      },
+      {
+        "h": "WHAT TO COUNT",
+        "b": "In GHL, contacts from the landing page form since 2 November. The enquiry_about field shows the treatment, and whether they chose the skin analysis first. Count only real patients (not reps, not tests), and how many were answered the same day. Then add the cost from the report for the same dates."
+      },
+      {
+        "h": "HOW TO READ IT",
+        "b": "Clearly better than about £100 per real enquiry: keep the offer running to 7 December. About the same: the offer is not the problem; look at search terms, the Concerns campaign and how fast enquiries are answered. Still close to zero: the pages and the offer are not converting the clicks; review before spending more. A reply within the hour matters as much as the offer: the 29 October WhatsApp waited 11 hours."
+      },
+      {
+        "h": "FULL STEPS (where the detail lives)",
+        "b": "The numbers come from 'Every Monday: read the Google Ads report and fill in the funnel'. Any budget or bidding change needs David's yes."
       }
     ]
   },
