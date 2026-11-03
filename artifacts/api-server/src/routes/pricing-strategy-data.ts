@@ -68,7 +68,7 @@ export const STORED_STRATEGY: StoredStrategy = {
    "cheekFiller": "Per ml pricing is identical to lips for menu coherence: one clean per-ml rate reads as principled.",
    "jawChin": "Priced per ml in line with cheek and lip. Multi-ml plans are quoted bespoke off the scan, never off this single-ml line.",
    "tearTrough": "New line. Winchester 430, Bedhampton 375, against a thin Winchester median of 500 (n=2, low confidence). The highest-risk area on the menu is where prescriber credentials earn most.",
-   "skinBooster": "Skinvive, Winchester 275, Bedhampton 250. A key first-treatment landing spot for scan converts, so it must feel reachable.",
+   "skinBooster": "Skinvive, Winchester 275, Bedhampton 250. A key first-treatment landing spot for scan converts, so it must feel reachable. Restylane Skinboosters added 3 November 2026 as the lower-priced booster: 155 a session and 420 for a course of three at both sites, founding price 125 a session and 340 a course.",
    "profhilo": "Face 300 both sites, held at the fixed national price. Course of 2 at 550 Winchester, 500 Bedhampton. Sold as a course: Profhilo singles are a clinical nonsense and saying so reinforces the honest brand.",
    "polynucleotides": "Winchester 280 against a 300 median (n=5). Bedhampton 225, which sits above its local median of 150 and carries a recorded variance reason.",
    "microneedling": "Face, Winchester 215, Bedhampton 140, against a Winchester median of 250 (n=5). Course of 3 at 580 Winchester.",

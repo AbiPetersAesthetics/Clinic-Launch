@@ -407,6 +407,7 @@ function PackagesTab() {
                     <td className="py-2 px-4"><span className="font-medium">{r.displayName}</span>
                       {r.isNew && <span className="ml-1.5 text-[9px] font-bold text-emerald-600 bg-emerald-500/10 rounded px-1">NEW</span>}
                       {r.isPom && <span className="ml-1.5 text-[9px] font-bold text-rose-600 bg-rose-500/10 rounded px-1">POM</span>}
+                      {r.description && <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xl">{r.description}</p>}
                     </td>
                     <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.durationMinutes}m</td>
                     <td className="py-2 px-2 text-right tabular-nums font-semibold">{fmt(r.priceWinchester)}</td>

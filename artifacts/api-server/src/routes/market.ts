@@ -12,7 +12,7 @@ import {
 } from "../lib/market-rules";
 import {
   TREATMENTS, COMPETITOR_SEEDS, WINCHESTER_PRICES, BEDHAMPTON_PRICES,
-  COMP_MEMBERSHIPS, OUR_MEMBERSHIPS, FOUNDERS_OFFER, REFERRAL_SCHEME, CAPTURED_W, CAPTURED_B,
+  COMP_MEMBERSHIPS, OUR_MEMBERSHIPS, FOUNDERS_OFFER, REFERRAL_SCHEME, CAPTURED_W, CAPTURED_B, CAPTURED_NOV, NOVEMBER_PRICES,
 } from "./market-seed-data";
 
 const router = Router();
@@ -57,7 +57,7 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
           durationMinutes: t.durationMinutes, priceWinchester: t.priceWinchester, priceBedhampton: t.priceBedhampton,
           actualPriceWinchester: snap.get(t.key)?.actualPriceWinchester ?? null,
           actualPriceBedhampton: snap.get(t.key)?.actualPriceBedhampton ?? null,
-          productCostEstimateGbp: snap.get(t.key)?.productCostEstimateGbp ?? null,
+          productCostEstimateGbp: snap.get(t.key)?.productCostEstimateGbp ?? t.productCostEstimateGbp ?? null,
           courseSize: t.courseSize ?? null, coursePriceWinchester: t.coursePriceWinchester ?? null, coursePriceBedhampton: t.coursePriceBedhampton ?? null,
           isNew: t.isNew ?? false, description: t.description ?? "",
           varianceReasonWinchester: t.varianceReasonWinchester ?? "", varianceReasonBedhampton: t.varianceReasonBedhampton ?? "",
@@ -118,6 +118,7 @@ router.post("/projects/:id/market/reseed", async (req, res) => {
     };
     await insertPrices(WINCHESTER_PRICES, CAPTURED_W);
     await insertPrices(BEDHAMPTON_PRICES, CAPTURED_B);
+    await insertPrices(NOVEMBER_PRICES, CAPTURED_NOV);
 
     // 4. Competitor memberships (replace)
     await db.delete(competitorMembershipsTable);

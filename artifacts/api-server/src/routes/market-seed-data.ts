@@ -8,6 +8,7 @@
 
 export const CAPTURED_W = "2026-08-31";
 export const CAPTURED_B = "2026-09-01";
+export const CAPTURED_NOV = "2026-11-03";
 
 // ── Our treatments (Appendix B) ──────────────────────────────────────────────
 export type TreatmentSeed = {
@@ -15,6 +16,7 @@ export type TreatmentSeed = {
   durationMinutes: number; priceWinchester: number | null; priceBedhampton: number | null;
   courseSize?: number; coursePriceWinchester?: number; coursePriceBedhampton?: number;
   isNew?: boolean; description?: string; varianceReasonWinchester?: string; varianceReasonBedhampton?: string;
+  productCostEstimateGbp?: number;
 };
 
 export const TREATMENTS: TreatmentSeed[] = [
@@ -41,6 +43,9 @@ export const TREATMENTS: TreatmentSeed[] = [
   { key: "profhiloFace", displayName: "Profhilo, face", category: "regenerative", isPom: false, durationMinutes: 30, priceWinchester: 300, priceBedhampton: 280, courseSize: 2, coursePriceWinchester: 550, coursePriceBedhampton: 500, varianceReasonWinchester: "Fixed national price. Held at 300 Winchester because the market has a fixed national price for Profhilo." },
   { key: "profhiloFaceNeck", displayName: "Profhilo, face and neck", category: "regenerative", isPom: false, durationMinutes: 60, priceWinchester: 625, priceBedhampton: 515, courseSize: 2, coursePriceWinchester: 1000, coursePriceBedhampton: 1000 },
   { key: "skinvive", displayName: "Skinvive", category: "regenerative", isPom: false, durationMinutes: 40, priceWinchester: 275, priceBedhampton: 250 },
+  // Added 3 November 2026 (owner): the lower-priced skin booster. List prices are the opening
+  // prices; the founding prices (125 a session, 340 a course) are in the description, as pounds.
+  { key: "restylaneSkinboosters", displayName: "Restylane Skinboosters", category: "regenerative", isPom: false, durationMinutes: 30, priceWinchester: 155, priceBedhampton: 155, courseSize: 3, coursePriceWinchester: 420, coursePriceBedhampton: 420, isNew: true, productCostEstimateGbp: 36.4, description: "Restylane Skinboosters Vital (Galderma): one 1ml syringe a session, a medical device and not a POM, so it can be priced publicly. Winchester founding price 125 a session, course of three 340. Bedhampton is held at the Winchester price until the owner confirms it. Stock 36.40 a session before VAT, to be confirmed against the invoice. Market, 3 November 2026: no Winchester clinic advertises Restylane Skinboosters with a price. The Aesthetics Bae (Winchester, budget tier) sells a Seventy Hyal booster, a different product, at 140 a session. Beauty Revival (Hampshire) lists Restylane Vital at 150. UK courses of three typically run 500 to 800.", varianceReasonBedhampton: "Held at the Winchester price until the owner confirms a Bedhampton price." },
   { key: "polyFace", displayName: "Polynucleotides, face", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 280, priceBedhampton: 225, courseSize: 3, coursePriceWinchester: 750, coursePriceBedhampton: 600 },
   { key: "polyEye", displayName: "Polynucleotides, under eye, neck or decolletage", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 280, priceBedhampton: 175, courseSize: 3, coursePriceWinchester: 600, coursePriceBedhampton: 375 },
   { key: "exoFace", displayName: "Exosomes with microneedling, face", category: "regenerative", isPom: false, durationMinutes: 45, priceWinchester: 275, priceBedhampton: 235, isNew: true, courseSize: 3, coursePriceWinchester: 750, coursePriceBedhampton: 640, description: "Exosomes are applied topically after microneedling." },
@@ -173,6 +178,13 @@ export const BEDHAMPTON_PRICES: P[] = [
   ["reverie", "apaFacial", 65, "from"],
   // Anna's
   ["anna", "aw1", 170, "from"], ["anna", "filler1", 220, "from"],
+];
+
+// Captured 3 November 2026 for Restylane Skinboosters. The Aesthetics Bae sells Seventy Hyal,
+// not Restylane, and is a beauty therapist, so it shows as a reference and stays out of the
+// medical median. No medical clinic in either catchment publishes a Restylane price.
+export const NOVEMBER_PRICES: P[] = [
+  ["aesthetics bae", "restylaneSkinboosters", 140, "exact"],
 ];
 
 // ── Competitor membership programmes (Hampshire and West Sussex) ─────────────
