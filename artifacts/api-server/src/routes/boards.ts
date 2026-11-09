@@ -86,7 +86,17 @@ router.get("/projects/:projectId/boards/cash-line", async (req, res) => {
     const cbsLastPaid = String(((last as any).rows ?? last)[0]?.d ?? asOf).slice(0, 10);
     const oct = await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %'`);
     const octVatLoan = Number(((oct as any).rows ?? oct)[0]?.v ?? 0);
-    page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }));
+    // What has been spent so far: each plan line's payments out of Tide, and the card register.
+    const dates = await db.execute(sql`SELECT t.id, coalesce(o.payment_date, t.payment_date) AS d FROM launch_tasks t LEFT JOIN property_task_overrides o ON o.task_id = t.id`);
+    const dateOf = new Map(((dates as any).rows ?? dates).map((r: any) => [Number(r.id), r.d ? String(r.d).slice(0, 10) : ""]));
+    // CBS: Abi's register entries are the VAT on each valuation, so Tide's share carries only what VAT is left.
+    const history: any[] = J.projectLines.filter(l => l.paid > 0.005).map(l => ({ source: "bank", date: dateOf.get(l.taskId) || "", what: l.title, line: "", phase: l.phase, amount: l.paid, vat: /^no VAT/.test(l.vatBasis) ? 0 : Math.round(Math.max(0, /^Ref \d+ - /.test(l.title) ? (l.paid + l.paidOnCard) * (1 - l.exVat / l.recorded) - l.paidOnCard : l.paid * (1 - l.exVat / l.recorded)) * 100) / 100 }));
+    const entries = await db.execute(sql`SELECT e.date, e.kind, e.description, e.amount_gbp, e.vat_gbp, c.name AS card, c.holder, c.last4, t.title, p.name AS phase FROM card_entries e JOIN credit_cards c ON c.id = e.card_id LEFT JOIN launch_tasks t ON t.id = e.task_id LEFT JOIN launch_phases p ON p.id = t.phase_id WHERE e.project_id = ${projectId} AND e.kind IN ('purchase', 'refund')`);
+    for (const e of ((entries as any).rows ?? entries)) {
+      const sign = e.kind === "refund" ? -1 : 1;
+      history.push({ source: "card", date: String(e.date ?? "").slice(0, 10), what: e.description, line: e.title ?? "", phase: e.phase ?? "", amount: sign * Number(e.amount_gbp), vat: e.vat_gbp == null ? null : sign * Number(e.vat_gbp), card: e.card, holder: e.holder, last4: e.last4 });
+    }
+    page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }));
   } catch (err) { failed(res, "Cash Line", err); }
 });
 

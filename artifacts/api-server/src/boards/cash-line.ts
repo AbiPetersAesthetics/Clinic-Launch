@@ -20,12 +20,12 @@ const mondays = ym => { const [y, m] = ym.split("-").map(Number); const out = []
 // The day each card buy is made (plan line id), spread through November as the owner asked.
 const CARD_DAYS = { 335: 10, 369: 4, 339: 6, 337: 6, 367: 10, 368: 10, 360: 13, 379: 17, 373: 20, 403: 24, 389: 1 };
 // Plain names for the plan's lines.
-const NAMES = [[/^Treatment Couch/, "Treatment couch (Clinic 4 Motor)"], [/^Retail \/ Skincare/, "Obagi retail stock"], [/^Treatment Room Furniture/, "Room 1: Maru desk, two chairs, stool"],
+const NAMES = [[/^Treatment Couch/, "Treatment couch (Clinic 4 Motor)"], [/^Retail \/ Skincare/, "Obagi retail stock"], [/^Treatment Room Furniture/, "Room 1: Maru desk and two chairs"],
   [/^Reception furniture/, "Reception: desk tray and reed diffuser"], [/Smallwares/, "Clinical smallwares and consumables"], [/^Opening Injectable/, "Opening injectable stock"], [/^Emergency Drugs/, "Emergency drugs and equipment kit"],
   [/^PAT Testing/, "PAT testing"], [/Hamilton Fraser/, "Insurance (Hamilton Fraser), no VAT"], [/deep clean/i, "Deep clean materials"], [/^Google Ads/, "Google launch adverts, no VAT"],
   [/^External Signage/, "Shop sign (Signs Express)"], [/^Reception desk, Artisan/, "Reception desk balance, no VAT"], [/Arundel/, "Fire alarm, 70% balance"]];
 
-export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
+export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   const start = J.bank ? J.bank.asAt : asOf, startBal = J.bank ? J.bank.balanceGbp : J.config.openingBank;
   const firstYm = start.slice(0, 7), endYm = firstYm.slice(0, 4) + "-12", endDate = endYm + "-31";
   const ym = s => s.slice(0, 7), inRange = d => d >= start && d <= endDate;
@@ -190,7 +190,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
   const potNames = [...POTS.map(p => p[0]), "Other"].filter(n => potRows(n).length);
   const spendInc = sum(spend, incOf), spendVat = sum(spend, vatOf);
   const short = { bank: "bank", card: "card", personal: "David" };
-  const glance = `<details class="glance" id="glance"><summary><span class="gt">Still to pay, at a glance</span><span class="gs">${gbp0(spendInc)} to ${long(endDate)}: ${srcTiles.filter(t => t.inc > 0.5).map(t => `${gbp0(t.inc)} ${short[t.k]}`).join(", ")}</span><span class="gx"></span></summary>
+  const glance = `<details class="glance" id="glance"><summary><span class="gt">Still to pay, at a glance</span><span class="gs">${gbp0(spendInc)} with VAT, ${gbp0(spendInc - spendVat)} before VAT, to ${long(endDate)}: ${srcTiles.filter(t => t.inc > 0.5).map(t => `${gbp0(t.inc)} ${short[t.k]}`).join(", ")}</span><span class="gx"></span></summary>
     <div class="gbody">
       <div class="gsrc">${srcTiles.map(t => `<div class="gtile ${FROM[t.k][1]}"><span>${FROM[t.k][0]}</span><b>${gbp0(t.inc)}</b><em>${gbp0(t.inc - t.vat)} before VAT, ${gbp0(t.vat)} VAT back</em><em>${t.rs.length} payment${t.rs.length === 1 ? "" : "s"}</em></div>`).join("")}</div>
       <div class="ghead"><span>Pot</span><span>Paid from</span><span class="r">With VAT</span><span class="r">VAT</span><span class="r">Before VAT</span></div>
@@ -199,6 +199,38 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan }) {
       ${repay.length ? `<p class="gnote">Repaying, from the bank and not counted above: the company pays back what it owes.</p>${potHtml("Repaying David, Abi and James", repay)}` : ""}
       <div class="legend"><span><i style="background: var(--slate)"></i>From the bank</span><span><i style="background: var(--card)"></i>On the Barclaycard</span><span><i style="background: var(--me)"></i>David pays personally</span></div>
       <p class="foot">VAT back is what the VAT returns reclaim. ${unsplit.length ? `The plan holds ${[...new Set(unsplit.map(r => r.what.replace(/, quarter in advance$/, "").toLowerCase()))].join("; ")} before VAT, so their VAT is not split out here. ` : ""}Click a pot for its payments.</p>
+    </div></details>`;
+  // 7c. Already spent: every payment made so far, by part of the build, with the VAT inside it
+  // and what paid for it. Bank rows are the plan lines' payments out of Tide (what the card
+  // register does not hold); card and personal rows are the card register's own entries.
+  const SPENT_POTS = [[/^Pre-Lease/, "Pre-lease checks"], [/^Legal/, "Legal and the lease"], [/^Design/, "Design and approvals"], [/^Managed Building/, "Building works"],
+    [/^FF&E/, "Furniture and fit-out"], [/^Clinical Governance/, "Compliance"], [/^Stock/, "Stock and clinical setup"], [/^Finance/, "Finance and insurance"], [/^Marketing/, "Marketing"], [/^Handover/, "Handover and opening"]];
+  const potOfPhase = ph => (SPENT_POTS.find(([re]) => re.test(ph || "")) || [null, "Other"])[1];
+  const srcOf = h => h.source === "bank" ? ["From the bank", "bank"] : h.holder === "Abi Flitney" ? ["Abi personally", "abi"] : h.last4 ? [h.card, "card"] : ["David personally", "me"];
+  const spent = (history || []).filter(h => Math.abs(h.amount) > 0.005).map(h => ({ ...h, pot: potOfPhase(h.phase), src: srcOf(h) }));
+  const HSRC = { bank: "var(--slate)", card: "var(--card)", me: "var(--me)", abi: "var(--abi)" };
+  const hSum = (rs, f) => r2(rs.reduce((s, h) => s + f(h), 0)), hInc = h => h.amount, hVat = h => h.vat ?? 0;
+  const spentPot = (name, rs) => {
+    rs = [...rs].sort((a, b) => b.date.localeCompare(a.date));
+    const inc = hSum(rs, hInc), vat = hSum(rs, hVat), parts = new Map();
+    for (const h of rs) { const k = h.src[0]; parts.set(k, [h.src[1], (parts.get(k)?.[1] ?? 0) + h.amount]); }
+    const bar = [...parts].filter(([, [, v]]) => v > 0.005).map(([k, [cls, v]]) => `<i style="width:${(100 * v / inc).toFixed(2)}%;background:${HSRC[cls]}" title="${esc(k)}: ${gbp(v)}"></i>`).join("");
+    const items = rs.map(h => `<tr><td class="d">${h.date ? long(h.date) : "date not set"}</td><td><b>${esc(h.what)}</b>${h.line ? `<span class="n">${esc(h.line)}</span>` : ""}</td><td><span class="pill ${h.src[1]}">${esc(h.src[0])}</span></td><td class="r">${gbp(h.amount)}</td><td class="r">${h.vat == null ? `<span class="nv">not split</span>` : gbp(h.vat)}</td><td class="r">${gbp(h.amount - hVat(h))}</td></tr>`).join("");
+    return `<details class="pot"><summary><span class="pn">${esc(name)}<small>${rs.length} payment${rs.length === 1 ? "" : "s"}</small></span><span class="pb">${bar}</span><span class="r">${gbp0(inc)}</span><span class="r m">${gbp0(vat)}</span><span class="r">${gbp0(inc - vat)}</span></summary>
+      <div class="tscroll"><table class="gl"><thead><tr><th>Date</th><th>What, and the plan line</th><th>Paid from</th><th class="r">With VAT</th><th class="r">VAT</th><th class="r">Before VAT</th></tr></thead><tbody>${items}</tbody></table></div></details>`;
+  };
+  const spentNames = [...SPENT_POTS.map(p => p[1]), "Other"].filter(n => spent.some(h => h.pot === n));
+  const spentInc = hSum(spent, hInc), spentVat = hSum(spent, hVat);
+  const spentSrc = new Map(); for (const h of spent) { const k = h.src[0]; const t = spentSrc.get(k) ?? { cls: h.src[1], rs: [] }; t.rs.push(h); spentSrc.set(k, t); }
+  const spentTiles = [...spentSrc].map(([k, t]) => ({ k, cls: t.cls, n: t.rs.length, inc: hSum(t.rs, hInc), vat: hSum(t.rs, hVat) })).sort((a, b) => b.inc - a.inc);
+  const historyHtml = !spent.length ? "" : `<details class="glance" id="spent"><summary><span class="gt">Already spent, at a glance</span><span class="gs">${gbp0(spentInc)} with VAT, ${gbp0(spentInc - spentVat)} before VAT: ${spentTiles.map(t => `${gbp0(t.inc)} ${t.k.replace(/^From the /, "").replace(/ personally$/, "")}`).join(", ")}</span><span class="gx"></span></summary>
+    <div class="gbody">
+      <div class="gsrc">${spentTiles.map(t => `<div class="gtile ${t.cls}"><span>${esc(t.k)}</span><b>${gbp0(t.inc)}</b><em>${gbp0(t.inc - t.vat)} before VAT, ${gbp0(t.vat)} VAT</em><em>${t.n} payment${t.n === 1 ? "" : "s"}</em></div>`).join("")}</div>
+      <div class="ghead"><span>Part of the build</span><span>Paid from</span><span class="r">With VAT</span><span class="r">VAT</span><span class="r">Before VAT</span></div>
+      ${spentNames.map(n => spentPot(n, spent.filter(h => h.pot === n))).join("")}
+      <div class="gtot"><span>All spent so far</span><span></span><span class="r">${gbp0(spentInc)}</span><span class="r">${gbp0(spentVat)}</span><span class="r">${gbp0(spentInc - spentVat)}</span></div>
+      <div class="legend"><span><i style="background: var(--slate)"></i>From the bank</span><span><i style="background: var(--card)"></i>On a credit card</span><span><i style="background: var(--me)"></i>David personally</span><span><i style="background: var(--abi)"></i>Abi personally</span></div>
+      <p class="foot">Bank rows are each plan line's payments out of Tide; card and personal rows are the card register's entries, refunds taken off. Card and personal spend is owed back to David or Abi. Click a part of the build for its payments.</p>
     </div></details>`;
 
   // 8. The table.
@@ -269,7 +301,7 @@ ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px
 .glance .gx { font-size: 12px; font-weight: 700; color: var(--c-start); } .glance .gx::after { content: "Open"; } .glance[open] .gx::after { content: "Close"; }
 .gbody { background: var(--sheet); border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; }
 .gsrc { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
-.gtile { border-left: 4px solid var(--slate); background: var(--panel); padding: 10px 12px; display: grid; gap: 1px; } .gtile.card { border-color: var(--card); } .gtile.me { border-color: var(--me); }
+.gtile { border-left: 4px solid var(--slate); background: var(--panel); padding: 10px 12px; display: grid; gap: 1px; } .gtile.card { border-color: var(--card); } .gtile.me { border-color: var(--me); } .gtile.abi { border-color: var(--abi); }
 .gtile span { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; } .gtile b { font-family: var(--font-display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; } .gtile em { font-style: normal; font-size: 12px; color: var(--muted); }
 .ghead, .pot > summary, .gtot { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(90px, 2fr) 96px 80px 96px; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
 .ghead { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 8px 4px; border-bottom: 2px solid var(--line); }
@@ -288,6 +320,7 @@ table.gl { margin: 4px 0 10px; } table.gl th, table.gl td { font-size: 12.5px; p
   <div><div class="eyebrow">Abi Peters Skin Clinic · Winchester build · ${long(asOf)}</div><h1>The cash line, ${long(start)} to ${long(endDate)}</h1>
   <p class="lead">Every payment in the plan on the day it is expected, and the Tide balance after it. Bank rows move the line. Card and personal rows do not: the bank stays where it is and the row is greyed. The dates are the rules at the foot of the page where the plan has only a month; the amounts are the plan's.</p></div>
   ${glance}
+  ${historyHtml}
   <div class="kpis">
     <div class="kpi"><span>Bank today</span><b>${gbp0(startBal)}</b><em>${long(start)}</em></div>
     <div class="kpi ${low.bal < FLOOR ? "bad" : low.bal < FLOOR * 1.25 ? "watch" : "good"}"><span>Lowest</span><b>${gbp0(low.bal)}</b><em>${long(low.date)}${low.bal < FLOOR ? ", below the safety net" : ""}</em></div>
