@@ -114,7 +114,8 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
     if (r.cardRepayment) add(at(m, 28), "Card repayment: the company repays David", "David Savin", "bank", -r.cardRepayment, "", 0);
     if (r.loanRepayment) add(at(m, 1), "Loan repayment", "James Gibbons", "bank", -r.loanRepayment, "", 0);
     const take = r.total.contribution, mons = mondays(m).filter(d => d >= start);
-    if (take > 0.5 && mons.length) for (const d of mons) add(d, "Clinics' net takings for the week", "Bedhampton and Winchester patients", "in", r2(take / mons.length));
+    // A week whose Monday is the bank's own date is already in the balance the owner gave (9 November 2026).
+    if (take > 0.5 && mons.length) for (const d of mons) if (d > start) add(d, "Clinics' net takings for the week", "Bedhampton and Winchester patients", "in", r2(take / mons.length));
   }
 
   // 6. In date order, money in before money out on a day, then the running balance.
