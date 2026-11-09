@@ -16,7 +16,7 @@ export type Method = "bank" | "card";
 // vat: the VAT charged on this payment, paid with it and reclaimed through the VAT return.
 export type ProjectPayment = { month: string; amountExVat: number; method: Method; label: string; taskId?: number; vat?: number };
 export type OneOff = { month: string; amount: number; method: Method; label: string; pnl: boolean };
-export type FundingIn = { month: string; amount: number; kind: "equity" | "gift"; label: string };
+export type FundingIn = { month: string; amount: number; kind: "equity" | "gift"; label: string; date?: string | null };
 export type LoanTerms = { label: string; principal: number; drawMonth: string; annualRatePct: number; holidayMonths: number; repayments: number };
 // Abi's week while both clinics run. From `from`, Bedhampton opens two days a week
 // (one from oneDayFrom) and Winchester the rest of her weekDays. Bedhampton takes the

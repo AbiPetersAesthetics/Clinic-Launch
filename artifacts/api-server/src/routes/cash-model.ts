@@ -146,7 +146,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const ym = (d: string | null) => (d ? d.slice(0, 7) : config.startMonth);
   // Funding ticked as already in the bank balance is not counted again.
   const funding: CashInputs["funding"] = inv.filter(i => (i.type === "equity" || i.type === "gift") && !bank?.inBalance.includes(i.id))
-    .map(i => ({ month: ym(i.depositDate), amount: i.amountGbp, kind: i.type as "equity" | "gift", label: i.name }));
+    .map(i => ({ month: ym(i.depositDate), amount: i.amountGbp, kind: i.type as "equity" | "gift", label: i.name, date: i.depositDate }));
   const loans: CashInputs["loans"] = inv.filter(i => i.type === "loan")
     .map(i => ({ label: i.name, principal: i.amountGbp, drawMonth: ym(i.depositDate), annualRatePct: i.interestRatePercent, holidayMonths: (i as any).holidayMonths ?? 0, repayments: i.repaymentTermMonths }));
   const fundingOptions = inv.filter(i => i.type === "equity" || i.type === "gift").map(i => ({ id: i.id, label: i.name, month: ym(i.depositDate), amount: i.amountGbp }));

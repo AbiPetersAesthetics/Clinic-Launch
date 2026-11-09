@@ -18,7 +18,7 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 const mondays = ym => { const [y, m] = ym.split("-").map(Number); const out = []; for (let d = 1; d <= 31; d++) { const dt = new Date(Date.UTC(y, m - 1, d)); if (dt.getUTCMonth() !== m - 1) break; if (dt.getUTCDay() === 1) out.push(iso(dt)); } return out; };
 
 // The day each card buy is made (plan line id), spread through November as the owner asked.
-const CARD_DAYS = { 335: 10, 369: 4, 339: 6, 337: 6, 367: 10, 368: 10, 360: 13, 379: 17, 373: 20, 403: 24, 389: 1 };
+const CARD_DAYS = { 335: 10, 369: 4, 339: 6, 337: 13, 367: 10, 368: 10, 360: 13, 379: 17, 373: 20, 403: 24, 389: 1 };
 // Plain names for the plan's lines.
 const NAMES = [[/^Treatment Couch/, "Treatment couch (Clinic 4 Motor)"], [/^Retail \/ Skincare/, "Obagi retail stock"], [/^Treatment Room Furniture/, "Room 1: Maru desk and two chairs"],
   [/^Reception furniture/, "Reception: desk tray and reed diffuser"], [/Smallwares/, "Clinical smallwares and consumables"], [/^Opening Injectable/, "Opening injectable stock"], [/^Emergency Drugs/, "Emergency drugs and equipment kit"],
@@ -36,7 +36,9 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   // 1. Funding.
   for (const f of J.funding || []) {
     if (/^Abi lends/.test(f.label)) continue;
-    add(at(f.month, f.kind === "equity" ? 5 : 19), f.kind === "equity" ? "Equity investment" : "Gift", f.label.replace(/:.*$/, ""), "in", f.amount);
+    // Equity lands on its deposit date (James's arrives the day after it is sent); gifts on the 19th.
+    const fDate = f.kind === "equity" && f.date && f.date.slice(0, 7) === f.month ? f.date.slice(0, 10) : at(f.month, f.kind === "equity" ? 5 : 19);
+    add(fDate, f.kind === "equity" ? "Equity investment" : "Gift", f.label.replace(/:.*$/, ""), "in", f.amount);
   }
   for (const l of J.loans || []) add(at(l.drawMonth, 1), `Loan drawn, ${l.annualRatePct}% a year`, l.label.replace(/:.*$/, ""), "in", l.principal);
 
@@ -54,7 +56,9 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
     cbsVatByMonth[ym(d)] = (cbsVatByMonth[ym(d)] || 0) + halfVat;
   }
 
-  // 3. The other plan lines, by their payment month and method.
+  // 3. The other plan lines, by their payment month and method. A rule day that has already
+  // passed falls on the bank's date instead, so a payment still owed never drops off the line.
+  const notBefore = d => (d < start ? start : d);
   const otherVatByMonth = {};
   for (const l of J.projectLines) {
     if (/^Ref \d+ - /.test(l.title) || l.remainingExVat < 0.5 || l.planProblem) continue;
@@ -70,15 +74,15 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
       const name = nm ? nm[1] : l.title.replace(/\s+[—–-]\s+.*$/, "").replace(/ \(.*\)$/, "");
       if (p.method === "card") {
         const day = CARD_DAYS[l.taskId] ?? 10;
-        add(at(m, day), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on a credit card: the bank does not move", vatInc * p.share);
+        add(notBefore(at(m, day)), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on a credit card: the bank does not move", vatInc * p.share);
         if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
       } else if (/Reception desk/.test(l.title)) {
         // David pays Artisan Deco himself, as he did the deposit: the bank does not move and
         // the company owes him the whole desk as a director's loan.
-        add(at(m, 9), name, "Artisan Deco", "personal", -amt, `David pays this himself, as he did the ${gbp(l.paidOnCard || 0)} deposit: the bank does not move. The company owes him ${gbp((l.paidOnCard || 0) + amt)} for the desk in all.`, 0);
+        add(notBefore(at(m, 16)), name, "Artisan Deco", "personal", -amt, `David pays this himself, as he did the ${gbp(l.paidOnCard || 0)} deposit: the bank does not move. The company owes him ${gbp((l.paidOnCard || 0) + amt)} for the desk in all.`, 0);
       } else {
         const day = /Arundel/.test(l.title) ? 3 : /Signage/.test(l.title) ? 5 : /Hamilton Fraser|^Google Ads/.test(l.title) ? 1 : 15;
-        add(at(m, day), name, /Arundel/.test(l.title) ? "Arundel Fire and Security" : /Signage/.test(l.title) ? "Signs Express" : l.phase, "bank", -amt, "", vatInc * p.share);
+        add(notBefore(at(m, day)), name, /Arundel/.test(l.title) ? "Arundel Fire and Security" : /Signage/.test(l.title) ? "Signs Express" : l.phase, "bank", -amt, "", vatInc * p.share);
         if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
       }
     }
