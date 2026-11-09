@@ -190,7 +190,10 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   const potNames = [...POTS.map(p => p[0]), "Other"].filter(n => potRows(n).length);
   const spendInc = sum(spend, incOf), spendVat = sum(spend, vatOf);
   const short = { bank: "bank", card: "card", personal: "David" };
-  const glance = `<details class="glance" id="glance"><summary><span class="gt">Still to pay, at a glance</span><span class="gs">${gbp0(spendInc)} with VAT, ${gbp0(spendInc - spendVat)} before VAT, to ${long(endDate)}: ${srcTiles.filter(t => t.inc > 0.5).map(t => `${gbp0(t.inc)} ${short[t.k]}`).join(", ")}</span><span class="gx"></span></summary>
+  // Hovering the closed panel's summary lists every payment left, in date order.
+  const popRows = rs => rs.map(r => `<tr><td class="d">${long(r.date)}</td><td>${esc(r.what)}<span class="n">${esc(r.who)}</span></td><td><span class="pill ${FROM[r.how][1]}">${FROM[r.how][0]}</span></td><td class="r">${gbp(incOf(r))}</td></tr>`).join("");
+  const pop = `<span class="gpop" role="tooltip"><b>${spend.length} payment${spend.length === 1 ? "" : "s"} still to make</b><table class="gl"><tbody>${popRows(spend)}</tbody><tfoot><tr><td></td><td>All spending</td><td></td><td class="r">${gbp(spendInc)}</td></tr></tfoot></table>${repay.length ? `<b>And repaying David, Abi and James</b><table class="gl"><tbody>${popRows(repay)}</tbody></table>` : ""}</span>`;
+  const glance = `<details class="glance" id="glance"><summary><span class="gt">Still to pay, at a glance</span><span class="gs">${gbp0(spendInc)} with VAT, ${gbp0(spendInc - spendVat)} before VAT, to ${long(endDate)}: ${srcTiles.filter(t => t.inc > 0.5).map(t => `${gbp0(t.inc)} ${short[t.k]}`).join(", ")}</span><span class="gx"></span>${pop}</summary>
     <div class="gbody">
       <div class="gsrc">${srcTiles.map(t => `<div class="gtile ${FROM[t.k][1]}"><span>${FROM[t.k][0]}</span><b>${gbp0(t.inc)}</b><em>${gbp0(t.inc - t.vat)} before VAT, ${gbp0(t.vat)} VAT back</em><em>${t.rs.length} payment${t.rs.length === 1 ? "" : "s"}</em></div>`).join("")}</div>
       <div class="ghead"><span>Pot</span><span>Paid from</span><span class="r">With VAT</span><span class="r">VAT</span><span class="r">Before VAT</span></div>
@@ -302,6 +305,9 @@ ol { margin: 0; padding-left: 20px; color: var(--muted); display: grid; gap: 4px
 .gbody { background: var(--sheet); border-top: 1px solid var(--line); padding: 14px; display: grid; gap: 10px; }
 .gsrc { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
 .gtile { border-left: 4px solid var(--slate); background: var(--panel); padding: 10px 12px; display: grid; gap: 1px; } .gtile.card { border-color: var(--card); } .gtile.me { border-color: var(--me); } .gtile.abi { border-color: var(--abi); }
+.glance > summary { position: relative; } .gpop { display: none; position: absolute; top: 100%; left: 8px; right: 8px; z-index: 30; max-height: 70vh; overflow: auto; background: var(--sheet); border: 1px solid var(--line); border-radius: 2px; box-shadow: 0 10px 28px rgba(31, 42, 68, 0.18); padding: 10px 12px; cursor: default; }
+.gpop > b { display: block; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 4px 0; } .gpop table.gl { width: 100%; } .gpop tfoot td { font-weight: 700; border-top: 2px solid var(--ink); }
+#glance:not([open]) > summary:hover .gpop, #glance:not([open]) > summary:focus-visible .gpop { display: block; }
 .gtile span { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; } .gtile b { font-family: var(--font-display); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; } .gtile em { font-style: normal; font-size: 12px; color: var(--muted); }
 .ghead, .pot > summary, .gtot { display: grid; grid-template-columns: minmax(150px, 1.3fr) minmax(90px, 2fr) 96px 80px 96px; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
 .ghead { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 0 8px 4px; border-bottom: 2px solid var(--line); }
