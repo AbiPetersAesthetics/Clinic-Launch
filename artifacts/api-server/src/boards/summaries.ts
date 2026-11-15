@@ -266,7 +266,7 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
   ];
   return {
     key: "money", area: "money", title: "Money", state, verdict, kpis, sources, alerts, keeper,
-    extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [] } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank,
+    extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [], accounts: (J?.bankAccounts ?? null) } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank,
       viz: { floor, low, points: ahead.slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })),
         withLoan: withLoan ? (withLoan.rows ?? []).filter((r: any) => r.month >= thisMonth).slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })) : null },
       availableLoans: J?.availableLoans ?? [],

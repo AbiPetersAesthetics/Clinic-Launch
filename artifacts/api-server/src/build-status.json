@@ -1,5 +1,5 @@
 {
-  "updatedIso": "2026-11-15T22:10:00Z",
+  "updatedIso": "2026-11-15T22:40:00Z",
   "items": [
     {
       "area": "Today",
@@ -59,7 +59,7 @@
       "area": "Money",
       "name": "Obligations",
       "status": "partial",
-      "note": "VAT dates, cards and 0% ends, loans, directors' loan. VAT amounts are the plan's estimates."
+      "note": "Waiting cards, money expected in, the available loan, dated items, cards, directors' loan, loans, VAT estimates."
     },
     {
       "area": "Money",
@@ -117,9 +117,9 @@
     },
     {
       "area": "Patients",
-      "name": "Follow up",
-      "status": "partial",
-      "note": "Being replaced: open leads move into Pathway, and follow-ups become one approval card sent through GHL after your yes."
+      "name": "Not booked yet (inside Pathway)",
+      "status": "done",
+      "note": "The Follow up page is gone; who has not booked shows on Pathway, and a follow-up comes as one approval card sent through GHL after a yes."
     },
     {
       "area": "Patients",
@@ -149,7 +149,7 @@
       "area": "Clinic",
       "name": "Team and capacity",
       "status": "partial",
-      "note": "The existing People page; the second clinician trigger is not yet stated on it."
+      "note": "Abi's working days (Tuesday to Saturday) and the joint decisions on top; the second clinician trigger stated; the old people page beneath."
     },
     {
       "area": "Clinic",
@@ -173,7 +173,7 @@
       "area": "Abi",
       "name": "Abi's screen",
       "status": "done",
-      "note": "Today and tomorrow, filming, messages to send, reviews, low stock."
+      "note": "Today and tomorrow, decisions to make with David, filming, reviews, low stock. No drafted messages."
     },
     {
       "area": "More",
@@ -306,6 +306,30 @@
       "name": "Build stamp and checklist",
       "status": "done",
       "note": "Last deploy time and commit stamped at build."
+    },
+    {
+      "area": "Data",
+      "name": "Bedhampton one day a week from December",
+      "status": "done",
+      "note": "Owner 15 Nov. The regular day is a decision for Abi and David, raised as a joint card."
+    },
+    {
+      "area": "Data",
+      "name": "Bank held as separate Tide accounts with sources",
+      "status": "partial",
+      "note": "Input and display built; the figures themselves wait for the bank card (a database write held for permission)."
+    },
+    {
+      "area": "Data",
+      "name": "Card refunds, CBS application 2, Abi's VAT transfer",
+      "status": "todo",
+      "note": "Raised as cards; each is a database write that waits for a live session."
+    },
+    {
+      "area": "Data",
+      "name": "The audit's decisions as cards",
+      "status": "done",
+      "note": "Eighteen cards in the inbox, money first, the joint ones marked."
     }
   ]
 }

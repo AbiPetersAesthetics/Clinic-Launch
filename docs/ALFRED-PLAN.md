@@ -71,8 +71,13 @@ Ctrl+K to jump anywhere.
   period, no-show rate.
 - **Pathway:** every lead from ad to diary to paying to returning (the lead table, with match
   method), plus bookings that came from outside the ads.
-- **Follow up** (new): leads that have not booked and consultations that have not converted, each
-  with a drafted personal message for Abi to send herself; ALFRED never messages patients.
+- **Not booked yet** (inside Pathway): leads that have not booked and consultations that have not
+  converted, as a count and a list (first name and initial, days waiting). When a follow-up is worth
+  sending, ALFRED raises one approval card ("4 leads have not booked after 2 days. Send each a
+  personal WhatsApp from the clinic number?" with the message shown); on a yes the messages go
+  through GHL in the next live session. Nothing is sent unattended. (Owner, 15 Nov 2026: a page of
+  drafts was not useful; every page that only shows drafts or what Claude could answer becomes a card
+  with an action, or goes.)
 - **Due back** (new, from opening): patients whose course or review is due (counts and first name
   with initial), read from ANS; the biggest lever on return visits.
 - **Reviews** (new): reviews received this month, asked against received, the next to ask.
@@ -91,8 +96,9 @@ Ctrl+K to jump anywhere.
 
 ### Abi (new, `/abi`)
 One phone screen for Abi: today and tomorrow in the diary (counts and times, no patient detail
-beyond ANS), what to film this week with the script, messages drafted for her to send, reviews to
-ask for, stock to tick. No money, no ads tables.
+beyond ANS), decisions she and David make together (marked "decide with", such as Bedhampton's
+regular day), what to film this week with the script, reviews to ask for, stock to tick. No money,
+no ads tables, no drafted messages. Abi works Tuesday to Saturday, never Mondays.
 
 ### More
 Inbox (all cards and their history), Activity (every run, what it read and changed), Sources (each
@@ -110,7 +116,7 @@ pages above. No data is deleted.
 
 | Agent | When | Owns | Alone | Needs a yes |
 |---|---|---|---|---|
-| Pathway | 08:00, 12:00, 16:00 | ads spend, leads, bookings, outcomes, returns, accuracy checks | read, record, draft follow-ups | nothing |
+| Pathway | 08:00, 12:00, 16:00 | ads spend, leads, bookings, outcomes, returns, accuracy checks | read, record | one follow-up card when worth sending (messages through GHL after a yes) |
 | Clinic | 07:40 daily | takings taken and booked, diary, attendance, due back | read, record | nothing |
 | Capacity | Mon 12:30 | diary fill, cost per paying patient, budget step, campaign switches | recommend | budget, switch on or off |
 | Creative | Mon and Thu 09:30 | ad health, fatigue, video queue order | reorder queue, draft ads | pause, launch, new creative |

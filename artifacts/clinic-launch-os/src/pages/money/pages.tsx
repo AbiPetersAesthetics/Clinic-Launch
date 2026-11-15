@@ -1,7 +1,8 @@
 // Money's detail pages: the Build Cash Board (the master record, unchanged), Stands Alone, Takings
 // and Obligations. Figures come from the cash model, the clinic refresh and the card register.
 import { Link } from "wouter";
-import { usePage, PROJECT_ID, type Chip } from "@/lib/alfred";
+import { usePage, useProposals, useSummary, PROJECT_ID, type Chip } from "@/lib/alfred";
+import { ProposalCard } from "@/components/proposal-card";
 import { BoardShell, EmbeddedBoard } from "@/components/board-shell";
 import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, gbp0, longDay } from "@/components/page";
 import { Sources } from "@/components/fresh";
@@ -98,6 +99,9 @@ export function TakingsPage() {
 
 export function ObligationsPage() {
   const { data } = usePage("obligations");
+  const { data: props } = useProposals();
+  const { data: money } = useSummary("money");
+  const waiting = (props?.open ?? []).filter((p) => p.area === "money");
   return (
     <Page>
       <PageHead eyebrow="Money" title="Obligations" back={back}>
@@ -106,6 +110,19 @@ export function ObligationsPage() {
       </PageHead>
       {!data ? <Loading /> : (
         <>
+          {waiting.length > 0 && (
+            <Section title={`Waiting for your yes (${waiting.length})`}>
+              <div className="grid gap-3 md:grid-cols-2">{waiting.map((p) => <ProposalCard key={p.id} p={p} compact />)}</div>
+            </Section>
+          )}
+          {((money?.extra?.expected ?? []).length > 0 || (money?.extra?.availableLoans ?? []).length > 0) && (
+            <Section title="Money expected in">
+              <ul className="border-t border-border">
+                {(money?.extra?.expected ?? []).map((e: any) => <li key={e.label} className="flex justify-between gap-3 py-2.5 border-b border-border"><span><span className="block text-ink">{e.label}</span><span className="block text-[0.82rem] text-ink-2">expected, not yet in the bank; counted in the forecast from {e.month}</span></span><span className="tabular font-medium">{gbp0(e.amount)}</span></li>)}
+                {(money?.extra?.availableLoans ?? []).map((l: any) => <li key={l.label} className="flex justify-between gap-3 py-2.5 border-b border-border"><span><span className="block text-ink">{l.label}</span><span className="block text-[0.82rem] text-ink-2">available to draw when you choose; not in the forecast</span></span><span className="tabular font-medium">{gbp0(l.principal)}</span></li>)}
+              </ul>
+            </Section>
+          )}
           <Section title="In date order">
             {data.dated.length ? <Rows>{data.dated.map((d: any, i: number) => (
               <RowItem key={i} href={d.href}><span className="w-[6.5rem] shrink-0 text-[0.85rem] text-ink-muted tabular pt-0.5">{longDay(d.date)}</span><span className="min-w-0"><span className="block text-[0.92rem] text-ink">{d.what}</span><span className="block text-[0.8rem] text-ink-muted">{d.note}</span></span></RowItem>

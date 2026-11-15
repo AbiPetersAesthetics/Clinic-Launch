@@ -12,7 +12,8 @@
 // Proposal fields: agent, title (a verb phrase), area (money, clinic, ads, growth), kind (budget,
 // pause, publish, content, task, general), why, risk, onApproval, guard, expiresAt (ISO),
 // sources [{source: "meta"|"ghl"|"ans"|"clarity"|"ansTakings"|"bank"|"cards"|"gsc", asOf: ISO}],
-// evidence (any JSON), evidenceChanged (true to re-propose something rejected in the last 30 days).
+// evidence (any JSON), evidenceChanged (true to re-propose something rejected in the last 30 days),
+// decideWith ("Abi and David" for anything touching Abi's working pattern or clinical time).
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -35,7 +36,7 @@ const DDL = `CREATE TABLE IF NOT EXISTS proposals (
 // The rules that are never broken, checked in code (UX plan 3.1 and 3.2, tier 3): no em or en
 // dashes, no percentage discounts, no guarantee words, no prescription-only medicine named.
 const POM = /\b(botox|botulinum|azzalure|bocouture|dysport|xeomin|letybo|relfydess|alluzience|vistabel|lidocaine|hyaluronidase|hyalase|tretinoin|isotretinoin|semaglutide|tirzepatide|ozempic|wegovy|mounjaro|saxenda)\b/i;
-const PCT_OFF = /\b\d+\s?%\s?(off|discount|saving)|save\s+\d+\s?%/i;
+const PCT_OFF = /\b\d+\s?%\s?(off|discount|saving)\b|save\s+\d+\s?%/i;
 const GUARANTEE = /\b(guarantee[ds]?|perfect|flawless|erase[sd]?|pain[- ]free|turn back time)\b/i;
 function breaches(p) {
   const text = [p.title, p.why, p.risk, p.onApproval, p.guard, typeof p.evidence === "string" ? p.evidence : JSON.stringify(p.evidence ?? "")].join(" ");
@@ -53,6 +54,7 @@ if (!args.length) { console.error("Give a proposal JSON file, or --withdraw, --d
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 await client.query(DDL);
+await client.query("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT");
 const update = async (id, status, col, text, from) => {
   const r = await client.query(`UPDATE proposals SET status = $2, ${col} = $3, updated_at = NOW() WHERE id = $1 AND project_id = 1 AND status = ANY($4) RETURNING id, title, status`, [Number(id), status, text ?? null, from]);
   if (!r.rows.length) { console.error(`Proposal ${id} is not in a state that allows that (needs ${from.join(" or ")})`); process.exitCode = 1; }
@@ -83,10 +85,10 @@ try {
     const rej = await client.query(`SELECT id, reason, updated_at FROM proposals WHERE project_id = 1 AND status = 'rejected' AND lower(title) = lower($1) AND updated_at > NOW() - INTERVAL '30 days'`, [p.title]);
     if (rej.rows.length && !p.evidenceChanged) throw new Error(`Refused: "${p.title}" was rejected on ${rej.rows[0].updated_at.toISOString().slice(0, 10)} (${rej.rows[0].reason ?? "no reason given"}). Set "evidenceChanged": true only if the evidence has changed materially.`);
     const r = await client.query(
-      `INSERT INTO proposals (project_id, area, kind, agent, title, why, risk, on_approval, guard, sources, evidence, expires_at)
-       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id, created_at`,
+      `INSERT INTO proposals (project_id, area, kind, agent, title, why, risk, on_approval, guard, sources, evidence, expires_at, decide_with)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, created_at`,
       [p.area ?? "ads", p.kind ?? "general", p.agent, p.title, p.why ?? null, p.risk ?? null, p.onApproval ?? null, p.guard ?? null,
-        JSON.stringify(p.sources ?? []), p.evidence === undefined ? null : JSON.stringify(p.evidence), p.expiresAt ?? null]);
+        JSON.stringify(p.sources ?? []), p.evidence === undefined ? null : JSON.stringify(p.evidence), p.expiresAt ?? null, p.decideWith ?? null]);
     console.log(`ALFRED proposal ${r.rows[0].id} saved at ${r.rows[0].created_at.toISOString()}: "${p.title}"`);
   }
 } catch (e) {

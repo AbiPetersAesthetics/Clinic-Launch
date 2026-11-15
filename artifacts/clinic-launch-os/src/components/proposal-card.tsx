@@ -69,9 +69,10 @@ export function ProposalCard({ p, compact = false }: { p: Proposal; compact?: bo
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="eyebrow">{AREA[p.area] ?? p.area}</span>
         <span className="text-[0.75rem] text-ink-muted">{p.agent}, {dayTime(p.created_at)}</span>
-        {p.status === "asked" && <span className="text-[0.7rem] rounded-full bg-watch-bg text-watch px-2 py-0.5">Asked</span>}
+        {p.status === "asked" && <span className="text-[0.75rem] text-watch">Asked</span>}
       </div>
       <h3 className="font-sans font-semibold text-[1.06rem] sm:text-[1.1rem] leading-snug text-ink">{p.title}</h3>
+      {p.decide_with && <p className="text-[0.9rem] font-semibold text-slate">Decision for {p.decide_with}, together</p>}
       {open ? (
         <div className="grid gap-1.5 text-[0.9rem] text-ink leading-relaxed">
           {p.why && <p><span className="font-semibold">Why: </span>{p.why}</p>}
@@ -103,7 +104,7 @@ export function ProposalCard({ p, compact = false }: { p: Proposal; compact?: bo
 
       {mode === "idle" && (
         <div className={row}>
-          <button type="button" disabled={busy} onClick={() => act("approve")} className="min-h-[44px] flex-[2] px-3 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em] hover:bg-slate disabled:opacity-50">Approve</button>
+          <button type="button" disabled={busy} onClick={() => act("approve")} className="min-h-[44px] flex-[2] px-3 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em] hover:bg-slate disabled:opacity-50">{p.decide_with ? "Agreed together" : "Approve"}</button>
           <button type="button" disabled={busy} onClick={() => setMode("reject")} className="min-h-[44px] flex-1 px-3 rounded-full border border-ink text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Reject</button>
           <button type="button" disabled={busy} onClick={() => setMode("ask")} className="min-h-[44px] flex-1 px-2 rounded-full text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Ask</button>
         </div>

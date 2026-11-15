@@ -27,7 +27,8 @@ export const ACTIVITY_DDL = `CREATE TABLE IF NOT EXISTS activity (
 let ensuring: Promise<void> | null = null;
 export function ensureAgentTables(): Promise<void> {
   ensuring ??= (async () => {
-    for (const ddl of [PROPOSALS_DDL, ACTIVITY_DDL]) {
+    // decide_with: a decision for more than David alone, such as Abi's working pattern (owner, 15 Nov 2026).
+    for (const ddl of [PROPOSALS_DDL, ACTIVITY_DDL, "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT"]) {
       try { await db.execute(sql.raw(ddl)); }
       catch (err: any) { if ((err?.cause?.code ?? err?.code) !== "23505") { ensuring = null; throw err; } }
     }
@@ -39,7 +40,7 @@ export const rowsOf = <T = any>(r: unknown): T[] => ((r as any).rows ?? r) as T[
 
 export interface ProposalRow {
   id: number; area: string; kind: string; agent: string; title: string; why: string | null; risk: string | null;
-  on_approval: string | null; guard: string | null; sources: { source: string; asOf: string }[]; evidence: unknown;
+  on_approval: string | null; guard: string | null; decide_with?: string | null; sources: { source: string; asOf: string }[]; evidence: unknown;
   expires_at: string | null; status: string; previous_status: string | null; reason: string | null; question: string | null;
   answer: string | null; result: string | null; snooze_until: string | null; decided_at: string | null; created_at: string; updated_at: string;
 }

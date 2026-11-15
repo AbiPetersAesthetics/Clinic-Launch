@@ -42,7 +42,7 @@ export type BankBalance = { balanceGbp: number; asAt: string; inBalance: number[
 function readBank(stored: unknown): BankBalance | null {
   const b = (stored as any)?.bank;
   if (!b || typeof b.balanceGbp !== "number" || !Number.isFinite(b.balanceGbp) || !/^\d{4}-\d{2}-\d{2}$/.test(String(b.asAt ?? ""))) return null;
-  return { balanceGbp: b.balanceGbp, asAt: String(b.asAt), inBalance: Array.isArray(b.inBalance) ? b.inBalance.map(Number).filter(Number.isInteger) : [] };
+  return { balanceGbp: b.balanceGbp, asAt: String(b.asAt), inBalance: Array.isArray(b.inBalance) ? b.inBalance.map(Number).filter(Number.isInteger) : [], ...(Array.isArray(b.accounts) ? { accounts: b.accounts } : {}) } as BankBalance;
 }
 
 // The opening for the model's first month when the balance is entered part-way through it:
@@ -246,7 +246,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     projectLines: lines.sort((a, b) => a.phase.localeCompare(b.phase) || a.title.localeCompare(b.title)),
     paidToDate,
     funding: fundingAll, loans, ownership, oneOffs: oneOffsAll,
-    bank: bankView, fundingOptions,
+    bank: bankView, fundingOptions, bankAccounts: (bank as any)?.accounts ?? null,
     availableLoans: availableLoans.map(l => ({ label: l.label, principal: l.principal, annualRatePct: l.annualRatePct, repayments: l.repayments })),
     marketingByMonth: (planned as any).marketing.byMonth,
     history: config.history,
@@ -283,7 +283,17 @@ router.put("/projects/:projectId/cash-model/bank", async (req, res) => {
       const asAt = String(body.asAt ?? "");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(asAt) || Number.isNaN(Date.parse(asAt))) { res.status(400).json({ error: "Give the date of the balance" }); return; }
       const inBalance = Array.isArray(body.inBalance) ? body.inBalance.map(Number).filter(Number.isInteger) : [];
-      stored.bank = { balanceGbp: Math.round(n * 100) / 100, asAt, inBalance, savedAt: new Date().toISOString() };
+      // Each Tide account with where its figure came from ("statement", "owner stated", "export, to
+      // confirm", "screenshot") and its date; arriving money (unsettled card takings) is kept apart.
+      const SOURCES = ["statement", "owner stated", "export, to confirm", "screenshot", "not known"];
+      const accounts = Array.isArray(body.accounts) ? (body.accounts as any[]).slice(0, 8).map((a) => ({
+        name: String(a?.name ?? "").slice(0, 40),
+        balanceGbp: a?.balanceGbp == null || a?.balanceGbp === "" ? null : Math.round(Number(a.balanceGbp) * 100) / 100,
+        source: SOURCES.includes(String(a?.source)) ? String(a.source) : "owner stated",
+        asAt: /^\d{4}-\d{2}-\d{2}$/.test(String(a?.asAt ?? "")) ? String(a.asAt) : asAt,
+        arriving: a?.arriving === true,
+      })).filter((a) => a.name) : undefined;
+      stored.bank = { balanceGbp: Math.round(n * 100) / 100, asAt, inBalance, ...(accounts ? { accounts } : {}), savedAt: new Date().toISOString() };
     }
     await db.update(financialsTable).set({ cashModelJson: JSON.stringify(stored) } as any).where(eq(financialsTable.projectId, projectId));
     res.json({ ok: true, bank: (stored as any).bank ?? null });

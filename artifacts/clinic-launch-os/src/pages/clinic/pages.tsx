@@ -2,7 +2,9 @@
 // items become cards. The stock list is written only by the people using it.
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PROJECT_ID } from "@/lib/alfred";
+import { PROJECT_ID, useProposals } from "@/lib/alfred";
+import { ProposalCard } from "@/components/proposal-card";
+import PeoplePage from "@/pages/people";
 import { Page, PageHead, Section, Rows, Next } from "@/components/page";
 import { EmbeddedBoard } from "@/components/board-shell";
 
@@ -69,6 +71,26 @@ export function StockPage() {
       </PageHead>
       <Section title="Items"><StockList /></Section>
       <Next>The list is typed, not read from a supplier; its counts are only as current as the last tap.</Next>
+    </Page>
+  );
+}
+
+// Team and capacity: the facts that every rule must respect, the decisions that touch Abi's working
+// pattern (made by Abi and David together), then the existing people and capacity page.
+export function TeamPage() {
+  const { data: props } = useProposals();
+  const joint = (props?.open ?? []).filter((p) => (p.decide_with ?? "").includes("Abi"));
+  return (
+    <Page>
+      <PageHead eyebrow="Clinic" title="Team and capacity" back={back} />
+      <Section title="Abi's working pattern">
+        <p className="text-[1.05rem] text-ink leading-relaxed max-w-[60ch]">Abi works Tuesday to Saturday and never on Mondays (owner, 15 Nov 2026). Winchester's published hours are Tuesday to Friday; Bedhampton is one day a week from December, the day still to be decided by Abi and David. No recommendation or diary rule proposes a Monday.</p>
+      </Section>
+      {joint.length > 0 && <Section title="To decide together"><div className="grid gap-3 md:grid-cols-2">{joint.map((p) => <ProposalCard key={p.id} p={p} compact />)}</div></Section>}
+      <Section title="The second clinician">
+        <p className="text-[0.98rem] text-ink-2 leading-relaxed max-w-[62ch]">The trigger is demand proven against Abi's capacity: the diary over 90% booked for three weeks running at Winchester. Diary fill is read each Monday by the capacity review; it is not measured until Winchester's first full week. Then the Patient Coordinator.</p>
+      </Section>
+      <Section title="People and capacity, as planned"><PeoplePage /></Section>
     </Page>
   );
 }

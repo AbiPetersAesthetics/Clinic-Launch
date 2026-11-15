@@ -149,22 +149,19 @@ router.get("/projects/:projectId/pages/search", handle(async (projectId) => {
 router.get("/projects/:projectId/pages/pathway", handle(async (projectId) => {
   const p = await latestAds(projectId);
   const leads = (p?.leads ?? []).map((l: any) => ({ name: l.name, ad: l.ad, formSent: l.formSent, formIso: l.formIso, status: l.status, statusText: l.statusText, appt: l.appt ?? null, apptIso: l.apptIso ?? null, what: l.what ?? null, match: l.match ?? null, attended: l.attended ?? null, treated: l.treated ?? null, returned: l.returned ?? null, visit: l.visit ?? null }));
-  return { asOf: new Date().toISOString(), windowFrom: p?.windowFrom ?? null, leads, other: p?.other ?? [], checks: p?.checks ?? null, sources: [freshness("ghl", p?.updatedIso ?? null), freshness("ans", p?.updatedIso ?? null)] };
+  const waiting = (await followUps(projectId)).items;
+  return { asOf: new Date().toISOString(), windowFrom: p?.windowFrom ?? null, leads, waiting, other: p?.other ?? [], checks: p?.checks ?? null, sources: [freshness("ghl", p?.updatedIso ?? null), freshness("ans", p?.updatedIso ?? null)] };
 }));
 
-// A personal message for Abi to send herself: ALFRED never messages patients.
-function draftFor(l: any, kind: "lead" | "consult") {
-  const first = String(l.name ?? "").split(" ")[0] || "there";
-  return kind === "lead"
-    ? `Hi ${first}, it's Abi from Abi Peters Skin Clinic in Winchester. Thank you for getting in touch about your skin. I'd love to help you work out what is right for you, with no pressure at all. Would a free skin consultation suit you this week or next? Just reply and I'll find a time. Abi`
-    : `Hi ${first}, it's Abi. It was lovely to meet you at your consultation. If you have any questions about the plan we talked through, or would like to book your first treatment, just reply and I'll sort a time that suits you. Abi`;
-}
+// Who has not booked yet: leads still open, and consultations that have not become a treatment.
+// No drafts are kept (owner, 15 Nov 2026): when a follow-up is worth sending, the pathway check
+// raises one approval card, and the messages go through GHL in a live session after a yes.
 
 export async function followUps(projectId: number) {
   const p = await latestAds(projectId);
   const now = Date.now();
-  const open = (p?.leads ?? []).filter((l: any) => l.status === "open" && l.formIso).map((l: any) => ({ name: l.name, kind: "lead" as const, since: l.formIso, days: Math.floor((now - Date.parse(l.formIso)) / 86400000), ad: l.ad, why: "Sent the form and has not booked.", draft: draftFor(l, "lead") }));
-  const unconverted = (p?.leads ?? []).filter((l: any) => l.attended === true && l.treated !== true && l.apptIso).map((l: any) => ({ name: l.name, kind: "consult" as const, since: l.apptIso, days: Math.floor((now - Date.parse(l.apptIso)) / 86400000), ad: l.ad, why: "Came to the consultation and has not booked a treatment yet.", draft: draftFor(l, "consult") }));
+  const open = (p?.leads ?? []).filter((l: any) => l.status === "open" && l.formIso).map((l: any) => ({ name: l.name, kind: "lead" as const, since: l.formIso, days: Math.floor((now - Date.parse(l.formIso)) / 86400000), ad: l.ad, why: "Sent the form and has not booked." }));
+  const unconverted = (p?.leads ?? []).filter((l: any) => l.attended === true && l.treated !== true && l.apptIso).map((l: any) => ({ name: l.name, kind: "consult" as const, since: l.apptIso, days: Math.floor((now - Date.parse(l.apptIso)) / 86400000), ad: l.ad, why: "Came to the consultation and has not booked a treatment yet." }));
   return { asOf: new Date().toISOString(), items: [...unconverted, ...open].sort((a, b) => b.days - a.days), sources: [freshness("ghl", p?.updatedIso ?? null), freshness("ans", p?.updatedIso ?? null)] };
 }
 router.get("/projects/:projectId/pages/follow-up", handle(followUps));
@@ -250,7 +247,7 @@ router.get("/projects/:projectId/pages/abi", handle(async (projectId) => {
   const day = (d: string) => { const x = (clinic?.diary?.days ?? []).find((z: any) => z.date === d); return x ? { date: d, clinic: x.clinic, appts: x.appts, first: x.first, last: x.last, consults: x.consults, blocked: x.blockedMins >= (clinic?.diary?.clinicDayHours ?? 7) * 60 - 30 } : { date: d, clinic: null, appts: 0, first: null, last: null, consults: 0, blocked: false }; };
   const film = (videos?.videos ?? []).filter((v: any) => v.filmBy && !["live", "filmed", "done", "dropped"].includes(String(v.status)) && v.filmBy <= addDays(today, 7)).sort((a: any, b: any) => a.filmBy.localeCompare(b.filmBy)).map((v: any) => ({ id: v.id, title: v.title, hook: v.hook, filmBy: v.filmBy, scriptRef: v.scriptRef, where: v.where }));
   return {
-    asOf: new Date().toISOString(), today: day(today), tomorrow: day(tomorrow), film, messages: fu.items.slice(0, 5), stock: stock.filter((s) => s.low),
+    asOf: new Date().toISOString(), today: day(today), tomorrow: day(tomorrow), film, stock: stock.filter((s) => s.low),
     reviewsNote: "From opening on 8 December, the patients to ask for a Google review appear here.",
     sources: [freshness("ansTakings", clinic?.updatedIso ?? null), freshness("videos", videos?.pushedIso ?? null), ...fu.sources],
   };

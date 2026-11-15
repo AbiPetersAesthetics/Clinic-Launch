@@ -3,7 +3,7 @@
 // every page of the area as ruled rows. One phone screen, one scroll.
 import { useState, type ReactNode } from "react";
 import { BoardShell } from "@/components/board-shell";
-import { BankInput } from "@/components/bank-input";
+import { BankInput, AccountsView } from "@/components/bank-input";
 import { AREAS } from "@/components/shell/nav";
 import { LinkList, Section } from "@/components/page";
 import { useSummary } from "@/lib/alfred";
@@ -23,9 +23,13 @@ export function MoneyArea() {
   const [open, setOpen] = useState(() => new URLSearchParams(window.location.search).has("bank"));
   return (
     <AreaPage area="money" board="money" next={<>After paying anything from the bank, type the new balance here; anything bought on a card is added to the card's register.</>}>
-      <Section title="Bank balance" id="bank-h">
+      <Section title="The bank" id="bank-h">
+        {!open && data?.extra?.bank?.accounts?.length ? <AccountsView accounts={data.extra.bank.accounts} /> : null}
+        {!open && data?.extra?.bank && !data.extra.bank.accounts?.length && <p className="text-[1rem] text-ink">£{Math.round(data.extra.bank.balanceGbp).toLocaleString("en-GB")} typed for {new Date(data.extra.bank.asAt + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, all accounts as one.</p>}
+        {!open && (data?.extra?.expected ?? []).length > 0 && <p className="text-[0.95rem] text-ink-2">Expected, not yet in the bank: {data!.extra.expected.map((e: any) => `${e.label} £${Math.round(e.amount).toLocaleString("en-GB")}`).join("; ")}.</p>}
+        {!open && (data?.extra?.availableLoans ?? []).length > 0 && <p className="text-[0.95rem] text-ink-2">Available to draw when you choose, not in the forecast: {data!.extra.availableLoans.map((l: any) => `${l.label} £${Math.round(l.principal).toLocaleString("en-GB")}`).join("; ")}.</p>}
         {open && data ? <BankInput bank={data.extra?.bank ?? null} fundingOptions={data.extra?.fundingOptions ?? []} autoFocus />
-          : <button type="button" onClick={() => setOpen(true)} className="min-h-[44px] px-6 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em]">Update bank balance</button>}
+          : <button type="button" onClick={() => setOpen(true)} className="justify-self-start min-h-[44px] px-6 rounded-full bg-ink text-white text-[0.85rem] font-semibold">Update the bank</button>}
       </Section>
     </AreaPage>
   );

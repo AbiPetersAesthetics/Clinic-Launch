@@ -23,8 +23,7 @@ export const AREAS: NavArea[] = [
     { href: "/growth/market", label: "Market", note: "Prices, offers and competitors", keywords: "competition pricing" },
   ] },
   { key: "patients", href: "/patients", label: "Patients", icon: Users, pages: [
-    { href: "/patients/pathway", label: "Pathway", note: "Every lead from ad to diary to paying to returning", keywords: "leads trace bookings" },
-    { href: "/patients/follow-up", label: "Follow up", note: "Who has not booked or converted, with a message drafted for Abi", keywords: "follow up call message" },
+    { href: "/patients/pathway", label: "Pathway", note: "Every lead from ad to diary to paying, and who has not booked yet", keywords: "leads trace bookings follow up" },
     { href: "/patients/due-back", label: "Due back", note: "Patients whose course or review is due", keywords: "recall return" },
     { href: "/patients/reviews", label: "Reviews", note: "Reviews received, asked, and who to ask next", keywords: "google reviews ask" },
   ] },
@@ -41,7 +40,7 @@ export const MORE: NavPage[] = [
   { href: "/inbox", label: "Inbox", note: "Every card and its history" },
   { href: "/activity", label: "Activity", note: "Every run, what it read and changed" },
   { href: "/sources", label: "Sources", note: "Each data source: last read, next run, healthy or not" },
-  { href: "/abi", label: "Abi's screen", note: "Her day, what to film, messages to send, stock" },
+  { href: "/abi", label: "Abi's screen", note: "Her day, what to film, low stock" },
   { href: "/settings", label: "Settings", note: "Hand, notifications" },
   { href: "/build", label: "Build", note: "What is finished and what is left" },
 ];

@@ -13,11 +13,11 @@ export interface Alert { id: string; area: string; level: "act" | "watch"; title
 export interface Summary { key: string; area: string; title: string; state: Tone; verdict: string; detail?: string; kpis: Kpi[]; sources: Chip[]; alerts: Alert[]; keeper: string; extra?: any }
 export interface Proposal {
   id: number; area: string; kind: string; agent: string; title: string; why: string | null; risk: string | null; on_approval: string | null;
-  guard: string | null; sources: { source: string; asOf: string }[]; chips?: Chip[]; expires_at: string | null; status: string; reason: string | null;
+  guard: string | null; sources: { source: string; asOf: string }[]; chips?: Chip[]; decide_with?: string | null; expires_at: string | null; status: string; reason: string | null;
   question: string | null; answer: string | null; result: string | null; snooze_until: string | null; decided_at: string | null; created_at: string; updated_at: string;
 }
 export interface FundingOption { id: number; label: string; month: string; amount: number }
-export interface BankLite { balanceGbp: number; asAt: string; inBalance: number[] }
+export interface BankLite { balanceGbp: number; asAt: string; inBalance: number[]; accounts?: { name: string; balanceGbp: number | null; source: string; asAt: string; arriving?: boolean }[] | null }
 export type BriefItem =
   | { kind: "proposal"; id: string; proposal: Proposal }
   | { kind: "alert"; id: string; alert: Alert }

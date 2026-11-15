@@ -39,8 +39,8 @@ import { GrowthSection, PlanPage } from "@/pages/growth/section";
 import { MoneyArea, PatientsArea, ClinicArea } from "@/pages/areas";
 import { BuildCashPage, StandsAlonePage, TakingsPage, ObligationsPage } from "@/pages/money/pages";
 import { StudioPage, SearchPage } from "@/pages/growth/studio";
-import { PathwayPage, FollowUpPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
-import { DiaryPage, StockPage } from "@/pages/clinic/pages";
+import { PathwayPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
+import { DiaryPage, StockPage, TeamPage } from "@/pages/clinic/pages";
 import SourcesPage from "@/pages/sources";
 import AbiPage from "@/pages/abi";
 import GrowthCommand from "@/pages/growth/command";
@@ -198,13 +198,13 @@ function Router() {
 
         <Route path="/patients" component={PatientsArea} />
         <Route path="/patients/pathway" component={PathwayPage} />
-        <Route path="/patients/follow-up" component={FollowUpPage} />
+        <Route path="/patients/follow-up">{() => <Moved to="/patients/pathway" />}</Route>
+        <Route path="/clinic/team" component={TeamPage} />
         <Route path="/patients/due-back" component={DueBackPage} />
         <Route path="/patients/reviews" component={ReviewsPage} />
 
         <Route path="/clinic" component={ClinicArea} />
         <Route path="/clinic/diary" component={DiaryPage} />
-        <Route path="/clinic/team" component={PeoplePage} />
         <Route path="/clinic/compliance" component={CompliancePage} />
         <Route path="/clinic/stock" component={StockPage} />
         <Route path="/clinic/opening" component={ProjectPage} />
