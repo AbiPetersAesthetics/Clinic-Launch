@@ -172,6 +172,25 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     }
   }
 
+  // CBS retention after practical completion (owner, 15 Nov 2026: 3% until then, 1.5% through
+  // snagging): the last invoice pays everything left but that share of the contract, which stays
+  // in the month the plan already holds retention (the latest month on the CBS lines).
+  const retPct = Number((cbsCfg as any).retentionAfterPcPct);
+  if (cbsPayMonth && retPct > 0) {
+    const cbsLines = lines.filter(l => /^Ref \d+ - /.test(l.title) && l.remainingExVat >= 0.5 && !l.planProblem);
+    const totalRem = cbsLines.reduce((t, l) => t + l.remainingExVat, 0);
+    const contractEx = lines.filter(l => /^Ref \d+ - /.test(l.title)).reduce((t, l) => t + l.exVat, 0);
+    const f = totalRem > 0 ? Math.min(1, (retPct / 100) * contractEx / totalRem) : 0;
+    const retMonth = cbsLines.flatMap(l => l.plan.map(p => p.month)).sort().pop() ?? cbsPayMonth;
+    const ids = new Set(cbsLines.map(l => l.taskId));
+    for (let i = payments.length - 1; i >= 0; i--) if (payments[i].taskId != null && ids.has(payments[i].taskId!)) payments.splice(i, 1);
+    for (const l of cbsLines) {
+      l.plan = retMonth > cbsPayMonth ? [{ month: cbsPayMonth, share: 1 - f, method: "bank" }, { month: retMonth, share: f, method: "bank" }] : [{ month: cbsPayMonth, share: 1, method: "bank" }];
+      const vatRate = l.vatBasis === "no VAT" ? 0 : config.vatRate;
+      for (const pl of l.plan) payments.push({ month: pl.month, amountExVat: l.remainingExVat * pl.share, vat: l.remainingExVat * pl.share * vatRate, method: "bank", label: l.title, taskId: l.taskId });
+    }
+  }
+
   // ── Funding and loans ──
   const inv = (await db.select().from(investmentsTable).where(eq(investmentsTable.projectId, projectId))).filter(i => !(i as any).archived);
   const ym = (d: string | null) => (d ? d.slice(0, 7) : config.startMonth);

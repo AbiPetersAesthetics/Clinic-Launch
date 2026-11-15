@@ -46,7 +46,9 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   // payment and half two and a half weeks after that, Abi lending the VAT the same day.
   const cbs = J.projectLines.filter(l => /^Ref \d+ - /.test(l.title));
   const cbsLeftInc = cbs.reduce((s, l) => s + Math.max(0, l.recorded - l.paid - (l.paidOnCard || 0)), 0);
-  const retentionInc = cbs.reduce((s, l) => s + 0.03 * l.recorded, 0);
+  // 3% held until practical completion; a different share after it when the owner has given one.
+  const retShare = Number(J.config && J.config.cbs && J.config.cbs.retentionAfterPcPct) > 0 && J.config.cbs.finalPayDate ? Number(J.config.cbs.retentionAfterPcPct) / 100 : 0.03;
+  const retentionInc = cbs.reduce((s, l) => s + retShare * l.recorded, 0);
   const cbsPayable = Math.max(0, cbsLeftInc - retentionInc), half = r2(cbsPayable / 2), halfVat = r2(half / 6);
   const cbsVatByMonth = {};
   // Valuations already paid from Tide, VAT and all: Abi lends that VAT in if she has not yet,
@@ -62,7 +64,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   if (cbsCfg.finalPayDate) {
     // The last invoice: the whole balance less retention on its pay date, Abi lending the VAT the same day.
     const d = cbsCfg.finalPayDate, all = r2(cbsPayable), allVat = r2(all / 6);
-    cbsRule = `CBS: one last invoice, the balance less the 3% retention, paid on ${long(d)} (invoiced about a week before). Abi lends the VAT into Tide the same day, as she does for a valuation already paid, and is repaid when its refund lands.`;
+    cbsRule = `CBS: one last invoice, the balance less the ${+(retShare * 100).toFixed(1)}% retention held through snagging, paid on ${long(d)} (invoiced about a week before). Abi lends the VAT into Tide the same day, as she does for a valuation already paid, and is repaid when its refund lands.`;
     if (all > 0.5) {
       add(d, `Abi lends the VAT on CBS valuation ${nextN}, the last invoice (director's loan)`, "Abi Flitney", "abi-in", allVat);
       add(d, `CBS valuation ${nextN}, the last invoice: the balance less retention, VAT included`, "Commercial Building Solutions", "bank", -all, `${gbp(all - allVat)} work + ${gbp(allVat)} VAT`, allVat);
