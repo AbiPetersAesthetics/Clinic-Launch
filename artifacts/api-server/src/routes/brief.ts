@@ -42,9 +42,10 @@ function runsLine(runs: ActivityRow[], missed: { agent: string; due: string }[])
 
 // What the owner has already said yes to or answered, waiting to be done in his next Claude session.
 async function waitingCounts(projectId: number) {
-  const r = ((await db.execute(sql`SELECT status, count(*)::int AS n FROM proposals WHERE project_id = ${projectId} AND status IN ('approved', 'answered', 'chosen', 'asked') GROUP BY status`)) as any).rows ?? [];
-  const n = (k: string) => Number(r.find((x: any) => x.status === k)?.n ?? 0);
-  return { approved: n("approved"), answered: n("answered") + n("chosen"), asked: n("asked") };
+  // Approved outside actions wait for 08:15; approved changes to ALFRED's own records are being applied.
+  const r = ((await db.execute(sql`SELECT status, action_class, count(*)::int AS n FROM proposals WHERE project_id = ${projectId} AND status IN ('approved', 'answered', 'chosen', 'asked') GROUP BY status, action_class`)) as any).rows ?? [];
+  const n = (f: (x: any) => boolean) => r.filter(f).reduce((t: number, x: any) => t + Number(x.n), 0);
+  return { approved: n((x) => x.status === "approved" && x.action_class !== "record"), answered: n((x) => x.status === "answered" || x.status === "chosen" || (x.status === "approved" && x.action_class === "record")), asked: n((x) => x.status === "asked") };
 }
 
 export async function composeBrief(projectId: number) {

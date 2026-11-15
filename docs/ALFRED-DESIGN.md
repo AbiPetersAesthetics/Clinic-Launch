@@ -24,6 +24,19 @@ other screen follows them. Charts are in `components/charts.tsx`.
 7. **Tables only on detail pages,** designed: right-aligned numerals, clear headers, hairline rows,
    a sticky first column on phones, best and worst rows marked.
 
+## Contrast (owner, 15 Nov 2026: "washed out and hard to digest")
+
+- Every text and background pair passes WCAG AA, 4.5 to 1. Measured on white: ink `#1F2A44` 14.3,
+  ink 2 `#3A4458` 9.8, muted `#4A5568` 7.5, slate `#445B72` 7.0, problem text `#A33A3A` 6.5, watch
+  text `#8A5A12` 5.9, good `#1E8449` 4.7. Nothing lighter than `#4A5568` is used for text.
+- Body text is ink at full strength; ink 2 is for the second line only.
+- Headings are heavy (800 for page titles and section labels, 700 for card titles and sentences).
+- Sections are broken by a 2px ink rule and real space; cards have a 1.5px `#AEB7C6` edge.
+- One strong accent per screen: the verdict sits on a solid navy band in white type.
+- Status is a solid dot (good, watch or problem colour) and a bold label, never a tint.
+- Charts use solid ink and slate; no pastel fills.
+- A card is one line of why, one number, one action; the rest is behind "Show evidence".
+
 ## Type
 
 One family, Mulish (sans), with system fallbacks. Serif is no longer used in new screens.
@@ -46,8 +59,8 @@ Columns of numbers use tabular figures; standalone figures use proportional ones
 | Role | Hex | Use |
 |---|---|---|
 | Ink | `#1F2A44` | text, the measured mark in every chart |
-| Ink 2 | `#4A5368` | secondary text, chart labels |
-| Muted | `#7A8191` | axis words, the source line |
+| Ink 2 | `#3A4458` | secondary text, chart labels |
+| Muted | `#4A5568` | axis words, the source line |
 | Track | `#E7E9EE` | the unfilled part of a bar, hairline rules |
 | Baseline | `#C5CAD3` | comparison marks, upcoming items |
 | Good | `#1E8449` | on target (with the word) |

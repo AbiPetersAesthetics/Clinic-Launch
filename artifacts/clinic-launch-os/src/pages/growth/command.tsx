@@ -28,7 +28,8 @@ export default function GrowthCommand() {
       <PageHead eyebrow="Growth" title="Growth">
         {error ? <p className="text-act">The summary could not be built: {String((error as Error).message)}</p>
           : isLoading || !s ? <Skeleton className="h-20 w-full max-w-xl rounded-xl" />
-          : <Verdict state={s.state} text={s.verdict} sources={s.sources} />}
+          : <div className="rounded-2xl bg-ink px-5 py-5 sm:px-7 sm:py-6"><Verdict state={s.state} text={s.verdict} dark /></div>}
+        {s && <div className="flex flex-wrap gap-x-4">{s.sources.map((c) => <span key={c.source} className="text-[0.8rem] text-ink-muted">{c.text}</span>)}</div>}
       </PageHead>
 
       {v?.cpb != null && (

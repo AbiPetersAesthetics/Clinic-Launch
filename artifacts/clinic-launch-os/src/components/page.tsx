@@ -12,7 +12,7 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
     <header className="space-y-3">
       {back && <Link href={back.href} className="inline-flex items-center gap-1 min-h-[36px] -ml-1 text-[0.85rem] text-slate"><ChevronLeft className="w-4 h-4" />{back.label}</Link>}
       <div><span className="eyebrow">{eyebrow}</span></div>
-      <h1 className="font-sans text-[1.75rem] sm:text-[2.1rem] leading-[1.15] text-ink font-semibold tracking-[-0.015em]">{title}</h1>
+      <h1 className="font-sans text-[1.9rem] sm:text-[2.3rem] leading-[1.1] text-ink font-extrabold tracking-[-0.02em]">{title}</h1>
       {children}
     </header>
   );
@@ -20,10 +20,10 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
 
 export function Section({ title, children, note, id }: { title: string; children: ReactNode; note?: ReactNode; id?: string }) {
   return (
-    <section className="space-y-3" aria-labelledby={id}>
+    <section className="space-y-4 border-t-2 border-ink pt-4" aria-labelledby={id}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 id={id} className="eyebrow">{title}</h2>
-        {note && <span className="text-[0.78rem] text-ink-muted">{note}</span>}
+        {note && <span className="text-[0.88rem] text-ink-2 font-semibold">{note}</span>}
       </div>
       {children}
     </section>
@@ -73,7 +73,7 @@ export function Next({ children }: { children: ReactNode }) {
 const AREA: Record<string, string> = { ads: "Ads", money: "Money", clinic: "Clinic", growth: "Growth", patients: "Patients", content: "Studio" };
 const LEVEL: Record<string, { dot: string; word: string; text: string }> = {
   act: { dot: "bg-act border-act", word: "Act", text: "text-act" },
-  watch: { dot: "bg-watch-bg border-watch", word: "Watch", text: "text-watch" },
+  watch: { dot: "bg-watch border-watch", word: "Watch", text: "text-watch" },
   stale: { dot: "bg-transparent border-ink-muted", word: "Stale", text: "text-ink-muted" },
 };
 
@@ -82,13 +82,13 @@ const LEVEL: Record<string, { dot: string; word: string; text: string }> = {
 export function AlertCard({ area, level, title, detail, sources, href }: { area: string; level: "act" | "watch" | "stale"; title: string; detail?: string; sources?: Chip[]; href?: string }) {
   const L = LEVEL[level];
   return (
-    <article className="rounded-xl border border-card-border bg-card p-4 sm:p-5 grid gap-2 min-w-0">
-      <div className="flex items-center gap-3 text-[0.7rem] font-semibold uppercase tracking-[0.16em]">
-        <span className="text-slate">{AREA[area] ?? area}</span>
-        <span className={`inline-flex items-center gap-1.5 ${L.text}`}><span aria-hidden className={`w-[8px] h-[8px] rounded-full border-2 ${L.dot}`} />{L.word}</span>
+    <article className="rounded-xl border-[1.5px] border-line-strong bg-card p-4 sm:p-5 grid gap-2 min-w-0">
+      <div className="flex items-center gap-3 text-[0.75rem] font-extrabold uppercase tracking-[0.12em]">
+        <span className="text-ink">{AREA[area] ?? area}</span>
+        <span className={`inline-flex items-center gap-1.5 ${L.text}`}><span aria-hidden className={`w-[10px] h-[10px] rounded-full border-2 ${L.dot}`} />{L.word}</span>
       </div>
-      <h3 className="font-sans text-[1.06rem] sm:text-[1.1rem] leading-snug text-ink font-semibold">{title}</h3>
-      {detail && <p className="text-[0.95rem] text-ink-2 leading-relaxed line-clamp-3 sm:line-clamp-none">{detail}</p>}
+      <h3 className="font-sans text-[1.1rem] sm:text-[1.15rem] leading-snug text-ink font-bold">{title}</h3>
+      {detail && <p className="text-[0.98rem] text-ink-2 leading-relaxed line-clamp-2">{detail}</p>}
       <div className="flex flex-wrap items-center gap-x-4">
         {sources && <Sources chips={sources} />}
         {href && <Link href={href} className="ml-auto inline-flex items-center min-h-[44px] px-5 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-ink hover:bg-wash">Open</Link>}

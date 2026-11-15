@@ -85,11 +85,11 @@ export function ProposalCard({ p, compact = false }: { p: Proposal; compact?: bo
 
   const fields = p.fields ?? [];
   return (
-    <article className="rounded-xl border border-card-border bg-card p-4 sm:p-5 grid gap-3 min-w-0" aria-label={p.title}>
-      <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate">{AREA[p.area] ?? p.area}{kind === "answer" ? " · a question for you" : kind === "decide" ? " · to decide together" : ""}</span>
-      <h3 className="font-sans font-semibold text-[1.08rem] sm:text-[1.12rem] leading-snug text-ink">{p.title}</h3>
+    <article className="rounded-xl border-[1.5px] border-line-strong bg-card p-4 sm:p-5 grid gap-3 min-w-0" aria-label={p.title}>
+      <span className="text-[0.75rem] font-extrabold uppercase tracking-[0.12em] text-ink">{AREA[p.area] ?? p.area}{kind === "answer" ? " · a question for you" : kind === "decide" ? " · to decide together" : ""}</span>
+      <h3 className="font-sans font-bold text-[1.1rem] sm:text-[1.15rem] leading-snug text-ink">{p.title}</h3>
       {p.decide_with && <p className="text-[0.92rem] font-semibold text-slate">Decision for {p.decide_with}, together</p>}
-      <p className="text-[0.95rem] text-ink-2 leading-relaxed">{open ? p.why : firstSentences(p.why)}</p>
+      <p className="text-[0.98rem] text-ink-2 leading-relaxed">{open ? p.why : firstSentences(p.why, 1)}</p>
       {kind === "approve" && <p className="text-[0.88rem] text-ink">{outside ? `If you approve, it will be done ${nextRun()}.` : "If you approve, it is done straight away, with Undo."}</p>}
       {p.answer && <p className="text-[0.95rem] rounded-lg bg-wash p-3 text-ink"><span className="font-semibold">ALFRED's answer: </span>{p.answer}</p>}
 

@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 
 export const C = {
-  ink: "#1F2A44", ink2: "#4A5368", muted: "#7A8191", track: "#E7E9EE", grid: "#E7E9EE", base: "#C5CAD3",
+  ink: "#1F2A44", ink2: "#3A4458", muted: "#4A5568", track: "#DDE2EA", grid: "#DDE2EA", base: "#8E99AB",
   good: "#1E8449", watch: "#B5800C", bad: "#C0392B", surface: "#FFFFFF",
 };
 export type Status = "good" | "watch" | "bad" | "neutral";
@@ -51,7 +51,7 @@ export function Funnel({ stages, ariaLabel }: { stages: Stage[]; ariaLabel: stri
                 <span className="h-8 w-full rounded-md border border-dashed flex items-center px-2.5 text-[0.8rem]" style={{ borderColor: C.base, color: C.muted }}>{s.note ?? "not measured yet"}</span>
               ) : (
                 <>
-                  <span className="h-8 rounded-md" style={{ width: `${w}%`, background: i === 0 ? C.ink2 : C.ink, opacity: i === 0 ? 0.55 : 1 }} />
+                  <span className="h-8 rounded-md" style={{ width: `${w}%`, background: i === 0 ? "#445B72" : C.ink }} />
                   <span className="ml-2 text-[0.9rem] font-semibold text-ink whitespace-nowrap">{s.value}{s.note ? <span className="font-normal text-ink-2"> {s.note}</span> : null}</span>
                 </>
               )}
@@ -154,8 +154,8 @@ export function Timeline({ months, rows, todayIndex, ariaLabel }: { months: stri
 // and a single line of source and age.
 export function Insight({ sentence, children, foot, href }: { sentence: ReactNode; children?: ReactNode; foot?: ReactNode; href?: string }) {
   return (
-    <section className="grid gap-3 py-5 border-t border-border first:border-t-0 first:pt-0">
-      <p className="text-[1.15rem] sm:text-[1.25rem] leading-snug font-semibold text-ink max-w-[34ch] sm:max-w-[48ch]">{sentence}</p>
+    <section className="grid gap-3 py-6 border-t border-line-strong first:border-t-0 first:pt-1">
+      <p className="text-[1.2rem] sm:text-[1.35rem] leading-snug font-bold text-ink max-w-[32ch] sm:max-w-[46ch]">{sentence}</p>
       {children}
       {(foot || href) && <div className="flex items-center justify-between gap-3 text-[0.78rem]" style={{ color: C.muted }}><span>{foot}</span>{href && <Link href={href} className="underline text-ink-2 shrink-0 min-h-[32px] inline-flex items-center">Detail</Link>}</div>}
     </section>

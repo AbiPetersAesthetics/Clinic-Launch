@@ -10,10 +10,10 @@ export function KpiTile({ kpi }: { kpi: Kpi }) {
   const label = kpi.value != null ? `${kpi.label}, ${kpi.value}${kpi.source ? `, ${kpi.source.text}` : ""}` : `${kpi.label}, not measured yet`;
   const stale = kpi.source?.state === "stale";
   return (
-    <div role="group" aria-label={label} className="border-t border-line-strong pt-2.5 pb-1 grid gap-0.5 content-start min-w-0 h-full">
+    <div role="group" aria-label={label} className="border-t-2 border-ink pt-2.5 pb-1 grid gap-0.5 content-start min-w-0 h-full">
       <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted leading-tight">{kpi.label}</span>
       {kpi.value != null ? (
-        <b className={`font-sans tabular text-[1.6rem] sm:text-[2rem] leading-[1.1] font-medium tracking-[-0.01em] ${stale ? "text-ink-muted" : TONE[kpi.tone ?? ""] ?? "text-ink"}`}>{kpi.value}</b>
+        <b className={`font-sans text-[1.8rem] sm:text-[2.2rem] leading-[1.1] font-extrabold tracking-[-0.02em] ${stale ? "text-ink-muted" : TONE[kpi.tone ?? ""] ?? "text-ink"}`}>{kpi.value}</b>
       ) : (
         <b className="font-sans text-[1rem] leading-snug font-medium text-ink-muted pt-1">Not measured yet</b>
       )}
