@@ -1,7 +1,7 @@
 // Home: the screen Launch OS opens on (owner, 15 Nov 2026: "a splash screen so when I arrive I can
 // click what I want to go to"). Big tiles for the command boards first, then every area.
 import { Link } from "wouter";
-import { LayoutTemplate, Target, Gauge, Zap, PoundSterling, Link2, Megaphone, TrendingUp, BookOpen, CreditCard, Wallet, Users, ShieldCheck, AlertTriangle, ListTodo, Armchair, ShoppingBag } from "lucide-react";
+import { LayoutTemplate, Target, Gauge, Zap, PoundSterling, Megaphone, TrendingUp, BookOpen, CreditCard, Wallet, Users, ShieldCheck, ListTodo } from "lucide-react";
 
 type Tile = { href: string; label: string; note: string; icon: React.ElementType };
 
@@ -16,7 +16,6 @@ const AREAS: { title: string; tiles: Tile[] }[] = [
     { href: "/ads-ideas", label: "Ads Ideas", note: "Ways to lift ROAS, with the evidence", icon: Zap },
     { href: "/market", label: "Market & Competitors", note: "Prices, offers and rivals", icon: PoundSterling },
     { href: "/marketing", label: "Launch Marketing", note: "The launch plan, day by day", icon: Megaphone },
-    { href: "/backlinks", label: "Backlinks", note: "Links that lift the site", icon: Link2 },
   ] },
   { title: "Money", tiles: [
     { href: "/cash-line", label: "Cash Line", note: "The bank, day by day", icon: TrendingUp },
@@ -27,12 +26,9 @@ const AREAS: { title: string; tiles: Tile[] }[] = [
   { title: "Clinic", tiles: [
     { href: "/people", label: "People & Capacity", note: "Team and diary capacity", icon: Users },
     { href: "/compliance", label: "Compliance & CQC", note: "What must be in place", icon: ShieldCheck },
-    { href: "/risk-register", label: "Risks", note: "What could go wrong", icon: AlertTriangle },
   ] },
   { title: "Build, until opening", tiles: [
     { href: "/project", label: "Plan & Timeline", note: "Every task and date", icon: ListTodo },
-    { href: "/kit", label: "Rooms & Kit", note: "What we are buying, room by room", icon: Armchair },
-    { href: "/suppliers", label: "Suppliers & Tenders", note: "Quotes and orders", icon: ShoppingBag },
   ] },
 ];
 

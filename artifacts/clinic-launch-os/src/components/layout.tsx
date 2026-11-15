@@ -74,7 +74,7 @@ function SidebarNav({
   location,
   onNavigate,
 }: {
-  navItems: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[];
+  navItems: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean; wip?: boolean }[];
   location: string;
   onNavigate?: () => void;
 }) {
@@ -82,6 +82,15 @@ function SidebarNav({
     <nav className="px-4 space-y-0.5">
       {navItems.map((item) => {
         const isActive = location === item.href;
+        if (item.wip) {
+          return (
+            <div key={item.href} aria-disabled="true" title="Work in progress" className="flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium text-sidebar-foreground/35 cursor-not-allowed select-none">
+              <item.icon className="w-4 h-4 shrink-0" />
+              <span className="flex-1">{item.label}</span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.14em] px-1.5 py-0.5 rounded-full border border-sidebar-border">WIP</span>
+            </div>
+          );
+        }
         return (
           <Link
             key={item.href}
@@ -162,12 +171,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // The sidebar in areas (15 Nov 2026). Command boards first: the few pages opened every day.
   // Build retires into the archive after opening; Clinic grows into operations.
-  const sections: { title: string; note?: string; items: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[] }[] = [
+  const sections: { title: string; note?: string; items: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean; wip?: boolean }[] }[] = [
     { title: "Command boards", items: [
       { href: "/", label: "Home", icon: LayoutDashboard },
       { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
       { href: "/ads-board", label: "Ads Board", icon: Target },
       { href: "/clinic-board", label: "Clinic Board", icon: Gauge },
+      { href: "/social-board", label: "Social Board", icon: Megaphone, wip: true },
+      { href: "/seo-board", label: "SEO Board", icon: Link2, wip: true },
     ] },
     { title: "Money", items: [
       { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
@@ -179,18 +190,13 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       { href: "/ads-ideas", label: "Ads Ideas", icon: Zap },
       { href: "/marketing", label: "Launch Marketing", icon: Megaphone },
       { href: "/market", label: "Market & Competitors", icon: PoundSterling },
-      { href: "/backlinks", label: "Backlinks", icon: Link2 },
     ] },
     { title: "Clinic", items: [
       { href: "/people", label: "People & Capacity", icon: Users },
       { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
-      { href: "/risk-register", label: "Risks", icon: AlertTriangle },
     ] },
     { title: "Build", note: "retires after opening", items: [
       { href: "/project", label: "Plan & Timeline", icon: ListTodo },
-      { href: "/kit", label: "Rooms & Kit", icon: Armchair },
-      { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
-      { href: "/optimisation", label: "Cost Savings", icon: Zap },
     ] },
   ];
 
@@ -200,6 +206,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/digest", label: "Weekly Brief (parked for operations)", icon: Newspaper },
     { href: "/financials", label: "Forecast Model", icon: Calculator },
     { href: "/opening-board", label: "Opening Board (decisions list)", icon: Gauge },
+    { href: "/kit", label: "Rooms & Kit", icon: Armchair },
+    { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
+    { href: "/optimisation", label: "Cost Savings", icon: Zap },
+    { href: "/risk-register", label: "Risks", icon: AlertTriangle },
+    { href: "/backlinks", label: "Backlinks (becoming the SEO Board)", icon: Link2 },
     { href: "/dashboard", label: "Go/No-Go Dashboard", icon: Gauge },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
