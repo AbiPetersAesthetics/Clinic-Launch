@@ -5,7 +5,8 @@
 // Rulebook: ads/STRATEGY.md in the website repo.
 import HEAD from "./ads-board-head.html";
 
-interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number }
+interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; formIso?: string; bookedIso?: string; apptIso?: string; match?: string }
+interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
 interface Campaign { id: string; name: string; kind: string; start: string; end: string | null; perDay: number; what: string; status: string; creative?: { from: string; theme: string }[] }
@@ -13,7 +14,7 @@ interface Plan {
   goal: string; targets: { costPerLead: number[]; costPerBooked: number; costPerPaying: number; roasFirstVisit: number; roasYearOne: number };
   caps: { from: string; perDay: number; why: string }[]; months: string[]; campaigns: Campaign[]; switching: string;
   schedule: { when: string; task: string; what: string }[];
-  assumptions: { bookedToPaying: number; bookedToPayingAll: number; bookedToPayingSource: string; firstVisitValue: number; yearOneValue: number; kept: number; newPatientsPerWeekAlone: number; newPatientsPerWeekTwo: number; note: string };
+  assumptions: { firstVisitValue: number; yearOneValue: number; kept: number; newPatientsPerWeekAlone: number; newPatientsPerWeekTwo: number; note: string };
 }
 interface Snapshot {
   updated: string; updatedIso?: string; windowFrom: string;
@@ -25,6 +26,8 @@ interface Snapshot {
   outcomes?: { attended: number; treated: number; pending: number };
   budgetAdvice?: { current: number; proposed: number; action: string; why: string };
   plan?: Plan;
+  daily?: Day[];
+  checks?: { asOf: string; metaLeadsVsGhl?: string; bookingsTriple?: string; openLeads?: string; uncertain?: string[] };
 }
 
 const esc = (s: unknown) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -55,11 +58,15 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const cpp = paying.length ? p.spend.total / paying.length : null;
   const roas = paying.length ? revenue / p.spend.total : null;
   const leadToBooked = leads ? booked / leads : 0.5;
-  // Booked to paying: the ad leads' own rate once 20 have closed their 30 days, else Abi's diary history.
+  // Booked to paying: only this campaign's own leads (owner, 15 Nov 2026: no historic figures).
+  // Measured once 5 booked leads have passed 30 days from their consultation (or paid sooner).
   const closed = p.leads.filter((l) => l.treated === true || l.treated === false).length;
-  const ownRate = closed >= 20 ? p.leads.filter((l) => l.treated === true).length / closed : null;
-  const b2p = ownRate ?? A.bookedToPaying;
-  const b2pSource = ownRate != null ? `measured on ${closed} Winchester ad leads` : `measured in Abi's diary: ${pct(A.bookedToPaying)} of new patients' consultations paid within 30 days`;
+  const b2p = closed >= 5 ? p.leads.filter((l) => l.treated === true).length / closed : null;
+  const appts = p.leads.map((l) => l.apptIso).filter(Boolean).sort() as string[];
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" });
+  const firstAppt = appts[0] ? fmtDay(appts[0]) : "December";
+  const firstClose = appts[0] ? fmtDay(new Date(Date.parse(appts[0]) + 30 * 86400000).toISOString()) : "January";
+  const notYet = `not measured yet: first consultation ${firstAppt}, first 30 day result about ${firstClose}`;
   // How fresh the figures are
   const ageH = p.updatedIso ? (Date.now() - Date.parse(p.updatedIso)) / 3600000 : null;
   const fresh = ageH == null ? "" : `<span class="pill ${ageH < 8 ? "good" : ageH < 26 ? "warn" : "bad"}">Figures ${ageH < 1 ? "under an hour" : Math.round(ageH) + (Math.round(ageH) === 1 ? " hour" : " hours")} old</span>`;
@@ -68,7 +75,7 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const tone = cpp != null ? (cpp <= T.costPerPaying ? "good" : cpp <= 90 ? "warn" : "bad") : (cpb <= T.costPerBooked ? "good" : "warn");
   const verdict = cpp != null
     ? `${tone === "good" ? "On target" : "Above target"}: ${gbp(cpp)} per paying patient, ROAS ${roas!.toFixed(1)}x`
-    : `On track: ${gbp(cpb)} per booked consultation; paying patients counted from 2 December`;
+    : `On track: ${gbp(cpb)} per booked consultation; paying patients counted from the first consultation, ${firstAppt}`;
 
   // KPIs
   const kpis = [
@@ -77,22 +84,22 @@ export function renderAdsBoard(p: Snapshot | null): string {
     kpi("Cost per lead", gbp(cpl), `target £${T.costPerLead[0]} to £${T.costPerLead[1]}`, cpl <= T.costPerLead[1] ? "good" : "warn"),
     kpi("Booked consultations", String(booked), `${pct(leadToBooked)} of leads`),
     kpi("Cost per booked", booked ? gbp(cpb) : "n/a", `target under £${T.costPerBooked}`, cpb && cpb <= T.costPerBooked ? "good" : "warn"),
-    kpi("Paying patients", paying.length ? String(paying.length) : "from Dec", "paid for a treatment"),
-    kpi("Cost per paying patient", cpp != null ? gbp(cpp) : "from Dec", `target under £${T.costPerPaying}`, cpp == null ? "" : cpp <= T.costPerPaying ? "good" : "bad"),
-    kpi("ROAS", roas != null ? `${roas.toFixed(1)}x` : "from Dec", roas != null ? `${gbp0(revenue)} taken from ad patients` : `target ${T.roasFirstVisit}x first visit`, roas == null ? "" : roas >= T.roasFirstVisit ? "good" : "warn"),
+    kpi("Paying patients", paying.length ? String(paying.length) : "not yet", "paid for a treatment"),
+    kpi("Cost per paying patient", cpp != null ? gbp(cpp) : "not yet", `target under £${T.costPerPaying}`, cpp == null ? "" : cpp <= T.costPerPaying ? "good" : "bad"),
+    kpi("ROAS", roas != null ? `${roas.toFixed(1)}x` : "not yet", roas != null ? `${gbp0(revenue)} taken from ad patients` : `target ${T.roasFirstVisit}x first visit`, roas == null ? "" : roas >= T.roasFirstVisit ? "good" : "warn"),
   ].join("");
 
   // Funnel
   const o = p.outcomes;
   const frow = (label: string, n: number | null, rate: string) => {
     const w = n == null ? 100 : leads ? Math.max(2, (100 * n) / leads) : 0;
-    return `<div class="frow"><span>${esc(label)}</span><div><div class="fbar${n == null ? " pend" : ""}" style="width:${w.toFixed(1)}%"></div></div><b>${n == null ? "Dec" : n}</b>${rate ? `<span class="rate">${esc(rate)}</span>` : ""}</div>`;
+    return `<div class="frow"><span>${esc(label)}</span><div><div class="fbar${n == null ? " pend" : ""}" style="width:${w.toFixed(1)}%"></div></div><b>${n == null ? "soon" : n}</b>${rate ? `<span class="rate">${esc(rate)}</span>` : ""}</div>`;
   };
   const funnel = [
     frow("Leads", leads, ""),
     frow("Booked consultation", booked, `${pct(leadToBooked)} of leads, mostly within three minutes of the form`),
-    frow("Attended", o ? o.attended : null, o ? `${booked ? pct(o.attended / booked) : ""} of booked` : "read from ANS after each consultation, from 2 Dec"),
-    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 30 days` : `expect about ${pct(b2p)} of booked; ${b2pSource}`),
+    frow("Attended", o ? o.attended : null, o ? `${booked ? pct(o.attended / booked) : ""} of booked` : `read from ANS the morning after each consultation; first one ${firstAppt}`),
+    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 30 days` : notYet),
   ].join("");
 
   // Diary and budget
@@ -162,7 +169,7 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const sched = plan.schedule.map((s) => `<li><b>${esc(s.when)}</b><span>${esc(s.what)}</span></li>`).join("");
 
   // Simulator data
-  const simData = JSON.stringify({ cpl: Math.round(cpl * 100) / 100, l2b: Math.round(leadToBooked * 100) / 100, b2p: Math.round(b2p * 100) / 100, first: A.firstVisitValue, year: A.yearOneValue, kept: A.kept, capAlone: A.newPatientsPerWeekAlone, capTwo: A.newPatientsPerWeekTwo, target: T.costPerPaying }).replace(/</g, "\\u003c");
+  const simData = JSON.stringify({ cpl: Math.round(cpl * 100) / 100, l2b: Math.round(leadToBooked * 100) / 100, b2p: b2p == null ? null : Math.round(b2p * 100) / 100, first: A.firstVisitValue, year: A.yearOneValue, kept: A.kept, capAlone: A.newPatientsPerWeekAlone, capTwo: A.newPatientsPerWeekTwo, target: T.costPerPaying }).replace(/</g, "\\u003c");
 
   const body = `<div class="board">
   <div class="head">
@@ -179,18 +186,20 @@ export function renderAdsBoard(p: Snapshot | null): string {
       <div class="ctl"><span class="lbl">Daily budget</span><div class="slide"><input id="s-budget" type="range" min="20" max="60" step="1" value="${Math.round(p.budgetAdvice?.current ?? 25)}"><output id="o-budget"></output></div><span class="hint">Live: £${Math.round(p.budgetAdvice?.current ?? 25)} a day across the three campaigns.</span></div>
       <div class="ctl"><span class="lbl">Cost per lead</span><div class="slide"><input id="s-cpl" type="range" min="3" max="25" step="0.01" value="${cpl.toFixed(2)}"><output id="o-cpl"></output></div><span class="hint">Measured: ${gbp(p.spend.total)} for ${leads} leads. Usually rises as spend rises.</span></div>
       <div class="ctl"><span class="lbl">Lead to booked</span><div class="slide"><input id="s-l2b" type="range" min="0.05" max="0.95" step="0.01" value="${leadToBooked.toFixed(2)}"><output id="o-l2b"></output></div><span class="hint">Measured: ${booked} of ${leads} leads booked.</span></div>
-      <div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.05" max="0.95" step="0.01" value="${b2p.toFixed(2)}"><output id="o-b2p"></output></div><span class="hint">${esc(ownRate != null ? `Measured: ${b2pSource}.` : `Measured in ANS: 23 of 84 new patients' consultations paid within 30 days (Dec 2025 to Oct 2026). Switches to the ad leads' own rate once 20 have passed their 30 days.`)}</span></div>
+      ${b2p != null ? `<div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.05" max="0.95" step="0.01" value="${b2p.toFixed(2)}"><output id="o-b2p"></output></div><span class="hint">Measured: ${closed} booked leads past their 30 days.</span></div>` : `<div class="ctl"><span class="lbl">Booked to paying</span><span class="hint">${esc(notYet.replace("not measured yet", "Not measured yet"))}. Until then the simulator stops at booked consultations; no historic figure is used.</span></div>`}
       <div class="ctl"><span class="lbl">Clinicians</span><div class="seg" id="s-team"><button type="button" aria-pressed="true" data-v="1">Abi alone</button><button type="button" aria-pressed="false" data-v="2">Two</button></div></div>
       <div class="ctl"><span class="lbl">Each month</span><div class="simout" id="simout"></div></div>
     </aside>
     <div class="main">
+      ${renderNow(p, T)}
+      <span class="eyebrow">Since ${esc(p.windowFrom)}, all figures</span>
       <div class="kpis">${kpis}</div>
       <div class="row">
         <div class="card"><span class="q">The funnel we judge on</span><h2>From a form to a paying patient</h2><div class="funnel">${funnel}</div>
           <p style="color:var(--muted);font-size:12px">Follow-up: ${p.followUp.sent} of ${leads} leads had the email and WhatsApp, ${p.followUp.replies} replies. ${esc(p.summary)}</p></div>
         <div class="card"><span class="q">Spend follows the diary</span><h2>Diary fill and this week's budget</h2>${diary}</div>
       </div>
-      <div class="card"><span class="q">Now</span><h2>Every ad, best first</h2>
+      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every ad, best first</h2>
         <div class="table-wrap"><table><thead><tr><th>Ad</th><th>Spend</th><th>Views</th><th>Clicks</th><th>Click rate</th><th>Leads</th><th>Per lead</th><th>Booked</th><th>Per booked</th><th>Paying</th><th>Freq</th><th>Verdict</th></tr></thead><tbody>${adRows}</tbody></table></div>
         <div class="table-wrap"><table><thead><tr><th>Audience</th><th>Spend</th><th>Reach</th><th>Leads</th><th>Per lead</th><th>Frequency</th><th>Fatigue</th></tr></thead><tbody>${setRows}</tbody></table></div>
         <p style="color:var(--muted);font-size:12px">An ad is judged after 7 days or £20. Keep: leads at or under £${T.costPerLead[1]}. Pause: £20 spent and no lead. Every lead, traced from ad to diary, is on <a href="/ads-pathway" target="_top">Ads Pathway</a>.</p>
@@ -216,31 +225,181 @@ export function renderAdsBoard(p: Snapshot | null): string {
   function $(id){return document.getElementById(id);}
   function money(n){return "£"+Math.round(n).toLocaleString("en-GB");}
   function run(){
-    var b=+$("s-budget").value, cpl=+$("s-cpl").value, l2b=+$("s-l2b").value, b2p=+$("s-b2p").value;
-    $("o-budget").textContent="£"+b; $("o-cpl").textContent="£"+cpl.toFixed(2); $("o-l2b").textContent=Math.round(l2b*100)+"%"; $("o-b2p").textContent=Math.round(b2p*100)+"%";
-    var spend=b*30.4, leads=spend/cpl, booked=leads*l2b, paying=booked*b2p, cpp=paying?spend/paying:0;
-    var cap=(team===1?D.capAlone:D.capTwo)*4.33, over=paying>cap;
-    var roas1=spend?paying*D.first/spend:0, roasY=spend?paying*D.year/spend:0;
-    var cls=cpp<=D.target?"good":cpp<=90?"warn":"bad";
-    $("simout").innerHTML=
-      "<div><span>Spend</span><b>"+money(spend)+"</b></div>"+
+    var hasPay=!!$("s-b2p");
+    var b=+$("s-budget").value, cpl=+$("s-cpl").value, l2b=+$("s-l2b").value, b2p=hasPay?+$("s-b2p").value:0;
+    $("o-budget").textContent="£"+b; $("o-cpl").textContent="£"+cpl.toFixed(2); $("o-l2b").textContent=Math.round(l2b*100)+"%"; if(hasPay)$("o-b2p").textContent=Math.round(b2p*100)+"%";
+    var spend=b*30.4, leads=spend/cpl, booked=leads*l2b, cpb=booked?spend/booked:0;
+    var html="<div><span>Spend</span><b>"+money(spend)+"</b></div>"+
       "<div><span>Leads</span><b>"+Math.round(leads)+"</b></div>"+
       "<div><span>Booked consultations</span><b>"+Math.round(booked)+"</b></div>"+
-      "<div><span>Paying patients</span><b class=\\""+(over?"bad":"")+"\\">"+Math.round(paying)+"</b></div>"+
-      "<div><span>Cost per paying patient</span><b class=\\""+cls+"\\">"+money(cpp)+"</b></div>"+
-      "<div><span>ROAS, first visit</span><b>"+roas1.toFixed(1)+"x</b></div>"+
-      "<div><span>ROAS, first year</span><b>"+roasY.toFixed(1)+"x</b></div>"+
-      "<div><span>Kept in year one, after ads</span><b>"+money(paying*D.year*D.kept-spend)+"</b></div>"+
-      "<div><span>New patient room a month</span><b class=\\""+(over?"bad":"good")+"\\">"+Math.round(cap)+(over?", over":"")+"</b></div>";
+      "<div><span>Cost per booked consultation</span><b class=\\""+(cpb<=30?"good":"warn")+"\\">"+money(cpb)+"</b></div>";
+    if(hasPay){
+      var paying=booked*b2p, cpp=paying?spend/paying:0, cap=(team===1?D.capAlone:D.capTwo)*4.33, over=paying>cap;
+      var cls=cpp<=D.target?"good":cpp<=90?"warn":"bad";
+      html+="<div><span>Paying patients</span><b class=\\""+(over?"bad":"")+"\\">"+Math.round(paying)+"</b></div>"+
+        "<div><span>Cost per paying patient</span><b class=\\""+cls+"\\">"+money(cpp)+"</b></div>"+
+        "<div><span>ROAS, first visit</span><b>"+(spend?paying*D.first/spend:0).toFixed(1)+"x</b></div>"+
+        "<div><span>ROAS, first year</span><b>"+(spend?paying*D.year/spend:0).toFixed(1)+"x</b></div>"+
+        "<div><span>Kept in year one, after ads</span><b>"+money(paying*D.year*D.kept-spend)+"</b></div>"+
+        "<div><span>New patient room a month</span><b class=\\""+(over?"bad":"good")+"\\">"+Math.round(cap)+(over?", over":"")+"</b></div>";
+    } else {
+      html+="<div><span>Paying patients, cost each, ROAS</span><b>not measured yet</b></div>";
+    }
+    $("simout").innerHTML=html;
   }
-  ["s-budget","s-cpl","s-l2b","s-b2p"].forEach(function(id){var el=$(id); el.dataset.m=el.value; el.addEventListener("input",run);});
-  $("s-reset").addEventListener("click",function(){["s-budget","s-cpl","s-l2b","s-b2p"].forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
+  var SL=["s-budget","s-cpl","s-l2b","s-b2p"].filter(function(id){return $(id);});
+  SL.forEach(function(id){var el=$(id); el.dataset.m=el.value; el.addEventListener("input",run);});
+  $("s-reset").addEventListener("click",function(){SL.forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
   [].forEach.call(document.querySelectorAll("[data-year]"),function(b){b.addEventListener("click",function(){var y=b.dataset.year; [].forEach.call(document.querySelectorAll("[data-year]"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-cal]"),function(t){t.hidden=t.dataset.cal!==y;});});});
   $("s-team").addEventListener("click",function(e){var t=e.target.closest("button"); if(!t)return; team=+t.dataset.v; [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===t));}); run();});
   run();
 })();
 </script>`;
   return page(body);
+}
+
+// ---------- Now: the last 14 days ----------
+const ukDate = (iso: string) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+const addDays = (ymd: string, n: number) => new Date(Date.parse(ymd + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+const dayLabel = (ymd: string) => new Date(ymd + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" });
+
+interface DayRow { date: string; spend: number; leads: number; booked: number; impressions: number; clicks: number; running: boolean; partial: boolean }
+
+function nowRows(p: Snapshot): DayRow[] {
+  const daily = [...(p.daily ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+  const end = daily.length ? daily[daily.length - 1].date : ukDate(new Date().toISOString());
+  const today = ukDate(p.updatedIso ?? new Date().toISOString());
+  const rows: DayRow[] = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = addDays(end, -i);
+    const m = daily.find((x) => x.date === d);
+    rows.push({
+      date: d, running: !!m, partial: d === today,
+      spend: m?.spend ?? 0, impressions: m?.impressions ?? 0, clicks: m?.linkClicks ?? 0,
+      leads: p.leads.filter((l) => l.formIso && ukDate(l.formIso) === d).length,
+      booked: p.leads.filter((l) => l.bookedIso && ukDate(l.bookedIso) === d).length,
+    });
+  }
+  return rows;
+}
+
+function pathwaySvg(st: { label: string; num: string; sub: string; pend?: boolean }[], rates: string[]) {
+  const W = 140, gap = 74, x0 = 2;
+  const boxes = st.map((s, i) => {
+    const x = x0 + i * (W + gap);
+    return `<g><rect x="${x}" y="40" width="${W}" height="104" rx="6" class="p-box${s.pend ? " pend" : ""}"${s.pend ? ' fill="url(#now-pend)"' : ""}/>
+      <text x="${x + 12}" y="62" class="p-lbl">${esc(s.label)}</text>
+      <text x="${x + 12}" y="100" class="p-num">${esc(s.num)}</text>
+      <text x="${x + 12}" y="126" class="p-sub">${esc(s.sub)}</text></g>`;
+  }).join("");
+  const arrows = rates.map((r, i) => {
+    const x = x0 + (i + 1) * W + i * gap;
+    return `<path d="M${x + 6} 92 H${x + gap - 6} M${x + gap - 12} 86 L${x + gap - 6} 92 L${x + gap - 12} 98" class="p-arrow"/><text x="${x + gap / 2}" y="78" text-anchor="middle" class="p-rate">${esc(r)}</text>`;
+  }).join("");
+  const desc = st.map((s) => `${s.label}: ${s.num}, ${s.sub}`).join("; ");
+  return `<svg viewBox="0 0 1000 160" role="img" aria-label="${esc(desc)}"><defs><pattern id="now-pend" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="10" height="10" class="p-pend-bg"/><line x1="0" y1="0" x2="0" y2="10" class="p-pend-line"/></pattern></defs>${boxes}${arrows}</svg>`;
+}
+
+function dailySvg(rows: DayRow[]) {
+  const L = 110, W = 1000, colW = (W - L - 10) / rows.length, bandH = 70, top = 10;
+  const bands: { key: "spend" | "leads" | "booked"; name: string; cls: string; fmt: (n: number) => string }[] = [
+    { key: "spend", name: "Spend", cls: "bar-spend", fmt: (n) => "£" + n.toFixed(n < 10 ? 2 : 0) },
+    { key: "leads", name: "Leads", cls: "bar-leads", fmt: (n) => String(n) },
+    { key: "booked", name: "Booked", cls: "bar-booked", fmt: (n) => String(n) },
+  ];
+  let out = "";
+  bands.forEach((b, bi) => {
+    const y0 = top + bi * (bandH + 16);
+    const max = Math.max(1, ...rows.map((r) => r[b.key]));
+    out += `<text x="0" y="${y0 + 16}" class="tick" font-weight="700">${b.name}</text><text x="0" y="${y0 + 32}" class="tick">most ${esc(b.fmt(max))}</text>`;
+    out += `<line x1="${L}" y1="${y0 + bandH}" x2="${W - 10}" y2="${y0 + bandH}" class="axis"/>`;
+    rows.forEach((r, i) => {
+      const v = r[b.key]; const h = (v / max) * (bandH - 16); const x = L + i * colW + 4; const w = colW - 8;
+      const tip = `${dayLabel(r.date)}: ${b.fmt(v)}${r.partial ? " so far" : ""}${r.running ? "" : " (not running)"}`;
+      if (v > 0) out += `<rect x="${x.toFixed(1)}" y="${(y0 + bandH - h).toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" class="${b.cls}${r.partial ? " bar-part" : ""}"><title>${esc(tip)}</title></rect><text x="${(x + w / 2).toFixed(1)}" y="${(y0 + bandH - h - 3).toFixed(1)}" text-anchor="middle" class="val">${esc(b.fmt(v))}</text>`;
+      else out += `<rect x="${x.toFixed(1)}" y="${y0}" width="${w.toFixed(1)}" height="${bandH}" fill="transparent"><title>${esc(tip)}</title></rect>`;
+    });
+  });
+  const yd = top + 3 * (bandH + 16) + 4;
+  rows.forEach((r, i) => {
+    const x = L + i * colW + colW / 2;
+    out += `<text x="${x.toFixed(1)}" y="${yd}" text-anchor="middle" class="tick">${esc(dayLabel(r.date).split(" ")[0])}</text><text x="${x.toFixed(1)}" y="${yd + 14}" text-anchor="middle" class="tick">${esc(r.date.slice(8).replace(/^0/, ""))}${r.partial ? " so far" : r.running ? "" : " off"}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${yd + 22}" role="img" aria-label="Spend, leads and bookings for each of the last 14 days">${out}</svg>`;
+}
+
+function verdict(cur: number, prev: number, better: "lower" | "higher" | "neutral", enough: boolean, unit: (n: number) => string) {
+  if (!enough) return { cls: "flat", text: `Too few to tell yet: ${unit(cur)} against ${unit(prev)}` };
+  if (better === "neutral") return { cls: "flat", text: cur === prev ? "Same as last week" : `${cur > prev ? "Up" : "Down"} ${unit(Math.abs(cur - prev))}` };
+  if (!prev) return { cls: "flat", text: "Nothing to compare with last week" };
+  const ch = (cur - prev) / prev;
+  if (Math.abs(ch) <= 0.15) return { cls: "flat", text: "Steady" };
+  const good = better === "lower" ? ch < 0 : ch > 0;
+  return { cls: good ? "good" : "bad", text: `${good ? "Better" : "Worse"}: ${unit(cur)} against ${unit(prev)}` };
+}
+
+export function renderNow(p: Snapshot, T: Plan["targets"]): string {
+  const rows = nowRows(p);
+  const sum = (rs: DayRow[], k: "spend" | "leads" | "booked" | "impressions" | "clicks") => rs.reduce((s, r) => s + r[k], 0);
+  const spend = sum(rows, "spend"), leads = sum(rows, "leads"), booked = sum(rows, "booked"), imps = sum(rows, "impressions"), clicks = sum(rows, "clicks");
+  const inWindow = (iso?: string) => !!iso && ukDate(iso) >= rows[0].date && ukDate(iso) <= rows[13].date;
+  const wLeads = p.leads.filter((l) => inWindow(l.formIso));
+  const attended = wLeads.filter((l) => l.attended === true).length;
+  const paying = wLeads.filter((l) => l.treated === true).length;
+  const future = wLeads.filter((l) => l.apptIso && Date.parse(l.apptIso) > Date.now()).length;
+  const anyAttendData = wLeads.some((l) => l.attended !== undefined);
+  const nextAppt = wLeads.map((l) => l.apptIso).filter(Boolean).sort()[0];
+  const firstApptNow = nextAppt ? new Date(nextAppt).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" }) : "the first";
+  const g = (n: number) => "£" + n.toFixed(2);
+
+  const headline = `Last 14 days: ${g(spend)} spent, ${leads} leads, ${booked} booked consultations${booked ? `, ${g(spend / booked)} each against a target under £${T.costPerBooked}` : ""}.`;
+  const stages = [
+    { label: "Ads", num: g(spend), sub: `${imps.toLocaleString("en-GB")} views, ${clicks} clicks` },
+    { label: "Leads", num: String(leads), sub: leads ? `${g(spend / leads)} each` : "none yet" },
+    { label: "Booked", num: String(booked), sub: booked ? `${g(spend / booked)} each` : "none yet" },
+    { label: "Attended", num: anyAttendData ? String(attended) : "soon", sub: anyAttendData ? `${booked ? Math.round((100 * attended) / booked) : 0}% of booked` : `first on ${firstApptNow}`, pend: !anyAttendData },
+    { label: "Paying", num: paying ? String(paying) : "soon", sub: paying ? `${g(spend / paying)} each` : "30 days after each", pend: !paying },
+  ];
+  const rates = [
+    imps ? `${((100 * clicks) / imps).toFixed(1)}% click` : "",
+    clicks ? `${Math.round((100 * leads) / clicks)}% send form` : "",
+    leads ? `${Math.round((100 * booked) / leads)}% book` : "",
+    anyAttendData && booked ? `${Math.round((100 * attended) / booked)}% come` : "aim 85%",
+  ];
+
+  // Week on week: last 7 complete days against the 7 before.
+  const complete = rows.filter((r) => !r.partial);
+  const thisW = complete.slice(-7), lastW = complete.slice(-14, -7);
+  const running = (rs: DayRow[]) => rs.filter((r) => r.running).length;
+  let wow = "";
+  if (running(thisW) < 7 || running(lastW) < 7) {
+    const firstDay = rows.find((r) => r.running)?.date ?? rows[13].date;
+    wow = `<p class="muted-s">First week on week comparison on ${esc(dayLabel(addDays(firstDay, 14)))} ${esc(new Date(addDays(firstDay, 14) + "T12:00:00Z").toLocaleDateString("en-GB", { month: "short", timeZone: "UTC" }))}, once the ads have run two full weeks.</p>`;
+  } else {
+    const c = { s: sum(thisW, "spend"), l: sum(thisW, "leads"), b: sum(thisW, "booked"), i: sum(thisW, "impressions"), k: sum(thisW, "clicks") };
+    const q = { s: sum(lastW, "spend"), l: sum(lastW, "leads"), b: sum(lastW, "booked"), i: sum(lastW, "impressions"), k: sum(lastW, "clicks") };
+    const enoughL = c.l >= 8 && q.l >= 8, enoughB = c.b >= 5 && q.b >= 5;
+    const line = (name: string, why: string, cur: string, prev: string, v: { cls: string; text: string }) =>
+      `<tr><td class="v">${esc(name)}<span class="why">${esc(why)}</span></td><td>${esc(cur)}</td><td>${esc(prev)}</td><td class="chg ${v.cls}" style="text-align:left;white-space:normal">${esc(v.text)}</td></tr>`;
+    wow = `<div class="table-wrap"><table class="wow"><thead><tr><th>Measure</th><th>This week</th><th>Last week</th><th style="text-align:left">Verdict</th></tr></thead><tbody>
+      ${line("Spend", "What Meta charged us.", g(c.s), g(q.s), verdict(c.s, q.s, "neutral", true, g))}
+      ${line("Leads", "People who sent the form with their name and number.", String(c.l), String(q.l), verdict(c.l, q.l, "higher", enoughL, String))}
+      ${line("Cost per lead", `What one enquiry costs. Target £${T.costPerLead[0]} to £${T.costPerLead[1]}.`, c.l ? g(c.s / c.l) : "n/a", q.l ? g(q.s / q.l) : "n/a", verdict(c.l ? c.s / c.l : 0, q.l ? q.s / q.l : 0, "lower", enoughL, g))}
+      ${line("Booked consultations", "Leads who booked a consultation in Abi's diary.", String(c.b), String(q.b), verdict(c.b, q.b, "higher", enoughB, String))}
+      ${line("Cost per booked consultation", `Spend divided by bookings. Target under £${T.costPerBooked}.`, c.b ? g(c.s / c.b) : "n/a", q.b ? g(q.s / q.b) : "n/a", verdict(c.b ? c.s / c.b : 0, q.b ? q.s / q.b : 0, "lower", enoughB, g))}
+      ${line("Click rate", "Of every 100 views, how many tapped the ad.", c.i ? ((100 * c.k) / c.i).toFixed(1) + "%" : "n/a", q.i ? ((100 * q.k) / q.i).toFixed(1) + "%" : "n/a", verdict(c.i ? c.k / c.i : 0, q.i ? q.k / q.i : 0, "higher", c.i > 1000 && q.i > 1000, (n) => (100 * n).toFixed(1) + "%"))}
+    </tbody></table></div>`;
+  }
+
+  const ch = p.checks;
+  const checks = ch ? `<div class="checks"><b>Accuracy checks</b> (${esc(new Date(ch.asOf).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }))}): ${[ch.metaLeadsVsGhl, ch.bookingsTriple, ch.openLeads].filter(Boolean).map((x) => `<span class="ok">${esc(x)}</span>`).join(" ")}${ch.uncertain && ch.uncertain.length ? ` <span class="pill warn">Needs checking: ${esc(ch.uncertain.join("; "))}</span>` : ""}</div>` : "";
+
+  return `<div class="card nowcard"><span class="q">Now</span><h2>The last 14 days</h2><p>${esc(headline)}</p>
+    <div class="svgwrap">${pathwaySvg(stages, rates)}</div>
+    <p class="muted-s">${future ? `${future} of these booked consultations are still in the diary ahead; they show as attended or not the morning after.` : ""} The pathway follows the leads who sent the form in these 14 days.</p>
+    <h3>Each day</h3><div class="svgwrap">${dailySvg(rows)}</div><p class="muted-s">Hover a bar for the day. Today is faded until the day ends. Days marked off are before the ads started.</p>
+    <h3>This week against last week</h3>${wow}
+    ${checks}</div>`;
 }
 
 function page(body: string) {
