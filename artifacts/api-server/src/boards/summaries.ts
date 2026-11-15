@@ -219,7 +219,7 @@ export function clinicSummary(c: any | null, now = new Date(), extra: { expiring
 
 export interface CardLite { name: string; limit: number; balance: number; lastEntry: string | null }
 
-export function moneySummary(J: any | null, cards: CardLite[], now = new Date(), clinic: any | null = null, withLoan: any | null = null): Summary {
+export function moneySummary(J: any | null, cards: CardLite[], now = new Date(), clinic: any | null = null, withLoan: any | null = null, baseline: any | null = null): Summary {
   const keeper = "Bank typed by David; cards from the Credit Cards register; the plan follows Plan & Timeline";
   const bank = J?.bank ?? null;
   const bankChip = freshness("bank", bank?.asAt ?? null, { now });
@@ -246,8 +246,12 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
   // 10k floor"). Only a forecast below zero is a problem.
   else if (low && low.bank < 0) { state = "act"; verdict = `The forecast goes overdrawn: its lowest month-end is ${gbp0(low.bank)}, in ${low.month}.`; }
   else verdict = `The bank stays in credit every month of the forecast. The lowest month-end is ${gbp0(low?.bank ?? 0)}, in ${low?.month ?? "the months shown"}.`;
+  const outlook = moneyOutlook(J, withLoan, baseline, clinic, !bank || bankChip.state === "stale", now);
+  if (outlook.state !== "stale" || !bank) {
+    verdict = outlook.state === "stale" ? verdict : outlook.sentence;
+    state = outlook.state === "worse" ? "act" : outlook.state === "better" ? "good" : outlook.state === "stale" ? "stale" : "good";
+  }
   if (state !== "stale" && alerts.some((a) => a.level === "act")) state = "act";
-  else if (state === "good" && alerts.length) state = "watch";
 
   const kpis: Kpi[] = [
     bank ? { label: "Bank", value: gbp0(bank.balanceGbp), compare: `Tide, typed for ${dayMonth(bank.asAt)}`, source: bankChip } : { label: "Bank", value: null, notMeasured: { reason: "type today's balance on Money" }, source: bankChip },
@@ -269,6 +273,7 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
     extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [], accounts: (J?.bankAccounts ?? null) } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank,
       viz: { floor, low, points: ahead.slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })),
         withLoan: withLoan ? (withLoan.rows ?? []).filter((r: any) => r.month >= thisMonth).slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })) : null },
+      outlook,
       availableLoans: J?.availableLoans ?? [],
       expected: (J?.fundingOptions ?? []).filter((f: any) => !(bank?.inBalance ?? []).includes(f.id) && f.month >= (bank?.asAt ?? thisMonth).slice(0, 7)).map((f: any) => ({ label: f.label, amount: f.amount, month: f.month })) },
   };
@@ -311,4 +316,64 @@ export function patientsSummary(p: any | null, c: any | null, followUps: number,
     { label: "Paying", value: closed.length ? treated : null, note: `from about ${firstClose}` },
   ];
   return { key: "patients", area: "patients", title: "Patients", state: stale ? "stale" : followUps ? "watch" : "good", verdict, kpis, sources: [ghl, ans], alerts, keeper, extra: { booked, leads: leads.length, waiting: followUps, viz: { funnel } } };
+}
+
+// ── Money outlook (owner, 15 Nov 2026: "let us know if we're looking okay, looking bad or looking
+// better than we expected over the next few months") ─────────────────────────────────────────
+// Compares, over the next four month-ends, (a) the plan as agreed (the baseline saved from the cash
+// model before the 15 Nov decisions), (b) the live forecast from today's records, and (c) takings
+// taken and booked against the forecast for this month. Better or worse means the bank at the end of
+// the window differs from the plan by more than the larger of 10% and £2,000, or this month's takings
+// are running that far from forecast. Any month-end below zero is worse, in red, whatever else is
+// true. Stale inputs give no verdict.
+export const OUTLOOK_RULE = "Better or worse means the bank at the end of the four months differs from the plan by more than £2,000 or 10%, whichever is larger, or this month's takings are running that far from forecast. A month below zero is always worse.";
+
+export function moneyOutlook(J: any | null, withLoan: any | null, baseline: any | null, clinic: any | null, bankStale: boolean, now = new Date()) {
+  const thisMonth = londonToday(now).slice(0, 7);
+  const live = (J?.rows ?? []).filter((r: any) => r.month >= thisMonth).slice(0, 4);
+  if (!J || live.length < 2) return { state: "stale" as const, word: "Not measured yet", sentence: "The forecast could not be built.", rule: OUTLOOK_RULE, points: null, reasons: [], relies: [] };
+  const plan = new Map<string, any>((baseline?.rows ?? []).map((r: any) => [r.month, r]));
+  const end = live[live.length - 1];
+  const planEnd = plan.get(end.month);
+  const loanRows = withLoan ? new Map<string, any>((withLoan.rows ?? []).map((r: any) => [r.month, r])) : null;
+  const points = live.map((r: any) => ({ label: r.label, now: Math.round(r.closingBank), plan: plan.get(r.month) ? Math.round(plan.get(r.month).closingBank) : null, withLoan: loanRows?.get(r.month) ? Math.round(loanRows.get(r.month).closingBank) : null }));
+  const reasons: { text: string; amount: number }[] = [];
+  // Ad spend: the plan's own figure against what the ads plan now spends.
+  const mk = live.reduce((t: number, r: any) => t + (r.running?.marketing ?? 0), 0) - live.reduce((t: number, r: any) => t + Number(plan.get(r.month)?.marketing ?? 0), 0);
+  if (Math.abs(mk) >= 50) reasons.push({ text: `Ad spend over these four months is ${gbp0(Math.abs(mk))} ${mk > 0 ? "more" : "less"} than the plan allowed`, amount: -mk });
+  const bedh = live.reduce((t: number, r: any) => t + (r.bedh?.gross ?? 0), 0) - live.reduce((t: number, r: any) => t + Number(plan.get(r.month)?.bedhGross ?? 0), 0);
+  if (Math.abs(bedh) >= 100) reasons.push({ text: `Bedhampton takings are ${gbp0(Math.abs(bedh))} ${bedh > 0 ? "above" : "below"} the plan over the four months, with one day a week from December`, amount: bedh });
+  const planLoan = live.reduce((t: number, r: any) => t + Number(plan.get(r.month)?.loanDrawn ?? 0), 0) - live.reduce((t: number, r: any) => t + (r.loanDrawn ?? 0), 0);
+  if (planLoan > 0) reasons.push({ text: `The ${gbp0(planLoan)} loan is not drawn yet; the plan drew it in December`, amount: -planLoan });
+  // Evidence: this month's takings, taken and booked, against the forecast for the month.
+  const mo = (clinic?.takings?.rows ?? []).find((r: any) => /so far/i.test(r.period));
+  const fRow = live.find((r: any) => r.month === thisMonth);
+  let evidenceGap = 0;
+  if (mo && fRow) {
+    const sofar = Number(mo.total ?? 0) + Number(mo.booked ?? 0), forecast = Number(fRow.bedh?.gross ?? 0) + Number(fRow.winc?.gross ?? 0);
+    evidenceGap = sofar - forecast;
+    if (Math.abs(evidenceGap) >= 100) reasons.push({ text: `This month's takings, taken and booked, are ${gbp0(Math.abs(evidenceGap))} ${evidenceGap > 0 ? "ahead of" : "behind"} the forecast (${gbp0(sofar)} against ${gbp0(forecast)})`, amount: evidenceGap });
+  }
+  reasons.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const relies: string[] = [];
+  const expected = (J.fundingOptions ?? []).filter((f: any) => !(J.bank?.inBalance ?? []).includes(f.id) && f.month >= (J.bank?.asAt ?? thisMonth).slice(0, 7));
+  for (const f of expected) relies.push(`${f.label}, ${gbp0(f.amount)}, expected, not yet in the bank`);
+  const refunds = live.reduce((t: number, r: any) => t + (r.vatRefund ?? 0), 0);
+  if (refunds > 0) relies.push(`VAT refunds of ${gbp0(refunds)} over the four months, from the returns`);
+  for (const l of J.availableLoans ?? []) relies.push(`the ${gbp0(l.principal)} loan is not counted; the dashed line shows the forecast if it is drawn now`);
+  const minNow = Math.min(...live.map((r: any) => r.closingBank));
+  const endLabel = end.label;
+  if (bankStale) return { state: "stale" as const, word: "Stale", sentence: "The bank balance is more than 7 days old, so there is no verdict until it is updated.", rule: OUTLOOK_RULE, points, reasons, relies };
+  if (minNow < 0) { const m = live.find((r: any) => r.closingBank === minNow); return { state: "worse" as const, word: "Worse than expected", sentence: `Worse than expected: the bank is forecast to go overdrawn, ${gbp0(minNow)} at the end of ${m.label}.`, rule: OUTLOOK_RULE, points, reasons, relies }; }
+  if (!planEnd) return { state: "on track" as const, word: "On track", sentence: `By the end of ${endLabel} the bank is forecast at ${gbp0(end.closingBank)}. There is no plan figure for that month to compare.`, rule: OUTLOOK_RULE, points, reasons, relies };
+  const diff = end.closingBank - planEnd.closingBank;
+  const limit = Math.max(2000, Math.abs(planEnd.closingBank) * 0.1);
+  const evLimit = fRow ? Math.max(2000, (Number(fRow.bedh?.gross ?? 0) + Number(fRow.winc?.gross ?? 0)) * 0.1) : Infinity;
+  // The forward bank forecast decides; this month's takings can only tip a forecast that is within
+  // tolerance, so the two signals never contradict the sentence.
+  const state = diff > limit ? "better" : diff < -limit ? "worse" : evidenceGap > evLimit ? "better" : evidenceGap < -evLimit ? "worse" : "on track";
+  const word = state === "better" ? "Better than expected" : state === "worse" ? "Worse than expected" : "On track";
+  const lead = reasons.find((r) => Math.sign(r.amount) === Math.sign(diff || evidenceGap));
+  const sentence = `${word}: by the end of ${endLabel} the bank is forecast at ${gbp0(end.closingBank)}, ${gbp0(Math.abs(diff))} ${diff >= 0 ? "above" : "below"} the plan${lead ? `, mainly because ${/^(The|This|Ad) /.test(lead.text) ? lead.text.charAt(0).toLowerCase() + lead.text.slice(1) : lead.text}` : ""}.`;
+  return { state: state as "better" | "worse" | "on track", word, sentence, rule: OUTLOOK_RULE, points, reasons: reasons.slice(0, 3), relies };
 }

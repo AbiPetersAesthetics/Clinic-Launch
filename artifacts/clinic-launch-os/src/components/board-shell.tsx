@@ -75,8 +75,8 @@ export function NeedsYou({ board, summary, max = 3 }: { board: string; summary?:
   );
 }
 
-export function BoardShell({ board, eyebrow, title, next, back, children, after, src, frameTitle, master = false }: {
-  board?: string; eyebrow: string; title: string; next?: ReactNode; back?: { href: string; label: string }; children?: ReactNode; after?: ReactNode; src?: string; frameTitle?: string; master?: boolean;
+export function BoardShell({ board, eyebrow, title, next, back, children, after, lead, src, frameTitle, master = false }: {
+  board?: string; eyebrow: string; title: string; next?: ReactNode; back?: { href: string; label: string }; children?: ReactNode; after?: ReactNode; lead?: ReactNode; src?: string; frameTitle?: string; master?: boolean;
 }) {
   const { data, isLoading, error } = useSummary(board ?? "none");
   const s = board ? data : undefined;
@@ -87,6 +87,7 @@ export function BoardShell({ board, eyebrow, title, next, back, children, after,
           : isLoading || !s ? <Skeleton className="h-16 w-full max-w-xl rounded-xl" />
           : <Verdict state={s.state} text={s.verdict} sources={s.sources} />)}
       </PageHead>
+      {lead}
       {s && s.kpis.length > 0 && <KpiGrid kpis={s.kpis} max={4} />}
       {board && <NeedsYou board={board} summary={s} />}
       {next && <Next>{next}</Next>}

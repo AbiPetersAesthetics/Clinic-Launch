@@ -52,11 +52,9 @@ export async function heartbeat(projectId = 1) {
 }
 
 export function startHeartbeat() {
-  const tick = () => {
-    heartbeat().catch((err) => console.error("[heartbeat]", err));
-    // Only the hosted app applies cards approved earlier, so a local copy never writes on its own.
-    if (process.env.NODE_ENV === "production") import("../routes/proposals").then((m) => m.applyWaiting()).catch((err) => console.error("[apply waiting]", err));
-  };
+  // No automatic applying of approved cards here: cards approved before the appliers existed are
+  // applied by hand (15 Nov 2026), so nothing writes them twice.
+  const tick = () => { heartbeat().catch((err) => console.error("[heartbeat]", err)); };
   setTimeout(tick, 60_000);
   setInterval(tick, 15 * 60_000);
 }

@@ -63,7 +63,7 @@ export async function summaryFor(projectId: number, key: SummaryKey): Promise<Su
   try { J = await buildCashModel(projectId, { months: 13 }); } catch (err) { console.error("[summary money]", err); }
   // The forecast with the undated loan drawn this month, shown beside the one without it.
   if (J?.availableLoans?.length) { try { J2 = await buildCashModel(projectId, { months: 13, drawAvailableLoans: true }); } catch { J2 = null; } }
-  return moneySummary(J, await cardBalances(projectId), new Date(), await latestBoard(projectId, "clinic"), J2);
+  return moneySummary(J, await cardBalances(projectId), new Date(), await latestBoard(projectId, "clinic"), J2, await latestBoard(projectId, "plan-baseline"));
 }
 
 // Which summary each board page shows above its detail.

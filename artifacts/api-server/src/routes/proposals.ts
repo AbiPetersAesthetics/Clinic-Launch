@@ -26,8 +26,8 @@ async function applyNow(projectId: number, p: ProposalRow, newStatusIfPending: s
   return applied;
 }
 
-// Approved or answered record cards not yet applied (for example approved before this existed) are
-// applied by the hosted app on its own, once, on start and every 15 minutes.
+// Approved or answered record cards not yet applied. Not called anywhere at present: the cards
+// approved before the appliers existed are being applied by hand, and a second writer would double them.
 export async function applyWaiting(projectId = 1) {
   await ensureAgentTables();
   const rows = rowsOf<ProposalRow>(await db.execute(sql`SELECT * FROM proposals WHERE project_id = ${projectId} AND action_class = 'record' AND apply IS NOT NULL AND applied IS NULL AND status IN ('approved', 'answered')`));
