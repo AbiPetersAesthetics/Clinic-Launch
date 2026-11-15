@@ -48,12 +48,34 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   const cbsLeftInc = cbs.reduce((s, l) => s + Math.max(0, l.recorded - l.paid - (l.paidOnCard || 0)), 0);
   const retentionInc = cbs.reduce((s, l) => s + 0.03 * l.recorded, 0);
   const cbsPayable = Math.max(0, cbsLeftInc - retentionInc), half = r2(cbsPayable / 2), halfVat = r2(half / 6);
-  const v2 = addDays(cbsLastPaid, 17), v3 = addDays(v2, 18);
   const cbsVatByMonth = {};
-  for (const [d, n] of [[v2, 2], [v3, 3]]) {
-    add(d, `Abi lends the VAT on CBS valuation ${n} (director's loan)`, "Abi Flitney", "abi-in", halfVat);
-    add(d, `CBS valuation ${n}: half of the balance, VAT included`, "Commercial Building Solutions", "bank", -half, `${gbp(half - halfVat)} work + ${gbp(halfVat)} VAT`, halfVat);
-    cbsVatByMonth[ym(d)] = (cbsVatByMonth[ym(d)] || 0) + halfVat;
+  // Valuations already paid from Tide, VAT and all: Abi lends that VAT in if she has not yet,
+  // and it comes back with that month's refund (owner, 15 Nov 2026).
+  const cbsCfg = (J.config && J.config.cbs) || {}, paidVals = cbsCfg.vatPaid || [];
+  for (const v of paidVals) {
+    if (!(v.amount > 0) || ym(v.paidOn || v.month + "-01") < firstYm) continue;
+    cbsVatByMonth[v.month] = (cbsVatByMonth[v.month] || 0) + r2(v.amount);
+    if (!v.abiLentOn || v.abiLentOn > start) add(v.abiLentOn || addDays(start, 5), `Abi lends the VAT on CBS ${v.label}, already paid (director's loan)`, "Abi Flitney", "abi-in", r2(v.amount));
+  }
+  const nextN = (octVatLoan > 0 ? 1 : 0) + paidVals.length + 1;
+  let cbsRule = "";
+  if (cbsCfg.finalPayDate) {
+    // The last invoice: the whole balance less retention on its pay date, Abi lending the VAT the same day.
+    const d = cbsCfg.finalPayDate, all = r2(cbsPayable), allVat = r2(all / 6);
+    cbsRule = `CBS: one last invoice, the balance less the 3% retention, paid on ${long(d)} (invoiced about a week before). Abi lends the VAT into Tide the same day, as she does for a valuation already paid, and is repaid when its refund lands.`;
+    if (all > 0.5) {
+      add(d, `Abi lends the VAT on CBS valuation ${nextN}, the last invoice (director's loan)`, "Abi Flitney", "abi-in", allVat);
+      add(d, `CBS valuation ${nextN}, the last invoice: the balance less retention, VAT included`, "Commercial Building Solutions", "bank", -all, `${gbp(all - allVat)} work + ${gbp(allVat)} VAT`, allVat);
+      cbsVatByMonth[ym(d)] = (cbsVatByMonth[ym(d)] || 0) + allVat;
+    }
+  } else {
+    const v2 = addDays(cbsLastPaid, 17), v3 = addDays(v2, 18);
+    cbsRule = `CBS: the balance less the 3% retention, half on ${long(v2)} and half on ${long(v3)} (two and a half weeks after the last payment, then again). Abi lends the VAT into Tide the same day.`;
+    for (const [d, n] of [[v2, nextN], [v3, nextN + 1]]) {
+      add(d, `Abi lends the VAT on CBS valuation ${n} (director's loan)`, "Abi Flitney", "abi-in", halfVat);
+      add(d, `CBS valuation ${n}: half of the balance, VAT included`, "Commercial Building Solutions", "bank", -half, `${gbp(half - halfVat)} work + ${gbp(halfVat)} VAT`, halfVat);
+      cbsVatByMonth[ym(d)] = (cbsVatByMonth[ym(d)] || 0) + halfVat;
+    }
   }
 
   // 3. The other plan lines, by their payment month and method. A rule day that has already
@@ -107,7 +129,8 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
     // keeps this month's rates aside in a pot), so it counts as paid on the bank's date.
     const due1 = at(m, 1) < start ? start : at(m, 1), early = at(m, 1) < start ? "due on the 1st, counted as spent: keep it aside" : "";
     if (r.ratesPaid ?? r.rates) add(due1, "Business rates", "Winchester City Council", "bank", -(r.ratesPaid ?? r.rates), early, 0);
-    if (r.running.marketing) add(due1, "Advertising", "Meta and Google", "bank", -r.running.marketing, early);
+    if (r.running.marketing) add(due1, "Advertising", "Meta", "bank", -r.running.marketing, early);
+
     if (r.running.general) add(at(m, 10), "Everyday running costs", "accountant, software, bank, card machine", "bank", -r.running.general);
     if (r.running.utilities) add(at(m, 24), "Electricity, water and broadband", "EDF, Southern Water, Vodafone", "bank", -r.running.utilities);
     if (r.rentPaid) add(at(m, 25), "Rent, quarter in advance", "Rosemary (the landlord)", "bank", -r.rentPaid);
@@ -251,7 +274,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   const assumptions = [
     `Starts from the bank saved on the Money page: ${gbp(startBal)} on ${long(start)}, all Tide accounts as one.`,
     `James's £37,000 on the 5th of its month, Bill's £10,000 on the 19th, James's loan on the 1st of December.`,
-    `CBS: the balance less the 3% retention, half on ${long(v2)} and half on ${long(v3)} (two and a half weeks after the last payment, then again). Abi lends the VAT into Tide the same day.`,
+    cbsRule,
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
     `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
     `Card buys spread through November on the Barclaycard (4th Obagi, 6th room 1 and the desk tray, 10th the couch, injectables and consumables, 13th emergency kit, 17th PAT, 24th deep clean). None of these move the bank. The insurance and the Google launch adverts are paid from the bank on 1 December.`,

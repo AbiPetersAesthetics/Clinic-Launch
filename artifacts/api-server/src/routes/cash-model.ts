@@ -33,7 +33,7 @@ export type ProjectLine = {
   recorded: number; paid: number; paidOnCard: number; remainingExVat: number; vatBasis: string;
   /** recorded, ex VAT: the board's phase hover splits each line into ex VAT and VAT with it. */
   exVat: number;
-  plan: { month: string; share: number; method: "bank" | "card" }[]; planProblem: string | null;
+  plan: { month: string; share: number; method: "bank" | "card" | "personal" }[]; planProblem: string | null;
 };
 
 // The bank today, entered on the Money page: the balance, its date, and the funding the owner
@@ -127,6 +127,8 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
 
   const lines: ProjectLine[] = [];
   const payments: ProjectPayment[] = [];
+  const cbsCfg = ((config as any).cbs ?? {}) as { finalPayDate?: string; vatPaid?: { month: string; paidOn?: string; amount: number; label: string; abiLentOn?: string | null }[] };
+  const cbsPayMonth = /^\d{4}-\d{2}-\d{2}$/.test(String(cbsCfg.finalPayDate ?? "")) ? String(cbsCfg.finalPayDate).slice(0, 7) : null;
   for (const t of baseTasks) {
     const o = ovr.get(t.id) ?? {};
     const pick = (k: string) => (o[k] != null ? o[k] : (t as any)[k]);
@@ -151,6 +153,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     // A payment planned for a month that has gone (the bank today moves the start on) is still
     // owed: it falls in the first month the model shows, rather than out of the model.
     plan = plan.map(p => (p.month && p.month < config.startMonth ? { ...p, month: config.startMonth } : p));
+    // CBS's last invoice has a pay date (owner, 15 Nov 2026: invoiced in about two weeks, payable a
+    // week after): what the plan still held for an earlier month is paid then. Retention keeps its month.
+    if (isCbs && cbsPayMonth) plan = plan.map(p => (p.month && p.month < cbsPayMonth ? { ...p, month: cbsPayMonth } : p));
     const shares = plan.reduce((s, p) => s + (Number(p.share) || 0), 0);
     const planProblem = remainingExVat < 0.5 ? null
       : !plan.length ? "No payment month set"
@@ -160,7 +165,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     if (remainingExVat >= 0.5 && !planProblem) {
       // VAT is paid with the bill and reclaimed on the VAT return, unless the line carries none.
       const vatRate = vat.basis === "no VAT" ? 0 : config.vatRate;
-      for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, vat: remainingExVat * p.share * vatRate, method: p.method === "card" ? "card" : "bank", label: t.title, taskId: t.id });
+      for (const p of plan) payments.push({ month: p.month, amountExVat: remainingExVat * p.share, vat: remainingExVat * p.share * vatRate, method: p.method === "card" ? "card" : p.method === "personal" ? "personal" : "bank", label: t.title, taskId: t.id });
     }
   }
 
@@ -192,6 +197,19 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   }
   const octRow = ((await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %'`)) as any).rows?.[0];
   const octVat = Number(octRow?.v ?? 0);
+  // HMRC refunds still to land for VAT already paid: October's (CBS valuation 1, Abi repaid from
+  // it) and each later valuation paid before the bank date. Abi lends that VAT in if she has not
+  // yet, and is repaid the month its refund lands (owner, 15 Nov 2026).
+  const vatRefundsDue: NonNullable<CashInputs["vatRefundsDue"]> = [];
+  if (octVat > 0 && addMonths("2026-10", lag) >= config.startMonth) vatRefundsDue.push({ month: addMonths("2026-10", lag), amount: Math.round(octVat * 100) / 100, label: "October's VAT refund (CBS valuation 1)" });
+  for (const v of cbsCfg.vatPaid ?? []) {
+    const back = addMonths(v.month, lag);
+    if (!(v.amount > 0) || back < config.startMonth) continue;
+    const amt = Math.round(v.amount * 100) / 100;
+    vatRefundsDue.push({ month: back, amount: amt, label: `VAT refund on CBS ${v.label}` });
+    if (!v.abiLentOn || (bank && v.abiLentOn > bank.asAt)) abiLoans.push({ month: v.month < config.startMonth ? config.startMonth : v.month, amount: amt, kind: "gift", label: `Abi lends the VAT on CBS ${v.label} (director's loan)` });
+    abiRepay.push({ month: back, amount: amt, method: "bank", label: `Abi repaid her VAT loan on CBS ${v.label} from the refund`, pnl: false });
+  }
   if (octVat > 0 && addMonths("2026-10", lag) >= config.startMonth) abiRepay.push({ month: addMonths("2026-10", lag), amount: Math.round(octVat * 100) / 100, method: "bank", label: "Abi repaid her October VAT loan from the refund", pnl: false });
   const fundingAll = [...funding, ...abiLoans], oneOffsAll = [...(config.oneOffs ?? []), ...abiRepay];
 
@@ -211,10 +229,10 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const planned: CashInputs = {
     ...config, months,
     winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
-    projectPayments: payments, funding: fundingAll, loans, oneOffs: oneOffsAll,
-    // The ads plan's spend by month is held back with the other 15 Nov changes until the owner brings
-    // it in: set marketing.useAdsPlan in the stored model to switch it on.
+    projectPayments: payments, funding: fundingAll, loans, oneOffs: oneOffsAll, vatRefundsDue,
+    // The ads plan's spend by month: on once marketing.useAdsPlan is set in the stored model (owner, 15 Nov 2026).
     marketing: { ...config.marketing, byMonth: (config.marketing as any).useAdsPlan ? await adsPlanByMonth(projectId) : undefined },
+
   };
   (planned as any).standAloneLoans = opts.drawAvailableLoans ? [] : availableLoans;
   const bankView = bank ? openFromBank(planned, bank) : null;

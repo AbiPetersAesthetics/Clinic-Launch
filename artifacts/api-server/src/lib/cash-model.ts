@@ -11,7 +11,8 @@
 //   items) and comes back from HMRC through the VAT return (vatReturns). It
 //   never touches profit, only the timing of cash.
 
-export type Method = "bank" | "card";
+// personal: a director pays it himself (the reception desk): neither the bank nor the card moves.
+export type Method = "bank" | "card" | "personal";
 
 // vat: the VAT charged on this payment, paid with it and reclaimed through the VAT return.
 export type ProjectPayment = { month: string; amountExVat: number; method: Method; label: string; taskId?: number; vat?: number };
@@ -74,6 +75,9 @@ export type CashInputs = {
   // VAT returns: the months each VAT period ends (1 to 12) and how many months after
   // it HMRC's refund arrives. Without this, VAT on project payments is left out.
   vatReturns?: { periodEndMonths: number[]; refundLagMonths: number };
+  // Build VAT already paid before the bank date and not yet back from HMRC: the month each
+  // refund lands. Paid lines are in the bank balance, so only their refund is still to come.
+  vatRefundsDue?: { month: string; amount: number; label?: string }[];
   projectPayments: ProjectPayment[];
   oneOffs: OneOff[];
   funding: FundingIn[];
@@ -214,6 +218,7 @@ export function runCashModel(inp: CashInputs): CashResult {
   let bedhOpen = true, closeRun = 0, closedAfter: string | null = null, closeReason = "";
   const vatRefunds: Record<string, number> = {};
   let vatPeriod = 0, vatOwedBack = 0;
+  for (const d of inp.vatRefundsDue ?? []) { vatRefunds[d.month] = (vatRefunds[d.month] ?? 0) + d.amount; vatOwedBack += d.amount; }
 
   // Card: every draw is repaid in equal parts over repayMonths, starting the month after.
   const draws: { month: string; amount: number }[] = [];

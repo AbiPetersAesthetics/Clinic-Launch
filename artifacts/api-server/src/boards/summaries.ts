@@ -366,6 +366,18 @@ export function moneyOutlook(J: any | null, withLoan: any | null, baseline: any 
   if (bankStale) return { state: "stale" as const, word: "Stale", sentence: "The bank balance is more than 7 days old, so there is no verdict until it is updated.", rule: OUTLOOK_RULE, points, reasons, relies };
   if (minNow < 0) { const m = live.find((r: any) => r.closingBank === minNow); return { state: "worse" as const, word: "Worse than expected", sentence: `Worse than expected: the bank is forecast to go overdrawn, ${gbp0(minNow)} at the end of ${m.label}.`, rule: OUTLOOK_RULE, points, reasons, relies }; }
   if (!planEnd) return { state: "on track" as const, word: "On track", sentence: `By the end of ${endLabel} the bank is forecast at ${gbp0(end.closingBank)}. There is no plan figure for that month to compare.`, rule: OUTLOOK_RULE, points, reasons, relies };
+  // The plan drew a loan that is available but has no draw date yet (the owner's to take when he
+  // wishes): compare like with like, the forecast with it drawn against the plan, and say plainly
+  // what the months look like without it. The undrawn loan is a choice, not a shortfall.
+  const loanEnd = planLoan > 0 && loanRows?.get(end.month) ? loanRows.get(end.month).closingBank : null;
+  if (loanEnd != null) {
+    const d = loanEnd - planEnd.closingBank, lim = Math.max(2000, Math.abs(planEnd.closingBank) * 0.1);
+    const st = d > lim ? "better" : d < -lim ? "worse" : "on track";
+    const w = st === "better" ? "Better than expected" : st === "worse" ? "Worse than expected" : "On track";
+    const low = live.find((r: any) => r.closingBank === minNow);
+    const sentence = `${w} with the ${gbp0(planLoan)} loan drawn, as the plan assumed: the bank ends ${endLabel} at ${gbp0(loanEnd)}, ${gbp0(Math.abs(d))} ${d >= 0 ? "above" : "below"} the plan. Without the loan the lowest month-end is ${gbp0(minNow)}, in ${low.label}.`;
+    return { state: st as "better" | "worse" | "on track", word: w, sentence, rule: OUTLOOK_RULE, points, reasons: reasons.filter((r) => !/loan is not drawn/.test(r.text)).slice(0, 3), relies };
+  }
   const diff = end.closingBank - planEnd.closingBank;
   const limit = Math.max(2000, Math.abs(planEnd.closingBank) * 0.1);
   const evLimit = fRow ? Math.max(2000, (Number(fRow.bedh?.gross ?? 0) + Number(fRow.winc?.gross ?? 0)) * 0.1) : Infinity;
