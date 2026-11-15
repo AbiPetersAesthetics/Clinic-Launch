@@ -19,6 +19,7 @@ import { renderCashLine } from "../boards/cash-line";
 import { renderOpeningBoard } from "../boards/opening-board";
 import { renderAdsBoard } from "../boards/ads-board";
 import { renderAdsIdeas } from "../boards/ads-ideas";
+import { renderClinicBoard } from "../boards/clinic-board";
 
 const router = Router();
 
@@ -140,6 +141,23 @@ router.get("/projects/:projectId/boards/ads-ideas", async (req, res) => {
     } catch { /* no snapshots table yet */ }
     page(res, renderAdsIdeas(snap));
   } catch (err) { failed(res, "Ads Ideas", err); }
+});
+
+// The Clinic Board: the latest "clinic" board snapshot plus the Ads Pathway leads for ad-booked consultations.
+router.get("/projects/:projectId/boards/clinic", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    let clinic: any = null, ads: any = null;
+    try {
+      const r = await db.execute(sql`SELECT data FROM board_snapshots WHERE project_id = ${projectId} AND key = 'clinic' ORDER BY created_at DESC LIMIT 1`);
+      clinic = (((r as any).rows ?? r)[0])?.data ?? null;
+    } catch { /* no board snapshots yet */ }
+    try {
+      const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
+      ads = (((r as any).rows ?? r)[0])?.data ?? null;
+    } catch { /* no ads snapshots yet */ }
+    page(res, renderClinicBoard(clinic, ads));
+  } catch (err) { failed(res, "Clinic Board", err); }
 });
 
 export default router;

@@ -44,6 +44,19 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 const PROJECT_ID = 1;
 
+// Days to the first treatments (model days 2 Dec 2026) and to opening (8 Dec 2026), always correct.
+function OpeningCountdown() {
+  const day = (iso: string) => Math.ceil((Date.parse(iso + "T00:00:00Z") - Date.now()) / 86400000);
+  const model = day("2026-12-02"), open = day("2026-12-08");
+  if (open < 0) return null;
+  return (
+    <div className="hidden md:flex items-center gap-2 text-xs text-muted-foreground">
+      {model > 0 && <span className="px-3 py-1 rounded-full border border-card-border">First treatments in <b className="text-foreground">{model}</b> days</span>}
+      <span className="px-3 py-1 rounded-full border border-card-border">Winchester opens in <b className="text-foreground">{open}</b> {open === 1 ? "day" : "days"}</span>
+    </div>
+  );
+}
+
 function AbiPetersLogo() {
   // The clinic's official logo (from the website, public/assets/images/logos/abi-peters-logo-official-dot.png).
   return (
@@ -142,7 +155,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const criticalFlags = smartRiskFlags.filter(f => f.level === "critical");
   const warningFlags = smartRiskFlags.filter(f => f.level === "warning");
   const canDismiss = criticalFlags.length === 0;
-  const showBanner = smartRiskFlags.length > 0 && !(bannerDismissed && canDismiss);
+  const showOldStrip: boolean = false;
+  const showBanner = false; // the cost-tier risk banner was stale and is off (owner, 15 Nov 2026)
 
   const complianceScore = dashboard?.complianceReadinessPercent ?? null;
 
@@ -150,9 +164,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Build retires into the archive after opening; Clinic grows into operations.
   const sections: { title: string; note?: string; items: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[] }[] = [
     { title: "Command boards", items: [
+      { href: "/", label: "Home", icon: LayoutDashboard },
       { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
       { href: "/ads-board", label: "Ads Board", icon: Target },
-      { href: "/opening-board", label: "Opening Board", icon: Gauge },
+      { href: "/clinic-board", label: "Clinic Board", icon: Gauge },
     ] },
     { title: "Money", items: [
       { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
@@ -184,6 +199,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/today", label: "Today (parked for operations)", icon: LayoutDashboard },
     { href: "/digest", label: "Weekly Brief (parked for operations)", icon: Newspaper },
     { href: "/financials", label: "Forecast Model", icon: Calculator },
+    { href: "/opening-board", label: "Opening Board (decisions list)", icon: Gauge },
     { href: "/dashboard", label: "Go/No-Go Dashboard", icon: Gauge },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
@@ -223,7 +239,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo area */}
         <div className="p-6 border-b border-sidebar-border flex items-start justify-between">
-          <AbiPetersLogo />
+          <Link href="/" onClick={() => setMobileMenuOpen(false)} aria-label="Home"><AbiPetersLogo /></Link>
           {/* Close button — mobile only */}
           <button
             className="md:hidden text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors p-1 -mr-1 -mt-1"
@@ -293,18 +309,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* ── Sticky top bar ── */}
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-14 md:h-16 flex items-center px-4 md:px-6 shrink-0 gap-3">
 
-          {/* Phone: the logo on the left and the menu on the right, like the website's header */}
-          <img src={`${import.meta.env.BASE_URL}brand/abi-peters-logo.png`} alt="Abi Peters Skin Clinic" width={120} height={39} className="md:hidden block h-auto w-[120px]" />
+          {/* Phone: the menu on the left (owner is left-handed), then the logo */}
           <button
-            className="md:hidden ml-auto text-foreground p-2 rounded-full hover:bg-muted transition-colors shrink-0"
+            className="md:hidden -ml-1 text-foreground p-2 rounded-full hover:bg-muted transition-colors shrink-0"
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
+          <Link href="/" className="md:hidden" aria-label="Home"><img src={`${import.meta.env.BASE_URL}brand/abi-peters-logo.png`} alt="Abi Peters Skin Clinic" width={120} height={39} className="block h-auto w-[120px]" /></Link>
 
-          {/* KPI metrics */}
-          {dashboard ? (
+          {/* The old planning-model strip (break-even, readiness, risks) was stale; removed 15 Nov 2026. */}
+          {dashboard && showOldStrip ? (
             <TooltipProvider delayDuration={350}>
             <div className="hidden md:flex items-center justify-between w-full min-w-0">
               <div className="flex items-center gap-3 md:gap-5 overflow-x-auto scrollbar-none flex-1 min-w-0">
@@ -533,11 +549,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             </TooltipProvider>
           ) : (
-            <div className="animate-pulse flex gap-6">
-              <div className="w-20 h-8 bg-muted rounded" />
-              <div className="w-20 h-8 bg-muted rounded" />
-              <div className="w-20 h-8 bg-muted rounded" />
-            </div>
+            <OpeningCountdown />
           )}
         </header>
 

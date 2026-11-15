@@ -31,6 +31,8 @@ import BacklinksPage from "@/pages/backlinks";
 import OpeningBoardPage from "@/pages/opening-board";
 import AdsBoardPage from "@/pages/ads-board";
 import AdsIdeasPage from "@/pages/ads-ideas";
+import ClinicBoardPage from "@/pages/clinic-board";
+import HomePage from "@/pages/home";
 import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
@@ -152,7 +154,7 @@ function Router() {
   return (
     <AppLayout>
       <Switch>
-        <Route path="/">{() => <Redirect to="/build-cash" />}</Route>
+        <Route path="/" component={HomePage} />
         <Route path="/today" component={TodayPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/project" component={ProjectPage} />
@@ -170,6 +172,7 @@ function Router() {
         <Route path="/opening-board" component={OpeningBoardPage} />
         <Route path="/ads-board" component={AdsBoardPage} />
         <Route path="/ads-ideas" component={AdsIdeasPage} />
+        <Route path="/clinic-board" component={ClinicBoardPage} />
         <Route path="/kit" component={KitPage} />
         <Route path="/build-cash" component={BuildCashPage} />
         <Route path="/money-plan" component={MoneyPlanPage} />
