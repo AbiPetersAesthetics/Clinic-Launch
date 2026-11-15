@@ -241,7 +241,10 @@ export function runCashModel(inp: CashInputs): CashResult {
     const bedhDays = !planOn ? null : !bedhOpen ? 0 : plan!.oneDayFrom && ym >= plan!.oneDayFrom ? 1 : 2;
     const wincDays = !planOn ? null : plan!.weekDays - (bedhDays ?? 0);
     const wincDemand = wincTakings(inp, ym);
-    const transferIn = planOn && bedhDays === 0 ? plan!.transferShare * (plan!.demand.returns[ym] ?? 0) : 0;
+    // absorbDay: on one day a week, the takings Bedhampton's second day would have made are taken at
+    // Winchester instead (owner, 15 Nov 2026: Abi's time moves to where the demand is; not a loss).
+    const absorbed = planOn && bedhDays === 1 && (plan as any).absorbDay ? Math.max(0, (plan!.demand.two[ym] ?? 0) - (plan!.demand.one[ym] ?? 0)) : 0;
+    const transferIn = planOn && bedhDays === 0 ? plan!.transferShare * (plan!.demand.returns[ym] ?? 0) : absorbed;
     const wincCapacity = wincDays == null || !inp.winc.capacity ? null : wincCapacityFor(inp, wincDays);
     const bedhCap = planOn && bedhDays ? bedhDays * (52 / 12) * plan!.dayCapacity : Infinity;
     const bedhWants = !planOn ? inp.bedh.takings[ym] ?? 0 : bedhDays === 0 ? 0 : inp.bedh.takings[ym] ?? (bedhDays === 1 ? plan!.demand.one[ym] : plan!.demand.two[ym]) ?? 0;
