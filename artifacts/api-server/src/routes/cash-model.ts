@@ -156,6 +156,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     // CBS's last invoice has a pay date (owner, 15 Nov 2026: invoiced in about two weeks, payable a
     // week after): what the plan still held for an earlier month is paid then. Retention keeps its month.
     if (isCbs && cbsPayMonth) plan = plan.map(p => (p.month && p.month < cbsPayMonth ? { ...p, month: cbsPayMonth } : p));
+    // David pays Artisan Deco himself, deposit and balance (owner, 15 Nov 2026): the bank does not
+    // move for the desk, and the company owes him for it.
+    if (/^Reception desk, Artisan/.test(t.title)) plan = plan.map(p => ({ ...p, method: "personal" as const }));
     const shares = plan.reduce((s, p) => s + (Number(p.share) || 0), 0);
     const planProblem = remainingExVat < 0.5 ? null
       : !plan.length ? "No payment month set"
