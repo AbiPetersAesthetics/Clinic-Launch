@@ -157,25 +157,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   // Build retires into the archive after opening; Clinic grows into operations.
   const sections: { title: string; note?: string; items: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[] }[] = [
     { title: "Command boards", items: [
-      { href: "/", label: "Today", icon: LayoutDashboard },
-      { href: "/opening-board", label: "Opening Board", icon: Gauge },
-      { href: "/ads-board", label: "Ads Board", icon: Target },
       { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
-      { href: "/digest", label: "Weekly Brief", icon: Newspaper },
+      { href: "/ads-board", label: "Ads Board", icon: Target },
+      { href: "/opening-board", label: "Opening Board", icon: Gauge },
     ] },
     { title: "Money", items: [
       { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
       { href: "/money-plan", label: "Money Plan", icon: BookOpen },
-      { href: "/financials", label: "Forecast Model", icon: Calculator },
       { href: "/cards", label: "Credit Cards", icon: CreditCard },
       { href: "/owed", label: "Owed to directors", icon: Wallet },
     ] },
     { title: "Patients and growth", items: [
-      { href: "/ads-pathway", label: "Ads Pathway", icon: TrendingUp },
       { href: "/ads-ideas", label: "Ads Ideas", icon: Zap },
       { href: "/marketing", label: "Launch Marketing", icon: Megaphone },
-      { href: "/market", label: "Market & Pricing", icon: PoundSterling },
-      { href: "/competition", label: "Competition Intel", icon: Target },
+      { href: "/market", label: "Market & Competitors", icon: PoundSterling },
       { href: "/backlinks", label: "Backlinks", icon: Link2 },
     ] },
     { title: "Clinic", items: [
@@ -193,6 +188,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   // Planning Archive — the go/no-go era tools, kept for reference
   const archiveItems = [
+    { href: "/today", label: "Today (parked for operations)", icon: LayoutDashboard },
+    { href: "/digest", label: "Weekly Brief (parked for operations)", icon: Newspaper },
+    { href: "/financials", label: "Forecast Model", icon: Calculator },
     { href: "/dashboard", label: "Go/No-Go Dashboard", icon: Gauge },
     { href: "/properties", label: "Properties", icon: Building2 },
     { href: "/lease-strategy", label: "Lease Strategy", icon: Scale },
@@ -263,7 +261,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               onClick={() => setArchiveOpen(o => !o)}
               aria-expanded={archiveOpen}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Planning Archive</span>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em]">Parked and archive</span>
               {archiveOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
             </button>
             {archiveOpen && (

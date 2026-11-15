@@ -5,7 +5,7 @@
 // Rulebook: ads/STRATEGY.md in the website repo.
 import HEAD from "./ads-board-head.html";
 
-interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; valueToDate?: number; visits?: number; returned?: boolean; formIso?: string; bookedIso?: string; apptIso?: string; match?: string }
+interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; valueToDate?: number; visits?: number; returned?: boolean; formIso?: string; bookedIso?: string; apptIso?: string; match?: string; formSent?: string; visit?: string; statusText?: string }
 interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
@@ -21,7 +21,7 @@ interface Snapshot {
   spend: { total: number; leadForms: number; bookingAd: number };
   leadForms: { clicks: number }; bookingAd: { clicks: number; toLandingPage: number; traced: number };
   followUp: { sent: number; replies: number }; totals: { impressions: number; linkClicks: number };
-  adsets: AdSet[]; ads: AdRow[]; leads: Lead[]; summary: string;
+  adsets: AdSet[]; ads: AdRow[]; leads: Lead[]; summary: string; other?: string[];
   capacity?: { asOf: string; fill21: number; method?: string };
   outcomes?: { attended: number; treated: number; pending: number };
   budgetAdvice?: { current: number; proposed: number; action: string; why: string };
@@ -169,6 +169,14 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const calendars = years.map(calendar).join("");
   const themes = (plan.campaigns.find((c) => c.id === "evergreen")?.creative ?? []).map((t) => `<li><span>${esc(t.theme)}</span><b>${esc(new Date(t.from + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }))}</b></li>`).join("");
 
+  // Every lead, newest first
+  const leadRows = [...p.leads].sort((a, b) => (b.formIso ?? "").localeCompare(a.formIso ?? "")).map((l) => {
+    const pill = l.status === "booked" ? "good" : l.status === "open" ? "warn" : "";
+    const appt = l.apptIso ? new Date(l.apptIso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" }) : "";
+    const outcome = l.treated === true ? `Paying${l.valueToDate ? ", " + gbp0(l.valueToDate) + " so far" : ""}` : l.attended === true ? "Attended" : l.attended === false ? "No-show" : l.attended === "cancelled" ? "Cancelled" : l.apptIso ? "Not yet due" : "";
+    return `<tr><td>${esc(l.name)}</td><td style="text-align:left">${esc(l.ad)}</td><td>${esc(l.formSent ?? "")}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(l.visit ?? "")}</td><td style="text-align:left"><span class="pill ${pill}">${esc(l.statusText ?? l.status)}</span>${l.match ? `<span class="why">matched on ${esc(l.match)}</span>` : ""}</td><td style="text-align:left">${esc(appt)}</td><td style="text-align:left">${esc(outcome)}</td></tr>`;
+  }).join("");
+
   // Schedule
   const sched = plan.schedule.map((s) => `<li><b>${esc(s.when)}</b><span>${esc(s.what)}</span></li>`).join("");
 
@@ -202,6 +210,11 @@ export function renderAdsBoard(p: Snapshot | null): string {
         <div class="card"><span class="q">The funnel we judge on</span><h2>From a form to a paying patient</h2><div class="funnel">${funnel}</div>
           <p style="color:var(--muted);font-size:12px">Follow-up: ${p.followUp.sent} of ${leads} leads had the email and WhatsApp, ${p.followUp.replies} replies. ${esc(p.summary)}</p></div>
         <div class="card"><span class="q">Spend follows the diary</span><h2>Diary fill and this week's budget</h2>${diary}</div>
+      </div>
+      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every lead, from form to diary</h2>
+        <div class="table-wrap"><table><thead><tr><th>Lead</th><th style="text-align:left">Ad</th><th>Form sent</th><th style="text-align:left">Booking page</th><th style="text-align:left">Diary</th><th style="text-align:left">Consultation</th><th style="text-align:left">Outcome</th></tr></thead><tbody>${leadRows}</tbody></table></div>
+        ${(p.other ?? []).length ? `<p class="muted-s"><b>Booked outside the lead forms (not counted):</b> ${esc((p.other ?? []).join(" "))}</p>` : ""}
+        <p class="muted-s">Names are first name and initial only. "Matched on" shows how each booking was tied to its lead: phone, email or exact full name.</p>
       </div>
       <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every ad, best first</h2>
         <div class="table-wrap"><table><thead><tr><th>Ad</th><th>Spend</th><th>Views</th><th>Clicks</th><th>Click rate</th><th>Leads</th><th>Per lead</th><th>Booked</th><th>Per booked</th><th>Paying</th><th>Freq</th><th>Verdict</th></tr></thead><tbody>${adRows}</tbody></table></div>

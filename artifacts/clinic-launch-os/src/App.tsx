@@ -1,4 +1,4 @@
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -18,8 +18,7 @@ import FranchisePage from "@/pages/franchise";
 import LifestylePage from "@/pages/lifestyle";
 import MarketingPage from "@/pages/marketing";
 import OperationalModelPage from "@/pages/operational-model";
-import CompetitionPage from "@/pages/competition";
-import MarketPage from "@/pages/market";
+import MarketHubPage from "@/pages/market-hub";
 import LeaseStrategyPage from "@/pages/lease-strategy";
 import ExportPage from "@/pages/export";
 import RiskRegisterPage from "@/pages/risk-register";
@@ -32,7 +31,6 @@ import BacklinksPage from "@/pages/backlinks";
 import OpeningBoardPage from "@/pages/opening-board";
 import AdsBoardPage from "@/pages/ads-board";
 import AdsIdeasPage from "@/pages/ads-ideas";
-import AdsPathwayPage from "@/pages/ads-pathway";
 import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
@@ -154,7 +152,8 @@ function Router() {
   return (
     <AppLayout>
       <Switch>
-        <Route path="/" component={TodayPage} />
+        <Route path="/">{() => <Redirect to="/build-cash" />}</Route>
+        <Route path="/today" component={TodayPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/project" component={ProjectPage} />
         <Route path="/financials" component={FinancialsPage} />
@@ -167,7 +166,7 @@ function Router() {
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/backlinks" component={BacklinksPage} />
-        <Route path="/ads-pathway" component={AdsPathwayPage} />
+        <Route path="/ads-pathway">{() => <Redirect to="/ads-board" />}</Route>
         <Route path="/opening-board" component={OpeningBoardPage} />
         <Route path="/ads-board" component={AdsBoardPage} />
         <Route path="/ads-ideas" component={AdsIdeasPage} />
@@ -177,8 +176,8 @@ function Router() {
         <Route path="/cash-line" component={CashLinePage} />
         <Route path="/cards" component={CardsPage} />
         <Route path="/owed" component={OwedPage} />
-        <Route path="/competition" component={CompetitionPage} />
-        <Route path="/market" component={MarketPage} />
+        <Route path="/competition">{() => <Redirect to="/market#competitors" />}</Route>
+        <Route path="/market" component={MarketHubPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />
         <Route path="/export" component={ExportPage} />
         <Route path="/risk-register" component={RiskRegisterPage} />
