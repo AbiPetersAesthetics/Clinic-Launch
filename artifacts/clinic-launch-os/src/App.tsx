@@ -29,6 +29,7 @@ import TendersPage from "@/pages/tenders";
 import DigestPage from "@/pages/digest";
 import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
+import AdsPathwayPage from "@/pages/ads-pathway";
 import KitPage from "@/pages/kit";
 import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
@@ -163,6 +164,7 @@ function Router() {
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/backlinks" component={BacklinksPage} />
+        <Route path="/ads-pathway" component={AdsPathwayPage} />
         <Route path="/kit" component={KitPage} />
         <Route path="/build-cash" component={BuildCashPage} />
         <Route path="/money-plan" component={MoneyPlanPage} />

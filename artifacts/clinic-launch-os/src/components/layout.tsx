@@ -172,6 +172,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/risk-register", label: "Risks", icon: AlertTriangle },
     { href: "/optimisation", label: "Optimisation", icon: Zap },
     { href: "/marketing", label: "Marketing", icon: Megaphone },
+    { href: "/ads-pathway", label: "Ads Pathway", icon: TrendingUp },
     { href: "/backlinks", label: "Backlinks", icon: Link2 },
     { href: "/competition", label: "Competition Intel", icon: Target },
   ];
