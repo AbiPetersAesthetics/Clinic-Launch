@@ -6,6 +6,7 @@ import { usePage, type Chip } from "@/lib/alfred";
 import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, longDay } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScriptView } from "@/components/script-view";
 
 const back = { href: "/growth", label: "Growth" };
 
@@ -27,7 +28,8 @@ export function StudioPage() {
                 <li key={v.id} className="py-3 border-b border-border grid gap-1">
                   <div className="flex items-baseline gap-3"><span className="text-[0.85rem] text-ink-muted tabular w-[6.5rem] shrink-0">{longDay(v.filmBy)}</span><span className="font-semibold text-ink">{v.id} {v.title}</span></div>
                   <p className="text-[0.9rem] text-ink leading-relaxed sm:pl-[7.25rem]">"{v.hook}"</p>
-                  <p className="text-[0.8rem] text-ink-muted sm:pl-[7.25rem]">For {v.forCampaign}{v.where ? `; filmed ${v.where}` : ""}{v.scriptRef ? <> · <a href={v.scriptRef} target="_blank" rel="noreferrer" className="underline">script</a></> : null}</p>
+                  <p className="text-[0.88rem] text-ink-2 sm:pl-[7.25rem]">For {v.forCampaign}{v.where ? `; filmed ${v.where}` : ""}</p>
+                  <div className="sm:pl-[7.25rem]"><ScriptView script={v.script} scriptRef={v.scriptRef} /></div>
                 </li>
               ))}
             </Rows>

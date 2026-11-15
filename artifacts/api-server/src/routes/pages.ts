@@ -114,7 +114,7 @@ router.get("/projects/:projectId/pages/studio", handle(async (projectId) => {
   const all: any[] = v?.videos ?? [];
   const done = (s: string) => ["live", "filmed", "done", "dropped"].includes(String(s));
   const next = all.filter((x) => !done(x.status) && x.filmBy).sort((a, b) => a.filmBy.localeCompare(b.filmBy));
-  const pick = (x: any) => ({ id: x.id, title: x.title, hook: x.hook, filmBy: x.filmBy, forCampaign: x.forCampaign, forMonth: x.forMonth, scriptRef: x.scriptRef, where: x.where, length: x.length, status: x.status, notes: x.notes, overdue: x.filmBy < today });
+  const pick = (x: any) => ({ id: x.id, title: x.title, hook: x.hook, filmBy: x.filmBy, forCampaign: x.forCampaign, forMonth: x.forMonth, scriptRef: x.scriptRef, where: x.where, length: x.length, status: x.status, notes: x.notes, overdue: x.filmBy < today, script: x.script ?? null });
   return {
     asOf: new Date().toISOString(), cadence: v?.cadence ?? null, total: all.length,
     next: next.slice(0, 6).map(pick), thisWeek: next.filter((x) => x.filmBy <= addDays(today, 7)).length,
@@ -246,7 +246,7 @@ router.get("/projects/:projectId/pages/abi", handle(async (projectId) => {
   const today = londonToday(), tomorrow = addDays(today, 1);
   const [clinic, videos, fu, stock] = await Promise.all([latestBoard(projectId, "clinic"), latestBoardRow(projectId, "videos"), followUps(projectId), stockList(projectId)]);
   const day = (d: string) => { const x = (clinic?.diary?.days ?? []).find((z: any) => z.date === d); return x ? { date: d, clinic: x.clinic, appts: x.appts, first: x.first, last: x.last, consults: x.consults, blocked: x.blockedMins >= (clinic?.diary?.clinicDayHours ?? 7) * 60 - 30 } : { date: d, clinic: null, appts: 0, first: null, last: null, consults: 0, blocked: false }; };
-  const film = (videos?.videos ?? []).filter((v: any) => v.filmBy && !["live", "filmed", "done", "dropped"].includes(String(v.status)) && v.filmBy <= addDays(today, 7)).sort((a: any, b: any) => a.filmBy.localeCompare(b.filmBy)).map((v: any) => ({ id: v.id, title: v.title, hook: v.hook, filmBy: v.filmBy, scriptRef: v.scriptRef, where: v.where }));
+  const film = (videos?.videos ?? []).filter((v: any) => v.filmBy && !["live", "filmed", "done", "dropped"].includes(String(v.status)) && v.filmBy <= addDays(today, 7)).sort((a: any, b: any) => a.filmBy.localeCompare(b.filmBy)).map((v: any) => ({ id: v.id, title: v.title, hook: v.hook, filmBy: v.filmBy, scriptRef: v.scriptRef, where: v.where, script: v.script ?? null }));
   return {
     asOf: new Date().toISOString(), today: day(today), tomorrow: day(tomorrow), film, stock: stock.filter((s) => s.low),
     reviewsNote: "From opening on 8 December, the patients to ask for a Google review appear here.",

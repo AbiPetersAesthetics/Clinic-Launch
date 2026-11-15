@@ -7,6 +7,7 @@ import { Page, PageHead, Section, Rows, NotYet, longDay } from "@/components/pag
 import { Sources } from "@/components/fresh";
 import { StockList } from "@/pages/clinic/pages";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScriptView } from "@/components/script-view";
 
 function Day({ label, d }: { label: string; d: any }) {
   return (
@@ -37,7 +38,7 @@ export default function AbiPage() {
               <li key={v.id} className="py-3 border-b border-border grid gap-1">
                 <div className="flex justify-between gap-3"><span className="font-semibold text-ink">{v.title}</span><span className="text-[0.8rem] text-ink-muted">by {longDay(v.filmBy)}</span></div>
                 <p className="text-[0.9rem] text-ink">"{v.hook}"</p>
-                {v.scriptRef && <a href={v.scriptRef} target="_blank" rel="noreferrer" className="text-[0.85rem] text-slate underline min-h-[32px] inline-flex items-center">Open the script</a>}
+                <ScriptView script={v.script} scriptRef={v.scriptRef} />
               </li>
             ))}</Rows> : <p className="text-[0.9rem] text-ink-muted">Nothing to film this week.</p>}
           </Section>
