@@ -18,6 +18,7 @@ import { renderMoneyPlan } from "../boards/money-plan";
 import { renderCashLine } from "../boards/cash-line";
 import { renderOpeningBoard } from "../boards/opening-board";
 import { renderAdsBoard } from "../boards/ads-board";
+import { renderAdsIdeas } from "../boards/ads-ideas";
 
 const router = Router();
 
@@ -126,6 +127,19 @@ router.get("/projects/:projectId/boards/ads", async (req, res) => {
     } catch { /* no snapshots table yet */ }
     page(res, renderAdsBoard(snap));
   } catch (err) { failed(res, "Ads Board", err); }
+});
+
+// Ads Ideas: researched Meta approaches and benchmarks, from the same snapshot (data.ideas).
+router.get("/projects/:projectId/boards/ads-ideas", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    let snap: any = null;
+    try {
+      const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
+      snap = (((r as any).rows ?? r)[0])?.data ?? null;
+    } catch { /* no snapshots table yet */ }
+    page(res, renderAdsIdeas(snap));
+  } catch (err) { failed(res, "Ads Ideas", err); }
 });
 
 export default router;

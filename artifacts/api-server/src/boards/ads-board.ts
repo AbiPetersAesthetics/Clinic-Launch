@@ -88,8 +88,8 @@ export function renderAdsBoard(p: Snapshot | null): string {
     kpi("Cost per booked", booked ? gbp(cpb) : "n/a", `target under £${T.costPerBooked}`, cpb && cpb <= T.costPerBooked ? "good" : "warn"),
     kpi("Paying patients", paying.length ? String(paying.length) : "not yet", "paid for a treatment"),
     kpi("Cost per paying patient", cpp != null ? gbp(cpp) : "not yet", `target under £${T.costPerPaying}`, cpp == null ? "" : cpp <= T.costPerPaying ? "good" : "bad"),
-    kpi("ROAS, first visit", paying.length ? `${(firstRevenue / p.spend.total).toFixed(1)}x` : "not yet", paying.length ? `${gbp0(firstRevenue)} from first treatments` : "takings from first paid treatments"),
-    kpi("ROAS to date", roas != null ? `${roas.toFixed(1)}x` : "not yet", roas != null ? `${gbp0(revenue)} from ad patients so far` : "followed for 12 months per patient"),
+    kpi("ROAS, first visit", paying.length ? `${(firstRevenue / p.spend.total).toFixed(1)}x` : "not yet", paying.length ? `${gbp0(firstRevenue)} from first treatments; industry about 1.5x to 2x` : "industry about 1.5x to 2x (agency figures)"),
+    kpi("ROAS to date", roas != null ? `${roas.toFixed(1)}x` : "not yet", roas != null ? `${gbp0(revenue)} so far; industry year one about 4x to 5x` : "industry year one about 4x to 5x (estimate)"),
     kpi("Came back", paying.length ? `${cameBack} of ${paying.length}` : "not yet", "second paid visit; tracked 12 months"),
   ].join("");
 

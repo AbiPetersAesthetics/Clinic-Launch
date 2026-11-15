@@ -19,6 +19,9 @@ const data = JSON.parse(readFileSync(file, "utf8"));
 // The Ads Board plan (calendar, schedule, simulator assumptions) sits beside pathway.json.
 const planFile = path.join(path.dirname(file), "ads-plan.json");
 if (existsSync(planFile)) data.plan = JSON.parse(readFileSync(planFile, "utf8"));
+// Ads Ideas (researched approaches and benchmarks) sit one folder up, in ads/meta/ideas.json.
+const ideasFile = path.join(path.dirname(file), "..", "ideas.json");
+if (existsSync(ideasFile)) data.ideas = JSON.parse(readFileSync(ideasFile, "utf8"));
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();

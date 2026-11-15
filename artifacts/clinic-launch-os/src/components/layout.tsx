@@ -153,30 +153,42 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   const complianceScore = dashboard?.complianceReadinessPercent ?? null;
 
-  // Execution — what running the project to opening day and beyond actually needs
-  const executionItems = [
-    { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
-    { href: "/money-plan", label: "Money Plan", icon: BookOpen },
-    { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
-    { href: "/", label: "Today", icon: LayoutDashboard },
-    { href: "/opening-board", label: "Opening Board", icon: Gauge },
-    { href: "/digest", label: "Weekly Brief", icon: Newspaper },
-    { href: "/project", label: "Plan & Timeline", icon: ListTodo },
-    { href: "/financials", label: "Money", icon: Calculator },
-    { href: "/cards", label: "Credit Cards", icon: CreditCard },
-    { href: "/owed", label: "Owed to directors", icon: Wallet },
-    { href: "/kit", label: "Rooms & Kit", icon: Armchair },
-    { href: "/market", label: "Market & Pricing", icon: PoundSterling },
-    { href: "/people", label: "People & Capacity", icon: Users },
-    { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
-    { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
-    { href: "/risk-register", label: "Risks", icon: AlertTriangle },
-    { href: "/optimisation", label: "Optimisation", icon: Zap },
-    { href: "/marketing", label: "Marketing", icon: Megaphone },
-    { href: "/ads-board", label: "Ads Board", icon: Target },
-    { href: "/ads-pathway", label: "Ads Pathway", icon: TrendingUp },
-    { href: "/backlinks", label: "Backlinks", icon: Link2 },
-    { href: "/competition", label: "Competition Intel", icon: Target },
+  // The sidebar in areas (15 Nov 2026). Command boards first: the few pages opened every day.
+  // Build retires into the archive after opening; Clinic grows into operations.
+  const sections: { title: string; note?: string; items: { href: string; label: string; icon: React.ElementType; badge?: string; badgeAlert?: boolean }[] }[] = [
+    { title: "Command boards", items: [
+      { href: "/", label: "Today", icon: LayoutDashboard },
+      { href: "/opening-board", label: "Opening Board", icon: Gauge },
+      { href: "/ads-board", label: "Ads Board", icon: Target },
+      { href: "/build-cash", label: "Build Cash Board", icon: LayoutTemplate },
+      { href: "/digest", label: "Weekly Brief", icon: Newspaper },
+    ] },
+    { title: "Money", items: [
+      { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
+      { href: "/money-plan", label: "Money Plan", icon: BookOpen },
+      { href: "/financials", label: "Forecast Model", icon: Calculator },
+      { href: "/cards", label: "Credit Cards", icon: CreditCard },
+      { href: "/owed", label: "Owed to directors", icon: Wallet },
+    ] },
+    { title: "Patients and growth", items: [
+      { href: "/ads-pathway", label: "Ads Pathway", icon: TrendingUp },
+      { href: "/ads-ideas", label: "Ads Ideas", icon: Zap },
+      { href: "/marketing", label: "Launch Marketing", icon: Megaphone },
+      { href: "/market", label: "Market & Pricing", icon: PoundSterling },
+      { href: "/competition", label: "Competition Intel", icon: Target },
+      { href: "/backlinks", label: "Backlinks", icon: Link2 },
+    ] },
+    { title: "Clinic", items: [
+      { href: "/people", label: "People & Capacity", icon: Users },
+      { href: "/compliance", label: "Compliance & CQC", icon: ShieldCheck, badge: complianceScore !== null ? `${complianceScore}%` : undefined, badgeAlert: complianceScore !== null && complianceScore < 20 },
+      { href: "/risk-register", label: "Risks", icon: AlertTriangle },
+    ] },
+    { title: "Build", note: "retires after opening", items: [
+      { href: "/project", label: "Plan & Timeline", icon: ListTodo },
+      { href: "/kit", label: "Rooms & Kit", icon: Armchair },
+      { href: "/suppliers", label: "Suppliers & Tenders", icon: ShoppingBag },
+      { href: "/optimisation", label: "Cost Savings", icon: Zap },
+    ] },
   ];
 
   // Planning Archive — the go/no-go era tools, kept for reference
@@ -232,11 +244,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex-1 overflow-y-auto py-4 space-y-4">
-          <SidebarNav
-            navItems={executionItems}
-            location={location}
-            onNavigate={() => setMobileMenuOpen(false)}
-          />
+          {sections.map((sec) => (
+            <div key={sec.title} className="space-y-1">
+              <div className="px-7 pt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-sidebar-foreground/40">
+                {sec.title}{sec.note && <span className="normal-case tracking-normal font-normal"> · {sec.note}</span>}
+              </div>
+              <SidebarNav
+                navItems={sec.items}
+                location={location}
+                onNavigate={() => setMobileMenuOpen(false)}
+              />
+            </div>
+          ))}
 
           <div>
             <button
