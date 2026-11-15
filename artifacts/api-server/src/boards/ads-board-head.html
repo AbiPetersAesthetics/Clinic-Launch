@@ -137,4 +137,17 @@ a { color: var(--slate); }
 .checks { font-size: 12px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; border-top: 1px solid var(--line); padding-top: 8px; }
 .checks b { color: var(--ink); }
 .checks .ok::before { content: "✓ "; color: var(--good); font-weight: 700; }
+
+/* Website look (abipetersskinclinic.co.uk, November 2026 redesign): 12px cards with soft borders,
+   pill buttons, a white ground, and edge to edge on phones so nothing sits in padding inside padding. */
+body { background: var(--sheet, #fff); }
+.board, .sheet { border-radius: 14px; border-color: rgba(31, 42, 68, 0.14); }
+.card, .panel, .ctl, .table-wrap { border-radius: 12px; border-color: rgba(31, 42, 68, 0.14); }
+.kpi { border-radius: 10px; }
+.seg button, .presets button, button.btn, .tabs button { border-radius: 999px; }
+@media (max-width: 700px) {
+  body { padding-inline: 0; padding-block: 0 32px; }
+  .board, .sheet { border: 0; border-radius: 0; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  .card, .panel { padding: 12px; }
+}
 </style>

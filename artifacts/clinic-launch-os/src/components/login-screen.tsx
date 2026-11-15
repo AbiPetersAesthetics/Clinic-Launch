@@ -132,7 +132,7 @@ export default function LoginScreen() {
           <div
             style={{
               color: "hsl(36, 20%, 94%)",
-              fontFamily: "'Cormorant Garamond', Georgia, serif",
+              fontFamily: "var(--app-font-serif)",
               fontSize: "1.6rem",
               fontWeight: 500,
               lineHeight: 1.1,

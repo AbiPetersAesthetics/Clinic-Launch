@@ -15,7 +15,7 @@ import { purchaseWindows, lastBuyBy, timing, plannedAgainstWindow, CLOSING_DAYS 
 
 const PROJECT_ID = 1;
 const API = "/api";
-const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+const SERIF: CSSProperties = { fontFamily: "var(--app-font-serif)" };
 
 type OfferKind = "purchases" | "balance transfers" | "money transfers";
 type Offer = { kind: OfferKind; ratePct: number; start: string | null; end: string; feePct: number | null; buyBy?: string | null };

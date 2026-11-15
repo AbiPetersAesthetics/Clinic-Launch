@@ -27,7 +27,7 @@ const ZONE_LABEL: Record<Zone, { title: string; blurb: string; example: string }
 const SHORT: Record<Role, string> = { shop_main: "Shopfront", shop_trim: "Door & frames", feature: "Feature wall", walls: "Reception walls", walls_clinical: "Treatment walls", woodwork: "Woodwork", floor_clinical: "Treatment floor", floor_front: "Reception floor" };
 export function shortName(s: Surface): string { return s.role ? SHORT[s.role] : s.name; }
 
-const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+const SERIF: CSSProperties = { fontFamily: "var(--app-font-serif)" };
 const HATCH: CSSProperties = { backgroundImage: "repeating-linear-gradient(45deg, #E8E5DF 0 4px, #D3CEC5 4px 6px)" };
 export function Swatch({ hex, className = "" }: { hex: string | null; className?: string }) {
   return <span className={`inline-block border border-black/15 shrink-0 ${className}`} style={hex ? { background: hex } : HATCH} aria-hidden="true" />;

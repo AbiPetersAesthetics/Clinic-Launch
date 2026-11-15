@@ -81,25 +81,25 @@
   /* Abi Peters Skin Clinic brand — clean white/cool ground, deep navy ink
      (the website's real --colour-bg is #FFFFFF, not ivory). Navy #1F2A44,
      sage #7FA49A/#A7C0B6, slate #445B72. No warm cream ground. */
-  --background: 214 20% 98%;
+  --background: 0 0% 100%;
   --foreground: 222 37% 19%;
 
   --border: 222 15% 88%;
 
   --card: 0 0% 100%;
   --card-foreground: 222 37% 19%;
-  --card-border: 222 15% 89%;
+  --card-border: 222 37% 19% / 0.14;
 
-  /* Sidebar — deep navy, the website's ink */
-  --sidebar: 222 37% 19%;
-  --sidebar-foreground: 40 33% 95%;
-  --sidebar-border: 222 30% 27%;
-  --sidebar-primary: 154 17% 68%;
-  --sidebar-primary-foreground: 222 37% 15%;
-  --sidebar-accent: 222 33% 25%;
-  --sidebar-accent-foreground: 40 33% 95%;
-  --sidebar-accent-border: 222 33% 30%;
-  --sidebar-ring: 154 17% 68%;
+  /* Sidebar: white with navy ink, like the website's header */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 222 37% 19%;
+  --sidebar-border: 222 15% 89%;
+  --sidebar-primary: 222 37% 19%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 214 38% 95%;
+  --sidebar-accent-foreground: 222 37% 19%;
+  --sidebar-accent-border: 214 25% 88%;
+  --sidebar-ring: 160 18% 42%;
 
   --popover: 0 0% 100%;
   --popover-foreground: 222 37% 19%;
@@ -113,7 +113,7 @@
   --secondary: 214 16% 94%;
   --secondary-foreground: 222 37% 19%;
 
-  --muted: 214 16% 96%;
+  --muted: 214 38% 95%;
   --muted-foreground: 220 13% 41%;
 
   /* Accent — quiet sage wash (the website's interaction colour family) */
@@ -133,11 +133,11 @@
   --chart-5: 154 17% 55%;
 
   --app-font-sans: 'avenir-next-lt-pro', 'Mulish', 'Avenir Next', 'Inter', 'Segoe UI', sans-serif;
-  --app-font-serif: 'minion-pro', 'Minion Pro', 'Source Serif 4', Georgia, serif;
+  --app-font-serif: 'minion-pro', 'Source Serif 4', 'Minion Pro', Georgia, serif;
   --app-font-mono: 'Mulish', Menlo, monospace;
 
-  /* Sharp 2px radius, like the website (--radius: 2px on abipetersskinclinic.co.uk) */
-  --radius: 0.125rem;
+  /* 12px cards and pill buttons, like the website since its November 2026 redesign */
+  --radius: 0.75rem;
 
   --shadow-2xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
   --shadow-xs: 0px 1px 3px 0px rgba(0, 0, 0, 0.07);

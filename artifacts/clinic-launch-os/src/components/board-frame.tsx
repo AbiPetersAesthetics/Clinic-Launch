@@ -33,12 +33,12 @@ export function BoardFrame({ src, title, heading, subtitle, footnote }: { src: s
   };
   return (
     <div className="space-y-4">
-      <PageHeader title={heading} subtitle={subtitle}
+      <PageHeader compact title={heading} subtitle={subtitle}
         action={<div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" onClick={open}><Maximize2 className="w-4 h-4 mr-1.5" />Full screen</Button>
           <a href={src} target="_blank" rel="noreferrer" className="text-xs text-muted-foreground underline inline-flex items-center gap-1 hover:text-foreground"><ExternalLink className="w-3.5 h-3.5" />New tab</a>
         </div>} />
-      <div ref={box} className={expanded ? "fixed inset-0 z-[100] bg-background flex flex-col" : "rounded-md border overflow-hidden bg-background"}>
+      <div ref={box} className={expanded ? "fixed inset-0 z-[100] bg-background flex flex-col" : "-mx-4 sm:mx-0 sm:rounded-xl sm:border sm:border-card-border overflow-hidden bg-background"}>
         {expanded && (
           <div className="flex items-center justify-between gap-3 px-3 py-2 border-b bg-background">
             <span className="text-sm font-medium truncate">{title}</span>

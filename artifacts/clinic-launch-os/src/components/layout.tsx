@@ -45,18 +45,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 const PROJECT_ID = 1;
 
 function AbiPetersLogo() {
+  // The clinic's official logo (from the website, public/assets/images/logos/abi-peters-logo-official-dot.png).
   return (
     <div className="select-none">
-      <div
-        className="text-sidebar-foreground leading-none tracking-tight"
-        style={{ fontFamily: "var(--app-font-serif)", fontSize: "1.35rem", fontWeight: 500 }}
-      >
-        Abi Peters
-      </div>
-      <div className="text-sidebar-foreground/60 tracking-[0.22em] uppercase mt-0.5" style={{ fontSize: "0.6rem", fontWeight: 500 }}>
-        Skin Clinic
-      </div>
-      <div className="text-sidebar-foreground/35 tracking-[0.18em] uppercase mt-0.5" style={{ fontSize: "0.55rem", fontWeight: 400 }}>
+      <img src={`${import.meta.env.BASE_URL}brand/abi-peters-logo.png`} alt="Abi Peters Skin Clinic" width={168} height={54} className="block h-auto w-[168px]" />
+      <div className="text-sidebar-foreground/50 tracking-[0.22em] uppercase mt-2" style={{ fontSize: "0.6rem", fontWeight: 600 }}>
         Launch OS
       </div>
     </div>
@@ -81,10 +74,10 @@ function SidebarNav({
             key={item.href}
             href={item.href}
             onClick={onNavigate}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
+            className={`flex items-center gap-3 px-3 py-2 rounded-full text-sm font-medium transition-colors ${
               isActive
-                ? "bg-sidebar-primary/20 text-sidebar-primary"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+                : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             }`}
           >
             <item.icon className="w-4 h-4 shrink-0" />
@@ -92,7 +85,7 @@ function SidebarNav({
             {item.badge !== undefined && (
               <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full border ${
                 item.badgeAlert
-                  ? "bg-red-500/20 text-red-300 border-red-500/30"
+                  ? "bg-red-50 text-red-700 border-red-200"
                   : "bg-sidebar-primary/20 text-sidebar-primary border-sidebar-primary/30"
               }`}>
                 {item.badge}
@@ -300,9 +293,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {/* ── Sticky top bar ── */}
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border h-14 md:h-16 flex items-center px-4 md:px-6 shrink-0 gap-3">
 
-          {/* Hamburger — mobile only */}
+          {/* Phone: the logo on the left and the menu on the right, like the website's header */}
+          <img src={`${import.meta.env.BASE_URL}brand/abi-peters-logo.png`} alt="Abi Peters Skin Clinic" width={120} height={39} className="md:hidden block h-auto w-[120px]" />
           <button
-            className="md:hidden text-foreground p-1.5 rounded-md hover:bg-muted transition-colors shrink-0"
+            className="md:hidden ml-auto text-foreground p-2 rounded-full hover:bg-muted transition-colors shrink-0"
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open menu"
           >
@@ -312,7 +306,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {/* KPI metrics */}
           {dashboard ? (
             <TooltipProvider delayDuration={350}>
-            <div className="flex items-center justify-between w-full min-w-0">
+            <div className="hidden md:flex items-center justify-between w-full min-w-0">
               <div className="flex items-center gap-3 md:gap-5 overflow-x-auto scrollbar-none flex-1 min-w-0">
 
                 {/* ── Active property ── */}

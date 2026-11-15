@@ -16,7 +16,7 @@ import { X, Link2, ExternalLink, BedSingle, Armchair, PaintRoller, Sparkles, Par
 
 const PROJECT_ID = 1;
 const API = "/api";
-const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+const SERIF: CSSProperties = { fontFamily: "var(--app-font-serif)" };
 
 type Status = "planned" | "ordered" | "paid";
 type Area = { id: number; areaKey: string; name: string; covers: string | null; sortOrder: number };

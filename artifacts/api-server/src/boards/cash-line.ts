@@ -326,6 +326,19 @@ table.gl { margin: 4px 0 10px; } table.gl th, table.gl td { font-size: 12.5px; p
 .nv { color: var(--muted); font-size: 11.5px; } .gnote { font-size: 12px; color: var(--muted); margin-top: 6px; }
 @media (max-width: 720px) { .ghead, .pot > summary, .gtot { grid-template-columns: 1fr 76px 76px; } .ghead span:nth-child(2), .pot > summary .pb, .gtot span:nth-child(2), .ghead span:nth-child(4), .pot > summary .m, .gtot span:nth-child(4) { display: none; } }
 @media (max-width: 720px) { td.w { display: none; } }
+
+/* Website look (abipetersskinclinic.co.uk, November 2026 redesign): 12px cards with soft borders,
+   pill buttons, a white ground, and edge to edge on phones so nothing sits in padding inside padding. */
+body { background: var(--sheet, #fff); }
+.board, .sheet { border-radius: 14px; border-color: rgba(31, 42, 68, 0.14); }
+.card, .panel, .ctl, .table-wrap { border-radius: 12px; border-color: rgba(31, 42, 68, 0.14); }
+.kpi { border-radius: 10px; }
+.seg button, .presets button, button.btn, .tabs button { border-radius: 999px; }
+@media (max-width: 700px) {
+  body { padding-inline: 0; padding-block: 0 32px; }
+  .board, .sheet { border: 0; border-radius: 0; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
+  .card, .panel { padding: 12px; }
+}
 </style>
 </head>
 <body><div class="sheet">

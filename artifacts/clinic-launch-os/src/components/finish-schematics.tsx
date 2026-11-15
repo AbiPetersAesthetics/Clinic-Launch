@@ -6,7 +6,7 @@ import type { CSSProperties } from "react";
 export type Role = "shop_main" | "shop_trim" | "feature" | "walls" | "walls_clinical" | "woodwork" | "floor_clinical" | "floor_front";
 export type Colours = Partial<Record<Role, string | null>>;
 
-const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+const SERIF: CSSProperties = { fontFamily: "var(--app-font-serif)" };
 const UNDECIDED = "#E8E5DF";
 
 function mix(hex: string, other: string, t: number): string {

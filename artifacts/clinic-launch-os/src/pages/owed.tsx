@@ -16,7 +16,7 @@ import { Download, ChevronDown, ChevronUp } from "lucide-react";
 
 const PROJECT_ID = 1;
 const API = "/api";
-const SERIF: CSSProperties = { fontFamily: "'Cormorant Garamond', Georgia, serif" };
+const SERIF: CSSProperties = { fontFamily: "var(--app-font-serif)" };
 
 type Receipt = "none" | "receipt" | "vat_invoice" | "invoice_no_vat";
 type CardRow = { id: number; name: string; holder: string | null; account: "business" | "personal"; status: string; last4: string | null; creditLimitGbp: number };
