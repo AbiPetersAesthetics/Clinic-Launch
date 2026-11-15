@@ -212,7 +212,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     ...config, months,
     winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
     projectPayments: payments, funding: fundingAll, loans, oneOffs: oneOffsAll,
-    marketing: { ...config.marketing, byMonth: await adsPlanByMonth(projectId) },
+    // The ads plan's spend by month is held back with the other 15 Nov changes until the owner brings
+    // it in: set marketing.useAdsPlan in the stored model to switch it on.
+    marketing: { ...config.marketing, byMonth: (config.marketing as any).useAdsPlan ? await adsPlanByMonth(projectId) : undefined },
   };
   (planned as any).standAloneLoans = opts.drawAvailableLoans ? [] : availableLoans;
   const bankView = bank ? openFromBank(planned, bank) : null;

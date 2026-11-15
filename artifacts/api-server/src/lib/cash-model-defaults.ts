@@ -118,10 +118,10 @@ export const CASH_MODEL_DEFAULTS: CashModelConfig = {
     plan: {
       from: "2026-12", weekDays: 5, dayCapacity: 1750,
       demand: { two: round(BEDH_DEMAND.two), one: round(BEDH_DEMAND.one), returns: round(BEDH_DEMAND.returns) },
-      // Owner, 15 Nov 2026: one day a week from December: Saturday 5 Dec open, the week of 7 Dec
-      // closed, then one day a week with the day to be decided by Abi and David together. The model
-      // is monthly, so from December Bedhampton counts as one day a week.
-      oneDayFrom: "2026-12",
+      // Held at the figures of 15 Nov 2026, 20:52 (owner: "reinstated to the old cash number";
+      // new financials go in one at a time with him). One day a week from December is his decision
+      // of that evening and goes back in, with him, by setting this to "2026-12".
+      oneDayFrom: null,
       closeWhen: { standsAlone: true, forMonths: 2 },
       closeAfter: null,
       floorPerDay: 400,
