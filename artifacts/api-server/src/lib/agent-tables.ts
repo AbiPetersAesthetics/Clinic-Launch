@@ -28,7 +28,7 @@ let ensuring: Promise<void> | null = null;
 export function ensureAgentTables(): Promise<void> {
   ensuring ??= (async () => {
     // decide_with: a decision for more than David alone, such as Abi's working pattern (owner, 15 Nov 2026).
-    for (const ddl of [PROPOSALS_DDL, ACTIVITY_DDL, "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT"]) {
+    for (const ddl of [PROPOSALS_DDL, ACTIVITY_DDL, "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT, ADD COLUMN IF NOT EXISTS card_type TEXT NOT NULL DEFAULT 'approve', ADD COLUMN IF NOT EXISTS fields JSONB, ADD COLUMN IF NOT EXISTS options JSONB, ADD COLUMN IF NOT EXISTS reply JSONB, ADD COLUMN IF NOT EXISTS apply JSONB, ADD COLUMN IF NOT EXISTS action_class TEXT NOT NULL DEFAULT 'outside', ADD COLUMN IF NOT EXISTS applied JSONB"]) {
       try { await db.execute(sql.raw(ddl)); }
       catch (err: any) { if ((err?.cause?.code ?? err?.code) !== "23505") { ensuring = null; throw err; } }
     }
@@ -40,7 +40,7 @@ export const rowsOf = <T = any>(r: unknown): T[] => ((r as any).rows ?? r) as T[
 
 export interface ProposalRow {
   id: number; area: string; kind: string; agent: string; title: string; why: string | null; risk: string | null;
-  on_approval: string | null; guard: string | null; decide_with?: string | null; sources: { source: string; asOf: string }[]; evidence: unknown;
+  on_approval: string | null; guard: string | null; decide_with?: string | null; card_type?: string; apply?: any; action_class?: string; applied?: any; fields?: { key: string; label: string; type?: string }[] | null; options?: string[] | null; reply?: any; sources: { source: string; asOf: string }[]; evidence: unknown;
   expires_at: string | null; status: string; previous_status: string | null; reason: string | null; question: string | null;
   answer: string | null; result: string | null; snooze_until: string | null; decided_at: string | null; created_at: string; updated_at: string;
 }

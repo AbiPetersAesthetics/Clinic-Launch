@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps --env-file-if-exists=../../.env ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:market": "node tests/market-rules.test.mjs",
-    "test:money": "node tests/cash-model.test.mjs"
+    "test:money": "node tests/cash-model.test.mjs",
+    "test:money-consistency": "node --env-file-if-exists=../../.env dist/consistency-cli.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",

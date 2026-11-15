@@ -1,14 +1,14 @@
-// The approval inbox (UX plan 2.6 and wireframe 5.4): open proposals grouped by kind, Approve all
-// for a group, what is queued for the next live session (with a way to take it back), snoozed
-// items and the decided history. Keyboard: J and K move, A approves, X rejects, Q asks.
+// The inbox: what needs David, grouped by area; what ALFRED is doing with what he has already said
+// (approved, answered, asked); snoozed items; and the decided history with a revert for changes ALFRED
+// made to its own records. Keyboard: J and K move, A approves, X rejects.
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useProposals, decide, dayTime, type Proposal } from "@/lib/alfred";
-import { ProposalCard } from "@/components/proposal-card";
+import { ProposalCard, afterText } from "@/components/proposal-card";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AREA: Record<string, string> = { ads: "Ads", money: "Money", clinic: "Clinic", growth: "Growth", content: "Content" };
-const STATUS: Record<string, string> = { rejected: "Rejected", expired: "Expired", done: "Done", cancelled: "Cancelled at re-check", withdrawn: "Withdrawn" };
+const STATUS: Record<string, string> = { rejected: "Rejected", expired: "Expired", done: "Done", cancelled: "Not done: the check before acting stopped it", withdrawn: "Withdrawn", reverted: "Reverted" };
 
 export default function InboxPage() {
   const { data, isLoading } = useProposals();
@@ -31,7 +31,7 @@ export default function InboxPage() {
       if (k === "j") setFocus((f) => Math.min(flat.length - 1, f + 1));
       else if (k === "k") setFocus((f) => Math.max(0, f - 1));
       else if ((k === "a" || k === "x") && flat[focus]) {
-        try { await decide(flat[focus].id, k === "a" ? "approve" : "reject"); setMsg(`${k === "a" ? "Approved, queued" : "Rejected"}: ${flat[focus].title}`); qc.invalidateQueries({ queryKey: ["alfred"] }); } catch (err) { setMsg(err instanceof Error ? err.message : "Could not record that"); }
+        try { await decide(flat[focus].id, k === "a" ? "approve" : "reject"); setMsg(`${k === "a" ? "Approved" : "Rejected"}: ${flat[focus].title}`); qc.invalidateQueries({ queryKey: ["alfred"] }); } catch (err) { setMsg(err instanceof Error ? err.message : "Could not record that"); }
       } else if (k === "q") document.querySelectorAll<HTMLElement>("[data-proposal]")[focus]?.querySelectorAll("button")[2]?.click();
     };
     window.addEventListener("keydown", onKey);
@@ -39,11 +39,12 @@ export default function InboxPage() {
   }, [tab, flat, focus, qc]);
 
   const approveAll = async (ps: Proposal[]) => {
-    if (!window.confirm(`Approve all ${ps.length}?\n\n${ps.map((p) => `- ${p.title}`).join("\n")}\n\nThey wait for the next live session and one "go" in chat.`)) return;
+    if (!window.confirm(`Approve all ${ps.length}?\n\n${ps.map((p) => `- ${p.title}`).join("\n")}`)) return;
     for (const p of ps) { try { await decide(p.id, "approve"); } catch { /* shown on the card after refresh */ } }
-    setMsg(`${ps.length} approved, queued for the next live session.`);
+    setMsg(`${ps.length} approved.`);
     qc.invalidateQueries({ queryKey: ["alfred"] });
   };
+  const revert = async (p: Proposal) => { if (!window.confirm(`Put this back as it was?\n\n${p.title}`)) return; try { await decide(p.id, "revert"); setMsg(`Reverted: ${p.title}`); qc.invalidateQueries({ queryKey: ["alfred"] }); } catch (e) { setMsg(e instanceof Error ? e.message : "Could not revert"); } };
   const unqueue = async (p: Proposal) => { try { await decide(p.id, "unqueue"); qc.invalidateQueries({ queryKey: ["alfred"] }); } catch (e) { setMsg(e instanceof Error ? e.message : "Could not take it back"); } };
 
   const tabBtn = (id: typeof tab, label: string, n?: number) => (
@@ -53,8 +54,8 @@ export default function InboxPage() {
     <div className="space-y-6 max-w-4xl">
       <header className="space-y-3">
         <span className="eyebrow">Inbox</span>
-        <h1 className="font-display text-[1.9rem] sm:text-[2.4rem] leading-tight text-ink">What the agents propose</h1>
-        <p className="text-ink-muted text-[0.95rem]">A tap records your decision; nothing is changed here. Approved items wait for the next live Claude session, which lists them for one "go", re-checks each guard and then acts.</p>
+        <h1 className="font-sans font-semibold text-[1.75rem] sm:text-[2.1rem] leading-tight text-ink">Inbox</h1>
+        <p className="text-ink-2 text-[1rem] max-w-[60ch]">Changes to ALFRED's own records are done the moment you approve, with Undo. Anything outside ALFRED, such as ads, posts, messages, ANS or the website, is done at 08:15 each morning, checked first and read back.</p>
         <div role="tablist" className="flex flex-wrap gap-2">{tabBtn("open", "Open", data?.open.length)}{tabBtn("decided", "Decided")}{tabBtn("snoozed", "Snoozed", data?.snoozed.length)}</div>
       </header>
       {msg && <p role="status" aria-live="polite" className="text-[0.9rem] text-good">{msg}</p>}
@@ -71,9 +72,9 @@ export default function InboxPage() {
           ))}
           {data.queued.length > 0 && (
             <section className="space-y-2">
-              <h2 className="eyebrow">Queued for the next live session ({data.queued.length})</h2>
+              <h2 className="eyebrow">Waiting on ALFRED ({data.queued.length})</h2>
               <ul className="divide-y divide-border rounded-xl border border-card-border">
-                {data.queued.map((p) => <li key={p.id} className="flex flex-wrap items-center gap-2 px-4 py-2 min-h-[52px]"><span className="flex-1 min-w-0 text-[0.9rem]">{p.title} <span className="text-ink-muted">(approved {p.decided_at ? dayTime(p.decided_at) : ""})</span></span><button type="button" onClick={() => unqueue(p)} className="min-h-[40px] px-4 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.14em]">Take back</button></li>)}
+                {data.queued.map((p) => <li key={p.id} className="flex flex-wrap items-center gap-2 px-4 py-2 min-h-[52px]"><span className="flex-1 min-w-0 text-[0.95rem]"><span className="block text-ink">{p.title}</span><span className="block text-[0.85rem] text-ink-2">{p.status === "asked" ? "ALFRED is working this out." : afterText(p.status, p.result)}</span></span>{p.status === "approved" && <button type="button" onClick={() => unqueue(p)} className="min-h-[40px] px-4 rounded-full border border-ink text-[0.8rem] font-semibold">Take back</button>}</li>)}
               </ul>
             </section>
           )}
@@ -83,7 +84,7 @@ export default function InboxPage() {
       {tab === "snoozed" && data && (data.snoozed.length ? data.snoozed.map((p) => <div key={p.id} className="rounded-xl border border-card-border p-4"><p className="font-semibold">{p.title}</p><p className="text-[0.85rem] text-ink-muted">Back {p.snooze_until ? dayTime(p.snooze_until) : "soon"}</p></div>) : <p className="text-ink-muted">Nothing snoozed.</p>)}
       {tab === "decided" && data && (data.decided.length ? (
         <ul className="divide-y divide-border rounded-xl border border-card-border">
-          {data.decided.map((p) => <li key={p.id} className="px-4 py-3 grid gap-0.5"><span className="font-semibold text-[0.95rem]">{p.title}</span><span className="text-[0.82rem] text-ink-muted">{STATUS[p.status] ?? p.status}, {dayTime(p.updated_at)}{p.reason ? `: ${p.reason}` : ""}{p.result ? `: ${p.result}` : ""}</span></li>)}
+          {data.decided.map((p) => <li key={p.id} className="px-4 py-3 grid gap-0.5"><span className="font-semibold text-[0.95rem]">{p.title}</span><span className="text-[0.85rem] text-ink-2">{STATUS[p.status] ?? p.status}, {dayTime(p.updated_at)}{p.reason ? `: ${p.reason}` : ""}{p.result ? `: ${p.result}` : ""}</span>{p.status === "done" && p.applied && <button type="button" onClick={() => revert(p)} className="justify-self-start text-[0.85rem] text-slate underline min-h-[32px]">Revert this change</button>}</li>)}
         </ul>
       ) : <p className="text-ink-muted">No decisions in the last 30 days.</p>)}
     </div>

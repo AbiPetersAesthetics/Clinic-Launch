@@ -13,7 +13,7 @@ export interface Alert { id: string; area: string; level: "act" | "watch"; title
 export interface Summary { key: string; area: string; title: string; state: Tone; verdict: string; detail?: string; kpis: Kpi[]; sources: Chip[]; alerts: Alert[]; keeper: string; extra?: any }
 export interface Proposal {
   id: number; area: string; kind: string; agent: string; title: string; why: string | null; risk: string | null; on_approval: string | null;
-  guard: string | null; sources: { source: string; asOf: string }[]; chips?: Chip[]; decide_with?: string | null; expires_at: string | null; status: string; reason: string | null;
+  guard: string | null; sources: { source: string; asOf: string }[]; chips?: Chip[]; decide_with?: string | null; card_type?: string; fields?: { key: string; label: string; type?: string }[] | null; options?: string[] | null; reply?: any; action_class?: string; applied?: any; expires_at: string | null; status: string; reason: string | null;
   question: string | null; answer: string | null; result: string | null; snooze_until: string | null; decided_at: string | null; created_at: string; updated_at: string;
 }
 export interface FundingOption { id: number; label: string; month: string; amount: number }
@@ -25,7 +25,7 @@ export type BriefItem =
   | { kind: "bank"; id: string; title: string; detail: string; bank: BankLite | null; fundingOptions: FundingOption[]; sources: Chip[] };
 export interface Brief {
   asOf: string; state: Tone; verdict: string; items: BriefItem[]; more: number; total: number; vitals: Kpi[];
-  runs: { line: string; count: number; since: string }; areas: { key: string; title: string; state: Tone; verdict: string; href: string; sources?: Chip[]; extra?: any }[];
+  runs: { line: string; count: number; since: string }; waiting?: { approved: number; answered: number; asked: number }; areas: { key: string; title: string; state: Tone; verdict: string; href: string; sources?: Chip[]; extra?: any }[];
   dates: { date: string; label: string; area: string; what: string; href: string }[];
 }
 export interface Run { id: number; agent: string; status: string; summary: string | null; sources: { source: string; to?: string }[]; wrote: string[]; proposed: number; alerts: number; started_at: string | null; finished_at: string }
@@ -41,7 +41,7 @@ export const useSummary = (board: string) => useQuery({ queryKey: ["alfred", "su
 export const useProposals = () => useQuery({ queryKey: ["alfred", "proposals"], queryFn: () => getJson<{ open: Proposal[]; queued: Proposal[]; snoozed: Proposal[]; decided: Proposal[] }>(`/api/projects/${PROJECT_ID}/proposals`) });
 export const useActivity = () => useQuery({ queryKey: ["alfred", "activity"], queryFn: () => getJson<{ runs: Run[] }>(`/api/projects/${PROJECT_ID}/activity`) });
 
-export async function decide(id: number, action: "approve" | "reject" | "ask" | "snooze" | "undo" | "unqueue", extra: { reason?: string; question?: string; until?: string } = {}) {
+export async function decide(id: number, action: "approve" | "reject" | "ask" | "snooze" | "undo" | "unqueue" | "answer" | "choose" | "revert" | "await", extra: Record<string, unknown> = {}) {
   const r = await fetch(`/api/projects/${PROJECT_ID}/proposals/${id}/decision`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action, ...extra }) });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error ?? "Could not record that");

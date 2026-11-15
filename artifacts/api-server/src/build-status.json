@@ -1,5 +1,5 @@
 {
-  "updatedIso": "2026-11-15T22:40:00Z",
+  "updatedIso": "2026-11-15T23:10:00Z",
   "items": [
     {
       "area": "Today",
@@ -293,7 +293,7 @@
       "area": "Data",
       "name": "Undated loan shown as available, with and without it",
       "status": "partial",
-      "note": "Code done: an undated loan is not drawn and the forecast is shown both ways. The loan row still carries 15 Dec in the database; clearing it needs a database write that was held for permission."
+      "note": "Code done; the loan's date is cleared by the approved card when the hosted app applies it."
     },
     {
       "area": "Data",
@@ -322,14 +322,56 @@
     {
       "area": "Data",
       "name": "Card refunds, CBS application 2, Abi's VAT transfer",
-      "status": "todo",
-      "note": "Raised as cards; each is a database write that waits for a live session."
+      "status": "partial",
+      "note": "Approved; the hosted app applies the refunds and CBS application 2 after this deploy. Abi's transfer waits for the money."
     },
     {
       "area": "Data",
       "name": "The audit's decisions as cards",
       "status": "done",
       "note": "Eighteen cards in the inbox, money first, the joint ones marked."
+    },
+    {
+      "area": "Inbox",
+      "name": "Three kinds of card: approve, answer, decide together",
+      "status": "done",
+      "note": "Every open card rewritten as a direct question or action; answers are never shown back as questions; one count everywhere."
+    },
+    {
+      "area": "Inbox",
+      "name": "Own-record changes apply on approval, with Undo and revert",
+      "status": "partial",
+      "note": "Built for bank, funding dates, card entries, opening date, model inputs and plan payments. The hosted app applies the cards approved tonight after this deploy."
+    },
+    {
+      "area": "Inbox",
+      "name": "Outside actions done at 08:15",
+      "status": "partial",
+      "note": "Run book written; the scheduled task needs to be created in the app."
+    },
+    {
+      "area": "Data",
+      "name": "Ripple map",
+      "status": "done",
+      "note": "lib/ripples.ts; tonight's outside items raised as one card (Bedhampton hours on the site and Google, ANS availability, a patient notice)."
+    },
+    {
+      "area": "Data",
+      "name": "Money consistency check",
+      "status": "done",
+      "note": "Runs with the brief and as a test; a mismatch is a red item on Today."
+    },
+    {
+      "area": "Data",
+      "name": "CBS application 2 by element",
+      "status": "partial",
+      "note": "Split entered from CBS's sheet (£25,158.86 against 11 lines); £579 of fire stopping has no plan line and is a question card."
+    },
+    {
+      "area": "Data",
+      "name": "Measured capacity in the ads plan",
+      "status": "done",
+      "note": "45 appointments a week at Winchester (opening week, ANS); 25 new patients a week as a planning figure."
     }
   ]
 }

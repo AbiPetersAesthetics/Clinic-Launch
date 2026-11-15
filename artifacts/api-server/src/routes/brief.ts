@@ -9,6 +9,7 @@ import { sql } from "drizzle-orm";
 import { openProposals, recentActivity } from "./proposals";
 import { missedRuns } from "../lib/heartbeat";
 import { datesAhead } from "./pages";
+import { moneyConsistency } from "../lib/consistency";
 import type { Summary, Alert, Kpi } from "../boards/summaries";
 import type { ProposalRow, ActivityRow } from "../lib/agent-tables";
 
@@ -20,7 +21,7 @@ export type BriefItem =
   | { kind: "stale"; id: string; area: string; title: string; detail: string; sources: Summary["sources"]; href: string }
   | { kind: "bank"; id: string; title: string; detail: string; bank: unknown; fundingOptions: unknown; sources: Summary["sources"] };
 
-const words = ["Nothing", "One thing", "Two things", "Three things", "Four things", "Five things", "Six things", "Seven things"];
+const words = ["Nothing", "One thing", "Two things", "Three things", "Four things", "Five things", "Six things", "Seven things", "Eight things", "Nine things", "Ten things"];
 const HREF: Record<string, string> = { ads: "/growth/ads", growth: "/growth", patients: "/patients", clinic: "/clinic/diary", money: "/money" };
 
 function runsLine(runs: ActivityRow[], missed: { agent: string; due: string }[]) {
@@ -39,6 +40,13 @@ function runsLine(runs: ActivityRow[], missed: { agent: string; due: string }[])
   return `Last 24 hours: ${bits.join(", ")}.`;
 }
 
+// What the owner has already said yes to or answered, waiting to be done in his next Claude session.
+async function waitingCounts(projectId: number) {
+  const r = ((await db.execute(sql`SELECT status, count(*)::int AS n FROM proposals WHERE project_id = ${projectId} AND status IN ('approved', 'answered', 'chosen', 'asked') GROUP BY status`)) as any).rows ?? [];
+  const n = (k: string) => Number(r.find((x: any) => x.status === k)?.n ?? 0);
+  return { approved: n("approved"), answered: n("answered") + n("chosen"), asked: n("asked") };
+}
+
 export async function composeBrief(projectId: number) {
   const now = new Date();
   const [ads, clinic, money, patients, open, runs, missed, dates] = await Promise.all([
@@ -47,6 +55,8 @@ export async function composeBrief(projectId: number) {
     missedRuns(projectId, now).catch(() => []),
     datesAhead(projectId, 7).catch(() => []),
   ]);
+  const consistency = await moneyConsistency(projectId).catch(() => [] as { name: string; ok: boolean; detail: string }[]);
+  const broken = consistency.filter((c) => !c.ok);
   const summaries = [money, clinic, patients, ads];
   const fresh = (s: Summary) => s.state !== "stale";
   const alerts = summaries.flatMap((s) => (fresh(s) ? s.alerts : []));
@@ -54,6 +64,7 @@ export async function composeBrief(projectId: number) {
   const items: BriefItem[] = [];
   for (const a of alerts.filter((a) => a.level === "act")) items.push({ kind: "alert", id: a.id, alert: a });
   for (const m of missed) items.push({ kind: "alert", id: `missed-${m.agent}`, alert: { id: `missed-${m.agent}`, area: "growth", level: "act", title: `${m.agent} did not run`, detail: `It was due ${m.due} and has not logged a run since. See Activity.`, sources: [], href: "/activity" } });
+  if (broken.length) items.push({ kind: "alert", id: "money-consistency", alert: { id: "money-consistency", area: "money", level: "act", title: "Two money screens disagree", detail: broken.map((c) => `${c.name}: ${c.detail}`).join(" "), sources: [], href: "/money" } });
   for (const p of open) items.push({ kind: "proposal", id: `p${p.id}`, proposal: p });
   const mx = money.extra as any;
   if (mx?.bankStale) items.push({ kind: "bank", id: "bank", title: mx.bank ? "The bank balance is out of date" : "Type the bank balance", detail: money.verdict, bank: mx.bank, fundingOptions: mx.fundingOptions, sources: [money.sources[0]] });
@@ -68,7 +79,7 @@ export async function composeBrief(projectId: number) {
   if (fresh(ads) && ax?.leads) parts.push(`${ax.booked} of ${ax.leads} ad leads have booked a consultation`);
   if (toOpen > 0) parts.push(`Winchester opens in ${toOpen} ${toOpen === 1 ? "day" : "days"}`);
   const lead = state === "good" ? "On track." : state === "watch" ? "Watch." : "Act.";
-  const needs = items.length ? `${words[Math.min(items.length, 7)]} ${items.length === 1 ? "needs" : "need"} you.` : "Nothing needs you.";
+  const needs = items.length ? `${items.length <= 10 ? words[items.length] : `${items.length} things`} ${items.length === 1 ? "needs" : "need"} you.` : "Nothing needs you.";
   const verdict = `${lead} ${parts.length ? parts.join("; ") + ". " : ""}${needs}`;
 
   const pick = (s: Summary, label: string): Kpi | undefined => s.kpis.find((k) => k.label === label);
@@ -82,6 +93,7 @@ export async function composeBrief(projectId: number) {
     runs: { line: runsLine(runs, missed), count: runs.length, since: new Date(now.getTime() - 24 * 3600000).toISOString() },
     areas: [money, ads, patients, clinic].map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict, href: s.key === "growth" ? "/growth" : `/${s.key}`, sources: s.sources, extra: s.extra })),
     dates,
+    waiting: await waitingCounts(projectId),
   };
 }
 

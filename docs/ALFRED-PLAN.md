@@ -20,9 +20,26 @@ Three promises on every screen:
 2. **True or absent.** Every figure carries its source and age. Stale data is labelled and never
    feeds a verdict. What cannot be measured yet says "not measured yet" and the date it will be.
    No estimates dressed as facts, no historic stand-ins.
-3. **One yes.** Anything ALFRED wants to do arrives as a card with evidence and Approve, Reject or
-   Ask. Spend, publishing, messages to patients and deletions always wait for a yes. Reading,
-   measuring, drafting and tidying never do.
+3. **One yes, then it happens.** Anything ALFRED wants to do arrives as a card. There are three
+   kinds: approve (ALFRED wants to do something), answer (ALFRED needs a fact) and decide together
+   (a decision for Abi and David). A change to ALFRED's own records (balances, dates, register
+   entries, model inputs, plan lines, statuses) is done the moment David approves or answers, with
+   Undo and a revert link in Activity. Anything outside ALFRED (ad budgets and campaigns, posts,
+   messages to patients, ANS, the Google profiles, the website) is done by the 08:15 run, which
+   re-checks first and reads the result back. Nobody has to remember to say anything. Spend,
+   publishing, messages to patients and deletions still need the yes; reading, measuring and tidying
+   never do.
+
+   **One source of truth.** Every money figure on every screen is computed at request time from the
+   same records through one function (the cash model plus the summaries); no screen, card, email or
+   file keeps its own copy. A consistency check asserts the screens agree, after every money change
+   and before every push that touches money; a mismatch is a red item on Today.
+
+   **The ripple map** (`artifacts/api-server/src/lib/ripples.ts`). For each kind of fact (money, ad
+   spend, the opening date, Bedhampton's day, Abi's days, a price, the skin analysis terms, a second
+   clinician, a video, a lead's status) it lists everything that depends on it. Inside ALFRED the
+   dependants follow on the next load; outside items become one grouped card with the exact change
+   for each. The monthly audit checks the map for gaps.
 
 ALFRED holds no clinical records. Patients appear as first name and initial at most; everything
 clinical stays in ANS.
@@ -123,7 +140,8 @@ pages above. No data is deleted.
 | Money watch | 07:50 daily | bank floor, dues in 14 days, VAT and card dates, Stands Alone | alert | any payment or change |
 | Search and reviews | Tue 08:30 | rankings, review counts, citations | read, record, draft review replies | posting replies |
 | Brief | 07:55 daily | builds Today, emails only when something needs him | send to accounts@ only | nothing |
-| Auditor | 1st of month | opens every screen at phone size against the three promises | file fixes as cards | code changes |
+| Auditor | 1st of month | opens every screen at phone size against the three promises; checks the ripple map | file fixes as cards | code changes |
+| Do approved actions | 08:15 daily | approved outside actions: re-check, act, read back, log | the approved action itself | nothing more: the approval was the yes |
 
 Every run logs to Activity and writes proposals through `push-proposal.mjs`. A missed run shows on
 Today and Sources within an hour. If the app refuses to schedule one, its run book goes in the

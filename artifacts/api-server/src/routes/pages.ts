@@ -71,7 +71,8 @@ router.get("/projects/:projectId/pages/obligations", handle(async (projectId) =>
   for (const c of cards) for (const o of c.offers) if (o.end >= today) dated.push({ date: o.end, what: `${c.name}: ${o.ratePct}% ${o.kind} offer ends`, amount: c.balance, note: `balance £${Math.round(c.balance).toLocaleString("en-GB")} of £${Math.round(c.limit).toLocaleString("en-GB")}`, href: "/archive/cards" });
   dated.sort((a, b) => a.date.localeCompare(b.date));
   const chip = freshness("cards", cards.map((c) => c.lastEntry).filter(Boolean).sort().pop() ?? null);
-  return { asOf: new Date().toISOString(), vat, cards, loans, directorsLoan: loan, dated, sources: [chip, freshness("bank", J?.bank?.asAt ?? null)] };
+  const vatConfirmed = (J?.config?.vatReturns as any)?.confirmed ?? null;
+  return { asOf: new Date().toISOString(), vat, vatConfirmed, cards, loans, directorsLoan: loan, dated, sources: [chip, freshness("bank", J?.bank?.asAt ?? null)] };
 }));
 
 router.get("/projects/:projectId/pages/stands-alone", handle(async (projectId) => {
@@ -182,7 +183,7 @@ router.get("/projects/:projectId/pages/sources", handle(async (projectId) => {
     { key: "reviews", label: "Google profiles", what: "Review count and rating against rivals", chip: freshness("gsc", reviews?.pushedIso ?? null), agent: "Search and reviews", next: nextOf("Search and reviews"), last: lastRun("Search and reviews") },
     { key: "videos", label: "Filming queue", what: "ads/meta/videos.json", chip: freshness("videos", videos?.pushedIso ?? null), agent: "Meta review", next: nextOf("Meta review"), last: lastRun("Meta review") },
     { key: "social", label: "Instagram and Facebook posts", what: "How posts and Reels performed", chip: freshness("videos", social?.pushedIso ?? null), agent: "Meta review", next: nextOf("Meta review"), last: lastRun("Meta review") },
-    { key: "semrush", label: "Semrush market data", what: "Search volumes, a one-off snapshot", chip: freshness("semrush", "2026-09-19"), agent: null, next: "never refreshes", last: null },
+    { key: "semrush", label: "Semrush market data", what: "Search volumes, read once on 19 September", chip: freshness("semrush", "2026-09-19"), agent: null, next: "never refreshes", last: null },
   ];
   return { asOf: new Date().toISOString(), sources: list, rules: Object.fromEntries(Object.entries(RULES).map(([k, v]) => [k, v.by])) };
 }));

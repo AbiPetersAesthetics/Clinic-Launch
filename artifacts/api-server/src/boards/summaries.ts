@@ -58,7 +58,7 @@ export interface PathStep { label: string; value: string; sub: string; pending?:
 export function adsSummary(p: any | null, now = new Date(), videos: any | null = null): Summary {
   const keeper = "Kept current by the pathway check (08:00, 12:00 and 16:00) and the Monday capacity review";
   if (!p) {
-    return { key: "ads", area: "growth", title: "Ads", state: "stale", verdict: "No ads data yet: the next pathway check pushes the first snapshot.", kpis: [], sources: [], alerts: [], keeper };
+    return { key: "ads", area: "growth", title: "Ads", state: "stale", verdict: "No ads data yet: it arrives with the next pathway check.", kpis: [], sources: [], alerts: [], keeper };
   }
   const asOf = p.updatedIso ?? null;
   const sources = [freshness("meta", asOf, { now }), freshness("ghl", asOf, { now }), freshness("ans", asOf, { now })];
@@ -177,7 +177,7 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
 
 export function clinicSummary(c: any | null, now = new Date(), extra: { expiring?: number | null } = {}): Summary {
   const keeper = "Kept current by the clinic refresh, daily at about 07:40 from ANS";
-  if (!c) return { key: "clinic", area: "clinic", title: "Clinic", state: "stale", verdict: "No clinic snapshot yet: the daily refresh at about 07:40 saves one each morning.", kpis: [], sources: [], alerts: [], keeper };
+  if (!c) return { key: "clinic", area: "clinic", title: "Clinic", state: "stale", verdict: "No clinic figures yet: the daily refresh at about 07:40 reads them from ANS.", kpis: [], sources: [], alerts: [], keeper };
   const src = freshness("ansTakings", c.updatedIso ?? null, { now });
   const sources = [src];
   const today = londonToday(now);

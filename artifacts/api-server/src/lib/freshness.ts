@@ -38,7 +38,7 @@ export const RULES: Record<SourceKey, Rule> = {
   bank: { label: "Bank", by: "Typed by David", typed: true, maxH: 7 * 24 },
   cards: { label: "Cards", by: "Typed or imported into Credit Cards", typed: true, maxH: 31 * 24 },
   gsc: { label: "Search Console", by: "GitHub Action, daily 03:17 UTC", maxH: 72 },
-  semrush: { label: "Semrush snapshot", by: "One-off snapshot, never refreshes", never: true },
+  semrush: { label: "Semrush", by: "Read once on 19 September 2026; never refreshes", never: true },
   videos: { label: "Filming queue", by: "Pushed from ads/meta/videos.json", maxH: 14 * 24 },
 };
 

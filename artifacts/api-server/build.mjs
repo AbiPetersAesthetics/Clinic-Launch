@@ -38,7 +38,7 @@ async function buildAll() {
   if (!commit) { try { commit = execSync("git rev-parse --short HEAD", { cwd: artifactDir }).toString().trim(); } catch { commit = "unknown"; } }
   await esbuild({
     define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()), __BUILD_COMMIT__: JSON.stringify(commit) },
-    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/brief-cli.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/brief-cli.ts"), path.resolve(artifactDir, "src/consistency-cli.ts")],
     platform: "node",
     bundle: true,
     format: "esm",

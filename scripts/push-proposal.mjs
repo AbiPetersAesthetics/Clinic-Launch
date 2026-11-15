@@ -54,14 +54,30 @@ if (!args.length) { console.error("Give a proposal JSON file, or --withdraw, --d
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();
 await client.query(DDL);
-await client.query("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT");
+await client.query("ALTER TABLE proposals ADD COLUMN IF NOT EXISTS decide_with TEXT, ADD COLUMN IF NOT EXISTS card_type TEXT NOT NULL DEFAULT 'approve', ADD COLUMN IF NOT EXISTS fields JSONB, ADD COLUMN IF NOT EXISTS options JSONB, ADD COLUMN IF NOT EXISTS reply JSONB, ADD COLUMN IF NOT EXISTS apply JSONB, ADD COLUMN IF NOT EXISTS action_class TEXT NOT NULL DEFAULT 'outside', ADD COLUMN IF NOT EXISTS applied JSONB");
 const update = async (id, status, col, text, from) => {
   const r = await client.query(`UPDATE proposals SET status = $2, ${col} = $3, updated_at = NOW() WHERE id = $1 AND project_id = 1 AND status = ANY($4) RETURNING id, title, status`, [Number(id), status, text ?? null, from]);
   if (!r.rows.length) { console.error(`Proposal ${id} is not in a state that allows that (needs ${from.join(" or ")})`); process.exitCode = 1; }
   else console.log(`ALFRED proposal ${r.rows[0].id} "${r.rows[0].title}" is now ${r.rows[0].status}`);
 };
 try {
-  if (args[0] === "--withdraw") await update(args[1], "withdrawn", "reason", args[2] ?? "Withdrawn by the agent", ["proposed", "asked", "snoozed", "approved"]);
+  if (args[0] === "--update") {
+    // Rewrite an open card's face (title, why, card type, fields, options) from a JSON file.
+    const p = JSON.parse(readFileSync(args[2], "utf8"));
+    const bad = breaches(p);
+    if (bad.length) throw new Error(`Refused: the update contains ${bad.join(", ")}.`);
+    const r = await client.query(`UPDATE proposals SET title = coalesce($2, title), why = coalesce($3, why), card_type = coalesce($4, card_type), fields = coalesce($5, fields), options = coalesce($6, options), decide_with = coalesce($7, decide_with), on_approval = coalesce($8, on_approval), area = coalesce($9, area), apply = coalesce($10, apply), action_class = coalesce($11, action_class), status = coalesce($12, status), result = coalesce($13, result), reply = coalesce($14, reply), question = CASE WHEN $15::boolean THEN NULL ELSE question END, previous_status = CASE WHEN $12::text IS NULL THEN previous_status ELSE status END, decided_at = CASE WHEN $12::text IS NULL THEN decided_at ELSE NOW() END, updated_at = NOW() WHERE id = $1 AND project_id = 1 RETURNING id, title, card_type`,
+      [Number(args[1]), p.title ?? null, p.why ?? null, p.cardType ?? null, p.fields ? JSON.stringify(p.fields) : null, p.options ? JSON.stringify(p.options) : null, p.decideWith ?? null, p.onApproval ?? null, p.area ?? null, p.apply ? JSON.stringify(p.apply) : null, p.actionClass ?? null, p.status ?? null, p.result ?? null, p.reply ? JSON.stringify(p.reply) : null, p.clearQuestion === true]);
+    console.log(r.rows.length ? `ALFRED card ${r.rows[0].id} is now a ${r.rows[0].card_type} card: "${r.rows[0].title}"` : `No card ${args[1]}`);
+  } else if (args[0] === "--replies") {
+    // Answers and choices the owner has given, for the next live session to apply.
+    const r = await client.query(`SELECT id, title, card_type, status, reply, question FROM proposals WHERE project_id = 1 AND status IN ('answered', 'chosen', 'asked') ORDER BY updated_at`);
+    if (!r.rows.length) console.log("No answers or questions waiting.");
+    for (const p of r.rows) console.log(`${p.id}  [${p.status}] ${p.title}: ${p.status === "asked" ? `question: ${p.question}` : JSON.stringify(p.reply)}`);
+  } else if (args[0] === "--applied") {
+    const r = await client.query(`UPDATE proposals SET status = 'done', result = $2, updated_at = NOW() WHERE id = $1 AND status IN ('answered', 'chosen') RETURNING id, title`, [Number(args[1]), args[2] ?? null]);
+    console.log(r.rows.length ? `ALFRED card ${r.rows[0].id} applied: ${args[2] ?? ""}` : `Card ${args[1]} has no answer waiting`);
+  } else if (args[0] === "--withdraw") await update(args[1], "withdrawn", "reason", args[2] ?? "Withdrawn by the agent", ["proposed", "asked", "snoozed", "approved"]);
   else if (args[0] === "--done") await update(args[1], "done", "result", args[2], ["approved"]);
   else if (args[0] === "--cancel") await update(args[1], "cancelled", "result", args[2], ["approved"]);
   else if (args[0] === "--answer") {
@@ -85,10 +101,10 @@ try {
     const rej = await client.query(`SELECT id, reason, updated_at FROM proposals WHERE project_id = 1 AND status = 'rejected' AND lower(title) = lower($1) AND updated_at > NOW() - INTERVAL '30 days'`, [p.title]);
     if (rej.rows.length && !p.evidenceChanged) throw new Error(`Refused: "${p.title}" was rejected on ${rej.rows[0].updated_at.toISOString().slice(0, 10)} (${rej.rows[0].reason ?? "no reason given"}). Set "evidenceChanged": true only if the evidence has changed materially.`);
     const r = await client.query(
-      `INSERT INTO proposals (project_id, area, kind, agent, title, why, risk, on_approval, guard, sources, evidence, expires_at, decide_with)
-       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id, created_at`,
+      `INSERT INTO proposals (project_id, area, kind, agent, title, why, risk, on_approval, guard, sources, evidence, expires_at, decide_with, card_type, fields, options, apply, action_class)
+       VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING id, created_at`,
       [p.area ?? "ads", p.kind ?? "general", p.agent, p.title, p.why ?? null, p.risk ?? null, p.onApproval ?? null, p.guard ?? null,
-        JSON.stringify(p.sources ?? []), p.evidence === undefined ? null : JSON.stringify(p.evidence), p.expiresAt ?? null, p.decideWith ?? null]);
+        JSON.stringify(p.sources ?? []), p.evidence === undefined ? null : JSON.stringify(p.evidence), p.expiresAt ?? null, p.decideWith ?? null, p.cardType ?? "approve", p.fields ? JSON.stringify(p.fields) : null, p.options ? JSON.stringify(p.options) : null, p.apply ? JSON.stringify(p.apply) : null, p.actionClass ?? (p.apply ? "record" : "outside")]);
     console.log(`ALFRED proposal ${r.rows[0].id} saved at ${r.rows[0].created_at.toISOString()}: "${p.title}"`);
   }
 } catch (e) {

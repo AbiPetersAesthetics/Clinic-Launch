@@ -139,8 +139,8 @@ export function ObligationsPage() {
           <Section title="Loans">
             {data.loans.length ? <Rows>{data.loans.map((l: any) => <RowItem key={l.label}><span className="flex-1"><span className="block text-ink">{l.label}</span><span className="block text-[0.8rem] text-ink-muted">{gbp0(l.principal)} at {l.ratePct}%, {l.repayments} repayments{l.holidayMonths ? ` after ${l.holidayMonths} months' holiday` : ""}{l.nextMonth ? `; next ${gbp0(l.nextAmount)} in ${l.nextMonth}` : ""}</span></span></RowItem>)}</Rows> : <p className="text-ink-muted">No loans in the plan.</p>}
           </Section>
-          <Section title="VAT returns, monthly">
-            <Rows>{data.vat.map((v: any) => <RowItem key={v.month}><span className="flex-1"><span className="block text-ink">{v.period}: due {longDay(v.due)}</span><span className="block text-[0.8rem] text-ink-muted">The plan: VAT on sales {gbp0(v.vatOnSales)}, build VAT reclaimed {gbp0(v.vatOnBuild)}{v.refundNextMonth ? `, refund of ${gbp0(v.refundNextMonth)} the month after` : ""}. Estimates from the plan, not the return.</span></span></RowItem>)}</Rows>
+          <Section title="VAT returns, monthly" note={data.vatConfirmed ? `dates confirmed by you, ${data.vatConfirmed.on}` : "dates assumed"}>
+            <Rows>{data.vat.map((v: any) => <RowItem key={v.month}><span className="flex-1"><span className="block text-ink">{v.period}: due {longDay(v.due)}</span><span className="block text-[0.8rem] text-ink-muted">The plan: VAT on sales {gbp0(v.vatOnSales)}, build VAT reclaimed {gbp0(v.vatOnBuild)}{v.refundNextMonth ? `, refund of ${gbp0(v.refundNextMonth)} the month after` : ""}. The amounts are the plan's estimates, not the return.</span></span></RowItem>)}</Rows>
           </Section>
           <Next>The money watch (daily 07:50) turns anything due in the next 14 days into a card on Today.</Next>
         </>

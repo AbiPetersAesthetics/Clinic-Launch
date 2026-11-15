@@ -107,6 +107,10 @@ export default function HomePage() {
         {isLoading || !data ? <Skeleton className="h-20 w-full max-w-xl rounded-xl" /> : <Verdict state={data.state} text={data.verdict} />}
       </header>
 
+      {data?.waiting && (data.waiting.approved + data.waiting.answered + data.waiting.asked) > 0 && (
+        <p className="text-[0.95rem] text-ink-2 -mt-3"><Link href="/inbox" className="underline">{[data.waiting.approved ? `${data.waiting.approved} approved ${data.waiting.approved === 1 ? "item" : "items"} waiting to be done at 08:15` : null, data.waiting.answered ? `${data.waiting.answered} ${data.waiting.answered === 1 ? "answer" : "answers"} being applied` : null, data.waiting.asked ? `${data.waiting.asked} ${data.waiting.asked === 1 ? "question" : "questions"} ALFRED is working out` : null].filter(Boolean).join("; ")}</Link></p>
+      )}
+
       <Section title={items.length ? `Needs you (${data?.total ?? items.length})` : "Needs you"} id="needs" note={data && data.total > items.length ? <Link href="/inbox" className="underline">see all</Link> : undefined}>
         {isLoading ? <Skeleton className="h-44 rounded-xl" />
           : items.length === 0 ? <p className="text-[1.05rem] text-ink">Nothing needs you.</p>
