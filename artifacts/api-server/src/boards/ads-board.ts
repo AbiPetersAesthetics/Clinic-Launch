@@ -13,10 +13,10 @@ interface Plan {
   goal: string; targets: { costPerLead: number[]; costPerBooked: number; costPerPaying: number; roasFirstVisit: number; roasYearOne: number };
   caps: { from: string; perDay: number; why: string }[]; months: string[]; campaigns: Campaign[]; switching: string;
   schedule: { when: string; task: string; what: string }[];
-  assumptions: { bookedToAttended: number; attendedToPaying: number; firstVisitValue: number; yearOneValue: number; kept: number; newPatientsPerWeekAlone: number; newPatientsPerWeekTwo: number; note: string };
+  assumptions: { bookedToPaying: number; bookedToPayingAll: number; bookedToPayingSource: string; firstVisitValue: number; yearOneValue: number; kept: number; newPatientsPerWeekAlone: number; newPatientsPerWeekTwo: number; note: string };
 }
 interface Snapshot {
-  updated: string; windowFrom: string;
+  updated: string; updatedIso?: string; windowFrom: string;
   spend: { total: number; leadForms: number; bookingAd: number };
   leadForms: { clicks: number }; bookingAd: { clicks: number; toLandingPage: number; traced: number };
   followUp: { sent: number; replies: number }; totals: { impressions: number; linkClicks: number };
@@ -32,7 +32,6 @@ const gbp = (n: number) => `£${(Math.round(n * 100) / 100).toFixed(2)}`;
 const gbp0 = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const monthLabel = (ym: string) => `${MONTHS[Number(ym.slice(5, 7)) - 1]} ${ym.slice(2, 4)}`;
 const thisMonth = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
 
 function kpi(label: string, value: string, note: string, tone = "") {
@@ -56,6 +55,14 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const cpp = paying.length ? p.spend.total / paying.length : null;
   const roas = paying.length ? revenue / p.spend.total : null;
   const leadToBooked = leads ? booked / leads : 0.5;
+  // Booked to paying: the ad leads' own rate once 20 have closed their 30 days, else Abi's diary history.
+  const closed = p.leads.filter((l) => l.treated === true || l.treated === false).length;
+  const ownRate = closed >= 20 ? p.leads.filter((l) => l.treated === true).length / closed : null;
+  const b2p = ownRate ?? A.bookedToPaying;
+  const b2pSource = ownRate != null ? `measured on ${closed} Winchester ad leads` : `measured in Abi's diary: ${pct(A.bookedToPaying)} of new patients' consultations paid within 30 days`;
+  // How fresh the figures are
+  const ageH = p.updatedIso ? (Date.now() - Date.parse(p.updatedIso)) / 3600000 : null;
+  const fresh = ageH == null ? "" : `<span class="pill ${ageH < 8 ? "good" : ageH < 26 ? "warn" : "bad"}">Figures ${ageH < 1 ? "under an hour" : Math.round(ageH) + (Math.round(ageH) === 1 ? " hour" : " hours")} old</span>`;
 
   // Verdict
   const tone = cpp != null ? (cpp <= T.costPerPaying ? "good" : cpp <= 90 ? "warn" : "bad") : (cpb <= T.costPerBooked ? "good" : "warn");
@@ -84,8 +91,8 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const funnel = [
     frow("Leads", leads, ""),
     frow("Booked consultation", booked, `${pct(leadToBooked)} of leads, mostly within three minutes of the form`),
-    frow("Attended", o ? o.attended : null, o ? `${booked ? pct(o.attended / booked) : ""} of booked` : `measured from 2 Dec; assumed ${pct(A.bookedToAttended)}`),
-    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 30 days` : `assumed ${pct(A.attendedToPaying)} of attended until measured`),
+    frow("Attended", o ? o.attended : null, o ? `${booked ? pct(o.attended / booked) : ""} of booked` : "read from ANS after each consultation, from 2 Dec"),
+    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 30 days` : `expect about ${pct(b2p)} of booked; ${b2pSource}`),
   ].join("");
 
   // Diary and budget
@@ -126,28 +133,36 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const now = thisMonth();
   const active = (c: Campaign, ym: string) => c.start.slice(0, 7) <= ym && (!c.end || c.end.slice(0, 7) >= ym);
   const capFor = (ym: string) => [...plan.caps].filter((c) => c.from <= ym).pop()?.perDay ?? 40;
-  const head = `<tr><th>Campaign</th>${plan.months.map((m) => `<th class="${m === now ? "now" : ""}">${monthLabel(m)}</th>`).join("")}</tr>`;
-  const rows = plan.campaigns.map((c) => {
-    const cells = plan.months.map((m) => active(c, m) ? `<td class="on k-${c.kind}${m === now ? " now" : ""}" title="${esc(c.name)}">${c.perDay > 0 ? "£" + c.perDay : c.perDay < 0 ? "−£" + -c.perDay : ""}</td>` : `<td class="${m === now ? "now" : ""}"></td>`).join("");
-    return `<tr><td><b>${esc(c.name)}</b><br><span style="color:var(--muted);font-size:11.5px">${esc(c.what)}</span></td>${cells}</tr>`;
-  }).join("");
-  const totals = plan.months.map((m) => {
-    const t = plan.campaigns.filter((c) => active(c, m) && c.status !== "conditional").reduce((s, c) => s + c.perDay, 0);
-    const cap = capFor(m);
-    return `<td class="${t > cap ? "over" : ""}${m === now ? " now" : ""}">£${t}</td>`;
-  }).join("");
-  const caps = plan.months.map((m) => `<td class="${m === now ? "now" : ""}">£${capFor(m)}</td>`).join("");
-  const monthly = plan.months.map((m) => {
-    const t = plan.campaigns.filter((c) => active(c, m) && c.status !== "conditional").reduce((s, c) => s + c.perDay, 0);
-    return `<td class="${m === now ? "now" : ""}">${gbp0(t * 30.4)}</td>`;
-  }).join("");
+  // One Jan to Dec calendar per year, the current year shown first, this month outlined.
+  const years = [...new Set(plan.months.map((m) => m.slice(0, 4)))];
+  const curYear = years.includes(now.slice(0, 4)) ? now.slice(0, 4) : years[0];
+  const started = (m: string) => plan.campaigns.some((c) => c.kind === "evergreen" && c.start.slice(0, 7) <= m);
+  const calendar = (y: string) => {
+    const ms = Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, "0")}`);
+    const cls = (m: string) => (m === now ? "now" : "");
+    const head = `<tr><th>Campaign</th>${ms.map((m) => `<th class="${cls(m)}">${MONTHS[Number(m.slice(5)) - 1]}</th>`).join("")}</tr>`;
+    const rows = plan.campaigns.filter((c) => ms.some((m) => active(c, m))).map((c) => {
+      const cells = ms.map((m) => active(c, m) ? `<td class="on k-${c.kind} ${cls(m)}" title="${esc(c.name)}">${c.perDay > 0 ? "£" + c.perDay : c.perDay < 0 ? "−£" + -c.perDay : ""}</td>` : `<td class="${cls(m)}"></td>`).join("");
+      return `<tr><td><b>${esc(c.name)}</b><br><span style="color:var(--muted);font-size:11.5px">${esc(c.what)}</span></td>${cells}</tr>`;
+    }).join("");
+    const perDay = (m: string) => plan.campaigns.filter((c) => active(c, m) && c.status !== "conditional").reduce((s, c) => s + c.perDay, 0);
+    const totals = ms.map((m) => started(m) ? `<td class="${perDay(m) > capFor(m) ? "over" : ""} ${cls(m)}">£${perDay(m)}</td>` : `<td class="${cls(m)}"></td>`).join("");
+    const caps = ms.map((m) => `<td class="${cls(m)}">${started(m) ? "£" + capFor(m) : ""}</td>`).join("");
+    const monthly = ms.map((m) => `<td class="${cls(m)}">${started(m) ? gbp0(perDay(m) * 30.4) : ""}</td>`).join("");
+    return `<div class="table-wrap" data-cal="${y}"${y === curYear ? "" : " hidden"}><table class="gantt"><thead>${head}</thead><tbody>${rows || `<tr><td colspan="13">Nothing planned.</td></tr>`}
+      <tr class="total"><td>Planned per day (excluding conditional)</td>${totals}</tr>
+      <tr><td style="color:var(--muted)">Cap per day</td>${caps}</tr>
+      <tr><td style="color:var(--muted)">About per month</td>${monthly}</tr></tbody></table></div>`;
+  };
+  const yearTabs = `<div class="seg">${years.map((y) => `<button type="button" data-year="${y}" aria-pressed="${y === curYear}">${y}</button>`).join("")}</div>`;
+  const calendars = years.map(calendar).join("");
   const themes = (plan.campaigns.find((c) => c.id === "evergreen")?.creative ?? []).map((t) => `<li><span>${esc(t.theme)}</span><b>${esc(new Date(t.from + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }))}</b></li>`).join("");
 
   // Schedule
   const sched = plan.schedule.map((s) => `<li><b>${esc(s.when)}</b><span>${esc(s.what)}</span></li>`).join("");
 
   // Simulator data
-  const simData = JSON.stringify({ cpl: Math.round(cpl * 100) / 100, l2b: Math.round(leadToBooked * 100) / 100, b2p: Math.round(A.bookedToAttended * A.attendedToPaying * 100) / 100, first: A.firstVisitValue, year: A.yearOneValue, kept: A.kept, capAlone: A.newPatientsPerWeekAlone, capTwo: A.newPatientsPerWeekTwo, target: T.costPerPaying }).replace(/</g, "\\u003c");
+  const simData = JSON.stringify({ cpl: Math.round(cpl * 100) / 100, l2b: Math.round(leadToBooked * 100) / 100, b2p: Math.round(b2p * 100) / 100, first: A.firstVisitValue, year: A.yearOneValue, kept: A.kept, capAlone: A.newPatientsPerWeekAlone, capTwo: A.newPatientsPerWeekTwo, target: T.costPerPaying }).replace(/</g, "\\u003c");
 
   const body = `<div class="board">
   <div class="head">
@@ -156,15 +171,15 @@ export function renderAdsBoard(p: Snapshot | null): string {
       <h1>Winchester Ads Board</h1>
       <p>${esc(plan.goal)}</p>
     </div>
-    <div class="tag"><span class="verdict"><i class="dot ${tone === "good" ? "" : tone}"></i>${esc(verdict)}</span></div>
+    <div class="tag" style="display:grid;gap:6px;justify-items:end"><span class="verdict"><i class="dot ${tone === "good" ? "" : tone}"></i>${esc(verdict)}</span>${fresh}</div>
   </div>
   <div class="grid">
     <aside class="rail sim" aria-label="Scale simulator">
-      <div class="ctl"><span class="lbl">If we scale: what does it buy?</span><span class="hint">Starts from today's real cost per lead and booking rate. Paying rate is an assumption until December.</span></div>
-      <div class="ctl"><span class="lbl">Daily budget</span><div class="slide"><input id="s-budget" type="range" min="20" max="60" step="1" value="25"><output id="o-budget">£25</output></div></div>
-      <div class="ctl"><span class="lbl">Cost per lead</span><div class="slide"><input id="s-cpl" type="range" min="3" max="25" step="0.5" value="${Math.round(cpl * 2) / 2}"><output id="o-cpl"></output></div><span class="hint">Usually rises as spend rises; try a higher figure at higher budgets.</span></div>
-      <div class="ctl"><span class="lbl">Lead to booked</span><div class="slide"><input id="s-l2b" type="range" min="0.1" max="0.9" step="0.05" value="${Math.round(leadToBooked * 20) / 20}"><output id="o-l2b"></output></div></div>
-      <div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.1" max="0.9" step="0.05" value="${Math.round(A.bookedToAttended * A.attendedToPaying * 20) / 20}"><output id="o-b2p"></output></div></div>
+      <div class="ctl"><span class="lbl">If we scale: what does it buy?</span><span class="hint">Every slider opens on a measured figure. Move one to ask "what if"; Reset puts the measured figures back.</span><div class="presets"><button type="button" id="s-reset">Reset to measured</button></div></div>
+      <div class="ctl"><span class="lbl">Daily budget</span><div class="slide"><input id="s-budget" type="range" min="20" max="60" step="1" value="${Math.round(p.budgetAdvice?.current ?? 25)}"><output id="o-budget"></output></div><span class="hint">Live: £${Math.round(p.budgetAdvice?.current ?? 25)} a day across the three campaigns.</span></div>
+      <div class="ctl"><span class="lbl">Cost per lead</span><div class="slide"><input id="s-cpl" type="range" min="3" max="25" step="0.01" value="${cpl.toFixed(2)}"><output id="o-cpl"></output></div><span class="hint">Measured: ${gbp(p.spend.total)} for ${leads} leads. Usually rises as spend rises.</span></div>
+      <div class="ctl"><span class="lbl">Lead to booked</span><div class="slide"><input id="s-l2b" type="range" min="0.05" max="0.95" step="0.01" value="${leadToBooked.toFixed(2)}"><output id="o-l2b"></output></div><span class="hint">Measured: ${booked} of ${leads} leads booked.</span></div>
+      <div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.05" max="0.95" step="0.01" value="${b2p.toFixed(2)}"><output id="o-b2p"></output></div><span class="hint">${esc(ownRate != null ? `Measured: ${b2pSource}.` : `Measured in ANS: 23 of 84 new patients' consultations paid within 30 days (Dec 2025 to Oct 2026). Switches to the ad leads' own rate once 20 have passed their 30 days.`)}</span></div>
       <div class="ctl"><span class="lbl">Clinicians</span><div class="seg" id="s-team"><button type="button" aria-pressed="true" data-v="1">Abi alone</button><button type="button" aria-pressed="false" data-v="2">Two</button></div></div>
       <div class="ctl"><span class="lbl">Each month</span><div class="simout" id="simout"></div></div>
     </aside>
@@ -180,11 +195,8 @@ export function renderAdsBoard(p: Snapshot | null): string {
         <div class="table-wrap"><table><thead><tr><th>Audience</th><th>Spend</th><th>Reach</th><th>Leads</th><th>Per lead</th><th>Frequency</th><th>Fatigue</th></tr></thead><tbody>${setRows}</tbody></table></div>
         <p style="color:var(--muted);font-size:12px">An ad is judged after 7 days or £20. Keep: leads at or under £${T.costPerLead[1]}. Pause: £20 spent and no lead. Every lead, traced from ad to diary, is on <a href="/ads-pathway" target="_top">Ads Pathway</a>.</p>
       </div>
-      <div class="card"><span class="q">The next 12 months</span><h2>The evergreen, plus campaigns switched on and off on their dates</h2>
-        <div class="table-wrap"><table class="gantt"><thead>${head}</thead><tbody>${rows}
-          <tr class="total"><td>Planned per day (excluding conditional)</td>${totals}</tr>
-          <tr><td style="color:var(--muted)">Cap per day</td>${caps}</tr>
-          <tr><td style="color:var(--muted)">About per month</td>${monthly}</tr></tbody></table></div>
+      <div class="card"><span class="q">The next 12 months</span><div class="head" style="grid-template-columns:minmax(0,1fr) auto"><h2>The evergreen, plus campaigns switched on and off on their dates</h2>${yearTabs}</div>
+        ${calendars}
         <div class="legend"><span><i class="k-evergreen"></i>Evergreen</span><span><i class="k-seasonal"></i>Seasonal</span><span><i class="k-launch"></i>Launch</span><span><i class="k-test"></i>Test</span><span><i class="k-conditional"></i>Only when conditions hold</span><span><i class="k-reduce"></i>Eased</span></div>
         <p style="color:var(--muted);font-size:12px">${esc(plan.switching)} The evergreen's figure is its starting budget; each Monday's diary reading moves it within the cap.</p>
       </div>
@@ -221,7 +233,9 @@ export function renderAdsBoard(p: Snapshot | null): string {
       "<div><span>Kept in year one, after ads</span><b>"+money(paying*D.year*D.kept-spend)+"</b></div>"+
       "<div><span>New patient room a month</span><b class=\\""+(over?"bad":"good")+"\\">"+Math.round(cap)+(over?", over":"")+"</b></div>";
   }
-  ["s-budget","s-cpl","s-l2b","s-b2p"].forEach(function(id){$(id).addEventListener("input",run);});
+  ["s-budget","s-cpl","s-l2b","s-b2p"].forEach(function(id){var el=$(id); el.dataset.m=el.value; el.addEventListener("input",run);});
+  $("s-reset").addEventListener("click",function(){["s-budget","s-cpl","s-l2b","s-b2p"].forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
+  [].forEach.call(document.querySelectorAll("[data-year]"),function(b){b.addEventListener("click",function(){var y=b.dataset.year; [].forEach.call(document.querySelectorAll("[data-year]"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-cal]"),function(t){t.hidden=t.dataset.cal!==y;});});});
   $("s-team").addEventListener("click",function(e){var t=e.target.closest("button"); if(!t)return; team=+t.dataset.v; [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===t));}); run();});
   run();
 })();
