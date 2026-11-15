@@ -1,8 +1,9 @@
 // Pushes one Ads Pathway snapshot into Launch OS.
 // Usage (from the Clinic-Launch folder):
 //   node --env-file=.env scripts/push-ads-pathway.mjs <path to pathway.json>
+// Merges ads-plan.json from the same folder as data.plan, for the Ads Board.
 // Called by the twice-daily pathway check (abi-peters-skin-clinic/ads/meta/pathway/README.md).
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -15,6 +16,9 @@ const file = process.argv[2];
 if (!file) { console.error("Give the path to pathway.json"); process.exit(1); }
 if (!process.env.DATABASE_URL) { console.error("DATABASE_URL missing: run with --env-file=.env"); process.exit(1); }
 const data = JSON.parse(readFileSync(file, "utf8"));
+// The Ads Board plan (calendar, schedule, simulator assumptions) sits beside pathway.json.
+const planFile = path.join(path.dirname(file), "ads-plan.json");
+if (existsSync(planFile)) data.plan = JSON.parse(readFileSync(planFile, "utf8"));
 
 const client = new Client({ connectionString: process.env.DATABASE_URL });
 await client.connect();

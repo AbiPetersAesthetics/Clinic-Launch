@@ -17,6 +17,7 @@ import { planData } from "../boards/plan-data";
 import { renderMoneyPlan } from "../boards/money-plan";
 import { renderCashLine } from "../boards/cash-line";
 import { renderOpeningBoard } from "../boards/opening-board";
+import { renderAdsBoard } from "../boards/ads-board";
 
 const router = Router();
 
@@ -112,6 +113,19 @@ router.get("/projects/:projectId/boards/opening", async (req, res) => {
     } catch { /* no snapshots table yet: the board says so */ }
     page(res, renderOpeningBoard(snap));
   } catch (err) { failed(res, "Opening Board", err); }
+});
+
+// The Ads Board: every ad now, the data schedule and the 12 month plan, from the same snapshot.
+router.get("/projects/:projectId/boards/ads", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    let snap: any = null;
+    try {
+      const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
+      snap = (((r as any).rows ?? r)[0])?.data ?? null;
+    } catch { /* no snapshots table yet */ }
+    page(res, renderAdsBoard(snap));
+  } catch (err) { failed(res, "Ads Board", err); }
 });
 
 export default router;
