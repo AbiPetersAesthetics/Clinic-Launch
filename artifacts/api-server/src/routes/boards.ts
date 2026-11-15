@@ -5,7 +5,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { buildCashModel } from "./cash-model";
-import { PATIENT_MODEL, PRICES, WINC_SCENARIOS } from "../lib/cash-model-defaults";
+import { PATIENT_MODEL, PRICES, WINC_SCENARIOS, WINC_OPTS } from "../lib/cash-model-defaults";
 import { monthsFrom, wincForecast } from "../lib/growth-model";
 import BOARD_TEMPLATE from "../boards/board-template.html";
 import ENGINE from "../boards/engine.gen.txt";
@@ -20,6 +20,8 @@ import { renderOpeningBoard } from "../boards/opening-board";
 import { renderAdsBoard } from "../boards/ads-board";
 import { renderAdsIdeas } from "../boards/ads-ideas";
 import { renderClinicBoard } from "../boards/clinic-board";
+import { summaryFor, BOARD_SUMMARY, latestAds } from "../lib/board-data";
+import { embedChrome, withTokens } from "../boards/embed-chrome";
 
 const router = Router();
 
@@ -50,7 +52,14 @@ async function lineDetail(projectId: number) {
   return { items: ((items as any).rows ?? items) as any[], card: ((card as any).rows ?? card) as any[] };
 }
 
-const page = (res: any, html: string) => { res.setHeader("Cache-Control", "no-store"); res.type("html").send(html); };
+// Every board gets the ALFRED tokens, except the Build Cash Board (the owner's master record, kept
+// exactly as it is); ?embed=1 hides the board's own title and reports its height to ALFRED.
+const page = (res: any, html: string, req?: any, opts: { master?: boolean } = {}) => {
+  res.setHeader("Cache-Control", "no-store");
+  const embed = req?.query?.embed === "1";
+  const styled = opts.master ? html : withTokens(html);
+  res.type("html").send(embedChrome(styled, { embed, hideHead: !opts.master }));
+};
 const failed = (res: any, what: string, err: unknown) => {
   console.error(`[boards ${what}]`, err);
   const msg = String(err instanceof Error ? err.message : err).replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -64,7 +73,7 @@ router.get("/projects/:projectId/boards/build-cash", async (req, res) => {
     const J = await buildCashModel(projectId, { months: 36 });
     let html = boardRefresh(BOARD_TEMPLATE, J, asOf);
     html = boardLines(html, await planLines(projectId), J.projectLines, asOf, await lineDetail(projectId));
-    page(res, embedBoard(html));
+    page(res, embedBoard(html), req, { master: true });
   } catch (err) { failed(res, "Build Cash Board", err); }
 });
 
@@ -74,9 +83,10 @@ router.get("/projects/:projectId/boards/money-plan", async (req, res) => {
     const asOf = today();
     const J = await buildCashModel(projectId, { months: 36 });
     const D = planData(makeRun(J));
-    const html = renderMoneyPlan({ D, LIVE: J, ENGINE, lib: { PATIENT_MODEL, PRICES, WINC_SCENARIOS, monthsFrom, wincForecast }, asOf });
-    // The same page frame the plan was published in, pinned light as Launch OS is.
-    page(res, `<!doctype html><html lang="en-GB" data-theme="light"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>${html}</body></html>`);
+    const html = renderMoneyPlan({ D, LIVE: J, ENGINE, lib: { PATIENT_MODEL, PRICES, WINC_SCENARIOS, WINC_OPTS, monthsFrom, wincForecast }, asOf });
+    // The plan in a white ALFRED frame with the brand fonts (it was a warm cream ground and system
+    // fonts, which the app rules out), pinned light as ALFRED is.
+    page(res, `<!doctype html><html lang="en-GB" data-theme="light"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px "Mulish","Avenir Next","Segoe UI",system-ui,sans-serif;background:#FFFFFF;color:#1F2A44}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>${html}</body></html>`, req);
   } catch (err) { failed(res, "Money Plan", err); }
 });
 
@@ -100,7 +110,7 @@ router.get("/projects/:projectId/boards/cash-line", async (req, res) => {
       const sign = e.kind === "refund" ? -1 : 1;
       history.push({ source: "card", date: String(e.date ?? "").slice(0, 10), what: e.description, line: e.title ?? "", phase: e.phase ?? "", amount: sign * Number(e.amount_gbp), vat: e.vat_gbp == null ? null : sign * Number(e.vat_gbp), card: e.card, holder: e.holder, last4: e.last4 });
     }
-    page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }));
+    page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }), req);
   } catch (err) { failed(res, "Cash Line", err); }
 });
 
@@ -113,7 +123,7 @@ router.get("/projects/:projectId/boards/opening", async (req, res) => {
       const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
       snap = (((r as any).rows ?? r)[0])?.data ?? null;
     } catch { /* no snapshots table yet: the board says so */ }
-    page(res, renderOpeningBoard(snap));
+    page(res, renderOpeningBoard(snap), req);
   } catch (err) { failed(res, "Opening Board", err); }
 });
 
@@ -126,7 +136,17 @@ router.get("/projects/:projectId/boards/ads", async (req, res) => {
       const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
       snap = (((r as any).rows ?? r)[0])?.data ?? null;
     } catch { /* no snapshots table yet */ }
-    page(res, renderAdsBoard(snap));
+    page(res, renderAdsBoard(snap), req);
+  } catch (err) { failed(res, "Ads Board", err); }
+});
+
+// One section of the Ads Board on its own Growth page: ads, leads, plan, simulator, last14, how.
+router.get("/projects/:projectId/boards/ads/:section", async (req, res, next) => {
+  if (req.params.section === "summary") return next();
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const snap = await latestAds(projectId);
+    page(res, renderAdsBoard(snap, req.params.section), req);
   } catch (err) { failed(res, "Ads Board", err); }
 });
 
@@ -139,7 +159,7 @@ router.get("/projects/:projectId/boards/ads-ideas", async (req, res) => {
       const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
       snap = (((r as any).rows ?? r)[0])?.data ?? null;
     } catch { /* no snapshots table yet */ }
-    page(res, renderAdsIdeas(snap));
+    page(res, renderAdsIdeas(snap), req);
   } catch (err) { failed(res, "Ads Ideas", err); }
 });
 
@@ -156,8 +176,21 @@ router.get("/projects/:projectId/boards/clinic", async (req, res) => {
       const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
       ads = (((r as any).rows ?? r)[0])?.data ?? null;
     } catch { /* no ads snapshots yet */ }
-    page(res, renderClinicBoard(clinic, ads));
+    page(res, renderClinicBoard(clinic, ads), req);
   } catch (err) { failed(res, "Clinic Board", err); }
+});
+
+// The verdict and KPIs a board opens with (UX plan 2.4), the same figures Today reads.
+router.get("/projects/:projectId/boards/:key/summary", async (req, res) => {
+  try {
+    const key = BOARD_SUMMARY[req.params.key];
+    if (!key) { res.status(404).json({ error: "No summary for that board" }); return; }
+    res.setHeader("Cache-Control", "no-store");
+    res.json(await summaryFor(parseInt(req.params.projectId), key));
+  } catch (err) {
+    console.error("[board summary]", err);
+    res.status(500).json({ error: "Could not build the summary" });
+  }
 });
 
 export default router;

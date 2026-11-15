@@ -36,6 +36,8 @@ import kitRouter from "./kit";
 import finishesRouter from "./finishes";
 import cardsRouter from "./cards";
 import boardsRouter from "./boards";
+import briefRouter from "./brief";
+import proposalsRouter from "./proposals";
 
 const router: IRouter = Router();
 
@@ -76,5 +78,7 @@ router.use(kitRouter);
 router.use(finishesRouter);
 router.use(cardsRouter);
 router.use(boardsRouter);
+router.use(briefRouter);
+router.use(proposalsRouter);
 
 export default router;

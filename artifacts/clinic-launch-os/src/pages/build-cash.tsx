@@ -11,6 +11,6 @@ export default function BuildCashPage() {
   return (
     <BoardFrame src={BOARD} title="Winchester Build Cash Board" heading="Build Cash Board"
       subtitle="Funding pots, the bank month by month, the card and every build line, with the assumptions you can change. Built from the plan each time you open it."
-      footnote={<>The board follows the plan: change a line, its payment months or the bank balance and it shows here when you next open it. After paying anything from the bank, update Bank today on <Link href="/financials" className="underline">Money</Link>; anything bought on a card goes on that card in <Link href="/cards" className="underline">Credit Cards</Link>. For the rooms and kit, see <Link href="/kit" className="underline">Rooms & Kit</Link>.</>} />
+      footnote={<>The board follows the plan: change a line, its payment months or the bank balance and it shows here when you next open it. After paying anything from the bank, update the bank balance on <Link href="/money?bank=1" className="underline">Money</Link>; anything bought on a card goes on that card in <Link href="/cards" className="underline">Credit Cards</Link>. For the rooms and kit, see <Link href="/kit" className="underline">Rooms & Kit</Link>.</>} />
   );
 }

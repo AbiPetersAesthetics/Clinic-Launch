@@ -29,7 +29,6 @@ import DigestPage from "@/pages/digest";
 import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
 import OpeningBoardPage from "@/pages/opening-board";
-import AdsBoardPage from "@/pages/ads-board";
 import AdsIdeasPage from "@/pages/ads-ideas";
 import ClinicBoardPage from "@/pages/clinic-board";
 import HomePage from "@/pages/home";
@@ -39,6 +38,9 @@ import MoneyPlanPage from "@/pages/money-plan";
 import CashLinePage from "@/pages/cash-line";
 import CardsPage from "@/pages/cards";
 import OwedPage from "@/pages/owed";
+import MoneyOverviewPage from "@/pages/money";
+import AdsCommandPage from "@/pages/growth/ads";
+import { GrowthSection } from "@/pages/growth/section";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -168,9 +170,17 @@ function Router() {
         <Route path="/marketing" component={MarketingPage} />
         <Route path="/operational-model" component={OperationalModelPage} />
         <Route path="/backlinks" component={BacklinksPage} />
-        <Route path="/ads-pathway">{() => <Redirect to="/ads-board" />}</Route>
+        <Route path="/ads-pathway">{() => <Redirect to="/growth/ads/leads" />}</Route>
         <Route path="/opening-board" component={OpeningBoardPage} />
-        <Route path="/ads-board" component={AdsBoardPage} />
+        <Route path="/ads-board">{() => <Redirect to="/growth/ads" />}</Route>
+        <Route path="/growth/ads" component={AdsCommandPage} />
+        <Route path="/growth/ads/every-ad">{() => <GrowthSection id="every-ad" />}</Route>
+        <Route path="/growth/ads/leads">{() => <GrowthSection id="leads" />}</Route>
+        <Route path="/growth/plan">{() => <GrowthSection id="plan" />}</Route>
+        <Route path="/growth/last-14-days">{() => <GrowthSection id="last-14-days" />}</Route>
+        <Route path="/growth/simulator">{() => <GrowthSection id="simulator" />}</Route>
+        <Route path="/growth/how-it-works">{() => <GrowthSection id="how-it-works" />}</Route>
+        <Route path="/growth/ideas">{() => <GrowthSection id="ideas" />}</Route>
         <Route path="/ads-ideas" component={AdsIdeasPage} />
         <Route path="/clinic-board" component={ClinicBoardPage} />
         <Route path="/kit" component={KitPage} />
@@ -179,6 +189,12 @@ function Router() {
         <Route path="/cash-line" component={CashLinePage} />
         <Route path="/cards" component={CardsPage} />
         <Route path="/owed" component={OwedPage} />
+        <Route path="/money" component={MoneyOverviewPage} />
+        <Route path="/money/build-cash" component={BuildCashPage} />
+        <Route path="/money/cash-line" component={CashLinePage} />
+        <Route path="/money/plan" component={MoneyPlanPage} />
+        <Route path="/money/cards" component={CardsPage} />
+        <Route path="/money/owed" component={OwedPage} />
         <Route path="/competition">{() => <Redirect to="/market#competitors" />}</Route>
         <Route path="/market" component={MarketHubPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />

@@ -121,7 +121,7 @@ async function buildAll() {
       "is-network-error",
     ],
     // The board and plan templates and the browser engine are bundled as text.
-    loader: { ".html": "text", ".txt": "text" },
+    loader: { ".html": "text", ".txt": "text", ".css": "text" },
     sourcemap: "linked",
     plugins: [
       // pino relies on workers to handle logging, instead of externalizing it we use a plugin to handle it

@@ -10,6 +10,6 @@ export default function CashLinePage() {
   return (
     <BoardFrame src={BOARD} title="Winchester Cash Line" heading="Cash Line"
       subtitle="The Tide balance day by day to the end of December: every payment in the plan on the day it is expected, and what it does to the bank. Card and personal rows leave the line where it is."
-      footnote={<>The dates are assumed where the plan holds only a month; they are listed at the foot of the page. The amounts are the plan's: change a line in <Link href="/project" className="underline">Plan & Timeline</Link>, or the bank balance on <Link href="/financials" className="underline">Money</Link>, and this page follows.</>} />
+      footnote={<>The dates are assumed where the plan holds only a month; they are listed at the foot of the page. The amounts are the plan's: change a line in <Link href="/project" className="underline">Plan & Timeline</Link>, or the bank balance on <Link href="/money?bank=1" className="underline">Money</Link>, and this page follows.</>} />
   );
 }

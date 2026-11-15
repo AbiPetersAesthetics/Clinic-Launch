@@ -1,0 +1,14 @@
+/* ALFRED board tokens (UX plan 2.12), injected into every server board except the Build Cash
+   Board: a white page, 12px cards, pill buttons, the website's slate eyebrow dot and focus ring,
+   so stepping into a board no longer looks like leaving the app. Colours are the fixed brand. */
+:root { --bg: #FFFFFF; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #5C6577; --slate: #445B72; }
+body { background: #FFFFFF !important; }
+.board { border-radius: 12px !important; border-color: rgba(31, 42, 68, 0.14) !important; }
+.card, .ctl, .kpi, .table-wrap, .band, .nowcard, .life > div { border-radius: 12px !important; }
+.card, .ctl { border-color: rgba(31, 42, 68, 0.14) !important; }
+.seg button, .presets button, button, .pill, .tabs button { border-radius: 999px !important; }
+.eyebrow { display: inline-flex; align-items: center; gap: 0.65em; color: #445B72 !important; letter-spacing: 0.22em !important; font-weight: 600 !important; }
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: #445B72; flex: none; }
+.card .q { color: #445B72 !important; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #7FA49A; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

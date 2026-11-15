@@ -10,6 +10,6 @@ export default function ClinicBoardPage() {
   return (
     <BoardFrame src={BOARD} title="Winchester Clinic Board" heading="Clinic Board"
       subtitle="How the clinics are running: takings, the diary ahead, and from opening who turns up, who goes on to treatment and who comes back."
-      footnote={<>Refreshed every morning at 07:30 from ANS. Only real figures are shown.</>} />
+      footnote={<>Refreshed daily at about 07:40 from ANS by the clinic refresh. Only real figures are shown.</>} />
   );
 }

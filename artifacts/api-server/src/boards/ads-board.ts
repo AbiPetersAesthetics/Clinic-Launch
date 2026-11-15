@@ -43,7 +43,7 @@ function kpi(label: string, value: string, note: string, tone = "") {
   return `<div class="kpi ${tone}"><span>${esc(label)}</span><b>${esc(value)}</b><em>${esc(note)}</em></div>`;
 }
 
-export function renderAdsBoard(p: Snapshot | null): string {
+export function renderAdsBoard(p: Snapshot | null, section?: string): string {
   if (!p || !p.plan) {
     return page(`<div class="board"><h1>Winchester Ads Board</h1><p>No snapshot with a plan yet. The next pathway check pushes one.</p></div>`);
   }
@@ -212,8 +212,9 @@ export function renderAdsBoard(p: Snapshot | null): string {
   // Simulator data
   const simData = JSON.stringify({ cpl: Math.round(cpl * 100) / 100, l2b: Math.round(leadToBooked * 100) / 100, b2p: b2p == null ? null : Math.round(b2p * 100) / 100, first: A.firstVisitValue, year: A.yearOneValue, kept: A.kept, capAlone: A.newPatientsPerWeekAlone, capTwo: A.newPatientsPerWeekTwo, target: T.costPerPaying }).replace(/</g, "\\u003c");
 
-  const body = `<div class="board">
-  <div class="head">
+  // The board's sections, each also served on its own Growth page (owner, 15 Nov 2026: the Ads
+  // Board is a command board now; the detail lives one tap away). Every figure and check is kept.
+  const H = `  <div class="head">
     <div style="display:grid;gap:6px">
       <span class="eyebrow">Abi Peters Skin Clinic &middot; Ads Board &middot; figures ${esc(p.updated)}</span>
       <h1>Winchester Ads Board</h1>
@@ -221,8 +222,9 @@ export function renderAdsBoard(p: Snapshot | null): string {
     </div>
     <div class="tag" style="display:grid;gap:6px;justify-items:end"><span class="verdict"><i class="dot ${tone === "good" ? "" : tone}"></i>${esc(verdict)}</span>${fresh}</div>
   </div>
-  <div class="grid">
-    <aside class="rail sim" aria-label="Scale simulator">
+`;
+  const S = {
+    rail: `    <aside class="rail sim" aria-label="Scale simulator">
       <div class="ctl"><span class="lbl">If we scale: what does it buy?</span><span class="hint">Every slider opens on a measured figure. Move one to ask "what if"; Reset puts the measured figures back.</span><div class="presets"><button type="button" id="s-reset">Reset to measured</button></div></div>
       <div class="ctl"><span class="lbl">Daily budget</span><div class="slide"><input id="s-budget" type="range" min="20" max="60" step="1" value="${Math.round(p.budgetAdvice?.current ?? 25)}"><output id="o-budget"></output></div><span class="hint">Live: £${Math.round(p.budgetAdvice?.current ?? 25)} a day across the three campaigns.</span></div>
       <div class="ctl"><span class="lbl">Cost per lead</span><div class="slide"><input id="s-cpl" type="range" min="3" max="25" step="0.01" value="${cpl.toFixed(2)}"><output id="o-cpl"></output></div><span class="hint">Measured: ${gbp(p.spend.total)} for ${leads} leads. Usually rises as spend rises.</span></div>
@@ -231,42 +233,44 @@ export function renderAdsBoard(p: Snapshot | null): string {
       <div class="ctl"><span class="lbl">Clinicians</span><div class="seg" id="s-team"><button type="button" aria-pressed="true" data-v="1">Abi alone</button><button type="button" aria-pressed="false" data-v="2">Two</button></div></div>
       <div class="ctl"><span class="lbl">Each month</span><div class="simout" id="simout"></div></div>
     </aside>
-    <div class="main">
-      ${renderNow(p, T)}
-      <span class="eyebrow">Since ${esc(p.windowFrom)}, all figures</span>
+`,
+    kpis: `      <span class="eyebrow">Since ${esc(p.windowFrom)}, all figures</span>
       <div class="kpis">${kpis}</div>
-      <div class="row">
-        <div class="card"><span class="q">The funnel we judge on</span><h2>From a form to a paying patient</h2><div class="funnel">${funnel}</div>
+`,
+    funnel: `        <div class="card"><span class="q">The funnel we judge on</span><h2>From a form to a paying patient</h2><div class="funnel">${funnel}</div>
           <p style="color:var(--muted);font-size:12px">Follow-up: ${p.followUp.sent} of ${leads} leads had the email and WhatsApp, ${p.followUp.replies} replies. ${esc(p.summary)}</p></div>
-        <div class="card"><span class="q">Spend follows the diary</span><h2>Diary fill and this week's budget</h2>${diary}</div>
-      </div>
-      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every lead, from form to diary</h2>
+`,
+    diary: `        <div class="card"><span class="q">Spend follows the diary</span><h2>Diary fill and this week's budget</h2>${diary}</div>
+`,
+    leads: `      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every lead, from form to diary</h2>
         <div class="table-wrap"><table><thead><tr><th>Lead</th><th style="text-align:left">Ad</th><th>Form sent</th><th style="text-align:left">Booking page</th><th style="text-align:left">Diary</th><th style="text-align:left">Consultation</th><th style="text-align:left">Outcome</th></tr></thead><tbody>${leadRows}</tbody></table></div>
         ${(p.other ?? []).length ? `<p class="muted-s"><b>Booked outside the lead forms (not counted):</b> ${esc((p.other ?? []).join(" "))}</p>` : ""}
         <p class="muted-s">Names are first name and initial only. "Matched on" shows how each booking was tied to its lead: phone, email or exact full name.</p>
       </div>
-      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every ad, best first</h2>
+`,
+    ads: `      <div class="card"><span class="q">Since ${esc(p.windowFrom)}</span><h2>Every ad, best first</h2>
         <div class="table-wrap"><table><thead><tr><th>Ad</th><th>Spend</th><th>Views</th><th>Clicks</th><th>Click rate</th><th>Leads</th><th>Per lead</th><th>Booked</th><th>Per booked</th><th>Paying</th><th>Freq</th><th>Verdict</th></tr></thead><tbody>${adRows}</tbody></table></div>
         <div class="table-wrap"><table><thead><tr><th>Audience</th><th>Spend</th><th>Reach</th><th>Leads</th><th>Per lead</th><th>Frequency</th><th>Fatigue</th></tr></thead><tbody>${setRows}</tbody></table></div>
-        <p style="color:var(--muted);font-size:12px">An ad is judged after 7 days or £20. Keep: leads at or under £${T.costPerLead[1]}. Pause: £20 spent and no lead. Every lead, traced from ad to diary, is on <a href="/ads-pathway" target="_top">Ads Pathway</a>.</p>
+        <p style="color:var(--muted);font-size:12px">An ad is judged after 7 days or £20. Keep: leads at or under £${T.costPerLead[1]}. Pause: £20 spent and no lead. Every lead, traced from ad to diary, is on <a href="/growth/ads/leads" target="_top">Leads</a>.</p>
       </div>
-      <div class="card"><span class="q">The next 12 months</span><div class="head" style="grid-template-columns:minmax(0,1fr) auto"><h2>The evergreen, plus campaigns switched on and off on their dates</h2>${yearTabs}</div>
+`,
+    calendar: `      <div class="card"><span class="q">The next 12 months</span><div class="head" style="grid-template-columns:minmax(0,1fr) auto"><h2>The evergreen, plus campaigns switched on and off on their dates</h2>${yearTabs}</div>
         ${calendars}
         <div class="legend"><span><i class="k-evergreen"></i>Evergreen</span><span><i class="k-seasonal"></i>Seasonal</span><span><i class="k-launch"></i>Launch</span><span><i class="k-test"></i>Test</span><span><i class="k-conditional"></i>Only when conditions hold</span><span><i class="k-reduce"></i>Eased</span></div>
         <p style="color:var(--muted);font-size:12px">${esc(plan.switching)} The evergreen's figure is its starting budget; each Monday's diary reading moves it within the cap.</p>
       </div>
-      ${monthlyCard}
-      <div class="row2">
-        <div class="card"><span class="q">Evergreen creative</span><h2>What the always-on ads say, and when it changes</h2><ul class="steps">${themes}</ul></div>
-        <div class="card"><span class="q">How the data is collected</span><h2>The scheduled runs that feed this board</h2><ul class="sched">${sched}</ul>
+`,
+    monthly: monthlyCard,
+    creative: `        <div class="card"><span class="q">Evergreen creative</span><h2>What the always-on ads say, and when it changes</h2><ul class="steps">${themes}</ul></div>
+`,
+    sched: `        <div class="card"><span class="q">How the data is collected</span><h2>The scheduled runs that feed this board</h2><ul class="sched">${sched}</ul>
           <div class="life"><div><b>Minute 0</b>Form sent, lead in GHL</div><div><b>3 minutes</b>Most book from the thank-you button</div><div><b>Consultation day</b>Attended or not, from ANS</div><div><b>Within 30 days</b>First paid treatment: a paying patient</div><div><b>90 days</b>Takings so far: ROAS</div></div>
         </div>
-      </div>
-      <p style="color:var(--muted);font-size:11.5px">${esc(A.note)} Rulebook: ads/STRATEGY.md. Plan: ads/meta/pathway/ads-plan.json.</p>
-    </div>
-  </div>
-</div>
-<script>
+`,
+    note: `      <p style="color:var(--muted);font-size:11.5px">${esc(A.note)} Rulebook: ads/STRATEGY.md. Plan: ads/meta/pathway/ads-plan.json.</p>
+`,
+  };
+  const SCRIPT = `<script>
 (function(){
   var D=${simData}, team=1;
   function $(id){return document.getElementById(id);}
@@ -297,12 +301,24 @@ export function renderAdsBoard(p: Snapshot | null): string {
   var SL=["s-budget","s-cpl","s-l2b","s-b2p"].filter(function(id){return $(id);});
   SL.forEach(function(id){var el=$(id); el.dataset.m=el.value; el.addEventListener("input",run);});
   var mt=$("m-tabs"); if(mt) mt.addEventListener("click",function(e){var b=e.target.closest("button"); if(!b)return; [].forEach.call(mt.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-mp]"),function(d){d.hidden=d.dataset.mp!==b.dataset.m;});});
-  $("s-reset").addEventListener("click",function(){SL.forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
+  if($("s-reset")) $("s-reset").addEventListener("click",function(){SL.forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
   [].forEach.call(document.querySelectorAll("[data-year]"),function(b){b.addEventListener("click",function(){var y=b.dataset.year; [].forEach.call(document.querySelectorAll("[data-year]"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-cal]"),function(t){t.hidden=t.dataset.cal!==y;});});});
-  $("s-team").addEventListener("click",function(e){var t=e.target.closest("button"); if(!t)return; team=+t.dataset.v; [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===t));}); run();});
-  run();
+  if($("s-team")) $("s-team").addEventListener("click",function(e){var t=e.target.closest("button"); if(!t)return; team=+t.dataset.v; [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===t));}); run();});
+  if($("s-budget")) run();
 })();
 </script>`;
+  const two = (a: string, b: string) => `<div class="row">${a}${b}</div>`;
+  const SECTIONS: Record<string, string> = {
+    ads: `${S.kpis}${S.funnel}${S.ads}`,
+    leads: S.leads,
+    plan: `${S.calendar}${S.monthly}${two(S.creative, S.diary)}`,
+    simulator: `<div class="grid">${S.rail}<div class="main">${S.funnel}${S.diary}</div></div>`,
+    last14: renderNow(p, T),
+    how: `${S.sched}${S.note}`,
+  };
+  const body = section && SECTIONS[section] !== undefined
+    ? `<div class="board">${H}${SECTIONS[section]}</div>${SCRIPT}`
+    : `<div class="board">${H}<div class="grid">${S.rail}<div class="main">${renderNow(p, T)}${S.kpis}${two(S.funnel, S.diary)}${S.leads}${S.ads}${S.calendar}${S.monthly}<div class="row2">${S.creative}${S.sched}</div>${S.note}</div></div></div>${SCRIPT}`;
   return page(body);
 }
 

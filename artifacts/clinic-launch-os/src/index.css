@@ -64,9 +64,26 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  /* Keep the larger card radii crisp too, in line with the website */
-  --radius-2xl: 6px;
-  --radius-3xl: 8px;
+  /* Cards are 12px everywhere, like the website since its November 2026 redesign */
+  --radius-2xl: 12px;
+  --radius-3xl: 12px;
+
+  /* ALFRED tokens (UX plan 2.12), one to one from the website's main.css. Fixed brand palette;
+     only whisper-level tints and the status colours already used on the boards. */
+  --color-ink: #1F2A44;
+  --color-slate: #445B72;
+  --color-ink-muted: #5C6577;
+  --color-wash: #EFF3F8;
+  --color-wash-2: #E3EAF3;
+  --color-line-strong: #C3CCD9;
+  --color-sage: #A7C0B6;
+  --color-sage-deep: #7FA49A;
+  --color-sage-whisper: #EEF3F1;
+  --color-good: #3F7A68;
+  --color-watch: #8A5A12;
+  --color-watch-bg: #F6EEDF;
+  --color-act: #A33A3A;
+  --color-act-bg: #F8E6E6;
 }
 
 :root {
@@ -224,7 +241,30 @@
     font-family: var(--app-font-serif);
     letter-spacing: -0.01em;
   }
+  /* Body at 16px on phones, 15px on desktop (UX plan 2.10). */
+  html { font-size: 16px; }
+  @media (min-width: 768px) { html { font-size: 15px; } }
+  /* A 2px sage-deep focus ring with a white offset on everything interactive, as the website. */
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+    outline: 2px solid #7FA49A;
+    outline-offset: 2px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
 }
+
+/* The website's eyebrow: small tracked capitals in slate with a 6px slate dot. */
+.eyebrow {
+  display: inline-flex; align-items: center; gap: 0.65em;
+  font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #445B72;
+}
+.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: #445B72; flex: none; }
+.eyebrow.plain::before { display: none; }
+.font-display { font-family: var(--app-font-serif); font-weight: 500; }
+.tabular { font-variant-numeric: tabular-nums lining-nums; }
+.pb-tabbar { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 16px); }
+@media (min-width: 768px) { .pb-tabbar { padding-bottom: 2rem; } }
 
 /* ─── Print styles ────────────────────────────────────────────────────────── */
 @media print {

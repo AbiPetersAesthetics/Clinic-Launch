@@ -1,7 +1,8 @@
-// Pushes a board's data file into Launch OS as the latest snapshot for that board.
+// Pushes a board's data file into ALFRED as the latest snapshot for that board.
 // Usage (from the Clinic-Launch folder):
 //   node --env-file=.env scripts/push-board.mjs <key> <path to json>
-// Keys in use: clinic (abi-peters-skin-clinic/ops/clinic/clinic.json).
+// Keys in use: clinic (abi-peters-skin-clinic/ops/clinic/clinic.json), videos (ads/meta/videos.json,
+// the filming queue for the Social Board), seo (seo/targets.json, the SEO Board).
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -22,4 +23,4 @@ await client.query(`CREATE TABLE IF NOT EXISTS board_snapshots (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
 const r = await client.query("INSERT INTO board_snapshots (project_id, key, data) VALUES (1, $1, $2) RETURNING id, created_at", [key, data]);
 await client.end();
-console.log(`Launch OS ${key} snapshot ${r.rows[0].id} saved at ${r.rows[0].created_at.toISOString()}`);
+console.log(`ALFRED ${key} snapshot ${r.rows[0].id} saved at ${r.rows[0].created_at.toISOString()}`);

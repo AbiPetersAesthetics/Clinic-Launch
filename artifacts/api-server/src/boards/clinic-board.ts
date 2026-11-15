@@ -1,7 +1,7 @@
 // The Winchester Clinic Board: the operations command board. Takings, the diary for the next 14
 // days, the Winchester consultations booked from the ads, and (from opening) attendance, no-shows,
 // consultation to treatment and new against returning patients. Built from the latest "clinic"
-// board snapshot (abi-peters-skin-clinic/ops/clinic/clinic.json, refreshed daily from ANS) and the
+// board snapshot (abi-peters-skin-clinic/ops/clinic/clinic.json, refreshed daily at about 07:40 from ANS) and the
 // latest Ads Pathway snapshot for the ad-booked consultations.
 import HEAD from "./ads-board-head.html";
 
@@ -22,7 +22,7 @@ const gbp0 = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
 const dayLabel = (ymd: string) => new Date(ymd + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 export function renderClinicBoard(c: Clinic | null, ads: { leads?: AdLead[] } | null): string {
-  if (!c) return page(`<div class="board"><h1>Winchester Clinic Board</h1><p>No clinic snapshot yet; the 07:30 refresh saves one each morning.</p></div>`);
+  if (!c) return page(`<div class="board"><h1>Winchester Clinic Board</h1><p>No clinic snapshot yet; the clinic refresh saves one daily at about 07:40 from ANS.</p></div>`);
   const ageH = c.updatedIso ? (Date.now() - Date.parse(c.updatedIso)) / 3600000 : null;
   const fresh = ageH == null ? "" : `<span class="pill ${ageH < 26 ? "good" : ageH < 50 ? "warn" : "bad"}">Figures ${ageH < 1 ? "under an hour" : Math.round(ageH) + " hours"} old</span>`;
   const toOpen = Math.ceil((Date.parse(c.openingDate + "T00:00:00Z") - Date.now()) / 86400000);
@@ -83,7 +83,7 @@ export function renderClinicBoard(c: Clinic | null, ads: { leads?: AdLead[] } | 
       ${later("New and returning", "patients seen, last 4 weeks", c.patients ? `${c.patients.newPatients} new, ${c.patients.returning} back` : null)}
     </div>
     <p class="muted-s">These read from ANS each morning once Winchester is seeing patients. Only real figures are shown; nothing is estimated.</p></div>
-  <p class="muted-s">Refreshed daily at 07:30 from ANS (Reports, Financial, and the calendar). No patient names are kept.</p>
+  <p class="muted-s">Refreshed daily at about 07:40 from ANS by the clinic refresh (Reports, Financial, and the calendar); these figures were saved ${esc(c.updated)}. No patient names are kept.</p>
 </div>`;
   return page(body);
 }
