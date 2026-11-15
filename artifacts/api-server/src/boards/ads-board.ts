@@ -6,6 +6,7 @@
 import HEAD from "./ads-board-head.html";
 
 interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; valueToDate?: number; visits?: number; returned?: boolean; formIso?: string; bookedIso?: string; apptIso?: string; match?: string; formSent?: string; visit?: string; statusText?: string }
+interface Month { month: string; theme: string; keyDates: { date: string; moment: string; use: string }[]; treatmentsToPush: { treatment: string; why: string }[]; offer: { text: string; needsApproval?: boolean | string } | string; campaigns: { name: string; start: string; end: string; objective: string; audience: string; dailyBudget: number; creativeBrief: unknown; landing: string; measure: string }[]; organic: unknown; budgetPerDay: unknown; prepNeeded: { what: string; by: string }[]; risks: unknown }
 interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
@@ -27,6 +28,7 @@ interface Snapshot {
   budgetAdvice?: { current: number; proposed: number; action: string; why: string };
   plan?: Plan;
   daily?: Day[];
+  monthly?: { built: string; principles: string[]; months: Month[] };
   checks?: { asOf: string; metaLeadsVsGhl?: string; bookingsTriple?: string; openLeads?: string; uncertain?: string[] };
 }
 
@@ -177,6 +179,33 @@ export function renderAdsBoard(p: Snapshot | null): string {
     return `<tr><td>${esc(l.name)}</td><td style="text-align:left">${esc(l.ad)}</td><td>${esc(l.formSent ?? "")}</td><td style="text-align:left;white-space:normal;min-width:160px">${esc(l.visit ?? "")}</td><td style="text-align:left"><span class="pill ${pill}">${esc(l.statusText ?? l.status)}</span>${l.match ? `<span class="why">matched on ${esc(l.match)}</span>` : ""}</td><td style="text-align:left">${esc(appt)}</td><td style="text-align:left">${esc(outcome)}</td></tr>`;
   }).join("");
 
+  // Month by month: what to advertise when (ads/meta/monthly-plan.json)
+  const txt = (v: unknown): string => v == null ? "" : typeof v === "string" ? v : Array.isArray(v) ? v.map(txt).filter(Boolean).join(" ") : typeof v === "object" ? Object.values(v as Record<string, unknown>).map(txt).filter(Boolean).join(" ") : String(v);
+  const fmtD = (iso: string) => /^\d{4}-\d{2}-\d{2}/.test(iso) ? new Date(iso.slice(0, 10) + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }) : iso;
+  const mm = p.monthly?.months ?? [];
+  const curM = mm.find((m) => m.month === now) ?? mm[0];
+  const monthTabs = mm.map((m) => `<button type="button" data-m="${esc(m.month)}" aria-pressed="${m === curM}">${esc(MONTHS[Number(m.month.slice(5)) - 1] + " " + m.month.slice(2, 4))}</button>`).join("");
+  const monthPanels = mm.map((m) => {
+    const offer = typeof m.offer === "string" ? m.offer : m.offer?.text ?? "";
+    const approval = typeof m.offer === "object" && m.offer?.needsApproval ? `<span class="pill warn">Needs your approval</span> ${esc(typeof m.offer.needsApproval === "string" ? m.offer.needsApproval : "")}` : "";
+    return `<div data-mp="${esc(m.month)}"${m === curM ? "" : " hidden"} class="mp">
+      <h3>${esc(m.theme)}</h3>
+      <div class="mp-grid">
+        <div><span class="q">Key dates</span><ul class="steps">${m.keyDates.map((k) => `<li><span><strong>${esc(k.moment)}</strong><span class="why">${esc(k.use)}</span></span><b>${esc(fmtD(k.date))}</b></li>`).join("") || "<li><span>None</span></li>"}</ul></div>
+        <div><span class="q">What to push, and why</span><ul class="steps">${m.treatmentsToPush.map((t) => `<li><span><strong>${esc(t.treatment)}</strong><span class="why">${esc(t.why)}</span></span></li>`).join("")}</ul>
+          <span class="q" style="display:block;margin-top:10px">Offer</span><p>${esc(offer)}</p><p>${approval}</p></div>
+      </div>
+      <span class="q">Campaigns</span>
+      <div class="table-wrap"><table><thead><tr><th>Campaign</th><th>Dates</th><th>Audience</th><th>Per day</th><th style="text-align:left">Creative and copy</th><th style="text-align:left">Judged on</th></tr></thead><tbody>${m.campaigns.map((c) => `<tr><td style="white-space:normal;min-width:150px"><b>${esc(c.name)}</b><span class="why">${esc(c.objective)}</span></td><td>${esc(fmtD(c.start))} to ${esc(fmtD(c.end))}</td><td style="white-space:normal">${esc(c.audience)}</td><td>£${esc(c.dailyBudget)}</td><td style="text-align:left;white-space:normal;min-width:280px">${esc(txt(c.creativeBrief))}<span class="why">Lands on: ${esc(c.landing)}</span></td><td style="text-align:left;white-space:normal;min-width:160px">${esc(c.measure)}</td></tr>`).join("")}</tbody></table></div>
+      <div class="mp-grid">
+        <div><span class="q">To prepare</span><ul class="steps">${m.prepNeeded.map((x) => `<li><span>${esc(x.what)}</span><b>${esc(fmtD(x.by))}</b></li>`).join("") || "<li><span>Nothing extra</span></li>"}</ul></div>
+        <div><span class="q">Instagram and email</span><p class="muted-s">${esc(txt(m.organic))}</p><span class="q">Budget</span><p class="muted-s">${esc(txt(m.budgetPerDay))}</p><span class="q">Watch out for</span><p class="muted-s">${esc(txt(m.risks))}</p></div>
+      </div></div>`;
+  }).join("");
+  const monthlyCard = mm.length ? `<div class="card"><span class="q">Month by month</span><h2>What we advertise, when, and what it needs</h2>
+      <div class="seg" id="m-tabs" style="flex-wrap:wrap">${monthTabs}</div>${monthPanels}
+      <p class="muted-s">Built ${esc(p.monthly!.built)}. ${esc((p.monthly!.principles ?? []).slice(0, 3).join(" "))}</p></div>` : "";
+
   // Schedule
   const sched = plan.schedule.map((s) => `<li><b>${esc(s.when)}</b><span>${esc(s.what)}</span></li>`).join("");
 
@@ -226,6 +255,7 @@ export function renderAdsBoard(p: Snapshot | null): string {
         <div class="legend"><span><i class="k-evergreen"></i>Evergreen</span><span><i class="k-seasonal"></i>Seasonal</span><span><i class="k-launch"></i>Launch</span><span><i class="k-test"></i>Test</span><span><i class="k-conditional"></i>Only when conditions hold</span><span><i class="k-reduce"></i>Eased</span></div>
         <p style="color:var(--muted);font-size:12px">${esc(plan.switching)} The evergreen's figure is its starting budget; each Monday's diary reading moves it within the cap.</p>
       </div>
+      ${monthlyCard}
       <div class="row2">
         <div class="card"><span class="q">Evergreen creative</span><h2>What the always-on ads say, and when it changes</h2><ul class="steps">${themes}</ul></div>
         <div class="card"><span class="q">How the data is collected</span><h2>The scheduled runs that feed this board</h2><ul class="sched">${sched}</ul>
@@ -266,6 +296,7 @@ export function renderAdsBoard(p: Snapshot | null): string {
   }
   var SL=["s-budget","s-cpl","s-l2b","s-b2p"].filter(function(id){return $(id);});
   SL.forEach(function(id){var el=$(id); el.dataset.m=el.value; el.addEventListener("input",run);});
+  var mt=$("m-tabs"); if(mt) mt.addEventListener("click",function(e){var b=e.target.closest("button"); if(!b)return; [].forEach.call(mt.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-mp]"),function(d){d.hidden=d.dataset.mp!==b.dataset.m;});});
   $("s-reset").addEventListener("click",function(){SL.forEach(function(id){$(id).value=$(id).dataset.m;}); run();});
   [].forEach.call(document.querySelectorAll("[data-year]"),function(b){b.addEventListener("click",function(){var y=b.dataset.year; [].forEach.call(document.querySelectorAll("[data-year]"),function(x){x.setAttribute("aria-pressed",String(x===b));}); [].forEach.call(document.querySelectorAll("[data-cal]"),function(t){t.hidden=t.dataset.cal!==y;});});});
   $("s-team").addEventListener("click",function(e){var t=e.target.closest("button"); if(!t)return; team=+t.dataset.v; [].forEach.call(this.querySelectorAll("button"),function(x){x.setAttribute("aria-pressed",String(x===t));}); run();});

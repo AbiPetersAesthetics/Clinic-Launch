@@ -150,4 +150,8 @@ body { background: var(--sheet, #fff); }
   .board, .sheet { border: 0; border-radius: 0; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 24px max(16px, env(safe-area-inset-left, 0px)); }
   .card, .panel { padding: 12px; }
 }
+.why { display: block; font-size: 11.5px; color: var(--muted); font-weight: 400; margin-top: 2px; }
+.mp { display: grid; gap: 12px; } .mp h3 { font-size: 17px; } .mp p { margin: 0; }
+.mp-grid { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 800px) { .mp-grid { grid-template-columns: minmax(0, 1fr); } }
 </style>
