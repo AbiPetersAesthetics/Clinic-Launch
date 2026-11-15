@@ -48,10 +48,11 @@ function AreaInsights({ areas }: { areas: any[] }) {
     <div>
       {money?.extra?.viz?.points?.length > 1 && (() => {
         const v = money.extra.viz;
-        const under = v.points.filter((p: any) => p.value < v.floor);
+        const under = v.points.filter((p: any) => p.value < 0);
+        const loan = money.extra.availableLoans?.[0];
         return (
-          <Insight href="/money" foot={src(money)} sentence={under.length ? `The bank is forecast to fall under the £10,000 floor in ${under.length} ${under.length === 1 ? "month" : "months"}, first in ${under[0].label}.` : `The bank is forecast to stay above the £10,000 floor every month. The lowest month-end is ${gbp(v.low?.bank ?? 0)}, in ${v.low?.month}.`}>
-            <BalanceLine points={v.points} floor={v.floor} ariaLabel="Forecast month-end bank balance against the £10,000 floor" />
+          <Insight href="/money" foot={src(money)} sentence={under.length ? `The bank is forecast to go overdrawn in ${under.length} ${under.length === 1 ? "month" : "months"}, first in ${under[0].label}.` : `The bank stays in credit every month of the forecast. The lowest month-end is ${gbp(v.low?.bank ?? 0)}, in ${v.low?.month}.`}>
+            <BalanceLine points={v.points} floor={v.floor} compare={v.withLoan && loan ? { points: v.withLoan, label: `if the ${gbp(loan.principal)} loan is drawn now` } : null} ariaLabel="Forecast month-end bank balance, with the £10,000 reference line" />
           </Insight>
         );
       })()}

@@ -219,7 +219,7 @@ export function clinicSummary(c: any | null, now = new Date(), extra: { expiring
 
 export interface CardLite { name: string; limit: number; balance: number; lastEntry: string | null }
 
-export function moneySummary(J: any | null, cards: CardLite[], now = new Date(), clinic: any | null = null): Summary {
+export function moneySummary(J: any | null, cards: CardLite[], now = new Date(), clinic: any | null = null, withLoan: any | null = null): Summary {
   const keeper = "Bank typed by David; cards from the Credit Cards register; the plan follows Plan & Timeline";
   const bank = J?.bank ?? null;
   const bankChip = freshness("bank", bank?.asAt ?? null, { now });
@@ -242,9 +242,10 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
   else if (bankChip.state === "stale") { state = "stale"; verdict = `The bank figure is ${Math.floor((now.getTime() - Date.parse(bank.asAt + "T12:00:00Z")) / 86400000)} days old (${gbp0(bank.balanceGbp)} on ${dayMonth(bank.asAt)}): update it so the plan starts from today.`; }
   // The bank figure is today's; the plan's low point is a month-end balance after the funding and
   // payments due that month, so the two are never compared as if they were the same thing.
-  else if (low && low.bank < 0) { state = "act"; verdict = `The plan goes overdrawn: its lowest month-end balance is ${gbp0(low.bank)} (${low.month}).`; }
-  else if (low && low.bank < floor) { state = "watch"; verdict = `The plan's lowest month-end balance is ${gbp0(low.bank)} (${low.month}), under the ${gbp0(floor)} floor. Bank ${gbp0(bank.balanceGbp)} typed for ${dayMonth(bank.asAt)}.`; }
-  else verdict = `Every month-end balance in the plan stays above the ${gbp0(floor)} floor${low ? ` (lowest ${gbp0(low.bank)}, ${low.month})` : ""}. Bank ${gbp0(bank.balanceGbp)} typed for ${dayMonth(bank.asAt)}, before funding still to land.`;
+  // The £10,000 floor is a reference line, not an alarm (owner, 15 Nov 2026: "don't worry about the
+  // 10k floor"). Only a forecast below zero is a problem.
+  else if (low && low.bank < 0) { state = "act"; verdict = `The forecast goes overdrawn: its lowest month-end is ${gbp0(low.bank)}, in ${low.month}.`; }
+  else verdict = `The bank stays in credit every month of the forecast. The lowest month-end is ${gbp0(low?.bank ?? 0)}, in ${low?.month ?? "the months shown"}.`;
   if (state !== "stale" && alerts.some((a) => a.level === "act")) state = "act";
   else if (state === "good" && alerts.length) state = "watch";
 
@@ -266,7 +267,10 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
   return {
     key: "money", area: "money", title: "Money", state, verdict, kpis, sources, alerts, keeper,
     extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [] } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank,
-      viz: { floor, low, points: ahead.slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })) } },
+      viz: { floor, low, points: ahead.slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })),
+        withLoan: withLoan ? (withLoan.rows ?? []).filter((r: any) => r.month >= thisMonth).slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })) : null },
+      availableLoans: J?.availableLoans ?? [],
+      expected: (J?.fundingOptions ?? []).filter((f: any) => !(bank?.inBalance ?? []).includes(f.id) && f.month >= (bank?.asAt ?? thisMonth).slice(0, 7)).map((f: any) => ({ label: f.label, amount: f.amount, month: f.month })) },
   };
 }
 

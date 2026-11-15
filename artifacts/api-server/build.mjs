@@ -33,7 +33,11 @@ async function buildAll() {
   });
   await writeFile(path.resolve(artifactDir, "src/boards/engine.gen.txt"), engine.outputFiles[0].text);
 
+  // The build stamp ALFRED shows as "Build 15 Nov, 20:49": the real build time and commit.
+  let commit = (process.env.RENDER_GIT_COMMIT || "").slice(0, 7);
+  if (!commit) { try { commit = execSync("git rev-parse --short HEAD", { cwd: artifactDir }).toString().trim(); } catch { commit = "unknown"; } }
   await esbuild({
+    define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()), __BUILD_COMMIT__: JSON.stringify(commit) },
     entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/brief-cli.ts")],
     platform: "node",
     bundle: true,

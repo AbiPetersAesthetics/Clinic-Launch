@@ -62,7 +62,8 @@ export type CashInputs = {
   utilities: { monthly: number; buildMonthly: number; buildUntil: string; from: string };
   running: { monthly: number };
   // wincFrom: the month the ads become Winchester's. cardFrom: null means never on the card.
-  marketing: { monthly: number; wincFrom: string; cardFrom: string | null };
+  // byMonth: the ads plan's spend for each month (owner, 15 Nov 2026: "use the plan's ad spend"); monthly is the fallback.
+  marketing: { monthly: number; wincFrom: string; cardFrom: string | null; byMonth?: Record<string, number> };
   card: { limit: number; repayMonths: number };
   cashFloor: number;
   // retentionUntilBank: when set, the retention stops once the bank at the start of the
@@ -203,8 +204,11 @@ export function runCashModel(inp: CashInputs): CashResult {
   const rentPaidMap = rentSchedule(inp, inp.startMonth, lastYm);
   const rentStartYm = inp.rent.rentStart.slice(0, 7);
   const plan = inp.bedh.plan;
-  const loanLevel = inp.loans.reduce((s, l) => { const r = l.annualRatePct / 100 / 12; const bal = l.principal * Math.pow(1 + r, l.holidayMonths); return s + (r > 0 ? bal * r / (1 - Math.pow(1 + r, -l.repayments)) : bal / l.repayments); }, 0);
-  const fullRunning = inp.rates.monthly + inp.utilities.monthly + inp.rent.annual / 12 + inp.marketing.monthly + inp.running.monthly;
+  // The Stands Alone line includes James's repayment whether or not the loan has been drawn yet.
+  const loanLevel = [...inp.loans, ...((inp as any).standAloneLoans ?? [])].reduce((s, l) => { const r = l.annualRatePct / 100 / 12; const bal = l.principal * Math.pow(1 + r, l.holidayMonths); return s + (r > 0 ? bal * r / (1 - Math.pow(1 + r, -l.repayments)) : bal / l.repayments); }, 0);
+  const marketingFor = (ym: string) => inp.marketing.byMonth?.[ym] ?? inp.marketing.monthly;
+  const fullRunningBase = inp.rates.monthly + inp.utilities.monthly + inp.rent.annual / 12 + inp.running.monthly;
+  const fullRunning = fullRunningBase + inp.marketing.monthly;
   let bedhOpen = true, closeRun = 0, closedAfter: string | null = null, closeReason = "";
   const vatRefunds: Record<string, number> = {};
   let vatPeriod = 0, vatOwedBack = 0;
@@ -240,7 +244,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     const transferProduct = transferTaken * (1 - vatShare - inp.bedh.contributionPct / 100);
     const winc = siteWithProduct(wincOwn + transferTaken, ownProduct + transferProduct, inp.vatRate);
     const wincOwnContribution = wincOwn * (1 - vatShare) - ownProduct;
-    const wincStandMargin = wincOwnContribution - fullRunning - loanLevel - inp.pay.retention;
+    const wincStandMargin = wincOwnContribution - (fullRunningBase + marketingFor(ym)) - loanLevel - inp.pay.retention;
     const wincOccupancy = wincDays && inp.winc.capacity ? winc.gross / wincCapacityFor(inp, wincDays, 100) : null;
     // Closing tests at the month end, taking effect the month after.
     if (planOn && bedhOpen) {
@@ -263,12 +267,12 @@ export function runCashModel(inp: CashInputs): CashResult {
       : `Bedhampton ${bedhDays === 1 ? "one day" : "two days"} a week: its patients would book ${gbp(bedhWants)}${bedhWants > bedhCap ? `, and ${bedhDays === 1 ? "one day holds" : "two days hold"} ${gbp(bedhCap)}` : ""}`;
     why.vat = `VAT on sales = gross x 1/6 at both sites (${gbp(bedh.vat)} Bedhampton, ${gbp(winc.vat)} Winchester)`;
     why.contribution = `Bedhampton keeps ${inp.bedh.contributionPct}p in the pound after VAT and products; Winchester ${winc.gross > 0 ? Math.round((100 * winc.contribution) / winc.gross) : 0}p this month${inp.winc.productCost ? ", from its product costs" : ""}`;
-    why.standAlone = `Winchester on its own: ${gbp(wincOwnContribution)} kept, less running costs ${gbp(fullRunning)}, James's loan ${gbp(loanLevel)} and the ${gbp(inp.pay.retention)} kept = ${gbp(wincStandMargin)}`;
+    why.standAlone = `Winchester on its own: ${gbp(wincOwnContribution)} kept, less running costs ${gbp(fullRunningBase + marketingFor(ym))}, James's loan ${gbp(loanLevel)} and the ${gbp(inp.pay.retention)} kept = ${gbp(wincStandMargin)}`;
 
     // Running costs
     const utilities = ym >= inp.utilities.from ? (ym <= inp.utilities.buildUntil ? inp.utilities.buildMonthly : inp.utilities.monthly) : 0;
     const general = inp.running.monthly;
-    const marketing = inp.marketing.monthly;
+    const marketing = marketingFor(ym);
     const marketingOnCard = inp.marketing.cardFrom != null && ym >= inp.marketing.cardFrom;
     const marketingIsWinc = ym >= inp.marketing.wincFrom;
     const oneOffs = inp.oneOffs.filter(o => o.month === ym);

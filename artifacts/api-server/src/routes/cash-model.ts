@@ -68,7 +68,30 @@ function openFromBank(inputs: CashInputs, bank: BankBalance) {
   return { ...bank, startMonth: ym, elapsedShare, tradedSoFar, openingUsed: Math.round((bank.balanceGbp - tradedSoFar) * 100) / 100 };
 }
 
-export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number } = {}) {
+// The ads plan's spend for each month: every live or planned campaign's daily budget for the days it
+// runs that month (conditional campaigns, such as Google search, are left out until their conditions
+// hold). From the latest ads snapshot, which carries ads-plan.json as data.plan.
+async function adsPlanByMonth(projectId: number): Promise<Record<string, number> | undefined> {
+  try {
+    const r = await db.execute(sql`SELECT data->'plan'->'campaigns' AS c FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
+    const camps: any[] = (((r as any).rows ?? r)[0]?.c) ?? [];
+    if (!camps.length) return undefined;
+    const out: Record<string, number> = {};
+    const day = (d: string) => Date.parse(d + "T12:00:00Z");
+    for (const c of camps) {
+      if (c.status === "conditional" || c.status === "done" || !c.start || !Number(c.perDay)) continue;
+      const end = c.end ?? "2028-12-31";
+      for (let t = day(c.start); t <= day(end); t += 86400000) {
+        const ym = new Date(t).toISOString().slice(0, 7);
+        out[ym] = (out[ym] ?? 0) + Number(c.perDay);
+      }
+    }
+    for (const k of Object.keys(out)) out[k] = Math.max(0, Math.round(out[k] * 100) / 100);
+    return out;
+  } catch { return undefined; }
+}
+
+export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number; drawAvailableLoans?: boolean } = {}) {
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   let stored: unknown = {};
   try { stored = JSON.parse((model as any)?.cashModelJson || "{}"); } catch { stored = {}; }
@@ -147,8 +170,12 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   // Funding ticked as already in the bank balance is not counted again.
   const funding: CashInputs["funding"] = inv.filter(i => (i.type === "equity" || i.type === "gift") && !bank?.inBalance.includes(i.id))
     .map(i => ({ month: ym(i.depositDate), amount: i.amountGbp, kind: i.type as "equity" | "gift", label: i.name, date: i.depositDate }));
-  const loans: CashInputs["loans"] = inv.filter(i => i.type === "loan")
-    .map(i => ({ label: i.name, principal: i.amountGbp, drawMonth: ym(i.depositDate), annualRatePct: i.interestRatePercent, holidayMonths: (i as any).holidayMonths ?? 0, repayments: i.repaymentTermMonths }));
+  // A loan with no draw date is available, not drawn (owner, 15 Nov 2026: "whenever we wish to take
+  // it"). It is left out of the forecast unless asked for (drawAvailableLoans), and shown apart.
+  const asLoan = (i: any, month: string) => ({ label: i.name, principal: i.amountGbp, drawMonth: month, annualRatePct: i.interestRatePercent, holidayMonths: i.holidayMonths ?? 0, repayments: i.repaymentTermMonths });
+  const thisYm = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London", year: "numeric", month: "2-digit" }).format(new Date()).slice(0, 7);
+  const availableLoans = inv.filter(i => i.type === "loan" && !i.depositDate).map(i => asLoan(i, thisYm < config.startMonth ? config.startMonth : thisYm));
+  const loans: CashInputs["loans"] = [...inv.filter(i => i.type === "loan" && i.depositDate).map(i => asLoan(i, ym(i.depositDate))), ...(opts.drawAvailableLoans ? availableLoans : [])];
   const fundingOptions = inv.filter(i => i.type === "equity" || i.type === "gift").map(i => ({ id: i.id, label: i.name, month: ym(i.depositDate), amount: i.amountGbp }));
 
   // Abi's VAT loans: for each month with CBS VAT to pay from the bank, she lends that VAT into
@@ -185,7 +212,9 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     ...config, months,
     winc: { contributionPct: config.winc.contributionPct, takings: scen.takings, productCost: scen.productCost, growth, capacity: config.winc.capacity },
     projectPayments: payments, funding: fundingAll, loans, oneOffs: oneOffsAll,
+    marketing: { ...config.marketing, byMonth: await adsPlanByMonth(projectId) },
   };
+  (planned as any).standAloneLoans = opts.drawAvailableLoans ? [] : availableLoans;
   const bankView = bank ? openFromBank(planned, bank) : null;
   const inputs: CashInputs = bankView ? { ...planned, openingBank: bankView.openingUsed } : planned;
   const result = runCashModel(inputs);
@@ -218,6 +247,8 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     paidToDate,
     funding: fundingAll, loans, ownership, oneOffs: oneOffsAll,
     bank: bankView, fundingOptions,
+    availableLoans: availableLoans.map(l => ({ label: l.label, principal: l.principal, annualRatePct: l.annualRatePct, repayments: l.repayments })),
+    marketingByMonth: (planned as any).marketing.byMonth,
     history: config.history,
   };
 }

@@ -1,5 +1,5 @@
 {
-  "updatedIso": "2026-11-15T21:45:00Z",
+  "updatedIso": "2026-11-15T22:10:00Z",
   "items": [
     {
       "area": "Today",
@@ -276,6 +276,36 @@
       "name": "Slice 6 audit at 375px",
       "status": "todo",
       "note": "Every screen against the three promises and the design bar."
+    },
+    {
+      "area": "Data",
+      "name": "Ad spend in the money model reads the ads plan",
+      "status": "done",
+      "note": "Owner 15 Nov: the plan's daily budgets by month replace the flat 600 a month; conditional campaigns left out."
+    },
+    {
+      "area": "Data",
+      "name": "£10,000 floor is a reference line, not an alarm",
+      "status": "done",
+      "note": "Owner 15 Nov. Only a forecast below zero is red."
+    },
+    {
+      "area": "Data",
+      "name": "Undated loan shown as available, with and without it",
+      "status": "partial",
+      "note": "Code done: an undated loan is not drawn and the forecast is shown both ways. The loan row still carries 15 Dec in the database; clearing it needs a database write that was held for permission."
+    },
+    {
+      "area": "Data",
+      "name": "£10,000 gift expected on 17 Nov, not received",
+      "status": "partial",
+      "note": "Shown as expected funding. Its date in the database (5 Nov) needs the same held database write."
+    },
+    {
+      "area": "Data",
+      "name": "Build stamp and checklist",
+      "status": "done",
+      "note": "Last deploy time and commit stamped at build."
     }
   ]
 }

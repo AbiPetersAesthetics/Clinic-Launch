@@ -84,11 +84,12 @@ export function DayColumns({ days, ariaLabel, highlightFrom }: { days: { label: 
 
 // The bank, month by month, with the £10,000 floor drawn and named on the chart. Months under the
 // floor are marked in the problem colour; the lowest month is labelled.
-export function BalanceLine({ points, floor, ariaLabel, height = 120 }: { points: { label: string; value: number }[]; floor: number; ariaLabel: string; height?: number }) {
+export function BalanceLine({ points, floor, ariaLabel, height = 130, compare }: { points: { label: string; value: number }[]; floor: number; ariaLabel: string; height?: number; compare?: { points: { label: string; value: number }[]; label: string } | null }) {
   if (points.length < 2) return null;
   const W = 340, H = height, padL = 6, padR = 6, padT = 22, padB = 20;
   const vals = points.map((p) => p.value);
-  const lo = Math.min(floor, ...vals), hi = Math.max(floor, ...vals);
+  const cv = compare?.points?.map((p) => p.value) ?? [];
+  const lo = Math.min(floor, ...vals, ...cv), hi = Math.max(floor, ...vals, ...cv);
   const span = hi - lo || 1;
   const x = (i: number) => padL + (i * (W - padL - padR)) / (points.length - 1);
   const y = (v: number) => padT + (1 - (v - lo) / span) * (H - padT - padB);
@@ -96,10 +97,12 @@ export function BalanceLine({ points, floor, ariaLabel, height = 120 }: { points
   const minI = vals.indexOf(Math.min(...vals));
   return (
     <svg role="img" aria-label={ariaLabel} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-      <line x1={0} x2={W} y1={y(floor)} y2={y(floor)} stroke={C.bad} strokeWidth={1} />
-      <text x={W - 2} y={y(floor) - 4} textAnchor="end" fontSize="10" fill={C.bad}>£{floor.toLocaleString("en-GB")} floor</text>
+      <line x1={0} x2={W} y1={y(floor)} y2={y(floor)} stroke={C.base} strokeWidth={1} />
+      <text x={W - 2} y={y(floor) - 4} textAnchor="end" fontSize="10" fill={C.muted}>£{floor.toLocaleString("en-GB")} reference</text>
+      {lo < 0 && <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke={C.bad} strokeWidth={1} />}
+      {compare && compare.points.length > 1 && (() => { const cp = compare.points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" "); const last = compare.points[compare.points.length - 1]; return <g><path d={cp} fill="none" stroke={C.base} strokeWidth={2} strokeLinejoin="round" /><text x={W - 2} y={y(last.value) - 6} textAnchor="end" fontSize="10" fill={C.ink2}>{compare.label}</text></g>; })()}
       <path d={path} fill="none" stroke={C.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.value)} r={p.value < floor ? 3.5 : 2.2} fill={p.value < floor ? C.bad : C.ink} stroke={C.surface} strokeWidth={1.5}><title>{`${p.label}: ${gbp(p.value)}`}</title></circle>)}
+      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.value)} r={p.value < 0 ? 3.5 : 2.2} fill={p.value < 0 ? C.bad : C.ink} stroke={C.surface} strokeWidth={1.5}><title>{`${p.label}: ${gbp(p.value)}`}</title></circle>)}
       <text x={Math.min(W - 60, Math.max(50, x(minI)))} y={Math.max(11, y(vals[minI]) - 8)} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>lowest {gbp(vals[minI])}</text>
       <text x={2} y={H - 3} fontSize="10" fill={C.muted}>{points[0].label}</text>
       <text x={W - 2} y={H - 3} textAnchor="end" fontSize="10" fill={C.muted}>{points[points.length - 1].label}</text>
