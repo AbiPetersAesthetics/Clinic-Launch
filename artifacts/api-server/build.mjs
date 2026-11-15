@@ -33,7 +33,7 @@ async function buildAll() {
   await writeFile(path.resolve(artifactDir, "src/boards/engine.gen.txt"), engine.outputFiles[0].text);
 
   await esbuild({
-    entryPoints: [path.resolve(artifactDir, "src/index.ts")],
+    entryPoints: [path.resolve(artifactDir, "src/index.ts"), path.resolve(artifactDir, "src/brief-cli.ts")],
     platform: "node",
     bundle: true,
     format: "esm",
