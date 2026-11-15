@@ -67,7 +67,9 @@ export type CashInputs = {
   // wincFrom: the month the ads become Winchester's. cardFrom: null means never on the card.
   // byMonth: the ads plan's spend for each month (owner, 15 Nov 2026: "use the plan's ad spend"); monthly is the fallback.
   marketing: { monthly: number; wincFrom: string; cardFrom: string | null; byMonth?: Record<string, number> };
-  card: { limit: number; repayMonths: number };
+  // vatToHolder: VAT on what a director buys on his own card is refunded by HMRC and passed straight
+  // to him, so it never rests in the bank and the company repays him only the cost before VAT.
+  card: { limit: number; repayMonths: number; vatToHolder?: boolean };
   cashFloor: number;
   // retentionUntilBank: when set, the retention stops once the bank at the start of the
   // month is at or above it, so Abi takes the profit the business no longer needs to keep.
@@ -335,7 +337,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     const projCard = inp.projectPayments.filter(p => p.month === ym && p.method === "card");
     const oneOffCard = oneOffs.filter(o => o.method === "card");
     const cardFundedCosts = (marketingOnCard ? marketing : 0) + oneOffCard.filter(o => o.pnl).reduce((s, o) => s + o.amount, 0);
-    const vatPaidCard = inp.vatReturns ? projCard.reduce((s, p) => s + (p.vat ?? 0), 0) : 0;
+    const vatPaidCard = inp.vatReturns && !inp.card.vatToHolder ? projCard.reduce((s, p) => s + (p.vat ?? 0), 0) : 0;
     const cardDrawn = projCard.reduce((s, p) => s + p.amountExVat, 0) + vatPaidCard + cardFundedCosts + oneOffCard.filter(o => !o.pnl).reduce((s, o) => s + o.amount, 0);
     const cardRepayment = draws.reduce((s, d) => { const k = monthsBetween(d.month, ym); return s + (k >= 1 && k <= inp.card.repayMonths ? d.amount / inp.card.repayMonths : 0); }, 0);
     if (cardDrawn) draws.push({ month: ym, amount: cardDrawn });

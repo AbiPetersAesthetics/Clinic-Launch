@@ -99,7 +99,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
       if (p.method === "card") {
         const day = CARD_DAYS[l.taskId] ?? 10;
         add(notBefore(at(m, day)), name, l.phase.replace(/ &.*$/, ""), "card", -amt, "on a credit card: the bank does not move", vatInc * p.share);
-        if (vatInc) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
+        if (vatInc && !(J.config.card && J.config.card.vatToHolder)) otherVatByMonth[m] = (otherVatByMonth[m] || 0) + r2(vatInc * p.share);
       } else if (/Reception desk/.test(l.title)) {
         // David pays Artisan Deco himself, as he did the deposit: the bank does not move and
         // the company owes him the whole desk as a director's loan.
