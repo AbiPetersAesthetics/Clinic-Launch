@@ -40,16 +40,16 @@ export function BriefItemCard({ item }: { item: BriefItem }) {
   const area = a?.area ?? s?.area ?? "";
   const level = a ? a.level : "stale";
   return (
-    <article className={`rounded-xl border p-4 sm:p-5 grid gap-2.5 ${level === "act" ? "border-act/40 bg-act-bg" : "border-card-border bg-card"}`}>
+    <article className={`rounded-xl border p-3.5 sm:p-5 grid gap-1.5 sm:gap-2.5 ${level === "act" ? "border-act/40 bg-act-bg" : "border-card-border bg-card"}`}>
       <div className="flex items-center gap-2">
         <span className="eyebrow">{AREA[area] ?? area}</span>
         <span className={`text-[0.7rem] rounded-full px-2 py-0.5 ${level === "act" ? "bg-act text-white" : level === "stale" ? "border border-ink-muted text-ink-muted" : "bg-watch-bg text-watch"}`}>{level === "act" ? "Act" : level === "stale" ? "Stale" : "Watch"}</span>
       </div>
-      <h3 className="font-display text-[1.15rem] leading-snug text-ink">{title}</h3>
-      {detail && <p className="text-[0.9rem] text-ink leading-relaxed">{detail}</p>}
-      <div className="flex flex-wrap items-center gap-1.5">
-        {sources.map((c) => <Fresh key={c.source} chip={c} />)}
-        {href && <Link href={href} className="ml-auto inline-flex items-center min-h-[44px] px-4 rounded-full border border-ink text-[0.75rem] font-semibold uppercase tracking-[0.14em] text-ink hover:bg-wash">Open<ChevronRight className="w-4 h-4 ml-1" /></Link>}
+      <h3 className="font-display text-[1.08rem] sm:text-[1.15rem] leading-snug text-ink">{title}</h3>
+      {detail && <p className="text-[0.85rem] sm:text-[0.9rem] text-ink leading-relaxed line-clamp-2 sm:line-clamp-none">{detail}</p>}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        {sources.map((c) => <Fresh key={c.source} chip={c} small />)}
+        {href && <Link href={href} className="ml-auto inline-flex items-center min-h-[44px] px-4 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink hover:bg-wash">Open<ChevronRight className="w-4 h-4 ml-1" /></Link>}
       </div>
     </article>
   );

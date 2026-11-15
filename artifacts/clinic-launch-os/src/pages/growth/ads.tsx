@@ -24,7 +24,7 @@ export default function AdsCommandPage() {
   const { data: s, isLoading, error } = useSummary("ads");
   const steps: { label: string; value: string; sub: string; pending?: boolean }[] = s?.extra?.pathway ?? [];
   return (
-    <div className="space-y-5 sm:space-y-7 max-w-6xl">
+    <div className="space-y-4 sm:space-y-7 max-w-6xl">
       <header className="space-y-2.5">
         <span className="eyebrow">Growth · Winchester</span>
         <h1 className="font-display text-[1.9rem] sm:text-[2.4rem] leading-tight text-ink">Ads</h1>
@@ -56,7 +56,7 @@ export default function AdsCommandPage() {
 
       <nav aria-label="Ads detail" className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {ADS_PAGES.map((p) => (
-          <Link key={p.href} href={p.href} className="flex items-center justify-between gap-1 min-h-[48px] px-3 rounded-xl bg-wash hover:bg-wash-2 text-[0.88rem] font-semibold text-ink">
+          <Link key={p.href} href={p.href} className="flex items-center justify-between gap-1 min-h-[44px] px-3 rounded-xl bg-wash hover:bg-wash-2 text-[0.85rem] font-semibold text-ink leading-tight">
             <span className="min-w-0">{p.label}</span><ChevronRight className="w-4 h-4 shrink-0 text-ink-muted" />
           </Link>
         ))}

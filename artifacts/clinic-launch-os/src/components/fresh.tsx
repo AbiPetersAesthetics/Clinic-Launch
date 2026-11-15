@@ -17,12 +17,12 @@ export function StateDot({ state, className = "" }: { state: string; className?:
   return <span aria-hidden className={`inline-block w-2 h-2 rounded-full border-[1.5px] shrink-0 ${DOT[state] ?? DOT.unknown} ${className}`} />;
 }
 
-export function Fresh({ chip }: { chip: Chip }) {
+export function Fresh({ chip, small = false }: { chip: Chip; small?: boolean }) {
   const exact = chip.asOf ? new Date(chip.asOf.length === 10 ? chip.asOf + "T12:00:00Z" : chip.asOf).toLocaleString("en-GB", chip.asOf.length === 10 ? { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/London" } : { weekday: "short", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" }) : "never";
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 min-h-[28px] text-[0.72rem] leading-none whitespace-nowrap ${chip.state === "stale" || chip.state === "failed" ? "border-act/40 text-act" : "border-card-border text-ink-muted"} hover:border-slate`} aria-label={`${chip.text}. Show where this comes from`}>
+        <button type="button" className={`inline-flex items-center gap-1.5 rounded-full leading-none whitespace-nowrap ${small ? "px-0 min-h-[24px] text-[0.7rem] border-0" : "border px-2.5 min-h-[28px] text-[0.72rem]"} ${chip.state === "stale" || chip.state === "failed" ? "border-act/40 text-act" : "border-card-border text-ink-muted"} hover:border-slate`} aria-label={`${chip.text}. Show where this comes from`}>
           <StateDot state={chip.state} />{chip.text}
         </button>
       </PopoverTrigger>

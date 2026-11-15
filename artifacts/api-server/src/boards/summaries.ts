@@ -87,7 +87,7 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
   const bookedW = leads.filter((l) => l.status === "booked" && l.bookedIso && inW(ukDay(l.bookedIso))).length, bookedP = leads.filter((l) => l.status === "booked" && l.bookedIso && inP(ukDay(l.bookedIso))).length;
   const cplW = leadsW ? spendW / leadsW : null, cplP = leadsP ? spendP / leadsP : null;
   const hadPrev = firstDay <= p1;
-  const vs = (fmt: string) => (hadPrev ? `last week ${fmt}` : `ads began ${dayMonth(firstDay)}: no full week before`);
+  const vs = (fmt: string) => (hadPrev ? `last week ${fmt}` : `first week: ads began ${dayMonth(firstDay)}`);
 
   let state: Tone;
   let verdict: string;
@@ -140,7 +140,7 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
     { label: "Ads", value: gbp0(spend), sub: `${Number(p.totals?.linkClicks ?? 0).toLocaleString("en-GB")} clicks ${since}` },
     { label: "Leads", value: String(n), sub: n ? `${gbp(spend / n)} each` : "" },
     { label: "Booked", value: String(booked), sub: n ? `${pct(booked / n)} of leads` : "" },
-    o ? { label: "Attended", value: String(o.attended), sub: booked ? `${pct(o.attended / booked)} of booked` : "" } : { label: "Attended", value: "soon", sub: `from ${firstAppt}`, pending: true },
+    o ? { label: "Seen", value: String(o.attended), sub: booked ? `${pct(o.attended / booked)} of booked` : "" } : { label: "Seen", value: "soon", sub: `from ${firstAppt}`, pending: true },
     o && (o.treated || cpp != null) ? { label: "Paying", value: String(o.treated ?? paying.length), sub: cpp != null ? `${gbp(cpp)} each` : `${o.pending ?? 0} inside 30 days` } : { label: "Paying", value: "soon", sub: `about ${firstClose}`, pending: true },
   ];
 
