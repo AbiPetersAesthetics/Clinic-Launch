@@ -11,6 +11,7 @@ import { BankInput } from "@/components/bank-input";
 import { Sources } from "@/components/fresh";
 import { Page, PageHead, Section, Rows, RowItem, AlertCard } from "@/components/page";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BuildLine } from "@/pages/build";
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/London" }).format(new Date()));
@@ -118,6 +119,7 @@ export default function HomePage() {
           )}
         </Section>
       )}
+      <BuildLine />
     </Page>
   );
 }

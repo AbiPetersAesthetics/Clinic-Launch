@@ -43,6 +43,7 @@ export const MORE: NavPage[] = [
   { href: "/sources", label: "Sources", note: "Each data source: last read, next run, healthy or not" },
   { href: "/abi", label: "Abi's screen", note: "Her day, what to film, messages to send, stock" },
   { href: "/settings", label: "Settings", note: "Hand, notifications" },
+  { href: "/build", label: "Build", note: "What is finished and what is left" },
 ];
 export const EXTRA_ICONS: Record<string, LucideIcon> = { "/inbox": Inbox, "/activity": Activity, "/more": MoreHorizontal };
 

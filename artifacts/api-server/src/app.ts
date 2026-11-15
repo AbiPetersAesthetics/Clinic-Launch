@@ -4,6 +4,7 @@ import path from "path";
 import pinoHttp from "pino-http";
 import fs from "fs";
 import router from "./routes";
+import buildStatusRouter from "./routes/build-status";
 import { authRouter, requireAuth } from "./middlewares/auth";
 import { logger } from "./lib/logger";
 import { UPLOADS_ROOT } from "./lib/uploads";
@@ -41,6 +42,7 @@ app.get("/api", (_req, res) => {
 // Login endpoints + guard: everything below (uploads + all /api routes)
 // requires a session once APP_PASSWORD is set.
 app.use("/api", authRouter);
+app.use("/api", requireAuth, buildStatusRouter);
 app.use("/api", requireAuth);
 app.use("/uploads", (req, res, next) => requireAuth(req, res, next), express.static(UPLOADS_ROOT));
 

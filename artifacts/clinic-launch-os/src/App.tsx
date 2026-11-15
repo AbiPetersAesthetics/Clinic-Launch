@@ -43,6 +43,7 @@ import { PathwayPage, FollowUpPage, DueBackPage, ReviewsPage } from "@/pages/pat
 import { DiaryPage, StockPage } from "@/pages/clinic/pages";
 import SourcesPage from "@/pages/sources";
 import AbiPage from "@/pages/abi";
+import BuildPage from "@/pages/build";
 import ArchiveHomePage from "@/pages/archive-home";
 import InboxPage from "@/pages/inbox";
 import ActivityPage from "@/pages/activity";
@@ -213,6 +214,7 @@ function Router() {
         <Route path="/sources" component={SourcesPage} />
         <Route path="/settings" component={SettingsPage} />
         <Route path="/abi" component={AbiPage} />
+        <Route path="/build" component={BuildPage} />
 
         {/* The archive, under More: nothing deleted */}
         <Route path="/archive/home-tiles" component={ArchiveHomePage} />
