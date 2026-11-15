@@ -5,7 +5,7 @@
 // Rulebook: ads/STRATEGY.md in the website repo.
 import HEAD from "./ads-board-head.html";
 
-interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; formIso?: string; bookedIso?: string; apptIso?: string; match?: string }
+interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; valueToDate?: number; visits?: number; returned?: boolean; formIso?: string; bookedIso?: string; apptIso?: string; match?: string }
 interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
@@ -52,7 +52,9 @@ export function renderAdsBoard(p: Snapshot | null): string {
   const bookedLeads = p.leads.filter((l) => l.status === "booked");
   const booked = bookedLeads.length;
   const paying = p.leads.filter((l) => l.treated === true);
-  const revenue = paying.reduce((s, l) => s + (l.value90 ?? l.firstValue ?? 0), 0);
+  const revenue = paying.reduce((s, l) => s + (l.valueToDate ?? l.value90 ?? l.firstValue ?? 0), 0);
+  const firstRevenue = paying.reduce((s, l) => s + (l.firstValue ?? 0), 0);
+  const cameBack = paying.filter((l) => l.returned === true).length;
   const cpl = leads ? p.spend.total / leads : 0;
   const cpb = booked ? p.spend.total / booked : 0;
   const cpp = paying.length ? p.spend.total / paying.length : null;
@@ -86,7 +88,9 @@ export function renderAdsBoard(p: Snapshot | null): string {
     kpi("Cost per booked", booked ? gbp(cpb) : "n/a", `target under £${T.costPerBooked}`, cpb && cpb <= T.costPerBooked ? "good" : "warn"),
     kpi("Paying patients", paying.length ? String(paying.length) : "not yet", "paid for a treatment"),
     kpi("Cost per paying patient", cpp != null ? gbp(cpp) : "not yet", `target under £${T.costPerPaying}`, cpp == null ? "" : cpp <= T.costPerPaying ? "good" : "bad"),
-    kpi("ROAS", roas != null ? `${roas.toFixed(1)}x` : "not yet", roas != null ? `${gbp0(revenue)} taken from ad patients` : `target ${T.roasFirstVisit}x first visit`, roas == null ? "" : roas >= T.roasFirstVisit ? "good" : "warn"),
+    kpi("ROAS, first visit", paying.length ? `${(firstRevenue / p.spend.total).toFixed(1)}x` : "not yet", paying.length ? `${gbp0(firstRevenue)} from first treatments` : "takings from first paid treatments"),
+    kpi("ROAS to date", roas != null ? `${roas.toFixed(1)}x` : "not yet", roas != null ? `${gbp0(revenue)} from ad patients so far` : "followed for 12 months per patient"),
+    kpi("Came back", paying.length ? `${cameBack} of ${paying.length}` : "not yet", "second paid visit; tracked 12 months"),
   ].join("");
 
   // Funnel
