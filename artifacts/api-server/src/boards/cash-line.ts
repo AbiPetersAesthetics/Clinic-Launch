@@ -37,7 +37,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   for (const f of J.funding || []) {
     if (/^Abi lends/.test(f.label)) continue;
     // Equity lands on its deposit date (James's arrives the day after it is sent); gifts on the 19th.
-    const fDate = f.kind === "equity" && f.date && f.date.slice(0, 7) === f.month ? f.date.slice(0, 10) : at(f.month, f.kind === "equity" ? 5 : 19);
+    const fDate = f.date && f.date.slice(0, 7) === f.month ? f.date.slice(0, 10) : at(f.month, f.kind === "equity" ? 5 : 19);
     add(fDate, f.kind === "equity" ? "Equity investment" : "Gift", f.label.replace(/:.*$/, ""), "in", f.amount);
   }
   for (const l of J.loans || []) add(at(l.drawMonth, 1), `Loan drawn, ${l.annualRatePct}% a year`, l.label.replace(/:.*$/, ""), "in", l.principal);
@@ -273,7 +273,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
 
   const assumptions = [
     `Starts from the bank saved on the Money page: ${gbp(startBal)} on ${long(start)}, all Tide accounts as one.`,
-    `James's £37,000 on the 5th of its month, Bill's £10,000 on the 19th, James's loan on the 1st of December.`,
+    `Funding lands on the date saved for it (Bill's gift, James's equity); with no date, equity on the 5th and a gift on the 19th. James's loan on the 1st of December.`,
     cbsRule,
     `VAT returns are monthly: filed on the 7th, refund on the 17th of the following month, and Abi is repaid the day it lands. October's refund is CBS's VAT only; the kit's VAT waits on invoices in the company's name.`,
     `Arundel on the 3rd, the sign on the 5th (ordered when James's money lands). The reception desk balance on the 9th is paid by David personally, as the deposit was, so it does not move the line: the company owes him for the whole desk.`,
