@@ -151,7 +151,7 @@ export default function LoginScreen() {
               marginTop: "6px",
             }}
           >
-            Clinic Launch OS
+            ALFRED
           </div>
         </div>
 
@@ -286,7 +286,7 @@ export default function LoginScreen() {
           letterSpacing: "0.08em",
         }}
       >
-        Launch OS v1.0
+        ALFRED
       </div>
 
       {/* Animations */}

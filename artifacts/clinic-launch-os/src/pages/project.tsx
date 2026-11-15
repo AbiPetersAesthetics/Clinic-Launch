@@ -1814,7 +1814,7 @@ export default function ProjectPage() {
 
     const propertyName = activeProperty
       ? `${activeProperty.address}${activeProperty.postcode && !(activeProperty.address ?? "").includes(activeProperty.postcode) ?", " + activeProperty.postcode : ""}`
-      : "Clinic Launch OS";
+      : "ALFRED";
     const exportDate = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
     let prevPhaseId = -1;
@@ -1890,7 +1890,7 @@ export default function ProjectPage() {
       <h1 style="font-size:17px;font-weight:700;color:#0f172a">${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "All Project Tasks"}</h1>
       <p style="font-size:11px;color:#64748b;margin-top:3px">${propertyName}${listOwnerFilter ? " &nbsp;·&nbsp; Owner: <strong>" + listOwnerFilter + "</strong>" : ""} &nbsp;·&nbsp; ${liveRowCount} task${liveRowCount !== 1 ? "s" : ""}${supersededRowCount > 0 ? ` &nbsp;·&nbsp; ${supersededRowCount} removed line${supersededRowCount !== 1 ? "s" : ""} shown struck through, not counted` : ""} &nbsp;·&nbsp; Sorted by ${listSortBy === "startDate" ? "start date" : "due date"}</p>
     </div>
-    <div style="font-size:10px;color:#94a3b8;text-align:right">Clinic Launch OS<br>Exported ${exportDate}</div>
+    <div style="font-size:10px;color:#94a3b8;text-align:right">ALFRED<br>Exported ${exportDate}</div>
   </div>
   <table>
     <thead><tr>
@@ -1906,7 +1906,7 @@ export default function ProjectPage() {
     <tbody>${tableRows}</tbody>
   </table>
   <div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;">
-    <span>Abi Peters Aesthetics Ltd — Clinic Launch OS</span>
+    <span>Abi Peters Aesthetics Ltd — ALFRED</span>
     <span>Page <span class="no-print">—</span></span>
   </div>
 <script>window.onload = () => window.print();</script>
@@ -2082,7 +2082,7 @@ export default function ProjectPage() {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Print-only header — hidden on screen, shown at top of PDF */}
       <div className="hidden print:block mb-4 pb-3 border-b border-gray-300">
-        <p className="text-lg font-bold text-gray-900">Clinic Launch OS — Project Plan</p>
+        <p className="text-lg font-bold text-gray-900">ALFRED — Project Plan</p>
         {activeProperty && (
           <p className="text-sm text-gray-600">{activeProperty.address}{activeProperty.postcode ? `, ${activeProperty.postcode}` : ""}</p>
         )}

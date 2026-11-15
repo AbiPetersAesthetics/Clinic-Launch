@@ -109,7 +109,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
       <form onSubmit={submit} className="w-full max-w-sm bg-card border border-border rounded-lg shadow-sm p-8">
         <p className="font-serif text-2xl text-foreground leading-none">Abi Peters</p>
-        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mt-1.5">Skin Clinic · Launch OS</p>
+        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground mt-1.5">Skin Clinic · ALFRED</p>
         <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-8">Password</label>
         <input
           type="password"

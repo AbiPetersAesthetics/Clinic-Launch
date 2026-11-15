@@ -357,7 +357,7 @@ export default function ExportPage() {
       <div className="no-print sticky top-0 z-50 bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
         <div>
           <div className="text-sm font-semibold text-gray-800">Full Report Export</div>
-          <div className="text-xs text-gray-500">Abi Peters Aesthetics Ltd · Clinic Launch OS · {today}</div>
+          <div className="text-xs text-gray-500">Abi Peters Aesthetics Ltd · ALFRED · {today}</div>
         </div>
         <div className="flex items-center gap-3">
           {isLoading && (
@@ -436,7 +436,7 @@ export default function ExportPage() {
               <div className="text-4xl font-light tracking-tight" style={{ fontFamily: "Georgia, serif" }}>
                 Abi Peters Aesthetics
               </div>
-              <div className="text-xs tracking-[0.35em] uppercase text-gray-400 mt-1">Clinic Launch OS</div>
+              <div className="text-xs tracking-[0.35em] uppercase text-gray-400 mt-1">ALFRED</div>
             </div>
 
             <div className="border-l-4 border-[#2d5016] pl-6 py-2 mb-10">
@@ -492,7 +492,7 @@ export default function ExportPage() {
           </div>
 
           <div className="mt-10 text-[10px] text-gray-300 text-center">
-            Clinic Launch OS · Confidential · {today}
+            ALFRED · Confidential · {today}
           </div>
         </div>
 
@@ -1681,7 +1681,7 @@ export default function ExportPage() {
         ════════════════════════════════════════════════════════════════════ */}
         <div className="print-break mt-12 py-8 border-t-2 border-gray-200 text-center">
           <div className="text-[10px] text-gray-400 space-y-1">
-            <div className="font-semibold text-gray-600">Abi Peters Aesthetics Ltd — Clinic Launch OS</div>
+            <div className="font-semibold text-gray-600">Abi Peters Aesthetics Ltd — ALFRED</div>
             <div>Full Project Export · {today}</div>
             <div>Confidential — not for distribution</div>
             <div className="mt-3 text-gray-300">This document was auto-generated from live project data. All figures are modelled projections. Seek professional advice before making financial, legal, or clinical decisions.</div>

@@ -63,7 +63,7 @@ function AbiPetersLogo() {
     <div className="select-none">
       <img src={`${import.meta.env.BASE_URL}brand/abi-peters-logo.png`} alt="Abi Peters Skin Clinic" width={168} height={54} className="block h-auto w-[168px]" />
       <div className="text-sidebar-foreground/50 tracking-[0.22em] uppercase mt-2" style={{ fontSize: "0.6rem", fontWeight: 600 }}>
-        Launch OS
+        A.L.F.R.E.D.
       </div>
     </div>
   );
