@@ -29,7 +29,7 @@ router.get("/projects/:id/ads-pathway", async (req, res) => {
       SELECT data, created_at FROM ads_pathway_snapshots
       WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
     const row = (r as unknown as { rows: Array<{ data: unknown; created_at: string }> }).rows[0];
-    if (!row) return res.json({ data: null, createdAt: null });
+    if (!row) { res.json({ data: null, createdAt: null }); return; }
     res.json({ data: row.data, createdAt: row.created_at });
   } catch (err) {
     res.status(500).json({ error: String(err) });
