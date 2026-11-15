@@ -2,7 +2,7 @@
 // Colour means one thing: on target (green), watch (amber), problem (red); everything else is ink
 // and grey, so every chart still reads in greyscale. Labels sit on the chart; no legends, no
 // gridline clutter. Built as plain SVG and HTML so they stay sharp and fast on a phone.
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 
 export const C = {
@@ -82,31 +82,89 @@ export function DayColumns({ days, ariaLabel, highlightFrom }: { days: { label: 
   );
 }
 
-// The bank, month by month, with the £10,000 floor drawn and named on the chart. Months under the
-// floor are marked in the problem colour; the lowest month is labelled.
-export function BalanceLine({ points, floor, ariaLabel, height = 130, compare }: { points: { label: string; value: number }[]; floor: number; ariaLabel: string; height?: number; compare?: { points: { label: string; value: number }[]; label: string } | null }) {
+// The bank, month by month. Drawn at the real pixel width of its container, so the type is the same
+// size on a phone and a desktop: a money scale on the left, every month named along the bottom, the
+// line with a soft fill, and three things labelled on the chart: where it starts, its lowest point
+// and where it ends. The £10,000 line is a quiet dashed reference. An optional second line (the
+// plan) is drawn in grey and named at its end.
+function niceStep(span: number, target = 4) {
+  const raw = span / target, mag = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1))));
+  const n = raw / mag;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+}
+const kGbp = (v: number) => (Math.abs(v) >= 1000 ? `£${(v / 1000).toLocaleString("en-GB", { maximumFractionDigits: 1 })}k` : `£${Math.round(v)}`);
+
+export function BalanceLine({ points, floor, ariaLabel, height = 250, compare }: { points: { label: string; value: number }[]; floor: number; ariaLabel: string; height?: number; compare?: { points: { label: string; value: number }[]; label: string } | null }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(340);
+  useEffect(() => {
+    const el = box.current; if (!el) return;
+    const fit = () => setW(Math.max(280, Math.round(el.clientWidth)));
+    fit();
+    const ro = new ResizeObserver(fit); ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   if (points.length < 2) return null;
-  const W = 340, H = height, padL = 6, padR = 6, padT = 22, padB = 20;
+  const H = W < 480 ? Math.min(height, 210) : height;
+  const padL = 46, padR = 18, padT = 26, padB = 34;
   const vals = points.map((p) => p.value);
   const cv = compare?.points?.map((p) => p.value) ?? [];
-  const lo = Math.min(floor, ...vals, ...cv), hi = Math.max(floor, ...vals, ...cv);
-  const span = hi - lo || 1;
+  const rawLo = Math.min(floor, ...vals, ...cv), rawHi = Math.max(floor, ...vals, ...cv);
+  const step = niceStep(rawHi - rawLo || 1);
+  const lo = Math.floor(rawLo / step) * step, hi = Math.ceil(rawHi / step) * step;
+  const ticks: number[] = []; for (let t = lo; t <= hi + 1e-6; t += step) ticks.push(t);
   const x = (i: number) => padL + (i * (W - padL - padR)) / (points.length - 1);
-  const y = (v: number) => padT + (1 - (v - lo) / span) * (H - padT - padB);
-  const path = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
-  const minI = vals.indexOf(Math.min(...vals));
+  const y = (v: number) => padT + (1 - (v - lo) / (hi - lo || 1)) * (H - padT - padB);
+  const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+  const area = `${line} L${x(points.length - 1).toFixed(1)},${y(lo).toFixed(1)} L${x(0).toFixed(1)},${y(lo).toFixed(1)} Z`;
+  const minI = vals.indexOf(Math.min(...vals)), lastI = points.length - 1;
+  const every = (W - padL - padR) / points.length >= 34 ? 1 : 2;
+  const month = (l: string) => l.split(" ")[0];
+  const year = (l: string) => l.split(" ")[1] ?? "";
+  // A value label with a white halo so it stays readable over the line; kept inside the plot.
+  const tag = (i: number, text: string, strong = false) => {
+    const px = x(i), py = y(vals[i]);
+    const above = py - padT > 22;
+    const anchor = px < padL + 50 ? "start" : px > W - padR - 60 ? "end" : "middle";
+    return <text x={px} y={above ? py - 10 : py + 20} textAnchor={anchor} fontSize="13" fontWeight={strong ? 700 : 600} fill={C.ink} stroke={C.surface} strokeWidth={4} paintOrder="stroke" strokeLinejoin="round">{text}</text>;
+  };
+  const labelled = new Set([0, minI, lastI]);
   return (
-    <svg role="img" aria-label={ariaLabel} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-      <line x1={0} x2={W} y1={y(floor)} y2={y(floor)} stroke={C.base} strokeWidth={1} />
-      <text x={W - 2} y={y(floor) - 4} textAnchor="end" fontSize="10" fill={C.muted}>£{floor.toLocaleString("en-GB")} reference</text>
-      {lo < 0 && <line x1={0} x2={W} y1={y(0)} y2={y(0)} stroke={C.bad} strokeWidth={1} />}
-      {compare && compare.points.length > 1 && (() => { const cp = compare.points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" "); const last = compare.points[compare.points.length - 1]; return <g><path d={cp} fill="none" stroke={C.base} strokeWidth={2} strokeLinejoin="round" /><text x={W - 2} y={y(last.value) - 6} textAnchor="end" fontSize="10" fill={C.ink2}>{compare.label}</text></g>; })()}
-      <path d={path} fill="none" stroke={C.ink} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
-      {points.map((p, i) => <circle key={i} cx={x(i)} cy={y(p.value)} r={p.value < 0 ? 3.5 : 2.2} fill={p.value < 0 ? C.bad : C.ink} stroke={C.surface} strokeWidth={1.5}><title>{`${p.label}: ${gbp(p.value)}`}</title></circle>)}
-      <text x={Math.min(W - 60, Math.max(50, x(minI)))} y={Math.max(11, y(vals[minI]) - 8)} textAnchor="middle" fontSize="11" fontWeight="600" fill={C.ink}>lowest {gbp(vals[minI])}</text>
-      <text x={2} y={H - 3} fontSize="10" fill={C.muted}>{points[0].label}</text>
-      <text x={W - 2} y={H - 3} textAnchor="end" fontSize="10" fill={C.muted}>{points[points.length - 1].label}</text>
-    </svg>
+    <div ref={box} className="w-full">
+      <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? C.base : C.grid} strokeWidth={1} />
+            <text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="12" fill={C.muted}>{kGbp(t)}</text>
+          </g>
+        ))}
+        {floor > lo && floor < hi && (
+          <g>
+            <line x1={padL} x2={W - padR} y1={y(floor)} y2={y(floor)} stroke={C.base} strokeWidth={1.5} strokeDasharray="5 5" />
+            <text x={W - padR} y={y(floor) + 15} textAnchor="end" fontSize="11.5" fill={C.muted} stroke={C.surface} strokeWidth={3} paintOrder="stroke">{gbp(floor)} reference</text>
+          </g>
+        )}
+        <path d={area} fill={C.ink} opacity={0.07} />
+        {compare && compare.points.length > 1 && (() => {
+          const cp = compare.points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`).join(" ");
+          const last = compare.points[compare.points.length - 1];
+          return <g><path d={cp} fill="none" stroke={C.base} strokeWidth={2} strokeDasharray="2 4" strokeLinecap="round" /><text x={W - padR} y={y(last.value) - 8} textAnchor="end" fontSize="12" fill={C.ink2} stroke={C.surface} strokeWidth={3} paintOrder="stroke">{compare.label}</text></g>;
+        })()}
+        <path d={line} fill="none" stroke={C.ink} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />
+        {points.map((p, i) => (
+          <circle key={i} cx={x(i)} cy={y(p.value)} r={labelled.has(i) ? 4.5 : 3} fill={p.value < 0 ? C.bad : labelled.has(i) ? C.ink : C.surface} stroke={p.value < 0 ? C.bad : C.ink} strokeWidth={2}><title>{`${p.label}: ${gbp(p.value)}`}</title></circle>
+        ))}
+        {tag(0, `Now ${gbp(vals[0])}`)}
+        {minI !== 0 && minI !== lastI && tag(minI, `Lowest ${gbp(vals[minI])}`, true)}
+        {tag(lastI, gbp(vals[lastI]))}
+        {points.map((p, i) => (i % every === 0 || i === lastI) && (
+          <g key={`m${i}`}>
+            <text x={x(i)} y={H - 16} textAnchor="middle" fontSize="12" fill={C.ink2}>{month(p.label)}</text>
+            {(i === 0 || month(p.label) === "Jan") && <text x={x(i)} y={H - 3} textAnchor="middle" fontSize="10.5" fill={C.muted}>20{year(p.label)}</text>}
+          </g>
+        ))}
+      </svg>
+    </div>
   );
 }
 
