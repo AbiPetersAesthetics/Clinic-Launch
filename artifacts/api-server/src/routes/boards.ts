@@ -16,6 +16,7 @@ import { makeRun } from "../boards/plan-run";
 import { planData } from "../boards/plan-data";
 import { renderMoneyPlan } from "../boards/money-plan";
 import { renderCashLine } from "../boards/cash-line";
+import { renderOpeningBoard } from "../boards/opening-board";
 
 const router = Router();
 
@@ -98,6 +99,19 @@ router.get("/projects/:projectId/boards/cash-line", async (req, res) => {
     }
     page(res, renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }));
   } catch (err) { failed(res, "Cash Line", err); }
+});
+
+// The Winchester opening board, its ad figures from the latest Ads Pathway snapshot.
+router.get("/projects/:projectId/boards/opening", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    let snap: any = null;
+    try {
+      const r = await db.execute(sql`SELECT data FROM ads_pathway_snapshots WHERE project_id = ${projectId} ORDER BY created_at DESC LIMIT 1`);
+      snap = (((r as any).rows ?? r)[0])?.data ?? null;
+    } catch { /* no snapshots table yet: the board says so */ }
+    page(res, renderOpeningBoard(snap));
+  } catch (err) { failed(res, "Opening Board", err); }
 });
 
 export default router;

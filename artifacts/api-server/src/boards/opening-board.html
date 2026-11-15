@@ -1,0 +1,181 @@
+<title>Winchester Opening Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700&display=swap">
+<style>
+/* Layout: a one-screen owner board. Numbers first, then what is decided, the offers, the dates, and the short list only the owner can do. */
+:root {
+  --bg: #eff3f8; --surface: #ffffff; --ink: #1f2a44; --muted: #5b6678; --line: #d6dfea; --accent: #445b72; --tint: #e3e9f1;
+  --good: #2f6b3f; --good-bg: #e3efe5; --warn: #7a5414; --warn-bg: #f6ead3; --own: #1f2a44; --own-t: #ffffff;
+  --display: "Newsreader", Georgia, "Times New Roman", serif; --body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141b2b; --surface: #1c2538; --ink: #e8edf5; --muted: #a7b2c3; --line: #2e3a52; --accent: #9fb4cc; --tint: #232e45;
+  --good: #9fd3ab; --good-bg: #213628; --warn: #f0cf95; --warn-bg: #3d3020; --own: #d6dfea; --own-t: #1f2a44; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #141b2b; --surface: #1c2538; --ink: #e8edf5; --muted: #a7b2c3; --line: #2e3a52; --accent: #9fb4cc; --tint: #232e45;
+  --good: #9fd3ab; --good-bg: #213628; --warn: #f0cf95; --warn-bg: #3d3020; --own: #d6dfea; --own-t: #1f2a44; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1100px; margin: 0 auto; padding-block: 2.25rem 3.5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 0.4rem; }
+h1 { font-family: var(--display); font-weight: 500; font-size: clamp(1.9rem, 4.6vw, 2.7rem); line-height: 1.1; margin: 0 0 0.4rem; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+h2 { font-family: var(--display); font-weight: 500; font-size: 1.4rem; margin: 0 0 0.8rem; }
+section { margin-top: 2rem; }
+.kpis { display: grid; gap: 0.8rem; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin-top: 1.5rem; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.9rem 1rem; display: grid; gap: 0.15rem; }
+.kpi span { font-size: 0.8rem; color: var(--muted); }
+.kpi strong { font-family: var(--display); font-weight: 500; font-size: 1.9rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi em { font-style: normal; font-size: 0.78rem; color: var(--muted); }
+.grid2 { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.2rem; min-width: 0; display: grid; gap: 0.6rem; align-content: start; }
+.card h3 { margin: 0; font-size: 1rem; }
+.pill { justify-self: start; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; padding: 0.2rem 0.6rem; border-radius: 999px; }
+.p-good { background: var(--good-bg); color: var(--good); }
+.p-warn { background: var(--warn-bg); color: var(--warn); }
+.p-own { background: var(--own); color: var(--own-t); }
+.track { display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; font-size: 0.8rem; text-align: center; }
+.track div { padding: 0.55rem 0.3rem; display: grid; gap: 0.1rem; }
+.track .free { background: var(--good-bg); color: var(--good); }
+.track .paid { background: var(--tint); color: var(--ink); }
+.track b { font-size: 0.9rem; }
+.muted { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.offers { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+.offer { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1.1rem 1.2rem; display: grid; gap: 0.5rem; align-content: start; min-width: 0; }
+.offer .price { font-family: var(--display); font-size: 1.7rem; font-weight: 500; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.offer .vs { font-size: 0.82rem; color: var(--muted); }
+.offer h3 { margin: 0; font-size: 1rem; }
+.tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; border-left: 2px solid var(--line); margin-left: 0.4rem; }
+.tl li { position: relative; padding: 0 0 0.9rem 1.1rem; display: grid; grid-template-columns: 6.5rem 1fr; gap: 0.6rem; }
+.tl li::before { content: ""; position: absolute; left: -7px; top: 0.35rem; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--accent); }
+.tl li.key::before { background: var(--accent); }
+.tl .d { font-weight: 700; font-variant-numeric: tabular-nums; }
+.todo { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6rem; }
+.todo li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0.75rem 0.9rem; display: grid; grid-template-columns: auto 1fr; gap: 0.7rem; align-items: start; }
+.box { width: 18px; height: 18px; border: 2px solid var(--accent); border-radius: 4px; margin-top: 0.15rem; }
+.done { columns: 2 260px; column-gap: 1.5rem; margin: 0; padding-left: 1.1rem; color: var(--muted); font-size: 0.9rem; }
+.done li { margin-bottom: 0.35rem; break-inside: avoid; }
+footer { margin-top: 2.25rem; color: var(--muted); font-size: 0.82rem; max-width: 70ch; }
+@media (max-width: 480px) { .tl li { grid-template-columns: 1fr; gap: 0.1rem; } }
+
+.stages { display: grid; gap: 0.5rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+.stage { border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.75rem; display: grid; gap: 0.1rem; background: var(--surface); }
+.stage span { font-size: 0.78rem; color: var(--muted); }
+.stage b { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.stage.good { background: var(--good-bg); border-color: var(--good); }
+.stage.quiet { background: var(--tint); }
+a { color: var(--accent); }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Abi Peters Skin Clinic &middot; updated <!--UPDATED--></p>
+  <h1>Winchester opening board</h1>
+  <p class="lede">Where the ads stand, what is decided, the New Year offers I have picked, the dates that matter and the few things only you can do.</p>
+
+  <!--KPIS-->
+
+<!--ADS-->
+
+  <section aria-labelledby="decided">
+    <h2 id="decided">Decided</h2>
+    <div class="grid2">
+      <div class="card">
+        <span class="pill p-good">Your decision</span>
+        <h3>Skin analysis: free until March, then £50</h3>
+        <div class="track" role="img" aria-label="Free in December, January and February, £50 redeemable from March">
+          <div class="free"><b>Dec</b>Free</div><div class="free"><b>Jan</b>Free</div><div class="free"><b>Feb</b>Free</div><div class="paid"><b>Mar on</b>£50</div>
+        </div>
+        <p class="muted">From 1 March the £50 comes off any treatment booked the same day. Until then the ads say "free skin analysis" only: "normally £50" comes off everything at the 6 December swap, because a price nobody pays yet cannot be shown as the normal price.</p>
+      </div>
+      <div class="card">
+        <span class="pill p-good">Decided with you</span>
+        <h3>Growth and hiring</h3>
+        <p class="muted">Second clinician recruited as soon as demand is proven, likely from January on current bookings. My estimate for 12 months: about 80% to be clearly top two in Winchester, 60 to 65% to be clear number one. The biggest remaining lever is Google: the profile opens on 2 December, then reviews.</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="offers">
+    <h2 id="offers">New Year offers, my pick</h2>
+    <div class="offers">
+      <div class="offer">
+        <span class="pill p-warn">Approve price</span>
+        <h3>New Year skin plan</h3>
+        <div class="price">Free</div>
+        <div class="vs">Skin analysis and a written plan with prices</div>
+        <p class="muted">The lead offer in every ad. Gets people in, Abi recommends what fits, or nothing.</p>
+      </div>
+      <div class="offer">
+        <span class="pill p-warn">Approve price</span>
+        <h3>Lip filler with aftercare</h3>
+        <div class="price">£180</div>
+        <div class="vs">0.5ml, with a free Obagi Medical Lip Therapy</div>
+        <p class="muted">Added value instead of a discount, from the Obagi range you already stock. Order the stock first.</p>
+      </div>
+      <div class="offer">
+        <span class="pill p-warn">Approve price</span>
+        <h3>Polynucleotides course of three</h3>
+        <div class="price">£675</div>
+        <div class="vs">Three single sessions would be £750</div>
+        <p class="muted">Courses suit the "new year, new skin" message and keep patients coming back.</p>
+      </div>
+      <div class="offer">
+        <span class="pill p-warn">Approve price</span>
+        <h3>Microneedling course of three</h3>
+        <div class="price">£330</div>
+        <div class="vs">Three single sessions would be £375</div>
+        <p class="muted">The lower priced course, for people starting out. Live from 26 December.</p>
+      </div>
+    </div>
+    <p class="muted" style="margin-top:0.8rem">All in pounds, no percentages, no deadlines and no prescription-only medicines. Course prices only work if they are real prices in ANS too.</p>
+  </section>
+
+  <div class="grid2" style="margin-top:2rem">
+    <section style="margin-top:0" aria-labelledby="dates">
+      <h2 id="dates">Dates</h2>
+      <ul class="tl">
+        <li><span class="d">20 Nov</span><span>7 day read of the Meta ads and the new landing page</span></li>
+        <li><span class="d">w/c 30 Nov</span><span>Clinic photo shoot for the opening ads</span></li>
+        <li class="key"><span class="d">2 to 3 Dec</span><span>Model days, first treatments; Google profile opens</span></li>
+        <li><span class="d">4 Dec</span><span>Opening ad copy drafted for your approval</span></li>
+        <li class="key"><span class="d">6 Dec</span><span>Ads switch to clinic photos; "normally £50" removed</span></li>
+        <li class="key"><span class="d">8 Dec</span><span>Winchester opens; introductory prices end</span></li>
+        <li><span class="d">26 Dec</span><span>New Year offers go live in the ads</span></li>
+        <li class="key"><span class="d">1 Mar</span><span>Skin analysis becomes £50, redeemable</span></li>
+      </ul>
+    </section>
+    <section style="margin-top:0" aria-labelledby="you">
+      <h2 id="you">Only you can do</h2>
+      <ul class="todo">
+        <li><span class="box" aria-hidden="true"></span><span><strong>Approve or change the four offer prices</strong>, then I set them up for 26 December.</span></li>
+        <li><span class="box" aria-hidden="true"></span><span><strong>Order Obagi Lip Therapy stock</strong> for the lip filler offer.</span></li>
+        <li><span class="box" aria-hidden="true"></span><span><strong>Say yes to the Google profile edit</strong>: remove "opens on Tuesday 8 December" from the description.</span></li>
+        <li><span class="box" aria-hidden="true"></span><span><strong>Optional: card details to hold free slots</strong> in ANS, with a fee only for no-shows.</span></li>
+        <li><span class="box" aria-hidden="true"></span><span><strong>Send the ANS message</strong> I draft: clinic preselection and the in-app browser jump.</span></li>
+      </ul>
+    </section>
+  </div>
+
+  <section aria-labelledby="donetoday">
+    <h2 id="donetoday">Done since 14 November</h2>
+    <ul class="done">
+      <li>Landing page built with Abi's 25 second video, live</li>
+      <li>£3 a day booking ad now points at the landing page</li>
+      <li>Diary on the landing page opens on the free skin analysis</li>
+      <li>Diary loads only when needed, so the page opens fast</li>
+      <li>ANS colours fixed: nothing shows as a solid block</li>
+      <li>"Not sure what to book?" video on the booking page</li>
+      <li>Next month hint added where the calendar opens empty</li>
+      <li>Paused ads and ad sets deleted; sketch ad paused</li>
+      <li>Leads traced from ad to GHL to ANS booking to Clarity visit</li>
+      <li>Competitor diary and brand comparison</li>
+      <li>Marketing calendar for the year</li>
+      <li>Ads pathway check runs twice a day and feeds the Ads Pathway page</li>
+      <li>Warm video audience now covers all 34 videos, June to now</li>
+      <li>Website visitors added to the warm social engagement ads</li>
+    </ul>
+  </section>
+
+  <footer>Ad figures come from the latest twice-daily pathway check (Meta, GHL, ANS and Clarity) and update on their own. Decisions, offers and dates as agreed by 15 November 2026. The full lead by lead trace is on the Ads Pathway page.</footer>
+</div>

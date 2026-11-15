@@ -159,6 +159,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/money-plan", label: "Money Plan", icon: BookOpen },
     { href: "/cash-line", label: "Cash Line", icon: TrendingUp },
     { href: "/", label: "Today", icon: LayoutDashboard },
+    { href: "/opening-board", label: "Opening Board", icon: Gauge },
     { href: "/digest", label: "Weekly Brief", icon: Newspaper },
     { href: "/project", label: "Plan & Timeline", icon: ListTodo },
     { href: "/financials", label: "Money", icon: Calculator },
