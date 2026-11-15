@@ -38,6 +38,6 @@ const spec = {
   footer: "Built from ALFRED's brief: every figure carries its source and age there. Approvals are recorded in ALFRED and done in the next live session.",
 };
 const text = JSON.stringify(spec);
-if (/[–—]/.test(text)) { console.error("Refused: the brief contains an em or en dash"); process.exit(1); }
+if (/[\u2013\u2014]/.test(text)) { console.error("Refused: the brief contains an em or en dash"); process.exit(1); }
 writeFileSync(out, JSON.stringify(spec, null, 2));
 console.log(`SPEC ${out}: ${brief.total} item(s), ${spec.status}`);

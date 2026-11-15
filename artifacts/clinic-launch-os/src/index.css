@@ -95,7 +95,7 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  /* Abi Peters Skin Clinic brand — clean white/cool ground, deep navy ink
+  /* Abi Peters Skin Clinic brand: clean white/cool ground, deep navy ink
      (the website's real --colour-bg is #FFFFFF, not ivory). Navy #1F2A44,
      sage #7FA49A/#A7C0B6, slate #445B72. No warm cream ground. */
   --background: 0 0% 100%;
@@ -122,18 +122,18 @@
   --popover-foreground: 222 37% 19%;
   --popover-border: 222 15% 88%;
 
-  /* Primary — deep navy, like the website's buttons */
+  /* Primary: deep navy, like the website's buttons */
   --primary: 222 37% 19%;
   --primary-foreground: 0 0% 100%;
 
-  /* Secondary — cool neutral wash (no warm sand) */
+  /* Secondary: cool neutral wash (no warm sand) */
   --secondary: 214 16% 94%;
   --secondary-foreground: 222 37% 19%;
 
   --muted: 214 38% 95%;
   --muted-foreground: 220 13% 41%;
 
-  /* Accent — quiet sage wash (the website's interaction colour family) */
+  /* Accent: quiet sage wash (the website's interaction colour family) */
   --accent: 154 20% 92%;
   --accent-foreground: 222 37% 19%;
 
@@ -281,7 +281,7 @@
     display: none !important;
   }
 
-  /* Flatten layout — sidebar is hidden, content goes full width */
+  /* Flatten layout: sidebar is hidden, content goes full width */
   .min-h-screen {
     display: block !important;
   }
@@ -373,7 +373,7 @@
     background-color: #2d6a4f !important;
   }
 
-  /* Page header — tighten spacing */
+  /* Page header: tighten spacing */
   h1, h2, h3 {
     page-break-after: avoid;
   }

@@ -40,7 +40,7 @@ const GUARANTEE = /\b(guarantee[ds]?|perfect|flawless|erase[sd]?|pain[- ]free|tu
 function breaches(p) {
   const text = [p.title, p.why, p.risk, p.onApproval, p.guard, typeof p.evidence === "string" ? p.evidence : JSON.stringify(p.evidence ?? "")].join(" ");
   const out = [];
-  if (/[–—]/.test(text)) out.push("an em or en dash");
+  if (/[\u2013\u2014]/.test(text)) out.push("an em or en dash");
   if (POM.test(text)) out.push("a prescription-only medicine name");
   if (PCT_OFF.test(text)) out.push("a percentage discount");
   if (GUARANTEE.test(text)) out.push("a guarantee word");
@@ -63,7 +63,7 @@ try {
   else if (args[0] === "--done") await update(args[1], "done", "result", args[2], ["approved"]);
   else if (args[0] === "--cancel") await update(args[1], "cancelled", "result", args[2], ["approved"]);
   else if (args[0] === "--answer") {
-    if (/[–—]/.test(args[2] ?? "")) throw new Error("Refused: the answer contains an em or en dash");
+    if (/[\u2013\u2014]/.test(args[2] ?? "")) throw new Error("Refused: the answer contains an em or en dash");
     const r = await client.query(`UPDATE proposals SET answer = $2, status = 'proposed', updated_at = NOW() WHERE id = $1 AND status = 'asked' RETURNING id`, [Number(args[1]), args[2]]);
     console.log(r.rows.length ? `Answered proposal ${args[1]}; it is back on Today as unread` : `Proposal ${args[1]} has no open question`);
   } else if (args[0] === "--questions") {

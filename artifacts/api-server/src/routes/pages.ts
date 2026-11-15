@@ -208,7 +208,7 @@ router.post("/projects/:projectId/stock", handle(async (projectId, req) => {
   const b = req.body ?? {};
   const name = String(b.name ?? "").trim().slice(0, 120);
   if (!name) throw new Error("Give the item a name");
-  if (/[–—]/.test(name)) throw new Error("No dashes, please");
+  if (/[\u2013\u2014]/.test(name)) throw new Error("No dashes, please");
   const onHand = Math.max(0, Math.min(9999, parseInt(b.onHand ?? 0) || 0)), reorderAt = Math.max(0, Math.min(9999, parseInt(b.reorderAt ?? 1) || 0));
   await db.execute(sql`INSERT INTO stock_items (project_id, name, kind, clinic, on_hand, reorder_at) VALUES (${projectId}, ${name}, ${String(b.kind ?? "retail").slice(0, 30)}, ${String(b.clinic ?? "Winchester").slice(0, 30)}, ${onHand}, ${reorderAt})`);
   return { items: await stockList(projectId) };

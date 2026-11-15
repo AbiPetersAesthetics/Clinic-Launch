@@ -31,7 +31,7 @@ for (let i = 0; i < argv.length; i++) if (argv[i].startsWith("--")) a[argv[i].sl
 if (!a.agent) { console.error("Give --agent"); process.exit(1); }
 const status = a.status ?? "ok";
 if (!["ok", "partial", "failed"].includes(status)) { console.error("--status must be ok, partial or failed"); process.exit(1); }
-if (/[–—]/.test(a.summary ?? "")) { console.error("Refused: the summary contains an em or en dash"); process.exit(1); }
+if (/[\u2013\u2014]/.test(a.summary ?? "")) { console.error("Refused: the summary contains an em or en dash"); process.exit(1); }
 if (!process.env.DATABASE_URL) { console.error("DATABASE_URL missing: run with --env-file=.env"); process.exit(1); }
 const sources = (a.read ?? "").split(",").filter(Boolean).map((p) => { const [source, to] = p.split("="); return { source: source.trim(), to: to?.trim() }; });
 const wrote = (a.wrote ?? "").split(",").map((s) => s.trim()).filter(Boolean);
