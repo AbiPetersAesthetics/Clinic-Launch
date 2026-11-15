@@ -8,7 +8,7 @@ import HEAD from "./ads-board-head.html";
 interface Day { date: string; clinic: string; appts: number; bookedMins: number; blockedMins: number; online: number; consults: number; first: string | null; last: string | null }
 interface Clinic {
   updated: string; updatedIso?: string; openingDate: string;
-  takings: { source: string; rows: { period: string; total: number; treatments: number; retail: number; avgPerAppointment: number }[]; byClinicNote?: string };
+  takings: { source: string; rows: { period: string; total: number; treatments: number; retail: number; avgPerAppointment?: number; booked?: number; bookedCount?: number; bookedTo?: string; recordedPaid?: number }[]; byClinicNote?: string };
   diary: { source: string; clinicDayHours: number; days: Day[] };
   attendance: null | { period: string; attended: number; noShows: number; cancelled: number };
   conversion: null | { period: string; consultations: number; paidWithin30: number };
@@ -29,7 +29,7 @@ export function renderClinicBoard(c: Clinic | null, ads: { leads?: AdLead[] } | 
 
   const k = c.takings.rows;
   const kpi = (label: string, value: string, note: string) => `<div class="kpi"><span>${esc(label)}</span><b>${esc(value)}</b><em>${esc(note)}</em></div>`;
-  const kpis = k.slice(0, 4).map((r) => kpi(r.period, gbp0(r.total), `${gbp0(r.treatments)} treatments, ${gbp0(r.retail)} skincare; ${gbp(r.avgPerAppointment)} per appointment`)).join("");
+  const kpis = k.slice(0, 4).map((r) => kpi(r.period, gbp0(r.total), [`${gbp0(r.treatments)} treatments, ${gbp0(r.retail)} skincare`, r.avgPerAppointment ? `${gbp(r.avgPerAppointment)} per appointment` : "", r.booked ? `plus ${gbp0(r.booked)} booked (${r.bookedCount} appointments to ${r.bookedTo}), not yet taken` : "", r.recordedPaid != null ? `${gbp0(r.recordedPaid)} recorded as paid in ANS` : ""].filter(Boolean).join("; "))).join("");
 
   // Diary: booked hours against a clinic day, per day
   const H = c.diary.clinicDayHours;
@@ -64,9 +64,9 @@ export function renderClinicBoard(c: Clinic | null, ads: { leads?: AdLead[] } | 
     <h1>Winchester Clinic Board</h1>
     <p>How the clinics are running: takings, the diary ahead, and from opening, who turns up, who goes on to treatment and who comes back.</p></div>
     <div class="tag" style="display:grid;gap:6px;justify-items:end">${toOpen > 0 ? `<span class="verdict"><i class="dot"></i>Winchester opens in ${toOpen} ${toOpen === 1 ? "day" : "days"}</span>` : `<span class="verdict"><i class="dot"></i>Winchester open</span>`}${fresh}</div></div>
-  <span class="eyebrow">Takings, all clinics</span>
+  <span class="eyebrow">Money taken, all clinics (booked but not yet seen is shown separately)</span>
   <div class="kpis">${kpis}</div>
-  <p class="muted-s">${esc(c.takings.byClinicNote ?? "")} Year to date: ${gbp0(k[k.length - 1]?.total ?? 0)}.</p>
+  <p class="muted-s">${esc(c.takings.byClinicNote ?? "")}</p>
   <div class="row">
     <div class="card"><span class="q">The diary ahead</span><h2>Next 14 days</h2>
       <div class="svgwrap">${diarySvg}</div>
