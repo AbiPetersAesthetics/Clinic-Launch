@@ -62,7 +62,7 @@ function openFromBank(inputs: CashInputs, bank: BankBalance) {
   if (elapsedShare > 0) {
     const first = runCashModel({ ...inputs, openingBank: 0 }).rows[0];
     const marketingOnCard = inputs.marketing.cardFrom != null && ym >= inputs.marketing.cardFrom;
-    const dayToDay = first.total.contribution - first.running.utilities - first.running.general - (marketingOnCard ? 0 : first.running.marketing) - first.rates;
+    const dayToDay = first.total.contribution - first.running.utilities - first.running.general - (marketingOnCard ? 0 : first.running.marketing) - first.ratesPaid;
     tradedSoFar = Math.round(elapsedShare * dayToDay * 100) / 100;
   }
   return { ...bank, startMonth: ym, elapsedShare, tradedSoFar, openingUsed: Math.round((bank.balanceGbp - tradedSoFar) * 100) / 100 };

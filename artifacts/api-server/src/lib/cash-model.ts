@@ -58,7 +58,9 @@ export type CashInputs = {
   };
   vatRate: number;               // 0.2: every sale is standard-rated
   rent: { annual: number; rentStart: string; quarterDays: string[] }; // rentStart "YYYY-MM-DD"; quarterDays "MM-DD"
-  rates: { monthly: number; from: string };
+  // paid: the cash that leaves the bank for rates in a month, where it differs from the monthly
+  // cost (no bill yet, so arrears paid in lumps). Months not listed pay the monthly figure.
+  rates: { monthly: number; from: string; paid?: Record<string, number>; note?: string };
   utilities: { monthly: number; buildMonthly: number; buildUntil: string; from: string };
   running: { monthly: number };
   // wincFrom: the month the ads become Winchester's. cardFrom: null means never on the card.
@@ -85,7 +87,7 @@ export type CashRow = {
   // Profit and loss
   bedh: Site; winc: Site; total: Site;
   running: { utilities: number; general: number; marketing: number; oneOff: number; total: number };
-  rentAccrued: number; rates: number;
+  rentAccrued: number; rates: number; ratesPaid: number;
   operatingProfit: number;
   wincOwnProfit: number; bedhOwnProfit: number;
   // Abi's week: days at each clinic, Winchester's own demand, what its days hold, how
@@ -279,6 +281,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     const oneOffPnl = oneOffs.filter(o => o.pnl).reduce((s, o) => s + o.amount, 0);
     const runningTotal = utilities + general + marketing + oneOffPnl;
     const rates = ym >= inp.rates.from ? inp.rates.monthly : 0;
+    const ratesPaid = inp.rates.paid?.[ym] ?? rates;
     const rentAccrued = ym >= rentStartYm ? inp.rent.annual / 12 : 0;
     const operatingProfit = total.contribution - runningTotal - rates - rentAccrued;
     why.operatingProfit = `Contribution ${gbp(total.contribution)} less running costs ${gbp(runningTotal)}, rates ${gbp(rates)} and rent ${gbp(rentAccrued)}${rentAccrued === 0 ? " (rent free)" : ""}`;
@@ -362,16 +365,16 @@ export function runCashModel(inp: CashInputs): CashResult {
 
     const bankRunning = utilities + general + (marketingOnCard ? 0 : marketing) + oneOffs.filter(o => o.pnl && o.method === "bank").reduce((s, o) => s + o.amount, 0);
     const moneyIn = fundingIn + total.contribution + vatRefund;
-    const moneyOutBank = projectBank + vatPaidBank + rentPaid + rates + bankRunning + loanRepayment + cardRepayment + pay.cost;
+    const moneyOutBank = projectBank + vatPaidBank + rentPaid + ratesPaid + bankRunning + loanRepayment + cardRepayment + pay.cost;
     const openingBank = bank;
     bank = openingBank + moneyIn - moneyOutBank;
-    why.moneyOutBank = `Project ${gbp(projectBank)}${vatPaidBank ? ` + VAT ${gbp(vatPaidBank)}` : ""}, rent ${gbp(rentPaid)}, rates ${gbp(rates)}, running ${gbp(bankRunning)}, loan ${gbp(loanRepayment)}, card ${gbp(cardRepayment)}, Abi ${gbp(pay.cost)}`;
+    why.moneyOutBank = `Project ${gbp(projectBank)}${vatPaidBank ? ` + VAT ${gbp(vatPaidBank)}` : ""}, rent ${gbp(rentPaid)}, rates ${gbp(ratesPaid)}, running ${gbp(bankRunning)}, loan ${gbp(loanRepayment)}, card ${gbp(cardRepayment)}, Abi ${gbp(pay.cost)}`;
 
     rows.push({
       month: ym, label: label(ym), fy: fyOf(ym),
       bedh, winc, total,
       running: { utilities, general, marketing, oneOff: oneOffPnl, total: runningTotal },
-      rentAccrued, rates, operatingProfit, wincOwnProfit, bedhOwnProfit,
+      rentAccrued, rates, ratesPaid, operatingProfit, wincOwnProfit, bedhOwnProfit,
       bedhDays, wincDays, bedhOpen: bedh.gross > 0, wincDemand, wincCapacity, wincOccupancy, transferIn, wincStandMargin,
       profitAfterInterest: operatingProfit - loanInterest,
       vatPaidBank, vatPaidCard, vatRefund, vatOwedBack,
@@ -379,7 +382,7 @@ export function runCashModel(inp: CashInputs): CashResult {
       openingBank, fundingIn, loanDrawn, projectBank,
       cardDrawn, cardFundedCosts, cardRepayment, cardOwed,
       loanRepayment, loanInterest, loanOwed,
-      rentPaid, rentTiming: rentAccrued - rentPaid,
+      rentPaid, rentTiming: rentAccrued - rentPaid + rates - ratesPaid,
       moneyIn, moneyOutBank, net: moneyIn - moneyOutBank, closingBank: bank,
       belowFloor: bank < inp.cashFloor, cardOverLimit: cardOwed > inp.card.limit,
       why,
@@ -387,7 +390,7 @@ export function runCashModel(inp: CashInputs): CashResult {
   }
 
   // Financial-year totals (flows summed, balances taken at the year's last month)
-  const flows: (keyof CashRow)[] = ["operatingProfit", "payCost", "profitRetained", "fundingIn", "projectBank", "cardDrawn", "cardRepayment", "loanRepayment", "rentPaid", "rentAccrued", "rates", "moneyIn", "moneyOutBank", "net", "vatPaidBank", "vatPaidCard", "vatRefund", "loanInterest", "profitAfterInterest", "transferIn"];
+  const flows: (keyof CashRow)[] = ["operatingProfit", "payCost", "profitRetained", "fundingIn", "projectBank", "cardDrawn", "cardRepayment", "loanRepayment", "rentPaid", "rentAccrued", "rates", "ratesPaid", "moneyIn", "moneyOutBank", "net", "vatPaidBank", "vatPaidCard", "vatRefund", "loanInterest", "profitAfterInterest", "transferIn"];
   const fyTotals: CashResult["fyTotals"] = {};
   for (const r of rows) {
     const t = (fyTotals[r.fy] ??= {});

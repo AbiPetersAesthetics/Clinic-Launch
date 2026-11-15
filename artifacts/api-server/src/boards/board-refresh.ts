@@ -139,7 +139,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const rows = J.rows.slice(0, 9), keep = 1 - (J.bank ? J.bank.elapsedShare : 0);
   const arr = f => "[0, " + rows.map((r, k) => Math.round(f(r) * (k === 0 ? keep : 1))).join(", ") + "]";
   const NET_B = arr(r => r.bedh.contribution), NET_W = arr(r => r.winc.contribution);
-  const FIXED = arr(r => r.running.utilities + r.running.general + r.running.marketing + r.rates);
+  const FIXED = arr(r => r.running.utilities + r.running.general + r.running.marketing + (r.ratesPaid ?? r.rates));
   const RENT = "[0, " + rows.map(r => Math.round(r.rentPaid)).join(", ") + "]";
   const startBank = J.bank ? J.bank.balanceGbp : J.config.openingBank;
   const loanMonth = IDX[J.loans[0]?.drawMonth] === 2 ? 2 : 1;

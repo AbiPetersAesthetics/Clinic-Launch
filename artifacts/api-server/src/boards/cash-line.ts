@@ -106,7 +106,7 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
     // A bill due on the 1st of the bank's own month is not in the saved balance yet (the owner
     // keeps this month's rates aside in a pot), so it counts as paid on the bank's date.
     const due1 = at(m, 1) < start ? start : at(m, 1), early = at(m, 1) < start ? "due on the 1st, counted as spent: keep it aside" : "";
-    if (r.rates) add(due1, "Business rates", "Winchester City Council", "bank", -r.rates, early, 0);
+    if (r.ratesPaid ?? r.rates) add(due1, "Business rates", "Winchester City Council", "bank", -(r.ratesPaid ?? r.rates), early, 0);
     if (r.running.marketing) add(due1, "Advertising", "Meta and Google", "bank", -r.running.marketing, early);
     if (r.running.general) add(at(m, 10), "Everyday running costs", "accountant, software, bank, card machine", "bank", -r.running.general);
     if (r.running.utilities) add(at(m, 24), "Electricity, water and broadband", "EDF, Southern Water, Vodafone", "bank", -r.running.utilities);

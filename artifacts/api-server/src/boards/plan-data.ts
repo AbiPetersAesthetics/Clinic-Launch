@@ -10,7 +10,7 @@ export function planData(run) {
   const R = n => Math.round(n);
   const pick = r => ({ m: r.month, l: r.label, fy: r.fy, bd: r.bedhDays, wd: r.wincDays, occ: r.wincOccupancy == null ? null : +(r.wincOccupancy * 100).toFixed(0),
     bedh: R(r.bedh.gross), winc: R(r.winc.gross), take: R(r.total.gross), vat: R(r.total.vat), prod: R(r.total.product), contrib: R(r.total.contribution),
-    run: R(r.running.total), rent: R(r.rentAccrued), rates: R(r.rates), op: R(r.operatingProfit), int: +r.loanInterest.toFixed(0), pay: R(r.payCost), sal: R(r.paySalary), kept: R(r.profitRetained),
+    run: R(r.running.total), rent: R(r.rentAccrued), rates: R(r.rates), ratesPaid: R(r.ratesPaid ?? r.rates), op: R(r.operatingProfit), int: +r.loanInterest.toFixed(0), pay: R(r.payCost), sal: R(r.paySalary), kept: R(r.profitRetained),
     open: R(r.openingBank), fund: R(r.fundingIn), proj: R(r.projectBank), vatOut: R(r.vatPaidBank), vatBack: R(r.vatRefund), cardRep: R(r.cardRepayment), loanRep: R(r.loanRepayment), rentPaid: R(r.rentPaid),
     bank: R(r.closingBank), card: R(r.cardOwed), loan: R(r.loanOwed), inn: R(r.moneyIn), out: R(r.moneyOutBank), transfer: R(r.transferIn) });
   const summary = (r) => { const rows = r.rows; const closed = rows.find(x => x.bedhDays === 0); let reg = null; for (let i = 0; i < rows.length - 2; i++) if (rows[i].paySalary > 0 && rows[i + 1].paySalary > 0 && rows[i + 2].paySalary > 0) { reg = rows[i].label; break; }
