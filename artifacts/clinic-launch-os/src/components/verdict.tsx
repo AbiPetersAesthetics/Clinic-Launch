@@ -20,7 +20,7 @@ export function Verdict({ state, text, sources, size = "lg" }: { state: Tone; te
   return (
     <div className="grid gap-2">
       <StateWord state={state} />
-      <p className={`font-display text-ink leading-[1.35] ${size === "lg" ? "text-[1.3rem] sm:text-[1.55rem]" : "text-[1.15rem] sm:text-[1.3rem]"} max-w-[38ch] sm:max-w-[52ch]`}>{sentence}</p>
+      <p className={`font-sans font-semibold text-ink leading-snug tracking-[-0.01em] ${size === "lg" ? "text-[1.4rem] sm:text-[1.7rem]" : "text-[1.2rem] sm:text-[1.4rem]"} max-w-[30ch] sm:max-w-[44ch]`}>{sentence}</p>
       {sources && <Sources chips={sources} />}
     </div>
   );

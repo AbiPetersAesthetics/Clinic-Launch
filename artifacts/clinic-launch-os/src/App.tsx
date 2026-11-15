@@ -36,13 +36,14 @@ import OwedPage from "@/pages/owed";
 import AdsCommandPage from "@/pages/growth/ads";
 import HomePage from "@/pages/home";
 import { GrowthSection, PlanPage } from "@/pages/growth/section";
-import { MoneyArea, GrowthArea, PatientsArea, ClinicArea } from "@/pages/areas";
+import { MoneyArea, PatientsArea, ClinicArea } from "@/pages/areas";
 import { BuildCashPage, StandsAlonePage, TakingsPage, ObligationsPage } from "@/pages/money/pages";
 import { StudioPage, SearchPage } from "@/pages/growth/studio";
 import { PathwayPage, FollowUpPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
 import { DiaryPage, StockPage } from "@/pages/clinic/pages";
 import SourcesPage from "@/pages/sources";
 import AbiPage from "@/pages/abi";
+import GrowthCommand from "@/pages/growth/command";
 import BuildPage from "@/pages/build";
 import ArchiveHomePage from "@/pages/archive-home";
 import InboxPage from "@/pages/inbox";
@@ -184,7 +185,7 @@ function Router() {
         <Route path="/money/cash-line" component={CashLinePage} />
         <Route path="/money/plan" component={MoneyPlanPage} />
 
-        <Route path="/growth" component={GrowthArea} />
+        <Route path="/growth" component={GrowthCommand} />
         <Route path="/growth/ads" component={AdsCommandPage} />
         <Route path="/growth/ads/every-ad">{() => <GrowthSection id="every-ad" />}</Route>
         <Route path="/growth/ads/last-14-days">{() => <GrowthSection id="last-14-days" />}</Route>

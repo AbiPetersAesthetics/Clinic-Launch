@@ -25,7 +25,7 @@ export type BriefItem =
   | { kind: "bank"; id: string; title: string; detail: string; bank: BankLite | null; fundingOptions: FundingOption[]; sources: Chip[] };
 export interface Brief {
   asOf: string; state: Tone; verdict: string; items: BriefItem[]; more: number; total: number; vitals: Kpi[];
-  runs: { line: string; count: number; since: string }; areas: { key: string; title: string; state: Tone; verdict: string; href: string }[];
+  runs: { line: string; count: number; since: string }; areas: { key: string; title: string; state: Tone; verdict: string; href: string; sources?: Chip[]; extra?: any }[];
   dates: { date: string; label: string; area: string; what: string; href: string }[];
 }
 export interface Run { id: number; agent: string; status: string; summary: string | null; sources: { source: string; to?: string }[]; wrote: string[]; proposed: number; alerts: number; started_at: string | null; finished_at: string }

@@ -71,7 +71,7 @@ export function ProposalCard({ p, compact = false }: { p: Proposal; compact?: bo
         <span className="text-[0.75rem] text-ink-muted">{p.agent}, {dayTime(p.created_at)}</span>
         {p.status === "asked" && <span className="text-[0.7rem] rounded-full bg-watch-bg text-watch px-2 py-0.5">Asked</span>}
       </div>
-      <h3 className="font-display text-[1.15rem] sm:text-[1.2rem] leading-snug text-ink">{p.title}</h3>
+      <h3 className="font-sans font-semibold text-[1.06rem] sm:text-[1.1rem] leading-snug text-ink">{p.title}</h3>
       {open ? (
         <div className="grid gap-1.5 text-[0.9rem] text-ink leading-relaxed">
           {p.why && <p><span className="font-semibold">Why: </span>{p.why}</p>}

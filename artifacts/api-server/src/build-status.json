@@ -1,51 +1,281 @@
 {
-  "updatedIso": "2026-11-15T21:05:00Z",
+  "updatedIso": "2026-11-15T21:45:00Z",
   "items": [
-    { "area": "Today", "name": "Daily brief: verdict and needs you", "status": "done", "note": "Live from the server's brief; every figure carries its source and age; stale sources left out of the verdict." },
-    { "area": "Today", "name": "One line from each area", "status": "done", "note": "Money, Growth, Patients and Clinic verdicts." },
-    { "area": "Today", "name": "Dates this week", "status": "done", "note": "Campaign switches, filming due, card 0% ends, VAT returns, compliance dates, opening milestones." },
-    { "area": "Today", "name": "Bank balance prompt", "status": "done", "note": "A card with the input when the typed balance is over 7 days old." },
-    { "area": "Today", "name": "What ALFRED did", "status": "partial", "note": "Shows logged runs; most agents log from their next run." },
-    { "area": "Money", "name": "Command layer", "status": "partial", "note": "Bank, lowest month-end, takings this week, out this month. Due out in 14 days still uses the month's plan figure." },
-    { "area": "Money", "name": "Build Cash Board", "status": "done", "note": "Unchanged master record as a detail page." },
-    { "area": "Money", "name": "Stands Alone", "status": "partial", "note": "The test and the plan month by month; actual months measured from December." },
-    { "area": "Money", "name": "Takings", "status": "partial", "note": "Taken and booked against the plan; the week by week record builds from the daily refresh." },
-    { "area": "Money", "name": "Obligations", "status": "partial", "note": "VAT dates, cards and 0% ends, loans, directors' loan. VAT amounts are the plan's estimates." },
-    { "area": "Money", "name": "Cash Line and Money Plan", "status": "done", "note": "Detail pages; the Money Plan build failure fixed." },
-    { "area": "Growth", "name": "Command layer", "status": "done", "note": "Cost per booked, cost per paying patient, return on ad spend, leads this week; this month line." },
-    { "area": "Growth", "name": "Ads", "status": "done", "note": "Command board in one phone scroll; every ad, last 14 days, simulator, how it works one tap away." },
-    { "area": "Growth", "name": "Plan with Ideas", "status": "done", "note": "12 month calendar and month by month, Ideas as a tab." },
-    { "area": "Growth", "name": "Studio", "status": "partial", "note": "Filming queue and what is live; post performance waits for the Meta review to push it." },
-    { "area": "Growth", "name": "Search and reviews", "status": "partial", "note": "Tracked queries per clinic with the 3 day rule; Google reviews against rivals wait for the Tuesday run." },
-    { "area": "Growth", "name": "Market", "status": "done", "note": "The existing merged page." },
-    { "area": "Patients", "name": "Command layer", "status": "done", "note": "Consultations booked; new patients, conversion and no-shows not measured until opening, with dates." },
-    { "area": "Patients", "name": "Pathway", "status": "done", "note": "Every lead with match method, outside bookings and the accuracy checks." },
-    { "area": "Patients", "name": "Follow up", "status": "done", "note": "Open leads with a drafted message for Abi to send herself." },
-    { "area": "Patients", "name": "Due back", "status": "partial", "note": "Not measured until Winchester opens; the clinic refresh run book must add it." },
-    { "area": "Patients", "name": "Reviews", "status": "partial", "note": "Not measured until the Tuesday run and opening." },
-    { "area": "Clinic", "name": "Command layer", "status": "done", "note": "Diary next 14 days by clinic, booked this week, days to opening, expiring items." },
-    { "area": "Clinic", "name": "Diary", "status": "done", "note": "The Clinic Board as a detail page." },
-    { "area": "Clinic", "name": "Team and capacity", "status": "partial", "note": "The existing People page; the second clinician trigger is not yet stated on it." },
-    { "area": "Clinic", "name": "Compliance", "status": "partial", "note": "The existing list; not yet trimmed to dated items that can lapse." },
-    { "area": "Clinic", "name": "Stock", "status": "done", "note": "A simple list with reorder points; empty until items are added." },
-    { "area": "Clinic", "name": "Opening checklist", "status": "partial", "note": "Plan and Timeline; archiving itself after 8 December is not yet built." },
-    { "area": "Abi", "name": "Abi's screen", "status": "done", "note": "Today and tomorrow, filming, messages to send, reviews, low stock." },
-    { "area": "More", "name": "Inbox", "status": "done", "note": "Grouped, Approve all, take back a queued item, decided history." },
-    { "area": "More", "name": "Activity", "status": "done", "note": "Every run with filters." },
-    { "area": "More", "name": "Sources", "status": "done", "note": "Each source, last read, next run, healthy or not." },
-    { "area": "More", "name": "Settings", "status": "done", "note": "Hand and notifications." },
-    { "area": "More", "name": "Archive", "status": "done", "note": "Every retired page kept." },
-    { "area": "Shell", "name": "Navigation", "status": "done", "note": "Five tabs in left-thumb order, More from the logo, Ctrl+K, old addresses redirect." },
-    { "area": "Shell", "name": "Design pass", "status": "partial", "note": "App screens set as a briefing; server boards share the tokens; final review in the audit." },
-    { "area": "Agents", "name": "Pathway: run book, schedule, first run logged", "status": "done", "note": "Logs every run from step 12." },
-    { "area": "Agents", "name": "Clinic: run book, schedule, first run logged", "status": "partial", "note": "Scheduled; logging added; first logged run due 16 Nov." },
-    { "area": "Agents", "name": "Capacity: run book, schedule, first run logged", "status": "partial", "note": "Proposals and logging added; first run 16 Nov." },
-    { "area": "Agents", "name": "Creative (Meta review): run book, schedule, first run logged", "status": "partial", "note": "Proposals and logging added; first run 16 Nov." },
-    { "area": "Agents", "name": "Money watch", "status": "todo", "note": "Run book written; schedule not yet created." },
-    { "area": "Agents", "name": "Search and reviews", "status": "todo", "note": "Run book and schedule to do." },
-    { "area": "Agents", "name": "Brief", "status": "partial", "note": "Builder and run book written; schedule not yet created." },
-    { "area": "Agents", "name": "Auditor", "status": "todo", "note": "Run book written; schedule not yet created." },
-    { "area": "Agents", "name": "Approved items run book and heartbeat", "status": "done", "note": "ops/run-approved.md; the heartbeat marks missed runs." },
-    { "area": "Audit", "name": "Slice 6 audit at 375px", "status": "todo", "note": "Every screen against the three promises and the design bar." }
+    {
+      "area": "Today",
+      "name": "Daily brief: verdict and needs you",
+      "status": "done",
+      "note": "Live from the server's brief; every figure carries its source and age; stale sources left out of the verdict."
+    },
+    {
+      "area": "Today",
+      "name": "One line from each area",
+      "status": "done",
+      "note": "Money, Growth, Patients and Clinic verdicts."
+    },
+    {
+      "area": "Today",
+      "name": "Dates this week",
+      "status": "done",
+      "note": "Campaign switches, filming due, card 0% ends, VAT returns, compliance dates, opening milestones."
+    },
+    {
+      "area": "Today",
+      "name": "Bank balance prompt",
+      "status": "done",
+      "note": "A card with the input when the typed balance is over 7 days old."
+    },
+    {
+      "area": "Today",
+      "name": "What ALFRED did",
+      "status": "partial",
+      "note": "Shows logged runs; most agents log from their next run."
+    },
+    {
+      "area": "Money",
+      "name": "Command layer",
+      "status": "partial",
+      "note": "Bank, lowest month-end, takings this week, out this month. Due out in 14 days still uses the month's plan figure."
+    },
+    {
+      "area": "Money",
+      "name": "Build Cash Board",
+      "status": "done",
+      "note": "Unchanged master record as a detail page."
+    },
+    {
+      "area": "Money",
+      "name": "Stands Alone",
+      "status": "partial",
+      "note": "The test and the plan month by month; actual months measured from December."
+    },
+    {
+      "area": "Money",
+      "name": "Takings",
+      "status": "partial",
+      "note": "Taken and booked against the plan; the week by week record builds from the daily refresh."
+    },
+    {
+      "area": "Money",
+      "name": "Obligations",
+      "status": "partial",
+      "note": "VAT dates, cards and 0% ends, loans, directors' loan. VAT amounts are the plan's estimates."
+    },
+    {
+      "area": "Money",
+      "name": "Cash Line and Money Plan",
+      "status": "done",
+      "note": "Detail pages; the Money Plan build failure fixed."
+    },
+    {
+      "area": "Growth",
+      "name": "Command layer",
+      "status": "done",
+      "note": "Cost per booked, cost per paying patient, return on ad spend, leads this week; this month line."
+    },
+    {
+      "area": "Growth",
+      "name": "Ads",
+      "status": "done",
+      "note": "Command board in one phone scroll; every ad, last 14 days, simulator, how it works one tap away."
+    },
+    {
+      "area": "Growth",
+      "name": "Plan with Ideas",
+      "status": "done",
+      "note": "12 month calendar and month by month, Ideas as a tab."
+    },
+    {
+      "area": "Growth",
+      "name": "Studio",
+      "status": "partial",
+      "note": "Filming queue and what is live; post performance waits for the Meta review to push it."
+    },
+    {
+      "area": "Growth",
+      "name": "Search and reviews",
+      "status": "partial",
+      "note": "Tracked queries per clinic with the 3 day rule; Google reviews against rivals wait for the Tuesday run."
+    },
+    {
+      "area": "Growth",
+      "name": "Market",
+      "status": "done",
+      "note": "The existing merged page."
+    },
+    {
+      "area": "Patients",
+      "name": "Command layer",
+      "status": "done",
+      "note": "Consultations booked; new patients, conversion and no-shows not measured until opening, with dates."
+    },
+    {
+      "area": "Patients",
+      "name": "Pathway",
+      "status": "done",
+      "note": "Every lead with match method, outside bookings and the accuracy checks."
+    },
+    {
+      "area": "Patients",
+      "name": "Follow up",
+      "status": "partial",
+      "note": "Being replaced: open leads move into Pathway, and follow-ups become one approval card sent through GHL after your yes."
+    },
+    {
+      "area": "Patients",
+      "name": "Due back",
+      "status": "partial",
+      "note": "Not measured until Winchester opens; the clinic refresh run book must add it."
+    },
+    {
+      "area": "Patients",
+      "name": "Reviews",
+      "status": "partial",
+      "note": "Not measured until the Tuesday run and opening."
+    },
+    {
+      "area": "Clinic",
+      "name": "Command layer",
+      "status": "done",
+      "note": "Diary next 14 days by clinic, booked this week, days to opening, expiring items."
+    },
+    {
+      "area": "Clinic",
+      "name": "Diary",
+      "status": "done",
+      "note": "The Clinic Board as a detail page."
+    },
+    {
+      "area": "Clinic",
+      "name": "Team and capacity",
+      "status": "partial",
+      "note": "The existing People page; the second clinician trigger is not yet stated on it."
+    },
+    {
+      "area": "Clinic",
+      "name": "Compliance",
+      "status": "partial",
+      "note": "The existing list; not yet trimmed to dated items that can lapse."
+    },
+    {
+      "area": "Clinic",
+      "name": "Stock",
+      "status": "done",
+      "note": "A simple list with reorder points; empty until items are added."
+    },
+    {
+      "area": "Clinic",
+      "name": "Opening checklist",
+      "status": "partial",
+      "note": "Plan and Timeline; archiving itself after 8 December is not yet built."
+    },
+    {
+      "area": "Abi",
+      "name": "Abi's screen",
+      "status": "done",
+      "note": "Today and tomorrow, filming, messages to send, reviews, low stock."
+    },
+    {
+      "area": "More",
+      "name": "Inbox",
+      "status": "done",
+      "note": "Grouped, Approve all, take back a queued item, decided history."
+    },
+    {
+      "area": "More",
+      "name": "Activity",
+      "status": "done",
+      "note": "Every run with filters."
+    },
+    {
+      "area": "More",
+      "name": "Sources",
+      "status": "done",
+      "note": "Each source, last read, next run, healthy or not."
+    },
+    {
+      "area": "More",
+      "name": "Settings",
+      "status": "done",
+      "note": "Hand and notifications."
+    },
+    {
+      "area": "More",
+      "name": "Archive",
+      "status": "done",
+      "note": "Every retired page kept."
+    },
+    {
+      "area": "Shell",
+      "name": "Navigation",
+      "status": "done",
+      "note": "Five tabs in left-thumb order, More from the logo, Ctrl+K, old addresses redirect."
+    },
+    {
+      "area": "Shell",
+      "name": "Design pass",
+      "status": "partial",
+      "note": "Design reset under way: Today and Growth rebuilt as the reference (plain sentence per idea, bullet, funnel, line and timeline charts, one sans family); docs/ALFRED-DESIGN.md written; other screens follow."
+    },
+    {
+      "area": "Agents",
+      "name": "Pathway: run book, schedule, first run logged",
+      "status": "done",
+      "note": "Logs every run from step 12."
+    },
+    {
+      "area": "Agents",
+      "name": "Clinic: run book, schedule, first run logged",
+      "status": "partial",
+      "note": "Scheduled; logging added; first logged run due 16 Nov."
+    },
+    {
+      "area": "Agents",
+      "name": "Capacity: run book, schedule, first run logged",
+      "status": "partial",
+      "note": "Proposals and logging added; first run 16 Nov."
+    },
+    {
+      "area": "Agents",
+      "name": "Creative (Meta review): run book, schedule, first run logged",
+      "status": "partial",
+      "note": "Proposals and logging added; first run 16 Nov."
+    },
+    {
+      "area": "Agents",
+      "name": "Money watch",
+      "status": "todo",
+      "note": "Run book written; schedule not yet created."
+    },
+    {
+      "area": "Agents",
+      "name": "Search and reviews",
+      "status": "todo",
+      "note": "Run book and schedule to do."
+    },
+    {
+      "area": "Agents",
+      "name": "Brief",
+      "status": "partial",
+      "note": "Builder and run book written; schedule not yet created."
+    },
+    {
+      "area": "Agents",
+      "name": "Auditor",
+      "status": "todo",
+      "note": "Run book written; schedule not yet created."
+    },
+    {
+      "area": "Agents",
+      "name": "Approved items run book and heartbeat",
+      "status": "done",
+      "note": "ops/run-approved.md; the heartbeat marks missed runs."
+    },
+    {
+      "area": "Audit",
+      "name": "Slice 6 audit at 375px",
+      "status": "todo",
+      "note": "Every screen against the three promises and the design bar."
+    }
   ]
 }

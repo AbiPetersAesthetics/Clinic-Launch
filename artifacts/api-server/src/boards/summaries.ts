@@ -27,7 +27,7 @@ export interface Alert {
 
 export interface Summary {
   key: string;
-  area: "money" | "growth" | "clinic";
+  area: "money" | "growth" | "clinic" | "patients";
   title: string;
   state: Tone;
   verdict: string;
@@ -106,12 +106,8 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
   const open = leads.filter((l) => l.status === "open" && l.formIso && now.getTime() - Date.parse(l.formIso) > 48 * 3600000)
     .map((l) => ({ name: l.name as string, days: Math.floor((now.getTime() - Date.parse(l.formIso)) / 86400000) }))
     .sort((a, b) => b.days - a.days);
-  if (open.length) alerts.push({
-    id: "ads-open-leads", area: "ads", level: "watch",
-    title: `Call ${open.length === 1 ? open[0].name : `${num(open.length)} open leads`}: no booking after two days`,
-    detail: `${open.map((o) => `${o.name} (${o.days} days)`).join(", ")}. A call from Abi is the next step; ALFRED never messages leads.`,
-    sources: [sources[1]], href: "/patients/follow-up",
-  });
+  // Leads still open are a Patients matter: they show on Pathway, and any follow-up comes as one card.
+
   // An ad that has spent £20 with no lead meets the playbook's pause rule.
   const groups = new Map<string, { spend: number; leads: number; active: boolean }>();
   for (const a of p.ads ?? []) { const g = groups.get(a.creative) ?? { spend: 0, leads: 0, active: false }; g.spend += a.spend; g.leads += a.leads; g.active ||= a.status === "Active"; groups.set(a.creative, g); }
@@ -158,7 +154,23 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
     paying.length ? { label: "Return on ad spend, first visit", value: `${(firstRevenue / spend).toFixed(1)}x`, compare: "industry about 1.5x to 2x (agency figures)", source: sources[2] } : { label: "Return on ad spend", value: null, notMeasured: { reason: "needs the first paying patient; industry first visit about 1.5x to 2x", from: `about ${firstClose}` }, source: sources[2] },
     { label: "Leads, 7 days", value: String(leadsW), compare: `${bookedW} booked; ${hadPrev ? `last week ${leadsP} leads, ${bookedP} booked` : `first week: ads began ${dayMonth(firstDay)}`}`, source: sources[1] },
   ];
-  return { key: "ads", area: "growth", title: "Ads", state, verdict, detail: p.summary, kpis, sources, alerts, keeper, extra: { leads: n, booked, spend, cpp, firstClose, firstAppt, pathway, thisMonth, leadsW, bookedW, growthKpis } };
+  // Chart data: leads per day for the last 14 days, the funnel, and the campaign timeline.
+  const days14 = Array.from({ length: 14 }, (_, i) => addDays(today, i - 13)).map((d) => ({
+    date: d, label: new Date(d + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+    leads: leads.filter((l) => l.formIso && ukDay(l.formIso) === d).length,
+    booked: leads.filter((l) => l.status === "booked" && l.bookedIso && ukDay(l.bookedIso) === d).length,
+    spend: Number(daily.find((x) => x.date === d)?.spend ?? 0),
+    running: d >= firstDay,
+  }));
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const ym0 = today.slice(0, 7);
+  const months = Array.from({ length: 6 }, (_, i) => { const [y, m] = ym0.split("-").map(Number); const t = new Date(Date.UTC(y, m - 1 + i, 1)); return `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, "0")}`; });
+  const idx = (ymd: string) => months.indexOf(ymd.slice(0, 7));
+  const timeline = camps.filter((c) => (c.start ?? "") <= months[5] + "-31" && (!c.end || c.end >= months[0] + "-01")).map((c) => ({
+    label: c.name, from: Math.max(0, idx(c.start) < 0 ? 0 : idx(c.start)), to: !c.end || idx(c.end) < 0 ? 5 : idx(c.end), live: c.start <= today && (!c.end || c.end >= today),
+  })).slice(0, 7);
+  const viz = { cpb, cpbTarget: T.costPerBooked, cpl: n ? spend / n : null, cplLow: T.costPerLead[0], cplHigh: T.costPerLead[1], cpp, cppTarget: T.costPerPaying, days14, firstDay, timeline: { months: months.map((m) => MON[Number(m.slice(5)) - 1]), rows: timeline, todayIndex: 0 } };
+  return { key: "ads", area: "growth", title: "Ads", state, verdict, detail: p.summary, kpis, sources, alerts, keeper, extra: { leads: n, booked, spend, cpp, firstClose, firstAppt, pathway, thisMonth, leadsW, bookedW, leadsP, bookedP, hadPrev, growthKpis, viz } };
 }
 
 // ── Clinic ──────────────────────────────────────────────────────────────────
@@ -199,7 +211,8 @@ export function clinicSummary(c: any | null, now = new Date(), extra: { expiring
     toOpen > 0 ? { label: "Winchester opens in", value: `${toOpen} ${toOpen === 1 ? "day" : "days"}`, compare: `8 December at 9A Jewry Street; model days 2 and 3 December` } : { label: "Winchester", value: "Open", compare: `since ${dayMonth(opening)}` },
     { label: "Expiring in 30 days", value: extra?.expiring != null ? String(extra.expiring) : null, compare: "dated compliance items", notMeasured: extra?.expiring != null ? undefined : { reason: "no dated compliance items yet" } },
   ];
-  return { key: "clinic", area: "clinic", title: "Clinic", state, verdict, kpis: kpis.slice(0, 4), sources, alerts, keeper, extra: { toOpen, appts, fill7 } };
+  const vizDays = days.map((d: any) => ({ label: new Date(d.date + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" }), booked: d.bookedMins, open: Math.max(0, H * 60 - d.blockedMins), blocked: d.appts === 0 && d.blockedMins >= H * 60 - 30, clinic: d.clinic }));
+  return { key: "clinic", area: "clinic", title: "Clinic", state, verdict, kpis: kpis.slice(0, 4), sources, alerts, keeper, extra: { toOpen, appts, fill7, fill14: tot.open ? tot.booked / tot.open : null, where, viz: { days: vizDays } } };
 }
 
 // ── Money ───────────────────────────────────────────────────────────────────
@@ -252,7 +265,8 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date(),
   ];
   return {
     key: "money", area: "money", title: "Money", state, verdict, kpis, sources, alerts, keeper,
-    extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [] } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank },
+    extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [] } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank,
+      viz: { floor, low, points: ahead.slice(0, 12).map((r: any) => ({ label: r.label, value: Math.round(r.closingBank) })) } },
   };
 }
 
@@ -281,10 +295,16 @@ export function patientsSummary(p: any | null, c: any | null, followUps: number,
     c?.attendance ? { label: "No-show rate", value: pct(c.attendance.noShows / Math.max(1, c.attendance.attended + c.attendance.noShows)), compare: "last 4 weeks", source: takings } : { label: "No-show rate", value: null, notMeasured: { reason: "read from ANS from the first Winchester consultations", from: dayMonth(opening) }, source: takings },
   ];
   const alerts: Alert[] = [];
-  if (followUps) alerts.push({ id: "patients-follow-up", area: "patients", level: "watch", title: `${cap(num(followUps))} ${followUps === 1 ? "person to follow up" : "people to follow up"}, messages drafted`, detail: "Each has a personal message drafted for Abi to send herself; ALFRED never messages patients.", sources: [ghl], href: "/patients/follow-up" });
+  if (followUps) alerts.push({ id: "patients-follow-up", area: "patients", level: "watch", title: `${cap(num(followUps))} ${followUps === 1 ? "person has" : "people have"} not booked yet`, detail: "Listed on Pathway with how long each has waited. When a follow-up is worth sending, the pathway check proposes one WhatsApp from the clinic number for your yes; nothing is sent without it.", sources: [ghl], href: "/patients/pathway" });
   const stale = ghl.state === "stale";
   const verdict = stale ? `Lead figures are stale (as at ${p?.updated}); a pathway check did not run.`
     : !p ? "No lead data yet: the next pathway check pushes it."
     : `${booked} consultations are booked from the ads, the first on ${firstAppt}. New patients, conversion, returns and no-shows are measured from opening on ${dayMonth(opening)}.`;
-  return { key: "patients", area: "growth", title: "Patients", state: stale ? "stale" : followUps ? "watch" : "good", verdict, kpis, sources: [ghl, ans], alerts, keeper };
+  const funnel = [
+    { label: "Leads", value: leads.length },
+    { label: "Booked", value: booked },
+    { label: "Seen", value: c?.attendance ? null : null, note: `from ${firstAppt}` },
+    { label: "Paying", value: closed.length ? treated : null, note: `from about ${firstClose}` },
+  ];
+  return { key: "patients", area: "patients", title: "Patients", state: stale ? "stale" : followUps ? "watch" : "good", verdict, kpis, sources: [ghl, ans], alerts, keeper, extra: { booked, leads: leads.length, waiting: followUps, viz: { funnel } } };
 }

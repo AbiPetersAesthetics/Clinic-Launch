@@ -80,7 +80,7 @@ export async function composeBrief(projectId: number) {
     items: items.slice(0, 5), more: Math.max(0, items.length - 5), total: items.length,
     vitals,
     runs: { line: runsLine(runs, missed), count: runs.length, since: new Date(now.getTime() - 24 * 3600000).toISOString() },
-    areas: [money, ads, patients, clinic].map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict, href: s.key === "growth" ? "/growth" : `/${s.key}` })),
+    areas: [money, ads, patients, clinic].map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict, href: s.key === "growth" ? "/growth" : `/${s.key}`, sources: s.sources, extra: s.extra })),
     dates,
   };
 }

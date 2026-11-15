@@ -12,7 +12,7 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
     <header className="space-y-3">
       {back && <Link href={back.href} className="inline-flex items-center gap-1 min-h-[36px] -ml-1 text-[0.85rem] text-slate"><ChevronLeft className="w-4 h-4" />{back.label}</Link>}
       <div><span className="eyebrow">{eyebrow}</span></div>
-      <h1 className="font-display text-[2rem] sm:text-[2.5rem] leading-[1.1] text-ink font-medium">{title}</h1>
+      <h1 className="font-sans text-[1.75rem] sm:text-[2.1rem] leading-[1.15] text-ink font-semibold tracking-[-0.015em]">{title}</h1>
       {children}
     </header>
   );
@@ -87,8 +87,8 @@ export function AlertCard({ area, level, title, detail, sources, href }: { area:
         <span className="text-slate">{AREA[area] ?? area}</span>
         <span className={`inline-flex items-center gap-1.5 ${L.text}`}><span aria-hidden className={`w-[8px] h-[8px] rounded-full border-2 ${L.dot}`} />{L.word}</span>
       </div>
-      <h3 className="font-display text-[1.12rem] sm:text-[1.2rem] leading-snug text-ink font-medium">{title}</h3>
-      {detail && <p className="text-[0.88rem] text-ink leading-relaxed line-clamp-3 sm:line-clamp-none">{detail}</p>}
+      <h3 className="font-sans text-[1.06rem] sm:text-[1.1rem] leading-snug text-ink font-semibold">{title}</h3>
+      {detail && <p className="text-[0.95rem] text-ink-2 leading-relaxed line-clamp-3 sm:line-clamp-none">{detail}</p>}
       <div className="flex flex-wrap items-center gap-x-4">
         {sources && <Sources chips={sources} />}
         {href && <Link href={href} className="ml-auto inline-flex items-center min-h-[44px] px-5 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-ink hover:bg-wash">Open</Link>}
