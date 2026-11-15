@@ -28,18 +28,22 @@ import TendersPage from "@/pages/tenders";
 import DigestPage from "@/pages/digest";
 import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
-import ClinicBoardPage from "@/pages/clinic-board";
-import HomePage from "@/pages/home";
 import KitPage from "@/pages/kit";
 import MoneyPlanPage from "@/pages/money-plan";
 import CashLinePage from "@/pages/cash-line";
 import CardsPage from "@/pages/cards";
 import OwedPage from "@/pages/owed";
-import MoneyOverviewPage from "@/pages/money/index";
 import AdsCommandPage from "@/pages/growth/ads";
-import { GrowthSection } from "@/pages/growth/section";
-import GrowthOverviewPage from "@/pages/growth/index";
-import ClinicOverviewPage from "@/pages/clinic/index";
+import HomePage from "@/pages/home";
+import { GrowthSection, PlanPage } from "@/pages/growth/section";
+import { MoneyArea, GrowthArea, PatientsArea, ClinicArea } from "@/pages/areas";
+import { BuildCashPage, StandsAlonePage, TakingsPage, ObligationsPage } from "@/pages/money/pages";
+import { StudioPage, SearchPage } from "@/pages/growth/studio";
+import { PathwayPage, FollowUpPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
+import { DiaryPage, StockPage } from "@/pages/clinic/pages";
+import SourcesPage from "@/pages/sources";
+import AbiPage from "@/pages/abi";
+import ArchiveHomePage from "@/pages/archive-home";
 import InboxPage from "@/pages/inbox";
 import ActivityPage from "@/pages/activity";
 import MorePage from "@/pages/more";
@@ -170,52 +174,53 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={HomePage} />
-        <Route path="/money" component={MoneyOverviewPage} />
+
+        <Route path="/money" component={MoneyArea} />
+        <Route path="/money/build-cash" component={BuildCashPage} />
+        <Route path="/money/stands-alone" component={StandsAlonePage} />
+        <Route path="/money/takings" component={TakingsPage} />
+        <Route path="/money/obligations" component={ObligationsPage} />
         <Route path="/money/cash-line" component={CashLinePage} />
         <Route path="/money/plan" component={MoneyPlanPage} />
-        <Route path="/money/cards" component={CardsPage} />
-        <Route path="/money/owed" component={OwedPage} />
-        <Route path="/money/build-cash">{() => <Moved to="/money" />}</Route>
-        <Route path="/growth" component={GrowthOverviewPage} />
+
+        <Route path="/growth" component={GrowthArea} />
         <Route path="/growth/ads" component={AdsCommandPage} />
         <Route path="/growth/ads/every-ad">{() => <GrowthSection id="every-ad" />}</Route>
-        <Route path="/growth/ads/leads">{() => <GrowthSection id="leads" />}</Route>
-        <Route path="/growth/plan">{() => <GrowthSection id="plan" />}</Route>
-        <Route path="/growth/last-14-days">{() => <GrowthSection id="last-14-days" />}</Route>
-        <Route path="/growth/simulator">{() => <GrowthSection id="simulator" />}</Route>
-        <Route path="/growth/how-it-works">{() => <GrowthSection id="how-it-works" />}</Route>
-        <Route path="/growth/ideas">{() => <GrowthSection id="ideas" />}</Route>
+        <Route path="/growth/ads/last-14-days">{() => <GrowthSection id="last-14-days" />}</Route>
+        <Route path="/growth/ads/simulator">{() => <GrowthSection id="simulator" />}</Route>
+        <Route path="/growth/ads/how-it-works">{() => <GrowthSection id="how-it-works" />}</Route>
+        <Route path="/growth/plan" component={PlanPage} />
+        <Route path="/growth/studio" component={StudioPage} />
+        <Route path="/growth/search" component={SearchPage} />
         <Route path="/growth/market" component={MarketHubPage} />
-        <Route path="/growth/marketing" component={MarketingPage} />
-        <Route path="/clinic" component={ClinicOverviewPage} />
-        <Route path="/clinic/board" component={ClinicBoardPage} />
-        <Route path="/clinic/people" component={PeoplePage} />
+
+        <Route path="/patients" component={PatientsArea} />
+        <Route path="/patients/pathway" component={PathwayPage} />
+        <Route path="/patients/follow-up" component={FollowUpPage} />
+        <Route path="/patients/due-back" component={DueBackPage} />
+        <Route path="/patients/reviews" component={ReviewsPage} />
+
+        <Route path="/clinic" component={ClinicArea} />
+        <Route path="/clinic/diary" component={DiaryPage} />
+        <Route path="/clinic/team" component={PeoplePage} />
         <Route path="/clinic/compliance" component={CompliancePage} />
-        <Route path="/clinic/plan" component={ProjectPage} />
+        <Route path="/clinic/stock" component={StockPage} />
+        <Route path="/clinic/opening" component={ProjectPage} />
+
+        <Route path="/more" component={MorePage} />
         <Route path="/inbox" component={InboxPage} />
         <Route path="/activity" component={ActivityPage} />
-        <Route path="/more" component={MorePage} />
+        <Route path="/sources" component={SourcesPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/abi" component={AbiPage} />
+
+        {/* The archive, under More: nothing deleted */}
+        <Route path="/archive/home-tiles" component={ArchiveHomePage} />
+        <Route path="/archive/ads-ideas">{() => <GrowthSection id="ideas" />}</Route>
+        <Route path="/archive/launch-marketing" component={MarketingPage} />
+        <Route path="/archive/cards" component={CardsPage} />
+        <Route path="/archive/owed" component={OwedPage} />
         <Route path="/opening-board">{() => <GrowthSection id="opening" />}</Route>
-
-        {/* Old addresses, kept working */}
-        <Route path="/build-cash">{() => <Moved to="/money" />}</Route>
-        <Route path="/cash-line">{() => <Moved to="/money/cash-line" />}</Route>
-        <Route path="/money-plan">{() => <Moved to="/money/plan" />}</Route>
-        <Route path="/cards">{() => <Moved to="/money/cards" />}</Route>
-        <Route path="/owed">{() => <Moved to="/money/owed" />}</Route>
-        <Route path="/ads-board">{() => <Moved to="/growth/ads" />}</Route>
-        <Route path="/ads-pathway">{() => <Moved to="/growth/ads/leads" />}</Route>
-        <Route path="/ads-ideas">{() => <Moved to="/growth/ideas" />}</Route>
-        <Route path="/market">{() => <Moved to="/growth/market" />}</Route>
-        <Route path="/competition">{() => <Moved to="/growth/market#competitors" />}</Route>
-        <Route path="/marketing">{() => <Moved to="/growth/marketing" />}</Route>
-        <Route path="/clinic-board">{() => <Moved to="/clinic/board" />}</Route>
-        <Route path="/people">{() => <Moved to="/clinic/people" />}</Route>
-        <Route path="/compliance">{() => <Moved to="/clinic/compliance" />}</Route>
-        <Route path="/project">{() => <Moved to="/clinic/plan" />}</Route>
-
-        {/* The archive, under More */}
         <Route path="/today" component={TodayPage} />
         <Route path="/dashboard" component={DashboardPage} />
         <Route path="/financials" component={FinancialsPage} />
@@ -234,6 +239,36 @@ function Router() {
         <Route path="/tenders" component={TendersPage} />
         <Route path="/digest" component={DigestPage} />
         <Route path="/risk-intelligence" component={RiskIntelligencePage} />
+
+        {/* Old addresses, kept working */}
+        <Route path="/build-cash">{() => <Moved to="/money/build-cash" />}</Route>
+        <Route path="/cash-line">{() => <Moved to="/money/cash-line" />}</Route>
+        <Route path="/money-plan">{() => <Moved to="/money/plan" />}</Route>
+        <Route path="/cards">{() => <Moved to="/money/obligations" />}</Route>
+        <Route path="/money/cards">{() => <Moved to="/money/obligations" />}</Route>
+        <Route path="/owed">{() => <Moved to="/money/obligations" />}</Route>
+        <Route path="/money/owed">{() => <Moved to="/money/obligations" />}</Route>
+        <Route path="/ads-board">{() => <Moved to="/growth/ads" />}</Route>
+        <Route path="/ads-pathway">{() => <Moved to="/patients/pathway" />}</Route>
+        <Route path="/growth/ads/leads">{() => <Moved to="/patients/pathway" />}</Route>
+        <Route path="/ads-ideas">{() => <Moved to="/growth/plan#ideas" />}</Route>
+        <Route path="/growth/ideas">{() => <Moved to="/growth/plan#ideas" />}</Route>
+        <Route path="/growth/last-14-days">{() => <Moved to="/growth/ads/last-14-days" />}</Route>
+        <Route path="/growth/simulator">{() => <Moved to="/growth/ads/simulator" />}</Route>
+        <Route path="/growth/how-it-works">{() => <Moved to="/growth/ads/how-it-works" />}</Route>
+        <Route path="/social-board">{() => <Moved to="/growth/studio" />}</Route>
+        <Route path="/seo-board">{() => <Moved to="/growth/search" />}</Route>
+        <Route path="/market">{() => <Moved to="/growth/market" />}</Route>
+        <Route path="/competition">{() => <Moved to="/growth/market#competitors" />}</Route>
+        <Route path="/marketing">{() => <Moved to="/archive/launch-marketing" />}</Route>
+        <Route path="/growth/marketing">{() => <Moved to="/archive/launch-marketing" />}</Route>
+        <Route path="/clinic-board">{() => <Moved to="/clinic/diary" />}</Route>
+        <Route path="/clinic/board">{() => <Moved to="/clinic/diary" />}</Route>
+        <Route path="/people">{() => <Moved to="/clinic/team" />}</Route>
+        <Route path="/clinic/people">{() => <Moved to="/clinic/team" />}</Route>
+        <Route path="/compliance">{() => <Moved to="/clinic/compliance" />}</Route>
+        <Route path="/project">{() => <Moved to="/clinic/opening" />}</Route>
+        <Route path="/clinic/plan">{() => <Moved to="/clinic/opening" />}</Route>
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

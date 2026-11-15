@@ -256,6 +256,7 @@
 
 /* The website's eyebrow: small tracked capitals in slate with a 6px slate dot. */
 .eyebrow {
+  font-family: var(--app-font-sans);
   display: inline-flex; align-items: center; gap: 0.65em;
   font-size: 0.72rem; font-weight: 600; letter-spacing: 0.22em; text-transform: uppercase; color: #445B72;
 }

@@ -2,7 +2,7 @@
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { buildCashModel } from "../routes/cash-model";
-import { adsSummary, clinicSummary, moneySummary, type CardLite, type Summary } from "../boards/summaries";
+import { adsSummary, clinicSummary, moneySummary, growthSummary, patientsSummary, type CardLite, type Summary } from "../boards/summaries";
 
 const first = (r: unknown) => (((r as any).rows ?? r) as any[])[0] ?? null;
 
@@ -38,16 +38,34 @@ export async function cardBalances(projectId: number): Promise<CardLite[]> {
   });
 }
 
-export async function summaryFor(projectId: number, key: "ads" | "clinic" | "money"): Promise<Summary> {
-  if (key === "ads") return adsSummary(await latestAds(projectId), new Date(), await latestBoardRow(projectId, "videos"));
-  if (key === "clinic") return clinicSummary(await latestBoard(projectId, "clinic"));
+export type SummaryKey = "ads" | "clinic" | "money" | "growth" | "patients";
+export async function summaryFor(projectId: number, key: SummaryKey): Promise<Summary> {
+  if (key === "ads" || key === "growth") {
+    const s = adsSummary(await latestAds(projectId), new Date(), await latestBoardRow(projectId, "videos"));
+    return key === "growth" ? growthSummary(s) : s;
+  }
+  if (key === "patients") {
+    const p = await latestAds(projectId);
+    const open = (p?.leads ?? []).filter((l: any) => (l.status === "open" && l.formIso) || (l.attended === true && l.treated !== true)).length;
+    return patientsSummary(p, await latestBoard(projectId, "clinic"), open);
+  }
+  if (key === "clinic") {
+    let expiring: number | null = null;
+    try {
+      const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(new Date());
+      const end = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      const r = first(await db.execute(sql`SELECT count(*) FILTER (WHERE required_by_date >= ${today} AND required_by_date <= ${end}) AS n, count(*) FILTER (WHERE required_by_date IS NOT NULL) AS dated FROM compliance_items WHERE project_id = ${projectId} AND coalesce(status, '') NOT IN ('complete', 'done', 'not_applicable')`));
+      expiring = Number(r?.dated ?? 0) > 0 ? Number(r?.n ?? 0) : null;
+    } catch { expiring = null; }
+    return clinicSummary(await latestBoard(projectId, "clinic"), new Date(), { expiring });
+  }
   let J: any = null;
   try { J = await buildCashModel(projectId, { months: 12 }); } catch (err) { console.error("[summary money]", err); }
-  return moneySummary(J, await cardBalances(projectId));
+  return moneySummary(J, await cardBalances(projectId), new Date(), await latestBoard(projectId, "clinic"));
 }
 
 // Which summary each board page shows above its detail.
-export const BOARD_SUMMARY: Record<string, "ads" | "clinic" | "money"> = {
-  ads: "ads", "ads-ideas": "ads", opening: "ads", clinic: "clinic",
+export const BOARD_SUMMARY: Record<string, SummaryKey> = {
+  growth: "growth", patients: "patients", ads: "ads", "ads-ideas": "ads", opening: "ads", clinic: "clinic",
   "build-cash": "money", "cash-line": "money", "money-plan": "money", money: "money",
 };

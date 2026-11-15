@@ -1,17 +1,13 @@
-// The phone tab bar (UX plan 2.3), ordered for the left thumb: Today at bottom left, the easiest
-// reach, carrying the count of things that need David; More at the far right. A right hand in
-// Settings mirrors the order. Labels are always shown; 64px tall plus the safe area.
+// The phone tab bar, left to right Today, Money, Growth, Patients, Clinic: Today under the left
+// thumb with its count. A right hand in Settings mirrors the order. More opens from the logo.
 import { Link } from "wouter";
-import { AREAS, EXTRA, areaOf } from "./nav";
+import { AREAS, areaOf } from "./nav";
 import { useHand } from "@/lib/alfred";
 
 export function BottomTabs({ location, count }: { location: string; count: number }) {
   const hand = useHand();
-  const more = EXTRA[2];
-  const tabs = [...AREAS.map((a) => ({ key: a.key, href: a.href, label: a.label, icon: a.icon })), { key: "more", href: more.href, label: more.label, icon: more.icon }];
-  const ordered = hand === "right" ? [...tabs].reverse() : tabs;
-  const area = areaOf(location);
-  const current = area === "inbox" ? "today" : area === "activity" ? "more" : area;
+  const ordered = hand === "right" ? [...AREAS].reverse() : AREAS;
+  const current = areaOf(location);
   return (
     <nav aria-label="Main" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <ul className="grid grid-cols-5 h-16">

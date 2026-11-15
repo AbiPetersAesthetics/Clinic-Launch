@@ -17,7 +17,7 @@ export interface Kpi {
 
 export interface Alert {
   id: string;
-  area: "ads" | "money" | "clinic" | "growth";
+  area: "ads" | "money" | "clinic" | "growth" | "patients";
   level: "act" | "watch";
   title: string;
   detail?: string;
@@ -110,7 +110,7 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
     id: "ads-open-leads", area: "ads", level: "watch",
     title: `Call ${open.length === 1 ? open[0].name : `${num(open.length)} open leads`}: no booking after two days`,
     detail: `${open.map((o) => `${o.name} (${o.days} days)`).join(", ")}. A call from Abi is the next step; ALFRED never messages leads.`,
-    sources: [sources[1]], href: "/growth/ads/leads",
+    sources: [sources[1]], href: "/patients/follow-up",
   });
   // An ad that has spent £20 with no lead meets the playbook's pause rule.
   const groups = new Map<string, { spend: number; leads: number; active: boolean }>();
@@ -120,7 +120,7 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
   const due = (videos?.videos ?? []).filter((v: any) => v.filmBy && !["live", "filmed", "done", "dropped"].includes(String(v.status)) && v.filmBy <= addDays(today, 7)).sort((a: any, b: any) => a.filmBy.localeCompare(b.filmBy));
   if (due.length) alerts.push({ id: "ads-film", area: "ads", level: due[0].filmBy < today ? "act" : "watch", title: `Film ${due[0].id} "${due[0].title}" by ${dayMonth(due[0].filmBy)}`, detail: `For ${due[0].forCampaign}. Hook: ${due[0].hook}${due.length > 1 ? ` (${due.length - 1} more due this week)` : ""}`, sources: [freshness("videos", videos?.pushedIso ?? null, { now })], href: "/growth/social" });
   const uncertain: string[] = p.checks?.uncertain ?? [];
-  if (uncertain.length) alerts.push({ id: "ads-uncertain", area: "ads", level: "watch", title: `${cap(num(uncertain.length))} ${uncertain.length === 1 ? "booking needs" : "bookings need"} checking`, detail: uncertain.slice(0, 2).join(" "), sources, href: "/growth/ads/leads" });
+  if (uncertain.length) alerts.push({ id: "ads-uncertain", area: "ads", level: "watch", title: `${cap(num(uncertain.length))} ${uncertain.length === 1 ? "booking needs" : "bookings need"} checking`, detail: uncertain.slice(0, 2).join(" "), sources, href: "/patients/pathway" });
 
   const stale = sources.some((s) => s.state === "stale");
   if (stale) {
@@ -151,17 +151,23 @@ export function adsSummary(p: any | null, now = new Date(), videos: any | null =
   const budget = p.budgetAdvice?.current ?? liveNow.reduce((s, c) => s + Math.max(0, Number(c.perDay ?? 0)), 0);
   const thisMonth = `${liveNow.length ? `Live: ${liveNow.map((c) => c.name).join(", ")}` : "Nothing live"}${budget ? ` (£${budget} a day)` : ""}.${next ? ` Next to switch on: ${next.name}, ${dayMonth(next.start)}.` : ""}`;
 
-  return { key: "ads", area: "growth", title: "Ads", state, verdict, detail: p.summary, kpis, sources, alerts, keeper, extra: { leads: n, booked, spend, cpp, firstClose, pathway, thisMonth, leadsW, bookedW } };
+  const firstRevenue = paying.reduce((t, l) => t + (l.firstValue ?? 0), 0);
+  const growthKpis: Kpi[] = [
+    { label: "Cost per booked consultation", value: cpb != null ? gbp(cpb) : null, compare: `${booked} booked ${since}; target under £${T.costPerBooked}`, source: sources[2], tone: cpb != null ? (cpb <= T.costPerBooked ? "good" : "watch") : undefined, notMeasured: cpb == null ? { reason: "no consultations booked yet" } : undefined },
+    cpp != null ? { label: "Cost per paying patient", value: gbp(cpp), compare: `target under £${T.costPerPaying}`, source: sources[2], tone: cpp <= T.costPerPaying ? "good" : "act" } : { label: "Cost per paying patient", value: null, notMeasured: { reason: `needs 30 days after the first consultation (${firstAppt})`, from: `about ${firstClose}` }, source: sources[2] },
+    paying.length ? { label: "Return on ad spend, first visit", value: `${(firstRevenue / spend).toFixed(1)}x`, compare: "industry about 1.5x to 2x (agency figures)", source: sources[2] } : { label: "Return on ad spend", value: null, notMeasured: { reason: "needs the first paying patient; industry first visit about 1.5x to 2x", from: `about ${firstClose}` }, source: sources[2] },
+    { label: "Leads, 7 days", value: String(leadsW), compare: `${bookedW} booked; ${hadPrev ? `last week ${leadsP} leads, ${bookedP} booked` : `first week: ads began ${dayMonth(firstDay)}`}`, source: sources[1] },
+  ];
+  return { key: "ads", area: "growth", title: "Ads", state, verdict, detail: p.summary, kpis, sources, alerts, keeper, extra: { leads: n, booked, spend, cpp, firstClose, firstAppt, pathway, thisMonth, leadsW, bookedW, growthKpis } };
 }
 
 // ── Clinic ──────────────────────────────────────────────────────────────────
 
-export function clinicSummary(c: any | null, now = new Date()): Summary {
+export function clinicSummary(c: any | null, now = new Date(), extra: { expiring?: number | null } = {}): Summary {
   const keeper = "Kept current by the clinic refresh, daily at about 07:40 from ANS";
   if (!c) return { key: "clinic", area: "clinic", title: "Clinic", state: "stale", verdict: "No clinic snapshot yet: the daily refresh at about 07:40 saves one each morning.", kpis: [], sources: [], alerts: [], keeper };
   const src = freshness("ansTakings", c.updatedIso ?? null, { now });
   const sources = [src];
-  const rows: any[] = c.takings?.rows ?? [];
   const today = londonToday(now);
   const days: any[] = (c.diary?.days ?? []).filter((d: any) => d.date >= today);
   const H = Number(c.diary?.clinicDayHours ?? 7);
@@ -173,24 +179,26 @@ export function clinicSummary(c: any | null, now = new Date()): Summary {
   const opening = c.openingDate ?? "2026-12-08";
   const toOpen = daysTo(opening, now);
   const where = toOpen > 0 ? "Bedhampton" : "both clinics";
-  const week = rows[0];
 
   const alerts: Alert[] = [];
-  if (fill7 != null && fill7 < 0.3) alerts.push({ id: "clinic-diary-low", area: "clinic", level: "watch", title: `The diary is ${pct(fill7)} booked for the next 7 days`, detail: `${where}: under 30% of open clinical time is booked.`, sources, href: "/clinic/board" });
+  if (fill7 != null && fill7 < 0.3) alerts.push({ id: "clinic-diary-low", area: "clinic", level: "watch", title: `The diary is ${pct(fill7)} booked for the next 7 days`, detail: `${where}: under 30% of open clinical time is booked.`, sources, href: "/clinic/diary" });
 
   let state: Tone = alerts.length ? "watch" : "good";
-  let verdict = `${week ? `${gbp0(week.total)} taken ${/week/i.test(week.period) ? "this week" : week.period}` : "Takings not read yet"}; ${appts} appointments in the next 14 days${fill7 != null ? `, ${pct(fill7)} of the next 7 days booked` : ""}.`;
+  let verdict = `${appts} appointments in the next 14 days at ${where}${fill7 != null ? `, ${pct(fill7)} of the next 7 days' open time booked` : ""}.${toOpen > 0 ? ` Winchester opens in ${toOpen} ${toOpen === 1 ? "day" : "days"}.` : ""}`;
   if (src.state === "stale") { state = "stale"; verdict = `Clinic figures are from ${c.updated}: the daily refresh at about 07:40 has not saved a newer snapshot.`; }
 
-  const month = rows.find((r) => /so far/i.test(r.period));
-  const kpis: Kpi[] = [];
-  if (week) kpis.push({ label: "Taken this week", value: gbp0(week.total), compare: `${week.period.replace(/^This week /i, "")}, ${where}, as invoiced (with any VAT)`, source: src });
-  if (month) kpis.push({ label: "Taken this month", value: gbp0(month.total), compare: month.booked ? `plus ${gbp0(month.booked)} booked to ${month.bookedTo}, not yet taken` : where, source: src });
-  kpis.push({ label: "Next 14 days", value: `${appts} appts`, compare: `${hours.toFixed(1)} h booked, ${where}`, source: src });
-  kpis.push({ label: "Diary, next 7 days", value: fill7 != null ? pct(fill7) : null, compare: "of open clinical time booked", source: src, notMeasured: fill7 == null ? { reason: "no clinic days in the next 7 days" } : undefined });
-  kpis.push(c.attendance
-    ? { label: "Attended", value: pct(c.attendance.attended / Math.max(1, c.attendance.attended + c.attendance.noShows)), compare: "of booked, last 4 weeks", source: src }
-    : { label: "Attended", value: null, notMeasured: { reason: "read from ANS once Winchester is seeing patients", from: dayMonth(opening) }, source: src });
+  const byClinic = new Map<string, { open: number; booked: number }>();
+  for (const d of days) { const k = byClinic.get(d.clinic) ?? { open: 0, booked: 0 }; k.open += Math.max(0, H * 60 - d.blockedMins); k.booked += d.bookedMins; byClinic.set(d.clinic, k); }
+  const fill14 = [...byClinic.entries()].map(([k, v]) => `${k} ${v.open ? pct(v.booked / v.open) : "closed"}`).join(", ");
+  const tot = [...byClinic.values()].reduce((a, v) => ({ open: a.open + v.open, booked: a.booked + v.booked }), { open: 0, booked: 0 });
+  const dow = (new Date(today + "T12:00:00Z").getUTCDay() + 6) % 7, monday = new Date(Date.parse(today + "T12:00:00Z") - dow * 86400000).toISOString().slice(0, 10), sunday = new Date(Date.parse(monday + "T12:00:00Z") + 6 * 86400000).toISOString().slice(0, 10);
+  const weekMins = days.filter((d: any) => d.date >= monday && d.date <= sunday).reduce((t: number, d: any) => t + d.bookedMins, 0);
+  const kpis: Kpi[] = [
+    { label: "Diary, next 14 days", value: tot.open ? pct(tot.booked / tot.open) : null, compare: `of open clinical time; ${fill14 || "no clinic days"}`, source: src, notMeasured: tot.open ? undefined : { reason: "no clinic days in the next 14 days" } },
+    { label: "Booked this week", value: `${(weekMins / 60).toFixed(1)} h`, compare: `Mon ${dayMonth(monday)} to Sun ${dayMonth(sunday)}, still to come`, source: src },
+    toOpen > 0 ? { label: "Winchester opens in", value: `${toOpen} ${toOpen === 1 ? "day" : "days"}`, compare: `8 December at 9A Jewry Street; model days 2 and 3 December` } : { label: "Winchester", value: "Open", compare: `since ${dayMonth(opening)}` },
+    { label: "Expiring in 30 days", value: extra?.expiring != null ? String(extra.expiring) : null, compare: "dated compliance items", notMeasured: extra?.expiring != null ? undefined : { reason: "no dated compliance items yet" } },
+  ];
   return { key: "clinic", area: "clinic", title: "Clinic", state, verdict, kpis: kpis.slice(0, 4), sources, alerts, keeper, extra: { toOpen, appts, fill7 } };
 }
 
@@ -198,7 +206,7 @@ export function clinicSummary(c: any | null, now = new Date()): Summary {
 
 export interface CardLite { name: string; limit: number; balance: number; lastEntry: string | null }
 
-export function moneySummary(J: any | null, cards: CardLite[], now = new Date()): Summary {
+export function moneySummary(J: any | null, cards: CardLite[], now = new Date(), clinic: any | null = null): Summary {
   const keeper = "Bank typed by David; cards from the Credit Cards register; the plan follows Plan & Timeline";
   const bank = J?.bank ?? null;
   const bankChip = freshness("bank", bank?.asAt ?? null, { now });
@@ -229,11 +237,54 @@ export function moneySummary(J: any | null, cards: CardLite[], now = new Date())
 
   const kpis: Kpi[] = [
     bank ? { label: "Bank", value: gbp0(bank.balanceGbp), compare: `Tide, typed for ${dayMonth(bank.asAt)}`, source: bankChip } : { label: "Bank", value: null, notMeasured: { reason: "type today's balance on Money" }, source: bankChip },
-    low ? { label: "Lowest month-end", value: gbp0(low.bank), compare: `${low.month}, from the plan${bankChip.state === "stale" ? " (built on a stale bank figure)" : ""}`, source: bankChip, tone: low.bank < 0 ? "act" : low.bank < floor ? "watch" : undefined } : { label: "Lowest month-end", value: null, notMeasured: { reason: "the plan has no months ahead" } },
-    { label: "Credit cards owed", value: gbp0(owed), compare: limit ? `of ${gbp0(limit)} limits, ${credit.length} cards` : "no credit cards on the register", source: cardChip },
+    low ? { label: "Lowest month-end ahead", value: gbp0(low.bank), compare: `${low.month}, from the plan${bankChip.state === "stale" ? " (built on a stale bank figure)" : ""}`, source: bankChip, tone: low.bank < 0 ? "act" : low.bank < floor ? "watch" : undefined } : { label: "Lowest month-end", value: null, notMeasured: { reason: "the plan has no months ahead" } },
+    (() => {
+      const wk = clinic?.takings?.rows?.[0], mo = (clinic?.takings?.rows ?? []).find((r: any) => /so far/i.test(r.period));
+      const tChip = freshness("ansTakings", clinic?.updatedIso ?? null, { now });
+      return wk ? { label: "Taken this week", value: gbp0(wk.total), compare: `${mo?.booked ? `plus ${gbp0(mo.booked)} booked to ${mo.bookedTo}; ` : ""}Bedhampton, as invoiced`, source: tChip } as Kpi
+        : { label: "Taken this week", value: null, notMeasured: { reason: "the clinic refresh has not saved takings yet" }, source: tChip } as Kpi;
+    })(),
+    (() => {
+      const row = (J?.rows ?? []).find((r: any) => r.month === londonToday(now).slice(0, 7));
+      return row ? { label: "Out of the bank this month", value: gbp0(row.moneyOutBank), compare: `${row.label}, the plan's payments`, source: bankChip } as Kpi
+        : { label: "Out of the bank this month", value: null, notMeasured: { reason: "the plan has no row for this month" } } as Kpi;
+    })(),
   ];
   return {
     key: "money", area: "money", title: "Money", state, verdict, kpis, sources, alerts, keeper,
     extra: { bank: bank ? { balanceGbp: bank.balanceGbp, asAt: bank.asAt, inBalance: bank.inBalance ?? [] } : null, fundingOptions: J?.fundingOptions ?? [], bankStale: bankChip.state === "stale" || !bank },
   };
+}
+
+// ── Growth: the area command, from the ads figures ──
+export function growthSummary(ads: Summary): Summary {
+  return { ...ads, key: "growth", title: "Growth", kpis: (ads.extra?.growthKpis as Kpi[]) ?? ads.kpis, keeper: "Kept current by the pathway check, the capacity review and the Meta review" };
+}
+
+// ── Patients ──
+export function patientsSummary(p: any | null, c: any | null, followUps: number, now = new Date()): Summary {
+  const keeper = "Kept current by the pathway check (ad leads) and the clinic refresh (patients, from opening)";
+  const asOf = p?.updatedIso ?? null;
+  const ghl = freshness("ghl", asOf, { now }), ans = freshness("ans", asOf, { now }), takings = freshness("ansTakings", c?.updatedIso ?? null, { now });
+  const leads: any[] = p?.leads ?? [];
+  const booked = leads.filter((l) => l.status === "booked").length;
+  const appts = leads.map((l) => l.apptIso).filter(Boolean).sort() as string[];
+  const firstAppt = appts[0] ? dayMonth(appts[0]) : "the first consultation";
+  const firstClose = appts[0] ? dayMonth(new Date(Date.parse(appts[0]) + 30 * 86400000).toISOString()) : "30 days after it";
+  const opening = c?.openingDate ?? "2026-12-08";
+  const closed = leads.filter((l) => l.treated === true || l.treated === false);
+  const treated = leads.filter((l) => l.treated === true).length;
+  const kpis: Kpi[] = [
+    { label: "Consultations booked from the ads", value: String(booked), compare: `of ${leads.length} leads since ${p?.windowFrom ?? "the ads began"}; first ${firstAppt}`, source: ans },
+    c?.patients ? { label: "New patients, last 4 weeks", value: String(c.patients.newPatients), compare: `${c.patients.returning} came back`, source: takings } : { label: "New patients this month", value: null, notMeasured: { reason: "read from ANS once Winchester is seeing patients", from: dayMonth(opening) }, source: takings },
+    closed.length >= 5 ? { label: "Consultation to treatment", value: `${treated} of ${closed.length}`, compare: "ad leads past their 30 days", source: ans } : { label: "Consultation to treatment", value: null, notMeasured: { reason: "needs five consultations past their 30 days; only this campaign's own leads are used", from: `about ${firstClose}` }, source: ans },
+    c?.attendance ? { label: "No-show rate", value: pct(c.attendance.noShows / Math.max(1, c.attendance.attended + c.attendance.noShows)), compare: "last 4 weeks", source: takings } : { label: "No-show rate", value: null, notMeasured: { reason: "read from ANS from the first Winchester consultations", from: dayMonth(opening) }, source: takings },
+  ];
+  const alerts: Alert[] = [];
+  if (followUps) alerts.push({ id: "patients-follow-up", area: "patients", level: "watch", title: `${cap(num(followUps))} ${followUps === 1 ? "person to follow up" : "people to follow up"}, messages drafted`, detail: "Each has a personal message drafted for Abi to send herself; ALFRED never messages patients.", sources: [ghl], href: "/patients/follow-up" });
+  const stale = ghl.state === "stale";
+  const verdict = stale ? `Lead figures are stale (as at ${p?.updated}); a pathway check did not run.`
+    : !p ? "No lead data yet: the next pathway check pushes it."
+    : `${booked} consultations are booked from the ads, the first on ${firstAppt}. New patients, conversion, returns and no-shows are measured from opening on ${dayMonth(opening)}.`;
+  return { key: "patients", area: "growth", title: "Patients", state: stale ? "stale" : followUps ? "watch" : "good", verdict, kpis, sources: [ghl, ans], alerts, keeper };
 }

@@ -15,9 +15,9 @@ export const SCHEDULES: Schedule[] = [
   { agent: "Clinic refresh", slots: [7.5], graceH: 2, label: "daily at about 07:40" },
   { agent: "Meta review", slots: [9.5], weekdays: [1, 4], graceH: 3, label: "Mondays and Thursdays 09:30" },
   { agent: "Capacity review", slots: [12.5], weekdays: [1], graceH: 3, label: "Mondays 12:30" },
-  { agent: "Money watch", slots: [7], weekdays: [1], graceH: 3, label: "Mondays 07:00" },
-  { agent: "Content planner", slots: [10], weekdays: [5], graceH: 3, label: "Fridays 10:00" },
-  { agent: "Morning brief", slots: [7.75], graceH: 2, label: "daily 07:45" },
+  { agent: "Money watch", slots: [7 + 50 / 60], graceH: 2, label: "daily 07:50" },
+  { agent: "Search and reviews", slots: [8.5], weekdays: [2], graceH: 3, label: "Tuesdays 08:30" },
+  { agent: "Brief", slots: [7 + 55 / 60], graceH: 2, label: "daily 07:55" },
 ];
 
 const hm = (d: Date) => d.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });

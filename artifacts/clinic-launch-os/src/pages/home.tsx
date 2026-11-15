@@ -1,124 +1,123 @@
-// Today: the brief ALFRED opens on (UX plan 2.1 and wireframes 5.1 and 5.2). One verdict, the few
-// things that need David, four vital signs and the runs of the last 24 hours. Composed by the
-// server from what the agents wrote (GET /brief); every figure carries its source and age.
+// Today: the brief ALFRED opens on (ALFRED-PLAN.md section 2). One verdict sentence; what needs
+// David (at most five, the rest in the inbox); one line from each area; the dates this week merged
+// from every area; and what ALFRED did. Composed by the server from what the agents wrote.
 import { useState } from "react";
 import { Link } from "wouter";
-import { ChevronRight, Copy } from "lucide-react";
-import { useBrief, type BriefItem } from "@/lib/alfred";
-import { Verdict } from "@/components/verdict";
-import { KpiGrid } from "@/components/kpi";
+import { Copy } from "lucide-react";
+import { useBrief, useActivity, dayTime, type BriefItem } from "@/lib/alfred";
+import { Verdict, StateWord } from "@/components/verdict";
 import { ProposalCard } from "@/components/proposal-card";
 import { BankInput } from "@/components/bank-input";
-import { Fresh } from "@/components/fresh";
+import { Sources } from "@/components/fresh";
+import { Page, PageHead, Section, Rows, RowItem, AlertCard } from "@/components/page";
 import { Skeleton } from "@/components/ui/skeleton";
 
 function greeting() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hour12: false, timeZone: "Europe/London" }).format(new Date()));
   return h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
 }
-const AREA: Record<string, string> = { ads: "Ads", money: "Money", clinic: "Clinic", growth: "Growth" };
 
 export function BriefItemCard({ item }: { item: BriefItem }) {
   if (item.kind === "proposal") return <ProposalCard p={item.proposal} compact />;
   if (item.kind === "bank") {
     return (
-      <article className="rounded-xl border border-card-border bg-card p-4 sm:p-5 grid gap-3">
-        <span className="eyebrow">Money</span>
-        <h3 className="font-display text-[1.15rem] leading-snug text-ink">{item.title}</h3>
-        <p className="text-[0.9rem] text-ink-muted leading-relaxed">{item.detail}</p>
-        <div className="flex flex-wrap gap-1.5">{item.sources.map((c) => <Fresh key={c.source} chip={c} />)}</div>
+      <article className="rounded-xl border border-card-border bg-card p-4 sm:p-5 grid gap-2.5 min-w-0">
+        <span className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate">Money</span>
+        <h3 className="font-display text-[1.12rem] sm:text-[1.2rem] leading-snug text-ink font-medium">{item.title}</h3>
+        <p className="text-[0.88rem] text-ink-muted leading-relaxed">{item.detail}</p>
+        <Sources chips={item.sources} />
         <BankInput bank={item.bank} fundingOptions={item.fundingOptions} />
       </article>
     );
   }
-  const a = item.kind === "alert" ? item.alert : null;
-  const s = item.kind === "stale" ? item : null;
-  const title = a?.title ?? s?.title ?? "";
-  const detail = a?.detail ?? s?.detail ?? "";
-  const href = a?.href ?? s?.href;
-  const sources = a?.sources ?? s?.sources ?? [];
-  const area = a?.area ?? s?.area ?? "";
-  const level = a ? a.level : "stale";
-  return (
-    <article className={`rounded-xl border p-3.5 sm:p-5 grid gap-1.5 sm:gap-2.5 ${level === "act" ? "border-act/40 bg-act-bg" : "border-card-border bg-card"}`}>
-      <div className="flex items-center gap-2">
-        <span className="eyebrow">{AREA[area] ?? area}</span>
-        <span className={`text-[0.7rem] rounded-full px-2 py-0.5 ${level === "act" ? "bg-act text-white" : level === "stale" ? "border border-ink-muted text-ink-muted" : "bg-watch-bg text-watch"}`}>{level === "act" ? "Act" : level === "stale" ? "Stale" : "Watch"}</span>
-      </div>
-      <h3 className="font-display text-[1.08rem] sm:text-[1.15rem] leading-snug text-ink">{title}</h3>
-      {detail && <p className="text-[0.85rem] sm:text-[0.9rem] text-ink leading-relaxed line-clamp-2 sm:line-clamp-none">{detail}</p>}
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        {sources.map((c) => <Fresh key={c.source} chip={c} small />)}
-        {href && <Link href={href} className="ml-auto inline-flex items-center min-h-[44px] px-4 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink hover:bg-wash">Open<ChevronRight className="w-4 h-4 ml-1" /></Link>}
-      </div>
-    </article>
-  );
+  if (item.kind === "stale") return <AlertCard area={item.area} level="stale" title={item.title} detail={item.detail} sources={item.sources} href={item.href} />;
+  const a = item.alert;
+  return <AlertCard area={a.area} level={a.level} title={a.title} detail={a.detail} sources={a.sources} href={a.href} />;
 }
+
+const RUNWORD: Record<string, string> = { ok: "ran", partial: "ran in part", failed: "failed", missed: "did not run" };
 
 export default function HomePage() {
   const { data, isLoading, error, refetch } = useBrief();
+  const { data: act } = useActivity();
   const [showAll, setShowAll] = useState(false);
   const date = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
 
   if (error) {
     const msg = error instanceof Error ? error.message : String(error);
     return (
-      <div className="space-y-4 max-w-2xl">
-        <span className="eyebrow">{date}</span>
-        <h1 className="font-display text-[1.9rem]">Today's brief could not be built</h1>
-        <p className="text-ink-muted">The server said: {msg}. The boards still open from the menu.</p>
+      <Page>
+        <PageHead eyebrow={date} title="Today's brief could not be built" />
+        <p className="text-ink-muted">The server said: {msg}. Every area still opens from the tabs.</p>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => refetch()} className="min-h-[44px] px-6 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em]">Try again</button>
           <button type="button" onClick={() => navigator.clipboard?.writeText(`ALFRED Today failed: ${msg}`)} className="min-h-[44px] px-5 rounded-full border border-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] inline-flex items-center gap-2"><Copy className="w-4 h-4" />Copy for Claude</button>
         </div>
-      </div>
+      </Page>
     );
   }
 
   const items = data?.items ?? [];
+  const runs = (act?.runs ?? []).slice(0, 3);
   return (
-    <div className="space-y-8 sm:space-y-10 max-w-5xl">
-      <header className="space-y-3">
-        <span className="eyebrow">{date}</span>
-        <h1 className="font-display text-[1.9rem] sm:text-[2.4rem] leading-tight text-ink">{greeting()}, David.</h1>
-        {isLoading || !data ? <Skeleton className="h-7 w-full max-w-xl rounded-xl" /> : <Verdict state={data.state} text={data.verdict} />}
-      </header>
+    <Page>
+      <PageHead eyebrow={date} title={`${greeting()}, David.`}>
+        {isLoading || !data ? <Skeleton className="h-16 w-full max-w-xl rounded-xl" /> : <Verdict state={data.state} text={data.verdict} />}
+      </PageHead>
 
-      <section className="space-y-3" aria-labelledby="needs">
-        <h2 id="needs" className="eyebrow">Needs you</h2>
-        {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-2"><Skeleton className="h-48 rounded-xl" /><Skeleton className="h-48 rounded-xl hidden md:block" /></div>
-        ) : items.length === 0 ? (
-          <div className="rounded-xl bg-sage-whisper p-5"><p className="font-display text-[1.15rem] text-ink">Nothing needs you.</p><p className="text-ink-muted text-[0.9rem] mt-1">{data?.runs.line}</p></div>
-        ) : (
-          <>
-            <div className="grid gap-4 md:grid-cols-2 items-start">
-              {/* On a phone the first two items show; the rest are one tap away. */}
-              {items.map((it, i) => <div key={it.id} className={`min-w-0 ${!showAll && i >= 2 ? "hidden md:block" : ""}`}><BriefItemCard item={it} /></div>)}
-            </div>
-            {!showAll && items.length > 2 && (
-              <button type="button" onClick={() => setShowAll(true)} className="md:hidden min-h-[44px] text-slate underline text-[0.95rem]">{items.length - 2} more</button>
-            )}
-            {(data?.more ?? 0) > 0 && <Link href="/inbox" className="inline-flex min-h-[44px] items-center text-slate underline text-[0.95rem]">{data!.more} more in the inbox</Link>}
-          </>
-        )}
-      </section>
-
-      <section className="space-y-3" aria-labelledby="vitals">
-        <h2 id="vitals" className="eyebrow">Vital signs</h2>
-        {isLoading || !data ? <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[0, 1, 2, 3].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div> : <KpiGrid kpis={data.vitals} max={4} />}
-        <nav className="flex flex-wrap gap-x-6 gap-y-1" aria-label="Areas">
-          {[["Money", "/money"], ["Growth", "/growth"], ["Clinic", "/clinic"]].map(([l, h]) => (
-            <Link key={h} href={h} className="inline-flex items-center min-h-[44px] text-ink font-semibold hover:text-slate">{l}<ChevronRight className="w-4 h-4" /></Link>
-          ))}
-        </nav>
-      </section>
+      <Section title="Needs you" id="needs" note={data && data.total > items.length ? <Link href="/inbox" className="underline">all {data.total}</Link> : undefined}>
+        {isLoading ? <Skeleton className="h-44 rounded-xl" />
+          : items.length === 0 ? <p className="font-display text-[1.15rem] text-ink">Nothing needs you. {data?.runs.line}</p>
+          : (
+            <>
+              <div className="grid gap-3 md:grid-cols-2 items-start">
+                {items.map((it, i) => <div key={it.id} className={`min-w-0 ${!showAll && i >= 2 ? "hidden md:block" : ""}`}><BriefItemCard item={it} /></div>)}
+              </div>
+              {!showAll && items.length > 2 && <button type="button" onClick={() => setShowAll(true)} className="md:hidden min-h-[44px] text-slate underline text-[0.95rem]">{items.length - 2} more</button>}
+            </>
+          )}
+      </Section>
 
       {data && (
-        <Link href="/activity" className="flex items-center gap-1 min-h-[44px] text-[0.9rem] text-ink-muted hover:text-ink">
-          {data.runs.line}<ChevronRight className="w-4 h-4 shrink-0" />
-        </Link>
+        <Section title="Each area" id="areas">
+          <Rows>
+            {data.areas.map((a) => (
+              <RowItem key={a.key} href={a.href}>
+                <span className="min-w-0 grid gap-1">
+                  <span className="flex items-center gap-3"><span className="font-semibold text-ink">{a.title}</span><StateWord state={a.state} /></span>
+                  <span className="text-[0.9rem] text-ink leading-relaxed line-clamp-2 sm:line-clamp-none">{a.verdict.replace(/^(On track|Watch|Act|Stale)[.:]\s*/, "")}</span>
+                </span>
+              </RowItem>
+            ))}
+          </Rows>
+        </Section>
       )}
-    </div>
+
+      {data && (
+        <Section title="Dates this week" id="dates" note={data.dates.length > 5 ? `and ${data.dates.length - 5} more` : undefined}>
+          {data.dates.length === 0 ? <p className="text-[0.9rem] text-ink-muted">Nothing dated in the next seven days across ads, filming, money, compliance or the opening.</p> : (
+            <Rows>
+              {data.dates.slice(0, 5).map((d, i) => (
+                <RowItem key={i} href={d.href}>
+                  <span className="w-[6.5rem] shrink-0 text-[0.85rem] text-ink-muted tabular pt-0.5">{d.label}</span>
+                  <span className="min-w-0 text-[0.92rem] text-ink">{d.what}</span>
+                </RowItem>
+              ))}
+            </Rows>
+          )}
+        </Section>
+      )}
+
+      {data && (
+        <Section title="What ALFRED did" id="did" note={<Link href="/activity" className="underline">Activity</Link>}>
+          <p className="text-[0.92rem] text-ink">{data.runs.line}</p>
+          {runs.length > 0 && (
+            <ul className="space-y-1.5">
+              {runs.map((r) => <li key={r.id} className="text-[0.88rem] text-ink-muted leading-relaxed"><span className="text-ink">{r.agent}</span> {RUNWORD[r.status] ?? r.status} {dayTime(r.started_at ?? r.finished_at)}{r.summary ? `: ${r.summary}` : "."}</li>)}
+            </ul>
+          )}
+        </Section>
+      )}
+    </Page>
   );
 }

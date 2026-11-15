@@ -8,6 +8,7 @@ import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { openProposals, recentActivity } from "./proposals";
 import { missedRuns } from "../lib/heartbeat";
+import { datesAhead } from "./pages";
 import type { Summary, Alert, Kpi } from "../boards/summaries";
 import type { ProposalRow, ActivityRow } from "../lib/agent-tables";
 
@@ -20,7 +21,7 @@ export type BriefItem =
   | { kind: "bank"; id: string; title: string; detail: string; bank: unknown; fundingOptions: unknown; sources: Summary["sources"] };
 
 const words = ["Nothing", "One thing", "Two things", "Three things", "Four things", "Five things", "Six things", "Seven things"];
-const HREF: Record<string, string> = { ads: "/growth/ads", clinic: "/clinic/board", money: "/money" };
+const HREF: Record<string, string> = { ads: "/growth/ads", growth: "/growth", patients: "/patients", clinic: "/clinic/diary", money: "/money" };
 
 function runsLine(runs: ActivityRow[], missed: { agent: string; due: string }[]) {
   const fine = runs.filter((r) => r.status === "ok").length;
@@ -40,12 +41,13 @@ function runsLine(runs: ActivityRow[], missed: { agent: string; due: string }[])
 
 export async function composeBrief(projectId: number) {
   const now = new Date();
-  const [ads, clinic, money, open, runs, missed] = await Promise.all([
-    summaryFor(projectId, "ads"), summaryFor(projectId, "clinic"), summaryFor(projectId, "money"),
+  const [ads, clinic, money, patients, open, runs, missed, dates] = await Promise.all([
+    summaryFor(projectId, "growth"), summaryFor(projectId, "clinic"), summaryFor(projectId, "money"), summaryFor(projectId, "patients"),
     openProposals(projectId), recentActivity(projectId, new Date(now.getTime() - 24 * 3600000).toISOString()),
     missedRuns(projectId, now).catch(() => []),
+    datesAhead(projectId, 7).catch(() => []),
   ]);
-  const summaries = [money, clinic, ads];
+  const summaries = [money, clinic, patients, ads];
   const fresh = (s: Summary) => s.state !== "stale";
   const alerts = summaries.flatMap((s) => (fresh(s) ? s.alerts : []));
 
@@ -70,7 +72,7 @@ export async function composeBrief(projectId: number) {
   const verdict = `${lead} ${parts.length ? parts.join("; ") + ". " : ""}${needs}`;
 
   const pick = (s: Summary, label: string): Kpi | undefined => s.kpis.find((k) => k.label === label);
-  const vitals = [pick(money, "Bank"), pick(ads, "Leads, 7 days"), pick(ads, "Booked, 7 days"), pick(clinic, "Diary, next 7 days")].filter(Boolean) as Kpi[];
+  const vitals = [pick(money, "Bank"), pick(ads, "Leads, 7 days"), pick(ads, "Booked, 7 days"), pick(clinic, "Diary, next 14 days")].filter(Boolean) as Kpi[];
 
   return {
     asOf: now.toISOString(),
@@ -78,7 +80,8 @@ export async function composeBrief(projectId: number) {
     items: items.slice(0, 5), more: Math.max(0, items.length - 5), total: items.length,
     vitals,
     runs: { line: runsLine(runs, missed), count: runs.length, since: new Date(now.getTime() - 24 * 3600000).toISOString() },
-    areas: summaries.map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict })),
+    areas: [money, ads, patients, clinic].map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict, href: s.key === "growth" ? "/growth" : `/${s.key}` })),
+    dates,
   };
 }
 

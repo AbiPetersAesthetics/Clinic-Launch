@@ -25,7 +25,8 @@ export type BriefItem =
   | { kind: "bank"; id: string; title: string; detail: string; bank: BankLite | null; fundingOptions: FundingOption[]; sources: Chip[] };
 export interface Brief {
   asOf: string; state: Tone; verdict: string; items: BriefItem[]; more: number; total: number; vitals: Kpi[];
-  runs: { line: string; count: number; since: string }; areas: { key: string; title: string; state: Tone; verdict: string }[];
+  runs: { line: string; count: number; since: string }; areas: { key: string; title: string; state: Tone; verdict: string; href: string }[];
+  dates: { date: string; label: string; area: string; what: string; href: string }[];
 }
 export interface Run { id: number; agent: string; status: string; summary: string | null; sources: { source: string; to?: string }[]; wrote: string[]; proposed: number; alerts: number; started_at: string | null; finished_at: string }
 
@@ -60,3 +61,8 @@ export function useHand(): Hand {
 export const toneWord: Record<Tone, string> = { good: "On track", watch: "Watch", act: "Act", stale: "Stale" };
 export const dayMonth = (iso: string) => new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" });
 export const dayTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
+
+// Any ALFRED page's data, from /api/projects/1/pages/<name>.
+export function usePage<T = any>(name: string) {
+  return useQuery({ queryKey: ["alfred", "page", name], queryFn: () => getJson<T>(`/api/projects/${PROJECT_ID}/pages/${name}`) });
+}
