@@ -1,4 +1,4 @@
-import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
+import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,19 +28,22 @@ import TendersPage from "@/pages/tenders";
 import DigestPage from "@/pages/digest";
 import PeoplePage from "@/pages/people";
 import BacklinksPage from "@/pages/backlinks";
-import OpeningBoardPage from "@/pages/opening-board";
-import AdsIdeasPage from "@/pages/ads-ideas";
 import ClinicBoardPage from "@/pages/clinic-board";
 import HomePage from "@/pages/home";
 import KitPage from "@/pages/kit";
-import BuildCashPage from "@/pages/build-cash";
 import MoneyPlanPage from "@/pages/money-plan";
 import CashLinePage from "@/pages/cash-line";
 import CardsPage from "@/pages/cards";
 import OwedPage from "@/pages/owed";
-import MoneyOverviewPage from "@/pages/money";
+import MoneyOverviewPage from "@/pages/money/index";
 import AdsCommandPage from "@/pages/growth/ads";
 import { GrowthSection } from "@/pages/growth/section";
+import GrowthOverviewPage from "@/pages/growth/index";
+import ClinicOverviewPage from "@/pages/clinic/index";
+import InboxPage from "@/pages/inbox";
+import ActivityPage from "@/pages/activity";
+import MorePage from "@/pages/more";
+import SettingsPage from "@/pages/settings";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -152,27 +155,28 @@ function AuthGate({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+// An old address kept working: it moves to the new one, keeping any ?query and #hash.
+function Moved({ to }: { to: string }) {
+  const [, go] = useLocation();
+  useEffect(() => {
+    const [path, hash] = to.split("#");
+    go(`${path}${window.location.search}${hash ? `#${hash}` : window.location.hash}`, { replace: true });
+  }, [to, go]);
+  return null;
+}
+
 function Router() {
   return (
     <AppLayout>
       <Switch>
         <Route path="/" component={HomePage} />
-        <Route path="/today" component={TodayPage} />
-        <Route path="/dashboard" component={DashboardPage} />
-        <Route path="/project" component={ProjectPage} />
-        <Route path="/financials" component={FinancialsPage} />
-        <Route path="/properties" component={PropertiesPage} />
-        <Route path="/decisions" component={DecisionsPage} />
-        <Route path="/optimisation" component={OptimisationPage} />
-        <Route path="/compliance" component={CompliancePage} />
-        <Route path="/franchise" component={FranchisePage} />
-        <Route path="/lifestyle" component={LifestylePage} />
-        <Route path="/marketing" component={MarketingPage} />
-        <Route path="/operational-model" component={OperationalModelPage} />
-        <Route path="/backlinks" component={BacklinksPage} />
-        <Route path="/ads-pathway">{() => <Redirect to="/growth/ads/leads" />}</Route>
-        <Route path="/opening-board" component={OpeningBoardPage} />
-        <Route path="/ads-board">{() => <Redirect to="/growth/ads" />}</Route>
+        <Route path="/money" component={MoneyOverviewPage} />
+        <Route path="/money/cash-line" component={CashLinePage} />
+        <Route path="/money/plan" component={MoneyPlanPage} />
+        <Route path="/money/cards" component={CardsPage} />
+        <Route path="/money/owed" component={OwedPage} />
+        <Route path="/money/build-cash">{() => <Moved to="/money" />}</Route>
+        <Route path="/growth" component={GrowthOverviewPage} />
         <Route path="/growth/ads" component={AdsCommandPage} />
         <Route path="/growth/ads/every-ad">{() => <GrowthSection id="every-ad" />}</Route>
         <Route path="/growth/ads/leads">{() => <GrowthSection id="leads" />}</Route>
@@ -181,29 +185,54 @@ function Router() {
         <Route path="/growth/simulator">{() => <GrowthSection id="simulator" />}</Route>
         <Route path="/growth/how-it-works">{() => <GrowthSection id="how-it-works" />}</Route>
         <Route path="/growth/ideas">{() => <GrowthSection id="ideas" />}</Route>
-        <Route path="/ads-ideas" component={AdsIdeasPage} />
-        <Route path="/clinic-board" component={ClinicBoardPage} />
+        <Route path="/growth/market" component={MarketHubPage} />
+        <Route path="/growth/marketing" component={MarketingPage} />
+        <Route path="/clinic" component={ClinicOverviewPage} />
+        <Route path="/clinic/board" component={ClinicBoardPage} />
+        <Route path="/clinic/people" component={PeoplePage} />
+        <Route path="/clinic/compliance" component={CompliancePage} />
+        <Route path="/clinic/plan" component={ProjectPage} />
+        <Route path="/inbox" component={InboxPage} />
+        <Route path="/activity" component={ActivityPage} />
+        <Route path="/more" component={MorePage} />
+        <Route path="/settings" component={SettingsPage} />
+        <Route path="/opening-board">{() => <GrowthSection id="opening" />}</Route>
+
+        {/* Old addresses, kept working */}
+        <Route path="/build-cash">{() => <Moved to="/money" />}</Route>
+        <Route path="/cash-line">{() => <Moved to="/money/cash-line" />}</Route>
+        <Route path="/money-plan">{() => <Moved to="/money/plan" />}</Route>
+        <Route path="/cards">{() => <Moved to="/money/cards" />}</Route>
+        <Route path="/owed">{() => <Moved to="/money/owed" />}</Route>
+        <Route path="/ads-board">{() => <Moved to="/growth/ads" />}</Route>
+        <Route path="/ads-pathway">{() => <Moved to="/growth/ads/leads" />}</Route>
+        <Route path="/ads-ideas">{() => <Moved to="/growth/ideas" />}</Route>
+        <Route path="/market">{() => <Moved to="/growth/market" />}</Route>
+        <Route path="/competition">{() => <Moved to="/growth/market#competitors" />}</Route>
+        <Route path="/marketing">{() => <Moved to="/growth/marketing" />}</Route>
+        <Route path="/clinic-board">{() => <Moved to="/clinic/board" />}</Route>
+        <Route path="/people">{() => <Moved to="/clinic/people" />}</Route>
+        <Route path="/compliance">{() => <Moved to="/clinic/compliance" />}</Route>
+        <Route path="/project">{() => <Moved to="/clinic/plan" />}</Route>
+
+        {/* The archive, under More */}
+        <Route path="/today" component={TodayPage} />
+        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/financials" component={FinancialsPage} />
+        <Route path="/properties" component={PropertiesPage} />
+        <Route path="/decisions" component={DecisionsPage} />
+        <Route path="/optimisation" component={OptimisationPage} />
+        <Route path="/franchise" component={FranchisePage} />
+        <Route path="/lifestyle" component={LifestylePage} />
+        <Route path="/operational-model" component={OperationalModelPage} />
+        <Route path="/backlinks" component={BacklinksPage} />
         <Route path="/kit" component={KitPage} />
-        <Route path="/build-cash" component={BuildCashPage} />
-        <Route path="/money-plan" component={MoneyPlanPage} />
-        <Route path="/cash-line" component={CashLinePage} />
-        <Route path="/cards" component={CardsPage} />
-        <Route path="/owed" component={OwedPage} />
-        <Route path="/money" component={MoneyOverviewPage} />
-        <Route path="/money/build-cash" component={BuildCashPage} />
-        <Route path="/money/cash-line" component={CashLinePage} />
-        <Route path="/money/plan" component={MoneyPlanPage} />
-        <Route path="/money/cards" component={CardsPage} />
-        <Route path="/money/owed" component={OwedPage} />
-        <Route path="/competition">{() => <Redirect to="/market#competitors" />}</Route>
-        <Route path="/market" component={MarketHubPage} />
         <Route path="/lease-strategy" component={LeaseStrategyPage} />
         <Route path="/export" component={ExportPage} />
         <Route path="/risk-register" component={RiskRegisterPage} />
         <Route path="/suppliers" component={SuppliersPage} />
         <Route path="/tenders" component={TendersPage} />
         <Route path="/digest" component={DigestPage} />
-        <Route path="/people" component={PeoplePage} />
         <Route path="/risk-intelligence" component={RiskIntelligencePage} />
         <Route component={NotFound} />
       </Switch>

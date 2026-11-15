@@ -103,9 +103,9 @@ export function ProposalCard({ p, compact = false }: { p: Proposal; compact?: bo
 
       {mode === "idle" && (
         <div className={row}>
-          <button type="button" disabled={busy} onClick={() => act("approve")} className="min-h-[44px] flex-[2] sm:flex-none sm:px-8 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em] hover:bg-slate disabled:opacity-50">Approve</button>
-          <button type="button" disabled={busy} onClick={() => setMode("reject")} className="min-h-[44px] flex-1 sm:flex-none sm:px-5 rounded-full border border-ink text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Reject</button>
-          <button type="button" disabled={busy} onClick={() => setMode("ask")} className="min-h-[44px] flex-1 sm:flex-none sm:px-4 rounded-full text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Ask</button>
+          <button type="button" disabled={busy} onClick={() => act("approve")} className="min-h-[44px] flex-[2] px-3 rounded-full bg-ink text-white text-[0.78rem] font-semibold uppercase tracking-[0.16em] hover:bg-slate disabled:opacity-50">Approve</button>
+          <button type="button" disabled={busy} onClick={() => setMode("reject")} className="min-h-[44px] flex-1 px-3 rounded-full border border-ink text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Reject</button>
+          <button type="button" disabled={busy} onClick={() => setMode("ask")} className="min-h-[44px] flex-1 px-2 rounded-full text-ink text-[0.78rem] font-semibold uppercase tracking-[0.14em] hover:bg-wash">Ask</button>
         </div>
       )}
       {error && <p className="text-sm text-act" role="alert">{error}</p>}

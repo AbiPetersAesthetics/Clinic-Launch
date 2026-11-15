@@ -94,7 +94,7 @@ export default function HomePage() {
           <>
             <div className="grid gap-4 md:grid-cols-2 items-start">
               {/* On a phone the first two items show; the rest are one tap away. */}
-              {items.map((it, i) => <div key={it.id} className={!showAll && i >= 2 ? "hidden md:block" : ""}><BriefItemCard item={it} /></div>)}
+              {items.map((it, i) => <div key={it.id} className={`min-w-0 ${!showAll && i >= 2 ? "hidden md:block" : ""}`}><BriefItemCard item={it} /></div>)}
             </div>
             {!showAll && items.length > 2 && (
               <button type="button" onClick={() => setShowAll(true)} className="md:hidden min-h-[44px] text-slate underline text-[0.95rem]">{items.length - 2} more</button>

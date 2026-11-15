@@ -3,7 +3,9 @@
 // Ranking: red before amber; proposals before stale sources; money and patients before marketing.
 // A stale source is never used in the verdict and is itself an item.
 import { Router } from "express";
-import { summaryFor } from "../lib/board-data";
+import { summaryFor, latestAds } from "../lib/board-data";
+import { db } from "@workspace/db";
+import { sql } from "drizzle-orm";
 import { openProposals, recentActivity } from "./proposals";
 import { missedRuns } from "../lib/heartbeat";
 import type { Summary, Alert, Kpi } from "../boards/summaries";
@@ -87,6 +89,27 @@ router.get("/projects/:projectId/brief", async (req, res) => {
   } catch (err) {
     console.error("[brief]", err);
     res.status(500).json({ error: "Could not build today's brief" });
+  }
+});
+
+// What the command palette can find: leads (first name and initial only), ads, plan lines and card entries.
+router.get("/projects/:projectId/search-index", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const snap = await latestAds(projectId);
+    const ads = new Map<string, string>();
+    for (const a of snap?.ads ?? []) if (!ads.has(a.creative) || a.status === "Active") ads.set(a.creative, a.status);
+    const rows = (r: unknown) => ((r as any).rows ?? r) as any[];
+    const lines = rows(await db.execute(sql`SELECT t.id, t.title, p.name AS phase FROM launch_tasks t JOIN launch_phases p ON p.id = t.phase_id AND p.project_id = ${projectId} WHERE NOT t.archived ORDER BY p.sort_order, t.id LIMIT 400`));
+    const entries = rows(await db.execute(sql`SELECT e.id, e.description, e.date, c.name AS card FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} ORDER BY e.date DESC LIMIT 200`));
+    res.json({
+      leads: (snap?.leads ?? []).map((l: any) => ({ name: l.name, status: l.status, ad: l.ad })),
+      ads: [...ads.entries()].map(([name, status]) => ({ name, status })),
+      lines, entries,
+    });
+  } catch (err) {
+    console.error("[search-index]", err);
+    res.status(500).json({ error: "Could not build the search index" });
   }
 });
 

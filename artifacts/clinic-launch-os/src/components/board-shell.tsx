@@ -18,7 +18,8 @@ export function EmbeddedBoard({ src, title, minHeight = 600, fullScreen = true }
   const frame = useRef<HTMLIFrameElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [height, setHeight] = useState(minHeight);
-  const [expanded, setExpanded] = useState(false);
+  // ?full=1 (the command palette's "open full screen") opens the board over the whole window.
+  const [expanded, setExpanded] = useState(() => fullScreen && new URLSearchParams(window.location.search).has("full"));
   const url = `${src}${src.includes("?") ? "&" : "?"}embed=1`;
   useEffect(() => {
     const on = (e: MessageEvent) => {
@@ -70,7 +71,7 @@ export function NeedsYou({ board, summary, max = 3 }: { board: string; summary?:
   return (
     <section className="space-y-3" aria-labelledby={`needs-${board}`}>
       <h2 id={`needs-${board}`} className="eyebrow">Needs you</h2>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-start">{cards.slice(0, max).map((c) => <div key={c.id}>{c.el}</div>)}</div>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-start">{cards.slice(0, max).map((c) => <div key={c.id} className="min-w-0">{c.el}</div>)}</div>
       {cards.length > max && <Link href="/inbox" className="inline-flex min-h-[44px] items-center text-slate underline text-[0.9rem]">{cards.length - max} more in the inbox</Link>}
     </section>
   );

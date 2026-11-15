@@ -8,7 +8,8 @@ import { ensureAgentTables, rowsOf, type ProposalRow, type ActivityRow } from ".
 import { freshness, RULES, type SourceKey } from "../lib/freshness";
 
 // Each proposal's evidence carries its source chips, aged by the one freshness rule.
-const withChips = (rows: ProposalRow[]) => rows.map((r) => ({ ...r, chips: (r.sources ?? []).filter((s) => s.source in RULES).map((s) => freshness(s.source as SourceKey, s.asOf)) }));
+const iso = (v: unknown) => (v == null ? null : new Date(v as string).toISOString());
+const withChips = (rows: ProposalRow[]) => rows.map((r) => ({ ...r, created_at: iso(r.created_at)!, updated_at: iso(r.updated_at)!, decided_at: iso(r.decided_at), expires_at: iso(r.expires_at), snooze_until: iso(r.snooze_until), chips: (r.sources ?? []).filter((s) => s.source in RULES).map((s) => freshness(s.source as SourceKey, s.asOf)) }));
 
 const router = Router();
 const UNDO_SECONDS = 15; // ten seconds on screen, a little slack for the round trip
@@ -27,9 +28,10 @@ export async function openProposals(projectId: number): Promise<ProposalRow[]> {
 
 export async function recentActivity(projectId: number, sinceIso?: string, limit = 50): Promise<ActivityRow[]> {
   await ensureAgentTables();
-  return sinceIso
+  const rows = sinceIso
     ? rowsOf<ActivityRow>(await db.execute(sql`SELECT * FROM activity WHERE project_id = ${projectId} AND finished_at >= ${sinceIso} ORDER BY finished_at DESC LIMIT ${limit}`))
     : rowsOf<ActivityRow>(await db.execute(sql`SELECT * FROM activity WHERE project_id = ${projectId} ORDER BY finished_at DESC LIMIT ${limit}`));
+  return rows.map((r) => ({ ...r, started_at: iso(r.started_at), finished_at: iso(r.finished_at)!, created_at: iso(r.created_at)! }));
 }
 
 router.get("/projects/:projectId/proposals", async (req, res) => {
