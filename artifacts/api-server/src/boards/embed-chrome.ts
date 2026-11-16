@@ -16,7 +16,7 @@ const HEIGHT_SCRIPT = `<script>(function(){
   send();
 })();</script>`;
 
-const HIDE_HEAD = `<style>html,body{overflow:hidden;min-height:0!important}.board>.head:first-child{display:none!important}body{padding-top:0!important}</style>`;
+const HIDE_HEAD = `<style>html,body{overflow:hidden;min-height:0!important}.board>.head:first-child{display:none!important}body{padding-top:0!important}@media(min-width:640px){body{padding-inline:2px!important}}</style>`;
 
 export function withTokens(html: string): string {
   return html.includes("</head>") ? html.replace("</head>", `<style>${TOKENS}</style></head>`) : `<style>${TOKENS}</style>${html}`;

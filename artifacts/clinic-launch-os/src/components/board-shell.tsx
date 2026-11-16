@@ -8,8 +8,7 @@ import { ExternalLink, Maximize2, X } from "lucide-react";
 import { useProposals, useSummary, type Summary } from "@/lib/alfred";
 import { Verdict } from "@/components/verdict";
 import { KpiGrid } from "@/components/kpi";
-import { ProposalCard } from "@/components/proposal-card";
-import { Page, PageHead, Section, Next, alertCard } from "@/components/page";
+import { Page, PageHead, Section, Next, Rows, RowItem, alertCard } from "@/components/page";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AREA_OF: Record<string, string[]> = { money: ["money"], ads: ["ads", "growth", "content"], growth: ["ads", "growth", "content"], patients: ["patients"], clinic: ["clinic"] };
@@ -45,7 +44,7 @@ export function EmbeddedBoard({ src, title, minHeight = 600, fullScreen = true }
           <a href={src} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[0.8rem] text-ink-muted underline min-h-[44px]"><ExternalLink className="w-3.5 h-3.5" />New tab</a>
         </div>
       )}
-      <div ref={box} className={expanded ? "fixed inset-0 z-[100] bg-background flex flex-col" : "-mx-4 sm:mx-0 sm:rounded-xl sm:border sm:border-card-border overflow-hidden bg-background"}>
+      <div ref={box} className={expanded ? "fixed inset-0 z-[100] bg-background flex flex-col" : "-mx-4 sm:mx-0 overflow-hidden"}>
         {expanded && (
           <div className="flex items-center justify-between gap-3 px-3 py-2 border-b bg-background">
             <span className="text-sm font-medium truncate">{title}</span>
@@ -63,15 +62,23 @@ export function NeedsYou({ board, summary, max = 3 }: { board: string; summary?:
   const { data: props } = useProposals();
   const mine = (props?.open ?? []).filter((p) => (AREA_OF[board] ?? [board]).includes(p.area));
   const alerts = summary && summary.state !== "stale" ? summary.alerts : [];
-  const cards = [
-    ...mine.map((p) => ({ id: `p${p.id}`, el: <ProposalCard p={p} compact /> })),
-    ...alerts.map((a) => ({ id: a.id, el: alertCard(a) })),
-  ];
-  if (!cards.length) return null;
+  // Owner, 16 Nov 2026: no wall of question cards. Warnings show as cards; questions and approvals
+  // are a short list of titles, opened one at a time in the Inbox.
+  if (!alerts.length && !mine.length) return null;
   return (
-    <Section title="Needs you" id={`needs-${board}`} note={cards.length > max ? <Link href="/inbox" className="underline">{cards.length - max} more</Link> : undefined}>
-      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-start">{cards.slice(0, max).map((c) => <div key={c.id} className="min-w-0">{c.el}</div>)}</div>
-    </Section>
+    <>
+      {alerts.length > 0 && (
+        <Section title="Worth a look" id={`needs-${board}`}>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-start">{alerts.slice(0, max).map((a) => <div key={a.id} className="min-w-0">{alertCard(a)}</div>)}</div>
+        </Section>
+      )}
+      {mine.length > 0 && (
+        <Section title={`Waiting for a word from you (${mine.length})`} id={`asks-${board}`} note={<Link href="/inbox" className="underline">open all</Link>}>
+          <Rows>{mine.slice(0, max).map((p) => <RowItem key={p.id} href="/inbox"><span className="min-w-0 text-[1rem] text-ink">{p.title}</span></RowItem>)}</Rows>
+          {mine.length > max && <p className="text-[0.9rem] text-ink-2">and {mine.length - max} more.</p>}
+        </Section>
+      )}
+    </>
   );
 }
 

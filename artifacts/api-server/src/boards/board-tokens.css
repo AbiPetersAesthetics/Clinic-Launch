@@ -1,14 +1,25 @@
-/* ALFRED board tokens (UX plan 2.12), injected into every server board except the Build Cash
-   Board: a white page, 12px cards, pill buttons, the website's slate eyebrow dot and focus ring,
-   so stepping into a board no longer looks like leaving the app. Colours are the fixed brand. */
-:root { --bg: #FFFFFF; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #5C6577; --slate: #445B72; }
-body { background: #FFFFFF !important; }
-.board { border-radius: 12px !important; border-color: rgba(31, 42, 68, 0.14) !important; }
-.card, .ctl, .kpi, .table-wrap, .band, .nowcard, .life > div { border-radius: 12px !important; }
-.card, .ctl { border-color: rgba(31, 42, 68, 0.14) !important; }
-.seg button, .presets button, button, .pill, .tabs button { border-radius: 999px !important; }
-.eyebrow { display: inline-flex; align-items: center; gap: 0.65em; color: #445B72 !important; letter-spacing: 0.22em !important; font-weight: 600 !important; }
-.eyebrow::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: #445B72; flex: none; }
-.card .q { color: #445B72 !important; }
+/* ALFRED board tokens, injected into every server board except the Build Cash Board (the owner's
+   master record, kept exactly as it is). The boards take the app's look (owner, 16 Nov 2026): the
+   tinted ground, white rounded panels with a soft shadow, figure tiles with a coloured top edge for
+   their state, sans headings. Appearance only: no figure, row or rule is touched. Fixed brand colours. */
+:root { --font-display: "Mulish", "Avenir Next", "Segoe UI", system-ui, sans-serif; --bg: #EEF2F7; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #4A5568; --slate: #445B72; --surface: #FFFFFF; }
+body { background: #EEF2F7 !important; }
+.board, .sheet { background: transparent !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; box-shadow: none !important; }
+h1, h2, h3 { font-family: var(--font-body, "Mulish", "Avenir Next", "Segoe UI", system-ui, sans-serif) !important; font-weight: 700 !important; letter-spacing: -0.012em; }
+h2 { font-size: 18px !important; }
+.card, .panel, .ctl, .band, .nowcard, .glance, .fig, .callout, .tool, .changed, .offer, .stage, .table-wrap, .toc, .answer, .life > div {
+  background: #FFFFFF !important; border: 1px solid rgba(31, 42, 68, 0.10) !important; border-radius: 16px !important; box-shadow: 0 1px 3px rgba(31, 42, 68, 0.07); }
+.card, .panel, .callout, .tool { padding: 18px 20px !important; }
+.table-wrap { overflow-x: auto; }
+.kpi, .res, .gtile { background: #FFFFFF !important; border: 1px solid rgba(31, 42, 68, 0.10) !important; border-top: 4px solid #1F2A44 !important; border-left-width: 1px !important; border-radius: 12px !important; box-shadow: 0 1px 3px rgba(31, 42, 68, 0.07); padding: 12px 14px !important; }
+.kpi b, .res b, .gtile b { font-family: var(--font-body, "Mulish", "Avenir Next", "Segoe UI", system-ui, sans-serif) !important; font-weight: 700 !important; font-size: 28px !important; letter-spacing: -0.02em; line-height: 1.1 !important; font-variant-numeric: tabular-nums lining-nums; }
+.kpi.good { border-top-color: #3F7A68 !important; } .kpi.warn, .kpi.watch { border-top-color: #8A5A12 !important; } .kpi.bad { border-top-color: #A33A3A !important; }
+.kpi span { letter-spacing: 0.12em !important; font-size: 10.5px !important; }
+.gbody { background: transparent !important; }
+.seg button, .presets button, button, .pill, .tabs button, .chip { border-radius: 999px !important; }
+.eyebrow { display: inline-flex; align-items: center; gap: 0.65em; color: #1F2A44 !important; letter-spacing: 0.16em !important; font-weight: 700 !important; }
+.eyebrow::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: #1F2A44; flex: none; }
+.card .q { color: #445B72 !important; letter-spacing: 0.14em !important; }
+thead th { background: #EFF3F8; }
 a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline: 2px solid #7FA49A; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

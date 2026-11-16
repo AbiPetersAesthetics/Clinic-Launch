@@ -62,6 +62,9 @@ export const toneWord: Record<Tone, string> = { good: "On track", watch: "Watch"
 export const dayMonth = (iso: string) => new Date(iso.length === 10 ? iso + "T12:00:00Z" : iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" });
 export const dayTime = (iso: string) => new Date(iso).toLocaleString("en-GB", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 
+// The monthly cash model as the Money page reads it (read only, for charts).
+export const useCashModel = () => useQuery({ queryKey: ["alfred", "cash-model"], queryFn: () => getJson<any>(`/api/projects/${PROJECT_ID}/cash-model`) });
+
 // Any ALFRED page's data, from /api/projects/1/pages/<name>.
 export function usePage<T = any>(name: string) {
   return useQuery({ queryKey: ["alfred", "page", name], queryFn: () => getJson<T>(`/api/projects/${PROJECT_ID}/pages/${name}`) });

@@ -7,6 +7,7 @@ import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, longDay } from "@
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScriptView } from "@/components/script-view";
+import { RankStrip, HBars, Stat, V } from "@/components/viz";
 
 const back = { href: "/growth", label: "Growth" };
 
@@ -54,9 +55,10 @@ function QueryRows({ rows }: { rows: any[] }) {
       {rows.map((q) => {
         const moved = q.prior != null ? q.prior - q.position : null;
         return (
-          <li key={q.q} className="grid grid-cols-[1fr_auto] gap-3 py-2.5 border-b border-border">
-            <span className="min-w-0"><span className="block text-[0.92rem] text-ink">{q.q}</span><span className="block text-[0.78rem] text-ink-muted">{q.impressions} impressions, {q.clicks} clicks</span></span>
-            <span className="text-right"><span className="block tabular font-medium text-ink">{q.position.toFixed(1)}</span><span className={`block text-[0.75rem] ${moved == null ? "text-ink-muted" : moved > 0.5 ? "text-good" : moved < -0.5 ? "text-act" : "text-ink-muted"}`}>{moved == null ? "new" : moved > 0.5 ? `up ${moved.toFixed(1)}` : moved < -0.5 ? `down ${(-moved).toFixed(1)}` : "steady"}</span></span>
+          <li key={q.q} className="grid grid-cols-[1fr_auto] sm:grid-cols-[minmax(0,15rem)_1fr_auto] items-center gap-x-4 gap-y-1 py-2.5 border-b border-border" title={`${q.q}: position ${q.position.toFixed(1)}${q.prior != null ? `, was ${q.prior.toFixed(1)}` : ""}`}>
+            <span className="min-w-0"><span className="block text-[0.92rem] font-semibold text-ink">{q.q}</span><span className="block text-[0.78rem] text-ink-muted">{q.impressions} impressions, {q.clicks} clicks</span></span>
+            <span className="col-span-2 sm:col-span-1 order-3 sm:order-none"><RankStrip position={q.position} prior={q.prior} /></span>
+            <span className="text-right w-[4.5rem]"><span className="block tabular font-extrabold text-[1.05rem] text-ink">{q.position.toFixed(1)}</span><span className={`block text-[0.75rem] font-semibold ${moved == null ? "text-ink-muted" : moved > 0.5 ? "text-good" : moved < -0.5 ? "text-act" : "text-ink-muted"}`}>{moved == null ? "new" : moved > 0.5 ? `up ${moved.toFixed(1)}` : moved < -0.5 ? `down ${(-moved).toFixed(1)}` : "steady"}</span></span>
           </li>
         );
       })}
@@ -75,13 +77,20 @@ export function SearchPage() {
       </PageHead>
       {!data ? <Skeleton className="h-40 rounded-xl" /> : (
         <>
-          <p className="text-[0.82rem] text-ink-muted">Average position on Google for each tracked query, {data.window}. Lower is better; page one is 10 or under. A query needs about 30 impressions before it is acted on.</p>
+          {t && (
+            <div className="grid grid-cols-3 gap-3">
+              <Stat label="Clicks, 28 days" value={String(t.window.clicks)} tone={t.window.clicks >= t.priorWindow.clicks ? "good" : "watch"} sub={`${t.priorWindow.clicks} in the 28 before`} />
+              <Stat label="Times shown" value={t.window.impressions.toLocaleString("en-GB")} tone={t.window.impressions >= t.priorWindow.impressions ? "good" : "watch"} sub={`${t.priorWindow.impressions.toLocaleString("en-GB")} before`} />
+              <Stat label="Average position" value={t.window.position.toFixed(1)} tone={t.window.position <= t.priorWindow.position ? "good" : "watch"} sub={`${t.priorWindow.position.toFixed(1)} before; lower is better`} />
+            </div>
+          )}
+          <p className="text-[0.82rem] text-ink-muted flex flex-wrap items-center gap-x-3 gap-y-1">Average position on Google for each tracked query, {data.window}. <span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block w-6 h-2.5 rounded-full" style={{ background: V.sage, opacity: 0.55 }} />page one</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: V.ink }} />28 days before</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="inline-block w-3 h-3 rounded-full" style={{ background: V.ink }} />now</span> The strip runs from position 1 on the left to 40. A query needs about 30 impressions before it is acted on.</p>
           <Section title="Winchester"><QueryRows rows={data.winchester} /></Section>
           <Section title="Bedhampton"><QueryRows rows={data.bedhampton} /></Section>
           <Section title="Both clinics (no town named)"><QueryRows rows={data.shared} /></Section>
           <Section title="Google reviews against competitors">
             {data.reviews ? (
-              <Rows>{(data.reviews.profiles ?? []).map((p: any) => <RowItem key={p.name}><span className="flex-1"><span className="block text-ink">{p.name}</span><span className="block text-[0.8rem] text-ink-muted">{p.town}</span></span><span className="tabular text-right"><span className="block font-medium">{p.reviews} reviews</span><span className="block text-[0.78rem] text-ink-muted">{p.rating} stars</span></span></RowItem>)}</Rows>
+              <HBars ariaLabel="Google reviews, ours against named competitors" labelWidth="11rem" rows={[...(data.reviews.profiles ?? [])].sort((a: any, b: any) => b.reviews - a.reviews).map((p: any) => ({ label: p.name, note: p.town, value: p.reviews, display: `${p.reviews}, ${p.rating} stars`, color: p.ours ? V.ink : V.base }))} />
             ) : <NotYet what={data.reviewsNote} />}
           </Section>
           <Next>Citations and links progress joins this page from the Tuesday run; the old Backlinks page is in the archive.</Next>

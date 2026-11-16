@@ -1,7 +1,8 @@
 // Money's detail pages: the Build Cash Board (the master record, unchanged), Stands Alone, Takings
 // and Obligations. Figures come from the cash model, the clinic refresh and the card register.
 import { Link } from "wouter";
-import { usePage, useProposals, useSummary, PROJECT_ID, type Chip } from "@/lib/alfred";
+import { usePage, useProposals, useSummary, useCashModel, PROJECT_ID, type Chip } from "@/lib/alfred";
+import { Stat, TargetBar, SplitBar, StackColumns, MarginColumns, HBars, DateRail, UsageBar, V } from "@/components/viz";
 import { ProposalCard } from "@/components/proposal-card";
 import { BoardShell, EmbeddedBoard } from "@/components/board-shell";
 import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, gbp0, longDay } from "@/components/page";
@@ -45,7 +46,12 @@ export function StandsAlonePage() {
           <Section title="This month">
             <NotYet what={data.thisMonth.reason} />
           </Section>
-          <Section title="The plan, month by month" note="Winchester's margin over the line">
+          <Section title="Winchester against the line, month by month" note="the plan">
+            <MarginColumns lineLabel="stands alone above this line" rows={rows.map((r) => ({ label: r.label, value: r.margin, title: `${r.label}: ${r.why}` }))}
+              marks={[{ index: rows.findIndex((r) => r.label === data.firstPay), label: "Abi's pay starts" }]}
+              ariaLabel={`Winchester's margin over standing alone each month. ${rows.map((r) => `${r.label}: ${gbp0(r.margin)}`).join("; ")}`} />
+            <details className="group">
+              <summary className="cursor-pointer text-[0.88rem] font-semibold text-ink underline underline-offset-2 min-h-[44px] inline-flex items-center">Every month as figures</summary>
             <Rows>
               {rows.map((r) => (
                 <li key={r.month} className="grid grid-cols-[4.5rem_1fr_5.5rem] items-center gap-3 py-2 border-b border-border">
@@ -58,7 +64,8 @@ export function StandsAlonePage() {
                 </li>
               ))}
             </Rows>
-            <p className="text-[0.78rem] text-ink-muted">Right of the line: Winchester covers everything and keeps the £3,000. Forecast from the Money Plan's recommended growth; actual months replace it from December.</p>
+            </details>
+            <p className="text-[0.78rem] text-ink-muted">Above the line: Winchester covers everything and keeps the £3,000. Forecast from the Money Plan's recommended growth; actual months replace it from December.</p>
           </Section>
         </>
       )}
@@ -70,6 +77,9 @@ export function TakingsPage() {
   const { data } = usePage("takings");
   const rows: any[] = data?.rows ?? [];
   const month = rows.find((r) => /so far/i.test(r.period));
+  const { data: cm } = useCashModel();
+  const plan: any[] = (cm?.rows ?? []).slice(0, 12);
+  const opens = plan.findIndex((r) => r.winc?.gross > 0);
   return (
     <Page>
       <PageHead eyebrow="Money" title="Takings" back={back}>
@@ -77,15 +87,35 @@ export function TakingsPage() {
       </PageHead>
       {!data ? <Loading /> : (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-5 gap-y-4">
-            {rows.slice(0, 4).map((r) => <Fig key={r.period} label={r.period} value={gbp0(r.total)} sub={`${gbp0(r.treatments)} treatments, ${gbp0(r.retail)} skincare${r.booked ? `; plus ${gbp0(r.booked)} booked to ${r.bookedTo}` : ""}`} />)}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {rows.slice(0, 4).map((r) => <Stat key={r.period} label={r.period} value={gbp0(r.total)} sub={`${gbp0(r.treatments)} treatments, ${gbp0(r.retail)} skincare${r.booked ? `; plus ${gbp0(r.booked)} booked to ${r.bookedTo}` : ""}`} />)}
           </div>
           {data.planThisMonth && month && (
             <Section title={`Against the Money Plan for ${data.planThisMonth.label}`}>
-              <p className="text-[0.95rem] text-ink leading-relaxed max-w-[62ch]">Taken so far {gbp0(month.total)}{month.booked ? `, with ${gbp0(month.booked)} booked for the rest of the month` : ""}, against the plan's {gbp0(data.planThisMonth.total)} for the month ({gbp0(data.planThisMonth.bedhampton)} Bedhampton, {gbp0(data.planThisMonth.winchester)} Winchester), all with VAT.</p>
+              <TargetBar segments={[{ label: "Taken so far", value: month.total, color: V.ink }, ...(month.booked ? [{ label: `Booked to ${month.bookedTo}`, value: month.booked, color: V.sageDeep }] : [])]} target={data.planThisMonth.total} targetLabel={`the plan ${gbp0(data.planThisMonth.total)}`}
+                ariaLabel={`Taken so far ${gbp0(month.total)}${month.booked ? `, booked ${gbp0(month.booked)}` : ""}, against the plan's ${gbp0(data.planThisMonth.total)}`} />
+              <p className="text-[0.88rem] text-ink-2 leading-relaxed max-w-[62ch]">The plan's {gbp0(data.planThisMonth.total)} for the month is {gbp0(data.planThisMonth.bedhampton)} Bedhampton and {gbp0(data.planThisMonth.winchester)} Winchester, all with VAT.</p>
             </Section>
           )}
-          {data.winchester ? <Section title="Winchester, before it opens"><p className="text-[0.95rem] text-ink leading-relaxed max-w-[62ch]"><b className="font-semibold">Winchester, {data.winchester.label}.</b> {gbp0(data.winchester.booked)} is booked with a price across {data.winchester.bookedCount} appointments, against the {gbp0(data.winchester.planNeeds)} the plan needs. Booked, not yet taken; free consultations are not counted. Read from ANS on {data.winchester.asOf}.</p></Section> : null}
+          {month && (month.treatments > 0 || month.retail > 0) && (
+            <Section title="Where this month's takings came from">
+              <SplitBar ariaLabel="Takings this month, treatments against skincare" parts={[{ label: "Treatments", value: month.treatments, color: V.ink }, { label: "Skincare", value: month.retail, color: V.sageDeep }]} />
+            </Section>
+          )}
+          {data.winchester ? (
+            <Section title={`Winchester, ${data.winchester.label}: booked before it opens`} note={`${data.winchester.bookedCount} appointments`}>
+              <TargetBar segments={[{ label: "Booked with a price", value: data.winchester.booked, color: V.ink }]} target={data.winchester.planNeeds} targetLabel={`the plan needs ${gbp0(data.winchester.planNeeds)}`}
+                ariaLabel={`Winchester ${data.winchester.label}: ${gbp0(data.winchester.booked)} booked against the ${gbp0(data.winchester.planNeeds)} the plan needs`} />
+              {(data.winchester.byWeek ?? []).length > 0 && <HBars ariaLabel="Winchester bookings by week" labelWidth="9.5rem" rows={data.winchester.byWeek.map((w: any) => ({ label: w.week, note: `${w.count} ${w.count === 1 ? "appointment" : "appointments"}`, value: w.booked, display: gbp0(w.booked) }))} />}
+              <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[62ch]">Booked, not yet taken; free consultations are not counted. Read from ANS on {data.winchester.asOf}.</p>
+            </Section>
+          ) : null}
+          {plan.length > 1 && (
+            <Section title="What the plan expects, month by month" note="with VAT">
+              <StackColumns rows={plan.map((r) => ({ label: r.label, a: r.bedh.gross, b: r.winc.gross }))} aLabel="Bedhampton" bLabel="Winchester" mark={opens > 0 ? { index: opens, label: "Winchester opens" } : null}
+                ariaLabel={`Planned takings each month. ${plan.map((r) => `${r.label}: Bedhampton ${gbp0(r.bedh.gross)}, Winchester ${gbp0(r.winc.gross)}`).join("; ")}`} />
+            </Section>
+          )}
           <Section title="By week">
             {data.weeks.length > 1 ? (
               <Rows>{data.weeks.map((w: any) => <RowItem key={w.period}><span className="flex-1 text-[0.9rem]">{w.period}</span><span className="tabular font-medium">{gbp0(w.total)}</span></RowItem>)}</Rows>
@@ -125,23 +155,35 @@ export function ObligationsPage() {
             </Section>
           )}
           <Section title="In date order">
-            {data.dated.length ? <Rows>{data.dated.map((d: any, i: number) => (
-              <RowItem key={i} href={d.href}><span className="w-[6.5rem] shrink-0 text-[0.85rem] text-ink-muted tabular pt-0.5">{longDay(d.date)}</span><span className="min-w-0"><span className="block text-[0.92rem] text-ink">{d.what}</span><span className="block text-[0.8rem] text-ink-muted">{d.note}</span></span></RowItem>
-            ))}</Rows> : <p className="text-ink-muted">Nothing dated ahead.</p>}
+            {data.dated.length ? <DateRail items={data.dated.map((d: any) => ({ date: d.date, title: d.what, note: d.note, amount: d.amount != null ? gbp0(d.amount) : null, href: d.href }))} /> : <p className="text-ink-muted">Nothing dated ahead.</p>}
           </Section>
           <Section title="Cards" note={<Link href="/archive/cards" className="underline">register</Link>}>
-            <Rows>{data.cards.filter((c: any) => c.limit > 0 || c.balance).map((c: any) => (
-              <RowItem key={c.name}><span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{c.name}</span><span className="block text-[0.8rem] text-ink-muted">{c.limit ? `${Math.round((100 * c.balance) / c.limit)} in every 100 of the ${gbp0(c.limit)} limit used` : "no credit limit: a personal account"}{c.offers.length ? `; ${c.offers.map((o: any) => `${o.ratePct}% ${o.kind} to ${longDay(o.end)}`).join(", ")}` : ""}</span></span><span className="tabular font-medium">{gbp0(c.balance)}</span></RowItem>
-            ))}</Rows>
+            <div>{data.cards.filter((c: any) => c.limit > 0).map((c: any) => (
+              <UsageBar key={c.name} label={c.name} used={c.balance} limit={c.limit} note={c.offers.length ? c.offers.map((o: any) => `${o.ratePct}% ${o.kind} to ${longDay(o.end)}`).join(", ") : undefined} />
+            ))}</div>
+            {data.cards.some((c: any) => !c.limit && c.balance) && (
+              <Rows>{data.cards.filter((c: any) => !c.limit && c.balance).map((c: any) => (
+                <RowItem key={c.name}><span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{c.name}</span><span className="block text-[0.8rem] text-ink-muted">no credit limit: a personal account</span></span><span className="tabular font-bold">{gbp0(c.balance)}</span></RowItem>
+              ))}</Rows>
+            )}
           </Section>
           <Section title="Directors' loan" note={<Link href="/archive/owed" className="underline">detail</Link>}>
-            {data.directorsLoan.length ? <Rows>{data.directorsLoan.map((d: any) => <RowItem key={d.holder}><span className="flex-1"><span className="block text-ink">{d.holder}</span><span className="block text-[0.8rem] text-ink-muted">{d.entries} items not yet paid back</span></span><span className="tabular font-medium">{gbp0(d.owed)}</span></RowItem>)}</Rows> : <p className="text-ink-muted">Nothing owed to the directors.</p>}
+            {data.directorsLoan.length ? <SplitBar ariaLabel="What the company owes each director" total={{ label: "Owed to the directors", value: gbp0(data.directorsLoan.reduce((s: number, d: any) => s + d.owed, 0)) }} parts={data.directorsLoan.map((d: any) => ({ label: d.holder, value: d.owed, note: `${d.entries} items not yet paid back` }))} /> : <p className="text-ink-muted">Nothing owed to the directors.</p>}
           </Section>
           <Section title="Loans">
             {data.loans.length ? <Rows>{data.loans.map((l: any) => <RowItem key={l.label}><span className="flex-1"><span className="block text-ink">{l.label}</span><span className="block text-[0.8rem] text-ink-muted">{gbp0(l.principal)} at {l.ratePct}%, {l.repayments} repayments{l.holidayMonths ? ` after ${l.holidayMonths} months' holiday` : ""}{l.nextMonth ? `; next ${gbp0(l.nextAmount)} in ${l.nextMonth}` : ""}</span></span></RowItem>)}</Rows> : <p className="text-ink-muted">No loans in the plan.</p>}
           </Section>
           <Section title="VAT returns, monthly" note={data.vatConfirmed ? `dates confirmed by you, ${data.vatConfirmed.on}` : "dates assumed"}>
-            <Rows>{data.vat.map((v: any) => <RowItem key={v.month}><span className="flex-1"><span className="block text-ink">{v.period}: due {longDay(v.due)}</span><span className="block text-[0.8rem] text-ink-muted">The plan: VAT on sales {gbp0(v.vatOnSales)}, build VAT reclaimed {gbp0(v.vatOnBuild)}{v.refundNextMonth ? `, refund of ${gbp0(v.refundNextMonth)} the month after` : ""}. The amounts are the plan's estimates, not the return.</span></span></RowItem>)}</Rows>
+            <div className="grid gap-5">
+              {data.vat.map((v: any) => (
+                <div key={v.month} className="grid gap-2">
+                  <p className="flex flex-wrap items-baseline justify-between gap-x-3"><b className="text-ink">{v.period}</b><span className="text-[0.85rem] text-ink-2">return due {longDay(v.due)}{v.refundNextMonth ? `; refund of ${gbp0(v.refundNextMonth)} the month after` : ""}</span></p>
+                  <HBars ariaLabel={`VAT for ${v.period}`} max={Math.max(1, ...data.vat.flatMap((x: any) => [x.vatOnSales, x.vatOnBuild]))} labelWidth="9.5rem"
+                    rows={[{ label: "VAT on sales", value: v.vatOnSales, display: gbp0(v.vatOnSales), color: V.slate }, { label: "Build VAT reclaimed", value: v.vatOnBuild, display: v.vatOnBuild ? gbp0(v.vatOnBuild) : "nil", color: V.good }]} />
+                </div>
+              ))}
+              <p className="text-[0.8rem] text-ink-muted">The amounts are the plan's estimates, not the return.</p>
+            </div>
           </Section>
           <Next>The money watch (daily 07:50) turns anything due in the next 14 days into a card on Today.</Next>
         </>

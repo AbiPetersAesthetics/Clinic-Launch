@@ -7,6 +7,8 @@ import { Verdict } from "@/components/verdict";
 import { KpiGrid } from "@/components/kpi";
 import { NeedsYou } from "@/components/board-shell";
 import { Page, PageHead, Section, LinkList, Next } from "@/components/page";
+import { Flow } from "@/components/viz";
+import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const ADS_PAGES = [
@@ -26,20 +28,12 @@ export default function AdsCommandPage() {
       <PageHead eyebrow="Growth · Winchester" title="Ads" back={{ href: "/growth", label: "Growth" }}>
         {error ? <p className="text-act">The Ads summary could not be built: {String((error as Error).message)}</p>
           : isLoading || !s ? <Skeleton className="h-16 w-full max-w-xl rounded-xl" />
-          : <Verdict state={s.state} text={s.verdict} sources={s.sources} size="md" />}
+          : <><div className="rounded-2xl bg-ink px-5 py-5 sm:px-7 sm:py-6"><Verdict state={s.state} text={s.verdict} dark /></div><Sources chips={s.sources} /></>}
       </PageHead>
       {s && <KpiGrid kpis={s.kpis} max={4} />}
       {steps.length > 0 && (
         <Section title="The pathway since the ads began">
-          <ol className="grid grid-cols-5 border-t border-line-strong">
-            {steps.map((st) => (
-              <li key={st.label} className="min-w-0 pt-2.5 pr-1 grid gap-0.5">
-                <span className="text-[0.62rem] sm:text-[0.68rem] font-semibold uppercase tracking-[0.1em] text-ink-muted truncate">{st.label}</span>
-                <b className={`font-sans tabular text-[1.15rem] sm:text-[1.5rem] leading-tight font-medium ${st.pending ? "text-ink-muted" : "text-ink"}`}>{st.value}</b>
-                <span className="text-[0.64rem] sm:text-[0.76rem] text-ink-muted leading-tight">{st.sub}</span>
-              </li>
-            ))}
-          </ol>
+          <Flow steps={steps} ariaLabel={`The pathway: ${steps.map((st) => `${st.label} ${st.value}`).join(", ")}`} />
         </Section>
       )}
       <NeedsYou board="ads" summary={s} max={3} />
