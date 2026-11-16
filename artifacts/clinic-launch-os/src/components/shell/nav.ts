@@ -14,6 +14,7 @@ export const AREAS: NavArea[] = [
     { href: "/money/obligations", label: "Obligations", note: "VAT, cards and their 0% dates, loans, the directors' loan", keywords: "vat cards loans owed directors barclaycard virgin" },
     { href: "/money/cash-line", label: "Cash Line", note: "The Tide balance day by day", keywords: "tide balance daily" },
     { href: "/money/plan", label: "Money Plan", note: "How Winchester pays for itself", keywords: "forecast simulator" },
+    { href: "/money/workings", label: "How the numbers are built", note: "The growth model in use, fixed and variable costs, and any month line by line", keywords: "model growth costs fixed variable workings assumptions where from" },
   ] },
   { key: "growth", href: "/growth", label: "Growth", icon: TrendingUp, pages: [
     { href: "/growth/ads", label: "Ads", note: "Every ad and audience, the last 14 days, the simulator", keywords: "meta facebook instagram creative audience" },

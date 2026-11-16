@@ -38,6 +38,7 @@ import HomePage from "@/pages/home";
 import { GrowthSection, PlanPage } from "@/pages/growth/section";
 import { MoneyArea, PatientsArea, ClinicArea } from "@/pages/areas";
 import { BuildCashPage, StandsAlonePage, TakingsPage, ObligationsPage } from "@/pages/money/pages";
+import WorkingsPage from "@/pages/money/workings";
 import { StudioPage, SearchPage } from "@/pages/growth/studio";
 import { PathwayPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
 import { DiaryPage, StockPage, TeamPage } from "@/pages/clinic/pages";
@@ -180,6 +181,7 @@ function Router() {
         <Route path="/money" component={MoneyArea} />
         <Route path="/money/build-cash" component={BuildCashPage} />
         <Route path="/money/stands-alone" component={StandsAlonePage} />
+        <Route path="/money/workings" component={WorkingsPage} />
         <Route path="/money/takings" component={TakingsPage} />
         <Route path="/money/obligations" component={ObligationsPage} />
         <Route path="/money/cash-line" component={CashLinePage} />

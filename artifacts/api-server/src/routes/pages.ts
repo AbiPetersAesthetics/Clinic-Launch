@@ -10,7 +10,8 @@ import { latestAds, latestBoard, latestBoardRow, cardBalances } from "../lib/boa
 import { freshness, dayMonth, RULES, type SourceKey } from "../lib/freshness";
 import { SCHEDULES } from "../lib/heartbeat";
 import { recentActivity } from "./proposals";
-import { STANDS_ALONE_TAKINGS, WINC_KEEP_PCT } from "../lib/cash-model-defaults";
+import { STANDS_ALONE_TAKINGS, WINC_KEEP_PCT, WINC_SCENARIOS, WINC_PROFILES, WINC_OPTS, PATIENT_MODEL, PRICES, BEDH_NEW_PATIENTS, CASH_MODEL_DEFAULTS } from "../lib/cash-model-defaults";
+import { newPatients } from "../lib/growth-model";
 const gbp0 = (n: number) => `${n < 0 ? "minus " : ""}£${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
 import { rowsOf } from "../lib/agent-tables";
 
@@ -76,6 +77,34 @@ router.get("/projects/:projectId/pages/obligations", handle(async (projectId) =>
   const chip = freshness("cards", cards.map((c) => c.lastEntry).filter(Boolean).sort().pop() ?? null);
   const vatConfirmed = (J?.config?.vatReturns as any)?.confirmed ?? null;
   return { asOf: new Date().toISOString(), vat, vatConfirmed, cards, loans, directorsLoan: loan, dated, sources: [chip, freshness("bank", J?.bank?.asAt ?? null)] };
+}));
+
+// How the numbers are built (owner, 16 Nov 2026): which growth model the forecast runs on beside the
+// others, the patient figures behind it, and every month's takings, variable costs, fixed costs and
+// profit with the sentence that explains each. Read only: the same model the Money page runs.
+router.get("/projects/:projectId/pages/workings", handle(async (projectId) => {
+  const months = 24;
+  const J: any = await buildCashModel(projectId, { months });
+  const scenarios: any[] = [];
+  for (const k of Object.keys(WINC_SCENARIOS)) {
+    const R: any = k === J.scenario ? J : await buildCashModel(projectId, { months, scenario: k });
+    scenarios.push({ key: k, label: WINC_SCENARIOS[k].label, note: WINC_SCENARIOS[k].note, chosen: k === J.scenario, winc: R.rows.map((r: any) => Math.round(r.winc.gross)), lowest: Math.round(R.lowest?.bank ?? 0), lowestMonth: R.lowest?.month ?? null });
+  }
+  const profile = (WINC_PROFILES as any)[J.scenario] ?? null;
+  const avg = (y: string) => { const v = Object.entries(BEDH_NEW_PATIENTS).filter(([m]) => m.startsWith(y)).map(([, n]) => n); return v.length ? Math.round((10 * v.reduce((a, b) => a + b, 0)) / v.length) / 10 : null; };
+  const ret = (n: number) => Math.round(100 * PATIENT_MODEL.returns.slice(1, n + 1).reduce((a, b) => a + b, 0)) / 100;
+  return {
+    asOf: new Date().toISOString(), chosen: J.scenario, labels: J.rows.map((r: any) => r.label), scenarios,
+    patient: { firstMonth: PATIENT_MODEL.firstMonth, returnVisit: PATIENT_MODEL.returnVisit, returns12: ret(12), returns36: ret(36), listVsBedhampton: PRICES.listVsBedhampton, foundersVsBedhampton: PRICES.foundersVsBedhampton, productShare: PRICES.productShare,
+      founding: WINC_OPTS.founding, founderUntil: WINC_OPTS.founderUntil, bedhAvg2025: avg("2025"), bedhAvg2026: avg("2026"),
+      newPatients: profile ? J.rows.map((r: any) => (r.month < WINC_OPTS.founding.month ? 0 : r.month === WINC_OPTS.founding.month ? WINC_OPTS.founding.patients : Math.round(10 * newPatients(profile, r.month, WINC_OPTS.firstCohort)) / 10)) : null },
+    keep: { winchester: WINC_KEEP_PCT, bedhampton: J.config?.bedh?.contributionPct ?? CASH_MODEL_DEFAULTS.bedh.contributionPct },
+    rows: J.rows.map((r: any) => ({ month: r.month, label: r.label, winc: r2(r.winc.gross), bedh: r2(r.bedh.gross), wincVat: r2(r.winc.vat), bedhVat: r2(r.bedh.vat), wincProduct: r2(r.winc.product), bedhProduct: r2(r.bedh.product), wincKept: r2(r.winc.contribution), bedhKept: r2(r.bedh.contribution),
+      vat: r2(r.total.vat), product: r2(r.total.product), kept: r2(r.total.contribution), utilities: r2(r.running.utilities), general: r2(r.running.general), marketing: r2(r.running.marketing), oneOff: r2(r.running.oneOff), rates: r2(r.rates), rent: r2(r.rentAccrued),
+      operatingProfit: r2(r.operatingProfit), loanInterest: r2(r.loanInterest), loanRepayment: r2(r.loanRepayment), payCost: r2(r.payCost), paySalary: r2(r.paySalary), retained: r2(r.profitRetained), bank: r2(r.closingBank), transferIn: r2(r.transferIn ?? 0), bedhDays: r.bedhDays, wincDays: r.wincDays, occupancy: r.wincOccupancy, why: r.why })),
+    costs: { rent: J.config?.rent, rates: J.config?.rates, utilities: J.config?.utilities, running: J.config?.running, marketing: J.config?.marketing, pay: J.config?.pay, loans: J.loans ?? [], oneOffs: J.config?.oneOffs ?? [] },
+    sources: [freshness("bank", J?.bank?.asAt ?? null)],
+  };
 }));
 
 router.get("/projects/:projectId/pages/stands-alone", handle(async (projectId) => {

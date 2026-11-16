@@ -33,7 +33,7 @@ function niceStep(span: number, target = 4) {
 // A whole split into its parts: one bar, each part as wide as its share, then the parts named with
 // their figures. "Where is the money", "who is owed what".
 export interface Part { label: string; value: number | null; note?: string; color?: string }
-export function SplitBar({ parts, ariaLabel, total, format = gbp }: { parts: Part[]; ariaLabel: string; total?: { label: string; value: string }; format?: (n: number) => string }) {
+export function SplitBar({ parts, ariaLabel, total, format = gbp, stack = false }: { parts: Part[]; ariaLabel: string; total?: { label: string; value: string }; format?: (n: number) => string; stack?: boolean }) {
   const known = parts.filter((p) => p.value != null && p.value > 0);
   const sum = known.reduce((s, p) => s + (p.value ?? 0), 0) || 1;
   const colorOf = (p: Part) => p.color ?? SERIES[known.indexOf(p) % SERIES.length];
@@ -43,7 +43,7 @@ export function SplitBar({ parts, ariaLabel, total, format = gbp }: { parts: Par
       <div className="flex h-10 w-full gap-[3px] rounded-lg overflow-hidden">
         {known.map((p) => <span key={p.label} title={`${p.label}: ${format(p.value ?? 0)}`} style={{ width: `${(100 * (p.value ?? 0)) / sum}%`, background: colorOf(p), minWidth: 6 }} />)}
       </div>
-      <ul className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+      <ul className={`grid gap-x-6 gap-y-2 ${stack ? "" : "sm:grid-cols-2"}`}>
         {parts.map((p) => (
           <li key={p.label} className="flex items-start gap-2.5 min-w-0">
             <span aria-hidden className="mt-1.5 w-3 h-3 rounded-[3px] shrink-0" style={p.value != null && p.value > 0 ? { background: colorOf(p) } : { border: `1.5px dashed ${V.base}` }} />
@@ -155,7 +155,8 @@ export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark }: { rows: 
 }
 
 // Columns either side of a line that must be crossed (Winchester's margin over standing alone).
-export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel }: { rows: { label: string; value: number; title?: string }[]; ariaLabel: string; marks?: { index: number; label: string }[]; lineLabel?: string }) {
+export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel, money = true }: { rows: { label: string; value: number; title?: string }[]; ariaLabel: string; marks?: { index: number; label: string }[]; lineLabel?: string; money?: boolean }) {
+  const fmt = money ? kGbp : (n: number) => String(Math.round(n * 10) / 10);
   const [box, W] = useWidth();
   if (!rows.length) return null;
   const H = W < 480 ? 240 : 300, padL = 50, padR = 8, padT = 30, padB = 30;
@@ -171,7 +172,7 @@ export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel }: { rows
   return (
     <div ref={box} className="w-full">
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
-        {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.ink : V.grid} strokeWidth={t === 0 ? 2 : 1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
+        {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.ink : V.grid} strokeWidth={t === 0 ? 2 : 1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{fmt(t)}</text></g>)}
         {lineLabel && <text x={padL + 6} y={y(0) - 7} textAnchor="start" fontSize="11.5" fontWeight={600} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{lineLabel}</text>}
         {marks.filter((m) => m.index >= 0 && m.index < rows.length).map((m, k) => { const mx = padL + slot * (m.index + 0.5); return <g key={m.label}><line x1={mx} x2={mx} y1={padT - 14 + k * 13} y2={H - padB} stroke={V.slate} strokeDasharray="3 4" /><text x={mx + (mx > W - 150 ? -5 : 5)} y={padT - 16 + k * 13 + 4} textAnchor={mx > W - 150 ? "end" : "start"} fontSize="11.5" fontWeight={600} fill={V.slate}>{m.label}</text></g>; })}
         {rows.map((r, i) => {
@@ -180,7 +181,7 @@ export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel }: { rows
             <g key={r.label}>
               <title>{r.title ?? `${r.label}: ${gbp(r.value)}`}</title>
               <rect x={cx - bw / 2} y={up ? y(r.value) : y(0)} width={bw} height={Math.max(1, Math.abs(y(r.value) - y(0)))} rx={3} fill={up ? V.good : V.base} />
-              {(i === 0 || i === rows.length - 1 || i === firstOver || i === minI) && <text x={cx} y={up ? y(r.value) - 5 : y(r.value) + 14} textAnchor={i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"} fontSize="11.5" fontWeight={700} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{kGbp(r.value)}</text>}
+              {(i === 0 || i === rows.length - 1 || i === firstOver || i === minI) && <text x={cx} y={up ? y(r.value) - 5 : y(r.value) + 14} textAnchor={i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"} fontSize="11.5" fontWeight={700} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{fmt(r.value)}</text>}
               {(i % every === 0) && <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{r.label.split(" ")[0]}{r.label.startsWith("Jan") ? ` ${r.label.split(" ")[1] ?? ""}` : ""}</text>}
             </g>
           );
@@ -420,5 +421,97 @@ export function Bench({ label, value, display, mark, markLabel, max, lowerIsBett
       <span className="text-[0.85rem] text-ink"><span aria-hidden className="inline-block w-[2.5px] h-3 align-[-1px] mr-1.5 rounded-full" style={{ background: V.ink }} />{markLabel}</span>
       {note && <span className="text-[0.82rem] text-ink-2 leading-snug">{note}</span>}
     </div>
+  );
+}
+
+// Several lines over the same months (the growth models side by side): the one in use drawn heavy
+// in ink, the others lighter, each named at its end with its last value.
+export function MultiLine({ labels, series, ariaLabel }: { labels: string[]; series: { label: string; values: number[]; chosen?: boolean }[]; ariaLabel: string }) {
+  const [box, W] = useWidth();
+  if (labels.length < 2) return null;
+  const H = W < 480 ? 250 : 300, padL = 46, padR = W < 480 ? 96 : 150, padT = 14, padB = 30;
+  const hi = Math.max(1, ...series.flatMap((s) => s.values));
+  const step = niceStep(hi, 4), top = Math.ceil(hi / step) * step;
+  const x = (i: number) => padL + (i * (W - padL - padR)) / (labels.length - 1);
+  const y = (v: number) => padT + (1 - v / top) * (H - padT - padB);
+  const ticks: number[] = []; for (let t = 0; t <= top + 1e-6; t += step) ticks.push(t);
+  const every = (W - padL - padR) / labels.length >= 34 ? 1 : (W - padL - padR) / labels.length >= 17 ? 2 : 3;
+  const tones = [V.sageDeep, V.base, V.slate, V.sage];
+  let k = 0;
+  const drawn = series.map((s) => ({ ...s, color: s.chosen ? V.ink : tones[k++ % tones.length] }));
+  const last = labels.length - 1;
+  let prev = -Infinity;
+  const ends = [...drawn].sort((a, b) => b.values[last] - a.values[last]).map((s) => { let yy = y(s.values[last]); if (yy - prev < 30) yy = prev + 30; prev = yy; return { ...s, yy }; });
+  return (
+    <div ref={box} className="w-full">
+      <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
+        {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.base : V.grid} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
+        {[...drawn].sort((a, b) => Number(!!a.chosen) - Number(!!b.chosen)).map((s) => (
+          <g key={s.label}>
+            <path d={s.values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")} fill="none" stroke={s.color} strokeWidth={s.chosen ? 3.5 : 2} strokeLinejoin="round" strokeLinecap="round" />
+            {s.values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={s.chosen ? 3 : 6} fill={s.chosen ? s.color : "transparent"}><title>{`${s.label}, ${labels[i]}: ${gbp(v)}`}</title></circle>)}
+          </g>
+        ))}
+        {ends.map((s) => <text key={s.label} x={W - padR + 8} y={s.yy - 2} fontSize="12" fill={s.chosen ? V.ink : V.muted}><tspan x={W - padR + 8} fontWeight={700}>{kGbp(s.values[last])}</tspan><tspan x={W - padR + 8} dy={14} fontWeight={s.chosen ? 700 : 500}>{s.label}</tspan></text>)}
+        {labels.map((l, i) => (i % every === 0) && <text key={l} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{l.split(" ")[0]}{l.startsWith("Jan") ? ` ${l.split(" ")[1] ?? ""}` : ""}</text>)}
+      </svg>
+    </div>
+  );
+}
+
+// Stacked columns for any number of parts (what each month's costs are made of). Tap or hover a
+// column to pick that month; the caller shows its detail.
+export function StackN({ rows, parts, ariaLabel, selected, onSelect }: { rows: { label: string; values: number[] }[]; parts: { label: string; color: string }[]; ariaLabel: string; selected?: number; onSelect?: (i: number) => void }) {
+  const [box, W] = useWidth();
+  if (!rows.length) return null;
+  const H = W < 480 ? 230 : 280, padL = 46, padR = 8, padT = 22, padB = 30;
+  const sums = rows.map((r) => r.values.reduce((a, b) => a + b, 0));
+  const hi = Math.max(1, ...sums), step = niceStep(hi, 4), top = Math.ceil(hi / step) * step;
+  const y = (v: number) => padT + (1 - v / top) * (H - padT - padB);
+  const slot = (W - padL - padR) / rows.length, bw = Math.max(5, Math.min(34, slot * 0.68));
+  const ticks: number[] = []; for (let t = 0; t <= top + 1e-6; t += step) ticks.push(t);
+  const every = slot >= 34 ? 1 : slot >= 17 ? 2 : 3, labelAll = slot >= 52;
+  return (
+    <div ref={box} className="w-full grid gap-2">
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.82rem] text-ink">{parts.map((p) => <span key={p.label} className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: p.color }} />{p.label}</span>)}</div>
+      <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
+        {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.base : V.grid} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
+        {rows.map((r, i) => {
+          const cx = padL + slot * (i + 0.5); let acc = 0;
+          return (
+            <g key={r.label} onClick={onSelect ? () => onSelect(i) : undefined} onMouseEnter={onSelect ? () => onSelect(i) : undefined} style={onSelect ? { cursor: "pointer" } : undefined}>
+              <title>{`${r.label}: ${parts.map((p, j) => `${p.label} ${gbp(r.values[j])}`).join(", ")}; together ${gbp(sums[i])}`}</title>
+              {selected === i && <rect x={cx - slot / 2 + 1} y={padT - 16} width={slot - 2} height={H - padT - padB + 18} rx={5} fill={V.wash} stroke={V.ink} strokeWidth={1} />}
+              <rect x={cx - slot / 2} y={padT} width={slot} height={H - padT - padB} fill="transparent" />
+              {r.values.map((v, j) => { const y0 = y(acc), y1 = y(acc + v); acc += v; return v > 0 ? <rect key={j} x={cx - bw / 2} y={y1} width={bw} height={Math.max(0, y0 - y1)} fill={parts[j].color} /> : null; })}
+              {(labelAll || selected === i || (selected == null && (i === 0 || i === rows.length - 1))) && <text x={cx} y={y(sums[i]) - 5} textAnchor="middle" fontSize="11.5" fontWeight={700} fill={V.ink}>{kGbp(sums[i])}</text>}
+              {(i % every === 0) && <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{r.label.split(" ")[0]}{r.label.startsWith("Jan") ? ` ${r.label.split(" ")[1] ?? ""}` : ""}</text>}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+// One month walked from takings down to what is left: each line a bar placed where the running
+// total stands, money in green, money out slate, the subtotals in ink, with the reason beneath.
+export function Waterfall({ rows, ariaLabel }: { rows: { label: string; value: number; kind: "in" | "out" | "total"; note?: string }[]; ariaLabel: string }) {
+  const top = Math.max(1, ...rows.filter((r) => r.kind === "total").map((r) => r.value), rows.filter((r) => r.kind === "in").reduce((s, r) => s + r.value, 0));
+  let run = 0;
+  const placed = rows.map((r) => { let from = 0, to = 0; if (r.kind === "in") { from = run; to = run + r.value; run = to; } else if (r.kind === "out") { from = run - r.value; to = run; run = from; } else { from = Math.min(0, r.value); to = Math.max(0, r.value); run = r.value; } return { ...r, from, to }; });
+  const lo = Math.min(0, ...placed.map((p) => p.from));
+  const pct = (v: number) => `${(100 * (v - lo)) / (top - lo)}%`;
+  const money = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
+  return (
+    <ol role="img" aria-label={ariaLabel} className="grid">
+      {placed.map((r, i) => (
+        <li key={i} className={`grid grid-cols-[minmax(0,11rem)_1fr_5.2rem] sm:grid-cols-[minmax(0,15rem)_1fr_6rem] items-center gap-x-3 py-2 ${r.kind === "total" ? "border-y border-line-strong bg-wash/70 -mx-2 px-2 rounded-md" : "border-b border-border"}`}>
+          <span className="min-w-0"><span className={`block leading-snug ${r.kind === "total" ? "font-extrabold text-ink text-[0.98rem]" : "text-ink text-[0.92rem]"}`}>{r.label}</span>{r.note && <span className="block text-[0.76rem] text-ink-muted leading-snug">{r.note}</span>}</span>
+          <span className="relative h-6"><span className="absolute inset-y-[11px] left-0 right-0" style={{ background: V.grid }} /><span className="absolute inset-y-0.5 rounded-[4px]" style={{ left: pct(r.from), width: `max(3px, calc(${pct(r.to)} - ${pct(r.from)}))`, background: r.kind === "in" ? V.good : r.kind === "out" ? V.slate : r.value < 0 ? V.act : V.ink }} /></span>
+          <span className={`text-right tabular ${r.kind === "total" ? "font-extrabold text-[1rem]" : "font-semibold text-[0.92rem]"} ${r.kind === "total" && r.value < 0 ? "text-act" : "text-ink"}`}>{money(r.kind === "out" ? -r.value : r.value)}</span>
+        </li>
+      ))}
+    </ol>
   );
 }
