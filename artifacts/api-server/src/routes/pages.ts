@@ -53,7 +53,9 @@ function vatReturns(J: any, today: string) {
     const due = addDays(plusMonth(lastDay(r.month), 1), 7);
     if (due < today || out.length >= 3) continue;
     const next = rows.find((x) => x.month > r.month);
-    out.push({ period: r.label, month: r.month, due, vatOnSales: r2((r.total?.vat ?? 0)), vatOnBuild: r2((r.vatPaidBank ?? 0) + (r.vatPaidCard ?? 0)), refundNextMonth: r2(next?.vatRefund ?? 0) });
+    // Build VAT on a CBS valuation already paid before the bank date belongs to its month's return too.
+    const paidBefore = ((J.config?.cbs?.vatPaid ?? []) as any[]).filter((v) => v.month === r.month).reduce((t, v) => t + Number(v.amount || 0), 0);
+    out.push({ period: r.label, month: r.month, due, vatOnSales: r2((r.total?.vat ?? 0)), vatOnBuild: r2((r.vatPaidBank ?? 0) + (r.vatPaidCard ?? 0) + paidBefore), refundNextMonth: r2(next?.vatRefund ?? 0) });
   }
   return out;
 }
@@ -103,6 +105,8 @@ router.get("/projects/:projectId/pages/takings", handle(async (projectId) => {
     asOf: new Date().toISOString(),
     rows: clinicRow?.takings?.rows ?? [], note: clinicRow?.takings?.byClinicNote ?? "", source: clinicRow?.takings?.source ?? "",
     weeks: [...weeks.values()].slice(0, 12),
+    // Winchester before it opens: what is booked with a price, against what the plan needs that month.
+    winchester: clinicRow?.takings?.winchester ? { ...clinicRow.takings.winchester, planNeeds: r2((J?.rows ?? []).find((r: any) => r.month === clinicRow.takings.winchester.month)?.winc?.gross ?? 0) } : null,
     planThisMonth: plan ? { label: plan.label, bedhampton: r2(plan.bedh?.gross ?? 0), winchester: r2(plan.winc?.gross ?? 0), total: r2(plan.total?.gross ?? 0) } : null,
     sources: [freshness("ansTakings", clinicRow?.updatedIso ?? null)],
   };

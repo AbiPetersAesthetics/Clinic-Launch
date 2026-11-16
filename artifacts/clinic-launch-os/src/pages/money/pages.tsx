@@ -85,6 +85,7 @@ export function TakingsPage() {
               <p className="text-[0.95rem] text-ink leading-relaxed max-w-[62ch]">Taken so far {gbp0(month.total)}{month.booked ? `, with ${gbp0(month.booked)} booked for the rest of the month` : ""}, against the plan's {gbp0(data.planThisMonth.total)} for the month ({gbp0(data.planThisMonth.bedhampton)} Bedhampton, {gbp0(data.planThisMonth.winchester)} Winchester), all with VAT.</p>
             </Section>
           )}
+          {data.winchester ? <Section title="Winchester, before it opens"><p className="text-[0.95rem] text-ink leading-relaxed max-w-[62ch]"><b className="font-semibold">Winchester, {data.winchester.label}.</b> {gbp0(data.winchester.booked)} is booked with a price across {data.winchester.bookedCount} appointments, against the {gbp0(data.winchester.planNeeds)} the plan needs. Booked, not yet taken; free consultations are not counted. Read from ANS on {data.winchester.asOf}.</p></Section> : null}
           <Section title="By week">
             {data.weeks.length > 1 ? (
               <Rows>{data.weeks.map((w: any) => <RowItem key={w.period}><span className="flex-1 text-[0.9rem]">{w.period}</span><span className="tabular font-medium">{gbp0(w.total)}</span></RowItem>)}</Rows>

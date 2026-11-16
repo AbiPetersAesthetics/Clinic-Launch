@@ -255,7 +255,8 @@ export function runCashModel(inp: CashInputs): CashResult {
     const ownProduct = inp.winc.productCost ? (inp.winc.productCost[ym] ?? 0) * (wincDemand > 0 ? wincOwn / wincDemand : 0) : wincOwn * (1 - vatShare - inp.winc.contributionPct / 100);
     const transferProduct = transferTaken * (1 - vatShare - inp.bedh.contributionPct / 100);
     const winc = siteWithProduct(wincOwn + transferTaken, ownProduct + transferProduct, inp.vatRate);
-    const wincOwnContribution = wincOwn * (1 - vatShare) - ownProduct;
+    // Takings moved from Bedhampton's second day are Winchester's own for the Stands Alone test.
+    const wincOwnContribution = wincOwn * (1 - vatShare) - ownProduct + (absorbed > 0 ? transferTaken * (1 - vatShare) - transferProduct : 0);
     const wincStandMargin = wincOwnContribution - (fullRunningBase + marketingFor(ym)) - loanLevel - inp.pay.retention;
     const wincOccupancy = wincDays && inp.winc.capacity ? winc.gross / wincCapacityFor(inp, wincDays, 100) : null;
     // Closing tests at the month end, taking effect the month after.
