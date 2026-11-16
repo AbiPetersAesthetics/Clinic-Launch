@@ -279,7 +279,7 @@ a { color: var(--slate); }
     <li><strong>The money to open Winchester is there.</strong> The bank's lowest point is about ${f(c.two.low)} in December 2026, when the last building bill and the first rent land together. It never drops below our £10,000 safety net.</li>
     <li><strong>Winchester earns much more per appointment.</strong> The same treatment keeps about ${f(163)} at Winchester's prices against ${f(93)} at Bedhampton, because the prices are about 48% higher and the products cost the same.</li>
     <li><strong>But Winchester will take time to get busy.</strong> On our own records it takes about ${f(D.scenarios.central.winc["2027-06"])} a month by June 2027. David's forecast of £14,700 would need about 30 new patients a month from December; Bedhampton finds about 23.</li>
-    <li><strong>Bedhampton stays open two days a week until Winchester stands on its own</strong>, then closes. On the recommended forecast that is ${c.two.closes === "Dec 28" ? "December 2028" : c.two.closes}; on David's forecast, ${dv.two.closes === "Aug 27" ? "August 2027" : dv.two.closes}.</li>
+    ${c.two.closes ? `<li><strong>Bedhampton stays open until Winchester stands on its own</strong>, then closes. On the recommended forecast that is ${c.two.closes}; on David's forecast, ${dv.two.closes ?? "not within three years"}.</li>` : `<li><strong>Bedhampton stays open one day a week throughout.</strong> It does not close in this plan (your decision of 22 October 2026).</li>`}
     <li><strong>Abi is paid from ${c.two.regular === "May 27" ? "May 2027" : c.two.regular}</strong>: about ${f(c.two.salary)} over three years under the rule in force (the business keeps £3,000 a month only ${reserveText}), against about ${f(c.release.salary)} if it kept £3,000 every month with no end.</li>
     <li><strong>The number to watch is new patients at Winchester each month.</strong> 16 to 24 is the recommended forecast; about 30 is David's.</li>
   </ul></div>
@@ -424,7 +424,7 @@ ${planRows}
   <p class="answer"><strong>Short answer:</strong> of every £100 taken in 2027/28, about £${Math.round(100 * D.fy["FY27/28"].profitRetained / (D.fy["FY27/28"].grossBedh + D.fy["FY27/28"].grossWinc))} is kept in the business and £${Math.round(100 * D.fy["FY27/28"].payCost / (D.fy["FY27/28"].grossBedh + D.fy["FY27/28"].grossWinc))} goes on Abi's pay. Blues go out, greens are ours.</p>
   <div class="legend" aria-hidden="true">${PL_KEYS.map(([k2, n]) => `<span><i class="s-${k2}"></i>${n}</span>`).join("")}</div>
 ${fyBars}
-  <p class="note">The first year runs October to July (the plan starts in October); later years run August to July, the company's financial year. When Bedhampton closes in December 2028, takings dip but more of each pound is kept.</p>
+  <p class="note">The first year runs October to July (the plan starts in October); later years run August to July, the company's financial year. ${c.two.closes ? `When Bedhampton closes in ${c.two.closes}, takings dip but more of each pound is kept.` : ""}</p>
   <h3>Month by month</h3>
   <div class="table-wrap"><table>
     <thead><tr><th>Month</th><th>Bedhampton</th><th>Winchester</th><th>Takings</th><th><i class="dot s-vat"></i>VAT</th><th><i class="dot s-prod"></i>Products</th><th><i class="dot s-run"></i>Running</th><th><i class="dot s-rent"></i>Rent, rates</th><th><i class="dot s-int"></i>Interest</th><th><i class="dot s-pay"></i>Abi's pay</th><th><i class="dot s-kept"></i>Kept</th></tr></thead>
