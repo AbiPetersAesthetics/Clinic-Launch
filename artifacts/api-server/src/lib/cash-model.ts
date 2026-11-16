@@ -89,7 +89,8 @@ export type CashInputs = {
   loans: LoanTerms[];
 };
 
-export type Site = { gross: number; vat: number; net: number; product: number; contribution: number };
+// other: variable costs that are not products (card fees, consumables, wastage), as a share of takings.
+export type Site = { gross: number; vat: number; net: number; product: number; contribution: number; other?: number };
 
 export type CashRow = {
   month: string; label: string; fy: string;
@@ -251,15 +252,19 @@ export function runCashModel(inp: CashInputs): CashResult {
     const wincCapacity = wincDays == null || !inp.winc.capacity ? null : wincCapacityFor(inp, wincDays);
     const bedhCap = planOn && bedhDays ? bedhDays * (52 / 12) * plan!.dayCapacity : Infinity;
     const bedhWants = !planOn ? inp.bedh.takings[ym] ?? 0 : bedhDays === 0 ? 0 : inp.bedh.takings[ym] ?? (bedhDays === 1 ? plan!.demand.one[ym] : plan!.demand.two[ym]) ?? 0;
-    const bedh = site(Math.min(bedhWants, bedhCap), inp.bedh.contributionPct, inp.vatRate);
+    // Other variable costs (owner, 16 Nov 2026): pence in every pound of takings at both clinics, on top
+    // of VAT and products. Nil unless set, so the forecast is unchanged until it is.
+    const extraPct = Math.max(0, Number((inp as any).variable?.extraPct ?? 0));
+    const split = (s: Site): Site => { const o = s.gross * extraPct / 100; return { ...s, contribution: s.contribution - o, other: o }; };
+    const bedh = split(site(Math.min(bedhWants, bedhCap), inp.bedh.contributionPct, inp.vatRate));
     const wincOwn = Math.min(wincDemand, wincCapacity ?? Infinity);
     const transferTaken = Math.min(transferIn, Math.max(0, (wincCapacity ?? Infinity) - wincOwn));
     const vatShare = inp.vatRate / (1 + inp.vatRate);
     const ownProduct = inp.winc.productCost ? (inp.winc.productCost[ym] ?? 0) * (wincDemand > 0 ? wincOwn / wincDemand : 0) : wincOwn * (1 - vatShare - inp.winc.contributionPct / 100);
     const transferProduct = transferTaken * (1 - vatShare - inp.bedh.contributionPct / 100);
-    const winc = siteWithProduct(wincOwn + transferTaken, ownProduct + transferProduct, inp.vatRate);
+    const winc = split(siteWithProduct(wincOwn + transferTaken, ownProduct + transferProduct, inp.vatRate));
     // Takings moved from Bedhampton's second day are Winchester's own for the Stands Alone test.
-    const wincOwnContribution = wincOwn * (1 - vatShare) - ownProduct + (absorbed > 0 ? transferTaken * (1 - vatShare) - transferProduct : 0);
+    const wincOwnContribution = wincOwn * (1 - vatShare - extraPct / 100) - ownProduct + (absorbed > 0 ? transferTaken * (1 - vatShare - extraPct / 100) - transferProduct : 0);
     const wincStandMargin = wincOwnContribution - (fullRunningBase + marketingFor(ym)) - loanLevel - inp.pay.retention;
     const wincOccupancy = wincDays && inp.winc.capacity ? winc.gross / wincCapacityFor(inp, wincDays, 100) : null;
     // Closing tests at the month end, taking effect the month after.
@@ -272,7 +277,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     }
     const total: Site = {
       gross: bedh.gross + winc.gross, vat: bedh.vat + winc.vat, net: bedh.net + winc.net,
-      product: bedh.product + winc.product, contribution: bedh.contribution + winc.contribution,
+      product: bedh.product + winc.product, contribution: bedh.contribution + winc.contribution, other: (bedh.other ?? 0) + (winc.other ?? 0),
     };
     why.winc = inp.winc.takings[ym] != null ? `Winchester takings for ${label(ym)} from the forecast` : (wincDemand > 0 ? `Growth line from the last forecast month to ${gbp(inp.winc.growth!.target)} by ${label(inp.winc.growth!.month)}` : "Winchester not trading");
     if (transferIn) why.winc += `; plus ${gbp(transferIn)} from Bedhampton patients who moved`;

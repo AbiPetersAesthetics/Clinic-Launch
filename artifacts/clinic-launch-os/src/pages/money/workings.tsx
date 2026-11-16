@@ -9,6 +9,8 @@ import { usePage, type Chip } from "@/lib/alfred";
 import { Page, PageHead, Section, gbp0 } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AmendPanel, type Settings } from "@/components/amend-panel";
+import { ModelReview } from "@/components/model-review";
 import { MultiLine, StackN, Waterfall, SplitBar, Stat, MarginColumns, Pill, HBars, V } from "@/components/viz";
 
 const back = { href: "/money", label: "Money" };
@@ -20,6 +22,7 @@ export default function WorkingsPage() {
   const rows: any[] = data?.rows ?? [];
   const firstTrading = Math.max(0, rows.findIndex((r) => r.winc > 0));
   const [sel, setSel] = useState<number | null>(null);
+  const [preset, setPreset] = useState<{ draft: any; label: string } | null>(null);
   const i = sel ?? Math.min(rows.length - 1, firstTrading + 2);
   const r = rows[i];
   const chosen = (data?.scenarios ?? []).find((s: any) => s.chosen);
@@ -31,6 +34,11 @@ export default function WorkingsPage() {
   const on = items.filter((x) => x.active), off = items.filter((x) => !x.active);
   const groupSum = (g: string) => on.filter((x) => groupOf(x.name) === g).reduce((s2, x) => s2 + x.amount, 0);
   const buildTotal = on.reduce((s2, x) => s2 + x.amount, 0);
+  const settings: Settings | null = data && C ? {
+    rentAnnual: C.rent.annual, ratesMonthly: C.rates.monthly, utilitiesMonthly: C.utilities.monthly, runningMonthly: C.running.monthly, marketingMonthly: C.marketing.monthly, useAdsPlan: !!C.marketing.useAdsPlan,
+    bedhKept: data.keep.bedhampton, extraPct: data.settings?.extraPct ?? 0, productScale: data.settings?.productScale ?? 1, scenario: data.chosen, profile: data.settings?.profile ?? null, listPrice: data.settings?.listPrice ?? 1.48, founderPrice: data.settings?.founderPrice ?? 1.184, foundingPatients: data.settings?.foundingPatients ?? 60, foundingTakings: data.settings?.foundingTakings ?? 4400,
+    buildGeneral: items.length ? groupSum("General running") : null, scenarios: data.scenarios.map((x: any) => ({ key: x.key, label: x.label })), centralProfile: data.settings?.centralProfile ?? null,
+  } : null;
   const fixedOf = (x: any) => x.rent + x.rates + x.utilities + x.general + x.marketing + x.oneOff;
   return (
     <Page>
@@ -125,6 +133,10 @@ export default function WorkingsPage() {
               {off.length > 0 && <p className="text-[0.85rem] text-ink-muted leading-relaxed max-w-[70ch]">Switched off in the build, so not counted: {off.map((x) => `${x.name} (${gbp0(x.amount)})`).join("; ")}.</p>}
             </Section>
           )}
+
+          <ModelReview review={data.review} planWinchester={chosen ? { months: rows.map((x) => x.month), values: chosen.winc } : undefined} onLoad={(p) => setPreset({ ...p })} />
+
+          {settings && <AmendPanel s={settings} log={data.log} preset={preset} />}
 
           <Section title={`5. ${monthName(r.month)}, line by line`} id="w-month" note="pick any month">
             <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">

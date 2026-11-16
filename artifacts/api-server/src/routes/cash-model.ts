@@ -11,7 +11,8 @@ import {
 } from "@workspace/db";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { runCashModel, addMonths, type CashInputs, type ProjectPayment, type CashCheck } from "../lib/cash-model";
-import { CASH_MODEL_DEFAULTS, WINC_SCENARIOS, type CashModelConfig } from "../lib/cash-model-defaults";
+import { CASH_MODEL_DEFAULTS, WINC_SCENARIOS, WINC_OPTS, WINC_PROFILES, PATIENT_MODEL, PRICES, type CashModelConfig } from "../lib/cash-model-defaults";
+import { wincForecast, wincProductCost, monthsFrom } from "../lib/growth-model";
 import { exVatOf } from "../lib/vat-basis";
 
 const router = Router();
@@ -91,11 +92,46 @@ async function adsPlanByMonth(projectId: number): Promise<Record<string, number>
   } catch { return undefined; }
 }
 
-export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number; drawAvailableLoans?: boolean; tryPay?: Partial<CashModelConfig["pay"]> } = {}) {
+// The assumptions that can be amended from the "How the numbers are built" page, and nothing else:
+// a change outside this list is dropped, so the page can never write the bank, the build or the VAT.
+const num = (v: unknown, lo: number, hi: number) => { const n = Number(v); return Number.isFinite(n) && n >= lo && n <= hi ? n : undefined; };
+export function pickAssumptions(x: any): Record<string, any> {
+  const out: any = {};
+  const put = (path: string[], v: unknown) => { if (v === undefined) return; let o = out; path.slice(0, -1).forEach((k) => { o = o[k] ??= {}; }); o[path[path.length - 1]] = v; };
+  if (!x || typeof x !== "object") return out;
+  put(["rent", "annual"], num(x.rent?.annual, 0, 200000));
+  put(["rates", "monthly"], num(x.rates?.monthly, 0, 20000));
+  put(["utilities", "monthly"], num(x.utilities?.monthly, 0, 5000));
+  put(["running", "monthly"], num(x.running?.monthly, 0, 20000));
+  put(["marketing", "monthly"], num(x.marketing?.monthly, 0, 20000));
+  if (typeof x.marketing?.useAdsPlan === "boolean") put(["marketing", "useAdsPlan"], x.marketing.useAdsPlan);
+  put(["bedh", "contributionPct"], num(x.bedh?.contributionPct, 10, 83));
+  put(["variable", "extraPct"], num(x.variable?.extraPct, 0, 30));
+  put(["winc", "productScale"], num(x.winc?.productScale, 0.3, 3));
+  // Winchester prices against what Bedhampton patients actually paid: the list, and introductory prices.
+  put(["winc", "listPrice"], x.winc?.listPrice === null ? null : num(x.winc?.listPrice, 0.5, 3));
+  put(["winc", "founderPrice"], x.winc?.founderPrice === null ? null : num(x.winc?.founderPrice, 0.5, 3));
+  // December's founding cohort: how many of the people booked become paying patients, and what they take.
+  put(["winc", "foundingPatients"], x.winc?.foundingPatients === null ? null : num(x.winc?.foundingPatients, 0, 500));
+  put(["winc", "foundingTakings"], x.winc?.foundingTakings === null ? null : num(x.winc?.foundingTakings, 0, 100000));
+  if (typeof x.winc?.scenario === "string" && WINC_SCENARIOS[x.winc.scenario]) put(["winc", "scenario"], x.winc.scenario);
+  if (x.winc?.profile === null) put(["winc", "profile"], null);
+  else if (x.winc?.profile && typeof x.winc.profile === "object") {
+    const p = x.winc.profile, early = num(p.early, 0, 200), start = num(p.start, 0, 200), growthPerMonth = num(p.growthPerMonth, 0, 10), cap = num(p.cap, 0, 300);
+    if (early !== undefined && start !== undefined && growthPerMonth !== undefined && cap !== undefined) put(["winc", "profile"], { early, earlyUntil: /^\d{4}-\d{2}$/.test(String(p.earlyUntil)) ? String(p.earlyUntil) : "2027-02", start, growthPerMonth, cap });
+  }
+  put(["pay", "capMonthly"], num(x.pay?.capMonthly, 0, 20000));
+  put(["pay", "retention"], num(x.pay?.retention, 0, 20000));
+  put(["pay", "retentionUntilBank"], x.pay?.retentionUntilBank === null ? null : num(x.pay?.retentionUntilBank, 0, 500000));
+  return out;
+}
+
+export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number; drawAvailableLoans?: boolean; tryPay?: Partial<CashModelConfig["pay"]>; tryConfig?: unknown } = {}) {
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   let stored: unknown = {};
   try { stored = JSON.parse((model as any)?.cashModelJson || "{}"); } catch { stored = {}; }
-  const config = mergeDeep<CashModelConfig>(CASH_MODEL_DEFAULTS, stored);
+  // tryConfig: a what-if on the amendable assumptions, read only. Nothing is saved.
+  const config = mergeDeep<CashModelConfig>(mergeDeep<CashModelConfig>(CASH_MODEL_DEFAULTS, stored), opts.tryConfig ? pickAssumptions(opts.tryConfig) : {});
   // A trial of the pay rules (Abi's pay cap, the monthly amount kept, the reserve at which keeping
   // stops): read only, for a before and after. Nothing is saved.
   if (opts.tryPay) config.pay = { ...config.pay, ...opts.tryPay };
@@ -103,7 +139,22 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   const bank = readBank(stored);
   if (bank && bank.asAt.slice(0, 7) > config.startMonth) config.startMonth = bank.asAt.slice(0, 7);
   const scenarioKey = opts.scenario && WINC_SCENARIOS[opts.scenario] ? opts.scenario : (WINC_SCENARIOS[config.winc.scenario] ? config.winc.scenario : "base");
-  const scen = WINC_SCENARIOS[scenarioKey];
+  const scenBase = WINC_SCENARIOS[scenarioKey];
+  // A growth profile of our own (new patients a month) replaces the named model's takings, built
+  // from the same patient records; productScale scales Winchester's product cost.
+  const prof = (config.winc as any).profile as { early: number; earlyUntil: string; start: number; growthPerMonth: number; cap: number } | null | undefined;
+  const modelMonths = monthsFrom("2026-10", 48);
+  const roundMap = (o: Record<string, number>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, Math.round(v)]));
+  // Our own price multiples re-run the patient model for any forecast built from patients (not the
+  // owner's straight-line forecast, which has no patients behind it).
+  const listPrice = Number((config.winc as any).listPrice) || null, founderPrice = Number((config.winc as any).founderPrice) || null;
+  const fPatients = (config.winc as any).foundingPatients, fTakings = (config.winc as any).foundingTakings;
+  const ownFounding = fPatients != null || fTakings != null;
+  const optsUse = { ...WINC_OPTS, ...(listPrice ? { listPrice } : {}), ...(founderPrice ? { founderPrice } : {}), ...(ownFounding ? { founding: { ...WINC_OPTS.founding, ...(fPatients != null ? { patients: Number(fPatients) } : {}), ...(fTakings != null ? { firstMonthTotal: Number(fTakings) } : {}) } } : {}) };
+  const profUse = prof && !opts.scenario ? prof : (listPrice || founderPrice || ownFounding) ? ((WINC_PROFILES as any)[scenarioKey] ?? null) : null;
+  const scen0 = profUse ? { ...scenBase, ...(prof && !opts.scenario ? { label: "Our own numbers" } : {}), takings: roundMap(wincForecast(PATIENT_MODEL, profUse, optsUse, modelMonths)), productCost: roundMap(wincProductCost(PATIENT_MODEL, profUse, optsUse, modelMonths, PRICES.productShare)) } : scenBase;
+  const pScale = Number((config.winc as any).productScale ?? 1) || 1;
+  const scen = pScale !== 1 && scen0.productCost ? { ...scen0, productCost: Object.fromEntries(Object.entries(scen0.productCost).map(([k, v]) => [k, v * pScale])) } : scen0;
   // Alternatives follow the same growth shape, scaled to their own June 2027 level.
   const lastKey = Object.keys(scen.takings).sort().pop()!;
   const scale = scen.takings[lastKey] / (WINC_SCENARIOS.base.takings[lastKey] || scen.takings[lastKey]);
@@ -304,6 +355,7 @@ router.get("/projects/:projectId/cash-model", async (req, res) => {
     const out = await buildCashModel(parseInt(req.params.projectId), {
       scenario: req.query.scenario as string | undefined,
       months: parseInt((req.query.months as string) || "12"),
+      tryConfig: (() => { try { return req.query.try ? JSON.parse(String(req.query.try)) : undefined; } catch { return undefined; } })(),
       tryPay: (req.query.try_cap || req.query.try_reserve || req.query.try_keep || req.query.try_cap2) ? {
         ...(req.query.try_cap2 ? { capFrom: [{ from: String(req.query.try_from2 ?? "2028-01"), capMonthly: Number(req.query.try_cap2) }] } : {}),
         ...(req.query.try_latch ? { reserveLatch: true } : {}),
@@ -353,6 +405,74 @@ router.put("/projects/:projectId/cash-model/bank", async (req, res) => {
   } catch (err) {
     console.error("[cash-model bank]", err);
     res.status(500).json({ error: "Could not save the balance" });
+  }
+});
+
+// What a forecast comes to, in the figures the owner judges it by.
+function summarise(J: any) {
+  const rows: any[] = J.rows ?? [];
+  const year = (y: string, f: (r: any) => number) => Math.round(rows.filter((r) => r.month.startsWith(y)).reduce((s, r) => s + f(r), 0));
+  const twoRunning = (ok: (r: any) => boolean) => { for (let i = 1; i < rows.length; i++) if (rows[i].winc.gross > 0 && ok(rows[i - 1]) && ok(rows[i])) return rows[i - 1].label as string; return null; };
+  const low = rows.reduce((m, r) => (r.closingBank < m.closingBank ? r : m), rows[0]);
+  return {
+    monthEnds: rows.slice(0, 14).map((r) => ({ label: r.label, bank: Math.round(r.closingBank) })),
+    lowest: { bank: Math.round(low.closingBank), month: low.label },
+    bankEnd2027: Math.round(rows.find((r) => r.month === "2027-12")?.closingBank ?? 0),
+    takings: { y2027: year("2027", (r) => r.total.gross), y2028: year("2028", (r) => r.total.gross) },
+    winchester: { y2027: year("2027", (r) => r.winc.gross), y2028: year("2028", (r) => r.winc.gross) },
+    profit: { y2027: year("2027", (r) => r.operatingProfit), y2028: year("2028", (r) => r.operatingProfit) },
+    abiPay: { y2027: year("2027", (r) => r.paySalary), y2028: year("2028", (r) => r.paySalary) },
+    firstPay: rows.find((r) => r.paySalary > 0)?.label ?? null,
+    paysBills: twoRunning((r) => (r.wincStandMargin ?? 0) + (J.config?.pay?.retention ?? 0) >= 0),
+    fixedMonthly: Math.round((rows.find((r) => r.month === "2027-06") ?? rows[rows.length - 1]).running.total + (rows.find((r) => r.month === "2027-06") ?? rows[rows.length - 1]).rates + (rows.find((r) => r.month === "2027-06") ?? rows[rows.length - 1]).rentAccrued),
+  };
+}
+
+// POST /projects/:id/cash-model/compare { changes }: the plan now against the plan with these
+// assumptions changed. Read only: it saves nothing.
+router.post("/projects/:projectId/cash-model/compare", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const changes = pickAssumptions((req.body ?? {}).changes);
+    const before = summarise(await buildCashModel(projectId, { months: 38 }));
+    const after = Object.keys(changes).length ? summarise(await buildCashModel(projectId, { months: 38, tryConfig: changes })) : before;
+    res.json({ changes, before, after });
+  } catch (err) {
+    console.error("[cash-model compare]", err);
+    res.status(500).json({ error: "Could not run the comparison" });
+  }
+});
+
+// POST /projects/:id/cash-model/assumptions { changes, note }: makes the changed assumptions the
+// plan. The change is logged with its before and after, and the plan the Money page compares
+// against is rebased to it, so the outlook does not read the change as better or worse than plan.
+router.post("/projects/:projectId/cash-model/assumptions", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const changes = pickAssumptions((req.body ?? {}).changes);
+    const note = String((req.body ?? {}).note ?? "").replace(/[\u2013\u2014]/g, ",").slice(0, 400);
+    if (!Object.keys(changes).length) { res.status(400).json({ error: "Nothing to change" }); return; }
+    const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+    if (!model) { res.status(404).json({ error: "There is no financial model for this project" }); return; }
+    let stored: Record<string, any> = {};
+    try { stored = JSON.parse((model as any).cashModelJson || "{}") || {}; } catch { stored = {}; }
+    const before = summarise(await buildCashModel(projectId, { months: 38 }));
+    const next = mergeDeep<Record<string, any>>(stored, changes);
+    const at = new Date().toISOString();
+    next.assumptionLog = [...(Array.isArray(stored.assumptionLog) ? stored.assumptionLog : []), { at, changes, note, lowestBefore: before.lowest }].slice(-60);
+    await db.update(financialsTable).set({ cashModelJson: JSON.stringify(next) } as any).where(eq(financialsTable.projectId, projectId));
+    const J: any = await buildCashModel(projectId, { months: 38 });
+    const after = summarise(J);
+    const rows = J.rows.slice(0, 13).map((r: any) => ({ month: r.month, bedhGross: Math.round(r.bedh?.gross ?? 0), wincGross: Math.round(r.winc?.gross ?? 0), marketing: Math.round(r.running?.marketing ?? 0), fundingIn: Math.round(r.fundingIn ?? 0), loanDrawn: Math.round(r.loanDrawn ?? 0), buildVatRefund: Math.round(r.vatRefund ?? 0), closingBank: Math.round(r.closingBank) }));
+    const base = { asOf: at, bank: J.bank ? { balanceGbp: J.bank.balanceGbp, asAt: J.bank.asAt } : null, rows, _note: "Rebased when an assumption was changed on the How the numbers are built page." };
+    await db.execute(sql`INSERT INTO board_snapshots (project_id, key, data) VALUES (${projectId}, 'plan-baseline', ${JSON.stringify(base)})`);
+    const gbp = (n: number) => `${n < 0 ? "minus " : ""}${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
+    const summary = `An assumption was changed on "How the numbers are built"${note ? `: ${note}` : ""}. Lowest bank ${gbp(before.lowest.bank)} (${before.lowest.month}) before, ${gbp(after.lowest.bank)} (${after.lowest.month}) after; bank at the end of 2027 ${gbp(before.bankEnd2027)} before, ${gbp(after.bankEnd2027)} after. Changed: ${JSON.stringify(changes)}`.slice(0, 900);
+    await db.execute(sql`INSERT INTO activity (project_id, agent, status, summary, started_at, finished_at) VALUES (${projectId}, 'ALFRED', 'ok', ${summary}, NOW(), NOW())`);
+    res.json({ ok: true, changes, before, after });
+  } catch (err) {
+    console.error("[cash-model assumptions]", err);
+    res.status(500).json({ error: "Could not save the change" });
   }
 });
 
