@@ -103,6 +103,9 @@ router.get("/projects/:projectId/pages/workings", handle(async (projectId) => {
       vat: r2(r.total.vat), product: r2(r.total.product), kept: r2(r.total.contribution), utilities: r2(r.running.utilities), general: r2(r.running.general), marketing: r2(r.running.marketing), oneOff: r2(r.running.oneOff), rates: r2(r.rates), rent: r2(r.rentAccrued),
       operatingProfit: r2(r.operatingProfit), loanInterest: r2(r.loanInterest), loanRepayment: r2(r.loanRepayment), payCost: r2(r.payCost), paySalary: r2(r.paySalary), retained: r2(r.profitRetained), bank: r2(r.closingBank), transferIn: r2(r.transferIn ?? 0), bedhDays: r.bedhDays, wincDays: r.wincDays, occupancy: r.wincOccupancy, why: r.why })),
     costs: { rent: J.config?.rent, rates: J.config?.rates, utilities: J.config?.utilities, running: J.config?.running, marketing: J.config?.marketing, pay: J.config?.pay, loans: J.loans ?? [], oneOffs: J.config?.oneOffs ?? [] },
+    // The fixed cost build from the old Launch OS (fixed_cost_items): every line, on or off, and
+    // whether it is new with Winchester (unique) or a cost the business already carries (dual).
+    fixedItems: (((await db.execute(sql`SELECT id, name, amount_gbp, cost_type, active, updated_at FROM fixed_cost_items WHERE project_id = ${projectId} ORDER BY sort_order, id`)) as any).rows ?? []).map((x: any) => ({ id: x.id, name: x.name, amount: Number(x.amount_gbp), type: x.cost_type, active: x.active, updated: x.updated_at })),
     sources: [freshness("bank", J?.bank?.asAt ?? null)],
   };
 }));

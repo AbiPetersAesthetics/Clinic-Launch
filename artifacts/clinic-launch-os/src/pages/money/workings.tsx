@@ -9,7 +9,7 @@ import { usePage, type Chip } from "@/lib/alfred";
 import { Page, PageHead, Section, gbp0 } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MultiLine, StackN, Waterfall, SplitBar, Stat, MarginColumns, Pill, V } from "@/components/viz";
+import { MultiLine, StackN, Waterfall, SplitBar, Stat, MarginColumns, Pill, HBars, V } from "@/components/viz";
 
 const back = { href: "/money", label: "Money" };
 const monthName = (ym: string) => new Date(ym + "-01T12:00:00Z").toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -25,6 +25,12 @@ export default function WorkingsPage() {
   const chosen = (data?.scenarios ?? []).find((s: any) => s.chosen);
   const P = data?.patient;
   const C = data?.costs;
+  // The fixed cost build, grouped the way the model carries it.
+  const items: any[] = data?.fixedItems ?? [];
+  const groupOf = (n: string) => (/^rent/i.test(n) ? "Rent" : /rates/i.test(n) ? "Business rates" : /^utilities/i.test(n) ? "Utilities" : /^marketing/i.test(n) ? "Advertising" : "General running");
+  const on = items.filter((x) => x.active), off = items.filter((x) => !x.active);
+  const groupSum = (g: string) => on.filter((x) => groupOf(x.name) === g).reduce((s2, x) => s2 + x.amount, 0);
+  const buildTotal = on.reduce((s2, x) => s2 + x.amount, 0);
   const fixedOf = (x: any) => x.rent + x.rates + x.utilities + x.general + x.marketing + x.oneOff;
   return (
     <Page>
@@ -87,7 +93,7 @@ export default function WorkingsPage() {
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">Rent</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.rent)}</td><td className="py-2 text-ink-2">{gbp0(C.rent.annual)} a year from the lease, counted evenly from {dayName(C.rent.rentStart)} when the rent-free period ends ({gbp0(C.rent.annual / 12)} a month). It is paid quarterly, so the bank sees it in lumps: see the Cash Line.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">Business rates</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.rates)}</td><td className="py-2 text-ink-2">{gbp0(C.rates.monthly)} a month, an estimate. {C.rates.note}</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">Advertising</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.marketing)}</td><td className="py-2 text-ink-2">{C.marketing.useAdsPlan ? <>Month by month from the ads plan (<Link href="/growth/plan" className="underline">Growth, Plan</Link>); {gbp0(C.marketing.monthly)} a month where the plan has no figure.</> : `${gbp0(C.marketing.monthly)} a month.`}</td></tr>
-                  <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">General running</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.general)}</td><td className="py-2 text-ink-2">{gbp0(C.running.monthly)} a month, one allowance from your specification of 30 September 2026. The model does not break it down, so it is the least evidenced figure on this page.</td></tr>
+                  <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">General running</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.general)}</td><td className="py-2 text-ink-2">{gbp0(C.running.monthly)} a month in the model. The build below itemises {gbp0(groupSum("General running"))} of it: software, the accountant, registrations, clinical waste, banking and the card terminal.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">Utilities</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.utilities)}</td><td className="py-2 text-ink-2">{gbp0(C.utilities.monthly)} a month before VAT: electricity about £184 (about 7,500 kWh a year), water and sewerage about £20, and broadband £32.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">One-offs</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.oneOff)}</td><td className="py-2 text-ink-2">{C.oneOffs.length ? C.oneOffs.map((o: any) => `${o.label}, ${gbp0(o.amount)} in ${monthName(o.month)}`).join("; ") : "None in the plan"}.</td></tr>
                   <tr className="border-b border-line-strong bg-wash/70"><td className="py-2 pr-3 font-extrabold text-ink">Fixed costs</td><td className="py-2 pr-3 text-right tabular font-extrabold">{gbp0(fixedOf(r))}</td><td className="py-2 text-ink-2">The same whatever is taken that month.</td></tr>
@@ -97,6 +103,28 @@ export default function WorkingsPage() {
               </table>
             </div>
           </Section>
+
+          {items.length > 0 && (
+            <Section title="The fixed cost build, line by line" id="w-build" note={`${on.length} lines on, ${gbp0(buildTotal)} a month`}>
+              <p className="text-[0.92rem] text-ink-2 leading-relaxed max-w-[70ch]">This is the build from Launch OS, kept as it was. Each line is marked as you set it there: <b className="text-ink">Winchester only</b>, or <b className="text-ink">shared</b> across both clinics and counted once. The lines can still be edited on the old <Link href="/financials" className="underline">Launch OS money page</Link>.</p>
+              {["Rent", "Business rates", "Utilities", "General running", "Advertising"].filter((g) => on.some((x) => groupOf(x.name) === g)).map((g) => {
+                const lines = on.filter((x) => groupOf(x.name) === g);
+                const modelFig = g === "Rent" ? C.rent.annual / 12 : g === "Business rates" ? C.rates.monthly : g === "Utilities" ? C.utilities.monthly : g === "Advertising" ? C.marketing.monthly : C.running.monthly;
+                const gap = Math.round(modelFig - groupSum(g));
+                return (
+                  <div key={g} className="grid gap-2 border-t border-border pt-3">
+                    <p className="flex flex-wrap items-baseline justify-between gap-x-4"><b className="text-ink text-[1rem]">{g}</b><span className="text-[0.88rem] text-ink-2 tabular">build {gbp0(groupSum(g))}; the model uses {gbp0(modelFig)}{Math.abs(gap) >= 2 ? <b className="text-watch">, {gbp0(Math.abs(gap))} {gap > 0 ? "more" : "less"} than the build</b> : ", the same"}</span></p>
+                    <HBars ariaLabel={`${g}, line by line`} max={Math.max(...on.map((x) => x.amount))} labelWidth="13rem" rows={lines.map((x) => ({ label: x.name, note: x.type === "dual" ? "shared across both clinics, counted once" : "Winchester only", value: x.amount, display: gbp0(x.amount), color: x.type === "dual" ? V.sageDeep : V.ink }))} />
+                  </div>
+                );
+              })}
+              <div className="flex flex-wrap gap-x-5 gap-y-1 text-[0.82rem] text-ink border-t border-border pt-3">
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.ink }} />Winchester only: <b className="tabular">{gbp0(on.filter((x) => x.type !== "dual").reduce((s2, x) => s2 + x.amount, 0))}</b></span>
+                <span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.sageDeep }} />Shared across both clinics: <b className="tabular">{gbp0(on.filter((x) => x.type === "dual").reduce((s2, x) => s2 + x.amount, 0))}</b></span>
+              </div>
+              {off.length > 0 && <p className="text-[0.85rem] text-ink-muted leading-relaxed max-w-[70ch]">Switched off in the build, so not counted: {off.map((x) => `${x.name} (${gbp0(x.amount)})`).join("; ")}.</p>}
+            </Section>
+          )}
 
           <Section title={`5. ${monthName(r.month)}, line by line`} id="w-month" note="pick any month">
             <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
