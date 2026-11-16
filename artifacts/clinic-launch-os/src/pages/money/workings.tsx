@@ -5,13 +5,14 @@
 // one month walked line by line with the reason for every figure. Read only.
 import { useState } from "react";
 import { Link } from "wouter";
-import { usePage, type Chip } from "@/lib/alfred";
+import { usePage, useSummary, type Chip } from "@/lib/alfred";
 import { Page, PageHead, Section, gbp0 } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AmendPanel, type Settings } from "@/components/amend-panel";
 import { ModelReview } from "@/components/model-review";
-import { MultiLine, StackN, Waterfall, SplitBar, Stat, MarginColumns, Pill, HBars, V } from "@/components/viz";
+import { StockEditor } from "@/components/stock-editor";
+import { MultiLine, StackN, Waterfall, SplitBar, Stat, MarginColumns, Pill, HBars, Hover, TipHead, V } from "@/components/viz";
 
 const back = { href: "/money", label: "Money" };
 const monthName = (ym: string) => new Date(ym + "-01T12:00:00Z").toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
@@ -19,6 +20,7 @@ const dayName = (ymd: string) => new Date(ymd + "T12:00:00Z").toLocaleDateString
 
 export default function WorkingsPage() {
   const { data } = usePage("workings");
+  const { data: gs } = useSummary("growth");
   const rows: any[] = data?.rows ?? [];
   const firstTrading = Math.max(0, rows.findIndex((r) => r.winc > 0));
   const [sel, setSel] = useState<number | null>(null);
@@ -39,6 +41,19 @@ export default function WorkingsPage() {
     bedhKept: data.keep.bedhampton, extraPct: data.settings?.extraPct ?? 0, productScale: data.settings?.productScale ?? 1, scenario: data.chosen, profile: data.settings?.profile ?? null, listPrice: data.settings?.listPrice ?? 1.48, founderPrice: data.settings?.founderPrice ?? 1.184, foundingPatients: data.settings?.foundingPatients ?? 60, foundingTakings: data.settings?.foundingTakings ?? 4400,
     buildGeneral: items.length ? groupSum("General running") : null, scenarios: data.scenarios.map((x: any) => ({ key: x.key, label: x.label })), centralProfile: data.settings?.centralProfile ?? null,
   } : null;
+  const growthDetail = (k: number) => {
+    const x = rows[k]; if (!x) return null;
+    const np = P?.newPatients?.[k], npPrev = k > 0 ? P?.newPatients?.[k - 1] : null;
+    const dropped = chosen && k > 0 && chosen.winc[k] < chosen.winc[k - 1];
+    return (
+      <>
+        {np != null && <span>{chosen?.label}: {np} new paying patients this month{x.month === "2026-12" ? " (the opening cohort as booked)" : ""}.</span>}
+        {x.transferIn > 0 && <span>Every line includes {gbp0(x.transferIn)} from Bedhampton patients who move with Abi's second day.</span>}
+        <span>{x.month <= "2027-01" ? "Introductory prices." : "Winchester list prices."}</span>
+        {dropped && npPrev != null && np != null && npPrev > np && <span>Down on last month: new patients fall from {npPrev} to {np}{x.month === "2027-03" ? ", as the launch months and introductory prices end" : ""}.</span>}
+      </>
+    );
+  };
   const fixedOf = (x: any) => x.rent + x.rates + x.utilities + x.general + x.marketing + x.oneOff;
   return (
     <Page>
@@ -49,7 +64,7 @@ export default function WorkingsPage() {
       {!data || !r ? <Skeleton className="h-60 rounded-xl" /> : (
         <>
           <Section title="1. The growth model in use" id="w-model" note="Winchester takings a month, with VAT">
-            <MultiLine labels={data.labels} series={data.scenarios.map((s: any) => ({ label: s.label, values: s.winc, chosen: s.chosen }))}
+            <MultiLine labels={data.labels} detail={growthDetail} series={data.scenarios.map((s: any) => ({ label: s.label, values: s.winc, chosen: s.chosen }))}
               ariaLabel={`Winchester takings under each growth model. ${data.scenarios.map((s: any) => `${s.label}: ${gbp0(s.winc[s.winc.length - 1])} by ${data.labels[data.labels.length - 1]}`).join("; ")}`} />
             <ul className="grid gap-3 border-t border-border pt-3">
               {data.scenarios.map((s: any) => (
@@ -59,39 +74,93 @@ export default function WorkingsPage() {
                 </li>
               ))}
             </ul>
-            <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[70ch]">Each line includes the Bedhampton patients the model moves across once Bedhampton is on one day a week. To change the model in use, tell ALFRED: it is one finance change, shown before and after.</p>
+            <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[70ch]">Point at the chart for any month's figures. Each line includes the Bedhampton patients the model moves across once Bedhampton is on one day a week. To change the model in use, use Amend the position below.</p>
           </Section>
 
+          {(() => {
+            const rec = data.scenarios.find((x: any) => x.chosen), dav = data.scenarios.find((x: any) => x.key === "base"), S = data.sensitivity;
+            if (!rec || !dav || !S || rec.key === dav.key) return null;
+            const in27 = (arr: number[]) => arr.reduce((t: number, v: number, k: number) => t + (rows[k]?.month.startsWith("2027") ? v : 0), 0);
+            const rec27 = in27(rec.winc), dav27 = in27(dav.winc), gap27 = dav27 - rec27;
+            const flats = S.flats as { patients: number; winc2027: number; bankEnd2027: number }[];
+            const patientsFor = (v: number) => { for (let k = 1; k < flats.length; k++) if (v <= flats[k].winc2027) { const a = flats[k - 1], b = flats[k]; return a.patients + ((v - a.winc2027) * (b.patients - a.patients)) / (b.winc2027 - a.winc2027); } return flats[flats.length - 1].patients; };
+            const pRec = patientsFor(rec27), pDav = patientsFor(dav27);
+            const perPatient = (flats[flats.length - 1].winc2027 - flats[0].winc2027) / (flats[flats.length - 1].patients - flats[0].patients);
+            const priceGain = S.priceUp.winc2027 - S.plan2027;
+            const ix = (m: string) => rows.findIndex((x) => x.month === m);
+            const npMar = P?.newPatients?.[ix("2027-03")], npDec = P?.newPatients?.[ix("2027-12")];
+            const running = (gs?.extra?.viz?.days14 ?? []).filter((d: any) => d.running).length;
+            const leads = gs?.extra?.leads ?? 0, booked = gs?.extra?.booked ?? 0;
+            const consults = running ? (booked / running) * 30 : 0;
+            const share = consults ? Math.round((100 * pDav) / consults) : null;
+            const near = (n: number, t: number) => Math.abs(n - t) < 2;
+            return (
+              <Section title={`2. Why "${rec.label}" and your forecast differ by ${gbp0(gap27)} in 2027`} id="w-why">
+                <p className="text-[1.1rem] sm:text-[1.25rem] font-bold text-ink leading-snug max-w-[60ch]">{rec.label} has Winchester taking {gbp0(rec27)} in 2027; your forecast has {gbp0(dav27)}. Almost all of the difference is how many new paying patients arrive each month: about {Math.round(pRec)} against about {Math.round(pDav)}. Price is not the gap.</p>
+                <MarginColumns rows={rows.map((x, k) => ({ label: x.label, value: dav.winc[k] - rec.winc[k] }))} lineLabel="your forecast higher above this line"
+                  ariaLabel={`How much higher your forecast is than ${rec.label} each month. ${rows.map((x, k) => `${x.label}: ${gbp0(dav.winc[k] - rec.winc[k])}`).join("; ")}`}
+                  detail={(k) => <><span>{rec.label}: {gbp0(rec.winc[k])}</span><span>Your forecast: {gbp0(dav.winc[k])}</span>{P?.newPatients && <span>{rec.label} assumes {P.newPatients[k]} new paying patients this month; yours works out at about {Math.round(pDav)}.</span>}</>} />
+                <p className="text-[0.82rem] text-ink-muted -mt-1">Below the line in December to February: {rec.label} has the launch months stronger (22 new patients a month and the opening cohort); your forecast climbs in a straight line instead.</p>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="grid gap-2 content-start">
+                    <b className="text-ink text-[1rem]">Winchester's 2027 takings at each number of new paying patients a month</b>
+                    <HBars labelWidth="7.5rem" ariaLabel="Winchester's 2027 takings at each number of new paying patients a month"
+                      rows={flats.map((f) => ({ label: `${f.patients} a month`, note: near(f.patients, pRec) ? `about ${rec.label}` : near(f.patients, pDav) ? "about your forecast" : undefined, value: f.winc2027, display: gbp0(f.winc2027), color: near(f.patients, pRec) ? V.ink : near(f.patients, pDav) ? V.sageDeep : V.base,
+                        tip: <span>From March 2027; January and February stay at 22. Bank at the end of 2027: {gbp0(f.bankEnd2027)}.</span> }))} />
+                    <p className="text-[0.86rem] text-ink-2 leading-relaxed">Each extra new paying patient a month adds about <b className="text-ink">{gbp0(perPatient)}</b> to Winchester's 2027 takings. Lifting the price list from 1.48 to 1.60 times Bedhampton's adds only about <b className="text-ink">{gbp0(priceGain)}</b>.</p>
+                  </div>
+                  <ul className="grid gap-3 content-start text-[0.92rem] text-ink-2 leading-relaxed">
+                    <li><b className="text-ink">The assumption.</b> {rec.label} has 22 new paying patients a month in January and February (the launch, introductory prices and the warm list), then {npMar ?? 16} from March rising to {npDec ?? 18} by December 2027. Your forecast is a straight line in pounds; on the patient model it needs about {Math.round(pDav)} a month all year.</li>
+                    <li><b className="text-ink">Against Bedhampton.</b> Bedhampton averaged {P?.bedhAvg2026} new patients a month in 2026{S.bedhBest ? `; its best month was ${S.bedhBest.patients}, in ${monthName(S.bedhBest.month)}` : ""}. Your forecast asks Winchester to beat Bedhampton's average in its first year, in a town where it has no Google reviews of its own yet.</li>
+                    {running > 0 && consults > 0 && <li><b className="text-ink">Against the ads so far.</b> {leads} leads and {booked} booked consultations in {running} days: about {Math.round(consults)} consultations a month from the ads alone. If half go on to pay that is about {Math.round(consults / 2)} new patients a month, close to {rec.label}. {share != null && share <= 100 ? `Your forecast needs about ${share} in every 100 to pay, or more patients from the warm list, walk-ins and referrals.` : "Your forecast needs more patients than the ads alone are booking, from the warm list, walk-ins and referrals."}</li>}
+                    <li><b className="text-ink">What settles it.</b> Model-day takings on 4 December, how many December consultations go on to pay (by about 19 December), and January's new patients. If January and February each bring {Math.round(pDav)} or more new paying patients, your forecast is the better plan: switch it under Amend the position below.</li>
+                  </ul>
+                </div>
+              </Section>
+            );
+          })()}
+
           {P && (
-            <Section title="2. Where the takings come from" id="w-patients" note="Bedhampton's own records, at Winchester prices">
+            <Section title="3. Where the takings come from" id="w-patients" note="Bedhampton's own records, at Winchester prices">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <Stat label="A new patient's first month" value={gbp0(P.firstMonth * P.listVsBedhampton)} sub={`${gbp0(P.firstMonth)} at Bedhampton prices; ${gbp0(P.firstMonth * P.foundersVsBedhampton)} at introductory prices`} />
-                <Stat label="Each return visit" value={gbp0(P.returnVisit * P.listVsBedhampton)} sub={`${gbp0(P.returnVisit)} at Bedhampton prices`} />
-                <Stat label="Return visits, first year" value={P.returns12.toFixed(1)} sub={`${P.returns36.toFixed(1)} over three years, per new patient`} />
-                <Stat label="Bedhampton's new patients" value={`${P.bedhAvg2026} a month`} sub={`2026 so far; ${P.bedhAvg2025} a month in 2025`} />
+                <Stat tip={<span>{gbp0(P.firstMonth)} is what a new Bedhampton patient spent on average in their first month (ANS, March to September 2026), times {P.listVsBedhampton} for Winchester's list prices.</span>} label="A new patient's first month" value={gbp0(P.firstMonth * P.listVsBedhampton)} sub={`${gbp0(P.firstMonth)} at Bedhampton prices; ${gbp0(P.firstMonth * P.foundersVsBedhampton)} at introductory prices`} />
+                <Stat tip={<span>What a returning Bedhampton patient spent a visit on average, {gbp0(P.returnVisit)}, times {P.listVsBedhampton} for Winchester's list.</span>} label="Each return visit" value={gbp0(P.returnVisit * P.listVsBedhampton)} sub={`${gbp0(P.returnVisit)} at Bedhampton prices`} />
+                <Stat tip={<span>How often a new patient comes back, month by month after their first visit, from Bedhampton's records. This curve drives most of Winchester's growth after each patient's first month.</span>} label="Return visits, first year" value={P.returns12.toFixed(1)} sub={`${P.returns36.toFixed(1)} over three years, per new patient`} />
+                <Stat tip={<span>First appointments in ANS, May 2024 to September 2026.{data.sensitivity?.bedhBest ? ` Best month: ${data.sensitivity.bedhBest.patients}, in ${monthName(data.sensitivity.bedhBest.month)}.` : ""}</span>} label="Bedhampton's new patients" value={`${P.bedhAvg2026} a month`} sub={`2026 so far; ${P.bedhAvg2025} a month in 2025`} />
               </div>
               {P.newPatients && (
                 <>
                   <p className="text-[1rem] font-bold text-ink pt-1">New patients a month the model assumes at Winchester</p>
-                  <MarginColumns rows={data.labels.map((l: string, k: number) => ({ label: l, value: P.newPatients[k], title: `${l}: ${P.newPatients[k]} new patients` }))} ariaLabel={`New patients a month assumed at Winchester. ${data.labels.map((l: string, k: number) => `${l}: ${P.newPatients[k]}`).join("; ")}`} money={false} />
+                  <MarginColumns rows={data.labels.map((l: string, k: number) => ({ label: l, value: P.newPatients[k], title: `${l}: ${P.newPatients[k]} new patients` }))} ariaLabel={`New patients a month assumed at Winchester. ${data.labels.map((l: string, k: number) => `${l}: ${P.newPatients[k]}`).join("; ")}`} money={false} detail={(k) => <><span>Winchester takings this month ({chosen?.label}): {gbp0(chosen?.winc?.[k] ?? 0)}</span><span>Each new patient is worth about {gbp0(P.firstMonth * P.listVsBedhampton)} in their first month, then about {P.returns12.toFixed(1)} return visits in the year.</span></>} />
                 </>
               )}
               <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[70ch]">How a month's takings are worked out: every earlier month's new patients come back at the rate Bedhampton's patients actually did, and each visit is priced at what Bedhampton patients spent, lifted to Winchester's price list ({P.listVsBedhampton} times Bedhampton's, or {P.foundersVsBedhampton.toFixed(2)} times at introductory prices to {monthName(P.founderUntil)}). December starts from the {P.founding.patients} people and {gbp0(P.founding.firstMonthTotal)} already booked when the model was built. Source: the ANS export of 30 September 2026, totals only.</p>
             </Section>
           )}
 
-          <Section title="3. Variable costs: what is kept from takings" id="w-variable" note="tap a month">
-            <StackN selected={i} onSelect={setSel} parts={[{ label: "Kept", color: V.good }, { label: "Products", color: V.slate }, { label: "VAT", color: V.base }]} rows={rows.map((x) => ({ label: x.label, values: [x.kept, x.product, x.vat] }))}
+          <Section title="4. Variable costs: what is kept from takings" id="w-variable" note="tap a month">
+            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; const t = x.winc + x.bedh; return <><span>Taken: {gbp0(t)} ({gbp0(x.winc)} Winchester, {gbp0(x.bedh)} Bedhampton)</span><span>Kept {t ? Math.round((100 * x.kept) / t) : 0}p in every pound.</span></>; }} parts={[{ label: "Kept", color: V.good }, { label: "Products", color: V.slate }, { label: "VAT", color: V.base }]} rows={rows.map((x) => ({ label: x.label, values: [x.kept, x.product, x.vat] }))}
               ariaLabel={`Takings each month split into VAT, products and what is kept. ${rows.map((x) => `${x.label}: kept ${gbp0(x.kept)} of ${gbp0(x.winc + x.bedh)}`).join("; ")}`} />
             <div className="grid gap-6 md:grid-cols-2">
               {r.winc > 0 && <div className="grid gap-2"><b className="text-ink">Winchester, {r.label}</b><SplitBar ariaLabel={`Winchester ${r.label}: what is kept`} total={{ label: "Taken", value: gbp0(r.winc) }} stack parts={[{ label: "Kept", value: r.wincKept, color: V.good }, { label: "Products", value: r.wincProduct, color: V.slate }, { label: "VAT", value: r.wincVat, color: V.base }]} /></div>}
               {r.bedh > 0 && <div className="grid gap-2"><b className="text-ink">Bedhampton, {r.label}</b><SplitBar ariaLabel={`Bedhampton ${r.label}: what is kept`} total={{ label: "Taken", value: gbp0(r.bedh) }} stack parts={[{ label: "Kept", value: r.bedhKept, color: V.good }, { label: "Products", value: r.bedhProduct, color: V.slate }, { label: "VAT", value: r.bedhVat, color: V.base }]} /></div>}
             </div>
             <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[70ch]">VAT is one sixth of everything taken. Products cost {Math.round(P.productShare * 1000) / 10}p in the pound at Bedhampton's prices, so Bedhampton keeps {data.keep.bedhampton}p in the pound. The same products go further at Winchester's prices, so Winchester keeps about {data.keep.winchester}p over three years, a little less while introductory prices run. {r.why?.contribution ? `${r.label}: ${r.why.contribution}.` : ""}</p>
+            {(() => {
+              return (
+                <div className="grid gap-2.5 border-t border-border pt-4" id="w-stock">
+                  <b className="text-ink text-[1.02rem]">Stock: what each treatment costs in product</b>
+                  <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[72ch]">The model takes <b className="text-ink">{Math.round(P.productShare * 1000) / 10}p of every pound Bedhampton takes</b> as stock. That figure was worked out once, from the estimated product cost of each treatment on the price list, applied to 427 treatments paid between March and September 2026. <b className="text-ink">It has never been checked against money actually spent</b>: stock is bought on the Capital on Tap card and no itemised statement is on file, so the bank only shows repayments to the card.</p>
+                  <StockEditor />
+                  <p className="text-[0.86rem] text-ink-2 leading-relaxed max-w-[72ch]"><b className="text-ink">Why it matters.</b> The team puts the true stock figure somewhere between 26p and 34p in the pound; each penny is about £120 a month at £12,000 of Winchester takings.</p>
+                  <p className="text-[0.86rem] text-ink leading-relaxed max-w-[72ch]"><b>To make it real:</b> export twelve months of Capital on Tap transactions and send them over. ALFRED will total the supplier lines, set stock from what was actually spent, and show it here against takings month by month.</p>
+                </div>
+              );
+            })()}
           </Section>
 
-          <Section title="4. Fixed costs, month by month" id="w-fixed" note="tap a month">
-            <StackN selected={i} onSelect={setSel} parts={[{ label: "Rent", color: V.ink }, { label: "Rates", color: V.slate }, { label: "Advertising", color: V.sageDeep }, { label: "General running", color: V.base }, { label: "Utilities", color: V.sage }, { label: "One-offs", color: V.watch }]}
+          <Section title="5. Fixed costs, month by month" id="w-fixed" note="tap a month">
+            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; return <><span>Kept from takings: {gbp0(x.kept)}</span><span>Profit before pay: {gbp0(x.operatingProfit)}</span>{x.rent === 0 && <span>Rent free this month.</span>}{x.oneOff > 0 && <span>Includes a one-off cost of {gbp0(x.oneOff)}.</span>}</>; }} parts={[{ label: "Rent", color: V.ink }, { label: "Rates", color: V.slate }, { label: "Advertising", color: V.sageDeep }, { label: "General running", color: V.base }, { label: "Utilities", color: V.sage }, { label: "One-offs", color: V.watch }]}
               rows={rows.map((x) => ({ label: x.label, values: [x.rent, x.rates, x.marketing, x.general, x.utilities, x.oneOff] }))}
               ariaLabel={`Fixed costs each month. ${rows.map((x) => `${x.label}: ${gbp0(fixedOf(x))}`).join("; ")}`} />
             <div className="overflow-x-auto">
@@ -122,7 +191,7 @@ export default function WorkingsPage() {
                 return (
                   <div key={g} className="grid gap-2 border-t border-border pt-3">
                     <p className="flex flex-wrap items-baseline justify-between gap-x-4"><b className="text-ink text-[1rem]">{g}</b><span className="text-[0.88rem] text-ink-2 tabular">build {gbp0(groupSum(g))}; the model uses {gbp0(modelFig)}{Math.abs(gap) >= 2 ? <b className="text-watch">, {gbp0(Math.abs(gap))} {gap > 0 ? "more" : "less"} than the build</b> : ", the same"}</span></p>
-                    <HBars ariaLabel={`${g}, line by line`} max={Math.max(...on.map((x) => x.amount))} labelWidth="13rem" rows={lines.map((x) => ({ label: x.name, note: x.type === "dual" ? "shared across both clinics, counted once" : "Winchester only", value: x.amount, display: gbp0(x.amount), color: x.type === "dual" ? V.sageDeep : V.ink }))} />
+                    <HBars ariaLabel={`${g}, line by line`} max={Math.max(...on.map((x) => x.amount))} labelWidth="13rem" rows={lines.map((x) => ({ label: x.name, note: x.type === "dual" ? "shared across both clinics, counted once" : "Winchester only", value: x.amount, display: gbp0(x.amount), color: x.type === "dual" ? V.sageDeep : V.ink, tip: <span>{Math.round((100 * x.amount) / buildTotal)}% of the {gbp0(buildTotal)} build; {gbp0(x.amount * 12)} a year. Last changed in Launch OS {new Date(x.updated).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}.</span> }))} />
                   </div>
                 );
               })}
@@ -138,7 +207,7 @@ export default function WorkingsPage() {
 
           {settings && <AmendPanel s={settings} log={data.log} preset={preset} />}
 
-          <Section title={`5. ${monthName(r.month)}, line by line`} id="w-month" note="pick any month">
+          <Section title={`6. ${monthName(r.month)}, line by line`} id="w-month" note="pick any month">
             <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
               {rows.map((x, k) => <button key={x.month} type="button" onClick={() => setSel(k)} aria-pressed={k === i} className={`shrink-0 min-h-[40px] px-3.5 rounded-full border text-[0.82rem] font-semibold ${k === i ? "bg-ink text-white border-ink" : "bg-card text-ink border-line-strong hover:bg-wash"}`}>{x.label}</button>)}
             </div>
@@ -168,7 +237,7 @@ export default function WorkingsPage() {
             <div className="overflow-x-auto rounded-2xl bg-card border border-border p-3">
               <table className="w-full min-w-[860px] text-[0.82rem] tabular">
                 <thead><tr className="text-right text-[0.66rem] uppercase tracking-[0.1em] text-ink-muted border-b border-line-strong"><th className="py-2 pr-2 text-left">Month</th><th className="pr-2">Winchester</th><th className="pr-2">Bedhampton</th><th className="pr-2">VAT</th><th className="pr-2">Products</th><th className="pr-2">Kept</th><th className="pr-2">Fixed costs</th><th className="pr-2">Profit</th><th className="pr-2">Abi's pay</th><th className="pr-2">Left</th><th>Bank</th></tr></thead>
-                <tbody>{rows.map((x, k) => <tr key={x.month} onClick={() => setSel(k)} className={`text-right border-b border-border cursor-pointer ${k === i ? "bg-wash font-semibold" : ""}`}><td className="py-1.5 pr-2 text-left">{x.label}</td><td className="pr-2">{gbp0(x.winc)}</td><td className="pr-2">{gbp0(x.bedh)}</td><td className="pr-2">{gbp0(x.vat)}</td><td className="pr-2">{gbp0(x.product)}</td><td className="pr-2">{gbp0(x.kept)}</td><td className="pr-2">{gbp0(fixedOf(x))}</td><td className="pr-2">{gbp0(x.operatingProfit)}</td><td className="pr-2">{gbp0(x.payCost)}</td><td className="pr-2">{gbp0(x.retained)}</td><td>{gbp0(x.bank)}</td></tr>)}</tbody>
+                <tbody>{rows.map((x, k) => <tr key={x.month} onClick={() => setSel(k)} className={`text-right border-b border-border cursor-pointer hover:bg-wash/60 ${k === i ? "bg-wash font-semibold" : ""}`}><td className="py-1.5 pr-2 text-left">{x.label}</td><td className="pr-2">{gbp0(x.winc)}</td><td className="pr-2">{gbp0(x.bedh)}</td><td className="pr-2">{gbp0(x.vat)}</td><td className="pr-2">{gbp0(x.product)}</td><td className="pr-2">{gbp0(x.kept)}</td><td className="pr-2">{gbp0(fixedOf(x))}</td><td className="pr-2">{gbp0(x.operatingProfit)}</td><td className="pr-2">{gbp0(x.payCost)}</td><td className="pr-2">{gbp0(x.retained)}</td><td>{gbp0(x.bank)}</td></tr>)}</tbody>
               </table>
             </div>
           </details>

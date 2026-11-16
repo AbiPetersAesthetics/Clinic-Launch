@@ -476,4 +476,71 @@ router.post("/projects/:projectId/cash-model/assumptions", async (req, res) => {
   }
 });
 
+// ── Stock cost, treatment by treatment (owner, 16 Nov 2026: "the stock needs to be for all Bedhampton
+// and all Winchester treatments... filler in Winchester is a different, more premium product"). Each
+// treatment carries its own product cost at each clinic and its introductory Winchester price; the
+// owner's figures are kept in the stored model under stock.items and win over the Launch OS estimate.
+// Introductory prices start from the ANS record of 6 Nov 2026 (ans-winchester-opening-prices.md).
+const INTRO_FROM_ANS: Record<string, number> = { profhiloFace: 255, skinvive: 235, polyFace: 215, polyEye: 215, sculptraVial: 425, obagiBlueRadiance: 75, exoFace: 255, mnFaceNeckDec: 130, mnFace: 105, restylaneSkinboosters: 125, filler05: 155, filler1: 255, filler2: 420, aw3: 260, aw2: 220, aw1: 145 };
+async function stockView(projectId: number) {
+  const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+  let stored: any = {};
+  try { stored = JSON.parse((model as any)?.cashModelJson || "{}") || {}; } catch { stored = {}; }
+  const mine: Record<string, any> = stored.stock?.items ?? {};
+  const t: any[] = ((await db.execute(sql`SELECT key, display_name, category, price_bedhampton, price_winchester, actual_price_bedhampton, actual_price_winchester, product_cost_estimate_gbp, course_size, sort_order FROM treatments ORDER BY sort_order, id`)) as any).rows ?? [];
+  const num = (v: any) => (v == null || v === "" ? null : Number(v));
+  const items = t.filter((x) => x.category !== "consultation").map((x) => {
+    const m = mine[x.key] ?? {};
+    const est = num(x.product_cost_estimate_gbp);
+    return {
+      key: x.key, name: x.display_name, category: x.category, courseSize: x.course_size ?? null,
+      bedhPrice: num(x.actual_price_bedhampton) ?? num(x.price_bedhampton), wincList: num(x.actual_price_winchester) ?? num(x.price_winchester),
+      introPrice: m.introPrice !== undefined ? num(m.introPrice) : INTRO_FROM_ANS[x.key] ?? null,
+      introSource: m.introPrice !== undefined ? "you" : INTRO_FROM_ANS[x.key] != null ? "ANS, 6 Nov" : null,
+      bedhCost: m.bedhCost !== undefined ? num(m.bedhCost) : est, wincCost: m.wincCost !== undefined ? num(m.wincCost) : est,
+      bedhSource: m.bedhCost !== undefined ? "you" : est != null ? "Launch OS estimate" : null, wincSource: m.wincCost !== undefined ? "you" : est != null ? "Launch OS estimate" : null,
+    };
+  });
+  return { items, savedAt: stored.stock?.savedAt ?? null, vatRate: stored.vatRate ?? CASH_MODEL_DEFAULTS.vatRate };
+}
+router.get("/projects/:projectId/stock-costs", async (req, res) => {
+  try { res.json(await stockView(parseInt(req.params.projectId))); } catch (err) { console.error("[stock-costs]", err); res.status(500).json({ error: "Could not load stock costs" }); }
+});
+// PUT { items: { [key]: { bedhCost?, wincCost?, introPrice? } } }: saves the owner's figures (null clears one).
+router.put("/projects/:projectId/stock-costs", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const body = (req.body ?? {}).items;
+    if (!body || typeof body !== "object") { res.status(400).json({ error: "Nothing to save" }); return; }
+    const known = new Set((((await db.execute(sql`SELECT key FROM treatments`)) as any).rows ?? []).map((r: any) => r.key));
+    const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
+    if (!model) { res.status(404).json({ error: "There is no financial model for this project" }); return; }
+    let stored: any = {};
+    try { stored = JSON.parse((model as any).cashModelJson || "{}") || {}; } catch { stored = {}; }
+    const items: Record<string, any> = { ...(stored.stock?.items ?? {}) };
+    const changed: string[] = [];
+    for (const [key, v] of Object.entries(body as Record<string, any>)) {
+      if (!known.has(key) || !v || typeof v !== "object") continue;
+      const cur = { ...(items[key] ?? {}) };
+      for (const f of ["bedhCost", "wincCost", "introPrice"]) {
+        if (!(f in v)) continue;
+        const raw = (v as any)[f];
+        if (raw === null || raw === "") { cur[f] = null; changed.push(`${key} ${f} cleared`); continue; }
+        const n = Number(raw);
+        if (!Number.isFinite(n) || n < 0 || n > 5000) { res.status(400).json({ error: `${key}: ${f} must be a number of pounds` }); return; }
+        cur[f] = Math.round(n * 100) / 100; changed.push(`${key} ${f} ${cur[f]}`);
+      }
+      items[key] = cur;
+    }
+    if (!changed.length) { res.status(400).json({ error: "Nothing to save" }); return; }
+    stored.stock = { items, savedAt: new Date().toISOString() };
+    await db.update(financialsTable).set({ cashModelJson: JSON.stringify(stored) } as any).where(eq(financialsTable.projectId, projectId));
+    await db.execute(sql`INSERT INTO activity (project_id, agent, status, summary, started_at, finished_at) VALUES (${projectId}, 'ALFRED', 'ok', ${`Stock costs updated on How the numbers are built: ${changed.join("; ")}`.slice(0, 900)}, NOW(), NOW())`);
+    res.json(await stockView(projectId));
+  } catch (err) {
+    console.error("[stock-costs save]", err);
+    res.status(500).json({ error: "Could not save the stock costs" });
+  }
+});
+
 export default router;

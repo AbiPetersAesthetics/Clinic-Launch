@@ -85,9 +85,22 @@ router.get("/projects/:projectId/pages/obligations", handle(async (projectId) =>
 router.get("/projects/:projectId/pages/workings", handle(async (projectId) => {
   const months = 24;
   const J: any = await buildCashModel(projectId, { months });
+  // Every growth model, then what Winchester takes in 2027 at fixed numbers of new paying patients a
+  // month (the patient model held flat from March), and at a higher price list: the two levers that
+  // explain the gap between the models. Read only, run side by side.
+  const y27 = (R: any) => Math.round(R.rows.filter((r: any) => r.month.startsWith("2027")).reduce((t: number, r: any) => t + r.winc.gross, 0));
+  const bank27 = (R: any) => Math.round(R.rows.find((r: any) => r.month === "2027-12")?.closingBank ?? 0);
+  const keys = Object.keys(WINC_SCENARIOS);
+  const [runs, flats, priceUp] = await Promise.all([
+    Promise.all(keys.map((k) => (k === J.scenario ? Promise.resolve(J) : buildCashModel(projectId, { months, scenario: k })))),
+    Promise.all([17, 20, 24, 28, 32].map(async (n) => { const R: any = await buildCashModel(projectId, { months, tryConfig: { winc: { profile: { early: 22, earlyUntil: "2027-02", start: n, growthPerMonth: 0, cap: n } } } }); return { patients: n, winc2027: y27(R), bankEnd2027: bank27(R) }; })),
+    buildCashModel(projectId, { months, tryConfig: { winc: { listPrice: 1.6 } } }).then((R: any) => ({ listPrice: 1.6, winc2027: y27(R), bankEnd2027: bank27(R) })),
+  ]);
+  const best = Object.entries(BEDH_NEW_PATIENTS).filter(([m]) => m >= "2025-01").sort((a, b2) => b2[1] - a[1])[0];
+  const sensitivity = { flats, priceUp, plan2027: y27(J), bedhBest: best ? { month: best[0], patients: best[1] } : null };
   const scenarios: any[] = [];
-  for (const k of Object.keys(WINC_SCENARIOS)) {
-    const R: any = k === J.scenario ? J : await buildCashModel(projectId, { months, scenario: k });
+  for (const [ix, k] of keys.entries()) {
+    const R: any = runs[ix];
     scenarios.push({ key: k, label: WINC_SCENARIOS[k].label, note: WINC_SCENARIOS[k].note, chosen: k === J.scenario, winc: R.rows.map((r: any) => Math.round(r.winc.gross)), lowest: Math.round(R.lowest?.bank ?? 0), lowestMonth: R.lowest?.month ?? null });
   }
   const profile = (WINC_PROFILES as any)[J.scenario] ?? null;
@@ -103,6 +116,7 @@ router.get("/projects/:projectId/pages/workings", handle(async (projectId) => {
       vat: r2(r.total.vat), product: r2(r.total.product), kept: r2(r.total.contribution), utilities: r2(r.running.utilities), general: r2(r.running.general), marketing: r2(r.running.marketing), oneOff: r2(r.running.oneOff), rates: r2(r.rates), rent: r2(r.rentAccrued),
       operatingProfit: r2(r.operatingProfit), loanInterest: r2(r.loanInterest), loanRepayment: r2(r.loanRepayment), payCost: r2(r.payCost), paySalary: r2(r.paySalary), retained: r2(r.profitRetained), bank: r2(r.closingBank), transferIn: r2(r.transferIn ?? 0), bedhDays: r.bedhDays, wincDays: r.wincDays, occupancy: r.wincOccupancy, why: r.why })),
     costs: { rent: J.config?.rent, rates: J.config?.rates, utilities: J.config?.utilities, running: J.config?.running, marketing: J.config?.marketing, pay: J.config?.pay, loans: J.loans ?? [], oneOffs: J.config?.oneOffs ?? [] },
+    sensitivity,
     settings: { extraPct: Number(J.config?.variable?.extraPct ?? 0), productScale: Number(J.config?.winc?.productScale ?? 1) || 1, profile: J.config?.winc?.profile ?? null, centralProfile: WINC_PROFILES.central, listPrice: Number(J.config?.winc?.listPrice) || PRICES.listVsBedhampton, founderPrice: Number(J.config?.winc?.founderPrice) || PRICES.foundersVsBedhampton, foundingPatients: Number(J.config?.winc?.foundingPatients ?? WINC_OPTS.founding.patients), foundingTakings: Number(J.config?.winc?.foundingTakings ?? WINC_OPTS.founding.firstMonthTotal), listDefault: PRICES.listVsBedhampton, founderDefault: PRICES.foundersVsBedhampton },
     log: Array.isArray(J.config?.assumptionLog) ? J.config.assumptionLog : [],
     review: await latestBoardRow(projectId, "operating-model-review"),

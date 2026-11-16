@@ -30,6 +30,37 @@ function niceStep(span: number, target = 4) {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
 }
 
+// ── Hover (owner, 16 Nov 2026: "make everything hoverable"). Point at any chart, bar or tile and a
+// card shows its figures and where they come from. Charts track the pointer; bars and tiles show
+// the card on hover or keyboard focus. Touch: tap to show.
+const MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+export const longLabel = (l: string) => { const [m, y] = String(l).split(" "); const i = MONTHS3.indexOf(m); return i < 0 || !y || !/^\d{2}$/.test(y) ? l : `${MONTHS_LONG[i]} 20${y}`; };
+type Hov = { i: number; x: number; y: number } | null;
+const at = (e: any, svgEl: Element | null | undefined, boxEl: Element | null | undefined) => {
+  const p = e.touches?.[0] ?? e;
+  const s = (svgEl ?? boxEl)!.getBoundingClientRect(), b = (boxEl ?? svgEl)!.getBoundingClientRect();
+  return { sx: p.clientX - s.left, x: p.clientX - b.left, y: p.clientY - b.top };
+};
+const TIP = "pointer-events-none absolute z-30 w-max max-w-[min(300px,80vw)] rounded-xl bg-ink text-white shadow-[0_6px_24px_rgba(31,42,68,0.28)] px-3.5 py-2.5 text-[0.82rem] leading-snug font-normal text-left normal-case tracking-normal";
+const SHOW = "invisible opacity-0 transition-opacity duration-100 group-hover/h:visible group-hover/h:opacity-100 group-focus/h:visible group-focus/h:opacity-100";
+export function TipCard({ x, y, W, children }: { x: number; y: number; W: number; children: ReactNode }) {
+  const right = x > W * 0.55;
+  return <div role="tooltip" className={TIP} style={{ top: Math.max(0, y - 14), ...(right ? { right: Math.max(0, W - x + 16) } : { left: x + 16 }) }}>{children}</div>;
+}
+export const TipHead = ({ children }: { children: ReactNode }) => <b className="block text-[0.9rem] font-bold mb-1">{children}</b>;
+export const TipRow = ({ color, label, value, sub, strong }: { color?: string; label: ReactNode; value: ReactNode; sub?: ReactNode; strong?: boolean }) => (
+  <div className="flex items-baseline justify-between gap-4">
+    <span className="inline-flex items-center gap-1.5 min-w-0">{color && <span aria-hidden className="w-2.5 h-2.5 rounded-[3px] shrink-0" style={{ background: color, boxShadow: "0 0 0 1px rgba(255,255,255,0.75)" }} />}<span className={strong ? "font-bold" : ""}>{label}</span></span>
+    <span className="text-right whitespace-nowrap"><b className="tabular">{value}</b>{sub && <span className="block text-[0.72rem] text-white/70 font-normal">{sub}</span>}</span>
+  </div>
+);
+export const TipNote = ({ children }: { children: ReactNode }) => <div className="mt-1.5 pt-1.5 border-t border-white/20 text-white/85 grid gap-1">{children}</div>;
+export function Hover({ tip, children, block = false, align = "left", className = "" }: { tip: ReactNode; children: ReactNode; block?: boolean; align?: "left" | "right"; className?: string }) {
+  if (block) return <div tabIndex={0} className={`group/h relative outline-none focus-visible:ring-2 focus-visible:ring-sage-deep rounded-lg ${className}`}>{children}<div role="tooltip" className={`${TIP} ${SHOW} top-full mt-1.5 ${align === "right" ? "right-0" : "left-0"}`}>{tip}</div></div>;
+  return <span tabIndex={0} className={`group/h relative inline-block outline-none focus-visible:ring-2 focus-visible:ring-sage-deep rounded ${className}`}>{children}<span role="tooltip" className={`${TIP} ${SHOW} top-full mt-1.5 ${align === "right" ? "right-0" : "left-0"}`}>{tip}</span></span>;
+}
+
 // A whole split into its parts: one bar, each part as wide as its share, then the parts named with
 // their figures. "Where is the money", "who is owed what".
 export interface Part { label: string; value: number | null; note?: string; color?: string }
@@ -37,19 +68,27 @@ export function SplitBar({ parts, ariaLabel, total, format = gbp, stack = false 
   const known = parts.filter((p) => p.value != null && p.value > 0);
   const sum = known.reduce((s, p) => s + (p.value ?? 0), 0) || 1;
   const colorOf = (p: Part) => p.color ?? SERIES[known.indexOf(p) % SERIES.length];
+  const tipOf = (p: Part) => <><TipHead>{p.label}</TipHead><TipRow label="Amount" value={p.value == null ? "not known" : format(p.value)} />{p.value != null && p.value > 0 && <TipRow label="Share of the whole" value={`${Math.round((100 * p.value) / sum)}%`} />}{p.note && <TipNote><span>{p.note}</span></TipNote>}</>;
   return (
-    <div className="grid gap-3" role="img" aria-label={ariaLabel}>
+    <div className="grid gap-3" aria-label={ariaLabel}>
       {total && <p className="flex items-baseline justify-between gap-3"><span className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">{total.label}</span><b className="font-sans tabular text-[1.9rem] sm:text-[2.3rem] leading-none font-extrabold tracking-[-0.02em] text-ink">{total.value}</b></p>}
-      <div className="flex h-10 w-full gap-[3px] rounded-lg overflow-hidden">
-        {known.map((p) => <span key={p.label} title={`${p.label}: ${format(p.value ?? 0)}`} style={{ width: `${(100 * (p.value ?? 0)) / sum}%`, background: colorOf(p), minWidth: 6 }} />)}
+      <div className="flex h-10 w-full gap-[3px]">
+        {known.map((p, k) => (
+          <div key={p.label} tabIndex={0} className="group/h relative outline-none" style={{ width: `${(100 * (p.value ?? 0)) / sum}%`, minWidth: 6 }}>
+            <span className={`block h-full ${k === 0 ? "rounded-l-lg" : ""} ${k === known.length - 1 ? "rounded-r-lg" : ""} group-hover/h:brightness-110 group-focus/h:brightness-110`} style={{ background: colorOf(p) }} />
+            <div role="tooltip" className={`${TIP} ${SHOW} top-full mt-1.5 ${k > 0 && k === known.length - 1 ? "right-0" : "left-0"}`}>{tipOf(p)}</div>
+          </div>
+        ))}
       </div>
       <ul className={`grid gap-x-6 gap-y-2 ${stack ? "" : "sm:grid-cols-2"}`}>
         {parts.map((p) => (
-          <li key={p.label} className="flex items-start gap-2.5 min-w-0">
-            <span aria-hidden className="mt-1.5 w-3 h-3 rounded-[3px] shrink-0" style={p.value != null && p.value > 0 ? { background: colorOf(p) } : { border: `1.5px dashed ${V.base}` }} />
-            <span className="min-w-0 flex-1"><span className="block text-[0.95rem] text-ink leading-snug">{p.label}</span>{p.note && <span className="block text-[0.78rem] text-ink-muted leading-snug">{p.note}</span>}</span>
-            <span className="text-right shrink-0"><span className="block tabular font-bold text-ink">{p.value == null ? "not known" : format(p.value)}</span>{p.value != null && p.value > 0 && <span className="block text-[0.75rem] text-ink-muted tabular">{Math.round((100 * p.value) / sum)}%</span>}</span>
-          </li>
+          <li key={p.label}><Hover block tip={tipOf(p)}>
+            <div className="flex items-start gap-2.5 min-w-0 hover:bg-wash/70 rounded-md -mx-1 px-1">
+              <span aria-hidden className="mt-1.5 w-3 h-3 rounded-[3px] shrink-0" style={p.value != null && p.value > 0 ? { background: colorOf(p) } : { border: `1.5px dashed ${V.base}` }} />
+              <span className="min-w-0 flex-1"><span className="block text-[0.95rem] text-ink leading-snug">{p.label}</span>{p.note && <span className="block text-[0.78rem] text-ink-muted leading-snug">{p.note}</span>}</span>
+              <span className="text-right shrink-0"><span className="block tabular font-bold text-ink">{p.value == null ? "not known" : format(p.value)}</span>{p.value != null && p.value > 0 && <span className="block text-[0.75rem] text-ink-muted tabular">{Math.round((100 * p.value) / sum)}%</span>}</span>
+            </div>
+          </Hover></li>
         ))}
       </ul>
     </div>
@@ -84,8 +123,9 @@ export function TargetBar({ segments, target, targetLabel, ariaLabel, format = g
 
 // Money in above the line, money out below it, month by month. The biggest month each way is
 // labelled; every column carries its figure on hover and in the table beneath for screen readers.
-export function InOutColumns({ rows, ariaLabel, inLabel = "In", outLabel = "Out" }: { rows: { label: string; in: number; out: number; title?: string }[]; ariaLabel: string; inLabel?: string; outLabel?: string }) {
+export function InOutColumns({ rows, ariaLabel, inLabel = "In", outLabel = "Out", detail }: { rows: { label: string; in: number; out: number; title?: string }[]; ariaLabel: string; inLabel?: string; outLabel?: string; detail?: (i: number) => ReactNode }) {
   const [box, W] = useWidth();
+  const [h, setH] = useState<Hov>(null);
   if (!rows.length) return null;
   const H = W < 480 ? 230 : 280, padL = 46, padR = 8, padT = 22, padB = 30;
   const hi = Math.max(1, ...rows.map((r) => r.in)), lo = Math.max(1, ...rows.map((r) => r.out));
@@ -97,8 +137,9 @@ export function InOutColumns({ rows, ariaLabel, inLabel = "In", outLabel = "Out"
   const every = slot >= 34 ? 1 : 2;
   const labelAll = slot >= 52;
   const maxIn = rows.findIndex((r) => r.in === hi), maxOut = rows.findIndex((r) => r.out === lo);
+  const move = (e: any) => { const p = at(e, e.currentTarget.ownerSVGElement, box.current); const i = Math.max(0, Math.min(rows.length - 1, Math.floor((p.sx - padL) / slot))); setH({ i, x: padL + slot * (i + 0.5), y: p.y }); };
   return (
-    <div ref={box} className="w-full grid gap-2">
+    <div ref={box} className="w-full grid gap-2 relative" onMouseLeave={() => setH(null)}>
       <div className="flex flex-wrap gap-x-5 text-[0.82rem] text-ink"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.good }} />{inLabel}</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.slate }} />{outLabel}</span></div>
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.ink : V.grid} strokeWidth={t === 0 ? 1.5 : 1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(Math.abs(t))}</text></g>)}
@@ -106,7 +147,7 @@ export function InOutColumns({ rows, ariaLabel, inLabel = "In", outLabel = "Out"
           const cx = padL + slot * (i + 0.5);
           return (
             <g key={r.label}>
-              <title>{r.title ?? `${r.label}: in ${gbp(r.in)}, out ${gbp(r.out)}`}</title>
+              {h?.i === i && <rect x={cx - slot / 2 + 1} y={padT - 16} width={slot - 2} height={H - padT - padB + 18} rx={5} fill={V.wash} />}
               <rect x={cx - bw / 2} y={y(r.in)} width={bw} height={Math.max(0, y(0) - y(r.in))} rx={3} fill={V.good} />
               <rect x={cx - bw / 2} y={y(0)} width={bw} height={Math.max(0, y(-r.out) - y(0))} rx={3} fill={V.slate} />
               {(labelAll || i === maxIn) && r.in > 0 && <text x={cx} y={y(r.in) - 5} textAnchor="middle" fontSize="11.5" fontWeight={i === maxIn ? 700 : 500} fill={V.ink}>{kGbp(r.in)}</text>}
@@ -115,14 +156,25 @@ export function InOutColumns({ rows, ariaLabel, inLabel = "In", outLabel = "Out"
             </g>
           );
         })}
+        <rect x={padL} y={0} width={Math.max(0, W - padL - padR)} height={H} fill="transparent" style={{ cursor: "crosshair" }} onMouseMove={move} onTouchStart={move} onClick={move} />
       </svg>
+      {h && (() => { const r = rows[h.i]; return (
+        <TipCard x={h.x} y={h.y} W={W}>
+          <TipHead>{longLabel(r.label)}</TipHead>
+          <TipRow color={V.good} label={inLabel} value={gbp(r.in)} />
+          <TipRow color={V.slate} label={outLabel} value={gbp(r.out)} />
+          <TipRow label="Net for the month" value={gbp(r.in - r.out)} strong />
+          {(r.title || detail) && <TipNote>{r.title && <span>{r.title}</span>}{detail?.(h.i)}</TipNote>}
+        </TipCard>
+      ); })()}
     </div>
   );
 }
 
 // Stacked columns for two series over months (Bedhampton and Winchester takings in the plan).
-export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark }: { rows: { label: string; a: number; b: number }[]; aLabel: string; bLabel: string; ariaLabel: string; mark?: { index: number; label: string } | null }) {
+export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark, detail }: { rows: { label: string; a: number; b: number }[]; aLabel: string; bLabel: string; ariaLabel: string; mark?: { index: number; label: string } | null; detail?: (i: number) => ReactNode }) {
   const [box, W] = useWidth();
+  const [h, setH] = useState<Hov>(null);
   if (!rows.length) return null;
   const H = W < 480 ? 220 : 260, padL = 46, padR = 8, padT = 26, padB = 30;
   const hi = Math.max(1, ...rows.map((r) => r.a + r.b));
@@ -131,8 +183,9 @@ export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark }: { rows: 
   const slot = (W - padL - padR) / rows.length, bw = Math.max(6, Math.min(36, slot * 0.64));
   const ticks: number[] = []; for (let t = 0; t <= top + 1e-6; t += step) ticks.push(t);
   const every = slot >= 34 ? 1 : 2, labelAll = slot >= 52;
+  const move = (e: any) => { const p = at(e, e.currentTarget.ownerSVGElement, box.current); const i = Math.max(0, Math.min(rows.length - 1, Math.floor((p.sx - padL) / slot))); setH({ i, x: padL + slot * (i + 0.5), y: p.y }); };
   return (
-    <div ref={box} className="w-full grid gap-2">
+    <div ref={box} className="w-full grid gap-2 relative" onMouseLeave={() => setH(null)}>
       <div className="flex flex-wrap gap-x-5 text-[0.82rem] text-ink"><span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.ink }} />{bLabel}</span><span className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: V.sageDeep }} />{aLabel}</span></div>
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.base : V.grid} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
@@ -141,7 +194,7 @@ export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark }: { rows: 
           const cx = padL + slot * (i + 0.5);
           return (
             <g key={r.label}>
-              <title>{`${r.label}: ${aLabel} ${gbp(r.a)}, ${bLabel} ${gbp(r.b)}, together ${gbp(r.a + r.b)}`}</title>
+              {h?.i === i && <rect x={cx - slot / 2 + 1} y={padT - 16} width={slot - 2} height={H - padT - padB + 18} rx={5} fill={V.wash} />}
               <rect x={cx - bw / 2} y={y(r.a)} width={bw} height={Math.max(0, y(0) - y(r.a))} fill={V.sageDeep} rx={r.b > 0 ? 0 : 3} />
               <rect x={cx - bw / 2} y={y(r.a + r.b)} width={bw} height={Math.max(0, y(r.a) - y(r.a + r.b))} fill={V.ink} rx={3} />
               {(labelAll || i === 0 || i === rows.length - 1) && <text x={cx} y={y(r.a + r.b) - 5} textAnchor="middle" fontSize="11.5" fontWeight={600} fill={V.ink}>{kGbp(r.a + r.b)}</text>}
@@ -149,15 +202,27 @@ export function StackColumns({ rows, aLabel, bLabel, ariaLabel, mark }: { rows: 
             </g>
           );
         })}
+        <rect x={padL} y={0} width={Math.max(0, W - padL - padR)} height={H} fill="transparent" style={{ cursor: "crosshair" }} onMouseMove={move} onTouchStart={move} onClick={move} />
       </svg>
+      {h && (() => { const r = rows[h.i]; return (
+        <TipCard x={h.x} y={h.y} W={W}>
+          <TipHead>{longLabel(r.label)}</TipHead>
+          <TipRow color={V.ink} label={bLabel} value={gbp(r.b)} />
+          <TipRow color={V.sageDeep} label={aLabel} value={gbp(r.a)} />
+          <TipRow label="Together" value={gbp(r.a + r.b)} strong />
+          {detail && <TipNote>{detail(h.i)}</TipNote>}
+        </TipCard>
+      ); })()}
     </div>
   );
 }
 
 // Columns either side of a line that must be crossed (Winchester's margin over standing alone).
-export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel, money = true }: { rows: { label: string; value: number; title?: string }[]; ariaLabel: string; marks?: { index: number; label: string }[]; lineLabel?: string; money?: boolean }) {
+export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel, money = true, detail }: { rows: { label: string; value: number; title?: string }[]; ariaLabel: string; marks?: { index: number; label: string }[]; lineLabel?: string; money?: boolean; detail?: (i: number) => ReactNode }) {
   const fmt = money ? kGbp : (n: number) => String(Math.round(n * 10) / 10);
+  const full = money ? gbp : fmt;
   const [box, W] = useWidth();
+  const [h, setH] = useState<Hov>(null);
   if (!rows.length) return null;
   const H = W < 480 ? 240 : 300, padL = 50, padR = 8, padT = 30, padB = 30;
   const hi = Math.max(0, ...rows.map((r) => r.value)), lo = Math.min(0, ...rows.map((r) => r.value));
@@ -169,8 +234,9 @@ export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel, money = 
   const every = slot >= 34 ? 1 : slot >= 18 ? 2 : 3;
   const firstOver = rows.findIndex((r) => r.value >= 0);
   const minI = rows.reduce((m, r, i) => (r.value < rows[m].value ? i : m), 0);
+  const move = (e: any) => { const p = at(e, e.currentTarget.ownerSVGElement, box.current); const i = Math.max(0, Math.min(rows.length - 1, Math.floor((p.sx - padL) / slot))); setH({ i, x: padL + slot * (i + 0.5), y: p.y }); };
   return (
-    <div ref={box} className="w-full">
+    <div ref={box} className="w-full relative" onMouseLeave={() => setH(null)}>
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.ink : V.grid} strokeWidth={t === 0 ? 2 : 1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{fmt(t)}</text></g>)}
         {lineLabel && <text x={padL + 6} y={y(0) - 7} textAnchor="start" fontSize="11.5" fontWeight={600} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{lineLabel}</text>}
@@ -179,14 +245,22 @@ export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel, money = 
           const cx = padL + slot * (i + 0.5), up = r.value >= 0;
           return (
             <g key={r.label}>
-              <title>{r.title ?? `${r.label}: ${gbp(r.value)}`}</title>
-              <rect x={cx - bw / 2} y={up ? y(r.value) : y(0)} width={bw} height={Math.max(1, Math.abs(y(r.value) - y(0)))} rx={3} fill={up ? V.good : V.base} />
+              {h?.i === i && <rect x={cx - slot / 2 + 1} y={padT - 6} width={slot - 2} height={H - padT - padB + 8} rx={4} fill={V.wash} />}
+              <rect x={cx - bw / 2} y={up ? y(r.value) : y(0)} width={bw} height={Math.max(1, Math.abs(y(r.value) - y(0)))} rx={3} fill={up ? V.good : V.base} opacity={h && h.i !== i ? 0.75 : 1} />
               {(i === 0 || i === rows.length - 1 || i === firstOver || i === minI) && <text x={cx} y={up ? y(r.value) - 5 : y(r.value) + 14} textAnchor={i === 0 ? "start" : i === rows.length - 1 ? "end" : "middle"} fontSize="11.5" fontWeight={700} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{fmt(r.value)}</text>}
               {(i % every === 0) && <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{r.label.split(" ")[0]}{r.label.startsWith("Jan") ? ` ${r.label.split(" ")[1] ?? ""}` : ""}</text>}
             </g>
           );
         })}
+        <rect x={padL} y={0} width={Math.max(0, W - padL - padR)} height={H} fill="transparent" style={{ cursor: "crosshair" }} onMouseMove={move} onTouchStart={move} onClick={move} />
       </svg>
+      {h && (() => { const r = rows[h.i]; return (
+        <TipCard x={h.x} y={h.y} W={W}>
+          <TipHead>{longLabel(r.label)}</TipHead>
+          <TipRow label={money ? "Amount" : "Figure"} value={full(r.value)} />
+          {(r.title || detail) && <TipNote>{r.title && <span>{r.title}</span>}{detail?.(h.i)}</TipNote>}
+        </TipCard>
+      ); })()}
     </div>
   );
 }
@@ -222,17 +296,22 @@ export function UsageBar({ label, note, used, limit, right }: { label: string; n
 }
 
 // Plain horizontal bars for a short ranked list: the name, the bar, the figure.
-export function HBars({ rows, ariaLabel, max, color = V.ink, labelWidth = "8.5rem" }: { rows: { label: string; value: number; display: string; note?: string; color?: string; ghost?: boolean }[]; ariaLabel: string; max?: number; color?: string; labelWidth?: string }) {
+export function HBars({ rows, ariaLabel, max, color = V.ink, labelWidth = "8.5rem", shares = false }: { rows: { label: string; value: number; display: string; note?: string; color?: string; ghost?: boolean; tip?: ReactNode }[]; ariaLabel: string; max?: number; color?: string; labelWidth?: string; shares?: boolean }) {
   const top = max ?? Math.max(1, ...rows.map((r) => r.value));
+  const total = rows.reduce((s, r) => s + (r.ghost ? 0 : r.value), 0);
   return (
-    <ul role="img" aria-label={ariaLabel} className="grid gap-2.5">
+    <ul aria-label={ariaLabel} className="grid gap-1.5">
       {rows.map((r) => (
-        <li key={r.label} className="grid items-center gap-x-3 gap-y-0.5" style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
-          <span className="text-[0.9rem] text-ink leading-tight">{r.label}{r.note && <span className="block text-[0.76rem] text-ink-muted">{r.note}</span>}</span>
-          <span className="flex items-center gap-2 min-w-0">
-            <span className="h-7 rounded-md" style={{ width: `${Math.max(1.5, (100 * r.value) / top)}%`, background: r.ghost ? "transparent" : r.color ?? color, border: r.ghost ? `1.5px dashed ${V.base}` : undefined, maxWidth: "calc(100% - 5.5rem)" }} />
-            <span className="tabular font-bold text-ink text-[0.92rem] whitespace-nowrap">{r.display}</span>
-          </span>
+        <li key={r.label}>
+          <Hover block tip={<><TipHead>{r.label}</TipHead><TipRow color={r.ghost ? undefined : r.color ?? color} label="Figure" value={r.display} />{shares && total > 0 && !r.ghost && <TipRow label="Share of all shown" value={`${Math.round((100 * r.value) / total)}%`} />}{(r.note || r.tip) && <TipNote>{r.note && <span>{r.note}</span>}{r.tip}</TipNote>}</>}>
+            <div className="grid items-center gap-x-3 gap-y-0.5 hover:bg-wash/70 rounded-md -mx-1 px-1 py-0.5" style={{ gridTemplateColumns: `${labelWidth} 1fr` }}>
+              <span className="text-[0.9rem] text-ink leading-tight">{r.label}{r.note && <span className="block text-[0.76rem] text-ink-muted">{r.note}</span>}</span>
+              <span className="flex items-center gap-2 min-w-0">
+                <span className="h-7 rounded-md" style={{ width: `${Math.max(1.5, (100 * r.value) / top)}%`, background: r.ghost ? "transparent" : r.color ?? color, border: r.ghost ? `1.5px dashed ${V.base}` : undefined, maxWidth: "calc(100% - 5.5rem)" }} />
+                <span className="tabular font-bold text-ink text-[0.92rem] whitespace-nowrap">{r.display}</span>
+              </span>
+            </div>
+          </Hover>
         </li>
       ))}
     </ul>
@@ -329,15 +408,16 @@ export function Pill({ tone = "ink", children }: { tone?: "good" | "watch" | "ac
 }
 
 // A figure tile in the panel style, for pages that set their own figures.
-export function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: ReactNode; tone?: "good" | "watch" | "act" }) {
+export function Stat({ label, value, sub, tone, tip }: { label: string; value: string; sub?: ReactNode; tone?: "good" | "watch" | "act"; tip?: ReactNode }) {
   const edge = tone === "good" ? "border-t-good" : tone === "watch" ? "border-t-watch" : tone === "act" ? "border-t-act" : "border-t-ink";
-  return (
-    <div className={`rounded-xl bg-card border border-border border-t-4 ${edge} shadow-[0_1px_3px_rgba(31,42,68,0.07)] px-3.5 pt-3 pb-3 grid gap-0.5 content-start min-w-0 h-full`}>
-      <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted leading-tight">{label}</span>
+  const body = (
+    <div className={`rounded-xl bg-card border border-border border-t-4 ${edge} shadow-[0_1px_3px_rgba(31,42,68,0.07)] px-3.5 pt-3 pb-3 grid gap-0.5 content-start min-w-0 h-full ${tip ? "hover:shadow-[0_4px_14px_rgba(31,42,68,0.12)] cursor-help" : ""}`}>
+      <span className={`text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted leading-tight ${tip ? "underline decoration-dotted underline-offset-4" : ""}`}>{label}</span>
       <b className="font-sans tabular text-[1.7rem] sm:text-[2.1rem] leading-[1.1] font-extrabold tracking-[-0.02em] text-ink">{value}</b>
       {sub && <span className="text-[0.78rem] text-ink-muted leading-snug">{sub}</span>}
     </div>
   );
+  return tip ? <Hover block className="h-full" tip={<><TipHead>{label}: {value}</TipHead><div className="text-white/90 grid gap-1">{tip}</div></>}>{body}</Hover> : body;
 }
 
 // Leads, booked consultations and (once known) paying patients for each day, side by side. Hover,
@@ -426,43 +506,61 @@ export function Bench({ label, value, display, mark, markLabel, max, lowerIsBett
 
 // Several lines over the same months (the growth models side by side): the one in use drawn heavy
 // in ink, the others lighter, each named at its end with its last value.
-export function MultiLine({ labels, series, ariaLabel }: { labels: string[]; series: { label: string; values: number[]; chosen?: boolean }[]; ariaLabel: string }) {
+export function MultiLine({ labels, series, ariaLabel, detail, format = gbp }: { labels: string[]; series: { label: string; values: number[]; chosen?: boolean }[]; ariaLabel: string; detail?: (i: number) => ReactNode; format?: (n: number) => string }) {
   const [box, W] = useWidth();
+  const [h, setH] = useState<Hov>(null);
   if (labels.length < 2) return null;
   const H = W < 480 ? 250 : 300, padL = 46, padR = W < 480 ? 96 : 150, padT = 14, padB = 30;
   const hi = Math.max(1, ...series.flatMap((s) => s.values));
   const step = niceStep(hi, 4), top = Math.ceil(hi / step) * step;
-  const x = (i: number) => padL + (i * (W - padL - padR)) / (labels.length - 1);
+  const n = labels.length;
+  const x = (i: number) => padL + (i * (W - padL - padR)) / (n - 1);
   const y = (v: number) => padT + (1 - v / top) * (H - padT - padB);
   const ticks: number[] = []; for (let t = 0; t <= top + 1e-6; t += step) ticks.push(t);
-  const every = (W - padL - padR) / labels.length >= 34 ? 1 : (W - padL - padR) / labels.length >= 17 ? 2 : 3;
+  const every = (W - padL - padR) / n >= 34 ? 1 : (W - padL - padR) / n >= 17 ? 2 : 3;
   const tones = [V.sageDeep, V.base, V.slate, V.sage];
   let k = 0;
   const drawn = series.map((s) => ({ ...s, color: s.chosen ? V.ink : tones[k++ % tones.length] }));
-  const last = labels.length - 1;
+  const chosen = drawn.find((s) => s.chosen);
+  const last = n - 1;
   let prev = -Infinity;
   const ends = [...drawn].sort((a, b) => b.values[last] - a.values[last]).map((s) => { let yy = y(s.values[last]); if (yy - prev < 30) yy = prev + 30; prev = yy; return { ...s, yy }; });
+  const move = (e: any) => { const p = at(e, e.currentTarget.ownerSVGElement, box.current); const i = Math.max(0, Math.min(n - 1, Math.round(((p.sx - padL) * (n - 1)) / Math.max(1, W - padL - padR)))); setH({ i, x: x(i), y: p.y }); };
   return (
-    <div ref={box} className="w-full">
+    <div ref={box} className="w-full relative" onMouseLeave={() => setH(null)}>
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.base : V.grid} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
+        {h && <line x1={x(h.i)} x2={x(h.i)} y1={padT} y2={H - padB} stroke={V.ink} strokeOpacity={0.4} strokeDasharray="3 3" />}
         {[...drawn].sort((a, b) => Number(!!a.chosen) - Number(!!b.chosen)).map((s) => (
           <g key={s.label}>
             <path d={s.values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ")} fill="none" stroke={s.color} strokeWidth={s.chosen ? 3.5 : 2} strokeLinejoin="round" strokeLinecap="round" />
-            {s.values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={s.chosen ? 3 : 6} fill={s.chosen ? s.color : "transparent"}><title>{`${s.label}, ${labels[i]}: ${gbp(v)}`}</title></circle>)}
+            {s.chosen && s.values.map((v, i) => <circle key={i} cx={x(i)} cy={y(v)} r={3} fill={s.color} />)}
           </g>
         ))}
+        {h && drawn.map((s) => <circle key={s.label} cx={x(h.i)} cy={y(s.values[h.i])} r={5.5} fill={s.color} stroke="#fff" strokeWidth={2} />)}
         {ends.map((s) => <text key={s.label} x={W - padR + 8} y={s.yy - 2} fontSize="12" fill={s.chosen ? V.ink : V.muted}><tspan x={W - padR + 8} fontWeight={700}>{kGbp(s.values[last])}</tspan><tspan x={W - padR + 8} dy={14} fontWeight={s.chosen ? 700 : 500}>{s.label}</tspan></text>)}
         {labels.map((l, i) => (i % every === 0) && <text key={l} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{l.split(" ")[0]}{l.startsWith("Jan") ? ` ${l.split(" ")[1] ?? ""}` : ""}</text>)}
+        <rect x={padL - 10} y={0} width={Math.max(0, W - padL - padR + 20)} height={H} fill="transparent" style={{ cursor: "crosshair" }} onMouseMove={move} onTouchStart={move} onClick={move} />
       </svg>
+      {h && (
+        <TipCard x={h.x} y={h.y} W={W}>
+          <TipHead>{longLabel(labels[h.i])}</TipHead>
+          {[...drawn].sort((a, b) => b.values[h.i] - a.values[h.i]).map((s) => (
+            <TipRow key={s.label} color={s.color} label={s.label} value={format(s.values[h.i])} strong={s.chosen}
+              sub={chosen && !s.chosen ? `${s.values[h.i] >= chosen.values[h.i] ? "+" : "−"}${format(Math.abs(s.values[h.i] - chosen.values[h.i]))} against ${chosen.label}` : undefined} />
+          ))}
+          {detail && <TipNote>{detail(h.i)}</TipNote>}
+        </TipCard>
+      )}
     </div>
   );
 }
 
 // Stacked columns for any number of parts (what each month's costs are made of). Tap or hover a
 // column to pick that month; the caller shows its detail.
-export function StackN({ rows, parts, ariaLabel, selected, onSelect }: { rows: { label: string; values: number[] }[]; parts: { label: string; color: string }[]; ariaLabel: string; selected?: number; onSelect?: (i: number) => void }) {
+export function StackN({ rows, parts, ariaLabel, selected, onSelect, detail, format = gbp }: { rows: { label: string; values: number[] }[]; parts: { label: string; color: string }[]; ariaLabel: string; selected?: number; onSelect?: (i: number) => void; detail?: (i: number) => ReactNode; format?: (n: number) => string }) {
   const [box, W] = useWidth();
+  const [h, setH] = useState<Hov>(null);
   if (!rows.length) return null;
   const H = W < 480 ? 230 : 280, padL = 46, padR = 8, padT = 22, padB = 30;
   const sums = rows.map((r) => r.values.reduce((a, b) => a + b, 0));
@@ -471,45 +569,62 @@ export function StackN({ rows, parts, ariaLabel, selected, onSelect }: { rows: {
   const slot = (W - padL - padR) / rows.length, bw = Math.max(5, Math.min(34, slot * 0.68));
   const ticks: number[] = []; for (let t = 0; t <= top + 1e-6; t += step) ticks.push(t);
   const every = slot >= 34 ? 1 : slot >= 17 ? 2 : 3, labelAll = slot >= 52;
+  const move = (e: any) => { const p = at(e, e.currentTarget.ownerSVGElement, box.current); const i = Math.max(0, Math.min(rows.length - 1, Math.floor((p.sx - padL) / slot))); setH({ i, x: padL + slot * (i + 0.5), y: p.y }); onSelect?.(i); };
   return (
-    <div ref={box} className="w-full grid gap-2">
+    <div ref={box} className="w-full grid gap-2 relative" onMouseLeave={() => setH(null)}>
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-[0.82rem] text-ink">{parts.map((p) => <span key={p.label} className="inline-flex items-center gap-1.5"><span aria-hidden className="w-3 h-3 rounded-[3px]" style={{ background: p.color }} />{p.label}</span>)}</div>
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.base : V.grid} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
         {rows.map((r, i) => {
           const cx = padL + slot * (i + 0.5); let acc = 0;
           return (
-            <g key={r.label} onClick={onSelect ? () => onSelect(i) : undefined} onMouseEnter={onSelect ? () => onSelect(i) : undefined} style={onSelect ? { cursor: "pointer" } : undefined}>
-              <title>{`${r.label}: ${parts.map((p, j) => `${p.label} ${gbp(r.values[j])}`).join(", ")}; together ${gbp(sums[i])}`}</title>
-              {selected === i && <rect x={cx - slot / 2 + 1} y={padT - 16} width={slot - 2} height={H - padT - padB + 18} rx={5} fill={V.wash} stroke={V.ink} strokeWidth={1} />}
-              <rect x={cx - slot / 2} y={padT} width={slot} height={H - padT - padB} fill="transparent" />
+            <g key={r.label}>
+              {(selected === i || h?.i === i) && <rect x={cx - slot / 2 + 1} y={padT - 16} width={slot - 2} height={H - padT - padB + 18} rx={5} fill={V.wash} stroke={selected === i ? V.ink : "none"} strokeWidth={1} />}
               {r.values.map((v, j) => { const y0 = y(acc), y1 = y(acc + v); acc += v; return v > 0 ? <rect key={j} x={cx - bw / 2} y={y1} width={bw} height={Math.max(0, y0 - y1)} fill={parts[j].color} /> : null; })}
               {(labelAll || selected === i || (selected == null && (i === 0 || i === rows.length - 1))) && <text x={cx} y={y(sums[i]) - 5} textAnchor="middle" fontSize="11.5" fontWeight={700} fill={V.ink}>{kGbp(sums[i])}</text>}
               {(i % every === 0) && <text x={cx} y={H - 8} textAnchor="middle" fontSize="11" fill={V.muted}>{r.label.split(" ")[0]}{r.label.startsWith("Jan") ? ` ${r.label.split(" ")[1] ?? ""}` : ""}</text>}
             </g>
           );
         })}
+        <rect x={padL} y={0} width={Math.max(0, W - padL - padR)} height={H} fill="transparent" style={{ cursor: "pointer" }} onMouseMove={move} onTouchStart={move} onClick={move} />
       </svg>
+      {h && (
+        <TipCard x={h.x} y={h.y} W={W}>
+          <TipHead>{longLabel(rows[h.i].label)}</TipHead>
+          {parts.map((p, j) => (rows[h.i].values[j] ? <TipRow key={p.label} color={p.color} label={p.label} value={format(rows[h.i].values[j])} /> : null))}
+          <TipRow label="Together" value={format(sums[h.i])} strong />
+          {detail && <TipNote>{detail(h.i)}</TipNote>}
+        </TipCard>
+      )}
     </div>
   );
 }
 
 // One month walked from takings down to what is left: each line a bar placed where the running
 // total stands, money in green, money out slate, the subtotals in ink, with the reason beneath.
-export function Waterfall({ rows, ariaLabel }: { rows: { label: string; value: number; kind: "in" | "out" | "total"; note?: string }[]; ariaLabel: string }) {
+export function Waterfall({ rows, ariaLabel }: { rows: { label: string; value: number; kind: "in" | "out" | "total"; note?: string; tip?: ReactNode }[]; ariaLabel: string }) {
   const top = Math.max(1, ...rows.filter((r) => r.kind === "total").map((r) => r.value), rows.filter((r) => r.kind === "in").reduce((s, r) => s + r.value, 0));
+  const taken = rows.find((r) => r.kind === "total")?.value ?? 0;
   let run = 0;
   const placed = rows.map((r) => { let from = 0, to = 0; if (r.kind === "in") { from = run; to = run + r.value; run = to; } else if (r.kind === "out") { from = run - r.value; to = run; run = from; } else { from = Math.min(0, r.value); to = Math.max(0, r.value); run = r.value; } return { ...r, from, to }; });
   const lo = Math.min(0, ...placed.map((p) => p.from));
   const pct = (v: number) => `${(100 * (v - lo)) / (top - lo)}%`;
   const money = (n: number) => `${n < 0 ? "−" : ""}£${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
   return (
-    <ol role="img" aria-label={ariaLabel} className="grid">
+    <ol aria-label={ariaLabel} className="grid">
       {placed.map((r, i) => (
-        <li key={i} className={`grid grid-cols-[minmax(0,11rem)_1fr_5.2rem] sm:grid-cols-[minmax(0,15rem)_1fr_6rem] items-center gap-x-3 py-2 ${r.kind === "total" ? "border-y border-line-strong bg-wash/70 -mx-2 px-2 rounded-md" : "border-b border-border"}`}>
-          <span className="min-w-0"><span className={`block leading-snug ${r.kind === "total" ? "font-extrabold text-ink text-[0.98rem]" : "text-ink text-[0.92rem]"}`}>{r.label}</span>{r.note && <span className="block text-[0.76rem] text-ink-muted leading-snug">{r.note}</span>}</span>
+        <li key={i} tabIndex={0} className={`group/h relative outline-none focus-visible:ring-2 focus-visible:ring-sage-deep grid grid-cols-[minmax(0,11rem)_1fr_5.2rem] sm:grid-cols-[minmax(0,15rem)_1fr_6rem] items-center gap-x-3 py-2 hover:bg-wash/60 ${r.kind === "total" ? "border-y border-line-strong bg-wash/70 -mx-2 px-2 rounded-md" : "border-b border-border"}`}>
+          <span className="min-w-0"><span className={`block leading-snug ${r.kind === "total" ? "font-extrabold text-ink text-[0.98rem]" : "text-ink text-[0.92rem]"}`}>{r.label}</span>{r.note && <span className="block text-[0.76rem] text-ink-muted leading-snug line-clamp-2">{r.note}</span>}</span>
           <span className="relative h-6"><span className="absolute inset-y-[11px] left-0 right-0" style={{ background: V.grid }} /><span className="absolute inset-y-0.5 rounded-[4px]" style={{ left: pct(r.from), width: `max(3px, calc(${pct(r.to)} - ${pct(r.from)}))`, background: r.kind === "in" ? V.good : r.kind === "out" ? V.slate : r.value < 0 ? V.act : V.ink }} /></span>
           <span className={`text-right tabular ${r.kind === "total" ? "font-extrabold text-[1rem]" : "font-semibold text-[0.92rem]"} ${r.kind === "total" && r.value < 0 ? "text-act" : "text-ink"}`}>{money(r.kind === "out" ? -r.value : r.value)}</span>
+          <div role="tooltip" className={`${TIP} ${SHOW} top-full mt-0.5 left-0`}>
+            <TipHead>{r.label}</TipHead>
+            <TipRow label={r.kind === "out" ? "Out" : r.kind === "in" ? "In" : "Subtotal"} value={money(r.kind === "out" ? -r.value : r.value)} />
+            {r.kind !== "total" && <TipRow label="Running total after this line" value={money(r.kind === "in" ? r.to : r.from)} />}
+            {r.kind !== "total" && taken > 0 && <TipRow label="Per pound taken" value={`${(100 * r.value / taken).toFixed(1)}p`} />}
+            {r.kind === "total" && taken > 0 && i > 0 && <TipRow label="Per pound taken" value={`${(100 * r.value / taken).toFixed(1)}p`} />}
+            {(r.note || r.tip) && <TipNote>{r.note && <span>{r.note}</span>}{r.tip}</TipNote>}
+          </div>
         </li>
       ))}
     </ol>
