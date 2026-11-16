@@ -8,7 +8,7 @@ import { PROJECT_ID } from "@/lib/alfred";
 import { gbp0 } from "@/components/page";
 import { Hover, TipHead, TipRow, TipNote, V } from "@/components/viz";
 
-interface Item { key: string; name: string; category: string; courseSize: number | null; bedhPrice: number | null; wincList: number | null; introPrice: number | null; introSource: string | null; bedhCost: number | null; wincCost: number | null; bedhSource: string | null; wincSource: string | null }
+interface Item { key: string; name: string; category: string; courseSize: number | null; bedhPrice: number | null; wincList: number | null; introPrice: number | null; introSource: string | null; bedhCost: number | null; wincCost: number | null; bedhSource: string | null; wincSource: string | null; bedhPriceSource?: string; wincListSource?: string }
 type Edit = Partial<Record<"bedhCost" | "wincCost" | "introPrice", string>>;
 const CAT: Record<string, string> = { anti_wrinkle: "Anti-wrinkle treatment", filler: "Dermal filler", regenerative: "Skin boosters and regenerative", skin: "Skin treatments and facials" };
 const gbp2 = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -116,14 +116,14 @@ export function StockEditor() {
                 return (
                   <tr key={it.key} className="border-b border-border align-top hover:bg-wash/50">
                     <td className="py-2 pr-3 text-ink font-semibold">{it.name}{it.courseSize ? <span className="block text-[0.72rem] font-normal text-ink-muted">prices per session; course of {it.courseSize}</span> : null}</td>
-                    <td className="py-2 px-2 text-right tabular">{it.bedhPrice != null ? gbp0(it.bedhPrice) : <span className="text-ink-muted">not offered</span>}</td>
+                    <td className="py-2 px-2 text-right tabular">{it.bedhPrice != null ? <>{gbp0(it.bedhPrice)}<span className="block text-[0.68rem] text-ink-muted leading-none pt-1">{it.bedhPriceSource}</span></> : <span className="text-ink-muted">not offered</span>}</td>
                     <td className="py-2 px-2 text-right">{input(it, "bedhCost", it.bedhSource)}</td>
                     <td className="py-2 px-2 text-right"><Keep price={it.bedhPrice} cost={val(it, "bedhCost")} vatRate={vatRate} label={`${it.name}, Bedhampton`} /></td>
                     <td />
                     <td className="py-2 px-2 text-right">{input(it, "wincCost", it.wincSource)}</td>
                     <td className="py-2 px-2 text-right">{input(it, "introPrice", it.introSource)}</td>
                     <td className="py-2 px-2 text-right"><Keep price={intro ?? it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester introductory`} /></td>
-                    <td className="py-2 px-2 text-right"><span className="block tabular text-ink-2">{it.wincList != null ? gbp0(it.wincList) : "not offered"}</span><Keep price={it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester list`} /></td>
+                    <td className="py-2 px-2 text-right"><span className="block tabular text-ink-2">{it.wincList != null ? gbp0(it.wincList) : "not offered"}{it.wincListSource && it.wincListSource !== "price list" ? <span className="block text-[0.68rem] text-ink-muted leading-none pt-0.5">{it.wincListSource}</span> : null}</span><Keep price={it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester list`} /></td>
                   </tr>
                 );
               })}
@@ -136,7 +136,7 @@ export function StockEditor() {
         {dirty && <button type="button" onClick={() => { setEdits({}); setMsg(null); }} className="min-h-[44px] px-5 rounded-full border border-ink text-[0.85rem] font-semibold text-ink">Put them back</button>}
         {msg && <span className={`text-[0.9rem] font-semibold ${msg.ok ? "text-good" : "text-act"}`}>{msg.text}</span>}
       </div>
-      <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[74ch]">These figures do not move the forecast yet. The forecast takes one stock figure for all treatments (30.6p in the pound), because the mix of treatments sold is not recorded. Once these costs are complete and the clinic refresh reads treatment counts from ANS, the forecast will take stock from this list instead. Introductory prices start from the ANS record of 6 November; Bedhampton and list prices come from the price list.</p>
+      <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[74ch]">These figures do not move the forecast yet. The forecast takes one stock figure for all treatments (30.6p in the pound), because the mix of treatments sold is not recorded. Once these costs are complete and the clinic refresh reads treatment counts from ANS, the forecast will take stock from this list instead. Prices marked ANS are what the online diary charges, read on 16 November; the rest come from the price list. Introductory prices start from the ANS record of 6 November.</p>
     </div>
   );
 }

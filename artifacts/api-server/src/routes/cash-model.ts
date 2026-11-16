@@ -494,7 +494,8 @@ async function stockView(projectId: number) {
     const est = num(x.product_cost_estimate_gbp);
     return {
       key: x.key, name: x.display_name, category: x.category, courseSize: x.course_size ?? null,
-      bedhPrice: num(x.actual_price_bedhampton) ?? num(x.price_bedhampton), wincList: num(x.actual_price_winchester) ?? num(x.price_winchester),
+      bedhPrice: m.bedhPrice !== undefined && m.bedhPrice !== null ? num(m.bedhPrice) : num(x.actual_price_bedhampton) ?? num(x.price_bedhampton), wincList: m.wincList !== undefined && m.wincList !== null ? num(m.wincList) : num(x.actual_price_winchester) ?? num(x.price_winchester),
+      bedhPriceSource: m.bedhPriceSource ?? (m.bedhPrice != null ? "you" : "price list"), wincListSource: m.wincListSource ?? (m.wincList != null ? "you" : "price list"),
       introPrice: m.introPrice !== undefined ? num(m.introPrice) : INTRO_FROM_ANS[x.key] ?? null,
       introSource: m.introPrice !== undefined ? "you" : INTRO_FROM_ANS[x.key] != null ? "ANS, 6 Nov" : null,
       bedhCost: m.bedhCost !== undefined ? num(m.bedhCost) : est, wincCost: m.wincCost !== undefined ? num(m.wincCost) : est,
@@ -522,7 +523,9 @@ router.put("/projects/:projectId/stock-costs", async (req, res) => {
     for (const [key, v] of Object.entries(body as Record<string, any>)) {
       if (!known.has(key) || !v || typeof v !== "object") continue;
       const cur = { ...(items[key] ?? {}) };
-      for (const f of ["bedhCost", "wincCost", "introPrice"]) {
+      if (typeof (v as any).bedhPriceSource === "string") cur.bedhPriceSource = String((v as any).bedhPriceSource).slice(0, 40);
+      if (typeof (v as any).wincListSource === "string") cur.wincListSource = String((v as any).wincListSource).slice(0, 40);
+      for (const f of ["bedhCost", "wincCost", "introPrice", "bedhPrice", "wincList"]) {
         if (!(f in v)) continue;
         const raw = (v as any)[f];
         if (raw === null || raw === "") { cur[f] = null; changed.push(`${key} ${f} cleared`); continue; }
