@@ -291,6 +291,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     bank: bankView, fundingOptions, bankAccounts: (bank as any)?.accounts ?? null,
     availableLoans: availableLoans.map(l => ({ label: l.label, principal: l.principal, annualRatePct: l.annualRatePct, repayments: l.repayments })),
     marketingByMonth: (planned as any).marketing.byMonth,
+    vatRefundsDue,
     history: config.history,
   };
 }

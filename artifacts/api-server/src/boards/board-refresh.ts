@@ -84,7 +84,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const bankToday = !!J.bank && bankAt === asOf;
 
   // 1. The unpaid lines, grouped as the board shows them.
-  const STAGE = { "2026-10": ["cbs1", "CBS, October valuation"], "2026-11": ["cbs2", "CBS, November valuation"], "2026-12": ["cbs3", "CBS, December valuation"], "2027-05": ["cbs4", "CBS retention (3%), after snagging"] };
+  const STAGE = { "2026-10": ["cbs1", "CBS, October valuation"], "2026-11": ["cbs2", "CBS, November valuation"], "2026-12": ["cbs3", "CBS, December valuation"], "2027-05": ["cbs4", "CBS retention, after snagging"] };
   const itemOf = (t, ph, ym) => /^Ref \d/.test(t) ? [...(STAGE[ym] ?? [`cbs_${ym}`, `CBS, ${monLong(ym)}`]), "cbs", true]
     : /Arundel/.test(t) ? (ym === "2026-10" ? ["arundel1", "Fire alarm (Arundel), 30% on booking", "kit"] : ["arundel2", "Fire alarm (Arundel), 70% when finished", "kit"])
     : /Signage Package/.test(t) ? ["sign", "Shop sign (Signs Express)", "kit"] : /^Reception desk, Artisan/.test(t) ? ["desk", "Reception desk (Artisan Deco), no VAT", "kit"] : /Retail Shelving/.test(t) ? ["shelving", "Reception shelving unit (shelves and cabinet)", "kit"] : /^Retail \/ Skincare/.test(t) ? ["retail", "Retail and skincare opening stock", "kit"] : /Joinery/.test(t) ? ["joinery", "Joinery, desk and cabinetry", "kit"]
@@ -101,6 +101,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
     if (l.remainingExVat < 0.5) continue;
     if (l.planProblem) { unsched.push(l); continue; }
     for (const p of l.plan) {
+      if (p.method === "personal") continue; // David pays it himself: neither the bank nor the card moves
       const m = IDX[p.month]; if (!m) throw new Error(`A payment falls outside ${FIRST} to ${LAST}: ` + l.title + ", " + p.month);
       const [id, name, group, locked] = itemOf(l.title, l.phase, p.month);
       const method = p.method === "card" ? "card" : "bank", vat = l.vatBasis !== "no VAT";
@@ -163,11 +164,29 @@ ${itemsJs}
   rep(`value="10000" aria-labelledby="l-loan"><output id="loan-out">£10,000</output>`, `value="${loanAmt}" aria-labelledby="l-loan"><output id="loan-out">£${loanAmt.toLocaleString("en-GB")}</output>`);
   rep(`r.capital[1] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan; r.loanRepay[9] = pmt(s.loan);`,
       `r.capital[${capIdx}] = CAPITAL.james + CAPITAL.bill; r.loanIn[s.loanMonth] = s.loan;${repayIdx ? ` r.loanRepay[${repayIdx}] = pmt(s.loan);` : ""}`);
+  // Capital still to arrive: funding already inside the bank balance (ticked on the Money page) is
+  // not added again. On 15 Nov 2026 James's 37,000 was in the bank and the board counted it twice.
+  const stillIn = (J.funding || []).filter(f => !/^Abi lends/.test(f.label));
+  const jamesIn = Math.round(stillIn.filter(f => f.kind === "equity").reduce((t, f) => t + f.amount, 0));
+  const billIn = Math.round(stillIn.filter(f => f.kind === "gift").reduce((t, f) => t + f.amount, 0));
+  rep(`const CAPITAL = { james: 37000, bill: 10000 };`, `const CAPITAL = { james: ${jamesIn}, bill: ${billIn} };`);
+  rep("(yours ${gbp(S.start)}, James £37,000, Bill £10,000)", "(" + (jamesIn ? "yours ${gbp(S.start)}, James £" + jamesIn.toLocaleString("en-GB") : "the bank ${gbp(S.start)}, with James's £37,000 already in it") + (billIn ? ", Bill £" + billIn.toLocaleString("en-GB") + " to come" : ", Bill's gift already in it") + ")");
   // Abi's VAT loans: in the month CBS is paid, out the month the refund lands. Tide paid CBS in
   // full on 26 October; her October loan is already in the bank, so only its repayment shows.
   const abiIn = (J.funding || []).filter(f => /^Abi lends/.test(f.label)).map(f => [IDX[f.month], f.amount]).filter(([i]) => i);
   const abiOut = (J.oneOffs || []).filter(o => /^Abi repaid/.test(o.label)).map(o => [IDX[o.month], o.amount]).filter(([i]) => i);
-  const abiJs = [...abiIn.map(([i, a]) => `r.capital[${i}] += ${r2(a)};`), ...abiOut.map(([i, a]) => `r.bankProject[${i}] += ${r2(a)};`)].join(" ");
+  // HMRC refunds still to land for VAT paid before the bank date (October's, and a valuation already
+  // paid): the board's own sum only knows the bills still to pay, so these are added where they land.
+  const dueJs = (J.vatRefundsDue || []).map(d => [IDX[d.month], d.amount]).filter(([i]) => i).map(([i, a]) => `r.vatBack[${i}] += ${r2(a)};`);
+  const abiJs = [...abiIn.map(([i, a]) => `r.capital[${i}] += ${r2(a)};`), ...abiOut.map(([i, a]) => `r.bankProject[${i}] += ${r2(a)};`), ...dueJs].join(" ");
+  // Wording that follows the records: capital still to come, the retention share, VAT paid before the bank date.
+  const capLabel = [jamesIn ? `James £${Math.round(jamesIn / 1000)}k` : "", billIn ? `Bill £${Math.round(billIn / 1000)}k` : ""].filter(Boolean).join(", ") || "all in the bank";
+  rep(`Capital: James £37k, Bill £10k`, `Capital to come: ${capLabel}`, true);
+  rep(`Capital in (James £37,000, Bill £10,000)`, `Capital and Abi's VAT loans in (${capLabel} to come)`);
+  const priorVat = r2((J.vatRefundsDue || []).reduce((t, d) => t + d.amount, 0));
+  rep("`The VAT: ${gbp(bankVat + cardVat)} paid, ${gbp(vatBack)} back from HMRC so far; ${gbp(bankVat + cardVat - vatBack)}", "`The VAT: ${gbp(bankVat + cardVat + " + priorVat + ")} paid (" + (priorVat ? "£" + Math.round(priorVat).toLocaleString("en-GB") + " of it before today" : "all still to pay") + "), ${gbp(vatBack)} back from HMRC so far; ${gbp(bankVat + cardVat + " + priorVat + " - vatBack)}");
+  // VAT on a director's own card passes straight to him: not drawn on the card, not refunded to the bank.
+  if (J.config?.card?.vatToHolder) rep(`if (mth === "card") { r.cardProject[i.m] += i.ex; r.vatCard[i.m] += v; }`, `if (mth === "card") { r.cardProject[i.m] += i.ex; }`);
   rep(`r.topup[3] = s.topup; r.topup[6] = -s.topup;`, `${topIn ? `r.topup[${topIn}] = s.topup;` : ""} ${topOut ? `r.topup[${topOut}] = -s.topup;` : ""} ${abiJs}`);
   rep(`from October 2026 to June 2027`, `from ${FIRST} ${NINE[0].slice(0, 4)} to ${LAST} ${NINE[8].slice(0, 4)}`, true);
   rep(`October to the end of the build`, `${FIRST} to the end of the build`, true);
