@@ -11,7 +11,7 @@ export function makeRun(J) {
   for (const l of J.projectLines) {
     if (l.remainingExVat < 0.5 || l.planProblem) continue;
     const rate = l.vatBasis === "no VAT" ? 0 : cfg.vatRate;
-    for (const p of l.plan) payments.push({ month: p.month, amountExVat: l.remainingExVat * p.share, vat: l.remainingExVat * p.share * rate, method: p.method === "card" ? "card" : "bank", label: l.title, taskId: l.taskId });
+    for (const p of l.plan) payments.push({ month: p.month, amountExVat: l.remainingExVat * p.share, vat: l.remainingExVat * p.share * rate, method: p.method === "card" ? "card" : p.method === "personal" ? "personal" : "bank", label: l.title, taskId: l.taskId });
   }
   return function run(scen = "central", o = {}) {
     const S = WINC_SCENARIOS[scen];
@@ -19,6 +19,8 @@ export function makeRun(J) {
     const scale = S.takings[lastKey] / (WINC_SCENARIOS.base.takings[lastKey] || S.takings[lastKey]);
     const growth = { month: cfg.winc.growth.month, target: Math.round(cfg.winc.growth.target * scale) };
     return runCashModel({ ...cfg, months: o.months ?? 36, projectPayments: payments, funding: J.funding, loans: J.loans, oneOffs: J.oneOffs ?? cfg.oneOffs,
+      // The same refunds still to land and the same ad spend by month as the Money page's own run.
+      vatRefundsDue: J.vatRefundsDue ?? [], marketing: { ...cfg.marketing, byMonth: J.marketingByMonth },
       pay: { ...cfg.pay, ...(o.pay ?? {}) },
       bedh: { ...cfg.bedh, plan: { ...cfg.bedh.plan, ...(o.plan ?? {}) } },
       winc: { contributionPct: cfg.winc.contributionPct, takings: S.takings, productCost: S.productCost, growth, capacity: cfg.winc.capacity } });
