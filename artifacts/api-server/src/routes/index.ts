@@ -39,6 +39,7 @@ import boardsRouter from "./boards";
 import briefRouter from "./brief";
 import proposalsRouter from "./proposals";
 import pagesRouter from "./pages";
+import readinessRouter from "./readiness";
 
 const router: IRouter = Router();
 
@@ -82,5 +83,6 @@ router.use(boardsRouter);
 router.use(briefRouter);
 router.use(proposalsRouter);
 router.use(pagesRouter);
+router.use(readinessRouter);
 
 export default router;

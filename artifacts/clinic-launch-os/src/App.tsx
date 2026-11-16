@@ -44,6 +44,7 @@ import { PathwayPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
 import { DiaryPage, StockPage, TeamPage } from "@/pages/clinic/pages";
 import SourcesPage from "@/pages/sources";
 import AbiPage from "@/pages/abi";
+import ReadyPage from "@/pages/ready";
 import GrowthCommand from "@/pages/growth/command";
 import BuildPage from "@/pages/build";
 import ArchiveHomePage from "@/pages/archive-home";
@@ -216,6 +217,7 @@ function Router() {
         <Route path="/activity" component={ActivityPage} />
         <Route path="/sources" component={SourcesPage} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/abi/ready" component={ReadyPage} />
         <Route path="/abi" component={AbiPage} />
         <Route path="/build" component={BuildPage} />
 

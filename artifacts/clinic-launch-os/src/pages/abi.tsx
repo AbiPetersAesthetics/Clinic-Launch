@@ -8,6 +8,26 @@ import { Sources } from "@/components/fresh";
 import { StockList } from "@/pages/clinic/pages";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScriptView } from "@/components/script-view";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { PROJECT_ID } from "@/lib/alfred";
+
+// The way into Ready for Winchester: days to go, done so far, and the next three things due.
+function ReadyCard() {
+  const { data } = useQuery({ queryKey: ["alfred", "readiness"], queryFn: async () => { const r = await fetch(`/api/projects/${PROJECT_ID}/readiness`, { cache: "no-store" }); if (!r.ok) throw new Error("Could not load"); return r.json(); } });
+  if (!data || data.daysToOpening < 0) return null;
+  const next = (data.thisWeek as number[]).map((id) => data.items.find((i: any) => i.id === id)).filter((i: any) => i && i.owner !== "David").slice(0, 3);
+  const pct = data.counts.total ? Math.round((100 * data.counts.done) / data.counts.total) : 0;
+  return (
+    <Link href="/abi/ready" className="block rounded-xl border border-ink p-4 grid gap-3 no-underline">
+      <span className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-ink-muted">Ready for Winchester</span>
+      <b className="font-sans text-[1.25rem] leading-snug font-medium text-ink">{data.daysToFirstPatients > 0 ? `${data.daysToFirstPatients} days to the first patients` : `${data.daysToOpening} days to opening`}, {data.counts.done} of {data.counts.total} done</b>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full bg-ink rounded-full" style={{ width: `${pct}%` }} /></div>
+      {next.length > 0 && <ul className="grid gap-1 text-[0.9rem] text-ink list-disc pl-5">{next.map((i: any) => <li key={i.id}>{i.title}</li>)}</ul>}
+      <span className="text-[0.78rem] font-semibold uppercase tracking-[0.16em] text-ink">Open the list ›</span>
+    </Link>
+  );
+}
 
 function Day({ label, d }: { label: string; d: any }) {
   return (
@@ -32,7 +52,8 @@ export default function AbiPage() {
       </PageHead>
       {!data ? <Skeleton className="h-40 rounded-xl" /> : (
         <>
-          <div className="grid grid-cols-2 gap-x-5"><Day label="Today" d={data.today} /><Day label="Tomorrow" d={data.tomorrow} /></div>
+          <ReadyCard />
+          <div className="grid grid-cols-2 gap-x-5 mt-6"><Day label="Today" d={data.today} /><Day label="Tomorrow" d={data.tomorrow} /></div>
           <Section title="Film this week">
             {data.film.length ? <Rows>{data.film.map((v: any) => (
               <li key={v.id} className="py-3 border-b border-border grid gap-1">
