@@ -17,7 +17,9 @@ const btn = "min-h-[44px] px-5 rounded-full text-[0.88rem] font-semibold";
 // When the 08:15 run will next do approved outside actions.
 export function nextRun() {
   const h = Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", minute: "numeric", hour12: false, timeZone: "Europe/London" }).format(new Date()).replace(":", "."));
-  return h < 8.15 ? "at 08:15 this morning" : "at 08:15 tomorrow";
+  // No timed run exists yet (the app would not allow one), so this says only what is true.
+  void h;
+  return "by ALFRED the next time it is working";
 }
 
 export function afterText(status: string, result?: string | null) {

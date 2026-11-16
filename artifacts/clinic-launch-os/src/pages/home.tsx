@@ -108,7 +108,7 @@ export default function HomePage() {
       </header>
 
       {data?.waiting && (data.waiting.approved + data.waiting.answered + data.waiting.asked) > 0 && (
-        <p className="text-[0.95rem] text-ink-2 -mt-3"><Link href="/inbox" className="underline">{[data.waiting.approved ? `${data.waiting.approved} approved ${data.waiting.approved === 1 ? "item" : "items"} waiting to be done at 08:15` : null, data.waiting.answered ? `${data.waiting.answered} ${data.waiting.answered === 1 ? "change" : "changes"} you approved or answered being applied` : null, data.waiting.asked ? `${data.waiting.asked} ${data.waiting.asked === 1 ? "question" : "questions"} ALFRED is working out` : null].filter(Boolean).join("; ")}</Link></p>
+        <p className="text-[0.95rem] text-ink-2 -mt-3"><Link href="/inbox" className="underline">{[data.waiting.approved ? `${data.waiting.approved} ${data.waiting.approved === 1 ? "item" : "items"} approved and waiting for ALFRED to do` : null, data.waiting.answered ? `${data.waiting.answered} ${data.waiting.answered === 1 ? "change" : "changes"} you approved or answered being applied` : null, data.waiting.asked ? `${data.waiting.asked} ${data.waiting.asked === 1 ? "question" : "questions"} ALFRED is working out` : null].filter(Boolean).join("; ")}</Link></p>
       )}
 
       <Section title={items.length ? `Needs you (${data?.total ?? items.length})` : "Needs you"} id="needs" note={data && data.total > items.length ? <Link href="/inbox" className="underline">see all</Link> : undefined}>

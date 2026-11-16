@@ -119,7 +119,7 @@ export function ObligationsPage() {
           {((money?.extra?.expected ?? []).length > 0 || (money?.extra?.availableLoans ?? []).length > 0) && (
             <Section title="Money expected in">
               <ul className="border-t border-border">
-                {(money?.extra?.expected ?? []).map((e: any) => <li key={e.label} className="flex justify-between gap-3 py-2.5 border-b border-border"><span><span className="block text-ink">{e.label}</span><span className="block text-[0.82rem] text-ink-2">expected, not yet in the bank; counted in the forecast from {e.month}</span></span><span className="tabular font-medium">{gbp0(e.amount)}</span></li>)}
+                {(money?.extra?.expected ?? []).map((e: any) => <li key={e.label} className="flex justify-between gap-3 py-2.5 border-b border-border"><span><span className="block text-ink">{e.label}</span><span className="block text-[0.82rem] text-ink-2">expected, not yet in the bank; counted in the forecast from {new Date(e.month + "-01T12:00:00Z").toLocaleDateString("en-GB", { month: "long", year: "numeric" })}</span></span><span className="tabular font-medium">{gbp0(e.amount)}</span></li>)}
                 {(money?.extra?.availableLoans ?? []).map((l: any) => <li key={l.label} className="flex justify-between gap-3 py-2.5 border-b border-border"><span><span className="block text-ink">{l.label}</span><span className="block text-[0.82rem] text-ink-2">available to draw when you choose; not in the forecast</span></span><span className="tabular font-medium">{gbp0(l.principal)}</span></li>)}
               </ul>
             </Section>

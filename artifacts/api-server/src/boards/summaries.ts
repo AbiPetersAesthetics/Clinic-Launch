@@ -388,6 +388,9 @@ export function moneyOutlook(J: any | null, withLoan: any | null, baseline: any 
   const lead = reasons.find((r) => Math.sign(r.amount) === Math.sign(diff || evidenceGap));
   // The plan is rebased each time the owner agrees a change, so the forecast usually equals it: say so plainly.
   const gapText = Math.abs(diff) < 50 ? "in line with the plan" : `${gbp0(Math.abs(diff))} ${diff >= 0 ? "above" : "below"} the plan`;
-  const sentence = `${word}: by the end of ${endLabel} the bank is forecast at ${gbp0(end.closingBank)}, ${gapText}${lead ? `${Math.abs(diff) < 50 ? "; " : ", mainly because "}${/^(The|This|Ad) /.test(lead.text) ? lead.text.charAt(0).toLowerCase() + lead.text.slice(1) : lead.text}` : ""}.`;
+  // Lead with the figure a decision turns on: the lowest month-end ahead, then where the four months end.
+  const lowRow = live.find((r: any) => r.closingBank === minNow);
+  const longMonth = (ym: string) => new Date(ym + "-01T12:00:00Z").toLocaleDateString("en-GB", { month: "long" });
+  const sentence = `Lowest point ${gbp0(minNow)} at the end of ${longMonth(lowRow.month)}; ${gbp0(end.closingBank)} by the end of ${longMonth(end.month)}, ${gapText}.`;
   return { state: state as "better" | "worse" | "on track", word, sentence, rule: OUTLOOK_RULE, points, reasons: reasons.slice(0, 3), relies };
 }

@@ -55,7 +55,7 @@ export default function InboxPage() {
       <header className="space-y-3">
         <span className="eyebrow">Inbox</span>
         <h1 className="font-sans font-semibold text-[1.75rem] sm:text-[2.1rem] leading-tight text-ink">Inbox</h1>
-        <p className="text-ink-2 text-[1rem] max-w-[60ch]">Changes to ALFRED's own records are done the moment you approve, with Undo. Anything outside ALFRED, such as ads, posts, messages, ANS or the website, is done at 08:15 each morning, checked first and read back.</p>
+        <p className="text-ink-2 text-[1rem] max-w-[60ch]">Changes to ALFRED's own records are done the moment you approve, with Undo. Anything outside ALFRED, such as ads, posts, messages, ANS or the website, is done by ALFRED the next time it is working, checked first and read back.</p>
         <div role="tablist" className="flex flex-wrap gap-2">{tabBtn("open", "Open", data?.open.length)}{tabBtn("decided", "Decided")}{tabBtn("snoozed", "Snoozed", data?.snoozed.length)}</div>
       </header>
       {msg && <p role="status" aria-live="polite" className="text-[0.9rem] text-good">{msg}</p>}
