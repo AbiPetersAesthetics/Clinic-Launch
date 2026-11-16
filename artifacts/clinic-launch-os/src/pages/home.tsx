@@ -111,19 +111,6 @@ export default function HomePage() {
         <p className="text-[0.95rem] text-ink-2 -mt-3"><Link href="/inbox" className="underline">{[data.waiting.approved ? `${data.waiting.approved} ${data.waiting.approved === 1 ? "item" : "items"} approved and waiting for ALFRED to do` : null, data.waiting.answered ? `${data.waiting.answered} ${data.waiting.answered === 1 ? "change" : "changes"} you approved or answered being applied` : null, data.waiting.asked ? `${data.waiting.asked} ${data.waiting.asked === 1 ? "question" : "questions"} ALFRED is working out` : null].filter(Boolean).join("; ")}</Link></p>
       )}
 
-      <Section title={items.length ? `Needs you (${data?.total ?? items.length})` : "Needs you"} id="needs" note={data && data.total > items.length ? <Link href="/inbox" className="underline">see all</Link> : undefined}>
-        {isLoading ? <Skeleton className="h-44 rounded-xl" />
-          : items.length === 0 ? <p className="text-[1.05rem] text-ink">Nothing needs you.</p>
-          : (
-            <>
-              <div className="grid gap-3 md:grid-cols-2 items-start">
-                {items.map((it, i) => <div key={it.id} className={`min-w-0 ${!showAll && i >= 2 ? "hidden md:block" : ""}`}><BriefItemCard item={it} /></div>)}
-              </div>
-              {!showAll && items.length > 2 && <button type="button" onClick={() => setShowAll(true)} className="md:hidden min-h-[44px] text-slate underline text-[1rem]">{items.length - 2} more</button>}
-            </>
-          )}
-      </Section>
-
       {data && <Section title="Where things stand" id="stand"><AreaInsights areas={data.areas} /></Section>}
 
       {data && data.dates.length > 0 && (
@@ -138,6 +125,26 @@ export default function HomePage() {
           </Rows>
         </Section>
       )}
+
+      {/* Owner, 16 Nov 2026: Today must not open on a wall of question cards. Warnings show as cards;
+          questions and approvals are a short list of titles, opened one at a time in the Inbox. */}
+      {!isLoading && items.length > 0 && (() => {
+        const warnings = items.filter((it) => it.kind !== "proposal");
+        const asks = items.filter((it) => it.kind === "proposal") as Extract<BriefItem, { kind: "proposal" }>[];
+        return (
+          <>
+            {warnings.length > 0 && <Section title="Worth a look" id="needs"><div className="grid gap-3 md:grid-cols-2 items-start">{warnings.slice(0, 3).map((it) => <div key={it.id} className="min-w-0"><BriefItemCard item={it} /></div>)}</div></Section>}
+            {asks.length > 0 && (
+              <Section title={`Waiting for a word from you (${data?.total ?? asks.length})`} id="asks" note={<Link href="/inbox" className="underline">open all</Link>}>
+                <Rows>
+                  {asks.slice(0, 3).map((it) => <RowItem key={it.id} href="/inbox"><span className="min-w-0 text-[1rem] text-ink">{it.proposal.title}</span></RowItem>)}
+                </Rows>
+                {(data?.total ?? asks.length) > 3 && <p className="text-[0.9rem] text-ink-2">and {(data?.total ?? asks.length) - 3} more. None of them stops anything running today.</p>}
+              </Section>
+            )}
+          </>
+        );
+      })()}
 
       {data && (
         <p className="text-[0.85rem] text-ink-2 leading-relaxed">
