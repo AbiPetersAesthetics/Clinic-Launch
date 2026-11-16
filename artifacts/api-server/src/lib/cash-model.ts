@@ -73,7 +73,10 @@ export type CashInputs = {
   cashFloor: number;
   // retentionUntilBank: when set, the retention stops once the bank at the start of the
   // month is at or above it, so Abi takes the profit the business no longer needs to keep.
-  pay: { retention: number; capMonthly: number; niRatePct: number; niThresholdAnnual: number; gateMonths: number; retentionUntilBank?: number | null };
+  // capFrom: the salary cap from a given month (owner, 16 Nov 2026: a lower first year, then the
+  // settled rate). reserveLatch: once the reserve is reached the retention stays off, and only
+  // returns if the bank falls under the cash floor, so pay does not stop and start after each rent.
+  pay: { retention: number; capMonthly: number; niRatePct: number; niThresholdAnnual: number; gateMonths: number; retentionUntilBank?: number | null; capFrom?: { from: string; capMonthly: number }[]; reserveLatch?: boolean };
   // VAT returns: the months each VAT period ends (1 to 12) and how many months after
   // it HMRC's refund arrives. Without this, VAT on project payments is left out.
   vatReturns?: { periodEndMonths: number[]; refundLagMonths: number };
@@ -186,12 +189,12 @@ export function rentSchedule(inp: CashInputs, fromYm: string, toYm: string): Rec
 
 // Abi's pay: gross salary s costs the company s plus employer NI on the part above
 // the monthly threshold. Solve for the largest s whose cost fits `available`.
-export function salaryFor(available: number, p: CashInputs["pay"]): { salary: number; cost: number } {
+export function salaryFor(available: number, p: CashInputs["pay"], cap: number = p.capMonthly): { salary: number; cost: number } {
   if (available <= 0) return { salary: 0, cost: 0 };
   const thr = p.niThresholdAnnual / 12, ni = p.niRatePct / 100;
   const costOf = (s: number) => s + ni * Math.max(0, s - thr);
   let s = available <= thr ? available : (available + ni * thr) / (1 + ni);
-  s = Math.min(s, p.capMonthly);
+  s = Math.min(s, cap);
   return { salary: r2(s), cost: r2(costOf(s)) };
 }
 
@@ -229,7 +232,7 @@ export function runCashModel(inp: CashInputs): CashResult {
 
   const rows: CashRow[] = [];
   let bank = inp.openingBank;
-  let gateRun = 0, gateOpen = false;
+  let gateRun = 0, gateOpen = false, reserveMet = false;
 
   for (const ym of months) {
     const why: Record<string, string> = {};
@@ -328,14 +331,21 @@ export function runCashModel(inp: CashInputs): CashResult {
     // retention (after loan repayments), up to the cap, with employer NI on top.
     gateRun = wincOwnProfit >= 0 && winc.gross > 0 ? gateRun + 1 : 0;
     if (gateRun >= inp.pay.gateMonths) gateOpen = true;
-    const retention = inp.pay.retentionUntilBank != null && bank >= inp.pay.retentionUntilBank ? 0 : inp.pay.retention;
+    // Judged only once the pay gate is open: before that the bank is holding the build money, which
+    // is not a reserve.
+    if (gateOpen && inp.pay.retentionUntilBank != null) {
+      if (bank >= inp.pay.retentionUntilBank) reserveMet = true;
+      else if (!inp.pay.reserveLatch || bank < inp.cashFloor) reserveMet = false;
+    }
+    const retention = reserveMet ? 0 : inp.pay.retention;
+    const payCap = (inp.pay.capFrom ?? []).filter(c => c.from <= ym).sort((a, b) => (a.from < b.from ? -1 : 1)).pop()?.capMonthly ?? inp.pay.capMonthly;
     const available = operatingProfit - loanRepayment - retention;
-    const pay = gateOpen ? salaryFor(available, inp.pay) : { salary: 0, cost: 0 };
+    const pay = gateOpen ? salaryFor(available, inp.pay, payCap) : { salary: 0, cost: 0 };
     why.pay = !gateOpen
       ? `No pay: Winchester has not yet made a profit for ${inp.pay.gateMonths} months running`
       : available <= 0
         ? `No pay: profit after loan repayments ${gbp(operatingProfit - loanRepayment)} is not above the ${gbp(retention)} the business keeps`
-        : `Salary ${gbp(pay.salary)} (company cost ${gbp(pay.cost)} with employer NI) from the ${gbp(available)} above the ${gbp(retention)} retained${retention === 0 ? " (none kept: the bank is above " + gbp(inp.pay.retentionUntilBank!) + ")" : ""}, capped at ${gbp(inp.pay.capMonthly)}`;
+        : `Salary ${gbp(pay.salary)} (company cost ${gbp(pay.cost)} with employer NI) from the ${gbp(available)} above the ${gbp(retention)} retained${retention === 0 ? " (none kept: the reserve of " + gbp(inp.pay.retentionUntilBank!) + " has been reached)" : ""}, capped at ${gbp(payCap)}`;
 
     // Card
     const projCard = inp.projectPayments.filter(p => p.month === ym && p.method === "card");

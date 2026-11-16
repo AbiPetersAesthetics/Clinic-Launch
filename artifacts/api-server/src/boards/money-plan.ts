@@ -17,6 +17,11 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
 const lab = m => ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][+m.slice(5) - 1] + " " + m.slice(2, 4);
 const main = D.main, P = D.plans, c = P.central, dv = P.base;
 const keepW = D.params.keepW, keepB = D.params.keepB, standAt = D.params.standAt;
+// Abi's pay rule in force (owner, 16 Nov 2026): the first-year cap, the settled cap and when it starts, and the reserve at which the monthly 3,000 stops.
+const PAYR = { reserve: D.params.payReserve, cap1: D.params.payCap1, cap2: D.params.payCap2, from2: D.params.payCap2From, floor: D.params.payFloor };
+const payCost = (s) => s + 0.15 * Math.max(0, s - 5000 / 12);
+const from2Label = PAYR.from2 ? new Date(PAYR.from2 + "-01T12:00:00Z").toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
+const reserveText = PAYR.reserve != null ? `until the bank holds ${f(PAYR.reserve)}` : "every month";
 
 // ── derived figures ──
 const cumValue = (k, pf = 1) => (M.firstMonth + M.returnVisit * M.returns.slice(1, k + 1).reduce((s, v) => s + v, 0)) * pf;
@@ -129,6 +134,7 @@ const chartData = {
   treat: { names: TREAT.slice(0, 7).map(t => t[0]), b: TREAT.slice(0, 7).map(t => Math.round(kept(t[2], t[4]))), fo: TREAT.slice(0, 7).map(t => Math.round(kept(t[3] * .8, t[4]))), w: TREAT.slice(0, 7).map(t => Math.round(kept(t[3], t[4]))) },
 };
 const INPUTS = {
+  pay: (LIVE && LIVE.config && LIVE.config.pay) || null,
   opening: LIVE.bank ? LIVE.bank.openingUsed : LIVE.config.openingBank,
   funding: LIVE.funding, loans: LIVE.loans,
   payments: LIVE.projectLines.filter(l => l.remainingExVat >= 0.5 && !l.planProblem).flatMap(l => l.plan.map(p => [Math.round(l.remainingExVat * p.share * 100) / 100, p.method === "card" ? "card" : "bank", p.month, l.vatBasis === "no VAT" ? 0 : Math.round(l.remainingExVat * p.share * 20) / 100])),
@@ -274,7 +280,7 @@ a { color: var(--slate); }
     <li><strong>Winchester earns much more per appointment.</strong> The same treatment keeps about ${f(163)} at Winchester's prices against ${f(93)} at Bedhampton, because the prices are about 48% higher and the products cost the same.</li>
     <li><strong>But Winchester will take time to get busy.</strong> On our own records it takes about ${f(D.scenarios.central.winc["2027-06"])} a month by June 2027. David's forecast of £14,700 would need about 30 new patients a month from December; Bedhampton finds about 23.</li>
     <li><strong>Bedhampton stays open two days a week until Winchester stands on its own</strong>, then closes. On the recommended forecast that is ${c.two.closes === "Dec 28" ? "December 2028" : c.two.closes}; on David's forecast, ${dv.two.closes === "Aug 27" ? "August 2027" : dv.two.closes}.</li>
-    <li><strong>Abi is paid from ${c.two.regular === "May 27" ? "May 2027" : c.two.regular}</strong>: about ${f(c.two.salary)} over three years under today's rule, or about ${f(c.release.salary)} if the business stops keeping £3,000 a month once the bank has £25,000.</li>
+    <li><strong>Abi is paid from ${c.two.regular === "May 27" ? "May 2027" : c.two.regular}</strong>: about ${f(c.two.salary)} over three years under the rule in force (the business keeps £3,000 a month only ${reserveText}), against about ${f(c.release.salary)} if it kept £3,000 every month with no end.</li>
     <li><strong>The number to watch is new patients at Winchester each month.</strong> 16 to 24 is the recommended forecast; about 30 is David's.</li>
   </ul></div>
 </section>
@@ -445,22 +451,22 @@ ${cashRows}
 
 <section id="pay" data-title="Abi's pay">
   <div class="ch-head"><span class="ch-num">10</span><div><div class="q">The hard part</div><h2>How Abi gets paid, and the rule to decide</h2></div></div>
-  <p class="answer"><strong>Short answer:</strong> regular pay from ${c.two.regular === "May 27" ? "May 2027" : c.two.regular}, about ${f(c.two.salary)} over three years, while the bank grows to about ${f(c.two.end)}. The £3,000 the business keeps each month is what holds it back.</p>
+  <p class="answer"><strong>Short answer:</strong> regular pay from ${c.two.regular === "May 27" ? "May 2027" : c.two.regular}, about ${f(c.two.salary)} over three years, with about ${f(c.two.end)} in the bank at the end. The business keeps £3,000 a month only ${reserveText}; after that the profit goes to Abi's pay.</p>
   <ol class="steps">
     <li><div><strong>Winchester has to make a profit by itself</strong> for two months running before anything is paid.</div></li>
-    <li><div><strong>The business keeps the first £3,000</strong> of each month's profit, after James's repayment.</div></li>
-    <li><div><strong>Abi takes the rest as salary</strong>, up to £4,189 a month, the top of the basic tax band.</div></li>
-    <li><div><strong>The company adds employer's National Insurance</strong>, so the full salary costs about £4,755 a month.</div></li>
+    <li><div><strong>The business keeps the first £3,000</strong> of each month's profit, after James's repayment, ${PAYR.reserve != null ? `until the bank holds a reserve of ${f(PAYR.reserve)}. Then it stops, and only starts again if the bank falls under ${f(PAYR.floor)}` : "every month"}.</div></li>
+    <li><div><strong>Abi takes the rest as salary</strong>, up to ${f(PAYR.cap1)} a month (${f(PAYR.cap1 * 12)} a year)${PAYR.cap2 ? `, rising to ${f(PAYR.cap2)} a month (${f(PAYR.cap2 * 12)} a year) from ${from2Label}` : ""}.</div></li>
+    <li><div><strong>The company adds employer's National Insurance</strong>, so the salary costs about ${f(payCost(PAYR.cap1))} a month${PAYR.cap2 ? `, then about ${f(payCost(PAYR.cap2))}` : ""}.</div></li>
   </ol>
   <div class="table-wrap"><table>
     <thead><tr><th>Abi's salary</th>${fyKeys.map(k2 => `<th>${fyLabel[k2]}</th>`).join("")}<th>Aug to Sep 2029</th><th>3 years</th><th>Bank, Sep 29</th></tr></thead>
     <tbody>
-      <tr><td>Keep £3,000 every month (today's rule)</td>${fyKeys.map(k2 => `<td>${f(salNow[k2])}</td>`).join("")}<td>${f(c.two.salary - fyKeys.reduce((a, k2) => a + salNow[k2], 0))}</td><td><strong>${f(c.two.salary)}</strong></td><td>${f(c.two.end)}</td></tr>
-      <tr><td>Stop keeping it once the bank has £25,000</td>${fyKeys.map(k2 => `<td>${f(salRelease[k2])}</td>`).join("")}<td>${f(c.release.salary - fyKeys.reduce((a, k2) => a + salRelease[k2], 0))}</td><td><strong>${f(c.release.salary)}</strong></td><td>${f(c.release.end)}</td></tr>
+      <tr><td>The rule in force (owner, 16 Nov 2026)</td>${fyKeys.map(k2 => `<td>${f(salNow[k2])}</td>`).join("")}<td>${f(c.two.salary - fyKeys.reduce((a, k2) => a + salNow[k2], 0))}</td><td><strong>${f(c.two.salary)}</strong></td><td>${f(c.two.end)}</td></tr>
+      <tr><td>Keep £3,000 every month with no end (the old rule)</td>${fyKeys.map(k2 => `<td>${f(salRelease[k2])}</td>`).join("")}<td>${f(c.release.salary - fyKeys.reduce((a, k2) => a + salRelease[k2], 0))}</td><td><strong>${f(c.release.salary)}</strong></td><td>${f(c.release.end)}</td></tr>
     </tbody>
   </table></div>
   <p class="note">Either way the bank's lowest point stays at ${f(c.two.low)} in December 2026. Salary rather than dividends, because a dividend would be shared with James as a shareholder; the accountant should confirm.</p>
-  <div class="discuss"><strong>To talk about:</strong> keep the £3,000 rule, or stop it once the bank has £25,000? Chapter 11 lets you see both.</div>
+  <div class="discuss"><strong>Decided, 16 Nov 2026:</strong> the £3,000 a month stops once the reserve is in the bank, and Abi's salary starts lower and steps up. Chapter 11 lets you see the old rule beside it.</div>
 </section>
 
 <section id="try" data-title="Try it yourself">
@@ -480,7 +486,7 @@ ${cashRows}
     </div>
     <div class="ctrl"><span class="lbl" id="l-pr">Abi's pay rule</span>
       <div class="seg-ctl" role="group" aria-labelledby="l-pr" data-key="pay">
-        <button type="button" data-v="keep" aria-pressed="true">Keep £3,000 every month</button><button type="button" data-v="release" aria-pressed="false">Stop once the bank has £25,000</button>
+        <button type="button" data-v="keep" aria-pressed="true">The rule in force</button><button type="button" data-v="release" aria-pressed="false">Keep £3,000 every month (old rule)</button>
       </div>
     </div>
     <div class="results" aria-live="polite">
@@ -501,7 +507,7 @@ ${cashRows}
   <div class="ch-head"><span class="ch-num">12</span><div><div class="q">Decisions</div><h2>What we need to decide</h2></div></div>
   <ul>
     <li><span class="chip decide">Both</span><strong>Bedhampton on two days until Winchester stands on its own</strong>, then close, as the rule.</li>
-    <li><span class="chip decide">Both</span><strong>The £3,000 kept each month:</strong> keep it, or stop once the bank has £25,000 so Abi is paid properly sooner.</li>
+    <li><span class="chip decide">Both</span><strong>The £3,000 kept each month:</strong> decided on 16 Nov 2026. It stops once the reserve is in the bank, so Abi is paid properly sooner.</li>
     <li><span class="chip decide">Both</span><strong>A target of 25 new patients a month at Winchester</strong>, and what we do if we are short.</li>
     <li><span class="chip decide">Both</span><strong>How far founders' prices go:</strong> each founder keeps about ${f(43)} less per treatment.</li>
     <li><span class="chip decide">David</span><strong>Re-run the forecast in March 2027</strong> with three months of real Winchester figures.</li>
@@ -575,7 +581,7 @@ ${cashRows}
     const pays = IN.payments.map(([amt, method, month, vat], i) => ({ month, amountExVat: amt, method, label: "Build " + i, vat }));
     return CM.runCashModel(Object.assign({}, d, { months: 36, openingBank: IN.opening, projectPayments: pays,
       funding: IN.funding, loans: IN.loans,
-      pay: Object.assign({}, d.pay, { retentionUntilBank: state.pay === "release" ? 25000 : null }),
+      pay: Object.assign({}, d.pay, IN.pay || {}, state.pay === "release" ? { retentionUntilBank: null, capFrom: [], reserveLatch: false, capMonthly: 4189.17 } : {}),
       bedh: Object.assign({}, d.bedh, { plan }),
       winc: { contributionPct: d.winc.contributionPct, takings, productCost, growth, capacity: d.winc.capacity } }));
   }

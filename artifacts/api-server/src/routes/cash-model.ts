@@ -91,11 +91,14 @@ async function adsPlanByMonth(projectId: number): Promise<Record<string, number>
   } catch { return undefined; }
 }
 
-export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number; drawAvailableLoans?: boolean } = {}) {
+export async function buildCashModel(projectId: number, opts: { scenario?: string; months?: number; drawAvailableLoans?: boolean; tryPay?: Partial<CashModelConfig["pay"]> } = {}) {
   const [model] = await db.select().from(financialsTable).where(eq(financialsTable.projectId, projectId));
   let stored: unknown = {};
   try { stored = JSON.parse((model as any)?.cashModelJson || "{}"); } catch { stored = {}; }
   const config = mergeDeep<CashModelConfig>(CASH_MODEL_DEFAULTS, stored);
+  // A trial of the pay rules (Abi's pay cap, the monthly amount kept, the reserve at which keeping
+  // stops): read only, for a before and after. Nothing is saved.
+  if (opts.tryPay) config.pay = { ...config.pay, ...opts.tryPay };
   // The bank today, when entered, is where the model starts.
   const bank = readBank(stored);
   if (bank && bank.asAt.slice(0, 7) > config.startMonth) config.startMonth = bank.asAt.slice(0, 7);
@@ -301,6 +304,13 @@ router.get("/projects/:projectId/cash-model", async (req, res) => {
     const out = await buildCashModel(parseInt(req.params.projectId), {
       scenario: req.query.scenario as string | undefined,
       months: parseInt((req.query.months as string) || "12"),
+      tryPay: (req.query.try_cap || req.query.try_reserve || req.query.try_keep || req.query.try_cap2) ? {
+        ...(req.query.try_cap2 ? { capFrom: [{ from: String(req.query.try_from2 ?? "2028-01"), capMonthly: Number(req.query.try_cap2) }] } : {}),
+        ...(req.query.try_latch ? { reserveLatch: true } : {}),
+        ...(req.query.try_cap ? { capMonthly: Number(req.query.try_cap) } : {}),
+        ...(req.query.try_reserve ? { retentionUntilBank: Number(req.query.try_reserve) } : {}),
+        ...(req.query.try_keep ? { retention: Number(req.query.try_keep) } : {}),
+      } : undefined,
     });
     res.json(out);
   } catch (err) {

@@ -10,7 +10,8 @@ import { latestAds, latestBoard, latestBoardRow, cardBalances } from "../lib/boa
 import { freshness, dayMonth, RULES, type SourceKey } from "../lib/freshness";
 import { SCHEDULES } from "../lib/heartbeat";
 import { recentActivity } from "./proposals";
-import { STANDS_ALONE_TAKINGS } from "../lib/cash-model-defaults";
+import { STANDS_ALONE_TAKINGS, WINC_KEEP_PCT } from "../lib/cash-model-defaults";
+const gbp0 = (n: number) => `${n < 0 ? "minus " : ""}£${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
 import { rowsOf } from "../lib/agent-tables";
 
 const router = Router();
@@ -78,17 +79,38 @@ router.get("/projects/:projectId/pages/obligations", handle(async (projectId) =>
 }));
 
 router.get("/projects/:projectId/pages/stands-alone", handle(async (projectId) => {
-  const J = await cash(projectId);
+  // Three years, so the later steps of the ladder have room to be reached.
+  const J: any = await buildCashModel(projectId, { months: 38 }).catch((err) => { console.error("[pages stands-alone]", err); return null; });
   const today = londonToday();
   const rows = (J?.rows ?? []).filter((r: any) => r.month >= "2026-12").slice(0, 18).map((r: any) => ({ month: r.month, label: r.label, margin: r2(r.wincStandMargin ?? 0), why: r.why?.standAlone ?? "", bedhOpen: r.bedhOpen, pay: r2(r.paySalary ?? 0) }));
   let met: string | null = null;
   for (let i = 1; i < rows.length; i++) if (rows[i - 1].margin >= 0 && rows[i].margin >= 0) { met = rows[i].label; break; }
   const firstPay = (J?.rows ?? []).find((r: any) => (r.paySalary ?? 0) > 0);
+  // The ladder (owner, 16 Nov 2026: "a more intelligent way of working out stands alone"). Four
+  // plain steps, each read from the same monthly model: Winchester pays its own bills; the reserve
+  // is in the bank; Abi is on her settled salary; Winchester pays its bills and Abi with no help.
+  const all: any[] = (J?.rows ?? []).filter((r: any) => r.month >= "2026-12");
+  const pay = J?.config?.pay ?? {};
+  const settled = ((pay.capFrom ?? []) as any[]).slice(-1)[0]?.capMonthly ?? pay.capMonthly ?? 0;
+  const firstCap = pay.capMonthly ?? 0;
+  const costOf = (s: number) => s + ((pay.niRatePct ?? 15) / 100) * Math.max(0, s - (pay.niThresholdAnnual ?? 5000) / 12);
+  const twoRunning = (ok: (r: any) => boolean) => { for (let i = 1; i < all.length; i++) if (ok(all[i - 1]) && ok(all[i])) return all[i - 1].label as string; return null; };
+  const bills = (r: any) => (r.wincStandMargin ?? 0) + (pay.retention ?? 0);
+  const reserveRow = pay.retentionUntilBank != null ? all.find((r: any) => r.payGate && r.openingBank >= pay.retentionUntilBank) : null;
+  const ladder = [
+    { key: "bills", title: "Winchester pays its own bills", detail: "Its takings, after VAT and products, cover its running costs and James's loan repayment, two months running.", met: twoRunning((r) => bills(r) >= 0) },
+    { key: "reserve", title: pay.retentionUntilBank != null ? `The reserve of ${gbp0(pay.retentionUntilBank)} is in the bank` : "The reserve", detail: pay.retentionUntilBank != null ? `Until then the business keeps ${gbp0(pay.retention ?? 0)} of each month's profit. After that it stops, and only starts again if the bank falls under ${gbp0(J?.config?.cashFloor ?? 10000)}.` : "No reserve figure is set, so the business keeps the monthly amount with no end.", met: reserveRow ? reserveRow.label : null },
+    { key: "pay1", title: `Abi is paid ${gbp0(firstCap * 12)} a year`, detail: `${gbp0(firstCap)} a month, the first-year rate, paid from the whole business's profit once the reserve is in.`, met: twoRunning((r) => (r.paySalary ?? 0) >= firstCap - 1) },
+    ...(settled > firstCap ? [{ key: "pay2", title: `Abi is paid ${gbp0(settled * 12)} a year`, detail: `${gbp0(settled)} a month, the settled rate.`, met: twoRunning((r) => (r.paySalary ?? 0) >= settled - 1) }] : []),
+    { key: "alone", title: "Winchester pays its bills and Abi with no help from Bedhampton", detail: `The real test of standing alone: about ${gbp0(Math.round(((all.slice(0, 12).reduce((s2: number, r: any) => s2 + (r.wincStandMargin ?? 0) + (pay.retention ?? 0) - (r.winc?.contribution ?? 0), 0) / -12) + costOf(settled)) / (WINC_KEEP_PCT / 100) / 100) * 100)} of Winchester takings a month.`, met: twoRunning((r) => bills(r) - costOf(settled) >= 0) },
+  ];
+  const ladderRows = all.slice(0, 30).map((r: any) => ({ label: r.label, bills: r2(bills(r)), alone: r2(bills(r) - costOf(settled)), pay: r2(r.paySalary ?? 0), bank: r2(r.closingBank ?? 0) }));
   const bedhClose = (J?.rows ?? []).find((r: any, i: number, a: any[]) => i > 0 && a[i - 1].bedhOpen && !r.bedhOpen);
   return {
     asOf: new Date().toISOString(),
     line: { takingsNeeded: STANDS_ALONE_TAKINGS, definition: "Winchester's own contribution covers its full running costs, James's level repayment and the £3,000 kept, two months running." },
     thisMonth: today < "2026-12-08" ? { measured: false, reason: "Winchester takes its first money on 8 December; the first month measured is December, read from ANS by the clinic refresh." } : { measured: false, reason: "Measured from ANS takings at the end of each month." },
+    ladder, ladderRows, horizon: all.length ? all[Math.min(all.length, 30) - 1].label : null,
     forecastMet: met, firstPay: firstPay?.label ?? null, bedhamptonCloses: bedhClose?.label ?? null,
     rows, sources: [freshness("bank", J?.bank?.asAt ?? null)],
   };

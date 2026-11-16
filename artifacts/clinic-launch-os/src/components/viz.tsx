@@ -172,7 +172,7 @@ export function MarginColumns({ rows, ariaLabel, marks = [], lineLabel }: { rows
     <div ref={box} className="w-full">
       <svg role="img" aria-label={ariaLabel} width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="block">
         {ticks.map((t) => <g key={t}><line x1={padL} x2={W - padR} y1={y(t)} y2={y(t)} stroke={t === 0 ? V.ink : V.grid} strokeWidth={t === 0 ? 2 : 1} /><text x={padL - 8} y={y(t) + 4} textAnchor="end" fontSize="11.5" fill={V.muted}>{kGbp(t)}</text></g>)}
-        {lineLabel && <text x={W - padR} y={y(0) - 6} textAnchor="end" fontSize="11.5" fontWeight={600} fill={V.ink}>{lineLabel}</text>}
+        {lineLabel && <text x={padL + 6} y={y(0) - 7} textAnchor="start" fontSize="11.5" fontWeight={600} fill={V.ink} stroke={V.surface} strokeWidth={3} paintOrder="stroke">{lineLabel}</text>}
         {marks.filter((m) => m.index >= 0 && m.index < rows.length).map((m, k) => { const mx = padL + slot * (m.index + 0.5); return <g key={m.label}><line x1={mx} x2={mx} y1={padT - 14 + k * 13} y2={H - padB} stroke={V.slate} strokeDasharray="3 4" /><text x={mx + (mx > W - 150 ? -5 : 5)} y={padT - 16 + k * 13 + 4} textAnchor={mx > W - 150 ? "end" : "start"} fontSize="11.5" fontWeight={600} fill={V.slate}>{m.label}</text></g>; })}
         {rows.map((r, i) => {
           const cx = padL + slot * (i + 0.5), up = r.value >= 0;

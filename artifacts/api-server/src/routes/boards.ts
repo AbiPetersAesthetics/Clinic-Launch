@@ -84,7 +84,7 @@ router.get("/projects/:projectId/boards/money-plan", async (req, res) => {
     const projectId = parseInt(req.params.projectId);
     const asOf = today();
     const J = await buildCashModel(projectId, { months: 36 });
-    const D = planData(makeRun(J));
+    const D = planData(makeRun(J), J.config);
     const html = renderMoneyPlan({ D, LIVE: J, ENGINE, lib: { PATIENT_MODEL, PRICES, WINC_SCENARIOS, WINC_OPTS, monthsFrom, wincForecast }, asOf });
     // The plan in a white ALFRED frame with the brand fonts (it was a warm cream ground and system
     // fonts, which the app rules out), pinned light as ALFRED is.

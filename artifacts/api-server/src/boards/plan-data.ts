@@ -5,7 +5,7 @@ import { CASH_MODEL_DEFAULTS, WINC_SCENARIOS, WINC_KEEP_PCT, STANDS_ALONE_TAKING
 import { wincCapacityFor } from "../lib/cash-model";
 import { monthsFrom } from "../lib/growth-model";
 
-export function planData(run) {
+export function planData(run, cfg) {
   const d = CASH_MODEL_DEFAULTS;
   const R = n => Math.round(n);
   const pick = r => ({ m: r.month, l: r.label, fy: r.fy, bd: r.bedhDays, wd: r.wincDays, occ: r.wincOccupancy == null ? null : +(r.wincOccupancy * 100).toFixed(0),
@@ -18,7 +18,7 @@ export function planData(run) {
       twoDays: rows.filter(x => x.bedhDays === 2).length, oneDay: rows.filter(x => x.bedhDays === 1).length }; };
   const out = { scenarios: {}, plans: {}, main: null, fy: {} };
   for (const k of ["central", "base", "low", "high"]) { const rr = run(k).rows; let stand = null; for (let i = 1; i < rr.length; i++) if (rr[i - 1].wincStandMargin >= 0 && rr[i].wincStandMargin >= 0) { stand = rr[i].label; break; } out.scenarios[k] = { label: WINC_SCENARIOS[k].label, note: WINC_SCENARIOS[k].note, stand, winc: Object.fromEntries(monthsFrom("2026-10", 36).map(m => [m, R(rr.find(x => x.month === m)?.wincDemand ?? 0)])) }; }
-  const variants = { two: {}, one: { plan: { oneDayFrom: "2027-05" } }, april: { plan: { closeAfter: "2027-04" } }, release: { pay: { retentionUntilBank: 25000 } } };
+  const variants = { two: {}, one: { plan: { oneDayFrom: "2027-05" } }, april: { plan: { closeAfter: "2027-04" } }, release: { pay: { retentionUntilBank: null, capFrom: [], reserveLatch: false, capMonthly: CASH_MODEL_DEFAULTS.pay.capMonthly } } }; // "release" is now the old rule (keep 3,000 every month, no end), shown beside the rule in force
   for (const k of ["central", "base", "low", "high"]) { out.plans[k] = {}; for (const [vk, v] of Object.entries(variants)) out.plans[k][vk] = summary(run(k, v)); }
   const main = run("central"); out.main = main.rows.map(pick); out.checks = main.checks.map(c => ({ name: c.name, pass: c.pass }));
   for (const [k, t] of Object.entries(main.fyTotals)) out.fy[k] = Object.fromEntries(Object.entries(t).map(([a, b]) => [a, R(b)]));
@@ -27,6 +27,7 @@ export function planData(run) {
   // Bedhampton: what two days and one day take, month by month (capped by the days).
   const cap = n => n * (52 / 12) * d.bedh.plan.dayCapacity;
   out.bedh = monthsFrom("2026-12", 34).map(m => ({ m, two: R(Math.min(d.bedh.plan.demand.two[m], cap(2))), one: R(Math.min(d.bedh.plan.demand.one[m], cap(1))) }));
-  out.params = { keepW: WINC_KEEP_PCT, keepB: CASH_MODEL_DEFAULTS.bedh.contributionPct, standAt: STANDS_ALONE_TAKINGS, prices: PRICES, firstMonth: R(PATIENT_MODEL.firstMonth), returnVisit: R(PATIENT_MODEL.returnVisit), newAvg2025: 22.6, newAvg2026: 23.4, closeAt: d.bedh.plan.closeWhen.wincAtLeast, winc3dayCap: R(wincCapacityFor({ ...d, winc: { ...d.winc } }, 3)), winc3dayFull: R(wincCapacityFor({ ...d, winc: { ...d.winc } }, 3, 100)) };
+  const payNow = (cfg ?? d).pay ?? {}, cap2 = (payNow.capFrom ?? [])[0] ?? null;
+  out.params = { payReserve: payNow.retentionUntilBank ?? null, payCap1: payNow.capMonthly, payCap2: cap2 ? cap2.capMonthly : null, payCap2From: cap2 ? cap2.from : null, payFloor: d.cashFloor, keepW: WINC_KEEP_PCT, keepB: CASH_MODEL_DEFAULTS.bedh.contributionPct, standAt: STANDS_ALONE_TAKINGS, prices: PRICES, firstMonth: R(PATIENT_MODEL.firstMonth), returnVisit: R(PATIENT_MODEL.returnVisit), newAvg2025: 22.6, newAvg2026: 23.4, closeAt: d.bedh.plan.closeWhen.wincAtLeast, winc3dayCap: R(wincCapacityFor({ ...d, winc: { ...d.winc } }, 3)), winc3dayFull: R(wincCapacityFor({ ...d, winc: { ...d.winc } }, 3, 100)) };
   return out;
 }

@@ -7,6 +7,7 @@ import { ProposalCard } from "@/components/proposal-card";
 import { BoardShell, EmbeddedBoard } from "@/components/board-shell";
 import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, gbp0, longDay } from "@/components/page";
 import { Sources } from "@/components/fresh";
+import { BalanceLine } from "@/components/charts";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const back = { href: "/money", label: "Money" };
@@ -30,43 +31,55 @@ export function BuildCashPage() {
   );
 }
 
+// Stands Alone as a ladder (owner, 16 Nov 2026): four plain steps instead of one pass or fail line.
 export function StandsAlonePage() {
   const { data } = usePage("stands-alone");
-  const rows: any[] = data?.rows ?? [];
-  const max = Math.max(1, ...rows.map((r) => Math.abs(r.margin)));
+  const ladder: any[] = data?.ladder ?? [];
+  const rows: any[] = data?.ladderRows ?? [];
+  const ix = (label: string | null) => (label ? rows.findIndex((r) => r.label === label) : -1);
   return (
     <Page>
       <PageHead eyebrow="Money" title="Stands Alone" back={back}>
-        {data && <p className="font-display text-[1.3rem] sm:text-[1.5rem] leading-[1.35] text-ink max-w-[52ch]">{data.forecastMet ? `The plan has Winchester standing on its own from ${data.forecastMet}${data.bedhamptonCloses ? `; Bedhampton then closes after ${data.bedhamptonCloses}` : ""}${data.firstPay ? `, and Abi's pay starts in ${data.firstPay}` : ""}.` : "The plan does not yet show Winchester standing on its own within the months it covers."}</p>}
+        {data && (() => { const at = (k: string) => ladder.find((l) => l.key === k)?.met as string | null | undefined; const bills = at("bills"), pay1 = at("pay1"), alone = at("alone");
+          return <p className="font-sans font-bold text-[1.3rem] sm:text-[1.5rem] leading-snug text-ink max-w-[52ch]">{bills ? `Winchester pays its own bills from ${bills}` : "Winchester does not yet pay its own bills on the plan"}{pay1 ? `, and Abi is paid from ${pay1}` : ""}. {alone ? `It carries its bills and Abi with no help from Bedhampton from ${alone}.` : `It does not carry Abi's pay on its own by ${data.horizon}.`}</p>; })()}
         {data && <Sources chips={data.sources as Chip[]} />}
       </PageHead>
       {!data ? <Loading /> : (
         <>
-          <p className="text-[0.95rem] text-ink leading-relaxed max-w-[62ch]"><b className="font-semibold">The test.</b> {data.line.definition} That is about {gbp0(data.line.takingsNeeded)} of Winchester takings a month at its share kept. It decides when Bedhampton closes and when Abi's pay starts.</p>
+          <Section title="The steps" note="from the plan; real months replace it from December">
+            <ol className="relative grid gap-0">
+              <span aria-hidden className="absolute left-[1.05rem] top-4 bottom-4 w-[2px]" style={{ background: V.grid }} />
+              {ladder.map((l, i) => (
+                <li key={l.key} className="relative flex items-start gap-3.5 py-3">
+                  <span className="relative z-[1] w-9 h-9 shrink-0 rounded-full grid place-items-center text-[0.95rem] font-extrabold" style={l.met ? { background: V.good, color: "#fff" } : { background: "#fff", color: V.ink, border: `2px dashed ${V.base}` }}>{i + 1}</span>
+                  <span className="min-w-0 flex-1"><span className="block text-[1.05rem] font-bold text-ink leading-snug">{l.title}</span><span className="block text-[0.88rem] text-ink-2 leading-relaxed max-w-[60ch]">{l.detail}</span></span>
+                  <span className="shrink-0 text-right"><b className={`block tabular text-[1.05rem] ${l.met ? "text-good" : "text-ink-muted"}`}>{l.met ?? "not yet"}</b><span className="block text-[0.75rem] text-ink-muted">{l.met ? "on the plan" : `not by ${data.horizon}`}</span></span>
+                </li>
+              ))}
+            </ol>
+          </Section>
           <Section title="This month">
             <NotYet what={data.thisMonth.reason} />
           </Section>
-          <Section title="Winchester against the line, month by month" note="the plan">
-            <MarginColumns lineLabel="stands alone above this line" rows={rows.map((r) => ({ label: r.label, value: r.margin, title: `${r.label}: ${r.why}` }))}
-              marks={[{ index: rows.findIndex((r) => r.label === data.firstPay), label: "Abi's pay starts" }]}
-              ariaLabel={`Winchester's margin over standing alone each month. ${rows.map((r) => `${r.label}: ${gbp0(r.margin)}`).join("; ")}`} />
-            <details className="group">
-              <summary className="cursor-pointer text-[0.88rem] font-semibold text-ink underline underline-offset-2 min-h-[44px] inline-flex items-center">Every month as figures</summary>
-            <Rows>
-              {rows.map((r) => (
-                <li key={r.month} className="grid grid-cols-[4.5rem_1fr_5.5rem] items-center gap-3 py-2 border-b border-border">
-                  <span className="text-[0.85rem] text-ink-muted tabular">{r.label}</span>
-                  <span className="relative h-3" title={r.why}>
-                    <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
-                    <span className={`absolute inset-y-0 ${r.margin >= 0 ? "left-1/2 bg-sage" : "right-1/2 bg-line-strong"}`} style={{ width: `${(50 * Math.abs(r.margin)) / max}%` }} />
-                  </span>
-                  <span className={`text-right tabular text-[0.88rem] ${r.margin >= 0 ? "text-good" : "text-ink-muted"}`}>{gbp0(r.margin)}</span>
-                </li>
-              ))}
-            </Rows>
-            </details>
-            <p className="text-[0.78rem] text-ink-muted">Above the line: Winchester covers everything and keeps the £3,000. Forecast from the Money Plan's recommended growth; actual months replace it from December.</p>
+          <Section title="Winchester on its own, after its bills and Abi's pay" note="the plan">
+            <MarginColumns lineLabel="stands alone above this line" rows={rows.map((r) => ({ label: r.label, value: r.alone, title: `${r.label}: ${gbp0(r.bills)} left after its bills; ${gbp0(r.alone)} after Abi's settled pay as well` }))}
+              marks={ladder.filter((l) => l.met && (l.key === "bills" || l.key === "pay1")).map((l) => ({ index: ix(l.met), label: l.key === "bills" ? "pays its bills" : "Abi's pay starts" }))}
+              ariaLabel={`What Winchester has left each month after its own bills and Abi's settled pay. ${rows.map((r) => `${r.label}: ${gbp0(r.alone)}`).join("; ")}`} />
+            <p className="text-[0.82rem] text-ink-muted leading-relaxed max-w-[64ch]">Below the line, Bedhampton's profit is making up the difference. The forecast is the Money Plan's recommended growth, which is cautious; actual months replace it from December.</p>
           </Section>
+          <Section title="Abi's pay, month by month" note="salary before tax">
+            <MarginColumns rows={rows.map((r) => ({ label: r.label, value: r.pay, title: `${r.label}: ${gbp0(r.pay)} salary` }))} ariaLabel={`Abi's salary each month on the plan. ${rows.map((r) => `${r.label}: ${gbp0(r.pay)}`).join("; ")}`} />
+          </Section>
+          <Section title="The bank while she is paid" note="month-end">
+            <BalanceLine points={rows.map((r) => ({ label: r.label, value: r.bank }))} floor={10000} ariaLabel={`The bank at each month-end on the plan. ${rows.map((r) => `${r.label}: ${gbp0(r.bank)}`).join("; ")}`} />
+          </Section>
+          <details>
+            <summary className="cursor-pointer text-[0.88rem] font-semibold text-ink underline underline-offset-2 min-h-[44px] inline-flex items-center">Every month as figures</summary>
+            <div className="overflow-x-auto"><table className="w-full min-w-[480px] text-[0.88rem] tabular">
+              <thead><tr className="text-left text-[0.7rem] uppercase tracking-[0.12em] text-ink-muted border-b border-line-strong"><th className="py-2 pr-3">Month</th><th className="py-2 pr-3 text-right">After its bills</th><th className="py-2 pr-3 text-right">After Abi too</th><th className="py-2 pr-3 text-right">Abi's salary</th><th className="py-2 text-right">Bank</th></tr></thead>
+              <tbody>{rows.map((r) => <tr key={r.label} className="border-b border-border"><td className="py-1.5 pr-3">{r.label}</td><td className="py-1.5 pr-3 text-right">{gbp0(r.bills)}</td><td className="py-1.5 pr-3 text-right">{gbp0(r.alone)}</td><td className="py-1.5 pr-3 text-right">{gbp0(r.pay)}</td><td className="py-1.5 text-right">{gbp0(r.bank)}</td></tr>)}</tbody>
+            </table></div>
+          </details>
         </>
       )}
     </Page>
