@@ -108,7 +108,7 @@ export function AmendPanel({ s, preset, log }: { s: Settings; preset?: { draft: 
     <Section title="Amend the position" id="w-amend" note={dirty ? "a what-if: nothing is saved yet" : "change anything to see the forecast move"}>
       <p className="text-[0.92rem] text-ink-2 leading-relaxed max-w-[70ch]">Change any figure and the whole forecast is re-run beside the plan. Nothing is saved until you press <b className="text-ink">Make this the plan</b>; then it is logged with its before and after and every Money screen follows.</p>
 
-      <h3 className="text-[0.95rem] font-extrabold text-ink pt-1">Fixed costs</h3>
+      <h3 className="text-[0.95rem] font-extrabold text-ink pt-1">Overheads</h3>
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
         <Num label="Rent, a year" value={v("rentAnnual", s.rentAnnual)} was={s.rentAnnual} onChange={put("rentAnnual", s.rentAnnual)} step={500} hint={`${gbp0(v("rentAnnual", s.rentAnnual) / 12)} a month`} />
         <Num label="Business rates, a month" value={v("ratesMonthly", s.ratesMonthly)} was={s.ratesMonthly} onChange={put("ratesMonthly", s.ratesMonthly)} step={50} hint="the estimate until the bill is in" />
@@ -119,11 +119,11 @@ export function AmendPanel({ s, preset, log }: { s: Settings; preset?: { draft: 
           hint={<span>{v("useAdsPlan", s.useAdsPlan) ? "only used where the ads plan has no figure. " : "used every month. "}<button type="button" className="underline text-ink" onClick={(e) => { e.preventDefault(); put("useAdsPlan", s.useAdsPlan)(!v("useAdsPlan", s.useAdsPlan)); }}>{v("useAdsPlan", s.useAdsPlan) ? "ignore the ads plan" : "follow the ads plan"}</button></span>} />
       </div>
 
-      <h3 className="text-[0.95rem] font-extrabold text-ink pt-2">Variable costs</h3>
+      <h3 className="text-[0.95rem] font-extrabold text-ink pt-2">Cost of sales</h3>
       <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-        <Num label="Bedhampton keeps, per pound" value={v("bedhKept", s.bedhKept)} was={s.bedhKept} onChange={put("bedhKept", s.bedhKept)} step={0.5} min={10} max={83} prefix="" suffix="p" hint="after VAT and products" />
+        <Num label="Bedhampton gross margin" value={Math.round((10 * v("bedhKept", s.bedhKept)) / (5 / 6)) / 10} was={Math.round((10 * s.bedhKept) / (5 / 6)) / 10} onChange={(n) => { const g = (n * 5) / 6; put("bedhKept", s.bedhKept)(Math.abs(g - s.bedhKept) < 0.05 ? s.bedhKept : g); }} step={0.5} min={12} max={99} prefix="" suffix="% of sales" hint="before VAT, after product" />
         <Num label="Winchester product cost" value={Math.round(v("productScale", s.productScale) * 100)} was={Math.round(s.productScale * 100)} onChange={(n) => put("productScale", s.productScale)(n / 100)} step={5} min={30} max={300} prefix="" suffix="% of modelled" hint="100 is the model's own product cost" />
-        <Num label="Other variable costs, per pound" value={v("extraPct", s.extraPct)} was={s.extraPct} onChange={put("extraPct", s.extraPct)} step={0.25} min={0} max={30} prefix="" suffix="p" hint="card fees, consumables, wastage; both clinics" />
+        <Num label="Other cost of sales" value={Math.round((100 * v("extraPct", s.extraPct)) / (5 / 6)) / 100} was={Math.round((100 * s.extraPct) / (5 / 6)) / 100} onChange={(n) => { const g = (n * 5) / 6; put("extraPct", s.extraPct)(Math.abs(g - s.extraPct) < 0.005 ? s.extraPct : g); }} step={0.25} min={0} max={36} prefix="" suffix="% of sales" hint="before VAT: card fees, consumables, wastage; both clinics" />
       </div>
 
       <h3 className="text-[0.95rem] font-extrabold text-ink pt-2">Growth</h3>
@@ -164,11 +164,11 @@ export function AmendPanel({ s, preset, log }: { s: Settings; preset?: { draft: 
                     <Row label={`Lowest bank (${A.lowest.month})`} before={B.lowest.bank} after={A.lowest.bank} better="up" />
                     <Row label="Bank at the end of 2027" before={B.bankEnd2027} after={A.bankEnd2027} better="up" />
                     <Row label="Winchester takings, 2027" before={B.winchester.y2027} after={A.winchester.y2027} better="up" />
-                    <Row label="Profit before pay, 2027" before={B.profit.y2027} after={A.profit.y2027} better="up" />
-                    <Row label="Profit before pay, 2028" before={B.profit.y2028} after={A.profit.y2028} better="up" />
+                    <Row label="Operating profit, 2027" before={B.profit.y2027} after={A.profit.y2027} better="up" />
+                    <Row label="Operating profit, 2028" before={B.profit.y2028} after={A.profit.y2028} better="up" />
                     <Row label="Abi's pay, 2027" before={B.abiPay.y2027} after={A.abiPay.y2027} better="up" />
                     <Row label="Abi's pay, 2028" before={B.abiPay.y2028} after={A.abiPay.y2028} better="up" />
-                    <Row label="Fixed costs a month (June 2027)" before={B.fixedMonthly} after={A.fixedMonthly} better="down" />
+                    <Row label="Overheads a month (June 2027)" before={B.fixedMonthly} after={A.fixedMonthly} better="down" />
                     <Row label="Winchester pays its own bills from" before={B.paysBills} after={A.paysBills} money={false} />
                   </tbody>
                 </table>

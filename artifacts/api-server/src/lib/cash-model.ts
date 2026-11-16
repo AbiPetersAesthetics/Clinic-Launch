@@ -287,8 +287,8 @@ export function runCashModel(inp: CashInputs): CashResult {
       : bedhDays === 0 ? `Bedhampton closed after ${label(closedAfter!)}: ${closeReason}`
       : `Bedhampton ${bedhDays === 1 ? "one day" : "two days"} a week: its patients would book ${gbp(bedhWants)}${bedhWants > bedhCap ? `, and ${bedhDays === 1 ? "one day holds" : "two days hold"} ${gbp(bedhCap)}` : ""}`;
     why.vat = `VAT on sales = gross x 1/6 at both sites (${gbp(bedh.vat)} Bedhampton, ${gbp(winc.vat)} Winchester)`;
-    why.contribution = `Bedhampton keeps ${inp.bedh.contributionPct}p in the pound after VAT and products; Winchester ${winc.gross > 0 ? Math.round((100 * winc.contribution) / winc.gross) : 0}p this month${inp.winc.productCost ? ", from its product costs" : ""}`;
-    why.standAlone = `Winchester on its own: ${gbp(wincOwnContribution)} kept, less running costs ${gbp(fullRunningBase + marketingFor(ym))}, James's loan ${gbp(loanLevel)} and the ${gbp(inp.pay.retention)} kept = ${gbp(wincStandMargin)}`;
+    why.contribution = `Gross margin ${bedh.net > 0 ? Math.round((100 * bedh.contribution) / bedh.net) : 0}% at Bedhampton and ${winc.net > 0 ? Math.round((100 * winc.contribution) / winc.net) : 0}% at Winchester this month, of sales before VAT${inp.winc.productCost ? "; Winchester's cost of sales from its own product costs" : ""}`;
+    why.standAlone = `Winchester on its own: gross profit ${gbp(wincOwnContribution)}, less overheads ${gbp(fullRunningBase + marketingFor(ym))}, James's loan ${gbp(loanLevel)} and the ${gbp(inp.pay.retention)} reserve = ${gbp(wincStandMargin)}`;
 
     // Running costs
     const utilities = ym >= inp.utilities.from ? (ym <= inp.utilities.buildUntil ? inp.utilities.buildMonthly : inp.utilities.monthly) : 0;
@@ -303,7 +303,7 @@ export function runCashModel(inp: CashInputs): CashResult {
     const ratesPaid = inp.rates.paid?.[ym] ?? rates;
     const rentAccrued = ym >= rentStartYm ? inp.rent.annual / 12 : 0;
     const operatingProfit = total.contribution - runningTotal - rates - rentAccrued;
-    why.operatingProfit = `Contribution ${gbp(total.contribution)} less running costs ${gbp(runningTotal)}, rates ${gbp(rates)} and rent ${gbp(rentAccrued)}${rentAccrued === 0 ? " (rent free)" : ""}`;
+    why.operatingProfit = `Gross profit ${gbp(total.contribution)} less overheads: running costs ${gbp(runningTotal)}, rates ${gbp(rates)} and rent ${gbp(rentAccrued)}${rentAccrued === 0 ? " (rent free)" : ""}`;
 
     // Site profit, used for the pay gate. Rates, utilities and rent are always
     // Winchester's. Marketing is Bedhampton's until wincFrom (the Bedhampton

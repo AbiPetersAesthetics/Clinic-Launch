@@ -1,7 +1,7 @@
 // Stock cost, treatment by treatment (owner, 16 Nov 2026). Every Bedhampton and Winchester treatment
 // with its own product cost at each clinic (Winchester filler is a more premium product), priced at
-// Bedhampton, at Winchester's introductory price and at Winchester's list, and what each keeps from a
-// pound taken after VAT and product. The owner types the figures in; anything missing is flagged.
+// Bedhampton, at Winchester's introductory price and at Winchester's list, and its gross profit and gross margin, after VAT
+// gross margin after VAT and product. The owner types the figures in; anything missing is flagged.
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PROJECT_ID } from "@/lib/alfred";
@@ -13,23 +13,23 @@ type Edit = Partial<Record<"bedhCost" | "wincCost" | "introPrice", string>>;
 const CAT: Record<string, string> = { anti_wrinkle: "Anti-wrinkle treatment", filler: "Dermal filler", regenerative: "Skin boosters and regenerative", skin: "Skin treatments and facials" };
 const gbp2 = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
-// What a treatment keeps: the price less one sixth VAT less the product (bought before VAT, reclaimed).
-function kept(price: number | null, cost: number | null, vatRate: number) {
+// Gross profit on one treatment: sales before VAT (the price less the one sixth of VAT inside it)
+// less the cost of sales (the product). Gross margin is that as a share of sales before VAT.
+function grossProfit(price: number | null, cost: number | null, vatRate: number) {
   if (price == null || price <= 0 || cost == null) return null;
-  const vat = (price * vatRate) / (1 + vatRate);
-  const k = price - vat - cost;
-  return { pounds: k, pence: (100 * k) / price, vat };
+  const vat = (price * vatRate) / (1 + vatRate), net = price - vat, gp = net - cost;
+  return { pounds: gp, margin: (100 * gp) / net, vat, net };
 }
 
-function Keep({ price, cost, vatRate, label }: { price: number | null; cost: number | null; vatRate: number; label: string }) {
-  const k = kept(price, cost, vatRate);
+function Margin({ price, cost, vatRate, label }: { price: number | null; cost: number | null; vatRate: number; label: string }) {
+  const k = grossProfit(price, cost, vatRate);
   if (price == null) return <span className="text-ink-muted">not offered</span>;
   if (!k) return <span className="text-watch font-semibold">needs a cost</span>;
-  const tone = k.pence >= 55 ? "text-good" : k.pence >= 40 ? "text-ink" : "text-act";
+  const tone = k.margin >= 66 ? "text-good" : k.margin >= 48 ? "text-ink" : "text-act";
   return (
-    <Hover tip={<><TipHead>{label}</TipHead><TipRow label="Price" value={gbp2(price)} /><TipRow label="VAT, one sixth" value={`−${gbp2(Math.round(k.vat * 100) / 100)}`} /><TipRow label="Product" value={`−${gbp2(cost!)}`} /><TipRow label="Kept" value={gbp2(Math.round(k.pounds * 100) / 100)} strong /><TipNote><span>{Math.round(k.pence)}p of every pound taken, before rent, staff and running costs.</span></TipNote></>}>
-      <span className={`tabular font-bold ${tone} underline decoration-dotted underline-offset-4`}>{Math.round(k.pence)}p</span>
-      <span className="block text-[0.74rem] text-ink-muted tabular">{gbp0(k.pounds)} kept</span>
+    <Hover tip={<><TipHead>{label}</TipHead><TipRow label="Price, including VAT" value={gbp2(price)} /><TipRow label="VAT, one sixth" value={`−${gbp2(Math.round(k.vat * 100) / 100)}`} /><TipRow label="Sales before VAT" value={gbp2(Math.round(k.net * 100) / 100)} /><TipRow label="Cost of sales (product)" value={`−${gbp2(cost!)}`} /><TipRow label="Gross profit" value={gbp2(Math.round(k.pounds * 100) / 100)} strong /><TipNote><span>Gross margin {Math.round(k.margin)}% of sales before VAT. Before overheads: rent, rates, staff and running costs.</span></TipNote></>}>
+      <span className={`tabular font-bold ${tone} underline decoration-dotted underline-offset-4`}>{Math.round(k.margin)}%</span>
+      <span className="block text-[0.74rem] text-ink-muted tabular">{gbp0(k.pounds)} gross profit</span>
     </Hover>
   );
 }
@@ -87,7 +87,7 @@ export function StockEditor() {
         <b className="text-ink text-[1.02rem]">Stock cost, treatment by treatment</b>
         <span className="text-[0.8rem] text-ink-muted">{data.savedAt ? `last saved ${new Date(data.savedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "no figures of yours saved yet"}</span>
       </div>
-      <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[74ch]">Type what the product costs for one treatment, before VAT, at each clinic. Winchester has its own column because its filler is a more premium product. The kept figure is what is left of the price after VAT and product, before rent, staff and running costs; point at it for the working.</p>
+      <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[74ch]">Type what the product costs for one treatment, before VAT, at each clinic. Winchester has its own column because its filler is a more premium product. Gross margin is gross profit (sales before VAT, less the product) as a share of sales before VAT, before overheads; point at it for the working.</p>
       <div className="flex flex-wrap items-center gap-2">
         <span className={`inline-flex items-center rounded-full px-3 min-h-[34px] text-[0.82rem] font-semibold ${missing.length ? "bg-watch-bg text-watch" : "bg-sage-whisper text-good"}`}>{missing.length ? `${missing.length} ${missing.length === 1 ? "treatment needs" : "treatments need"} a product cost` : "Every treatment has a product cost"}</span>
         {estimates.length > 0 && <span className="inline-flex items-center rounded-full px-3 min-h-[34px] text-[0.82rem] bg-wash text-ink-2">{estimates.length} still on the old Launch OS estimate</span>}
@@ -103,9 +103,9 @@ export function StockEditor() {
               <th colSpan={4} className="text-center py-1 border-b border-line-strong" style={{ background: V.wash }}>Winchester</th>
             </tr>
             <tr className="text-[0.64rem] uppercase tracking-[0.1em] text-ink-muted border-b border-line-strong">
-              <th className="text-right py-2 px-2">Price</th><th className="text-right py-2 px-2">Product</th><th className="text-right py-2 px-2">Keeps</th>
+              <th className="text-right py-2 px-2">Price</th><th className="text-right py-2 px-2">Product</th><th className="text-right py-2 px-2">Gross margin</th>
               <th />
-              <th className="text-right py-2 px-2">Product</th><th className="text-right py-2 px-2">Introductory price</th><th className="text-right py-2 px-2">Keeps, introductory</th><th className="text-right py-2 px-2">List price, keeps</th>
+              <th className="text-right py-2 px-2">Product</th><th className="text-right py-2 px-2">Introductory price</th><th className="text-right py-2 px-2">Gross margin, introductory</th><th className="text-right py-2 px-2">List price, gross margin</th>
             </tr>
           </thead>
           {groups.map(([cat, list]) => (
@@ -118,12 +118,12 @@ export function StockEditor() {
                     <td className="py-2 pr-3 text-ink font-semibold">{it.name}{it.courseSize ? <span className="block text-[0.72rem] font-normal text-ink-muted">prices per session; course of {it.courseSize}</span> : null}</td>
                     <td className="py-2 px-2 text-right tabular">{it.bedhPrice != null ? <>{gbp0(it.bedhPrice)}<span className="block text-[0.68rem] text-ink-muted leading-none pt-1">{it.bedhPriceSource}</span></> : <span className="text-ink-muted">not offered</span>}</td>
                     <td className="py-2 px-2 text-right">{input(it, "bedhCost", it.bedhSource)}</td>
-                    <td className="py-2 px-2 text-right"><Keep price={it.bedhPrice} cost={val(it, "bedhCost")} vatRate={vatRate} label={`${it.name}, Bedhampton`} /></td>
+                    <td className="py-2 px-2 text-right"><Margin price={it.bedhPrice} cost={val(it, "bedhCost")} vatRate={vatRate} label={`${it.name}, Bedhampton`} /></td>
                     <td />
                     <td className="py-2 px-2 text-right">{input(it, "wincCost", it.wincSource)}</td>
                     <td className="py-2 px-2 text-right">{input(it, "introPrice", it.introSource)}</td>
-                    <td className="py-2 px-2 text-right"><Keep price={intro ?? it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester introductory`} /></td>
-                    <td className="py-2 px-2 text-right"><span className="block tabular text-ink-2">{it.wincList != null ? gbp0(it.wincList) : "not offered"}{it.wincListSource && it.wincListSource !== "price list" ? <span className="block text-[0.68rem] text-ink-muted leading-none pt-0.5">{it.wincListSource}</span> : null}</span><Keep price={it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester list`} /></td>
+                    <td className="py-2 px-2 text-right"><Margin price={intro ?? it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester introductory`} /></td>
+                    <td className="py-2 px-2 text-right"><span className="block tabular text-ink-2">{it.wincList != null ? gbp0(it.wincList) : "not offered"}{it.wincListSource && it.wincListSource !== "price list" ? <span className="block text-[0.68rem] text-ink-muted leading-none pt-0.5">{it.wincListSource}</span> : null}</span><Margin price={it.wincList} cost={val(it, "wincCost")} vatRate={vatRate} label={`${it.name}, Winchester list`} /></td>
                   </tr>
                 );
               })}

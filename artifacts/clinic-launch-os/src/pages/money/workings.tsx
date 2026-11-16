@@ -1,7 +1,7 @@
 // How the numbers are built (owner, 16 Nov 2026: "which model we are using for growth, our fixed
 // and variable costs over time... in detail where it is all coming from"). The old Launch OS page
 // did this as two tables; this one draws it: the growth model in use beside the others, the patient
-// figures behind it, what is kept from takings, the fixed costs and where each comes from, and any
+// figures behind it, cost of sales and gross margin, the overheads and where each comes from, and any
 // one month walked line by line with the reason for every figure. Read only.
 import { useState } from "react";
 import { Link } from "wouter";
@@ -138,14 +138,14 @@ export default function WorkingsPage() {
             </Section>
           )}
 
-          <Section title="4. Variable costs: what is kept from takings" id="w-variable" note="tap a month">
-            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; const t = x.winc + x.bedh; return <><span>Taken: {gbp0(t)} ({gbp0(x.winc)} Winchester, {gbp0(x.bedh)} Bedhampton)</span><span>Kept {t ? Math.round((100 * x.kept) / t) : 0}p in every pound.</span></>; }} parts={[{ label: "Kept", color: V.good }, { label: "Products", color: V.slate }, { label: "VAT", color: V.base }]} rows={rows.map((x) => ({ label: x.label, values: [x.kept, x.product, x.vat] }))}
-              ariaLabel={`Takings each month split into VAT, products and what is kept. ${rows.map((x) => `${x.label}: kept ${gbp0(x.kept)} of ${gbp0(x.winc + x.bedh)}`).join("; ")}`} />
+          <Section title="4. Cost of sales and gross margin" id="w-variable" note="tap a month">
+            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; const t = x.winc + x.bedh, net = t - x.vat; return <><span>Sales including VAT: {gbp0(t)} ({gbp0(x.winc)} Winchester, {gbp0(x.bedh)} Bedhampton)</span><span>Sales before VAT: {gbp0(net)}</span><span>Gross margin {net ? Math.round((100 * x.kept) / net) : 0}% of sales before VAT.</span></>; }} parts={[{ label: "Gross profit", color: V.good }, { label: "Cost of sales (product)", color: V.slate }, { label: "VAT", color: V.base }]} rows={rows.map((x) => ({ label: x.label, values: [x.kept, x.product, x.vat] }))}
+              ariaLabel={`Sales each month split into VAT, cost of sales and gross profit. ${rows.map((x) => `${x.label}: gross profit ${gbp0(x.kept)} on sales of ${gbp0(x.winc + x.bedh)} including VAT`).join("; ")}`} />
             <div className="grid gap-6 md:grid-cols-2">
-              {r.winc > 0 && <div className="grid gap-2"><b className="text-ink">Winchester, {r.label}</b><SplitBar ariaLabel={`Winchester ${r.label}: what is kept`} total={{ label: "Taken", value: gbp0(r.winc) }} stack parts={[{ label: "Kept", value: r.wincKept, color: V.good }, { label: "Products", value: r.wincProduct, color: V.slate }, { label: "VAT", value: r.wincVat, color: V.base }]} /></div>}
-              {r.bedh > 0 && <div className="grid gap-2"><b className="text-ink">Bedhampton, {r.label}</b><SplitBar ariaLabel={`Bedhampton ${r.label}: what is kept`} total={{ label: "Taken", value: gbp0(r.bedh) }} stack parts={[{ label: "Kept", value: r.bedhKept, color: V.good }, { label: "Products", value: r.bedhProduct, color: V.slate }, { label: "VAT", value: r.bedhVat, color: V.base }]} /></div>}
+              {r.winc > 0 && <div className="grid gap-2"><b className="text-ink">Winchester, {r.label}</b><SplitBar ariaLabel={`Winchester ${r.label}: gross profit, cost of sales and VAT`} total={{ label: "Sales including VAT", value: gbp0(r.winc) }} stack parts={[{ label: "Gross profit", value: r.wincKept, color: V.good, note: `gross margin ${Math.round((100 * r.wincKept) / Math.max(1, r.winc - r.wincVat))}% of sales before VAT` }, { label: "Cost of sales (product)", value: r.wincProduct, color: V.slate }, { label: "VAT", value: r.wincVat, color: V.base }]} /></div>}
+              {r.bedh > 0 && <div className="grid gap-2"><b className="text-ink">Bedhampton, {r.label}</b><SplitBar ariaLabel={`Bedhampton ${r.label}: gross profit, cost of sales and VAT`} total={{ label: "Sales including VAT", value: gbp0(r.bedh) }} stack parts={[{ label: "Gross profit", value: r.bedhKept, color: V.good, note: `gross margin ${Math.round((100 * r.bedhKept) / Math.max(1, r.bedh - r.bedhVat))}% of sales before VAT` }, { label: "Cost of sales (product)", value: r.bedhProduct, color: V.slate }, { label: "VAT", value: r.bedhVat, color: V.base }]} /></div>}
             </div>
-            <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[70ch]">VAT is one sixth of everything taken. Products cost {Math.round(P.productShare * 1000) / 10}p in the pound at Bedhampton's prices, so Bedhampton keeps {data.keep.bedhampton}p in the pound. The same products go further at Winchester's prices, so Winchester keeps about {data.keep.winchester}p over three years, a little less while introductory prices run. {r.why?.contribution ? `${r.label}: ${r.why.contribution}.` : ""}</p>
+            <p className="text-[0.9rem] text-ink-2 leading-relaxed max-w-[70ch]">Sales are shown including VAT, as the clinic takes them; VAT is one sixth of that. Cost of sales is the product used, {Math.round(P.productShare * 1000) / 10}% of Bedhampton's sales including VAT, so Bedhampton's gross margin is {Math.round((10 * data.keep.bedhampton) / (5 / 6)) / 10}% of sales before VAT. The same products cost the same at Winchester's higher prices, so its gross margin is about {Math.round((10 * data.keep.winchester) / (5 / 6)) / 10}% over three years, a little lower while introductory prices run. {r.why?.contribution ? `${r.label}: ${r.why.contribution}.` : ""}</p>
             {(() => {
               return (
                 <div className="grid gap-2.5 border-t border-border pt-4" id="w-stock">
@@ -159,10 +159,10 @@ export default function WorkingsPage() {
             })()}
           </Section>
 
-          <Section title="5. Fixed costs, month by month" id="w-fixed" note="tap a month">
-            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; return <><span>Kept from takings: {gbp0(x.kept)}</span><span>Profit before pay: {gbp0(x.operatingProfit)}</span>{x.rent === 0 && <span>Rent free this month.</span>}{x.oneOff > 0 && <span>Includes a one-off cost of {gbp0(x.oneOff)}.</span>}</>; }} parts={[{ label: "Rent", color: V.ink }, { label: "Rates", color: V.slate }, { label: "Advertising", color: V.sageDeep }, { label: "General running", color: V.base }, { label: "Utilities", color: V.sage }, { label: "One-offs", color: V.watch }]}
+          <Section title="5. Overheads, month by month" id="w-fixed" note="tap a month">
+            <StackN selected={i} onSelect={setSel} detail={(k) => { const x = rows[k]; return <><span>Gross profit: {gbp0(x.kept)}</span><span>Operating profit: {gbp0(x.operatingProfit)}</span>{x.rent === 0 && <span>Rent free this month.</span>}{x.oneOff > 0 && <span>Includes a one-off cost of {gbp0(x.oneOff)}.</span>}</>; }} parts={[{ label: "Rent", color: V.ink }, { label: "Rates", color: V.slate }, { label: "Advertising", color: V.sageDeep }, { label: "General running", color: V.base }, { label: "Utilities", color: V.sage }, { label: "One-offs", color: V.watch }]}
               rows={rows.map((x) => ({ label: x.label, values: [x.rent, x.rates, x.marketing, x.general, x.utilities, x.oneOff] }))}
-              ariaLabel={`Fixed costs each month. ${rows.map((x) => `${x.label}: ${gbp0(fixedOf(x))}`).join("; ")}`} />
+              ariaLabel={`Overheads each month. ${rows.map((x) => `${x.label}: ${gbp0(fixedOf(x))}`).join("; ")}`} />
             <div className="overflow-x-auto">
               <table className="w-full text-[0.86rem] sm:text-[0.9rem]">
                 <thead><tr className="text-left text-[0.7rem] uppercase tracking-[0.12em] text-ink-muted border-b border-line-strong"><th className="py-2 pr-3">Cost</th><th className="py-2 pr-3 text-right">{r.label}</th><th className="py-2">Where the figure comes from</th></tr></thead>
@@ -173,7 +173,7 @@ export default function WorkingsPage() {
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">General running</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.general)}</td><td className="py-2 text-ink-2">{gbp0(C.running.monthly)} a month in the model. The build below itemises {gbp0(groupSum("General running"))} of it: software, the accountant, registrations, clinical waste, banking and the card terminal.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">Utilities</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.utilities)}</td><td className="py-2 text-ink-2">{gbp0(C.utilities.monthly)} a month before VAT: electricity about £184 (about 7,500 kWh a year), water and sewerage about £20, and broadband £32.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">One-offs</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.oneOff)}</td><td className="py-2 text-ink-2">{C.oneOffs.length ? C.oneOffs.map((o: any) => `${o.label}, ${gbp0(o.amount)} in ${monthName(o.month)}`).join("; ") : "None in the plan"}.</td></tr>
-                  <tr className="border-b border-line-strong bg-wash/70"><td className="py-2 pr-3 font-extrabold text-ink">Fixed costs</td><td className="py-2 pr-3 text-right tabular font-extrabold">{gbp0(fixedOf(r))}</td><td className="py-2 text-ink-2">The same whatever is taken that month.</td></tr>
+                  <tr className="border-b border-line-strong bg-wash/70"><td className="py-2 pr-3 font-extrabold text-ink">Overheads</td><td className="py-2 pr-3 text-right tabular font-extrabold">{gbp0(fixedOf(r))}</td><td className="py-2 text-ink-2">The same whatever is taken that month.</td></tr>
                   <tr className="border-b border-border"><td className="py-2 pr-3 font-semibold text-ink">James's loan</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.loanRepayment)}</td><td className="py-2 text-ink-2">{C.loans.length ? C.loans.map((l: any) => `${gbp0(l.principal)} at ${l.annualRatePct}%, drawn ${monthName(l.drawMonth)}, ${l.repayments} repayments after a ${l.holidayMonths} month holiday`).join("; ") : "No loan in the plan"}. Paid after profit, so it is not in the columns above. Interest this month: {gbp0(r.loanInterest)}.</td></tr>
                   <tr><td className="py-2 pr-3 font-semibold text-ink">Abi's pay</td><td className="py-2 pr-3 text-right tabular">{gbp0(r.payCost)}</td><td className="py-2 text-ink-2">{r.why?.pay}. The rule is on <Link href="/money/stands-alone" className="underline">Stands Alone</Link>.</td></tr>
                 </tbody>
@@ -211,32 +211,32 @@ export default function WorkingsPage() {
             <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
               {rows.map((x, k) => <button key={x.month} type="button" onClick={() => setSel(k)} aria-pressed={k === i} className={`shrink-0 min-h-[40px] px-3.5 rounded-full border text-[0.82rem] font-semibold ${k === i ? "bg-ink text-white border-ink" : "bg-card text-ink border-line-strong hover:bg-wash"}`}>{x.label}</button>)}
             </div>
-            <Waterfall ariaLabel={`${r.label} from takings to what is kept in the business`} rows={[
-              ...(r.winc > 0 ? [{ label: "Winchester takings", value: r.winc, kind: "in" as const, note: [r.why?.winc, r.why?.occupancy].filter(Boolean).join(". ") }] : []),
-              ...(r.bedh > 0 ? [{ label: "Bedhampton takings", value: r.bedh, kind: "in" as const, note: r.why?.bedh }] : []),
-              { label: "Taken, with VAT", value: r.winc + r.bedh, kind: "total" as const },
+            <Waterfall base={r.winc + r.bedh - r.vat} ariaLabel={`${r.label} from sales to retained profit`} rows={[
+              ...(r.winc > 0 ? [{ label: "Winchester sales", value: r.winc, kind: "in" as const, note: [r.why?.winc, r.why?.occupancy].filter(Boolean).join(". ") }] : []),
+              ...(r.bedh > 0 ? [{ label: "Bedhampton sales", value: r.bedh, kind: "in" as const, note: r.why?.bedh }] : []),
+              { label: "Sales including VAT", value: r.winc + r.bedh, kind: "total" as const },
               { label: "VAT to HMRC", value: r.vat, kind: "out" as const, note: r.why?.vat },
-              { label: "Products used", value: r.product, kind: "out" as const, note: r.why?.contribution },
-              { label: "Kept from takings", value: r.kept, kind: "total" as const },
+              { label: "Cost of sales (product)", value: r.product, kind: "out" as const, note: r.why?.contribution },
+              { label: "Gross profit", value: r.kept, kind: "total" as const },
               { label: "Rent", value: r.rent, kind: "out" as const, note: r.rent ? "one twelfth of the year's rent" : "rent free this month" },
               { label: "Business rates", value: r.rates, kind: "out" as const },
               { label: "Advertising", value: r.marketing, kind: "out" as const },
               { label: "General running", value: r.general, kind: "out" as const },
               { label: "Utilities", value: r.utilities, kind: "out" as const },
               ...(r.oneOff ? [{ label: "One-offs", value: r.oneOff, kind: "out" as const }] : []),
-              { label: "Profit before pay", value: r.operatingProfit, kind: "total" as const, note: r.why?.operatingProfit },
+              { label: "Operating profit", value: r.operatingProfit, kind: "total" as const, note: r.why?.operatingProfit },
               ...(r.loanInterest ? [{ label: "Interest on James's loan", value: r.loanInterest, kind: "out" as const }] : []),
               { label: "Abi's pay, with employer's NI", value: r.payCost, kind: "out" as const, note: r.why?.pay },
-              { label: "Left in the business", value: r.retained, kind: "total" as const },
+              { label: "Retained profit", value: r.retained, kind: "total" as const },
             ]} />
-            <p className="text-[0.88rem] text-ink-2 leading-relaxed max-w-[70ch]">This is the month's profit, not its bank movement. The bank also sees the build, VAT refunds, funding, card and loan repayments, and rent and rates on the days they are actually paid. Bank at the end of {r.label}: <b className="text-ink">{gbp0(r.bank)}</b>. {r.why?.moneyOutBank ? `Out of the bank: ${r.why.moneyOutBank}.` : ""}</p>
+            <p className="text-[0.88rem] text-ink-2 leading-relaxed max-w-[70ch]">This is the month's profit and loss, not its bank movement. The bank also sees the build, VAT refunds, funding, card and loan repayments, and rent and rates on the days they are actually paid. Bank at the end of {r.label}: <b className="text-ink">{gbp0(r.bank)}</b>. {r.why?.moneyOutBank ? `Out of the bank: ${r.why.moneyOutBank}.` : ""}</p>
           </Section>
 
           <details>
             <summary className="cursor-pointer text-[0.9rem] font-semibold text-ink underline underline-offset-2 min-h-[44px] inline-flex items-center">Every month as a table</summary>
             <div className="overflow-x-auto rounded-2xl bg-card border border-border p-3">
               <table className="w-full min-w-[860px] text-[0.82rem] tabular">
-                <thead><tr className="text-right text-[0.66rem] uppercase tracking-[0.1em] text-ink-muted border-b border-line-strong"><th className="py-2 pr-2 text-left">Month</th><th className="pr-2">Winchester</th><th className="pr-2">Bedhampton</th><th className="pr-2">VAT</th><th className="pr-2">Products</th><th className="pr-2">Kept</th><th className="pr-2">Fixed costs</th><th className="pr-2">Profit</th><th className="pr-2">Abi's pay</th><th className="pr-2">Left</th><th>Bank</th></tr></thead>
+                <thead><tr className="text-right text-[0.66rem] uppercase tracking-[0.1em] text-ink-muted border-b border-line-strong"><th className="py-2 pr-2 text-left">Month</th><th className="pr-2">Winchester sales</th><th className="pr-2">Bedhampton sales</th><th className="pr-2">VAT</th><th className="pr-2">Cost of sales</th><th className="pr-2">Gross profit</th><th className="pr-2">Overheads</th><th className="pr-2">Operating profit</th><th className="pr-2">Abi's pay</th><th className="pr-2">Retained</th><th>Bank</th></tr></thead>
                 <tbody>{rows.map((x, k) => <tr key={x.month} onClick={() => setSel(k)} className={`text-right border-b border-border cursor-pointer hover:bg-wash/60 ${k === i ? "bg-wash font-semibold" : ""}`}><td className="py-1.5 pr-2 text-left">{x.label}</td><td className="pr-2">{gbp0(x.winc)}</td><td className="pr-2">{gbp0(x.bedh)}</td><td className="pr-2">{gbp0(x.vat)}</td><td className="pr-2">{gbp0(x.product)}</td><td className="pr-2">{gbp0(x.kept)}</td><td className="pr-2">{gbp0(fixedOf(x))}</td><td className="pr-2">{gbp0(x.operatingProfit)}</td><td className="pr-2">{gbp0(x.payCost)}</td><td className="pr-2">{gbp0(x.retained)}</td><td>{gbp0(x.bank)}</td></tr>)}</tbody>
               </table>
             </div>

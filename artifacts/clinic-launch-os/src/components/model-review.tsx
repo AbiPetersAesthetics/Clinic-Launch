@@ -90,11 +90,11 @@ export function ModelReview({ review, planWinchester, onLoad }: { review: any; p
 
       {kept.length > 0 && (
         <div className="grid gap-2">
-          <b className="text-ink text-[1rem]">Pence kept from each pound taken: the model against the evidence</b>
+          <b className="text-ink text-[1rem]">Gross margin, % of sales before VAT: the model against the evidence</b>
           <ul className="grid gap-3">
-            {kept.map(([name, k]) => (
-              <li key={name} className="grid gap-1" role="img" aria-label={`${name}: the model keeps ${k.model}p, the evidence supports ${k.recommended}p, range ${k.low} to ${k.high}`}>
-                <span className="flex items-baseline justify-between gap-3 text-[0.92rem]"><span className="text-ink">{name}</span><span className="tabular"><b className="text-ink">{k.recommended}p</b> <span className="text-ink-muted">against the model's {k.model}p</span></span></span>
+            {kept.map(([name, k0]) => { const c = (n: number) => Math.round((n * 10) / (5 / 6)) / 10; const k = { model: c(k0.model), recommended: c(k0.recommended), low: c(k0.low), high: Math.min(100, c(k0.high)) }; return (
+              <li key={name} className="grid gap-1" role="img" aria-label={`${name}: the model has a gross margin of ${k.model}%, the evidence supports ${k.recommended}%, range ${k.low} to ${k.high}%`}>
+                <span className="flex items-baseline justify-between gap-3 text-[0.92rem]"><span className="text-ink">{name}</span><span className="tabular"><b className="text-ink">{k.recommended}%</b> <span className="text-ink-muted">against the model's {k.model}%</span></span></span>
                 <span className="relative block h-5">
                   <span className="absolute inset-y-[8px] left-0 right-0 rounded-full" style={{ background: V.track }} />
                   <span className="absolute inset-y-[5px] rounded-full" style={{ left: `${k.low}%`, width: `${k.high - k.low}%`, background: V.sage }} />
@@ -102,9 +102,9 @@ export function ModelReview({ review, planWinchester, onLoad }: { review: any; p
                   <span className="absolute inset-y-0 w-[2.5px] -translate-x-1/2" style={{ left: `${k.model}%`, background: V.act }} />
                 </span>
               </li>
-            ))}
+            ); })}
           </ul>
-          <p className="text-[0.8rem] text-ink-muted">The shaded band is the plausible range, the dot the figure to plan on, the red mark where the model sits now. The scale runs from 0p to 100p.</p>
+          <p className="text-[0.8rem] text-ink-muted">The shaded band is the plausible range, the dot the figure to plan on, the red mark where the model sits now. The scale runs from 0% to 100%.</p>
         </div>
       )}
 

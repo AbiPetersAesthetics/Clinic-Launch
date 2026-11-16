@@ -602,7 +602,7 @@ export function StackN({ rows, parts, ariaLabel, selected, onSelect, detail, for
 
 // One month walked from takings down to what is left: each line a bar placed where the running
 // total stands, money in green, money out slate, the subtotals in ink, with the reason beneath.
-export function Waterfall({ rows, ariaLabel }: { rows: { label: string; value: number; kind: "in" | "out" | "total"; note?: string; tip?: ReactNode }[]; ariaLabel: string }) {
+export function Waterfall({ rows, ariaLabel, base }: { rows: { label: string; value: number; kind: "in" | "out" | "total"; note?: string; tip?: ReactNode }[]; ariaLabel: string; base?: number }) {
   const top = Math.max(1, ...rows.filter((r) => r.kind === "total").map((r) => r.value), rows.filter((r) => r.kind === "in").reduce((s, r) => s + r.value, 0));
   const taken = rows.find((r) => r.kind === "total")?.value ?? 0;
   let run = 0;
@@ -621,8 +621,8 @@ export function Waterfall({ rows, ariaLabel }: { rows: { label: string; value: n
             <TipHead>{r.label}</TipHead>
             <TipRow label={r.kind === "out" ? "Out" : r.kind === "in" ? "In" : "Subtotal"} value={money(r.kind === "out" ? -r.value : r.value)} />
             {r.kind !== "total" && <TipRow label="Running total after this line" value={money(r.kind === "in" ? r.to : r.from)} />}
-            {r.kind !== "total" && taken > 0 && <TipRow label="Per pound taken" value={`${(100 * r.value / taken).toFixed(1)}p`} />}
-            {r.kind === "total" && taken > 0 && i > 0 && <TipRow label="Per pound taken" value={`${(100 * r.value / taken).toFixed(1)}p`} />}
+            {base && base > 0 && !(r.kind === "total" && i === rows.findIndex((x) => x.kind === "total")) && r.kind !== "in" && <TipRow label="Of sales before VAT" value={`${((100 * r.value) / base).toFixed(1)}%`} />}
+            {!base && taken > 0 && r.kind !== "total" && <TipRow label="Of sales including VAT" value={`${((100 * r.value) / taken).toFixed(1)}%`} />}
             {(r.note || r.tip) && <TipNote>{r.note && <span>{r.note}</span>}{r.tip}</TipNote>}
           </div>
         </li>
