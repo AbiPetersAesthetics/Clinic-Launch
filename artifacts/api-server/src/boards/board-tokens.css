@@ -1,5 +1,5 @@
-/* ALFRED board tokens, injected into every server board except the Build Cash Board (the owner's
-   master record, kept exactly as it is). The boards take the app's look (owner, 16 Nov 2026): the
+/* ALFRED board tokens, injected into every server board, the Build Cash Board included (owner,
+   16 Nov 2026: "restyle the cash board"). The boards take the app's look: the
    tinted ground, white rounded panels with a soft shadow, figure tiles with a coloured top edge for
    their state, sans headings. Appearance only: no figure, row or rule is touched. Fixed brand colours. */
 :root { --font-display: "Mulish", "Avenir Next", "Segoe UI", system-ui, sans-serif; --bg: #EEF2F7; --sheet: #FFFFFF; --panel: #EFF3F8; --ink: #1F2A44; --muted: #4A5568; --slate: #445B72; --surface: #FFFFFF; }

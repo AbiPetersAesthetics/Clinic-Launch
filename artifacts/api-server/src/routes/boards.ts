@@ -57,7 +57,9 @@ async function lineDetail(projectId: number) {
 const page = (res: any, html: string, req?: any, opts: { master?: boolean } = {}) => {
   res.setHeader("Cache-Control", "no-store");
   const embed = req?.query?.embed === "1";
-  const styled = opts.master ? html : withTokens(html);
+  // Owner, 16 Nov 2026: the Build Cash Board takes the app look too. Appearance only: its content,
+  // figures and controls are untouched.
+  const styled = withTokens(html);
   res.type("html").send(embedChrome(styled, { embed, hideHead: !opts.master }));
 };
 const failed = (res: any, what: string, err: unknown) => {
