@@ -85,7 +85,7 @@ export function BoardShell({ board, eyebrow, title, next, back, children, after,
       <PageHead eyebrow={eyebrow} title={title} back={back}>
         {board && (error ? <p className="text-act">The summary could not be built: {String((error as Error).message)}</p>
           : isLoading || !s ? <Skeleton className="h-16 w-full max-w-xl rounded-xl" />
-          : <Verdict state={s.state} text={s.verdict} sources={s.sources} />)}
+          : <div className="rounded-2xl bg-ink px-5 py-5 sm:px-7 sm:py-6"><Verdict state={s.state} text={s.verdict} dark /></div>)}
       </PageHead>
       {lead}
       {s && s.kpis.length > 0 && <KpiGrid kpis={s.kpis} max={4} />}

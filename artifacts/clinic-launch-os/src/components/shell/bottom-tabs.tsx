@@ -9,7 +9,7 @@ export function BottomTabs({ location, count }: { location: string; count: numbe
   const ordered = hand === "right" ? [...AREAS].reverse() : AREAS;
   const current = areaOf(location);
   return (
-    <nav aria-label="Main" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <nav aria-label="Main" className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <ul className="grid grid-cols-5 h-16">
         {ordered.map((t) => {
           const active = current === t.key;

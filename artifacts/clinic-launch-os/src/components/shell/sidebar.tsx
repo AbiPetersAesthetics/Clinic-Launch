@@ -21,7 +21,7 @@ export function Sidebar({ location, counts }: { location: string; counts: { toda
   const area = areaOf(location);
   const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.platform);
   return (
-    <aside className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-background sticky top-0 h-screen">
+    <aside className="hidden md:flex md:w-60 lg:w-64 shrink-0 flex-col border-r border-border bg-card sticky top-0 h-screen">
       <div className="p-5 pb-4 grid gap-1.5"><Link href="/more" aria-label="More: inbox, activity, sources, settings and the archive"><Logo /></Link><BuildLine /></div>
       <div className="px-4">
         <button type="button" onClick={showPalette} className="w-full flex items-center gap-2 min-h-[40px] px-3 rounded-full border border-input text-[0.85rem] text-ink-muted hover:border-slate">

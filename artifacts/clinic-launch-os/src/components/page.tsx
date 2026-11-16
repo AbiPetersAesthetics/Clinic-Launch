@@ -20,7 +20,7 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
 
 export function Section({ title, children, note, id }: { title: string; children: ReactNode; note?: ReactNode; id?: string }) {
   return (
-    <section className="space-y-4 border-t-2 border-ink pt-4" aria-labelledby={id}>
+    <section className="space-y-4 rounded-2xl bg-card border border-border shadow-[0_1px_3px_rgba(31,42,68,0.07)] p-4 sm:p-6" aria-labelledby={id}>
       <div className="flex items-baseline justify-between gap-3">
         <h2 id={id} className="eyebrow">{title}</h2>
         {note && <span className="text-[0.88rem] text-ink-2 font-semibold">{note}</span>}
@@ -82,7 +82,7 @@ const LEVEL: Record<string, { dot: string; word: string; text: string }> = {
 export function AlertCard({ area, level, title, detail, sources, href }: { area: string; level: "act" | "watch" | "stale"; title: string; detail?: string; sources?: Chip[]; href?: string }) {
   const L = LEVEL[level];
   return (
-    <article className="rounded-xl border-[1.5px] border-line-strong bg-card p-4 sm:p-5 grid gap-2 min-w-0">
+    <article className={`rounded-xl border-[1.5px] p-4 sm:p-5 grid gap-2 min-w-0 ${level === "act" ? "bg-act-bg border-act/40" : level === "watch" ? "bg-watch-bg border-watch/40" : "bg-card border-line-strong"}`}>
       <div className="flex items-center gap-3 text-[0.75rem] font-extrabold uppercase tracking-[0.12em]">
         <span className="text-ink">{AREA[area] ?? area}</span>
         <span className={`inline-flex items-center gap-1.5 ${L.text}`}><span aria-hidden className={`w-[10px] h-[10px] rounded-full border-2 ${L.dot}`} />{L.word}</span>

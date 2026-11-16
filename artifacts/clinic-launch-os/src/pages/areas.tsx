@@ -29,8 +29,8 @@ function Outlook({ o }: { o?: any }) {
   if (!o) return null;
   const m = MARK[o.state] ?? MARK.stale;
   return (
-    <section className="grid gap-4" aria-labelledby="outlook-h">
-      <h2 id="outlook-h" className="inline-flex items-center gap-2 text-[0.85rem] font-extrabold uppercase tracking-[0.12em] text-ink"><span aria-hidden className={`inline-block w-3 h-3 rounded-full ${m.cls}`} />{m.word}, next four months</h2>
+    <section className="grid gap-4 rounded-2xl bg-card border border-border shadow-[0_1px_3px_rgba(31,42,68,0.07)] p-4 sm:p-6" aria-labelledby="outlook-h">
+      <h2 id="outlook-h" className="inline-flex items-center gap-2 text-[0.85rem] font-extrabold uppercase tracking-[0.12em] text-ink"><span aria-hidden className={`inline-block w-3 h-3 rounded-full ${m.cls}`} />The bank, next four months</h2>
       {o.points && <OutlookChart points={o.points} />}
       {o.reasons?.length > 0 && (
         <ul className="grid gap-2 border-t border-line-strong pt-3">
