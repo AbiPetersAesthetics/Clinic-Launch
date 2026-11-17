@@ -116,7 +116,7 @@ function SiteChart({ title, colour, data, moveNote }: {
         <h4 className="text-sm font-semibold">{title}</h4>
         {moveNote && <span className="text-[11px] text-muted-foreground">{moveNote}</span>}
       </div>
-      <p className="text-[11px] text-muted-foreground mb-1">Clinician days/week — shaded is what you have, line is what demand needs.</p>
+      <p className="text-[11px] text-muted-foreground mb-1">Clinician days/week, shaded is what you have, line is what demand needs.</p>
       <div className="h-44">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 6, right: 8, bottom: 0, left: -20 }}>
@@ -165,10 +165,10 @@ function CapacityReadout({ series, chichesterMove }: { series: Workforce["series
               <p className="text-sm font-semibold">{r.name}{r.note && <span className="ml-2 text-[11px] font-normal text-muted-foreground">{r.note}</span>}</p>
               {r.everShort && cell ? (
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Short from <span className="font-medium text-foreground">{r.firstShort!.label}</span> — needs {round1(cell.demand)} clinician days/week, you'll have {round1(cell.capacity)}, so about <span className="font-medium text-foreground">{gap} day{gap === 1 ? "" : "s"}/week short</span>. Line up cover before then — see the hiring triggers above.
+                  Short from <span className="font-medium text-foreground">{r.firstShort!.label}</span>, needs {round1(cell.demand)} clinician days/week, you'll have {round1(cell.capacity)}, so about <span className="font-medium text-foreground">{gap} day{gap === 1 ? "" : "s"}/week short</span>. Line up cover before then, see the hiring triggers above.
                 </p>
               ) : (
-                <p className="text-sm text-muted-foreground mt-0.5">Covered throughout — your planned clinician days keep up with demand.</p>
+                <p className="text-sm text-muted-foreground mt-0.5">Covered throughout, your planned clinician days keep up with demand.</p>
               )}
             </div>
           </div>
@@ -214,7 +214,7 @@ export default function PeoplePage() {
   const peakCost = Math.max(...wf.costSeries.map(c => c.monthlyStaffCost));
   const fullTeamCost = wf.roles.filter(r => !r.isOwner).reduce((s, r) => s + r.annualCostGbp, 0);
 
-  // Each step up in the cost line is one person starting — attribute it explicitly.
+  // Each step up in the cost line is one person starting, attribute it explicitly.
   const monthLabel = (ym: string | null) => {
     if (!ym) return "—";
     const [y, m] = ym.split("-").map(Number);
@@ -231,15 +231,15 @@ export default function PeoplePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-serif text-4xl text-foreground flex items-center gap-2"><Users className="w-7 h-7 text-muted-foreground" />People & Capacity</h1>
+          <h1 className="font-sans font-bold text-4xl text-foreground flex items-center gap-2"><Users className="w-7 h-7 text-muted-foreground" />People & Capacity</h1>
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground mt-2">
             Who works where, over time · when to hire · Bedhampton → Chichester
           </p>
         </div>
         <Button onClick={refreshWithAI} disabled={aiBusy}>
-          {aiBusy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Re-planning… (1–2 min)</> : <><Sparkles className="w-4 h-4 mr-2" />Re-plan with AI</>}
+          {aiBusy ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Re-planning… (1 to 2 min)</> : <><Sparkles className="w-4 h-4 mr-2" />Re-plan with AI</>}
         </Button>
       </div>
 
@@ -250,7 +250,7 @@ export default function PeoplePage() {
         <Card className="border-amber-300">
           <CardContent className="p-4">
             <p className="text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 text-amber-700">
-              <AlertTriangle className="w-3.5 h-3.5" />Act now — hiring triggers
+              <AlertTriangle className="w-3.5 h-3.5" />Act now, hiring triggers
             </p>
             <ul className="mt-2 space-y-2">
               {wf.triggers.map(t => (
@@ -268,7 +268,7 @@ export default function PeoplePage() {
       {aiNarrative && (
         <Card>
           <CardContent className="p-5">
-            <h3 className="font-serif text-lg flex items-center gap-2"><Sparkles className="w-4 h-4 text-muted-foreground" />The phased plan</h3>
+            <h3 className="font-sans font-bold text-lg flex items-center gap-2"><Sparkles className="w-4 h-4 text-muted-foreground" />The phased plan</h3>
             <p className="text-sm leading-relaxed mt-2 whitespace-pre-line">{aiNarrative}</p>
           </CardContent>
         </Card>
@@ -278,7 +278,7 @@ export default function PeoplePage() {
       <Card>
         <CardContent className="p-5">
           <div className="flex items-baseline justify-between flex-wrap gap-2 mb-3">
-            <h3 className="font-serif text-lg">Site cover — are we short anywhere?</h3>
+            <h3 className="font-sans font-bold text-lg">Site cover, are we short anywhere?</h3>
             <span className="text-xs text-muted-foreground">Winchester {wf.rooms} rooms · opens {wf.series.find(s => s.month === wf.openMonth)?.label}</span>
           </div>
           <CapacityReadout series={wf.series} chichesterMove={wf.settings.chichesterMoveMonth} />
@@ -288,10 +288,10 @@ export default function PeoplePage() {
       {/* Cash impact */}
       <Card>
         <CardContent className="p-5">
-          <h3 className="font-serif text-lg flex items-center gap-2"><PoundSterling className="w-4 h-4 text-muted-foreground" />Staffing cost</h3>
+          <h3 className="font-sans font-bold text-lg flex items-center gap-2"><PoundSterling className="w-4 h-4 text-muted-foreground" />Staffing cost</h3>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-3">
-            <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Peak monthly cost</p><p className="font-serif text-2xl mt-1">{formatGBP(peakCost)}<span className="text-sm text-muted-foreground">/mo</span></p></div>
-            <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Full team, annualised</p><p className="font-serif text-2xl mt-1">{formatGBP(fullTeamCost)}</p></div>
+            <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Peak monthly cost</p><p className="font-sans font-bold text-2xl mt-1">{formatGBP(peakCost)}<span className="text-sm text-muted-foreground">/mo</span></p></div>
+            <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Full team, annualised</p><p className="font-sans font-bold text-2xl mt-1">{formatGBP(fullTeamCost)}</p></div>
             <div><p className="text-xs uppercase tracking-wider text-muted-foreground">Excludes</p><p className="text-sm mt-2 text-muted-foreground">Abi's drawings (owner)</p></div>
           </div>
           <div className="h-32 mt-3">
@@ -319,7 +319,7 @@ export default function PeoplePage() {
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground mt-2">Uses each person's full loaded cost from their start month (matches the line). In reality Sarah's first months are lower — part-time and on a training salary until she's signed off.</p>
+            <p className="text-[11px] text-muted-foreground mt-2">Uses each person's full loaded cost from their start month (matches the line). In reality Sarah's first months are lower, part-time and on a training salary until she's signed off.</p>
           </div>
         </CardContent>
       </Card>
@@ -327,8 +327,8 @@ export default function PeoplePage() {
       {/* Roster */}
       <Card>
         <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-serif text-lg">The team</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h3 className="font-sans font-bold text-lg">The team</h3>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => setBenchOpen(o => !o)}><Sparkles className="w-3.5 h-3.5 mr-1.5" />Benchmark pay</Button>
               <Button size="sm" variant="outline" onClick={() => setAdding(true)}><Plus className="w-3.5 h-3.5 mr-1.5" />Add role</Button>
@@ -467,7 +467,7 @@ function PayBenchmarkPanel({ settings, onApplied }: { settings: Workforce["setti
                 {bench.roles.map(b => (
                   <tr key={b.roleId} className="border-b border-border/60 align-top">
                     <td className="py-1.5 pr-3 font-medium">{b.name}</td>
-                    <td className="py-1.5 pr-3 text-muted-foreground whitespace-nowrap">{formatGBP(b.marketLowGbp)}–{formatGBP(b.marketHighGbp)}</td>
+                    <td className="py-1.5 pr-3 text-muted-foreground whitespace-nowrap">{formatGBP(b.marketLowGbp)} to {formatGBP(b.marketHighGbp)}</td>
                     <td className="py-1.5 pr-3 font-semibold whitespace-nowrap">{formatGBP(b.salaryGbp)}</td>
                     <td className="py-1.5 pr-3 text-muted-foreground whitespace-nowrap">{formatGBP(b.loadedCostGbp)}</td>
                     <td className="py-1.5 text-muted-foreground">{b.basis}</td>
@@ -485,7 +485,7 @@ function PayBenchmarkPanel({ settings, onApplied }: { settings: Workforce["setti
                   <div key={i} className="text-xs flex gap-2">
                     <span className="font-semibold text-amber-900 shrink-0">{i + 1}. {s.stage}</span>
                     <span className="font-semibold shrink-0">{s.figure}</span>
-                    <span className="text-amber-900/80">— {s.note}</span>
+                    <span className="text-amber-900/80">, {s.note}</span>
                   </div>
                 ))}
               </div>
@@ -503,7 +503,7 @@ function PayBenchmarkPanel({ settings, onApplied }: { settings: Workforce["setti
             <Button size="sm" variant="outline" onClick={apply} disabled={applying}>
               {applying ? "Applying…" : applied ? "Applied ✓" : "Apply these figures to the team"}
             </Button>
-            {applied && <span className="text-xs text-muted-foreground">Salaries updated — cost chart now reflects these.</span>}
+            {applied && <span className="text-xs text-muted-foreground">Salaries updated, cost chart now reflects these.</span>}
           </div>
         </div>
       )}
@@ -563,9 +563,9 @@ function RoleEditor({ role, roleTypes, roleStatuses, onClose, onSaved }: {
             <div><label className="text-xs text-muted-foreground">Lead (weeks)</label><Input type="number" value={leadTimeWeeks} onChange={e => setLeadTimeWeeks(e.target.value)} /></div>
             <div><label className="text-xs text-muted-foreground">Cost £/yr</label><Input type="number" value={annualCostGbp} onChange={e => setAnnualCostGbp(e.target.value)} /></div>
           </div>
-          <div><label className="text-xs text-muted-foreground">Trigger — when to hire</label><Textarea rows={2} value={triggerNote} onChange={e => setTriggerNote(e.target.value)} /></div>
+          <div><label className="text-xs text-muted-foreground">Trigger, when to hire</label><Textarea rows={2} value={triggerNote} onChange={e => setTriggerNote(e.target.value)} /></div>
           <div><label className="text-xs text-muted-foreground">Notes</label><Textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} /></div>
-          {role && <p className="text-[11px] text-muted-foreground">Tip: site day-splits over time are set by the AI planner — hit "Re-plan with AI" to regenerate them.</p>}
+          {role && <p className="text-[11px] text-muted-foreground">Tip: site day-splits over time are set by the AI planner, hit "Re-plan with AI" to regenerate them.</p>}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
@@ -640,23 +640,23 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
 
   return (
     <div className="mt-3 border-t border-border pt-3 space-y-4">
-      {/* AI-curated recommendation — the default, lead with this */}
+      {/* AI-curated recommendation, the default, lead with this */}
       <div>
         <div className="flex items-center gap-2 mb-1.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">Recommended package</p>
           {pkg && <Button size="sm" variant="ghost" onClick={copyPkg}>{pkgCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}{pkgCopied ? "Copied" : "Copy"}</Button>}
         </div>
         {!pkg && (
-          <p className="text-xs text-muted-foreground mb-2">Let the AI recommend the right pay structure from what you've told us — you don't have to pick a model or crunch the numbers.</p>
+          <p className="text-xs text-muted-foreground mb-2">Let the AI recommend the right pay structure from what you've told us, you don't have to pick a model or crunch the numbers.</p>
         )}
         <Button size="sm" disabled={pkgBusy} onClick={recommend}>
-          {pkgBusy ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Working it out… (1–2 min)</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />{pkg ? "Re-recommend" : "Recommend the package"}</>}
+          {pkgBusy ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Working it out… (1 to 2 min)</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />{pkg ? "Re-recommend" : "Recommend the package"}</>}
         </Button>
         {pkgErr && <p className="text-xs text-destructive mt-1">{pkgErr}</p>}
         {pkg && <div className="mt-2 bg-accent/50 rounded-md p-3 text-xs leading-relaxed whitespace-pre-wrap max-h-[460px] overflow-y-auto">{pkg}</div>}
       </div>
 
-      {/* Manual controls — tucked away; the AI drives by default */}
+      {/* Manual controls, tucked away; the AI drives by default */}
       <button
         className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
         onClick={() => setShowManual(s => !s)}
@@ -693,9 +693,9 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
           </>}
         </div>
         {model === "net_profit_share" && (
-          <p className="text-[11px] text-muted-foreground mt-1.5">Net profit = treatment takings minus the product/consumable/POM cost (the stock % from your financial model). She shares in the cost of goods — fairer to the business than a gross split.</p>
+          <p className="text-[11px] text-muted-foreground mt-1.5">Net profit = treatment takings minus the product/consumable/POM cost (the stock % from your financial model). She shares in the cost of goods, fairer to the business than a gross split.</p>
         )}
-        <p className="text-[11px] text-muted-foreground mt-2.5 mb-1">Training ramp — paid but non-billable while she trains &amp; shadows</p>
+        <p className="text-[11px] text-muted-foreground mt-2.5 mb-1">Training ramp, paid but non-billable while she trains &amp; shadows</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <LabeledNum label="Training months (non-billable)" value={params.trainingMonths} onChange={v => setP("trainingMonths", v)} />
           <LabeledNum label="Training course budget £" value={params.trainingCostGbp} onChange={v => setP("trainingCostGbp", v)} />
@@ -712,7 +712,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
 
       {comp.phases.length > 0 && (
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">The journey — month by month</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">The journey, month by month</p>
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse min-w-[560px]">
               <thead>
@@ -732,7 +732,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
                     <td className="py-1 pr-2">{p.label}</td>
                     <td className="py-1 pr-2">{p.site}{p.training && <span className="ml-1 text-[9px] uppercase tracking-wide text-amber-700 font-semibold">training</span>}</td>
                     <td className="py-1 pr-2 text-right tabular-nums">{p.totalDays}</td>
-                    <td className="py-1 pr-2 text-right tabular-nums">{p.training ? <span className="text-amber-700">£0 (learning)</span> : p.monthlyRevenue ? formatGBP(p.monthlyRevenue) : "—"}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{p.training ? <span className="text-amber-700">£0 (learning)</span> : p.monthlyRevenue ? formatGBP(p.monthlyRevenue) : "-"}</td>
                     <td className="py-1 pr-2 text-right tabular-nums font-medium">{formatGBP(p.monthlyGrossPay)}</td>
                     <td className="py-1 pr-2 text-right tabular-nums">{formatGBP(p.monthlyLoadedCost)}</td>
                     <td className={`py-1 text-right tabular-nums font-medium ${p.monthlyContribution >= 0 ? "text-emerald-700" : "text-destructive"}`}>{formatGBP(p.monthlyContribution)}</td>
@@ -745,7 +745,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
           {comp.investmentBeforeProductive > 0 && (
             <div className="mt-2 rounded-md bg-amber-50 border border-amber-200 p-2.5 text-xs text-amber-900">
               <span className="font-semibold">Cost to carry her before she bills a penny: {formatGBP(comp.investmentBeforeProductive)}</span>
-              {" "}— {comp.trainingMonths} month{comp.trainingMonths === 1 ? "" : "s"} of pay while training/shadowing{comp.trainingCostGbp > 0 ? `, plus ${formatGBP(comp.trainingCostGbp)} course fees` : ""}. Bedhampton's income has to fund this while Abi is still there.
+              {" "}, {comp.trainingMonths} month{comp.trainingMonths === 1 ? "" : "s"} of pay while training/shadowing{comp.trainingCostGbp > 0 ? `, plus ${formatGBP(comp.trainingCostGbp)} course fees` : ""}. Bedhampton's income has to fund this while Abi is still there.
             </div>
           )}
         </div>
@@ -754,7 +754,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
       {comp.comparison.length > 0 && comp.fullTime && (
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
-            Compare the offer — at full time ({comp.fullTime.days}d, {comp.fullTime.site})
+            Compare the offer, at full time ({comp.fullTime.days}d, {comp.fullTime.site})
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             {comp.comparison.map(m => (
@@ -770,7 +770,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
           </div>
           {comp.paysForHerself != null && (
             <p className={`text-xs mt-2 font-medium ${comp.paysForHerself ? "text-emerald-700" : "text-amber-700"}`}>
-              {comp.paysForHerself ? "On these figures she covers her own cost at full time." : "At full time she is borderline on covering her cost — check the assumptions."}
+              {comp.paysForHerself ? "On these figures she covers her own cost at full time." : "At full time she is borderline on covering her cost, check the assumptions."}
             </p>
           )}
         </div>
@@ -792,7 +792,7 @@ function CompensationPanel({ role, onSaved }: { role: Role; onSaved: () => void 
               <Button size="sm" variant="ghost" onClick={draftOffer} disabled={offerBusy}>{offerBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Regenerate"}</Button>
             </div>
             <div className="bg-muted/50 rounded-md p-3 text-xs leading-relaxed whitespace-pre-wrap max-h-[420px] overflow-y-auto">{offer}</div>
-            <p className="text-[11px] text-muted-foreground mt-1">Includes a private "for Abi's eyes only" note at the end — delete that before sending. This is an outline, not a contract.</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Includes a private "for Abi's eyes only" note at the end, delete that before sending. This is an outline, not a contract.</p>
           </div>
         )}
       </div>
@@ -882,7 +882,7 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
     return passed.length ? passed[passed.length - 1].pct : 0;
   };
 
-  // Monthly ramp series — package = modest base + KPI earnings; compared to her current job.
+  // Monthly ramp series, package = modest base + KPI earnings; compared to her current job.
   const HORIZON = 15;
   const trainingBaseMo = Math.round(kpi.baseGbp * 0.7 / 12); // reduced base while non-billable
   let cum = -(p.trainingCostGbp || 0); // course fees are a day-one investment
@@ -916,7 +916,7 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
     <div className="space-y-3">
       {/* Milestone dates editor */}
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Her dates — when she can do what</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Her dates, when she can do what</p>
         <label className="flex items-center gap-2 text-sm mb-2">
           <span className="text-[11px] text-muted-foreground w-40 shrink-0">Start date</span>
           <Input type="month" className="h-8 text-sm w-40" value={start} onChange={e => setStart(e.target.value)} />
@@ -938,7 +938,7 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
 
       {/* Package: modest base + KPIs */}
       <div className="border-t border-border pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Her package — modest base, the rest earned on KPIs</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Her package, modest base, the rest earned on KPIs</p>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           <LabeledNum label="Base salary £/yr (the floor)" value={kpi.baseGbp} onChange={v => setK({ baseGbp: Number(v) })} />
           <LabeledNum label="Treatment commission % of what she bills" value={kpi.treatmentCommPct} onChange={v => setK({ treatmentCommPct: Number(v) })} />
@@ -958,20 +958,20 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
           <LabeledNum label="Days/week she works there" value={job.daysPerWeek} onChange={v => setJ({ daysPerWeek: Number(v) })} />
           <LabeledNum label="Natural pay rise %/yr" value={job.annualGrowthPct} onChange={v => setJ({ annualGrowthPct: Number(v) })} />
         </div>
-        <p className="text-[11px] text-muted-foreground mt-1.5">Estimate: an HCPC paramedic with ~5 years plus a primary-care/GP-surgery role is around NHS Band 6–7 (~£46k full-time); at {job.daysPerWeek} days/week that's ~{formatGBP(Math.round(job.fteSalaryGbp * job.daysPerWeek / 5))}/yr today. Adjust to her real figure. It grows {job.annualGrowthPct}%/yr so you can see when our package overtakes it.</p>
+        <p className="text-[11px] text-muted-foreground mt-1.5">Estimate: an HCPC paramedic with ~5 years plus a primary-care/GP-surgery role is around NHS Band 6 to 7 (~£46k full-time); at {job.daysPerWeek} days/week that's ~{formatGBP(Math.round(job.fteSalaryGbp * job.daysPerWeek / 5))}/yr today. Adjust to her real figure. It grows {job.annualGrowthPct}%/yr so you can see when our package overtakes it.</p>
       </div>
 
       {dirty && <Button size="sm" disabled={saving} onClick={save}>{saving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}Save package &amp; dates</Button>}
 
       {/* Headline verdicts */}
       <div className="flex flex-wrap gap-2">
-        <span className="text-xs rounded-md border border-border px-2 py-1"><span className="text-muted-foreground">Bills from</span> <span className="font-semibold">{firstBilling ? firstBilling.label : "—"}</span></span>
+        <span className="text-xs rounded-md border border-border px-2 py-1"><span className="text-muted-foreground">Bills from</span> <span className="font-semibold">{firstBilling ? firstBilling.label : "-"}</span></span>
         <span className="text-xs rounded-md border border-border px-2 py-1"><span className="text-muted-foreground">Her package beats her current job</span> <span className={`font-semibold ${beatsJob ? "text-emerald-700" : "text-amber-700"}`}>{beatsJob ? beatsJob.label : "not within 15 mo"}</span></span>
         <span className="text-xs rounded-md border border-border px-2 py-1"><span className="text-muted-foreground">At full books ≈</span> <span className="font-semibold">{formatGBP(matureRow.pkg)}/mo · {formatGBP(matureRow.annual)}/yr</span></span>
         <span className="text-xs rounded-md border border-border px-2 py-1"><span className="text-muted-foreground">Pays back the investment</span> <span className={`font-semibold ${payback ? "text-emerald-700" : "text-amber-700"}`}>{payback ? payback.label : "not within 15 mo"}</span></span>
       </div>
 
-      {/* Chart: her package vs current job vs cost — hover shows the annual equivalent */}
+      {/* Chart: her package vs current job vs cost, hover shows the annual equivalent */}
       <div className="h-56">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={series} margin={{ top: 6, right: 8, bottom: 0, left: -8 }}>
@@ -992,7 +992,7 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
         <span className="italic">Hover any month for the annual-equivalent.</span>
       </div>
 
-      {/* Month-by-month table — the full breakdown */}
+      {/* Month-by-month table, the full breakdown */}
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse min-w-[720px]">
           <thead>
@@ -1015,9 +1015,9 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
                 <td className="py-1 pr-2 whitespace-nowrap">{s.label}</td>
                 <td className="py-1 pr-2 whitespace-nowrap">{s.inTraining ? <span className="text-amber-700">training</span> : `${s.pct}%`}</td>
                 <td className="py-1 pr-2 text-right tabular-nums">{formatGBP(s.basePay)}</td>
-                <td className="py-1 pr-2 text-right tabular-nums">{s.treatmentComm ? formatGBP(s.treatmentComm) : "—"}</td>
-                <td className="py-1 pr-2 text-right tabular-nums">{s.retailComm ? formatGBP(s.retailComm) : "—"}</td>
-                <td className="py-1 pr-2 text-right tabular-nums">{s.growthBonus ? formatGBP(s.growthBonus) : "—"}</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{s.treatmentComm ? formatGBP(s.treatmentComm) : "-"}</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{s.retailComm ? formatGBP(s.retailComm) : "-"}</td>
+                <td className="py-1 pr-2 text-right tabular-nums">{s.growthBonus ? formatGBP(s.growthBonus) : "-"}</td>
                 <td className="py-1 pr-2 text-right tabular-nums font-semibold">{formatGBP(s.pkg)}</td>
                 <td className="py-1 pr-2 text-right tabular-nums text-muted-foreground">{formatGBP(s.annual)}</td>
                 <td className="py-1 pr-2 text-right tabular-nums text-muted-foreground">{formatGBP(s.current)}</td>
@@ -1028,7 +1028,7 @@ function RampPlanner({ role, fin, onSaved }: { role: Role; fin: Workforce["fin"]
         </table>
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Treatments assume she hits the "% of full books" for each stage on her site days ({formatGBP(fin.bedRevPerDay)}/clinician-day at Bedhampton). "Package/mo" = base + treatment commission + retail commission + growth bonus. "≈ /yr" is that month annualised (also on hover). "Cost to you" = her package + {oncost}% employer on-costs + {stockPct}% product/stock — always above her pay. Edit anything above and it recomputes.
+        Treatments assume she hits the "% of full books" for each stage on her site days ({formatGBP(fin.bedRevPerDay)}/clinician-day at Bedhampton). "Package/mo" = base + treatment commission + retail commission + growth bonus. "≈ /yr" is that month annualised (also on hover). "Cost to you" = her package + {oncost}% employer on-costs + {stockPct}% product/stock, always above her pay. Edit anything above and it recomputes.
       </p>
     </div>
   );
@@ -1123,19 +1123,19 @@ function ReadinessPanel({ role, fin, onSaved }: { role: Role; fin: Workforce["fi
           </div>
         </div>
         <label className="block mt-2">
-          <span className="text-[11px] text-muted-foreground">Training / experience she already has (optional — the AI will ask if blank)</span>
+          <span className="text-[11px] text-muted-foreground">Training / experience she already has (optional, the AI will ask if blank)</span>
           <Textarea rows={2} className="text-sm mt-0.5" placeholder="e.g. Level 7 toxin & filler, 3 years experience, complications trained…" value={intake.currentTraining} onChange={e => setIntake(i => ({ ...i, currentTraining: e.target.value }))} />
         </label>
         {dirty && <Button size="sm" className="mt-2" disabled={saving} onClick={saveIntake}>{saving ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : null}Save details</Button>}
       </div>
 
-      {/* The ramp — dates → treatments vs pay vs cost (the useful bit) */}
+      {/* The ramp, dates → treatments vs pay vs cost (the useful bit) */}
       <div className="border-t border-border pt-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><PoundSterling className="w-3.5 h-3.5" />Ramp — treatments vs pay vs cost</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5"><PoundSterling className="w-3.5 h-3.5" />Ramp, treatments vs pay vs cost</p>
         <RampPlanner role={role} fin={fin} onSaved={onSaved} />
       </div>
 
-      {/* Detailed AI training/compliance notes — collapsed by default */}
+      {/* Detailed AI training/compliance notes, collapsed by default */}
       <div className="border-t border-border pt-3">
         <button className="text-xs font-medium text-primary flex items-center gap-1 hover:opacity-80" onClick={() => setShowNotes(v => !v)}>
           <Sparkles className="w-3.5 h-3.5" />Detailed training & compliance notes {showNotes ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -1144,18 +1144,18 @@ function ReadinessPanel({ role, fin, onSaved }: { role: Role; fin: Workforce["fi
           <div className="mt-3 space-y-3">
             <div>
               <Button size="sm" variant="outline" disabled={busy} onClick={generate}>
-                {busy ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Building the notes… (1–2 min)</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />{plan ? "Regenerate notes" : "Generate training & compliance notes"}</>}
+                {busy ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />Building the notes… (1 to 2 min)</> : <><Sparkles className="w-3.5 h-3.5 mr-1.5" />{plan ? "Regenerate notes" : "Generate training & compliance notes"}</>}
               </Button>
               {err && <p className="text-xs text-destructive mt-1">{err}</p>}
             </div>
             {plan && (
               <div>
                 <div className="flex items-center gap-2 mb-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">What she needs — training, sign-off, insurance</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex-1">What she needs, training, sign-off, insurance</p>
                   <Button size="sm" variant="ghost" onClick={copyPlan}>{copied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}{copied ? "Copied" : "Copy"}</Button>
                 </div>
                 <div className="bg-muted/50 rounded-md p-3 text-xs leading-relaxed whitespace-pre-wrap max-h-[460px] overflow-y-auto">{plan}</div>
-                <p className="text-[11px] text-muted-foreground mt-1">AI-generated for guidance — verify all regulatory points (marked "CONFIRM:") with her indemnifier, HCPC and your CQC lead.</p>
+                <p className="text-[11px] text-muted-foreground mt-1">AI-generated for guidance, verify all regulatory points (marked "CONFIRM:") with her indemnifier, HCPC and your CQC lead.</p>
               </div>
             )}
           </div>

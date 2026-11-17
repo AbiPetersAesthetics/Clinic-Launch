@@ -131,7 +131,7 @@ function PricingTab() {
         {data.segmentation.map((s: any) => (
           <div key={s.group} className="rounded-xl border bg-card p-3">
             <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold capitalize">{s.group}-led ({s.clinics})</p>
-            <p className="text-lg font-bold tabular-nums">{s.avgVsMarketPct == null ? "—" : `${s.avgVsMarketPct > 0 ? "+" : ""}${s.avgVsMarketPct}%`}</p>
+            <p className="text-lg font-bold tabular-nums">{s.avgVsMarketPct == null ? "-" : `${s.avgVsMarketPct > 0 ? "+" : ""}${s.avgVsMarketPct}%`}</p>
             <p className="text-[10px] text-muted-foreground">vs market median, {s.sampledTreatments} treatments</p>
           </div>
         ))}
@@ -227,9 +227,9 @@ function PricingTab() {
                         </td>
                         <td className="py-1 px-3"><PositionBar row={r} band={band} /></td>
                         <td className="py-2 px-2 text-right tabular-nums">
-                          {band?.median != null ? <span className={band.lowConfidence ? "text-amber-600 italic" : ""}>£{band.median} <span className="text-[10px] text-muted-foreground">(n={band.n})</span></span> : <span className="text-muted-foreground">—</span>}
+                          {band?.median != null ? <span className={band.lowConfidence ? "text-amber-600 italic" : ""}>£{band.median} <span className="text-[10px] text-muted-foreground">(n={band.n})</span></span> : <span className="text-muted-foreground">, </span>}
                         </td>
-                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.revenuePerHour ? `£${r.revenuePerHour}` : "—"}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.revenuePerHour ? `£${r.revenuePerHour}` : "-"}</td>
                         <td className="py-2 px-4 text-right">
                           {r.varianceFlag === "below" && <span className="text-[9px] font-bold text-amber-600 bg-amber-500/10 rounded px-1.5 py-0.5" title={r.varianceReason || "More than 15 percent below the catchment median. Margin left on the table. Reason needed."}>{r.varianceNeedsReason ? "▼15% reason?" : "▼15% ok"}</span>}
                           {r.varianceFlag === "above" && <span className="text-[9px] font-bold text-rose-600 bg-rose-500/10 rounded px-1.5 py-0.5" title={r.varianceReason || "More than 15 percent above the catchment median. Conversion risk. Reason needed."}>{r.varianceNeedsReason ? "▲15% reason?" : "▲15% ok"}</span>}
@@ -412,9 +412,9 @@ function PackagesTab() {
                     <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.durationMinutes}m</td>
                     <td className="py-2 px-2 text-right tabular-nums font-semibold">{fmt(r.priceWinchester)}</td>
                     <td className="py-2 px-2 text-right tabular-nums font-semibold">{fmt(r.priceBedhampton)}</td>
-                    <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.courseSize ? `${r.courseSize} for £${r.coursePriceWinchester}/£${r.coursePriceBedhampton}` : "—"}</td>
-                    <td className="py-2 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{r.revenuePerHourWinchester ? `£${r.revenuePerHourWinchester}` : "—"}</td>
-                    <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{r.vatElementWinchester != null ? `£${r.vatElementWinchester}` : "—"}</td>
+                    <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{r.courseSize ? `${r.courseSize} for £${r.coursePriceWinchester}/£${r.coursePriceBedhampton}` : "-"}</td>
+                    <td className="py-2 px-2 text-right tabular-nums font-semibold text-emerald-700 dark:text-emerald-400">{r.revenuePerHourWinchester ? `£${r.revenuePerHourWinchester}` : "-"}</td>
+                    <td className="py-2 px-4 text-right tabular-nums text-muted-foreground">{r.vatElementWinchester != null ? `£${r.vatElementWinchester}` : "-"}</td>
                   </tr>
                 ))}
               </tbody>
@@ -456,8 +456,8 @@ function ReferralsTab() {
         ))}
       </div>
       <div className="grid md:grid-cols-3 gap-3">
-        <div className="rounded-xl border bg-card p-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost per acquisition</p><p className="text-xl font-bold">{data.costPerAcquisitionGbp ? `£${data.costPerAcquisitionGbp}` : "—"}</p><p className="text-[10px] text-muted-foreground">£50 credit per attended referral, vs Meta CPL</p></div>
-        <div className="rounded-xl border bg-card p-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg days to attendance</p><p className="text-xl font-bold">{data.avgDaysToAttendance ?? "—"}</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Cost per acquisition</p><p className="text-xl font-bold">{data.costPerAcquisitionGbp ? `£${data.costPerAcquisitionGbp}` : "-"}</p><p className="text-[10px] text-muted-foreground">£50 credit per attended referral, vs Meta CPL</p></div>
+        <div className="rounded-xl border bg-card p-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg days to attendance</p><p className="text-xl font-bold">{data.avgDaysToAttendance ?? "-"}</p></div>
         <div className="rounded-xl border bg-card p-4"><p className="text-[10px] uppercase tracking-wider text-muted-foreground">From engaged_reply contacts</p><p className="text-xl font-bold">{data.engagedReplyReferrals}</p><p className="text-[10px] text-muted-foreground">our strongest conversion predictor</p></div>
       </div>
       <p className="text-[11px] text-muted-foreground">{data.note}</p>

@@ -246,7 +246,7 @@ export default function CompliancePage() {
         action={
           <ResetPageButton
             pageLabel="CQC & Compliance"
-            description="Resets all compliance item statuses back to 'Not Started' and clears any notes or milestone dates you have entered. The list of items and milestones themselves are preserved — only your progress is cleared."
+            description="Resets all compliance item statuses back to 'Not Started' and clears any notes or milestone dates you have entered. The list of items and milestones themselves are preserved, only your progress is cleared."
             onReset={resetCompliance}
           />
         }
@@ -334,7 +334,7 @@ export default function CompliancePage() {
               <div>
                 <p className="text-sm font-semibold text-red-700 dark:text-red-400">CQC Registration at risk</p>
                 <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
-                  CQC registration hasn't started and requires at least {totalCqcWeeks} weeks — your target opening date may not allow enough time. Start the registration process immediately.
+                  CQC registration hasn't started and requires at least {totalCqcWeeks} weeks, your target opening date may not allow enough time. Start the registration process immediately.
                 </p>
               </div>
             </div>

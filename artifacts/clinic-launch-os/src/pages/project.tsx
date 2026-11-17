@@ -258,7 +258,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
   const [savingIds, setSavingIds] = useState<Set<number>>(new Set());
   const [groupByPhase, setGroupByPhase] = useState(true);
 
-  // Gantt visible date range — user-controlled
+  // Gantt visible date range, user-controlled
   const [ganttViewStartStr, setGanttViewStartStr] = useState<string>(() => {
     let earliest = "2026-05-07";
     for (const phase of phases) {
@@ -691,7 +691,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
                   title={`${phase.name} · Click to edit`}
                 >
                   <span style={{ fontSize: 10, color: color.bar, fontWeight: 700, flexShrink: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 56 }}
-                    title={phase.name}>{phase.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || phase.name}</span>
+                    title={phase.name}>{phase.name.replace(/^Phase \d+[\s: to -]*/i, "").trim() || phase.name}</span>
                   <span style={{ fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, color: "hsl(var(--foreground))" }} title={task.title}>
                     {task.title}
                   </span>
@@ -820,7 +820,7 @@ function GanttView({ phases, startDateObj, updateTask, invalidateAfterTaskChange
 
                   return (
                     <div key={task.id} style={{ display: "flex", height: GANTT_ROW_H, borderBottom: "1px solid hsl(var(--border)/0.35)" }}>
-                      {/* Task name (sticky) — click to open editor */}
+                      {/* Task name (sticky), click to open editor */}
                       <div
                         style={{
                           width: GANTT_NAME_W, flexShrink: 0,
@@ -945,8 +945,8 @@ interface PhaseWindow {
   status: "on_track" | "tight" | "overdue" | "unknown";
 }
 
-// Phases 1–3 (by sortOrder) form the sequential property/legal track.
-// Phases 4+ run in parallel from Day 1 — they don't depend on the property track finishing.
+// Phases 1 to 3 (by sortOrder) form the sequential property/legal track.
+// Phases 4+ run in parallel from Day 1, they don't depend on the property track finishing.
 const SEQUENTIAL_PHASE_COUNT = 3;
 
 function computePhaseWindows(
@@ -962,7 +962,7 @@ function computePhaseWindows(
   const phaseDays = (phase: PhaseWithTasks) =>
     Math.max(0, ...((phase.tasks ?? []).filter(t => !(t as any).archived).map(t => t.durationDays ?? 0)));
 
-  // Backward pass: sequential phases (1–3) chain backwards from open date.
+  // Backward pass: sequential phases (1 to 3) chain backwards from open date.
   // Parallel phases (4+) each must finish by open date but can start from Day 1.
   const backward = new Map<number, { mustEndBy: Date; mustStartBy: Date; totalDays: number }>();
   if (openDate) {
@@ -1110,7 +1110,7 @@ function TimelineGanttChart({ phases }: { phases: PhaseTimeline[] }) {
                 }}
               >
                 <span className="text-[10px] font-medium whitespace-nowrap overflow-hidden" style={{ color }}>
-                  {formatDateShort(phase.startDate)} – {formatDateShort(phase.endDate)}
+                  {formatDateShort(phase.startDate)} to {formatDateShort(phase.endDate)}
                 </span>
               </div>
             </div>
@@ -1137,7 +1137,7 @@ function CriticalTaskList({ phases }: { phases: PhaseTimeline[] }) {
       {criticalPhases.map((phase) => (
         <div key={phase.id}>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-            {phase.name} — due by {formatDateShort(phase.endDate)}
+            {phase.name}, due by {formatDateShort(phase.endDate)}
           </p>
           <div className="space-y-1">
             {phase.criticalTasks.map((task) => (
@@ -1375,9 +1375,9 @@ export default function ProjectPage() {
         suggested && `Matched to task: ${ex.matchReason ?? "see selection"}`,
         ex.confidence && `Confidence: ${ex.confidence}`,
       ].filter(Boolean);
-      setAiExtractNote(bits.join(" · ") || "Details extracted — please check before saving.");
+      setAiExtractNote(bits.join(" · ") || "Details extracted, please check before saving.");
     } catch (e) {
-      setAiExtractNote(e instanceof Error ? (e.name === "AbortError" ? "Extraction timed out — try again." : e.message) : "Extraction failed");
+      setAiExtractNote(e instanceof Error ? (e.name === "AbortError" ? "Extraction timed out, try again." : e.message) : "Extraction failed");
     } finally {
       setAiExtracting(false);
     }
@@ -1530,8 +1530,8 @@ export default function ProjectPage() {
     : null;
 
   // Critical path = the longer of:
-  //   A) Sequential property/legal track (Phases 1–3 chain, each = longest task)
-  //   B) Longest single parallel track (Phases 4–7, each starts Day 1)
+  //   A) Sequential property/legal track (Phases 1 to 3 chain, each = longest task)
+  //   B) Longest single parallel track (Phases 4 to 7, each starts Day 1)
   // This correctly models the reality that regulatory/marketing/finance work in parallel.
   const sortedForCritPath = phases
     ? [...phases].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
@@ -1631,7 +1631,7 @@ export default function ProjectPage() {
     const fmtD = (d: Date) => d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
     // Compute phase start dates using the same forward-pass as computePhaseWindows.
-    // Sequential phases (0–2) chain from startDate; parallel phases (3+) all start from startDate.
+    // Sequential phases (0 to 2) chain from startDate; parallel phases (3+) all start from startDate.
     const phaseStartDates: Date[] = [];
     const origin = startDateObj ?? new Date();
     let cursor = new Date(origin);
@@ -1647,7 +1647,7 @@ export default function ProjectPage() {
     }
 
     sorted.forEach((phase, idx) => {
-      const track = idx < SEQUENTIAL ? "SEQUENTIAL — Property/Legal Track" : "PARALLEL — runs from Day 1";
+      const track = idx < SEQUENTIAL ? "SEQUENTIAL, Property/Legal Track" : "PARALLEL, runs from Day 1";
       const phaseStart = phaseStartDates[idx];
       const phaseMax = Math.max(0, ...(phase.tasks?.map(t => t.durationDays ?? 0) ?? [0]));
       const phaseEnd = addDays(phaseStart, phaseMax);
@@ -1739,7 +1739,7 @@ export default function ProjectPage() {
     const text = generateExportText();
     const win = window.open("", "_blank");
     if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head><title>Project Plan — Abi Peters Aesthetics</title>
+    win.document.write(`<!DOCTYPE html><html><head><title>Project Plan, Abi Peters Aesthetics</title>
 <style>
   body { font-family: monospace; font-size: 11pt; line-height: 1.6; margin: 15mm; color: #111; white-space: pre-wrap; }
   @page { size: A4 portrait; margin: 15mm; }
@@ -1840,12 +1840,12 @@ export default function ProjectPage() {
         ? `<span style="color:#9ca3af;text-decoration:line-through">${fmtCost(task.selectedCost)}</span>`
         : (task.selectedCost ?? 0) > 0
           ? `<div style="font-weight:600;color:#111827">${fmtCost(task.selectedCost)}</div>${actualCost ? `<div style="font-size:9px;color:#6b7280;margin-top:1px">actual: ${fmtCost(actualCost)}</div>` : ""}`
-          : `<span style="color:#9ca3af">—</span>`;
+          : `<span style="color:#9ca3af">, </span>`;
 
       const statusLabel = (task.status ?? "not_started").replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
       const priorityLabel = (task.riskLevel ?? "low").replace(/\b\w/g, c => c.toUpperCase());
       const phaseLabel = !listGrouped
-        ? `<div style="margin-top:3px;font-size:10px;color:#6b7280">${phase.name.replace(/^Phase \d+[\s:–\-]*/i, "").trim() || phase.name}</div>`
+        ? `<div style="margin-top:3px;font-size:10px;color:#6b7280">${phase.name.replace(/^Phase \d+[\s: to \-]*/i, "").trim() || phase.name}</div>`
         : "";
 
       return `${phaseRow}
@@ -1857,7 +1857,7 @@ export default function ProjectPage() {
             ${flags ? `<div style="margin-top:3px">${flags}</div>` : ""}
             ${phaseLabel}
           </td>
-          <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;line-height:1.4">${(task.owner ?? "—").replace(/\s*[+\/]\s*/g, "<br>")}</td>
+          <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;line-height:1.4">${(task.owner ?? "-").replace(/\s*[+\/]\s*/g, "<br>")}</td>
           <td style="padding:11px 8px;vertical-align:top;">${isArchived ? badge("Superseded", statusStyle.superseded) : badge(statusLabel, statusStyle[task.status ?? "not_started"] ?? statusStyle.not_started)}</td>
           <td style="padding:11px 8px;vertical-align:top;">${badge(priorityLabel, priorityStyle[task.riskLevel ?? "low"] ?? priorityStyle.low)}</td>
           <td style="padding:11px 8px;vertical-align:top;font-size:11px;color:#374151;white-space:nowrap">${fmtD(ta.startDate)}</td>
@@ -1872,7 +1872,7 @@ export default function ProjectPage() {
     const html = `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="utf-8">
-<title>${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "Project Tasks"} — ${propertyName}</title>
+<title>${listOwnerFilter ? listOwnerFilter + "'s Tasks" : "Project Tasks"}, ${propertyName}</title>
 <style>
   @page { size: A4 landscape; margin: 12mm 14mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1906,8 +1906,8 @@ export default function ProjectPage() {
     <tbody>${tableRows}</tbody>
   </table>
   <div style="margin-top:12px;padding-top:8px;border-top:1px solid #e5e7eb;font-size:9px;color:#94a3b8;display:flex;justify-content:space-between;">
-    <span>Abi Peters Aesthetics Ltd — ALFRED</span>
-    <span>Page <span class="no-print">—</span></span>
+    <span>Abi Peters Aesthetics Ltd, ALFRED</span>
+    <span>Page <span class="no-print">, </span></span>
   </div>
 <script>window.onload = () => window.print();</script>
 </body></html>`;
@@ -2033,7 +2033,7 @@ export default function ProjectPage() {
       setImportError(`Warning: ${unmatched.length} task(s) not matched by title: ${unmatched.slice(0, 3).join(", ")}${unmatched.length > 3 ? " …" : ""}. These were skipped. Other matches are shown below.`);
     }
     if (diffs.length === 0 && unmatched.length === 0) {
-      setImportError("No changes detected — Claude's updates already match current values.");
+      setImportError("No changes detected, Claude's updates already match current values.");
       return;
     }
     setImportDiffs(diffs);
@@ -2080,9 +2080,9 @@ export default function ProjectPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Print-only header — hidden on screen, shown at top of PDF */}
+      {/* Print-only header, hidden on screen, shown at top of PDF */}
       <div className="hidden print:block mb-4 pb-3 border-b border-gray-300">
-        <p className="text-lg font-bold text-gray-900">ALFRED — Project Plan</p>
+        <p className="text-lg font-bold text-gray-900">ALFRED, Project Plan</p>
         {activeProperty && (
           <p className="text-sm text-gray-600">{activeProperty.address}{activeProperty.postcode ? `, ${activeProperty.postcode}` : ""}</p>
         )}
@@ -2167,8 +2167,8 @@ export default function ProjectPage() {
             <Building2 className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${viewMasterPlan ? "text-muted-foreground" : "text-primary"}`} />
             <span className="flex-1 min-w-0">
               {viewMasterPlan
-                ? <span>Viewing <strong>master plan</strong> — changes here update the shared baseline for all properties.</span>
-                : <span>Viewing plan for <strong className="text-primary">{activeProperty.address}</strong> — task updates are saved for this property only.</span>
+                ? <span>Viewing <strong>master plan</strong>, changes here update the shared baseline for all properties.</span>
+                : <span>Viewing plan for <strong className="text-primary">{activeProperty.address}</strong>, task updates are saved for this property only.</span>
               }
             </span>
             <button
@@ -2224,7 +2224,7 @@ export default function ProjectPage() {
                 onChange={(e) => { setLocalOpenDate(e.target.value); setDatesDirty(true); }}
                 className="h-9"
               />
-              <p className="text-[11px] text-muted-foreground">CQC floats independently — not tied to this date.</p>
+              <p className="text-[11px] text-muted-foreground">CQC floats independently, not tied to this date.</p>
             </div>
             <div>
               <Button
@@ -2243,7 +2243,7 @@ export default function ProjectPage() {
           {availableDays !== null && (
             <div className="pt-2 border-t border-border/50 space-y-1.5">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Time to open date</span>
+                <span className="text-muted-foreground">Start date to opening</span>
                 <span className={`font-semibold tabular-nums ${availableDays < 60 ? "text-destructive" : availableDays < 120 ? "text-amber-600 dark:text-amber-400" : "text-primary"}`}>
                   {availableDays} days ({Math.round(availableDays / 7)} wks)
                 </span>
@@ -2286,14 +2286,14 @@ export default function ProjectPage() {
               const isAmber = !isGreen && totalSelectedCost <= outerLimit;
               return (
                 <div className="space-y-2.5">
-                  {/* Record Spend button — top right */}
+                  {/* Record Spend button, top right */}
                   <div className="flex justify-end">
                     <Button size="sm" variant="outline" className="gap-1.5 no-print" onClick={() => setShowRecordSpend(true)}>
                       <Receipt className="w-3.5 h-3.5" />
                       Record Spend
                     </Button>
                   </div>
-                  {/* 4-number grid — always 2 cols on mobile, 4 on sm+ */}
+                  {/* 4-number grid, always 2 cols on mobile, 4 on sm+ */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 border-t pt-3">
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Concept forecast</p>
@@ -2316,11 +2316,11 @@ export default function ProjectPage() {
                     </div>
                     <div>
                       <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">VAT Reclaimable</p>
-                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${vatReclaimable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{vatReclaimable > 0 ? formatGBP(vatReclaimable) : "—"}</p>
+                      <p className={`text-2xl font-bold tabular-nums mt-0.5 ${vatReclaimable > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground/40"}`}>{vatReclaimable > 0 ? formatGBP(vatReclaimable) : "-"}</p>
                       <p className="text-[10px] text-muted-foreground/60 mt-0.5">est. input tax recovery</p>
                     </div>
                   </div>
-                  {/* Pre / post VAT — cash paid out, less reclaim, equals true cost (ties to the tile) */}
+                  {/* Pre / post VAT, cash paid out, less reclaim, equals true cost (ties to the tile) */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs">
                     <span className="uppercase tracking-wider text-[10px] text-muted-foreground font-medium">Pre / post VAT</span>
                     <span>pay out <span className="font-semibold tabular-nums">{formatGBP(grossInclVat)}</span> <span className="text-muted-foreground/70">incl VAT</span></span>
@@ -2334,12 +2334,12 @@ export default function ProjectPage() {
                       </span>
                     )}
                   </div>
-                  {/* Compact budget alert — amber/red only */}
+                  {/* Compact budget alert, amber/red only */}
                   {!isGreen && (
                     <div className={`flex items-center gap-2 rounded-md border px-3 py-1.5 ${isAmber ? "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" : "border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-800"}`}>
                       <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${isAmber ? "text-amber-600 dark:text-amber-400" : "text-destructive"}`} />
                       <p className={`text-xs font-medium ${isAmber ? "text-amber-800 dark:text-amber-300" : "text-red-800 dark:text-red-300"}`}>
-                        {isAmber ? `Stretch — above ${formatGBP(davidCap)} cap, within ${formatGBP(outerLimit)} outer limit` : `Red flag — above ${formatGBP(outerLimit)} outer limit. Needs David's approval.`}
+                        {isAmber ? `Stretch, above ${formatGBP(davidCap)} cap, within ${formatGBP(outerLimit)} outer limit` : `Red flag, above ${formatGBP(outerLimit)} outer limit. Needs David's approval.`}
                       </p>
                     </div>
                   )}
@@ -2361,16 +2361,16 @@ export default function ProjectPage() {
               );
             })()}
 
-            {/* ── Actuals KPI strip — visible once spend is recorded ─────────── */}
+            {/* ── Actuals KPI strip, visible once spend is recorded ─────────── */}
             {projectControls && ((projectControls as any).actualSpend > 0 || (projectControls as any).committedCosts > 0) && (() => {
               const pc = projectControls as any;
               return (
                 <div className="space-y-3">
-                  {/* Cost Performance chart — cumulative planned vs actual vs forecast */}
+                  {/* Cost Performance chart, cumulative planned vs actual vs forecast */}
                   {pc.monthlySpend?.length > 0 && (
                     <div className="rounded-lg border overflow-hidden">
                       <div className="px-3 py-2 bg-muted/40 border-b flex items-center justify-between">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Performance — Cumulative</span>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cost Performance, Cumulative</span>
                         <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
                           <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 bg-violet-600 rounded" />Planned</span>
                           <span className="flex items-center gap-1.5"><span className="inline-block w-5 h-0.5 bg-emerald-600 rounded" />Actual</span>
@@ -2419,12 +2419,12 @@ export default function ProjectPage() {
                               {(pc.monthlySpend as any[]).filter((m: any) => m.planned > 0 || m.actual > 0 || m.committed > 0).map((m: any, i: number) => (
                                 <tr key={i} className={i % 2 !== 0 ? "bg-muted/15" : ""}>
                                   <td className="px-3 py-1.5 font-medium">{m.month}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.planned > 0 ? formatGBP(m.planned) : "—"}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">{m.actual > 0 ? formatGBP(m.actual) : "—"}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums text-blue-700 dark:text-blue-400">{m.committed > 0 ? formatGBP(m.committed) : "—"}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums text-violet-700 dark:text-violet-400 font-medium">{m.forecast > 0 ? formatGBP(m.forecast) : "—"}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.cumPlanned > 0 ? formatGBP(m.cumPlanned) : "—"}</td>
-                                  <td className="px-3 py-1.5 text-right tabular-nums">{m.cumActual > 0 ? formatGBP(m.cumActual) : "—"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.planned > 0 ? formatGBP(m.planned) : "-"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-emerald-700 dark:text-emerald-400 font-medium">{m.actual > 0 ? formatGBP(m.actual) : "-"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-blue-700 dark:text-blue-400">{m.committed > 0 ? formatGBP(m.committed) : "-"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-violet-700 dark:text-violet-400 font-medium">{m.forecast > 0 ? formatGBP(m.forecast) : "-"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums text-muted-foreground">{m.cumPlanned > 0 ? formatGBP(m.cumPlanned) : "-"}</td>
+                                  <td className="px-3 py-1.5 text-right tabular-nums">{m.cumActual > 0 ? formatGBP(m.cumActual) : "-"}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -2465,7 +2465,7 @@ export default function ProjectPage() {
                           const isExpanded = editingActualId === ta.taskId;
                           return (
                             <div key={ta.taskId} className="divide-y">
-                              {/* Summary row — click to expand */}
+                              {/* Summary row, click to expand */}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -2684,9 +2684,9 @@ export default function ProjectPage() {
               );
             })()}
 
-            {/* Category breakdown — with variance columns when actuals exist */}
+            {/* Category breakdown, with variance columns when actuals exist */}
             {(() => {
-              // Lookup by name — immune to phase ID changes across environments
+              // Lookup by name, immune to phase ID changes across environments
               const phByName = (name: string) => phases?.find(p => p.name === name);
               const selFor = (names: string[]) => names.reduce((s, n) => s + (phByName(n)?.selectedCostTotal ?? 0), 0);
               const highFor = (names: string[]) => names.reduce((s, n) => s + (phByName(n)?.totalCostHigh ?? 0), 0);
@@ -2730,8 +2730,8 @@ export default function ProjectPage() {
                         <span className="text-foreground">{c.label}</span>
                         <span className="text-muted-foreground/60 ml-1.5">{c.note}</span>
                       </div>
-                      {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{(c.actual + c.committed) > 0 ? formatGBP(c.actual + c.committed) : "—"}</span>}
-                      {hasActuals && <span className={`w-20 text-right tabular-nums font-medium ${c.forecast > c.selected ? "text-destructive" : "text-foreground"}`}>{c.forecast > 0 ? formatGBP(c.forecast) : "—"}</span>}
+                      {hasActuals && <span className="w-20 text-right tabular-nums text-emerald-700 dark:text-emerald-400">{(c.actual + c.committed) > 0 ? formatGBP(c.actual + c.committed) : "-"}</span>}
+                      {hasActuals && <span className={`w-20 text-right tabular-nums font-medium ${c.forecast > c.selected ? "text-destructive" : "text-foreground"}`}>{c.forecast > 0 ? formatGBP(c.forecast) : "-"}</span>}
                       <span className="font-semibold w-20 text-right tabular-nums">{formatGBP(c.selected)}</span>
                       <span className="text-muted-foreground w-20 text-right tabular-nums">{formatGBP(c.high)}</span>
                     </div>
@@ -2753,7 +2753,7 @@ export default function ProjectPage() {
               if (deferredHigh === 0) return null;
               return (
                 <div className="flex items-center justify-between text-xs px-1 text-muted-foreground">
-                  <span>Deferred / stretch items <span className="text-muted-foreground/60">(Phase 11 — excluded from cap)</span></span>
+                  <span>Deferred / stretch items <span className="text-muted-foreground/60">(Phase 11, excluded from cap)</span></span>
                   <span className="tabular-nums font-medium">{formatGBP(deferredHigh)} high-risk</span>
                 </div>
               );
@@ -2763,7 +2763,7 @@ export default function ProjectPage() {
             <div className="flex items-start gap-2.5 rounded-lg border border-muted bg-muted/30 px-4 py-3">
               <span className="text-muted-foreground text-sm shrink-0">ℹ</span>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                David's approved launch cap is <strong>{formatGBP((projectControls as any)?.davidApprovedCapGbp ?? 80000)} inc VAT</strong>. The full tracker covers legal, build, FF&amp;E, compliance, stock, marketing and contingency. The stretch / risk zone runs to <strong>{formatGBP(Math.round(((projectControls as any)?.davidApprovedCapGbp ?? 80000) * 7 / 6))}</strong> — anything above that is unapproved. Use the deferred/stretch toggles to control the selected total.
+                David's approved launch cap is <strong>{formatGBP((projectControls as any)?.davidApprovedCapGbp ?? 80000)} inc VAT</strong>. The full tracker covers legal, build, FF&amp;E, compliance, stock, marketing and contingency. The stretch / risk zone runs to <strong>{formatGBP(Math.round(((projectControls as any)?.davidApprovedCapGbp ?? 80000) * 7 / 6))}</strong>, anything above that is unapproved. Use the deferred/stretch toggles to control the selected total.
               </p>
             </div>
 
@@ -2906,12 +2906,12 @@ export default function ProjectPage() {
               <div>
                 <p className="text-sm font-semibold">
                   Likely VAT reclaim: {formatGBP(confirmedClaimable)}
-                  {unknownCount > 0 && <span className="font-normal text-muted-foreground"> — up to {formatGBP(confirmedClaimable + uncertainMaxClaimable)} if all unknowns are VAT-bearing</span>}
+                  {unknownCount > 0 && <span className="font-normal text-muted-foreground">, up to {formatGBP(confirmedClaimable + uncertainMaxClaimable)} if all unknowns are VAT-bearing</span>}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Figures are based on the selected cost for each task and the VAT status you have recorded.
                   Inc. VAT costs: the VAT element is 1/6th of the total. Ex. VAT costs: 20% is added on top.
-                  Open any task to update its VAT status — it will recalculate here immediately.
+                  Open any task to update its VAT status, it will recalculate here immediately.
                   A valid HMRC VAT invoice is required for every line claimed.
                 </p>
               </div>
@@ -2983,14 +2983,14 @@ export default function ProjectPage() {
                                   {vatElement === null
                                     ? <span className="text-amber-500">?</span>
                                     : vatElement === 0
-                                    ? <span className="text-muted-foreground/40">—</span>
+                                    ? <span className="text-muted-foreground/40">, </span>
                                     : formatGBP(vatElement)}
                                 </td>
                                 <td className="text-right px-4 py-2.5 tabular-nums font-semibold">
                                   {claimable === null
                                     ? <span className="text-amber-600 dark:text-amber-400 text-xs font-medium">unclear</span>
                                     : claimable === 0
-                                    ? <span className="text-muted-foreground/40">—</span>
+                                    ? <span className="text-muted-foreground/40">, </span>
                                     : <span className="text-emerald-700 dark:text-emerald-400">{formatGBP(claimable)}</span>}
                                 </td>
                               </tr>
@@ -3023,7 +3023,7 @@ export default function ProjectPage() {
             <div className="rounded-lg border bg-card p-4">
               <div className="flex items-center gap-2 mb-3">
                 <AlertCircle className="w-4 h-4 text-muted-foreground" />
-                <span className="text-sm font-semibold">HMRC Input Tax Recovery — Key Rules</span>
+                <span className="text-sm font-semibold">HMRC Input Tax Recovery, Key Rules</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs text-muted-foreground">
                 {([
@@ -3228,7 +3228,7 @@ export default function ProjectPage() {
                             {phase.name.replace(/^Phase \d+[\s:–-]*/i, "").trim() || phase.name}
                           </span>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{task.owner || "—"}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{task.owner || "-"}</TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <Select value={task.status} onValueChange={(val) => handleStatusChange(task, val as UpdateTaskBodyStatus)}>
                             <SelectTrigger className={`w-[130px] h-8 text-xs ${STATUS_COLORS[task.status] || ""}`}><SelectValue /></SelectTrigger>
@@ -3268,11 +3268,11 @@ export default function ProjectPage() {
                           {task.startDate ? (
                             <div className="flex flex-col gap-0.5">
                               <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Start</span>{new Date(task.startDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                              <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}</span>
+                              <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "-"}</span>
                             </div>
                           ) : task.dueDate ? (
                             <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                          ) : <span className="text-muted-foreground/40">—</span>}
+                          ) : <span className="text-muted-foreground/40">, </span>}
                         </TableCell>
                         <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center gap-1">
@@ -3354,7 +3354,7 @@ export default function ProjectPage() {
                           <span className="text-muted-foreground italic text-[10px]">no target set</span>
                         )}
                       </div>
-                      <div className={`text-right tabular-nums font-semibold ${on ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{save > 0 ? `-${formatGBP(save)}` : "—"}</div>
+                      <div className={`text-right tabular-nums font-semibold ${on ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground/60"}`}>{save > 0 ? `-${formatGBP(save)}` : "-"}</div>
                     </div>
                   );
                 })}
@@ -3598,12 +3598,12 @@ export default function ProjectPage() {
                             {task.startDate ? (
                               <div className="flex flex-col gap-0.5">
                                 <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Start</span>{new Date(task.startDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
-                                <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—"}</span>
+                                <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{task.dueDate ? new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "-"}</span>
                               </div>
                             ) : task.dueDate ? (
                               <span><span className="text-[10px] uppercase tracking-wide mr-1 text-muted-foreground/60">Due</span>{new Date(task.dueDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
                             ) : (
-                              <span className="text-muted-foreground/40">—</span>
+                              <span className="text-muted-foreground/40">, </span>
                             )}
                           </TableCell>
                           <TableCell className="no-print" onClick={(e) => e.stopPropagation()}>
@@ -3746,7 +3746,7 @@ export default function ProjectPage() {
               <>
                 <Textarea
                   className="flex-1 font-mono text-xs min-h-[260px] resize-none"
-                  placeholder={"Paste Claude's full response here — including analysis and the ```json block at the end…"}
+                  placeholder={"Paste Claude's full response here, including analysis and the ```json block at the end…"}
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
                 />
@@ -3920,8 +3920,8 @@ export default function ProjectPage() {
               >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inc">Inc VAT — amount already includes VAT</SelectItem>
-                  <SelectItem value="exc">Ex VAT — VAT not included in this figure</SelectItem>
+                  <SelectItem value="inc">Inc VAT, amount already includes VAT</SelectItem>
+                  <SelectItem value="exc">Ex VAT, VAT not included in this figure</SelectItem>
                   <SelectItem value="exempt">VAT exempt / not applicable</SelectItem>
                 </SelectContent>
               </Select>
@@ -3935,9 +3935,9 @@ export default function ProjectPage() {
               >
                 <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="paid">✓ Paid — invoice settled</SelectItem>
-                  <SelectItem value="part-paid">½ Part Paid — deposit or staged payment</SelectItem>
-                  <SelectItem value="committed">Committed — order placed</SelectItem>
+                  <SelectItem value="paid">✓ Paid, invoice settled</SelectItem>
+                  <SelectItem value="part-paid">½ Part Paid, deposit or staged payment</SelectItem>
+                  <SelectItem value="committed">Committed, order placed</SelectItem>
                   <SelectItem value="unpaid">Unpaid / accrued</SelectItem>
                 </SelectContent>
               </Select>
@@ -3981,7 +3981,7 @@ export default function ProjectPage() {
 
             <div className="space-y-1.5">
               <label className="text-sm font-medium">
-                Invoice file <span className="text-muted-foreground font-normal text-xs">(PDF, JPG, PNG — optional)</span>
+                Invoice file <span className="text-muted-foreground font-normal text-xs">(PDF, JPG, PNG, optional)</span>
               </label>
               {recordSpendData.invoiceFileUrl ? (
                 <div className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
@@ -4696,7 +4696,7 @@ function TaskEditSheet({
                 </div>
               </div>
 
-              {/* Downselect / saving review — owner flag + free-text on what could be cut */}
+              {/* Downselect / saving review, owner flag + free-text on what could be cut */}
               <div className="space-y-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20 p-3">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={savingFlag} onChange={e => setSavingFlag(e.target.checked)} className="h-4 w-4 rounded border-amber-400 accent-amber-600" />
@@ -4719,7 +4719,7 @@ function TaskEditSheet({
                 )}
               </div>
 
-              {/* Spend / Payment — record a spend straight from the task line */}
+              {/* Spend / Payment, record a spend straight from the task line */}
               <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm font-semibold">Spend / Payment</Label>
@@ -4920,11 +4920,11 @@ function TaskEditSheet({
                     <Select value={costVatStatus} onValueChange={setCostVatStatus}>
                       <SelectTrigger className="mt-1 h-8 text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="vat_unknown">⚠ Unknown — needs clarification</SelectItem>
-                        <SelectItem value="inc_vat">Inc. VAT — price includes 20% VAT</SelectItem>
-                        <SelectItem value="ex_vat">Ex. VAT — add 20% on top</SelectItem>
-                        <SelectItem value="vat_na">N/A — no VAT applicable</SelectItem>
-                        <SelectItem value="mixed">Mixed — partially VAT-bearing</SelectItem>
+                        <SelectItem value="vat_unknown">⚠ Unknown, needs clarification</SelectItem>
+                        <SelectItem value="inc_vat">Inc. VAT, price includes 20% VAT</SelectItem>
+                        <SelectItem value="ex_vat">Ex. VAT, add 20% on top</SelectItem>
+                        <SelectItem value="vat_na">N/A, no VAT applicable</SelectItem>
+                        <SelectItem value="mixed">Mixed, partially VAT-bearing</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -4955,7 +4955,7 @@ function TaskEditSheet({
                         <SelectItem value="delivered">Delivered</SelectItem>
                         <SelectItem value="installed">Installed</SelectItem>
                         <SelectItem value="included_in_contractor">Included in contractor pkg</SelectItem>
-                        <SelectItem value="excluded_client_direct">Excluded — client direct</SelectItem>
+                        <SelectItem value="excluded_client_direct">Excluded, client direct</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -5044,7 +5044,7 @@ function TaskEditSheet({
                     )}
 
                     {lineItems.length === 0 && !addingItem && (
-                      <p className="text-xs text-muted-foreground/60 italic">No items yet — add individual pieces to build out this package.</p>
+                      <p className="text-xs text-muted-foreground/60 italic">No items yet, add individual pieces to build out this package.</p>
                     )}
 
                     {/* Add item form */}
@@ -5275,7 +5275,7 @@ function TaskEditSheet({
                         </SelectTrigger>
                         <SelectContent>
                           {allSuppliers.length === 0 ? (
-                            <SelectItem value="__none" disabled>No suppliers yet — add one in Suppliers</SelectItem>
+                            <SelectItem value="__none" disabled>No suppliers yet, add one in Suppliers</SelectItem>
                           ) : (
                             allSuppliers.map(s => (
                               <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>

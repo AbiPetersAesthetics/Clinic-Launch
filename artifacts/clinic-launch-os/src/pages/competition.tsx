@@ -280,7 +280,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
     }
   };
 
-  // Fields belonging to each tab — used by per-tab search
+  // Fields belonging to each tab, used by per-tab search
   const TAB_FIELDS: Record<number, (keyof FormData)[]> = {
     0: ["name","address","distanceMiles","website","bookingLink","phone","instagram","facebook","googleRating","googleReviewCount","instagramFollowers","lat","lng"],
     1: ["premisesType","clinicType","practitionerType","positioningCategory","targetAudience","yearsExperience","saveFace","jccp","independentPrescriber","nhsBackground","credentialsNotes","heroTreatments"],
@@ -298,7 +298,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
     setTabLooking(true);
     setTabMsg(null);
     try {
-      // Build existingData from current form — pass everything non-empty so GPT has full context
+      // Build existingData from current form, pass everything non-empty so GPT has full context
       const existingData: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(form)) {
         if (v !== null && v !== "" && v !== 0 && v !== false && v !== "[]" && v !== "{}" && v !== "unknown" && v !== "Unclear") {
@@ -425,7 +425,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
               ? <><span className="font-medium text-foreground/70">Source:</span> {form.website}</>
               : form.instagram
               ? <><span className="font-medium text-foreground/70">Source:</span> @{form.instagram.replace("@","")}</>
-              : <span className="italic">No URL set — enter website below or use Auto-fill above</span>
+              : <span className="italic">No URL set, enter website below or use Auto-fill above</span>
             }
           </p>
           <button
@@ -477,7 +477,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
                   <label key={k} className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" className={checkCls} checked={!!(form[k as keyof FormData])} onChange={e=>set(k as keyof FormData, e.target.checked)} />{l}</label>
                 ))}
               </div>
-              <div><label className={labelCls}>Credentials Notes</label><textarea className={inputCls} rows={2} value={form.credentialsNotes||""} onChange={e=>set("credentialsNotes",e.target.value)} placeholder="Any notes about qualifications or governance — use 'Not clearly evidenced online' if uncertain" /></div>
+              <div><label className={labelCls}>Credentials Notes</label><textarea className={inputCls} rows={2} value={form.credentialsNotes||""} onChange={e=>set("credentialsNotes",e.target.value)} placeholder="Any notes about qualifications or governance, use 'Not clearly evidenced online' if uncertain" /></div>
             </div>
           )}
           {tab === 2 && (
@@ -485,7 +485,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
               <div className="grid grid-cols-2 gap-4">
                 <div><label className={labelCls}>Google Reviews Count</label><input type="number" className={inputCls} value={form.googleReviewCount||0} onChange={e=>set("googleReviewCount",parseInt(e.target.value)||0)} /></div>
                 <div><label className={labelCls}>Posting Frequency</label><select className={inputCls} value={form.postingFrequency||"unknown"} onChange={e=>set("postingFrequency",e.target.value)}>{POSTING_FREQS.map(f=><option key={f}>{f}</option>)}</select></div>
-                <div><label className={labelCls}>Content Quality (1–5)</label><input type="range" min={1} max={5} className={scoreCls} value={form.contentQualityScore||3} onChange={e=>set("contentQualityScore",parseInt(e.target.value))} /><p className="text-xs text-muted-foreground mt-1 text-center">{form.contentQualityScore}/5</p></div>
+                <div><label className={labelCls}>Content Quality (1 to 5)</label><input type="range" min={1} max={5} className={scoreCls} value={form.contentQualityScore||3} onChange={e=>set("contentQualityScore",parseInt(e.target.value))} /><p className="text-xs text-muted-foreground mt-1 text-center">{form.contentQualityScore}/5</p></div>
               </div>
               <label className="flex items-center gap-2 cursor-pointer text-sm"><input type="checkbox" className={checkCls} checked={!!(form.beforeAfterUse)} onChange={e=>set("beforeAfterUse",e.target.checked)} />Uses before/after content on social</label>
               <div><label className={labelCls}>Review Sentiment Summary</label><textarea className={inputCls} rows={2} value={form.reviewSentimentSummary||""} onChange={e=>set("reviewSentimentSummary",e.target.value)} placeholder="e.g. Clients praise natural results and friendly service..." /></div>
@@ -514,7 +514,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
                         <span className="text-xs flex-1 leading-tight">{t.label}</span>
                         <div className="relative w-24 shrink-0">
                           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">£</span>
-                          <input type="number" className="w-full text-xs bg-muted border border-border rounded-md pl-5 pr-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" value={pricing[t.key]||""} onChange={e=>setPricing(t.key, parseFloat(e.target.value)||0)} placeholder="—" />
+                          <input type="number" className="w-full text-xs bg-muted border border-border rounded-md pl-5 pr-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-primary" value={pricing[t.key]||""} onChange={e=>setPricing(t.key, parseFloat(e.target.value)||0)} placeholder="-" />
                         </div>
                       </div>
                     ))}
@@ -532,7 +532,7 @@ function CompetitorModal({ competitor, initialFormData, onClose, onSave }: {
                 {k:"brandStrengthScore" as const, label:"Brand Strength Score"},
                 {k:"premisesStrengthScore" as const, label:"Premises Strength Score"},
               ].map(({k,label}) => (
-                <div key={k}><label className={labelCls}>{label} (0–100)</label><input type="range" min={0} max={100} className={scoreCls} value={(form[k] as number)||50} onChange={e=>set(k,parseInt(e.target.value))} /><p className="text-xs text-muted-foreground text-center mt-0.5">{(form[k] as number)||50}/100</p></div>
+                <div key={k}><label className={labelCls}>{label} (0 to 100)</label><input type="range" min={0} max={100} className={scoreCls} value={(form[k] as number)||50} onChange={e=>set(k,parseInt(e.target.value))} /><p className="text-xs text-muted-foreground text-center mt-0.5">{(form[k] as number)||50}/100</p></div>
               ))}
               <TagField label="Key Strengths" items={strengths} onAdd={v=>addTag("strengthsJson",v)} onRemove={i=>removeTag("strengthsJson",i)} placeholder="e.g. Strong Instagram presence" />
               <TagField label="Key Weaknesses" items={weaknesses} onAdd={v=>addTag("weaknessesJson",v)} onRemove={i=>removeTag("weaknessesJson",i)} placeholder="e.g. No Save Face accreditation" />
@@ -727,7 +727,7 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
           <option value="threat">Sort: Threat ↓</option>
           <option value="distance">Sort: Distance</option>
           <option value="rating">Sort: Rating ↓</option>
-          <option value="name">Sort: Name A–Z</option>
+          <option value="name">Sort: Name A to Z</option>
         </select>
         <button onClick={onAdd} className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary/90 shrink-0"><Plus className="w-4 h-4" />Add</button>
       </div>
@@ -736,7 +736,7 @@ function CompetitorsTab({ competitors, onEdit, onDelete, onToggleWatchlist, onAd
           <button key={f.id} onClick={() => setFilterType(f.id)} className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${filterType===f.id ? "bg-primary/20 border-primary/50 text-primary font-medium" : "bg-muted border-border text-muted-foreground hover:border-primary/30"}`}>{f.label}</button>
         ))}
       </div>
-      {visible.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{search || filterType !== "all" ? "No competitors match your filters." : "No competitors yet — click Add to get started."}</div>}
+      {visible.length === 0 && <div className="text-center py-12 text-muted-foreground text-sm">{search || filterType !== "all" ? "No competitors match your filters." : "No competitors yet, click Add to get started."}</div>}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {visible.map(c=>{ const score = c.score; const rag = getRAG(score); const strengths = parseJson<string[]>(c.strengthsJson,[]); const weaknesses = parseJson<string[]>(c.weaknessesJson,[]); return (
           <div key={c.id} className={`bg-card border rounded-xl overflow-hidden ${rag.border}`}>
@@ -895,7 +895,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
   }
   if (!apaInserted) leagueRows.push({ isApa: true });
 
-  // Cell color helpers — green = APA better, red = competitor better
+  // Cell color helpers, green = APA better, red = competitor better
   const cellBg = (apaVal: number, compVal: number, higherIsBetter = true) => {
     const diff = higherIsBetter ? apaVal - compVal : compVal - apaVal;
     if (diff > 5)  return "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400";
@@ -941,7 +941,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
               </>
             ) : (
               <>
-                <p className="text-2xl font-bold text-muted-foreground">—</p>
+                <p className="text-2xl font-bold text-muted-foreground">, </p>
                 <p className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">Pricing Rank</p>
                 <p className="text-[10px] text-muted-foreground">add competitor pricing</p>
               </>
@@ -995,7 +995,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
                           <span className="text-[9px] font-semibold text-primary bg-primary/15 px-1.5 py-0.5 rounded-full">YOU</span>
                         </div>
                       </td>
-                      <td className="px-3 py-2.5 text-center text-muted-foreground">—</td>
+                      <td className="px-3 py-2.5 text-center text-muted-foreground">, </td>
                       <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.googleRating}</td>
                       <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.googleReviewCount}</td>
                       <td className="px-3 py-2.5 text-center font-bold text-primary">{APA_PROFILE.clinicalAuthorityScore}</td>
@@ -1111,7 +1111,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
               tick={{ fontSize:9, fill:"hsl(var(--muted-foreground))" }}
               stroke="hsl(var(--border))" strokeOpacity={0.3}
             />
-            {/* APA — always shown, on top */}
+            {/* APA, always shown, on top */}
             <Radar
               name="APA"
               dataKey="APA"
@@ -1197,7 +1197,7 @@ function ComparisonTab({ competitors }: { competitors: Competitor[] }) {
                     </div>
                   )}
                   {!stren.length && !weak.length && !c.reviewSentimentSummary && (
-                    <p className="text-xs text-muted-foreground italic">No profile detail yet — use the tab research tool on this competitor.</p>
+                    <p className="text-xs text-muted-foreground italic">No profile detail yet, use the tab research tool on this competitor.</p>
                   )}
                 </div>
               </div>
@@ -1230,13 +1230,13 @@ function MarketGapTab({ competitors }: { competitors: Competitor[] }) {
         </div>
         <div>
           <p className="text-lg font-bold">Market Space Score</p>
-          <p className="text-sm text-muted-foreground mt-1">{overallSpace >= 70 ? "Strong opportunity — market has clear gaps for APA to fill" : overallSpace >= 50 ? "Moderate opportunity — several differentiation paths available" : "Competitive market — APA must position very precisely"}</p>
+          <p className="text-sm text-muted-foreground mt-1">{overallSpace >= 70 ? "Strong opportunity, market has clear gaps for APA to fill" : overallSpace >= 50 ? "Moderate opportunity, several differentiation paths available" : "Competitive market, APA must position very precisely"}</p>
           <p className="text-xs text-muted-foreground mt-1">{competitors.length === 0 ? "Add competitors to compute accurately" : `Based on ${competitors.length} competitor${competitors.length!==1?"s":""} mapped`}</p>
         </div>
       </div>
 
       <div>
-        <h3 className="font-semibold mb-3 flex items-center gap-2 text-emerald-600"><CheckCircle className="w-4 h-4" />Open Gaps — Where APA Can Win</h3>
+        <h3 className="font-semibold mb-3 flex items-center gap-2 text-emerald-600"><CheckCircle className="w-4 h-4" />Open Gaps, Where APA Can Win</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {(opportunities.length ? opportunities : results).map(g=>(
             <div key={g.id} className="bg-card border border-emerald-500/20 rounded-xl p-4">
@@ -1259,7 +1259,7 @@ function MarketGapTab({ competitors }: { competitors: Competitor[] }) {
 
       {crowded.length > 0 && (
         <div>
-          <h3 className="font-semibold mb-3 flex items-center gap-2 text-amber-500"><AlertTriangle className="w-4 h-4" />Crowded Areas — Tread Carefully</h3>
+          <h3 className="font-semibold mb-3 flex items-center gap-2 text-amber-500"><AlertTriangle className="w-4 h-4" />Crowded Areas, Tread Carefully</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {crowded.map(g=>(
               <div key={g.id} className="bg-card border border-amber-500/20 rounded-xl p-4">
@@ -1279,7 +1279,7 @@ function MarketGapTab({ competitors }: { competitors: Competitor[] }) {
 
       <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">APA Recommended Positioning</p>
-        <p className="text-sm leading-relaxed">Premium nurse-led medical aesthetics clinic with ANP/Independent Prescriber authority, natural-results focus, and strong clinical governance signals (Save Face, JCCP). Lead with medical credibility and social proof — not price. Own polynucleotides, skin quality, and under-eye ageing as education-led categories. Target safety-conscious professional clients who have been let down by budget injectors.</p>
+        <p className="text-sm leading-relaxed">Premium nurse-led medical aesthetics clinic with ANP/Independent Prescriber authority, natural-results focus, and strong clinical governance signals (Save Face, JCCP). Lead with medical credibility and social proof, not price. Own polynucleotides, skin quality, and under-eye ageing as education-led categories. Target safety-conscious professional clients who have been let down by budget injectors.</p>
       </div>
     </div>
   );
@@ -1292,7 +1292,7 @@ function MapTab({ competitors }: { competitors: Competitor[] }) {
       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
         <div className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full bg-teal-600 shrink-0 flex items-center justify-center text-white font-bold" style={{fontSize:8}}>A</span>9A Jewry Street (APA target)</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />High threat (&gt;68)</div>
-        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />Moderate (42–68)</div>
+        <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />Moderate (42 to 68)</div>
         <div className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />Low (&lt;42)</div>
       </div>
       <div className="rounded-xl overflow-hidden border border-border" style={{ height: 460 }}>
@@ -1310,7 +1310,7 @@ function MapTab({ competitors }: { competitors: Competitor[] }) {
                 <div className="text-sm font-bold">{c.name}</div>
                 <div className="text-xs text-gray-600 mt-0.5">{c.clinicType}</div>
                 {c.distanceMiles && <div className="text-xs mt-0.5">{c.distanceMiles} miles away</div>}
-                <div className="text-xs font-semibold mt-1" style={{ color: getRAG(score).color }}>Threat score: {score} — {getRAG(score).label}</div>
+                <div className="text-xs font-semibold mt-1" style={{ color: getRAG(score).color }}>Threat score: {score}, {getRAG(score).label}</div>
                 {c.googleRating && <div className="text-xs mt-0.5">⭐ {c.googleRating} ({c.googleReviewCount} reviews)</div>}
               </Popup>
             </Marker>
@@ -1442,7 +1442,7 @@ function AISearchModal({
             </div>
             <div>
               <h2 className="text-base font-semibold">AI Competitor Discovery</h2>
-              <p className="text-xs text-muted-foreground">GPT knowledge base — not a live internet search</p>
+              <p className="text-xs text-muted-foreground">GPT knowledge base, not a live internet search</p>
             </div>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground"><X className="w-5 h-5" /></button>
@@ -1454,7 +1454,7 @@ function AISearchModal({
             <div className="flex items-start gap-2.5">
               <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1">AI training data — not live data</p>
+                <p className="text-xs font-bold text-amber-700 dark:text-amber-300 mb-1">AI training data, not live data</p>
                 <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed">This uses GPT's training knowledge, which may be months or years old. Businesses may have opened, closed, or changed. Every entry must be independently verified before acting on it. This is a discovery starting point, not ground truth.</p>
               </div>
             </div>
@@ -1505,7 +1505,7 @@ function AISearchModal({
               )}
 
               <div>
-                <p className="text-xs font-semibold text-muted-foreground mb-3">{results.length} competitors found — ranked by estimated threat</p>
+                <p className="text-xs font-semibold text-muted-foreground mb-3">{results.length} competitors found, ranked by estimated threat</p>
                 <div className="space-y-3">
                   {results.map((r, i) => (
                     <div key={i} className="rounded-xl border border-border bg-card p-4">
