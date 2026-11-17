@@ -20,7 +20,7 @@ export default function SettingsPage() {
       <section className="space-y-3" aria-labelledby="n-h">
         <h2 id="n-h" className="eyebrow">Notifications</h2>
         <ul className="grid gap-2 text-[0.9rem]">
-          <li className="rounded-xl border border-card-border p-4"><b>Morning brief email</b>, 07:45, to accounts@abipetersaesthetics.co.uk only, and only on days something needs a decision. Silence means fine.</li>
+          <li className="rounded-xl border border-card-border p-4"><b>Morning brief email</b>, 07:55, to accounts@abipetersaesthetics.co.uk only, and only on days something needs a decision. Silence means fine.</li>
           <li className="rounded-xl border border-card-border p-4"><b>Push to this phone</b> for red alerts, 07:00 to 21:00. On an iPhone, ALFRED must be added to the home screen first.</li>
         </ul>
       </section>

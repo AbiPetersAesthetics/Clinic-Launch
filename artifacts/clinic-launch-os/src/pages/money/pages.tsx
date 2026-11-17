@@ -5,7 +5,7 @@ import { usePage, useProposals, useSummary, useCashModel, PROJECT_ID, type Chip 
 import { Stat, TargetBar, SplitBar, StackColumns, MarginColumns, HBars, DateRail, UsageBar, V } from "@/components/viz";
 import { ProposalCard } from "@/components/proposal-card";
 import { BoardShell, EmbeddedBoard } from "@/components/board-shell";
-import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, gbp0, longDay } from "@/components/page";
+import { Page, PageHead, Section, Rows, RowItem, NotYet, Next, gbp0, longDay, longDate } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { BalanceLine } from "@/components/charts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -131,7 +131,7 @@ export function TakingsPage() {
           )}
           <Section title="By week">
             {data.weeks.length > 1 ? (
-              <Rows>{data.weeks.map((w: any) => <RowItem key={w.period}><span className="flex-1 text-[0.9rem]">{w.period}</span><span className="tabular font-medium">{gbp0(w.total)}</span></RowItem>)}</Rows>
+              <Rows>{data.weeks.map((w: any, i: number) => <RowItem key={w.period}><span className="flex-1 text-[0.9rem]">{i === 0 ? w.period : String(w.period).replace(/^This week \((from [^)]+)\)$/, "Week $1")}</span><span className="tabular font-medium">{gbp0(w.total)}</span></RowItem>)}</Rows>
             ) : <NotYet what="A week by week record builds up from the daily clinic refresh; each week's final figure is kept as the next week starts." by="the clinic refresh, daily at about 07:40" />}
           </Section>
           <p className="text-[0.78rem] text-ink-muted max-w-[62ch]">{data.source} {data.note}</p>
@@ -172,7 +172,7 @@ export function ObligationsPage() {
           </Section>
           <Section title="Cards" note={<Link href="/archive/cards" className="underline">register</Link>}>
             <div>{data.cards.filter((c: any) => c.limit > 0).map((c: any) => (
-              <UsageBar key={c.name} label={c.name} used={c.balance} limit={c.limit} note={c.offers.length ? c.offers.map((o: any) => `${o.ratePct}% ${o.kind} to ${longDay(o.end)}`).join(", ") : undefined} />
+              <UsageBar key={c.name} label={c.name} used={c.balance} limit={c.limit} note={c.offers.length ? c.offers.map((o: any) => `${o.ratePct}% ${o.kind} to ${longDate(o.end)}`).join(", ") : undefined} />
             ))}</div>
             {data.cards.some((c: any) => !c.limit && c.balance) && (
               <Rows>{data.cards.filter((c: any) => !c.limit && c.balance).map((c: any) => (

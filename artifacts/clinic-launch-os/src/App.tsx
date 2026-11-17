@@ -8,12 +8,10 @@ import { Component, useEffect, useState, type ErrorInfo, type ReactNode } from "
 
 import TodayPage from "@/pages/today";
 import DashboardPage from "@/pages/dashboard";
-import ProjectPage from "@/pages/project";
 import FinancialsPage from "@/pages/financials";
 import PropertiesPage from "@/pages/properties";
 import DecisionsPage from "@/pages/decisions";
 import OptimisationPage from "@/pages/optimisation";
-import CompliancePage from "@/pages/compliance";
 import FranchisePage from "@/pages/franchise";
 import LifestylePage from "@/pages/lifestyle";
 import MarketingPage from "@/pages/marketing";
@@ -41,7 +39,7 @@ import { BuildCashPage, StandsAlonePage, TakingsPage, ObligationsPage } from "@/
 import WorkingsPage from "@/pages/money/workings";
 import { StudioPage, SearchPage } from "@/pages/growth/studio";
 import { PathwayPage, DueBackPage, ReviewsPage } from "@/pages/patients/pages";
-import { DiaryPage, StockPage, TeamPage } from "@/pages/clinic/pages";
+import { DiaryPage, StockPage, TeamPage, ComplianceArea, OpeningArea } from "@/pages/clinic/pages";
 import SourcesPage from "@/pages/sources";
 import AbiPage from "@/pages/abi";
 import ReadyPage from "@/pages/ready";
@@ -208,9 +206,9 @@ function Router() {
 
         <Route path="/clinic" component={ClinicArea} />
         <Route path="/clinic/diary" component={DiaryPage} />
-        <Route path="/clinic/compliance" component={CompliancePage} />
+        <Route path="/clinic/compliance" component={ComplianceArea} />
         <Route path="/clinic/stock" component={StockPage} />
-        <Route path="/clinic/opening" component={ProjectPage} />
+        <Route path="/clinic/opening" component={OpeningArea} />
 
         <Route path="/more" component={MorePage} />
         <Route path="/inbox" component={InboxPage} />

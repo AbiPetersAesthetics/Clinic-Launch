@@ -1,11 +1,14 @@
 // Clinic: the Diary (the Clinic Board), and Stock, a simple list Abi keeps from her screen. Low
 // items become cards. The stock list is written only by the people using it.
 import { useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { PROJECT_ID, useProposals } from "@/lib/alfred";
 import { ProposalCard } from "@/components/proposal-card";
 import PeoplePage from "@/pages/people";
-import { Page, PageHead, Section, Rows, Next } from "@/components/page";
+import CompliancePage from "@/pages/compliance";
+import ProjectPage from "@/pages/project";
+import { Page, PageHead, Section, Rows, Next, longDay } from "@/components/page";
 import { EmbeddedBoard } from "@/components/board-shell";
 
 const back = { href: "/clinic", label: "Clinic" };
@@ -92,5 +95,34 @@ export function TeamPage() {
       </Section>
       <Section title="People and capacity, as planned"><PeoplePage /></Section>
     </Page>
+  );
+}
+
+// Compliance and the opening checklist are planning-era pages kept as they were. Each now opens the
+// ALFRED way: a plain sentence saying what the page is and how far to trust it, then the old page.
+export function ComplianceArea() {
+  return (
+    <div className="space-y-6">
+      <PageHead eyebrow="Clinic" title="Compliance" back={back}>
+        <p className="font-sans font-semibold text-[1.2rem] sm:text-[1.4rem] leading-snug text-ink max-w-[52ch]">This is the CQC tracker from the planning stage. Its readiness figures are only what has been ticked here, not how things stand.</p>
+        <p className="text-[0.95rem] text-ink-2 max-w-[62ch]">The dated items that can lapse (insurance, registrations, training, policies, filming consent) are not tracked here yet; until they are, nothing on this page feeds Today.</p>
+      </PageHead>
+      <CompliancePage />
+    </div>
+  );
+}
+
+export function OpeningArea() {
+  const { data } = useQuery({ queryKey: ["alfred", "project-dates"], queryFn: async () => (await fetch(`/api/projects/${PROJECT_ID}`)).json() as Promise<{ targetOpeningDate?: string | null }> });
+  const open = data?.targetOpeningDate ? data.targetOpeningDate.slice(0, 10) : null;
+  const days = open ? Math.ceil((Date.parse(`${open}T00:00:00Z`) - Date.now()) / 86400000) : null;
+  return (
+    <div className="space-y-6">
+      <PageHead eyebrow="Clinic" title="Opening checklist" back={back}>
+        {open && days != null && <p className="font-sans font-semibold text-[1.2rem] sm:text-[1.4rem] leading-snug text-ink max-w-[52ch]">{days > 0 ? `Winchester opens on ${longDay(open)}, in ${days} ${days === 1 ? "day" : "days"}.` : `Winchester opened on ${longDay(open)}.`}</p>}
+        <p className="text-[0.95rem] text-ink-2 max-w-[62ch]">The project plan from the planning stage: every phase, task and cost, kept as it was. Abi's own countdown to the first patients is <Link href="/abi/ready" className="underline">Ready for Winchester</Link>.</p>
+      </PageHead>
+      <ProjectPage />
+    </div>
   );
 }

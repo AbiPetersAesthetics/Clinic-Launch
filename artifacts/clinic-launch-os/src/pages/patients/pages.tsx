@@ -80,6 +80,15 @@ export function DueBackPage() {
   );
 }
 
+// The next Tuesday 08:30 (London) on or after now: when the Search and reviews run next reads the profiles.
+function nextTuesdayRun(now = new Date()) {
+  const ld = new Date(now.toLocaleString("en-US", { timeZone: "Europe/London" }));
+  const add = (2 - ld.getDay() + 7) % 7;
+  const past = add === 0 && ld.getHours() * 60 + ld.getMinutes() >= 8 * 60 + 30;
+  ld.setDate(ld.getDate() + (past ? 7 : add));
+  return ld.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
+}
+
 export function ReviewsPage() {
   const { data } = usePage("search");
   const mine = (data?.reviews?.profiles ?? []).filter((p: any) => p.ours);
@@ -88,7 +97,7 @@ export function ReviewsPage() {
       <PageHead eyebrow="Patients" title="Reviews" back={back}>{data?.reviews && <Sources chips={data.sources as Chip[]} />}</PageHead>
       {mine.length ? (
         <Section title="Our Google profiles"><HBars ariaLabel="Reviews on each of our Google profiles" labelWidth="11rem" rows={mine.map((p: any) => ({ label: p.name, value: p.reviews, display: `${p.reviews} reviews, ${p.rating} stars` }))} /></Section>
-      ) : <NotYet what="Reviews received on both Google profiles, with the count and rating against named competitors." by="the Search and reviews run, Tuesdays 08:30" />}
+      ) : <NotYet what="Reviews received on both Google profiles, with the count and rating against named competitors." when={`the next run, ${nextTuesdayRun()}`} by="the Search and reviews run, Tuesdays 08:30" />}
       <Section title="Asking for reviews">
         <NotYet what="From opening, patients who have had a treatment and not yet been asked. When some are due, ALFRED raises one card to send the review request through GHL after your yes." when="8 December" by="the clinic refresh" />
       </Section>
