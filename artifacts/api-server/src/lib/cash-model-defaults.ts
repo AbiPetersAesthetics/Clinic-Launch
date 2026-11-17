@@ -66,12 +66,12 @@ export const STANDS_ALONE_TAKINGS = Math.round((5327.33 + 473.55 + 3000) / (WINC
 export const WINC_SCENARIOS: Record<string, { label: string; note: string; takings: Record<string, number>; productCost?: Record<string, number> }> = {
   central: {
     label: "Recommended",
-    note: "Built from Bedhampton's real patients: December as booked (about 60 people, 4,400), then 22 new patients a month in January and February (founders and the warm list), then 16 a month growing to 24, each buying what Bedhampton patients buy, at Winchester prices.",
+    note: "Built from Bedhampton's real patients: December as booked (about 60 people, £4,400), then 22 new patients a month in January and February (founders and the warm list), then 16 a month growing to 24, each buying what Bedhampton patients buy, at Winchester prices.",
     ...CENTRAL,
   },
   base: {
     label: "David's forecast",
-    note: "Nothing in November (the clinic opens on 8 December), 4,000 in December to 14,700 in June 2027, then a straight line to 22,000 by February 2029. On the patient model it needs about 28 new patients a month from January.",
+    note: "Nothing in November (the clinic opens on 8 December), £4,000 in December to £14,700 in June 2027, then a straight line to £22,000 by February 2029. On the patient model it needs about 28 new patients a month from January.",
     takings: { "2026-11": 0, "2026-12": 4000, "2027-01": 6000, "2027-02": 8000, "2027-03": 9500, "2027-04": 11000, "2027-05": 13000, "2027-06": 14700 },
   },
   low: {
