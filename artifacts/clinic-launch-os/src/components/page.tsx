@@ -1,7 +1,7 @@
 // ALFRED's page kit, set like a printed briefing rather than a dashboard: an eyebrow and a serif
 // title, sections divided by whitespace and hairline rules, lists as ruled rows. Only the things you
 // act on (the "needs you" cards) are boxed, so they stand out.
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Alert, Chip } from "@/lib/alfred";
@@ -11,7 +11,8 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
   return (
     <header className="space-y-3">
       {back && <Link href={back.href} className="inline-flex items-center gap-1 min-h-[36px] -ml-1 text-[0.85rem] text-slate"><ChevronLeft className="w-4 h-4" />{back.label}</Link>}
-      <div><span className="eyebrow">{eyebrow}</span></div>
+      {/* An eyebrow that only repeats the title is dropped: the phone top bar names the page too. */}
+      {eyebrow !== title && <div><span className="eyebrow">{eyebrow}</span></div>}
       <h1 className="font-sans text-[1.9rem] sm:text-[2.3rem] leading-[1.1] text-ink font-extrabold tracking-[-0.02em]">{title}</h1>
       {children}
     </header>
@@ -53,6 +54,30 @@ export function LinkList({ links }: { links: AreaLink[] }) {
         </RowItem>
       ))}
     </Rows>
+  );
+}
+
+// The pages of an area as pills: every way in, without a page of rows under the brief. The note
+// rides along as the title so the command palette's words still explain each one.
+export function AreaLinks({ links }: { links: AreaLink[] }) {
+  return (
+    <nav aria-label="Pages in this area" className="flex flex-wrap gap-2">
+      {links.map((l) => (
+        <Link key={l.href} href={l.href} title={l.note} className="inline-flex items-center min-h-[44px] px-4 rounded-full border-[1.5px] border-line-strong text-[0.92rem] font-semibold text-ink hover:bg-wash hover:border-ink">{l.label}</Link>
+      ))}
+    </nav>
+  );
+}
+
+// Detail one tap away on a phone (ALFRED-PLAN.md promise 1): the sentence above always shows; the
+// chart that proves it opens on a tap. From 640px wide it is simply open, with no button.
+export function Fold({ label = "Show the chart", children }: { label?: string; children: ReactNode }) {
+  const [open, setOpen] = useState(() => typeof window === "undefined" || window.matchMedia("(min-width: 640px)").matches);
+  return (
+    <div className="grid gap-3 min-w-0">
+      {open && children}
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="sm:hidden justify-self-start inline-flex items-center min-h-[44px] px-5 rounded-full border border-ink text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-ink hover:bg-wash">{open ? "Hide" : label}</button>
+    </div>
   );
 }
 
@@ -100,4 +125,6 @@ export function AlertCard({ area, level, title, detail, sources, href }: { area:
 export const alertCard = (a: Alert) => <AlertCard key={a.id} area={a.area} level={a.level} title={a.title} detail={a.detail} sources={a.sources} href={a.href} />;
 
 export const gbp0 = (n: number) => `${n < 0 ? "minus " : ""}£${Math.abs(Math.round(n)).toLocaleString("en-GB")}`;
+// With the year, for dates that can be more than a year apart (card offers, loans).
+export const longDate = (ymd: string) => new Date(ymd.length === 10 ? ymd + "T12:00:00Z" : ymd).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/London" });
 export const longDay = (ymd: string) => new Date(ymd.length === 10 ? ymd + "T12:00:00Z" : ymd).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/London" });

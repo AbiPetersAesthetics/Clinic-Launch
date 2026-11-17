@@ -4,11 +4,11 @@
 // title and reports its height, so the frame grows to fit and the page has one scroll.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
-import { ExternalLink, Maximize2, X } from "lucide-react";
+import { ChevronRight, ExternalLink, Maximize2, X } from "lucide-react";
 import { useProposals, useSummary, type Summary } from "@/lib/alfred";
 import { Verdict } from "@/components/verdict";
 import { KpiGrid } from "@/components/kpi";
-import { Page, PageHead, Section, Next, Rows, RowItem, alertCard } from "@/components/page";
+import { Page, PageHead, Section, Next, alertCard } from "@/components/page";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const AREA_OF: Record<string, string[]> = { money: ["money"], ads: ["ads", "growth", "content"], growth: ["ads", "growth", "content"], patients: ["patients"], clinic: ["clinic"] };
@@ -58,12 +58,25 @@ export function EmbeddedBoard({ src, title, minHeight = 600, fullScreen = true }
   );
 }
 
+// Questions and approvals for this area as one line into the Inbox: how many, and the first.
+export function AsksLine({ count, first }: { count: number; first: string }) {
+  return (
+    <Link href="/inbox" className="flex items-center gap-3 rounded-xl border-[1.5px] border-line-strong bg-card px-4 py-3 min-h-[56px] hover:bg-wash">
+      <span className="min-w-0 flex-1">
+        <span className="block font-bold text-ink text-[1rem]">{count} {count === 1 ? "question waits" : "questions wait"} for a word from you</span>
+        <span className="block text-[0.9rem] text-ink-2 truncate">First: {first}</span>
+      </span>
+      <ChevronRight className="w-5 h-5 text-ink-muted shrink-0" />
+    </Link>
+  );
+}
+
 export function NeedsYou({ board, summary, max = 3 }: { board: string; summary?: Summary; max?: number }) {
   const { data: props } = useProposals();
   const mine = (props?.open ?? []).filter((p) => (AREA_OF[board] ?? [board]).includes(p.area));
   const alerts = summary && summary.state !== "stale" ? summary.alerts : [];
   // Owner, 16 Nov 2026: no wall of question cards. Warnings show as cards; questions and approvals
-  // are a short list of titles, opened one at a time in the Inbox.
+  // are one line into the Inbox, where they are opened one at a time.
   if (!alerts.length && !mine.length) return null;
   return (
     <>
@@ -72,12 +85,7 @@ export function NeedsYou({ board, summary, max = 3 }: { board: string; summary?:
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 items-start">{alerts.slice(0, max).map((a) => <div key={a.id} className="min-w-0">{alertCard(a)}</div>)}</div>
         </Section>
       )}
-      {mine.length > 0 && (
-        <Section title={`Waiting for a word from you (${mine.length})`} id={`asks-${board}`} note={<Link href="/inbox" className="underline">open all</Link>}>
-          <Rows>{mine.slice(0, max).map((p) => <RowItem key={p.id} href="/inbox"><span className="min-w-0 text-[1rem] text-ink">{p.title}</span></RowItem>)}</Rows>
-          {mine.length > max && <p className="text-[0.9rem] text-ink-2">and {mine.length - max} more.</p>}
-        </Section>
-      )}
+      {mine.length > 0 && <AsksLine count={mine.length} first={mine[0].title} />}
     </>
   );
 }

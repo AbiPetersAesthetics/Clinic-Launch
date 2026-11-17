@@ -236,10 +236,9 @@
        never the page. Tables/Gantt have their own overflow-x containers. */
     overflow-x: hidden;
   }
-  /* Serif headings, like the website (Minion Pro / Source Serif 4). Components
-     may still opt out with an explicit font-sans utility where needed. */
+  /* One family everywhere (ALFRED-DESIGN.md, Type): headings are the sans, heavy and tight. */
   h1, h2 {
-    font-family: var(--app-font-serif);
+    font-family: var(--app-font-sans);
     letter-spacing: -0.01em;
   }
   /* Body at 16px on phones, 15px on desktop (UX plan 2.10). */
@@ -263,7 +262,8 @@
 }
 .eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #1F2A44; flex: none; }
 .eyebrow.plain::before { display: none; }
-.font-display { font-family: var(--app-font-serif); font-weight: 500; }
+/* Kept for older pages: now the sans at a heavier weight, so no screen falls back to the serif. */
+.font-display { font-family: var(--app-font-sans); font-weight: 700; letter-spacing: -0.015em; }
 .tabular { font-variant-numeric: tabular-nums lining-nums; }
 .pb-tabbar { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 16px); }
 @media (min-width: 768px) { .pb-tabbar { padding-bottom: 2rem; } }

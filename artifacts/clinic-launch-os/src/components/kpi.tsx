@@ -20,7 +20,8 @@ export function KpiTile({ kpi }: { kpi: Kpi }) {
       )}
       {kpi.value != null && kpi.compare && <span className="text-[0.78rem] text-ink-muted leading-snug">{kpi.compare}</span>}
       {kpi.value == null && kpi.notMeasured && <span className="text-[0.78rem] text-ink-muted leading-snug">{kpi.notMeasured.reason}{kpi.notMeasured.from ? `; from ${kpi.notMeasured.from}` : ""}</span>}
-      {kpi.source && <span><Fresh chip={kpi.source} /></span>}
+      {/* A figure that does not exist yet carries no age: a fresh chip would suggest it was read. */}
+      {kpi.source && kpi.value != null && <span><Fresh chip={kpi.source} /></span>}
     </div>
   );
 }

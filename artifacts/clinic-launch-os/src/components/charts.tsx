@@ -2,6 +2,7 @@
 // Colour means one thing: on target (green), watch (amber), problem (red); everything else is ink
 // and grey, so every chart still reads in greyscale. Labels sit on the chart; no legends, no
 // gridline clutter. Built as plain SVG and HTML so they stay sharp and fast on a phone.
+import { Fold } from "@/components/page";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 
@@ -154,7 +155,8 @@ export function BalanceLine({ points, floor, ariaLabel, height = 250, compare }:
         {points.map((p, i) => (
           <circle key={i} cx={x(i)} cy={y(p.value)} r={labelled.has(i) ? 4.5 : 3} fill={p.value < 0 ? C.bad : labelled.has(i) ? C.ink : C.surface} stroke={p.value < 0 ? C.bad : C.ink} strokeWidth={2}><title>{`${p.label}: ${gbp(p.value)}`}</title></circle>
         ))}
-        {tag(0, `Now ${gbp(vals[0])}`)}
+        {/* Every point is a month-end from the plan, so the first is named as one, never as "now". */}
+        {tag(0, `End of ${month(points[0].label)} ${gbp(vals[0])}`)}
         {minI !== 0 && minI !== lastI && tag(minI, `Lowest ${gbp(vals[minI])}`, true)}
         {tag(lastI, gbp(vals[lastI]))}
         {points.map((p, i) => (i % every === 0 || i === lastI) && (
@@ -210,11 +212,11 @@ export function Timeline({ months, rows, todayIndex, ariaLabel }: { months: stri
 
 // One idea per section: a plain sentence a non-analyst understands, the picture that proves it,
 // and a single line of source and age.
-export function Insight({ sentence, children, foot, href }: { sentence: ReactNode; children?: ReactNode; foot?: ReactNode; href?: string }) {
+export function Insight({ sentence, children, foot, href, fold }: { sentence: ReactNode; children?: ReactNode; foot?: ReactNode; href?: string; fold?: string }) {
   return (
     <section className="grid gap-3 py-6 border-t border-line-strong first:border-t-0 first:pt-1">
       <p className="text-[1.2rem] sm:text-[1.35rem] leading-snug font-bold text-ink max-w-[32ch] sm:max-w-[46ch]">{sentence}</p>
-      {children}
+      {fold && children ? <Fold label={fold}>{children}</Fold> : children}
       {(foot || href) && <div className="flex items-center justify-between gap-3 text-[0.78rem]" style={{ color: C.muted }}><span>{foot}</span>{href && <Link href={href} className="underline text-ink-2 shrink-0 min-h-[32px] inline-flex items-center">Detail</Link>}</div>}
     </section>
   );
