@@ -1,5 +1,5 @@
 {
-  "updatedIso": "2026-11-15T23:10:00Z",
+  "updatedIso": "2026-11-17T14:16:58.772Z",
   "items": [
     {
       "area": "Today",
@@ -29,7 +29,7 @@
       "area": "Today",
       "name": "What ALFRED did",
       "status": "partial",
-      "note": "Shows logged runs; most agents log from their next run."
+      "note": "Shows logged runs: pathway, clinic, capacity and Meta review log every run; the four agents scheduled on 17 Nov log from their first run."
     },
     {
       "area": "Money",
@@ -226,44 +226,44 @@
     {
       "area": "Agents",
       "name": "Clinic: run book, schedule, first run logged",
-      "status": "partial",
-      "note": "Scheduled; logging added; first logged run due 16 Nov."
+      "status": "done",
+      "note": "Daily 07:40; logging every run since 16 Nov."
     },
     {
       "area": "Agents",
       "name": "Capacity: run book, schedule, first run logged",
-      "status": "partial",
-      "note": "Proposals and logging added; first run 16 Nov."
+      "status": "done",
+      "note": "Mondays 12:30; first run logged 16 Nov with its budget recommendation."
     },
     {
       "area": "Agents",
       "name": "Creative (Meta review): run book, schedule, first run logged",
-      "status": "partial",
-      "note": "Proposals and logging added; first run 16 Nov."
+      "status": "done",
+      "note": "Mondays and Thursdays 09:30; first run logged 16 Nov."
     },
     {
       "area": "Agents",
       "name": "Money watch",
-      "status": "todo",
-      "note": "Run book written; schedule not yet created."
+      "status": "partial",
+      "note": "Run book and daily 07:50 schedule in place (17 Nov); first logged run due 18 Nov."
     },
     {
       "area": "Agents",
       "name": "Search and reviews",
-      "status": "todo",
-      "note": "Run book and schedule to do."
+      "status": "partial",
+      "note": "Run book written and Tuesday 08:30 schedule in place (17 Nov); first run 24 Nov."
     },
     {
       "area": "Agents",
       "name": "Brief",
       "status": "partial",
-      "note": "Builder and run book written; schedule not yet created."
+      "note": "Builder, run book and daily 07:55 schedule in place (17 Nov); first logged run due 18 Nov."
     },
     {
       "area": "Agents",
       "name": "Auditor",
-      "status": "todo",
-      "note": "Run book written; schedule not yet created."
+      "status": "partial",
+      "note": "Run book and monthly schedule (1st, 10:00) in place; first run 1 Dec."
     },
     {
       "area": "Agents",
@@ -347,7 +347,7 @@
       "area": "Inbox",
       "name": "Outside actions done at 08:15",
       "status": "partial",
-      "note": "Run book written; the scheduled task needs to be created in the app."
+      "note": "Run book and daily 08:15 schedule in place (17 Nov); first logged run due 18 Nov."
     },
     {
       "area": "Data",
