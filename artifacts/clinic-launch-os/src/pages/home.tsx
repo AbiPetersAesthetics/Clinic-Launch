@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Copy } from "lucide-react";
-import { useBrief, useActivity, dayTime, type BriefItem } from "@/lib/alfred";
+import { useBrief, useActivity, useProposals, dayTime, type BriefItem } from "@/lib/alfred";
 import { Verdict } from "@/components/verdict";
 import { ProposalCard } from "@/components/proposal-card";
 import { BankInput } from "@/components/bank-input";
@@ -51,7 +51,7 @@ function AreaInsights({ areas }: { areas: any[] }) {
         const under = v.points.filter((p: any) => p.value < 0);
         const loan = money.extra.availableLoans?.[0];
         return (
-          <Insight href="/money" foot={src(money)} sentence={under.length ? `The bank is forecast to go overdrawn in ${under.length} ${under.length === 1 ? "month" : "months"}, first in ${under[0].label}.` : `The bank stays in credit every month of the forecast. The lowest month-end is ${gbp(v.low?.bank ?? 0)}, in ${v.low?.month}.`}>
+          <Insight href="/money" fold="Show the bank by month" foot={src(money)} sentence={under.length ? `The bank is forecast to go overdrawn in ${under.length} ${under.length === 1 ? "month" : "months"}, first in ${under[0].label}.` : `The bank stays in credit every month of the forecast. The lowest month-end is ${gbp(v.low?.bank ?? 0)}, in ${v.low?.month}.`}>
             <BalanceLine points={v.points} floor={v.floor} compare={v.withLoan && loan ? { points: v.withLoan, label: `if the ${gbp(loan.principal)} loan is drawn now` } : null} ariaLabel="Forecast month-end bank balance, with the £10,000 reference line" />
           </Insight>
         );
@@ -65,7 +65,7 @@ function AreaInsights({ areas }: { areas: any[] }) {
         ) : <Insight href="/growth" foot={src(growth)} sentence="No consultations have been booked from the ads yet." />;
       })()}
       {patients?.extra?.viz && (
-        <Insight href="/patients" foot={src(patients)} sentence={`${patients.extra.booked} of ${patients.extra.leads} people who asked have booked a consultation.${patients.extra.waiting ? ` ${patients.extra.waiting} have not booked yet.` : ""}`}>
+        <Insight href="/patients" fold="Show the funnel" foot={src(patients)} sentence={`${patients.extra.booked} of ${patients.extra.leads} people who asked have booked a consultation.${patients.extra.waiting ? ` ${patients.extra.waiting} have not booked yet.` : ""}`}>
           <Funnel stages={patients.extra.viz.funnel} ariaLabel="From leads to booked consultations to paying patients" />
         </Insight>
       )}
@@ -81,6 +81,9 @@ function AreaInsights({ areas }: { areas: any[] }) {
 export default function HomePage() {
   const { data, isLoading, error, refetch } = useBrief();
   const { data: act } = useActivity();
+  // The questions and approvals are counted from the Inbox itself, so Today and the Inbox agree; the
+  // brief's total also counts the warnings above.
+  const { data: props } = useProposals();
   const [showAll, setShowAll] = useState(false);
   const date = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/London" });
 
@@ -131,15 +134,16 @@ export default function HomePage() {
       {!isLoading && items.length > 0 && (() => {
         const warnings = items.filter((it) => it.kind !== "proposal");
         const asks = items.filter((it) => it.kind === "proposal") as Extract<BriefItem, { kind: "proposal" }>[];
+        const askCount = props?.open.length ?? asks.length;
         return (
           <>
             {warnings.length > 0 && <Section title="Worth a look" id="needs"><div className="grid gap-3 md:grid-cols-2 items-start">{warnings.slice(0, 3).map((it) => <div key={it.id} className="min-w-0"><BriefItemCard item={it} /></div>)}</div></Section>}
             {asks.length > 0 && (
-              <Section title={`Waiting for a word from you (${data?.total ?? asks.length})`} id="asks" note={<Link href="/inbox" className="underline">open all</Link>}>
+              <Section title={`Waiting for a word from you (${askCount})`} id="asks" note={<Link href="/inbox" className="underline">open all</Link>}>
                 <Rows>
                   {asks.slice(0, 3).map((it) => <RowItem key={it.id} href="/inbox"><span className="min-w-0 text-[1rem] text-ink">{it.proposal.title}</span></RowItem>)}
                 </Rows>
-                {(data?.total ?? asks.length) > 3 && <p className="text-[0.9rem] text-ink-2">and {(data?.total ?? asks.length) - 3} more. None of them stops anything running today.</p>}
+                {askCount > 3 && <p className="text-[0.9rem] text-ink-2">and {askCount - 3} more in the Inbox. None of them stops anything running today.</p>}
               </Section>
             )}
           </>

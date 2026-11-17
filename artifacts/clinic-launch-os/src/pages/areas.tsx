@@ -5,7 +5,7 @@ import { useState, type ReactNode } from "react";
 import { BoardShell } from "@/components/board-shell";
 import { BankInput, AccountsView } from "@/components/bank-input";
 import { AREAS } from "@/components/shell/nav";
-import { LinkList, Section } from "@/components/page";
+import { AreaLinks, Fold, Section } from "@/components/page";
 import { useSummary, useCashModel, dayMonth } from "@/lib/alfred";
 import { OutlookChart } from "@/components/outlook-chart";
 import { SplitBar, InOutColumns, Ring, DiaryColumns } from "@/components/viz";
@@ -17,7 +17,7 @@ function AreaPage({ area, board, next, children, lead }: { area: string; board: 
   const a = AREAS.find((x) => x.key === area)!;
   return (
     <BoardShell board={board} eyebrow={a.label} title={a.label} next={next} lead={lead}
-      after={<Section title={`In ${a.label}`}><LinkList links={a.pages.map((p) => ({ href: p.href, label: p.label, note: p.note }))} /></Section>}>
+      after={<Section title={`In ${a.label}`}><AreaLinks links={a.pages.map((p) => ({ href: p.href, label: p.label, note: p.note }))} /></Section>}>
       {children}
     </BoardShell>
   );
@@ -42,7 +42,7 @@ function Outlook({ o }: { o?: any }) {
         </ul>
       )}
       {o.relies?.length > 0 && <p className="text-[0.95rem] text-ink-2 leading-relaxed"><span className="font-semibold text-ink">This relies on: </span>{o.relies.join("; ")}.</p>}
-      <p className="text-[0.82rem] text-ink-muted leading-relaxed">{o.rule}</p>
+      <details className="text-[0.82rem] text-ink-muted leading-relaxed"><summary className="cursor-pointer underline underline-offset-2 min-h-[32px] inline-flex items-center">How better or worse is judged</summary><p className="pt-1">{o.rule}</p></details>
     </section>
   );
 }
@@ -54,8 +54,10 @@ function InOut() {
   if (rows.length < 2) return null;
   return (
     <Section title="In and out of the bank, month by month" id="inout-h" note="the plan">
+      <Fold label="Show each month">
       <InOutColumns rows={rows.map((r) => ({ label: r.label, in: r.moneyIn, out: r.moneyOutBank, title: `${r.label}: in ${money0(r.moneyIn)}, out ${money0(r.moneyOutBank)}, bank at the end ${money0(r.closingBank)}` }))}
         ariaLabel={`Money into and out of the bank each month. ${rows.map((r) => `${r.label}: in ${money0(r.moneyIn)}, out ${money0(r.moneyOutBank)}`).join("; ")}`} inLabel="Into the bank" outLabel="Out of the bank" />
+      </Fold>
       <p className="text-[0.82rem] text-ink-muted leading-relaxed">Takings, funding and refunds in; the build, rent, rates, running costs and repayments out. The same figures as the Money Plan.</p>
     </Section>
   );
@@ -68,9 +70,13 @@ export function MoneyArea() {
     <AreaPage area="money" board="money" lead={<><Outlook o={data?.extra?.outlook} /><InOut /></>} next={<>After paying anything from the bank, type the new balance here; anything bought on a card is added to the card's register.</>}>
       <Section title="The bank" id="bank-h">
         {!open && data?.extra?.bank?.accounts?.length ? (
+          <>
+          <Fold label="Show each account">
           <SplitBar ariaLabel="The bank, by account" total={{ label: `In the bank, ${dayMonth(data.extra.bank.asAt)}`, value: `£${data.extra.bank.balanceGbp.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` }}
             format={(n) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             parts={data.extra.bank.accounts.map((a: any) => ({ label: a.name, value: a.arriving ? null : a.balanceGbp, note: a.balanceGbp == null ? "not measured yet" : `${a.arriving ? `£${a.balanceGbp.toLocaleString("en-GB")} arriving, not counted; ` : ""}${a.source === "statement" ? "from statement" : a.source}, dated ${dayMonth(a.asAt)}` }))} />
+          </Fold>
+          </>
         ) : null}
         {!open && data?.extra?.bank && !data.extra.bank.accounts?.length && <p className="text-[1rem] text-ink">£{Math.round(data.extra.bank.balanceGbp).toLocaleString("en-GB")} typed for {new Date(data.extra.bank.asAt + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, all accounts as one.</p>}
         {!open && (data?.extra?.expected ?? []).length > 0 && <p className="text-[0.95rem] text-ink-2">Expected, not yet in the bank: {data!.extra.expected.map((e: any) => `${e.label} £${Math.round(e.amount).toLocaleString("en-GB")}`).join("; ")}.</p>}
@@ -96,7 +102,7 @@ export function PatientsArea() {
         <Section title="From asking to booking" id="pat-funnel">
           <div className="grid gap-6 sm:grid-cols-[auto_1fr] items-center">
             <Ring value={x.booked / x.leads} label="Leads that booked" sub={`${x.booked} of ${x.leads} since the ads began`} tone="good" />
-            <Funnel stages={x.viz.funnel} ariaLabel="From leads to booked consultations to paying patients" />
+            <Fold label="Show the funnel"><Funnel stages={x.viz.funnel} ariaLabel="From leads to booked consultations to paying patients" /></Fold>
           </div>
         </Section>
       ) : undefined} />
@@ -117,7 +123,7 @@ export function ClinicArea() {
               {data?.extra?.fill14 != null && <Ring value={data.extra.fill14} label="Diary booked" sub="next 14 days" size={118} />}
               {toOpen != null && toOpen > 0 && <Ring value={Math.max(0, 1 - toOpen / 60)} center={String(toOpen)} label="Days to opening" sub="Winchester, 8 December" tone="sage" size={118} />}
             </div>
-            <DiaryColumns days={days} ariaLabel={`Booked time against open time for each clinic day. ${days.map((d) => `${d.label}: ${d.blocked ? "blocked" : `${Math.round((100 * d.booked) / (d.open || 1))} per cent`}`).join("; ")}`} />
+            <Fold label="Show each day"><DiaryColumns days={days} ariaLabel={`Booked time against open time for each clinic day. ${days.map((d) => `${d.label}: ${d.blocked ? "blocked" : `${Math.round((100 * d.booked) / (d.open || 1))} per cent`}`).join("; ")}`} /></Fold>
           </div>
           <p className="text-[0.82rem] text-ink-muted">Each column is as tall as that day's open time and filled to what is booked. Hatched days are blocked.</p>
         </Section>

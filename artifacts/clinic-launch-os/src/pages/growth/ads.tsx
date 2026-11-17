@@ -6,7 +6,7 @@ import { useSummary } from "@/lib/alfred";
 import { Verdict } from "@/components/verdict";
 import { KpiGrid } from "@/components/kpi";
 import { NeedsYou } from "@/components/board-shell";
-import { Page, PageHead, Section, LinkList, Next } from "@/components/page";
+import { Page, PageHead, Section, AreaLinks, Next } from "@/components/page";
 import { Flow } from "@/components/viz";
 import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,7 +38,7 @@ export default function AdsCommandPage() {
       )}
       <NeedsYou board="ads" summary={s} max={3} />
       {s?.extra?.thisMonth && <Next>{s.extra.thisMonth}</Next>}
-      <Section title="Detail"><LinkList links={ADS_PAGES} /></Section>
+      <Section title="Detail"><AreaLinks links={ADS_PAGES} /></Section>
       {s && <p className="text-[0.78rem] text-ink-muted">{s.keeper}. <Link href="/sources" className="underline">Sources</Link></p>}
     </Page>
   );

@@ -1,13 +1,14 @@
 // Growth, the command screen (a reference screen in docs/ALFRED-DESIGN.md). Are we getting patients,
 // and what is it costing? One idea per section: the verdict, the "so what" against outside
 // benchmarks, leads and bookings day by day (hover or tap a day for who and when), the journey from
-// lead to paying patient, what needs a decision, and the campaigns this month.
+// lead to paying patient, what needs a decision, and the campaigns this month. On a phone each chart
+// sits one tap below its sentence, so the screen reads as sentences first.
 import { Link } from "wouter";
 import { useSummary, usePage } from "@/lib/alfred";
 import { Verdict } from "@/components/verdict";
 import { NeedsYou } from "@/components/board-shell";
-import { Page, PageHead, Section, LinkList } from "@/components/page";
-import { Funnel, Timeline } from "@/components/charts";
+import { Page, PageHead, Section, AreaLinks, Fold } from "@/components/page";
+import { Timeline } from "@/components/charts";
 import { LeadDays, Flow, Bench, type LeadDay } from "@/components/viz";
 import { AREAS } from "@/components/shell/nav";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,6 +59,7 @@ export default function GrowthCommand() {
             {good ? "Good news so far. " : "Mixed so far. "}
             A lead is costing {gbp(v.cpl, 2)} where beauty advertisers typically pay {BENCH.cpl.text}, and {rate} in 100 leads have booked a consultation.
           </p>
+          <Fold label="Show against the benchmarks">
           <p className="text-[1rem] text-ink-2 leading-relaxed max-w-[62ch]">
             {perMonth != null && <>If this rate held, the current spend of about {gbp(spendDay)} a day would book about {perMonth} consultations a month. </>}
             What is not known yet is whether they turn up and pay: the first consultation is on {x?.firstAppt}, and paying patients are counted from about {x?.firstClose}.{early ? ` ${running.length} days is a small sample, so expect these figures to move.` : ""}
@@ -76,6 +78,7 @@ export default function GrowthCommand() {
               <li>Looked up on 16 Nov 2026. Rough guides, not targets.</li>
             </ul>
           </details>
+          </Fold>
         </Section>
       )}
 
@@ -84,7 +87,9 @@ export default function GrowthCommand() {
           <p className="text-[1.1rem] sm:text-[1.25rem] leading-snug font-bold text-ink max-w-[52ch]">
             {x?.hadPrev ? `${x?.leadsW ?? 0} leads came in over the last seven days, against ${x.leadsP} the week before.` : `${leads14} ${leads14 === 1 ? "lead has" : "leads have"} come in over the ${running.length} days since the ads began on ${days[firstRun]?.label ?? "12 Nov"}.`}
           </p>
+          <Fold label="Show each day">
           <LeadDays days={shown} paidFrom={x?.firstClose ? `from about ${x.firstClose}` : undefined} ariaLabel={`Leads and booked consultations per day. ${shown.map((d) => `${d.label}: ${d.leads} leads, ${d.booked} booked`).join("; ")}`} />
+          </Fold>
           <p className="text-[0.78rem] text-ink-muted">{x?.hadPrev ? `Last week: ${x.leadsP} leads, ${x.bookedP} booked. ` : "No earlier week to compare yet. "}{src}. Names are first name and initial only.</p>
         </Section>
       )}
@@ -92,7 +97,6 @@ export default function GrowthCommand() {
       {x?.pathway?.length > 0 && (
         <Section title="From the ad to a paying patient" id="flow-h" note={<Link href="/patients/pathway" className="underline">every lead</Link>}>
           <Flow steps={x.pathway} ariaLabel="From ad spend to leads, booked consultations, seen and paying" />
-          <Funnel stages={[{ label: "Leads", value: x?.leads ?? 0 }, { label: "Booked", value: x?.booked ?? 0 }, { label: "Seen", value: null, note: `from ${x?.firstAppt}` }, { label: "Paying", value: null, note: `from about ${x?.firstClose}` }]} ariaLabel="From leads to booked consultations to paying patients" />
           <p className="text-[0.78rem] text-ink-muted">Booked within minutes of the form for most; paying is counted 30 days after each consultation.</p>
         </Section>
       )}
@@ -101,12 +105,12 @@ export default function GrowthCommand() {
 
       {v?.timeline?.rows?.length > 0 && (
         <Section title="Campaigns, the next six months">
-          <Timeline months={v.timeline.months} rows={v.timeline.rows} todayIndex={0} ariaLabel="Campaign timeline for the next six months" />
+          <Fold label="Show the six months"><Timeline months={v.timeline.months} rows={v.timeline.rows} todayIndex={0} ariaLabel="Campaign timeline for the next six months" /></Fold>
           {x?.thisMonth && <p className="text-[0.95rem] text-ink-2 leading-relaxed">{x.thisMonth}</p>}
         </Section>
       )}
 
-      <Section title="In Growth"><LinkList links={pages.map((p) => ({ href: p.href, label: p.label, note: p.note }))} /></Section>
+      <Section title="In Growth"><AreaLinks links={pages.map((p) => ({ href: p.href, label: p.label, note: p.note }))} /></Section>
       {s && <p className="text-[0.8rem] text-ink-2">{s.keeper}. <Link href="/sources" className="underline">Sources</Link></p>}
     </Page>
   );

@@ -3,7 +3,7 @@
 // to film this week with the script, reviews to ask for, and stock to tick. No money, no ads.
 import { usePage, useProposals, type Chip } from "@/lib/alfred";
 import { ProposalCard } from "@/components/proposal-card";
-import { Page, PageHead, Section, Rows, NotYet, longDay } from "@/components/page";
+import { Page, PageHead, Section, Rows, NotYet, Fold, longDay } from "@/components/page";
 import { Sources } from "@/components/fresh";
 import { StockList } from "@/pages/clinic/pages";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,13 +55,20 @@ export default function AbiPage() {
           <ReadyCard />
           <div className="grid grid-cols-2 gap-x-5 mt-6"><Day label="Today" d={data.today} /><Day label="Tomorrow" d={data.tomorrow} /></div>
           <Section title="Film this week">
-            {data.film.length ? <Rows>{data.film.map((v: any) => (
+            {data.film.length ? <><Rows>{data.film.slice(0, 3).map((v: any) => (
               <li key={v.id} className="py-3 border-b border-border grid gap-1">
                 <div className="flex justify-between gap-3"><span className="font-semibold text-ink">{v.title}</span><span className="text-[0.8rem] text-ink-muted">by {longDay(v.filmBy)}</span></div>
                 <p className="text-[0.9rem] text-ink">"{v.hook}"</p>
                 <ScriptView script={v.script} scriptRef={v.scriptRef} />
               </li>
-            ))}</Rows> : <p className="text-[0.9rem] text-ink-muted">Nothing to film this week.</p>}
+            ))}</Rows>
+            {data.film.length > 3 && <Fold label={`Show the other ${data.film.length - 3}`}><Rows>{data.film.slice(3).map((v: any) => (
+              <li key={v.id} className="py-3 border-b border-border grid gap-1">
+                <div className="flex justify-between gap-3"><span className="font-semibold text-ink">{v.title}</span><span className="text-[0.8rem] text-ink-muted">by {longDay(v.filmBy)}</span></div>
+                <p className="text-[0.9rem] text-ink">"{v.hook}"</p>
+                <ScriptView script={v.script} scriptRef={v.scriptRef} />
+              </li>
+            ))}</Rows></Fold>}</> : <p className="text-[0.9rem] text-ink-muted">Nothing to film this week.</p>}
           </Section>
           {joint.length > 0 && <Section title="To decide with David"><div className="grid gap-3">{joint.map((p) => <ProposalCard key={p.id} p={p} compact />)}</div></Section>}
           <Section title="Reviews to ask for"><NotYet what={data.reviewsNote} /></Section>
