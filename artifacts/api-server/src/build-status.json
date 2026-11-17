@@ -214,8 +214,8 @@
     {
       "area": "Shell",
       "name": "Design pass",
-      "status": "partial",
-      "note": "Design reset under way: Today and Growth rebuilt as the reference (plain sentence per idea, bullet, funnel, line and timeline charts, one sans family); docs/ALFRED-DESIGN.md written; other screens follow."
+      "status": "done",
+      "note": "17 Nov: one sans family on every screen, area pages as pills, charts one tap below their sentence on a phone, questions as one line into the Inbox; Market, Compliance and the opening checklist open with a plain sentence. The planning-era pages under Compliance and the opening checklist keep their old layout."
     },
     {
       "area": "Agents",
@@ -274,8 +274,8 @@
     {
       "area": "Audit",
       "name": "Slice 6 audit at 375px",
-      "status": "todo",
-      "note": "Every screen against the three promises and the design bar."
+      "status": "partial",
+      "note": "17 Nov: 37 pages scored in docs/UX-AUDIT-2026-11.md, 177 of 222 before and 203 after; 15 failures fixed, no page scrolls sideways. Left: seven command screens are still 2.2 to 3.5 screens long, which needs a decision on how much of the brief a phone shows."
     },
     {
       "area": "Data",
