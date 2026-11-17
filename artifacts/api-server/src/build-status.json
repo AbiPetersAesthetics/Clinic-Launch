@@ -1,5 +1,5 @@
 {
-  "updatedIso": "2026-11-17T14:16:58.772Z",
+  "updatedIso": "2026-11-17T14:20:02.847Z",
   "items": [
     {
       "area": "Today",
@@ -292,14 +292,14 @@
     {
       "area": "Data",
       "name": "Undated loan shown as available, with and without it",
-      "status": "partial",
-      "note": "Code done; the loan's date is cleared by the approved card when the hosted app applies it."
+      "status": "done",
+      "note": "The £13,000 loan shows as undated and available, applied from the approved card on 16 Nov."
     },
     {
       "area": "Data",
       "name": "£10,000 gift expected on 17 Nov, not received",
-      "status": "partial",
-      "note": "Shown as expected funding. Its date in the database (5 Nov) needs the same held database write."
+      "status": "done",
+      "note": "Shown as expected on 17 Nov, applied from the approved card on 16 Nov; it moves to the bank when it arrives."
     },
     {
       "area": "Data",
@@ -316,14 +316,14 @@
     {
       "area": "Data",
       "name": "Bank held as separate Tide accounts with sources",
-      "status": "partial",
-      "note": "Input and display built; the figures themselves wait for the bank card (a database write held for permission)."
+      "status": "done",
+      "note": "Current account, Instant Saver and Tax Saver held separately as at 15 Nov, each with its source."
     },
     {
       "area": "Data",
       "name": "Card refunds, CBS application 2, Abi's VAT transfer",
       "status": "partial",
-      "note": "Approved; the hosted app applies the refunds and CBS application 2 after this deploy. Abi's transfer waits for the money."
+      "note": "Refunds and CBS application 2 applied 16 Nov. Abi's £4,305.47 VAT transfer waits for her money."
     },
     {
       "area": "Data",
@@ -340,8 +340,8 @@
     {
       "area": "Inbox",
       "name": "Own-record changes apply on approval, with Undo and revert",
-      "status": "partial",
-      "note": "Built for bank, funding dates, card entries, opening date, model inputs and plan payments. The hosted app applies the cards approved tonight after this deploy."
+      "status": "done",
+      "note": "Built and in use: the bank, funding, card, CBS and fire stopping cards were all applied this way on 15 and 16 Nov."
     },
     {
       "area": "Inbox",
@@ -364,8 +364,8 @@
     {
       "area": "Data",
       "name": "CBS application 2 by element",
-      "status": "partial",
-      "note": "Split entered from CBS's sheet (£25,158.86 against 11 lines); £579 of fire stopping has no plan line and is a question card."
+      "status": "done",
+      "note": "Split entered from CBS's sheet; the £579 of fire stopping was placed in the plan by the owner's answer on 15 Nov."
     },
     {
       "area": "Data",
