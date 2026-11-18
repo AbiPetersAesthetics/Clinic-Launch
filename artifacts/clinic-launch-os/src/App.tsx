@@ -188,6 +188,7 @@ function Router() {
 
         <Route path="/growth" component={GrowthCommand} />
         <Route path="/growth/ads" component={AdsCommandPage} />
+        <Route path="/growth/ads/patient-maths">{() => <GrowthSection id="patient-maths" />}</Route>
         <Route path="/growth/ads/every-ad">{() => <GrowthSection id="every-ad" />}</Route>
         <Route path="/growth/ads/last-14-days">{() => <GrowthSection id="last-14-days" />}</Route>
         <Route path="/growth/ads/simulator">{() => <GrowthSection id="simulator" />}</Route>

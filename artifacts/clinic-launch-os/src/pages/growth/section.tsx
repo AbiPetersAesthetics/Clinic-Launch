@@ -7,6 +7,7 @@ import { PROJECT_ID } from "@/lib/alfred";
 
 const ads = { href: "/growth/ads", label: "Ads" };
 const SECTIONS: Record<string, { title: string; src: string; back: { href: string; label: string }; eyebrow?: string; note?: string }> = {
+  "patient-maths": { title: "Patient Maths", src: `/api/projects/${PROJECT_ID}/boards/patient-maths`, back: ads, note: "How many consultations Abi can take, what a paying patient may cost, and the leads, clicks and budget that follow. Worked out live every time it opens." },
   "every-ad": { title: "Every ad and audience", src: `/api/projects/${PROJECT_ID}/boards/ads/ads`, back: ads, note: "Each ad best first, every audience with its fatigue, and the all-time figures." },
   "last-14-days": { title: "Last 14 days", src: `/api/projects/${PROJECT_ID}/boards/ads/last14`, back: ads, note: "Day by day spend, leads and bookings, and this week against last." },
   simulator: { title: "Simulator", src: `/api/projects/${PROJECT_ID}/boards/ads/simulator`, back: ads, note: "What a budget would buy. Every slider opens on a measured figure." },

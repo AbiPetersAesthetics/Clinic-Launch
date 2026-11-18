@@ -63,13 +63,13 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
   const roas = paying.length ? revenue / p.spend.total : null;
   const leadToBooked = leads ? booked / leads : 0.5;
   // Booked to paying: only this campaign's own leads (owner, 15 Nov 2026: no historic figures).
-  // Measured once 5 booked leads have passed 30 days from their consultation (or paid sooner).
+  // Measured once 5 booked leads have passed 60 days from their consultation (or paid sooner; owner, 18 Nov 2026: treatment or skincare within 60 days).
   const closed = p.leads.filter((l) => l.treated === true || l.treated === false).length;
   const b2p = closed >= 5 ? p.leads.filter((l) => l.treated === true).length / closed : null;
   const appts = p.leads.map((l) => l.apptIso).filter(Boolean).sort() as string[];
   const fmtDay = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "Europe/London" });
   const firstAppt = appts[0] ? fmtDay(appts[0]) : "December";
-  const firstClose = appts[0] ? fmtDay(new Date(Date.parse(appts[0]) + 30 * 86400000).toISOString()) : "January";
+  const firstClose = appts[0] ? fmtDay(new Date(Date.parse(appts[0]) + 60 * 86400000).toISOString()) : "February";
   const notYet = `not measured yet: first consultation ${firstAppt}, first 30 day result about ${firstClose}`;
   // How fresh the figures are
   const ageH = p.updatedIso ? (Date.now() - Date.parse(p.updatedIso)) / 3600000 : null;
@@ -105,7 +105,7 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
     frow("Leads", leads, ""),
     frow("Booked consultation", booked, `${pct(leadToBooked)} of leads, mostly within three minutes of the form`),
     frow("Attended", o ? o.attended : null, o ? `${booked ? pct(o.attended / booked) : ""} of booked` : `read from ANS the morning after each consultation; first one ${firstAppt}`),
-    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 30 days` : notYet),
+    frow("Paying patient", o ? o.treated : null, o ? `${o.pending} still inside their 60 days` : notYet),
   ].join("");
 
   // Diary and budget
@@ -229,7 +229,7 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
       <div class="ctl"><span class="lbl">Daily budget</span><div class="slide"><input id="s-budget" type="range" min="20" max="60" step="1" value="${Math.round(p.budgetAdvice?.current ?? 25)}"><output id="o-budget"></output></div><span class="hint">Live: £${Math.round(p.budgetAdvice?.current ?? 25)} a day across the three campaigns.</span></div>
       <div class="ctl"><span class="lbl">Cost per lead</span><div class="slide"><input id="s-cpl" type="range" min="3" max="25" step="0.01" value="${cpl.toFixed(2)}"><output id="o-cpl"></output></div><span class="hint">Measured: ${gbp(p.spend.total)} for ${leads} leads. Usually rises as spend rises.</span></div>
       <div class="ctl"><span class="lbl">Lead to booked</span><div class="slide"><input id="s-l2b" type="range" min="0.05" max="0.95" step="0.01" value="${leadToBooked.toFixed(2)}"><output id="o-l2b"></output></div><span class="hint">Measured: ${booked} of ${leads} leads booked.</span></div>
-      ${b2p != null ? `<div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.05" max="0.95" step="0.01" value="${b2p.toFixed(2)}"><output id="o-b2p"></output></div><span class="hint">Measured: ${closed} booked leads past their 30 days.</span></div>` : `<div class="ctl"><span class="lbl">Booked to paying</span><span class="hint">${esc(notYet.replace("not measured yet", "Not measured yet"))}. Until then the simulator stops at booked consultations; no historic figure is used.</span></div>`}
+      ${b2p != null ? `<div class="ctl"><span class="lbl">Booked to paying</span><div class="slide"><input id="s-b2p" type="range" min="0.05" max="0.95" step="0.01" value="${b2p.toFixed(2)}"><output id="o-b2p"></output></div><span class="hint">Measured: ${closed} booked leads past their 60 days.</span></div>` : `<div class="ctl"><span class="lbl">Booked to paying</span><span class="hint">${esc(notYet.replace("not measured yet", "Not measured yet"))}. Until then the simulator stops at booked consultations; no historic figure is used.</span></div>`}
       <div class="ctl"><span class="lbl">Clinicians</span><div class="seg" id="s-team"><button type="button" aria-pressed="true" data-v="1">Abi alone</button><button type="button" aria-pressed="false" data-v="2">Two</button></div></div>
       <div class="ctl"><span class="lbl">Each month</span><div class="simout" id="simout"></div></div>
     </aside>
@@ -264,7 +264,7 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
     creative: `        <div class="card"><span class="q">Evergreen creative</span><h2>What the always-on ads say, and when it changes</h2><ul class="steps">${themes}</ul></div>
 `,
     sched: `        <div class="card"><span class="q">How the data is collected</span><h2>The scheduled runs that feed this board</h2><ul class="sched">${sched}</ul>
-          <div class="life"><div><b>Minute 0</b>Form sent, lead in GHL</div><div><b>3 minutes</b>Most book from the thank-you button</div><div><b>Consultation day</b>Attended or not, from ANS</div><div><b>Within 30 days</b>First paid treatment: a paying patient</div><div><b>90 days</b>Takings so far: ROAS</div></div>
+          <div class="life"><div><b>Minute 0</b>Form sent, lead in GHL</div><div><b>3 minutes</b>Most book from the thank-you button</div><div><b>Consultation day</b>Attended or not, from ANS</div><div><b>Within 60 days</b>First paid treatment or skincare: a paying patient</div><div><b>90 days</b>Takings so far: ROAS</div></div>
         </div>
 `,
     note: `      <p style="color:var(--muted);font-size:11.5px">${esc(A.note)} Rulebook: ads/STRATEGY.md. Plan: ads/meta/pathway/ads-plan.json.</p>
@@ -422,7 +422,7 @@ export function renderNow(p: Snapshot, T: Plan["targets"]): string {
     { label: "Leads", num: String(leads), sub: leads ? `${g(spend / leads)} each` : "none yet" },
     { label: "Booked", num: String(booked), sub: booked ? `${g(spend / booked)} each` : "none yet" },
     { label: "Attended", num: anyAttendData ? String(attended) : "soon", sub: anyAttendData ? `${booked ? Math.round((100 * attended) / booked) : 0}% of booked` : `first on ${firstApptNow}`, pend: !anyAttendData },
-    { label: "Paying", num: paying ? String(paying) : "soon", sub: paying ? `${g(spend / paying)} each` : "30 days after each", pend: !paying },
+    { label: "Paying", num: paying ? String(paying) : "soon", sub: paying ? `${g(spend / paying)} each` : "60 days after each", pend: !paying },
   ];
   const rates = [
     imps ? `${((100 * clicks) / imps).toFixed(1)}% click` : "",

@@ -12,6 +12,7 @@ import { Sources } from "@/components/fresh";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const ADS_PAGES = [
+  { href: "/growth/ads/patient-maths", label: "Patient Maths", note: "Leads, clicks and budget needed for the patients Abi can take" },
   { href: "/growth/ads/every-ad", label: "Every ad and audience", note: "Each ad best first; audience fatigue; the all-time figures" },
   { href: "/growth/ads/last-14-days", label: "Last 14 days", note: "Day by day, and this week against last" },
   { href: "/growth/ads/simulator", label: "Simulator", note: "What a budget would buy" },

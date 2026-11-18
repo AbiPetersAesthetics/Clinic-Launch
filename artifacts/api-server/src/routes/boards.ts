@@ -20,6 +20,8 @@ import { renderOpeningBoard } from "../boards/opening-board";
 import { renderAdsBoard } from "../boards/ads-board";
 import { renderAdsIdeas } from "../boards/ads-ideas";
 import { renderClinicBoard } from "../boards/clinic-board";
+import { renderPatientMaths, PM_DEFAULTS, type PMConfig, type Treatment } from "../boards/patient-maths";
+import ADS_HEAD from "../boards/ads-board-head.html";
 import { summaryFor, BOARD_SUMMARY, latestAds } from "../lib/board-data";
 import { embedChrome, withTokens } from "../boards/embed-chrome";
 
@@ -163,6 +165,23 @@ router.get("/projects/:projectId/boards/ads-ideas", async (req, res) => {
     } catch { /* no snapshots table yet */ }
     page(res, renderAdsIdeas(snap), req);
   } catch (err) { failed(res, "Ads Ideas", err); }
+});
+
+// Patient Maths: the leads-needed method, worked out live on every open from the treatment list (product
+// costs), the latest Ads Pathway snapshot and the owner's rules, which a "patient-maths-config" board
+// snapshot may override. Nothing is cached, so a changed stock cost changes the answer at once.
+router.get("/projects/:projectId/boards/patient-maths", async (req, res) => {
+  try {
+    const projectId = parseInt(req.params.projectId);
+    const snap = await latestAds(projectId);
+    const t = await db.execute(sql`SELECT key, display_name, category, price_winchester, product_cost_estimate_gbp FROM treatments ORDER BY sort_order`);
+    let over: Partial<PMConfig> = {};
+    try {
+      const c = await db.execute(sql`SELECT data FROM board_snapshots WHERE project_id = ${projectId} AND key = 'patient-maths-config' ORDER BY created_at DESC LIMIT 1`);
+      over = (((c as any).rows ?? c)[0])?.data ?? {};
+    } catch { /* no override: the owner's 18 Nov rules */ }
+    page(res, renderPatientMaths(snap, ((t as any).rows ?? t) as Treatment[], { ...PM_DEFAULTS, ...over }, today(), ADS_HEAD), req);
+  } catch (err) { failed(res, "Patient Maths", err); }
 });
 
 // The Clinic Board: the latest "clinic" board snapshot plus the Ads Pathway leads for ad-booked consultations.
