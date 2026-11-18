@@ -10,7 +10,8 @@ interface Month { month: string; theme: string; keyDates: { date: string; moment
 interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
-interface Campaign { id: string; name: string; kind: string; start: string; end: string | null; perDay: number; what: string; status: string; creative?: { from: string; theme: string }[] }
+interface Campaign { id: string; name: string; kind: string; start: string; end: string | null; perDay: number; what: string; status: string; meta?: string[]; creative?: { from: string; theme: string }[] }
+interface MetaCamp { id: string; name: string; status: string; start: string; stop: string | null; perDay: number }
 interface Plan {
   goal: string; targets: { costPerLead: number[]; costPerBooked: number; costPerPaying: number; roasFirstVisit: number; roasYearOne: number };
   caps: { from: string; perDay: number; why: string }[]; months: string[]; campaigns: Campaign[]; switching: string;
@@ -28,6 +29,7 @@ interface Snapshot {
   budgetAdvice?: { current: number; proposed: number; action: string; why: string };
   plan?: Plan;
   daily?: Day[];
+  metaCampaigns?: { asOf: string; campaigns: MetaCamp[] };
   monthly?: { built: string; principles: string[]; months: Month[] };
   checks?: { asOf: string; metaLeadsVsGhl?: string; bookingsTriple?: string; openLeads?: string; uncertain?: string[] };
 }
@@ -168,7 +170,7 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
       <tr><td style="color:var(--muted)">About per month</td>${monthly}</tr></tbody></table></div>`;
   };
   void calendar; void curYear;
-  const timeline = renderTimeline(plan);
+  const timeline = renderTimeline(plan, p.metaCampaigns);
   const themes = (plan.campaigns.find((c) => c.id === "evergreen")?.creative ?? []).map((t) => `<li><span>${esc(t.theme)}</span><b>${esc(new Date(t.from + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }))}</b></li>`).join("");
 
   // Every lead, newest first
@@ -340,7 +342,7 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
 // my ads start and stop". A rolling 12 months from the first of this month: one bar per campaign at
 // its exact days, today marked, then every start, stop and creative change as a dated list with the
 // total daily spend from that day.
-function renderTimeline(plan: Plan): string {
+function renderTimeline(plan: Plan, meta?: { asOf: string; campaigns: MetaCamp[] }): string {
   const DAY = 86400000;
   const t = (ymd: string) => Date.parse(ymd.slice(0, 10) + "T12:00:00Z");
   const today = ukDate(new Date().toISOString());
@@ -355,6 +357,17 @@ function renderTimeline(plan: Plan): string {
   const capOn = (ymd: string) => [...plan.caps].filter((c) => c.from <= ymd.slice(0, 7)).pop()?.perDay ?? 40;
   const totalOn = (ymd: string) => plan.campaigns.filter((c) => live(c, ymd) && c.status !== "conditional").reduce((s, c) => s + c.perDay, 0);
   const inWin = plan.campaigns.filter((c) => c.start.slice(0, 10) < w1ymd && (!c.end || c.end.slice(0, 10) >= w0ymd)).sort((a, b) => (a.kind === "evergreen" ? -1 : b.kind === "evergreen" ? 1 : a.start.localeCompare(b.start)));
+  // Running, ready or scheduled, or forecast: read from Meta, never typed in (owner, 18 Nov 2026).
+  type St = "running" | "ready" | "forecast" | "done";
+  const mc = meta?.campaigns ?? [];
+  const linked = (c: Campaign) => (c.meta ?? []).map((id) => mc.find((x) => x.id === id)).filter(Boolean) as MetaCamp[];
+  const stateOf = (c: Campaign): St => {
+    if (c.end && c.end.slice(0, 10) < today) return "done";
+    const L = linked(c);
+    if (!L.length) return "forecast";
+    return L.some((x) => /ACTIVE/.test(x.status) && x.start <= today && (!x.stop || x.stop >= today)) ? "running" : "ready";
+  };
+  const readyNote = (c: Campaign) => { const L = linked(c); const x = L[0]; return !x ? "" : /PENDING|REVIEW/.test(x.status) ? "built, in Meta review" : /ACTIVE/.test(x.status) && x.start > today ? `scheduled in Meta to start ${nice(x.start)}` : `built and paused, switched on ${nice(c.start)}`; };
   const money = (n: number) => (n < 0 ? `less £${-n}` : n ? `£${n} a day` : "inside the evergreen budget");
 
   // Month ruler
@@ -381,7 +394,7 @@ function renderTimeline(plan: Plan): string {
     const wide = W > 22;
     const outside = !wide ? `<em class="tl-out" style="${L + W > 70 ? `right:${(100 - L + 0.8).toFixed(2)}%` : `left:${(L + W + 0.8).toFixed(2)}%`}">${label}</em>` : "";
     return `<div class="tl-row"><div class="tl-name"><b>${esc(short(c.name))}</b>${c.status === "conditional" ? `<span class="why">only if conditions hold</span>` : ""}</div>
-      <div class="tl-track">${grid}${todayMark}<div class="tl-bar k-${esc(c.kind)}" style="left:${L.toFixed(3)}%;width:${W.toFixed(3)}%" title="${esc(c.name)}: ${esc(dates)}">${inner || (wide ? `<span class="tl-lab">${label}</span>` : "")}</div>${outside}</div></div>`;
+      <div class="tl-track">${grid}${todayMark}<div class="tl-bar k-${esc(c.kind)} st-${stateOf(c)}" style="left:${L.toFixed(3)}%;width:${W.toFixed(3)}%" title="${esc(c.name)}: ${esc(dates)}">${inner || (wide ? `<span class="tl-lab">${label}</span>` : "")}</div>${outside}</div></div>`;
   }).join("");
 
   // Every start, stop and creative change from today, with the daily total from that day.
@@ -403,11 +416,25 @@ function renderTimeline(plan: Plan): string {
     const m = e.d.slice(0, 7);
     const headM = m !== lastM ? `<li class="ev-m">${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}</li>` : "";
     lastM = m;
+    const ec = plan.campaigns.find((c) => c.name === e.text); const notBuilt = e.kind === "start" && ec && stateOf(ec) === "forecast";
     const tag = e.kind === "start" ? `<span class="pill good">Starts</span>` : e.kind === "stop" ? `<span class="pill">Stops</span>` : `<span class="pill warn">New ads</span>`;
     const tot = e.kind === "change" ? "" : `<span class="ev-tot${e.total > e.cap ? " over" : ""}">£${e.total} a day in total${e.total > e.cap ? `, over the £${e.cap} cap` : ""}</span>`;
-    return `${headM}<li><b class="d">${esc(nice(e.d, true))}</b>${tag}<span class="ev-t"><strong>${esc(e.kind === "change" ? e.text : short(e.text))}</strong><span class="why">${esc(e.kind === "change" ? "" : e.sub)}${e.cond ? (e.kind === "change" ? "" : " &middot; ") + "only if conditions hold" : ""}</span></span>${tot}</li>`;
+    return `${headM}<li><b class="d">${esc(nice(e.d, true))}</b>${tag}<span class="ev-t"><strong>${esc(e.kind === "change" ? e.text : short(e.text))}</strong>${notBuilt ? ` <span class="pill bad">not built yet</span>` : ""}<span class="why">${esc(e.kind === "change" ? "" : e.sub)}${e.cond ? (e.kind === "change" ? "" : " &middot; ") + "only if conditions hold" : ""}</span></span>${tot}</li>`;
   }).join("");
   const now = plan.campaigns.filter((c) => live(c, today));
+  const DAYMS = 86400000;
+  const days = (ymd: string) => Math.round((t(ymd) - t(today)) / DAYMS);
+  const running = plan.campaigns.filter((c) => stateOf(c) === "running");
+  const ready = plan.campaigns.filter((c) => stateOf(c) === "ready").sort((a, b) => a.start.localeCompare(b.start));
+  const fc = plan.campaigns.filter((c) => stateOf(c) === "forecast" && c.start.slice(0, 10) < w1ymd).sort((a, b) => a.start.localeCompare(b.start));
+  const fcItem = (c: Campaign) => { const by = new Date(t(c.start) - 7 * DAYMS).toISOString().slice(0, 10); const late = c.status !== "conditional" && by <= today; return `<li><span><strong>${esc(short(c.name))}</strong><span class="why">starts ${esc(nice(c.start, true))} &middot; ${esc(money(c.perDay))}${c.status === "conditional" ? " &middot; only if conditions hold" : ""}</span></span>${late ? `<span class="pill bad">Build now: starts in ${days(c.start)} days</span>` : `<b>build by ${esc(nice(by))}</b>`}</li>`; };
+  const statusHtml = `<div class="st3">
+    <div><span class="q">Running now</span><ul class="steps">${running.map((c) => `<li><span><strong>${esc(short(c.name))}</strong><span class="why">${c.end ? `until ${esc(nice(c.end))}` : "always on"}</span></span><b>${esc(money(c.perDay))}</b></li>`).join("") || "<li><span>Nothing running</span></li>"}</ul></div>
+    <div><span class="q">Ready or scheduled</span><ul class="steps">${ready.map((c) => `<li><span><strong>${esc(short(c.name))}</strong><span class="why">${esc(readyNote(c))}</span></span><b>${esc(nice(c.start))}</b></li>`).join("") || "<li><span class=\"why\">Nothing built ahead yet</span></li>"}</ul></div>
+    <div><span class="q">Forecast, not built</span><ul class="steps">${fc.slice(0, 4).map(fcItem).join("") || "<li><span>Nothing planned</span></li>"}</ul>${fc.length > 4 ? `<details class="fold"><summary>${fc.length - 4} more planned</summary><div><ul class="steps">${fc.slice(4).map(fcItem).join("")}</ul></div></details>` : ""}</div>
+  </div>
+  <p class="muted-s">Read from Meta ${meta ? esc(new Date(meta.asOf).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" })) : "(no reading yet)"}. Each campaign is built and checked a week before it starts.</p>`;
+  void now;
   const nowHtml = now.map((c) => `<span class="chip">${esc(short(c.name))} <em>${c.end ? `to ${esc(nice(c.end))}` : "always on"}</em></span>`).join("");
   const detail = inWin.map((c) => `<p><b>${esc(c.name)}</b> (${esc(nice(c.start))}${c.end ? ` to ${esc(nice(c.end))}` : ", always on"}): ${esc(c.what)}</p>`).join("");
 
@@ -427,6 +454,10 @@ function renderTimeline(plan: Plan): string {
 .tl-seg:first-child{border-left:0}
 .tl-out{position:absolute;top:5px;font-style:normal;font-size:11px;color:var(--ink);white-space:nowrap}
 .k-conditional .tl-lab{color:var(--ink)}
+.tl-bar.st-forecast{opacity:.45}
+.tl-bar.st-ready{box-shadow:inset 0 0 0 2px var(--ink)}
+.st3{display:grid;gap:16px;grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:800px){.st3{grid-template-columns:minmax(0,1fr)}}
 .nowline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 4px;font-size:12.5px}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
 .chip{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
@@ -449,12 +480,13 @@ function renderTimeline(plan: Plan): string {
 .ask p{margin:0;font-size:13px}
 @media (max-width:640px){.tl-row,.tl-head{grid-template-columns:112px minmax(0,1fr)}.tl-head>span:first-child{position:sticky;left:0;z-index:3;background:var(--sheet);align-self:stretch}.tl-name{position:sticky;left:0;z-index:3;background:var(--sheet);font-size:11.5px;align-self:stretch;display:flex;flex-direction:column;justify-content:center}.evs li{grid-template-columns:70px minmax(0,1fr);row-gap:2px}.evs li .pill{grid-column:2;justify-self:start}.evs li .ev-t,.evs li .ev-tot{grid-column:2}}
 </style>
-  <div class="nowline"><span class="q">Running today</span>${nowHtml || "nothing"}</div>
+  ${statusHtml}
+  <span class="q" style="display:block;margin-top:10px">On the calendar</span>
   <div class="tl-wrap"><div class="tl" role="img" aria-label="Campaign timeline from ${esc(nice(w0ymd))} for 12 months">
     <div class="tl-head"><span></span><div class="tl-ruler">${ruler}</div></div>
     ${rows}
   </div></div>
-  <p class="muted-s">The black line is today. The dates on the evergreen bar are when its ads change. Scroll sideways on a phone; every date is also listed below.</p>
+  <p class="muted-s">Solid bars are running, outlined bars are built and waiting, faded bars are forecast and not built yet. The black line is today. The dates on the evergreen bar are when its ads change. Scroll sideways on a phone; every date is also listed below.</p>
   <span class="q" style="display:block;margin-top:14px">Every start and stop, from today</span>
   <ul class="evs">${evHtml || "<li><span>Nothing changes in the next 12 months.</span></li>"}</ul>
   ${`<details class="fold"><summary>What each campaign is</summary><div>${detail}</div></details>`}`;
