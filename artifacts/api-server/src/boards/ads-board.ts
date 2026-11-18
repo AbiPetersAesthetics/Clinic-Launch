@@ -6,7 +6,7 @@
 import HEAD from "./ads-board-head.html";
 
 interface Lead { name: string; ad: string; status: string; treated?: boolean | null; attended?: boolean | string; firstValue?: number; value90?: number; valueToDate?: number; visits?: number; returned?: boolean; formIso?: string; bookedIso?: string; apptIso?: string; match?: string; formSent?: string; visit?: string; statusText?: string }
-interface Month { month: string; theme: string; keyDates: { date: string; moment: string; use: string }[]; treatmentsToPush: { treatment: string; why: string }[]; offer: { text: string; needsApproval?: boolean | string } | string; campaigns: { name: string; start: string; end: string; objective: string; audience: string; dailyBudget: number; creativeBrief: unknown; landing: string; measure: string }[]; organic: unknown; budgetPerDay: unknown; prepNeeded: { what: string; by: string }[]; risks: unknown }
+interface Month { month: string; theme: string; keyDates: { date: string; moment: string; use: string }[]; treatmentsToPush: { treatment: string; why: string }[]; offer: { text: string; needsApproval?: boolean | string; ownerApproval?: string } | string; campaigns: { name: string; start: string; end: string; objective: string; audience: string; dailyBudget: number; creativeBrief: unknown; landing: string; measure: string }[]; organic: unknown; budgetPerDay: unknown; prepNeeded: { what: string; by: string }[]; risks: unknown }
 interface Day { date: string; spend: number; leadFormSpend?: number; impressions: number; linkClicks: number; metaLeads?: number }
 interface AdRow { creative: string; adset: string; status: string; spend: number; impressions: number; clicks: number; leads: number; frequency: number }
 interface AdSet { name: string; spend: number; reach: number; frequency: number; leads: number }
@@ -167,8 +167,8 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
       <tr><td style="color:var(--muted)">Cap per day</td>${caps}</tr>
       <tr><td style="color:var(--muted)">About per month</td>${monthly}</tr></tbody></table></div>`;
   };
-  const yearTabs = `<div class="seg">${years.map((y) => `<button type="button" data-year="${y}" aria-pressed="${y === curYear}">${y}</button>`).join("")}</div>`;
-  const calendars = years.map(calendar).join("");
+  void calendar; void curYear;
+  const timeline = renderTimeline(plan);
   const themes = (plan.campaigns.find((c) => c.id === "evergreen")?.creative ?? []).map((t) => `<li><span>${esc(t.theme)}</span><b>${esc(new Date(t.from + "T12:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }))}</b></li>`).join("");
 
   // Every lead, newest first
@@ -185,22 +185,35 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
   const mm = p.monthly?.months ?? [];
   const curM = mm.find((m) => m.month === now) ?? mm[0];
   const monthTabs = mm.map((m) => `<button type="button" data-m="${esc(m.month)}" aria-pressed="${m === curM}">${esc(MONTHS[Number(m.month.slice(5)) - 1] + " " + m.month.slice(2, 4))}</button>`).join("");
+  // Each month in short blocks: the decision first, then the ads with their dates, key dates,
+  // what to push and what to prepare. Every reason and brief is one tap away, not on the page
+  // (owner, 18 Nov 2026: "the rest is a wall of text, make it easier to digest").
+  const firstSentence = (s: string) => { const i = s.search(/\.\s/); return i > 0 && i < s.length - 2 ? [s.slice(0, i + 1), s.slice(i + 2)] : [s, ""]; };
+  const fold = (label: string, body: string) => body.trim() ? `<details class="fold"><summary>${esc(label)}</summary><div>${body}</div></details>` : "";
   const monthPanels = mm.map((m) => {
     const offer = typeof m.offer === "string" ? m.offer : m.offer?.text ?? "";
-    const approval = typeof m.offer === "object" && m.offer?.needsApproval ? `<span class="pill warn">Needs your approval</span> ${esc(typeof m.offer.needsApproval === "string" ? m.offer.needsApproval : "")}` : "";
+    const o = typeof m.offer === "object" ? (m.offer as { needsApproval?: boolean | string; ownerApproval?: string }) : {};
+    const ask = typeof o.ownerApproval === "string" ? o.ownerApproval : typeof o.needsApproval === "string" ? o.needsApproval : o.needsApproval ? "The offer needs your approval." : "";
+    const [offerHead, offerRest] = firstSentence(offer);
+    const ads = m.campaigns.map((c) => `<li><span><strong>${esc(c.name)}</strong><span class="why">${esc(fmtD(c.start))}${c.end ? ` to ${esc(fmtD(c.end))}` : ", always on"}</span>${fold("Who sees it, the creative and how it is judged", `<p><b>Who sees it:</b> ${esc(c.audience)}</p><p>${esc(txt(c.creativeBrief))}</p><p><b>Lands on:</b> ${esc(c.landing)}</p><p><b>Judged on:</b> ${esc(c.measure)}</p>`)}</span><b>£${esc(c.dailyBudget)} a day</b></li>`).join("");
+    const dates = m.keyDates.map((k) => `<li><b class="d">${esc(fmtD(k.date))}</b><span>${k.use && k.use !== "None." ? `<details class="fold inline"><summary>${esc(k.moment)}</summary><div>${esc(k.use)}</div></details>` : esc(k.moment)}</span></li>`).join("");
+    const push = m.treatmentsToPush.map((t) => `<span class="chip" title="${esc(t.why)}">${esc(t.treatment)}</span>`).join("");
+    const pushWhy = m.treatmentsToPush.map((t) => `<p><b>${esc(t.treatment)}:</b> ${esc(t.why)}</p>`).join("");
+    const prep = [...m.prepNeeded].sort((a, b) => String(a.by).localeCompare(String(b.by))).map((x) => `<li><b class="d">${esc(fmtD(x.by))}</b><span>${esc(x.what)}</span></li>`).join("");
     return `<div data-mp="${esc(m.month)}"${m === curM ? "" : " hidden"} class="mp">
       <h3>${esc(m.theme)}</h3>
+      ${ask ? `<div class="ask"><span class="pill warn">Needs your decision</span><p>${esc(ask)}</p></div>` : ""}
       <div class="mp-grid">
-        <div><span class="q">Key dates</span><ul class="steps">${m.keyDates.map((k) => `<li><span><strong>${esc(k.moment)}</strong><span class="why">${esc(k.use)}</span></span><b>${esc(fmtD(k.date))}</b></li>`).join("") || "<li><span>None</span></li>"}</ul></div>
-        <div><span class="q">What to push, and why</span><ul class="steps">${m.treatmentsToPush.map((t) => `<li><span><strong>${esc(t.treatment)}</strong><span class="why">${esc(t.why)}</span></span></li>`).join("")}</ul>
-          <span class="q" style="display:block;margin-top:10px">Offer</span><p>${esc(offer)}</p><p>${approval}</p></div>
+        <div><span class="q">Ads running</span><ul class="steps">${ads || "<li><span>Evergreen only</span></li>"}</ul></div>
+        <div><span class="q">Key dates</span><ul class="dl">${dates || "<li><span>None</span></li>"}</ul></div>
       </div>
-      <span class="q">Campaigns</span>
-      <div class="table-wrap"><table><thead><tr><th>Campaign</th><th>Dates</th><th>Audience</th><th>Per day</th><th style="text-align:left">Creative and copy</th><th style="text-align:left">Judged on</th></tr></thead><tbody>${m.campaigns.map((c) => `<tr><td style="white-space:normal;min-width:150px"><b>${esc(c.name)}</b><span class="why">${esc(c.objective)}</span></td><td>${esc(fmtD(c.start))} to ${esc(fmtD(c.end))}</td><td style="white-space:normal">${esc(c.audience)}</td><td>£${esc(c.dailyBudget)}</td><td style="text-align:left;white-space:normal;min-width:280px">${esc(txt(c.creativeBrief))}<span class="why">Lands on: ${esc(c.landing)}</span></td><td style="text-align:left;white-space:normal;min-width:160px">${esc(c.measure)}</td></tr>`).join("")}</tbody></table></div>
       <div class="mp-grid">
-        <div><span class="q">To prepare</span><ul class="steps">${m.prepNeeded.map((x) => `<li><span>${esc(x.what)}</span><b>${esc(fmtD(x.by))}</b></li>`).join("") || "<li><span>Nothing extra</span></li>"}</ul></div>
-        <div><span class="q">Instagram and email</span><p class="muted-s">${esc(txt(m.organic))}</p><span class="q">Budget</span><p class="muted-s">${esc(txt(m.budgetPerDay))}</p><span class="q">Watch out for</span><p class="muted-s">${esc(txt(m.risks))}</p></div>
-      </div></div>`;
+        <div><span class="q">What to push</span><div class="chips">${push}</div>${fold("Why these", pushWhy)}
+          <span class="q" style="display:block;margin-top:12px">Offer</span><p>${esc(offerHead)}</p>${fold("The full offer", `<p>${esc(offerRest)}</p>`)}</div>
+        <div><span class="q">To prepare</span><ul class="dl">${prep || "<li><span>Nothing extra</span></li>"}</ul></div>
+      </div>
+      ${fold("Instagram, email, budget and risks", `<p><b>Instagram and email:</b> ${esc(txt(m.organic))}</p><p><b>Budget:</b> ${esc(txt(m.budgetPerDay))}</p><p><b>Watch out for:</b> ${esc(txt(m.risks))}</p>`)}
+    </div>`;
   }).join("");
   const monthlyCard = mm.length ? `<div class="card"><span class="q">Month by month</span><h2>What we advertise, when, and what it needs</h2>
       <div class="seg" id="m-tabs" style="flex-wrap:wrap">${monthTabs}</div>${monthPanels}
@@ -254,8 +267,8 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
         <p style="color:var(--muted);font-size:12px">An ad is judged after 7 days or £20. Keep: leads at or under £${T.costPerLead[1]}. Pause: £20 spent and no lead. Every lead, traced from ad to diary, is on <a href="/patients/pathway" target="_top">Pathway</a>.</p>
       </div>
 `,
-    calendar: `      <div class="card"><span class="q">The next 12 months</span><div class="head" style="grid-template-columns:minmax(0,1fr) auto"><h2>The evergreen, plus campaigns switched on and off on their dates</h2>${yearTabs}</div>
-        ${calendars}
+    calendar: `      <div class="card"><span class="q">The next 12 months</span><h2>Every campaign, on its real dates</h2>
+        ${timeline}
         <div class="legend"><span><i class="k-evergreen"></i>Evergreen</span><span><i class="k-seasonal"></i>Seasonal</span><span><i class="k-launch"></i>Launch</span><span><i class="k-test"></i>Test</span><span><i class="k-conditional"></i>Only when conditions hold</span><span><i class="k-reduce"></i>Eased</span></div>
         <p style="color:var(--muted);font-size:12px">${esc(plan.switching)} The evergreen's figure is its starting budget; each Monday's diary reading moves it within the cap.</p>
       </div>
@@ -320,6 +333,131 @@ export function renderAdsBoard(p: Snapshot | null, section?: string): string {
     ? `<div class="board">${H}${SECTIONS[section]}</div>${SCRIPT}`
     : `<div class="board">${H}<div class="grid">${S.rail}<div class="main">${renderNow(p, T)}${S.kpis}${two(S.funnel, S.diary)}${S.leads}${S.ads}${S.calendar}${S.monthly}<div class="row2">${S.creative}${S.sched}</div>${S.note}</div></div></div>${SCRIPT}`;
   return page(body);
+}
+
+// ---------- The next 12 months, on real dates ----------
+// Owner, 18 Nov 2026: "displayable by date of month and not just month because i have no idea when
+// my ads start and stop". A rolling 12 months from the first of this month: one bar per campaign at
+// its exact days, today marked, then every start, stop and creative change as a dated list with the
+// total daily spend from that day.
+function renderTimeline(plan: Plan): string {
+  const DAY = 86400000;
+  const t = (ymd: string) => Date.parse(ymd.slice(0, 10) + "T12:00:00Z");
+  const today = ukDate(new Date().toISOString());
+  const w0ymd = today.slice(0, 7) + "-01";
+  const w1d = new Date(t(w0ymd)); w1d.setUTCMonth(w1d.getUTCMonth() + 12);
+  const w1ymd = w1d.toISOString().slice(0, 10);
+  const w0 = t(w0ymd), w1 = t(w1ymd), span = w1 - w0;
+  const pos = (ymd: string) => Math.min(100, Math.max(0, ((t(ymd) - w0) / span) * 100));
+  const nice = (ymd: string, wd = false) => new Date(t(ymd)).toLocaleDateString("en-GB", { ...(wd ? { weekday: "short" as const } : {}), day: "numeric", month: "short", timeZone: "UTC" });
+  const short = (s: string) => s.split(/[:;(]/)[0].trim();
+  const live = (c: Campaign, ymd: string) => c.start.slice(0, 10) <= ymd && (!c.end || c.end.slice(0, 10) >= ymd);
+  const capOn = (ymd: string) => [...plan.caps].filter((c) => c.from <= ymd.slice(0, 7)).pop()?.perDay ?? 40;
+  const totalOn = (ymd: string) => plan.campaigns.filter((c) => live(c, ymd) && c.status !== "conditional").reduce((s, c) => s + c.perDay, 0);
+  const inWin = plan.campaigns.filter((c) => c.start.slice(0, 10) < w1ymd && (!c.end || c.end.slice(0, 10) >= w0ymd)).sort((a, b) => (a.kind === "evergreen" ? -1 : b.kind === "evergreen" ? 1 : a.start.localeCompare(b.start)));
+  const money = (n: number) => (n < 0 ? `less £${-n}` : n ? `£${n} a day` : "inside the evergreen budget");
+
+  // Month ruler
+  const months: string[] = [];
+  for (let d = new Date(w0); d.getTime() < w1; d.setUTCMonth(d.getUTCMonth() + 1)) months.push(d.toISOString().slice(0, 10));
+  const ruler = months.map((m) => `<span style="left:${pos(m).toFixed(3)}%">${MONTHS[Number(m.slice(5, 7)) - 1]}${m.slice(5, 7) === "01" || m === w0ymd ? ` ${m.slice(2, 4)}` : ""}</span>`).join("");
+  const grid = months.map((m) => `<i style="left:${pos(m).toFixed(3)}%"></i>`).join("");
+  const todayMark = `<i class="tl-today" style="left:${pos(today).toFixed(3)}%"></i>`;
+
+  const rows = inWin.map((c) => {
+    const s = c.start.slice(0, 10) < w0ymd ? w0ymd : c.start.slice(0, 10);
+    const eIncl = c.end ? new Date(t(c.end) + DAY).toISOString().slice(0, 10) : w1ymd;
+    const L = pos(s), W = Math.max(0.6, pos(eIncl) - L);
+    const dates = `${nice(c.start)}${c.end ? ` to ${nice(c.end)}` : ", always on"}`;
+    const label = `${dates} &middot; ${esc(money(c.perDay))}`;
+    let inner = "";
+    if (c.kind === "evergreen" && c.creative?.length) {
+      inner = c.creative.filter((x) => x.from < w1ymd).map((x, i, arr) => {
+        const a = pos(x.from < s ? s : x.from), b = arr[i + 1] ? pos(arr[i + 1].from) : pos(eIncl);
+        const segW = ((b - a) / W) * 100, segL = ((a - L) / W) * 100;
+        return `<span class="tl-seg" style="left:${segL.toFixed(2)}%;width:${segW.toFixed(2)}%" title="${esc(nice(x.from))}: ${esc(x.theme)}">${segW > 5 ? esc(nice(x.from)) : ""}</span>`;
+      }).join("");
+    }
+    const wide = W > 22;
+    const outside = !wide ? `<em class="tl-out" style="${L + W > 70 ? `right:${(100 - L + 0.8).toFixed(2)}%` : `left:${(L + W + 0.8).toFixed(2)}%`}">${label}</em>` : "";
+    return `<div class="tl-row"><div class="tl-name"><b>${esc(short(c.name))}</b>${c.status === "conditional" ? `<span class="why">only if conditions hold</span>` : ""}</div>
+      <div class="tl-track">${grid}${todayMark}<div class="tl-bar k-${esc(c.kind)}" style="left:${L.toFixed(3)}%;width:${W.toFixed(3)}%" title="${esc(c.name)}: ${esc(dates)}">${inner || (wide ? `<span class="tl-lab">${label}</span>` : "")}</div>${outside}</div></div>`;
+  }).join("");
+
+  // Every start, stop and creative change from today, with the daily total from that day.
+  type Ev = { d: string; kind: "start" | "stop" | "change"; text: string; sub: string; total: number; cap: number; cond: boolean };
+  const evs: Ev[] = [];
+  for (const c of plan.campaigns) {
+    const cond = c.status === "conditional";
+    if (c.start.slice(0, 10) >= today && c.start.slice(0, 10) < w1ymd) evs.push({ d: c.start.slice(0, 10), kind: "start", text: c.name, sub: money(c.perDay), total: totalOn(c.start.slice(0, 10)), cap: capOn(c.start), cond });
+    if (c.end && c.end.slice(0, 10) >= today && c.end.slice(0, 10) < w1ymd) {
+      const after = new Date(t(c.end) + DAY).toISOString().slice(0, 10);
+      evs.push({ d: c.end.slice(0, 10), kind: "stop", text: c.name, sub: "last day", total: totalOn(after), cap: capOn(after), cond });
+    }
+    if (c.kind === "evergreen") for (const x of c.creative ?? []) if (x.from > today && x.from < w1ymd) evs.push({ d: x.from, kind: "change", text: `Evergreen ads change: ${short(x.theme)}`, sub: x.theme, total: totalOn(x.from), cap: capOn(x.from), cond: false });
+  }
+  const order = { stop: 0, change: 1, start: 2 };
+  evs.sort((a, b) => a.d.localeCompare(b.d) || order[a.kind] - order[b.kind]);
+  let lastM = "";
+  const evHtml = evs.map((e) => {
+    const m = e.d.slice(0, 7);
+    const headM = m !== lastM ? `<li class="ev-m">${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(0, 4)}</li>` : "";
+    lastM = m;
+    const tag = e.kind === "start" ? `<span class="pill good">Starts</span>` : e.kind === "stop" ? `<span class="pill">Stops</span>` : `<span class="pill warn">New ads</span>`;
+    const tot = e.kind === "change" ? "" : `<span class="ev-tot${e.total > e.cap ? " over" : ""}">£${e.total} a day in total${e.total > e.cap ? `, over the £${e.cap} cap` : ""}</span>`;
+    return `${headM}<li><b class="d">${esc(nice(e.d, true))}</b>${tag}<span class="ev-t"><strong>${esc(e.kind === "change" ? e.text : short(e.text))}</strong><span class="why">${esc(e.kind === "change" ? "" : e.sub)}${e.cond ? (e.kind === "change" ? "" : " &middot; ") + "only if conditions hold" : ""}</span></span>${tot}</li>`;
+  }).join("");
+  const now = plan.campaigns.filter((c) => live(c, today));
+  const nowHtml = now.map((c) => `<span class="chip">${esc(short(c.name))} <em>${c.end ? `to ${esc(nice(c.end))}` : "always on"}</em></span>`).join("");
+  const detail = inWin.map((c) => `<p><b>${esc(c.name)}</b> (${esc(nice(c.start))}${c.end ? ` to ${esc(nice(c.end))}` : ", always on"}): ${esc(c.what)}</p>`).join("");
+
+  return `<style>
+.tl-wrap{overflow-x:auto;margin:6px 0 4px}
+.tl{min-width:760px;display:grid;gap:5px}
+.tl-row,.tl-head{display:grid;grid-template-columns:170px minmax(0,1fr);gap:10px;align-items:center}
+.tl-name{font-size:12.5px;line-height:1.25}
+.tl-track,.tl-ruler{position:relative;height:26px}
+.tl-ruler{height:16px;font-size:11px;color:var(--muted)}
+.tl-ruler span{position:absolute;top:0;padding-left:3px;white-space:nowrap}
+.tl-track>i,.tl-ruler i{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+.tl-track>i.tl-today{width:2px;background:var(--ink);z-index:2}
+.tl-bar{position:absolute;top:3px;bottom:3px;border-radius:4px;overflow:hidden;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center}
+.tl-lab{padding:0 7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-seg{position:absolute;top:0;bottom:0;border-left:2px solid rgba(255,255,255,.55);padding:0 6px;display:flex;align-items:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tl-seg:first-child{border-left:0}
+.tl-out{position:absolute;top:5px;font-style:normal;font-size:11px;color:var(--ink);white-space:nowrap}
+.k-conditional .tl-lab{color:var(--ink)}
+.nowline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0 4px;font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.chip{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--panel);border:1px solid var(--line)}
+.chip em{font-style:normal;color:var(--muted)}
+.evs{list-style:none;padding:0;margin:8px 0 0;display:grid;gap:0;font-size:13px}
+.evs li{display:grid;grid-template-columns:86px 64px minmax(0,1fr) auto;gap:10px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--line)}
+.evs li.ev-m{display:block;border-bottom:0;padding:14px 0 2px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--sage-deep);font-weight:700}
+.evs .d,.dl .d{font-variant-numeric:tabular-nums;white-space:nowrap}
+.ev-tot{font-size:12px;color:var(--muted);white-space:nowrap}
+.ev-tot.over{color:var(--bad);font-weight:700}
+.dl{list-style:none;padding:0;margin:0;display:grid;font-size:13px}
+.dl li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.dl li:last-child{border-bottom:0}
+.fold{margin-top:6px;font-size:12.5px}
+.fold summary{cursor:pointer;color:var(--sage-deep);font-weight:600}
+.fold>div{padding:6px 0 2px;color:var(--muted);display:grid;gap:6px}
+.fold>div p{margin:0}
+.fold.inline{margin:0}.fold.inline summary{color:var(--ink);font-weight:400}
+.ask{display:grid;gap:6px;justify-items:start;padding:10px 12px;border-radius:8px;background:var(--watch-bg)}
+.ask p{margin:0;font-size:13px}
+@media (max-width:640px){.tl-row,.tl-head{grid-template-columns:112px minmax(0,1fr)}.tl-head>span:first-child{position:sticky;left:0;z-index:3;background:var(--sheet);align-self:stretch}.tl-name{position:sticky;left:0;z-index:3;background:var(--sheet);font-size:11.5px;align-self:stretch;display:flex;flex-direction:column;justify-content:center}.evs li{grid-template-columns:70px minmax(0,1fr);row-gap:2px}.evs li .pill{grid-column:2;justify-self:start}.evs li .ev-t,.evs li .ev-tot{grid-column:2}}
+</style>
+  <div class="nowline"><span class="q">Running today</span>${nowHtml || "nothing"}</div>
+  <div class="tl-wrap"><div class="tl" role="img" aria-label="Campaign timeline from ${esc(nice(w0ymd))} for 12 months">
+    <div class="tl-head"><span></span><div class="tl-ruler">${ruler}</div></div>
+    ${rows}
+  </div></div>
+  <p class="muted-s">The black line is today. The dates on the evergreen bar are when its ads change. Scroll sideways on a phone; every date is also listed below.</p>
+  <span class="q" style="display:block;margin-top:14px">Every start and stop, from today</span>
+  <ul class="evs">${evHtml || "<li><span>Nothing changes in the next 12 months.</span></li>"}</ul>
+  ${`<details class="fold"><summary>What each campaign is</summary><div>${detail}</div></details>`}`;
 }
 
 // ---------- Now: the last 14 days ----------
