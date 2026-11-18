@@ -8,6 +8,7 @@ import { BottomTabs } from "@/components/shell/bottom-tabs";
 import { TopBar } from "@/components/shell/top-bar";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { useBrief, useProposals } from "@/lib/alfred";
+import { SectionsProvider, SectionsFrame } from "@/lib/sections";
 
 function useAreaKeys(go: (to: string) => void) {
   useEffect(() => {
@@ -43,7 +44,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <TopBar location={location} />
         {/* overflow-x-hidden: anything wider than the screen scrolls inside its own wrapper, never the page. */}
         <main id="main" className="flex-1 overflow-x-hidden px-4 pt-5 md:px-8 md:pt-8 pb-tabbar" style={{ overscrollBehaviorX: "none" }}>
-          <div className="max-w-6xl mx-auto min-w-0">{children}</div>
+          <div className="max-w-6xl mx-auto min-w-0"><SectionsProvider><SectionsFrame>{children}</SectionsFrame></SectionsProvider></div>
         </main>
       </div>
       <BottomTabs location={location} count={counts.today} />

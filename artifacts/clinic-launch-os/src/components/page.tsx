@@ -1,7 +1,8 @@
 // ALFRED's page kit, set like a printed briefing rather than a dashboard: an eyebrow and a serif
 // title, sections divided by whitespace and hairline rules, lists as ruled rows. Only the things you
 // act on (the "needs you" cards) are boxed, so they stand out.
-import { useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useSections, MIN_SECTIONS } from "@/lib/sections";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { Alert, Chip } from "@/lib/alfred";
@@ -19,14 +20,31 @@ export function PageHead({ eyebrow, title, back, children }: { eyebrow: string; 
   );
 }
 
+// A section registers with the page's section menu (lib/sections.tsx). On a page with three or more
+// it starts closed and opens from its title or the menu; with fewer it stays open as before.
 export function Section({ title, children, note, id }: { title: string; children: ReactNode; note?: ReactNode; id?: string }) {
+  const reg = useSections();
+  const key = useId();
+  const ref = useRef<HTMLElement>(null);
+  const [open, setOpen] = useState(false);
+  useEffect(() => reg?.register({
+    key, title, open, setOpen, el: () => ref.current,
+    go: () => { setOpen(true); requestAnimationFrame(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" })); },
+  }), [title, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const folds = (reg?.localCount ?? 0) >= MIN_SECTIONS;
+  const shut = folds && !open;
+  const head = <h2 id={id} className="eyebrow">{title}</h2>;
   return (
-    <section className="space-y-4 rounded-2xl bg-card border border-border shadow-[0_1px_3px_rgba(31,42,68,0.07)] p-4 sm:p-6" aria-labelledby={id}>
+    <section ref={ref} className="space-y-4 rounded-2xl bg-card border border-border shadow-[0_1px_3px_rgba(31,42,68,0.07)] p-4 sm:p-6 scroll-mt-20" aria-labelledby={id}>
       <div className="flex items-baseline justify-between gap-3">
-        <h2 id={id} className="eyebrow">{title}</h2>
+        {folds
+          ? <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex items-center gap-2 text-left min-h-[32px] -my-1">
+              <ChevronRight aria-hidden className={`w-4 h-4 shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`} />{head}
+            </button>
+          : head}
         {note && <span className="text-[0.88rem] text-ink-2 font-semibold">{note}</span>}
       </div>
-      {children}
+      {!shut && children}
     </section>
   );
 }

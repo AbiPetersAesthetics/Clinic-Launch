@@ -10,6 +10,7 @@ import { Verdict } from "@/components/verdict";
 import { KpiGrid } from "@/components/kpi";
 import { Page, PageHead, Section, Next, alertCard } from "@/components/page";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSections } from "@/lib/sections";
 
 const AREA_OF: Record<string, string[]> = { money: ["money"], ads: ["ads", "growth", "content"], growth: ["ads", "growth", "content"], patients: ["patients"], clinic: ["clinic"] };
 
@@ -20,13 +21,35 @@ export function EmbeddedBoard({ src, title, minHeight = 600, fullScreen = true }
   // ?full=1 (the command palette's "open full screen") opens the board over the whole window.
   const [expanded, setExpanded] = useState(() => fullScreen && new URLSearchParams(window.location.search).has("full"));
   const url = `${src}${src.includes("?") ? "&" : "?"}embed=1`;
+  // The board's own sections join the page's section menu (lib/sections.tsx): the board lists them,
+  // the menu opens one and the page scrolls to where the board says it sits.
+  const reg = useSections();
+  const [secs, setSecs] = useState<{ id: number; title: string; open: boolean }[]>([]);
+  const post = (msg: unknown) => frame.current?.contentWindow?.postMessage(msg, "*");
   useEffect(() => {
     const on = (e: MessageEvent) => {
-      if (e.source === frame.current?.contentWindow && e.data?.type === "alfred-board-height" && typeof e.data.height === "number") setHeight(Math.max(200, Math.ceil(e.data.height)));
+      if (e.source !== frame.current?.contentWindow) return;
+      const d = e.data;
+      if (d?.type === "alfred-board-height" && typeof d.height === "number") setHeight(Math.max(200, Math.ceil(d.height)));
+      if (d?.type === "alfred-board-sections" && Array.isArray(d.items)) setSecs(d.items);
+      if (d?.type === "alfred-board-top" && typeof d.top === "number" && frame.current) {
+        // The frame grows to the opened section a moment after it opens, so scroll once it has.
+        const go = () => { if (!frame.current) return; const y = frame.current.getBoundingClientRect().top + window.scrollY + d.top - 80; window.scrollTo({ top: Math.max(0, y), behavior: "smooth" }); };
+        setTimeout(go, 250);
+      }
     };
     window.addEventListener("message", on);
     return () => window.removeEventListener("message", on);
   }, []);
+  useEffect(() => {
+    if (!reg || expanded) return;
+    const offs = secs.map((s) => reg.register({
+      key: `${src}#${s.id}`, title: s.title, open: s.open, remote: true, idx: s.id, el: () => frame.current,
+      setOpen: (o) => post({ type: "alfred-sec-set", id: s.id, open: o }),
+      go: () => post({ type: "alfred-sec-go", id: s.id }),
+    }));
+    return () => offs.forEach((off) => off());
+  }, [secs, expanded, src]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!expanded) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
