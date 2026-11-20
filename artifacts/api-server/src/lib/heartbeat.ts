@@ -22,12 +22,14 @@ export const SCHEDULES: Schedule[] = [
 
 const hm = (d: Date) => d.toLocaleString("en-GB", { weekday: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });
 
+// The latest run is judged by the later of its start and finish: a run that passed a wrong --started
+// (the Meta review logged 08:55 for a 09:40 run on 19 Nov 2026) still counts once it has finished.
 // An agent counts only once it has logged at least one run, so an agent whose run book has not yet
 // adopted log-run is never reported as missing.
 export async function missedRuns(projectId: number, now = new Date()) {
   await ensureAgentTables();
   const last = rowsOf<{ agent: string; first: string; latest: string }>(await db.execute(sql`
-    SELECT agent, min(coalesce(started_at, finished_at)) AS first, max(coalesce(started_at, finished_at)) AS latest
+    SELECT agent, min(coalesce(started_at, finished_at)) AS first, max(greatest(coalesce(started_at, finished_at), coalesce(finished_at, started_at))) AS latest
     FROM activity WHERE project_id = ${projectId} AND status <> 'missed' GROUP BY agent`));
   const byAgent = new Map(last.map((r) => [r.agent, r]));
   const out: { agent: string; due: string; dueIso: string }[] = [];

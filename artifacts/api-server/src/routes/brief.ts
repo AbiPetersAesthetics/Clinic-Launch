@@ -64,7 +64,9 @@ export async function composeBrief(projectId: number) {
 
   const items: BriefItem[] = [];
   for (const a of alerts.filter((a) => a.level === "act")) items.push({ kind: "alert", id: a.id, alert: a });
-  for (const m of missed) items.push({ kind: "alert", id: `missed-${m.agent}`, alert: { id: `missed-${m.agent}`, area: "growth", level: "act", title: `${m.agent} did not run`, detail: `It was due ${m.due} and has not logged a run since. See Activity.`, sources: [], href: "/activity" } });
+  // The brief logs its own run only after it is built, so it never reports itself as missed (20 Nov 2026).
+  const missedOthers = (missed as { agent: string; due: string }[]).filter((m) => m.agent !== "Brief");
+  for (const m of missedOthers) items.push({ kind: "alert", id: `missed-${m.agent}`, alert: { id: `missed-${m.agent}`, area: "growth", level: "act", title: `${m.agent} did not run`, detail: `It was due ${m.due} and has not logged a run since. See Activity.`, sources: [], href: "/activity" } });
   if (broken.length) items.push({ kind: "alert", id: "money-consistency", alert: { id: "money-consistency", area: "money", level: "act", title: "Two money screens disagree", detail: broken.map((c) => `${c.name}: ${c.detail}`).join(" "), sources: [], href: "/money" } });
   for (const p of open) items.push({ kind: "proposal", id: `p${p.id}`, proposal: p });
   const mx = money.extra as any;
@@ -91,7 +93,7 @@ export async function composeBrief(projectId: number) {
     state, verdict,
     items: items.slice(0, 5), more: Math.max(0, items.length - 5), total: items.length,
     vitals,
-    runs: { line: runsLine(runs, missed), count: runs.length, since: new Date(now.getTime() - 24 * 3600000).toISOString() },
+    runs: { line: runsLine(runs, missedOthers), count: runs.length, since: new Date(now.getTime() - 24 * 3600000).toISOString() },
     areas: [money, ads, patients, clinic].map((s) => ({ key: s.key, title: s.title, state: s.state, verdict: s.verdict, href: s.key === "growth" ? "/growth" : `/${s.key}`, sources: s.sources, extra: s.extra })),
     dates,
     waiting: await waitingCounts(projectId),
