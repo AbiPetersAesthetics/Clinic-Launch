@@ -262,6 +262,8 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
   // Abi's VAT loans: for each month with CBS VAT to pay from the bank, she lends that VAT into
   // Tide (money in) and is repaid the month the refund lands (money out). Her 26 October loan is
   // already in the bank today, so only its repayment is modelled, when October's VAT comes back.
+  // Once her October entries carry a repaid date (25 Nov 2026: the refund landed on the 20th and
+  // she was repaid on the 25th), neither that refund nor that repayment is still to come.
   const abiLoans: CashInputs["funding"] = [], abiRepay: CashInputs["oneOffs"] = [];
   const cbsVatByMonth = new Map<string, number>();
   for (const p of payments) if (/^Ref \d+ - /.test(p.label) && p.method === "bank" && (p.vat ?? 0) > 0) cbsVatByMonth.set(p.month, (cbsVatByMonth.get(p.month) ?? 0) + (p.vat ?? 0));
@@ -271,7 +273,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     abiLoans.push({ month: m, amount: amt, kind: "gift", label: "Abi lends the VAT on CBS's bill (director's loan)" });
     abiRepay.push({ month: addMonths(m, lag), amount: amt, method: "bank", label: "Abi repaid her VAT loan from the refund", pnl: false });
   }
-  const octRow = ((await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %'`)) as any).rows?.[0];
+  const octRow = ((await db.execute(sql`SELECT coalesce(sum(e.amount_gbp), 0) AS v FROM card_entries e JOIN credit_cards c ON c.id = e.card_id WHERE e.project_id = ${projectId} AND e.kind = 'purchase' AND c.holder = 'Abi Flitney' AND e.description LIKE 'CBS interim payment 1: VAT on %' AND e.repaid_date IS NULL`)) as any).rows?.[0];
   const octVat = Number(octRow?.v ?? 0);
   // HMRC refunds still to land for VAT already paid: October's (CBS valuation 1, Abi repaid from
   // it) and each later valuation paid before the bank date. Abi lends that VAT in if she has not
