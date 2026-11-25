@@ -49,11 +49,13 @@ function detailJs(lines) {
     if (l.remainingExVat < 0.5 || l.planProblem) continue;
     const ref = l.title.match(/^Ref (\d+) - /);
     if (ref) { cbs.set(+ref[1], (cbs.get(+ref[1]) || 0) + l.remainingExVat); continue; }
+    // Already bought on a personal card or account, of what is left on the line (the register).
+    const all = Math.round(l.remainingExVat), owed = all - Math.round(Math.max(0, l.remainingExVat - (l.paidOnCard > 0 ? l.paidOnCard * l.remainingExVat / Math.max(0.01, l.recorded - l.paid) : 0)));
     const ki = KIT.findIndex(([re]) => re.test(l.title));
-    if (ki < 0) { by.other.push([999, l.title, Math.round(l.remainingExVat), ""]); continue; }
+    if (ki < 0) { by.other.push([999, l.title, all, "", owed]); continue; }
     let [, g, name, sub] = KIT[ki];
     if (/^Arundel/i.test(l.title)) { if (l.paid > 0) { name = "Fire alarm (Arundel), the 70% balance"; sub = "commissioning; the 30% deposit is paid"; } else sub = "30% on booking, 70% when finished"; }
-    by[g].push([ki, name, Math.round(l.remainingExVat), sub]);
+    by[g].push([ki, name, all, sub, owed]);
   }
   for (const g of Object.keys(by)) by[g].sort((a, b) => a[0] - b[0]);
   const refs = [...TRADE_ORDER, ...[...cbs.keys()].filter(r => !TRADE_ORDER.includes(r)).sort((a, b) => a - b)];
@@ -61,7 +63,7 @@ function detailJs(lines) {
   const q = (x) => JSON.stringify(x);
   const groupJs = ([k, name, sub]) => {
     const ls = by[k]; if (!ls.length) return null;
-    const body = ls.map(([, n, v, s]) => `[${q(n)}, ${v}, ${q(s)}]`);
+    const body = ls.map(([, n, v, s, o]) => `[${q(n)}, ${v}, ${q(s)}, ${o || 0}]`);
     if (k === "cbs") { const rows = []; for (let i = 0; i < body.length; i += 3) rows.push("      " + body.slice(i, i + 3).join(", ")); return `    { name: ${q(name)}, sub: ${q(sub)}, lines: [\n${rows.join(",\n")} ] },`; }
     return `    { name: ${q(name)}, sub: ${q(sub)}, lines: [${body.join(", ")}] },`;
   };
@@ -135,7 +137,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
     [/External Signage/, "Shop sign"], [/^Temporary signage/, "Temporary signage"], [/CAD Drawings/, "CAD drawing pack"], [/Advertisement Consent/, "Advertisement consent"], [/ACE Group/, "ACE membership"], [/Arundel/, "Fire alarm (Arundel), 30% deposit"]];
   // CBS's lines are one payment: its work valued is what was paid in all, the VAT Abi lent included.
   const paidRows = J.projectLines.filter(l => l.paid > 0).map(l => { const cbs = /^Ref \d/.test(l.title), all = cbs ? l.paid + (l.paidOnCard || 0) : l.paid;
-    const n = cbs ? [null, "CBS interim payment 1, less the 3% retention"] : NAMES.find(([re]) => re.test(l.title)); const ex = /^no VAT/.test(l.vatBasis) ? all : all / 1.2;
+    const n = cbs ? [null, "CBS, the valuations paid so far, less the 3% retention"] : NAMES.find(([re]) => re.test(l.title)); const ex = /^no VAT/.test(l.vatBasis) ? all : all / 1.2;
     return [n ? n[1] : l.title, ex, all]; });
   const merged = new Map(); for (const [n, ex, inc] of paidRows) { const m = merged.get(n) ?? [n, 0, 0]; m[1] += ex; m[2] += inc; merged.set(n, m); }
   const paid = [...merged.values()].map(([n, ex, inc]) => [n, Math.round(ex), inc]).sort((a, b) => b[1] - a[1]);
@@ -224,6 +226,35 @@ ${itemsJs}
         const show = () => { tip.hidden = false; const r = box.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight; tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; tip.style.top = Math.max(8, Math.min(r.bottom + 6, innerHeight - h - 8)) + "px"; }, hide = () => { tip.hidden = true; };
         box.addEventListener("mouseenter", show); box.addEventListener("mouseleave", hide); box.addEventListener("focus", show); box.addEventListener("blur", hide);
         box.addEventListener("click", () => (tip.hidden ? show() : hide())); addEventListener("scroll", hide, { passive: true }); } }`);
+  // Paid or Unpaid on "Does it all add up?" (owner, 25 Nov 2026). Unpaid is what is still to buy or
+  // pay; what is already bought on a card or paid personally counts as paid, beside the bank's payments.
+  rep(`<div class="seg" role="group" aria-label="Cost view" data-key="itemsView">`,
+      `<div class="seg" role="group" aria-label="Paid or unpaid" data-key="itemsStatus"><button type="button" data-v="unpaid" aria-pressed="true">Unpaid</button><button type="button" data-v="paid" aria-pressed="false">Paid</button></div>
+        <div class="seg" role="group" aria-label="Cost view" data-key="itemsView">`);
+  rep('+ ITEMS.map(i => {', '+ ITEMS.filter(i => i.ex - (i.owed || 0) > 0.5).map(i => {');
+  rep('<span class="amt">${gbp(i.ex)}</span><span class="when">', '<span class="amt">${gbp(i.ex - (i.owed || 0))}</span><span class="when">');
+  rep('<span class="amt">${gbp(ITEMS.reduce((a, i) => a + i.ex, 0))}</span><span class="when"></span><span class="lock">bank ${gbp(bankTotal)} · card ${gbp(cardTotal)}</span>',
+      '<span class="amt">${gbp(buyOf(true) + buyOf(false))}</span><span class="when"></span><span class="lock">bank ${gbp(buyOf(true))} · card ${gbp(buyOf(false))}</span>');
+  rep('    items.querySelectorAll(".seg[data-item]")',
+      `    { const paidView = S.itemsStatus === "paid", h2 = document.getElementById("items-h2"), note = document.getElementById("items-note");
+      const grp = (n, v, sub) => \`<div class="grp"><span>\${n}\${sub ? \`<span class="sub"> · \${sub}</span>\` : ""}</span><span>\${gbp(v)}</span></div>\`, row = (n, v, w) => \`<div class="det"><span>\${n}\${w ? \`<span class="w"> · \${w}</span>\` : ""}</span><span class="amt">\${gbp(v)}</span></div>\`;
+      // The board's own styles show these whatever their hidden attribute says, so the paid view sets display itself.
+      document.querySelector('.seg[data-key="itemsView"]').style.display = paidView ? "none" : ""; items.style.display = paidView ? "none" : "";
+      if (paidView) {
+        const bought = DETAIL.flatMap(g => g.lines.filter(l => (l[3] || 0) > 0.5).map(l => [l[0], l[3], l[2]])), bankPaid = PAID.reduce((a, p) => a + p[1], 0), boughtT = bought.reduce((a, l) => a + l[1], 0);
+        det.hidden = false;
+        det.innerHTML = grp("Paid from the bank", bankPaid, "already out of Tide") + PAID.map(p => row(p[0], p[1])).join("")
+          + (bought.length ? grp("Bought on your cards or paid personally", boughtT, "bought, and owed back over time") + bought.map(l => row(l[0], l[1], l[2])).join("") : "")
+          + grp("Total paid or bought", bankPaid + boughtT);
+        h2.textContent = "Every paid line, and how it was paid";
+        note.textContent = "Before VAT. The first list has left the bank. The second is bought and in use, on a credit card or paid by a director, so the company still owes it back.";
+      } else {
+        const left = DETAIL.map(g => ({ g, ls: g.lines.filter(l => l[1] - (l[3] || 0) > 0.5) })).filter(x => x.ls.length), leftT = left.reduce((a, x) => a + x.ls.reduce((b, l) => b + l[1] - (l[3] || 0), 0), 0);
+        det.innerHTML = left.map(x => grp(x.g.name, x.ls.reduce((b, l) => b + l[1] - (l[3] || 0), 0), x.g.sub) + x.ls.map(l => row(l[0], l[1] - (l[3] || 0), l[2])).join("")).join("") + grp("Total still to pay", leftT);
+        h2.textContent = buy ? "What is still to pay, by area" : "Every unpaid line, and where each is paid from";
+        note.textContent = (buy ? "Before VAT, grouped by what it is for. " : "Before VAT. Bank and card can be swapped on the unlocked lines; CBS stays on the bank. ") + "Anything already bought on a card or paid personally is under Paid" + (PERSONAL_LEFT > 0.5 && !buy ? ". The " + gbp(PERSONAL_LEFT) + " desk balance is paid by David himself, so it is under What it buys, not here." : ".");
+      } }
+    items.querySelectorAll(".seg[data-item]")`);
   rep(`LIMIT = 20000,`, `LIMIT = ${J.config.card?.limit ?? 20000},`);
   rep(`of the £20,000 left as an emergency line`, `of the £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit left`, true);
   rep(`£20,000 limit`, `£${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`, true);
