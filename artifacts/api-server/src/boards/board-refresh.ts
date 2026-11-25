@@ -97,11 +97,17 @@ export function boardRefresh(template: string, J, asOf: string): string {
   // payment beside the group, named with its month, rather than stopping the board.
   const MNAME = Object.fromEntries(NINE.map((m, i) => [i + 1, monLong(m)]));
   const items = new Map(); const unsched = [];
+  // personalLeft: what a director still has to pay himself (the desk balance), ex VAT. It is in no
+  // item, because neither the bank nor the card moves for it, but Still to pay names it on hover.
+  let personalLeft = 0;
   for (const l of J.projectLines) {
     if (l.remainingExVat < 0.5) continue;
     if (l.planProblem) { unsched.push(l); continue; }
+    // Of what is left on the line, the part that repays a director for something already bought
+    // on a personal card or account (the register). CBS VAT that Abi paid is not in what is left.
+    const owedLine = !/^Ref \d+ - /.test(l.title) && l.paidOnCard > 0 ? l.paidOnCard * l.remainingExVat / Math.max(0.01, l.recorded - l.paid) : 0;
     for (const p of l.plan) {
-      if (p.method === "personal") continue; // David pays it himself: neither the bank nor the card moves
+      if (p.method === "personal") { personalLeft += Math.max(0, l.remainingExVat - owedLine) * p.share; continue; } // David pays it himself: neither the bank nor the card moves
       const m = IDX[p.month]; if (!m) throw new Error(`A payment falls outside ${FIRST} to ${LAST}: ` + l.title + ", " + p.month);
       const [id, name, group, locked] = itemOf(l.title, l.phase, p.month);
       const method = p.method === "card" ? "card" : "bank", vat = l.vatBasis !== "no VAT";
@@ -109,9 +115,10 @@ export function boardRefresh(template: string, J, asOf: string): string {
       let it = items.get(id);
       if (it && !fits(it)) {
         const key = `${id}_${m}_${method}${vat ? "" : "_novat"}`;
-        it = items.get(key) ?? { id: key, base: id, name: `${name}, ${MNAME[m]}${method !== it.method ? ` (${method})` : ""}`, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
+        it = items.get(key) ?? { id: key, base: id, name: `${name}, ${MNAME[m]}${method !== it.method ? ` (${method})` : ""}`, ex: 0, vatEx: 0, owed: 0, vat, method, m, locked: !!locked, group };
       }
-      it = it ?? { id, base: id, name, ex: 0, vatEx: 0, vat, method, m, locked: !!locked, group };
+      it = it ?? { id, base: id, name, ex: 0, vatEx: 0, owed: 0, vat, method, m, locked: !!locked, group };
+      it.owed += owedLine * p.share;
       it.ex += l.remainingExVat * p.share; if (vat) it.vatEx += l.remainingExVat * p.share; (it.lines ??= new Set()).add(l.taskId); items.set(it.id, it);
     }
   }
@@ -120,7 +127,7 @@ export function boardRefresh(template: string, J, asOf: string): string {
   const WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
   for (const it of items.values()) if (it.base === "furniture" && it.lines) it.name = it.name.replace("Furniture and the couch", `Furniture and the couch, ${WORDS[it.lines.size] ?? it.lines.size} line${it.lines.size === 1 ? "" : "s"}`);
   const list = [...items.values()].sort((a, b) => ORDER.indexOf(a.base) - ORDER.indexOf(b.base) || a.m - b.m);
-  const itemsJs = list.map(i => `    { id: "${i.id}", name: "${i.name}", ex: ${r2(i.ex)}, vat: ${i.vatEx > 0.01}, method: "${i.method}", m: ${i.m},${i.locked ? " locked: true," : ""} group: "${i.group}" },`).join("\n");
+  const itemsJs = list.map(i => `    { id: "${i.id}", name: "${i.name}", ex: ${r2(i.ex)}, owed: ${r2(Math.min(i.ex, i.owed))}, vat: ${i.vatEx > 0.01}, method: "${i.method}", m: ${i.m},${i.locked ? " locked: true," : ""} group: "${i.group}" },`).join("\n");
 
   // 2. Already paid, ex VAT (it is in the bank balance).
   const NAMES = [[/Skin Analysis/, "Skin analysis platform and training"], [/Rent Deposit/, "Rent deposit"], [/Solicitor/, "Solicitor"], [/Design \/ Building Regulations/, "Design and Building Regulations lead"],
@@ -199,15 +206,24 @@ ${itemsJs}
   // Of what is left on the lines, how much repays a director for something already bought on a
   // personal card or account (the register), rather than money still to spend. CBS VAT that Abi
   // paid is not in what is left, so it is not counted here.
-  let owedBank = 0, owedCard = 0;
-  for (const l of J.projectLines) {
-    if (/^Ref \d+ - /.test(l.title) || !(l.paidOnCard > 0) || l.remainingExVat < 0.5) continue;
-    const ex = l.paidOnCard * l.remainingExVat / Math.max(0.01, l.recorded - l.paid);
-    if ((l.plan || []).some(p => p.method === "card")) owedCard += ex; else owedBank += ex;
-  }
-  rep('const FLOOR = 10000,', 'const OWED_BANK = ' + Math.round(owedBank) + ', OWED_CARD = ' + Math.round(owedCard) + '; const FLOOR = 10000,');
+  rep('const FLOOR = 10000,', 'const PERSONAL_LEFT = ' + Math.round(personalLeft) + '; const FLOOR = 10000,');
+  rep(`<div class="kpi"><span>Still to pay</span><b id="k-pay-v">£0</b><em id="k-pay-m"></em></div>`,
+      `<div class="kpi" id="k-pay" tabindex="0" aria-describedby="k-pay-tip" style="cursor: help"><span>Still to pay</span><b id="k-pay-v">£0</b><em id="k-pay-m"></em></div>
+    <div id="k-pay-tip" role="tooltip" hidden style="position: fixed; z-index: 60; width: 400px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); overflow: auto; box-sizing: border-box; background: #fff; color: var(--ink, #1F2A44); border: 1px solid var(--muted, #8a8f9c); border-radius: 2px; padding: 12px 14px; font-size: 12.5px; line-height: 1.45; box-shadow: 0 6px 24px rgba(31, 42, 68, 0.18)"></div>`);
   rep('K("k-pay-v", gbp(bankTotal + cardTotal)); K("k-pay-m", `bank ${gbp(bankTotal)}, card ${gbp(cardTotal)}, ex VAT`);',
-      'K("k-pay-v", gbp(bankTotal + cardTotal - OWED_BANK - OWED_CARD)); K("k-pay-m", `still to buy: bank ${gbp(bankTotal - OWED_BANK)}, card ${gbp(cardTotal - OWED_CARD)}, ex VAT. On top, ${gbp(OWED_BANK + OWED_CARD)} repays what is already bought on your cards`);');
+      `const payRows = ITEMS.map(i => ({ i, bank: S.card === "none" || S.methods[i.id] === "bank", buy: i.ex - (i.owed || 0) })), buyOf = b => payRows.filter(x => x.bank === b).reduce((a, x) => a + x.buy, 0), owedAll = ITEMS.reduce((a, i) => a + (i.owed || 0), 0);
+    K("k-pay-v", gbp(buyOf(true) + buyOf(false))); K("k-pay-m", \`still to buy: bank \${gbp(buyOf(true))}, card \${gbp(buyOf(false))}, ex VAT. On top, \${gbp(owedAll)} repays what is already bought on your cards\`);
+    { const tip = document.getElementById("k-pay-tip"), box = document.getElementById("k-pay"), esc = t => String(t).replace(/[&<>]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+      const line = (a, b, strong) => \`<div style="display: flex; justify-content: space-between; gap: 12px; padding: 2px 0;\${strong ? " font-weight: 700; border-top: 1px solid #e3e1da; margin-top: 6px; padding-top: 6px" : ""}"><span>\${a}</span><span style="font-variant-numeric: tabular-nums; white-space: nowrap">\${b}</span></div>\`;
+      const part = (b, title) => { const rs = payRows.filter(x => x.bank === b && x.buy > 0.5).sort((x, y) => x.i.m - y.i.m || y.buy - x.buy); return rs.length ? line(title, gbp(buyOf(b)), true) + rs.map(x => line(esc(x.i.name) + \` <span style="color: var(--muted, #6b7080)">\${MONTHS[x.i.m]}\${x.i.vat ? "" : ", no VAT"}</span>\`, gbp(x.buy))).join("") : ""; };
+      tip.innerHTML = \`<div style="font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted, #6b7080)">Still to pay, before VAT</div>\` + line("Still to buy", gbp(buyOf(true) + buyOf(false))).replace("padding: 2px 0;", "padding: 2px 0; font-weight: 700; font-size: 15px;") + part(true, "From the bank") + part(false, "On the card")
+        + (owedAll > 0.5 ? line("Already bought on your cards, repaid over time", gbp(owedAll), true) + \`<div style="color: var(--muted, #6b7080)">Not in the figure above: nothing more is being bought.</div>\` : "")
+        + (PERSONAL_LEFT > 0.5 ? line("You pay yourself, not from the bank", gbp(PERSONAL_LEFT), true) + \`<div style="color: var(--muted, #6b7080)">The reception desk balance. The company owes it back to you.</div>\` : "")
+        + \`<div style="color: var(--muted, #6b7080); margin-top: 8px">VAT is on top where a line carries it, and comes back the month after.</div>\`;
+      if (!box.dataset.tip) { box.dataset.tip = "1";
+        const show = () => { tip.hidden = false; const r = box.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight; tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + "px"; tip.style.top = Math.max(8, Math.min(r.bottom + 6, innerHeight - h - 8)) + "px"; }, hide = () => { tip.hidden = true; };
+        box.addEventListener("mouseenter", show); box.addEventListener("mouseleave", hide); box.addEventListener("focus", show); box.addEventListener("blur", hide);
+        box.addEventListener("click", () => (tip.hidden ? show() : hide())); addEventListener("scroll", hide, { passive: true }); } }`);
   rep(`LIMIT = 20000,`, `LIMIT = ${J.config.card?.limit ?? 20000},`);
   rep(`of the £20,000 left as an emergency line`, `of the £${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit left`, true);
   rep(`£20,000 limit`, `£${(J.config.card?.limit ?? 20000).toLocaleString("en-GB")} limit`, true);
