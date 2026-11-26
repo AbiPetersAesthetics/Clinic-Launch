@@ -181,7 +181,7 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
 
   const lines: ProjectLine[] = [];
   const payments: ProjectPayment[] = [];
-  const cbsCfg = ((config as any).cbs ?? {}) as { finalPayDate?: string; vatPaid?: { month: string; paidOn?: string; amount: number; label: string; abiLentOn?: string | null }[] };
+  const cbsCfg = ((config as any).cbs ?? {}) as { finalPayDate?: string; vatPaid?: { month: string; paidOn?: string; amount: number; label: string; abiLentOn?: string | null; abiRepaid?: number }[] };
   const cbsPayMonth = /^\d{4}-\d{2}-\d{2}$/.test(String(cbsCfg.finalPayDate ?? "")) ? String(cbsCfg.finalPayDate).slice(0, 7) : null;
   for (const t of baseTasks) {
     const o = ovr.get(t.id) ?? {};
@@ -286,7 +286,10 @@ export async function buildCashModel(projectId: number, opts: { scenario?: strin
     const amt = Math.round(v.amount * 100) / 100;
     vatRefundsDue.push({ month: back, amount: amt, label: `VAT refund on CBS ${v.label}` });
     if (!v.abiLentOn || (bank && v.abiLentOn > bank.asAt)) abiLoans.push({ month: v.month < config.startMonth ? config.startMonth : v.month, amount: amt, kind: "gift", label: `Abi lends the VAT on CBS ${v.label} (director's loan)` });
-    abiRepay.push({ month: back, amount: amt, method: "bank", label: `Abi repaid her VAT loan on CBS ${v.label} from the refund`, pnl: false });
+    // abiRepaid: what she has already had back on this loan (26 Nov 2026: 9.00 of valuation 2's,
+    // sent with her October repayment), so the refund repays only the rest.
+    const owedAbi = Math.round((amt - Math.min(amt, Math.max(0, Number(v.abiRepaid ?? 0)))) * 100) / 100;
+    if (owedAbi > 0) abiRepay.push({ month: back, amount: owedAbi, method: "bank", label: `Abi repaid her VAT loan on CBS ${v.label} from the refund`, pnl: false });
   }
   if (octVat > 0 && addMonths("2026-10", lag) >= config.startMonth) abiRepay.push({ month: addMonths("2026-10", lag), amount: Math.round(octVat * 100) / 100, method: "bank", label: "Abi repaid her October VAT loan from the refund", pnl: false });
   const fundingAll = [...funding, ...abiLoans], oneOffsAll = [...(config.oneOffs ?? []), ...abiRepay];

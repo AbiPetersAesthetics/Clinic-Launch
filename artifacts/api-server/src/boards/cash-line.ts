@@ -50,13 +50,15 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
   const retShare = Number(J.config && J.config.cbs && J.config.cbs.retentionAfterPcPct) > 0 && J.config.cbs.finalPayDate ? Number(J.config.cbs.retentionAfterPcPct) / 100 : 0.03;
   const retentionInc = cbs.reduce((s, l) => s + retShare * l.recorded, 0);
   const cbsPayable = Math.max(0, cbsLeftInc - retentionInc), half = r2(cbsPayable / 2), halfVat = r2(half / 6);
-  const cbsVatByMonth = {};
+  const cbsVatByMonth = {}, abiHadBackByMonth = {};
   // Valuations already paid from Tide, VAT and all: Abi lends that VAT in if she has not yet,
   // and it comes back with that month's refund (owner, 15 Nov 2026).
   const cbsCfg = (J.config && J.config.cbs) || {}, paidVals = cbsCfg.vatPaid || [];
   for (const v of paidVals) {
     if (!(v.amount > 0) || ym(v.paidOn || v.month + "-01") < firstYm) continue;
     cbsVatByMonth[v.month] = (cbsVatByMonth[v.month] || 0) + r2(v.amount);
+    // What she has already had back on this loan comes off her repayment, not off the refund.
+    if (v.abiRepaid > 0) abiHadBackByMonth[v.month] = (abiHadBackByMonth[v.month] || 0) + Math.min(r2(v.amount), r2(v.abiRepaid));
     if (!v.abiLentOn || v.abiLentOn > start) add(v.abiLentOn || addDays(start, 5), `Abi lends the VAT on CBS ${v.label}, already paid (director's loan)`, "Abi Flitney", "abi-in", r2(v.amount));
   }
   const nextN = (octVatLoan > 0 ? 1 : 0) + paidVals.length + 1;
@@ -121,7 +123,8 @@ export function renderCashLine({ J, asOf, cbsLastPaid, octVatLoan, history }) {
     const abi = m === addMonths(firstYm, -1) ? octVatLoan : (cbsVatByMonth[m] || 0), other = m === addMonths(firstYm, -1) ? 0 : (otherVatByMonth[m] || 0);
     if (abi + other < 0.5) continue;
     add(landing, `VAT refund for ${MONTH_LONG[+m.slice(5) - 1]}`, "HMRC", "in", r2(abi + other), other ? `${gbp(abi)} on CBS, ${gbp(other)} on the rest` : "CBS's VAT");
-    if (abi > 0.5) add(landing, `Abi repaid her ${MONTH_LONG[+m.slice(5) - 1]} VAT loan`, "Abi Flitney", "abi-out", -abi, "", 0);
+    const hadBack = m === addMonths(firstYm, -1) ? 0 : (abiHadBackByMonth[m] || 0), abiBack = r2(abi - hadBack);
+    if (abiBack > 0.5) add(landing, `Abi repaid her ${MONTH_LONG[+m.slice(5) - 1]} VAT loan`, "Abi Flitney", "abi-out", -abiBack, hadBack ? `${gbp(abi)} lent, less ${gbp(hadBack)} she has already had back` : "", 0);
   }
 
   // 5. Running costs, rent and the clinics' takings, from the Money page's months.
